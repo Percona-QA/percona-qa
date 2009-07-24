@@ -1,0 +1,13 @@
+$tables = {
+        rows => [10] ,
+	pk => [ 'integer auto_increment' ]
+};
+
+$fields = {
+        types => [ 'int' ],
+        indexes => [ 'key' , undef ],
+};
+
+$data = {
+        numbers => [ '100' ]
+}

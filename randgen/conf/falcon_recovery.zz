@@ -1,0 +1,14 @@
+$tables = {
+        rows => [10, 100]
+};
+
+$fields = {
+        types => [ 'int', 'char(255)', 'blob' ],
+	indexes => [ undef ]
+};
+
+$data => {
+        numbers => [ 'digit', 'null' ],
+        strings => [ 'letter', 'english' ],
+        blobs => [ 'english', 'data' ]
+}

@@ -1,0 +1,17 @@
+$tables = {
+	pk => ['VARCHAR(1024) NOT NULL' ],
+        partitions => [ undef , 'KEY (pk) PARTITIONS 2' ]
+};
+
+$fields = {
+        types => [ 'varchar(1024)' ],
+        indexes => [undef, 'key' ],
+        null => [undef, 'not null'],
+        default => [undef, 'default null'],
+        sign => [undef, 'unsigned'],
+        charsets => ['utf8', 'latin1']
+};
+
+$data = {
+        strings => [ 'varchar(1024)' ]
+}

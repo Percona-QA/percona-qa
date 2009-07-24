@@ -1,0 +1,13 @@
+$tables = {
+        rows => [ 1000000 ],
+	engines => [ 'innodb' ]
+};
+
+$fields = {
+        types => [ 'int' ],
+        indexes => [ undef, 'key' ],
+};
+
+$data = {
+        numbers => [ 'digit', 'tinyint', undef ],
+}

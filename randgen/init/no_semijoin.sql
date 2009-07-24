@@ -1,0 +1,1 @@
+SET GLOBAL OPTIMIZER_SWITCH = 'semijoin=off';

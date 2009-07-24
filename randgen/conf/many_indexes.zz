@@ -1,0 +1,15 @@
+$tables = {
+        rows => [100],
+        partitions => [ undef , 'KEY (pk) PARTITIONS 2' ]
+};
+
+$fields = {
+        types => [ 'varchar(255)', 'char(255)' , 'enum', 'set', 'longtext' ],
+        indexes => [ undef, 'key' ],
+	charsets => [ 'UTF8', 'UTF16', 'UCS2' ]
+};
+
+$data = {
+        strings => [ 'letter', 'english', undef ],
+        blobs => [ 'letter', 'english' ]
+}

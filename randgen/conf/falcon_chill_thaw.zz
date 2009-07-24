@@ -1,0 +1,13 @@
+$tables = {
+        rows => [100, 1000]
+};
+
+$fields = {
+        types => [ 'char(255)', 'bigint' ],
+        indexes => [undef, 'key' ]
+};
+
+$data = {
+        numbers => [ undef ],
+        strings => [ 'char(255)' ]
+}

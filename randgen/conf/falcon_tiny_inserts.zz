@@ -1,0 +1,9 @@
+$tables = {
+        rows => [0],
+	pk => [ undef ]
+};
+
+$fields = {
+        types => [ 'bit' ],
+        indexes => [ 'key' ]
+};
