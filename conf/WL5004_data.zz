@@ -1,0 +1,32 @@
+# WL#5004 Comprehensive Locking Stress Test for Azalea
+#
+# Grammar for generation of templates of testing objects
+#
+# This is a prototype which means it might be incomplete and contain errors.
+#
+# General architecture rule:
+#    We
+#    - work on copies of the objects created via gendata.pl
+#    - do not modify the objects via gendata.pl
+#
+
+$tables = {
+	rows => [0, 1, 10 ]
+	# partitions => [ undef , 'KEY (pk) PARTITIONS 2' ]
+};
+
+$fields = {
+	types => [ 'int', 'char', 'enum', 'set' ],
+	indexes => [undef, 'key' ],
+	null => [undef, 'not null'],
+	default => [undef, 'default null'],
+	sign => [undef, 'unsigned'],
+	charsets => ['utf8', 'latin1']
+};
+
+$data = {
+	numbers => [ 'digit', 'null', undef ],
+	strings => [ 'letter', 'english' ],
+	blobs => [ 'data' ],
+	temporals => ['date', 'year', 'null', undef ]
+}

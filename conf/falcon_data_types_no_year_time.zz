@@ -1,0 +1,19 @@
+$tables = {
+	pk => [ undef ]
+};
+
+# 2009-06-23: Removed fields 'year' and 'time' due to Bug#45499 (InnoDB inconsistency causing Falcon tests to fail)
+
+$fields = {
+        types => [ 'tinyint', 'bigint', 'double', 'decimal', 'char(64)', 'varchar(64)', 'enum', 'set', 'date', 'datetime' ],
+        indexes => [ undef, 'key' ],
+        null => [ undef, 'not null' ],
+        sign => [ undef, 'unsigned' ],
+        charsets => [ 'utf8', 'latin1' ]	
+};
+
+$data = {
+	numbers => [ undef, 'digit', 'null', 'tinyint','mediumint','bigint', 'bigint_unsigned' ],
+	strings => [ undef , undef, 'varchar(128)', 'english', 'null' ],
+	temporals => [ undef, 'time', 'date', 'datetime', 'year(2)', 'year(4)', 'timestamp' ]
+};

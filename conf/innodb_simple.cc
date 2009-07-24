@@ -1,0 +1,50 @@
+$combinations = [
+	[
+	'
+		--engine=Innodb
+		--reporters=Deadlock,ErrorLog,Backtrace,Recovery,Shutdown
+		--mysqld=--loose-falcon-lock-wait-timeout=1
+		--mysqld=--loose-innodb-lock-wait-timeout=1
+		--mysqld=--log-output=none
+		--mysqld=--skip-safemalloc
+	'], [
+		'--mysqld=--innodb-thread-concurrency-timer-based=TRUE',
+		'--mysqld=--innodb-thread-concurrency-timer-based=FALSE'
+	], [
+		'--rows=10',
+		'--rows=100',
+		'--rows=1000',
+		'--rows=10000'
+	],
+	[
+		'--threads=4',
+		'--threads=8',
+		'--threads=16',
+		'--threads=32',
+		'--threads=64',
+		'--threads=128'
+	],[
+		'--mysqld=--skip-innodb-adaptive-hash-index',
+		'--mysqld=--innodb-autoinc-lock-mode=0',
+		'--mysqld=--innodb-autoinc-lock-mode=2',
+		'--mysqld=--skip-innodb-checksums',
+		'--mysqld=--innodb-commit-concurrency=1',
+		'--mysqld=--innodb-concurrency-tickets=100',
+		'--mysqld=--skip-innodb-doublewrite',
+		'--mysqld=--innodb-flush-log-at-trx-commit=0',
+		'--mysqld=--innodb-flush-log-at-trx-commit=2',
+		'--mysqld=--innodb-log-buffer-size=8M',
+		'--mysqld=--innodb-max-purge-lag=1M',
+		'--mysqld=--innodb-sync-spin-loops=1',
+		'--mysqld=--innodb-thread-concurrency=1',
+		'--mysqld=--innodb-thread-concurrency=1000',
+		'--mysqld=--innodb-thread-sleep-delay=0'
+	],
+        [
+                '--mysqld=--transaction-isolation=READ-UNCOMMITTED',
+                '--mysqld=--transaction-isolation=READ-COMMITTED',
+                '--mysqld=--transaction-isolation=REPEATABLE-READ',
+                '--mysqld=--transaction-isolation=SERIALIZABLE'
+        ],
+
+];

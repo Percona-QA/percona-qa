@@ -1,0 +1,13 @@
+The purpose of this framework is to test the server using queries randomly generated from a config file.
+
+Wiki:
+
+* http://forge.mysql.com/wiki/Category:RandomQueryGenerator
+
+Launchpad homepage:
+
+* https://launchpad.net/randgen
+
+Code repository:
+
+* lp:~randgen/randgen/main 
