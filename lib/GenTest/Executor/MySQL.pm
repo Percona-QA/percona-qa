@@ -12,6 +12,8 @@ use GenTest::Result;
 use GenTest::Executor;
 use Time::HiRes;
 
+use constant RARE_QUERY_THRESHOLD	=> 5;
+
 my %reported_errors;
 
 my @errors = (
@@ -125,12 +127,15 @@ use constant	ER_WRONG_FIELD_WITH_GROUP	=> 1055;
 use constant	ER_NON_GROUPING_FIELD_USED	=> 1463;
 
 use constant	ER_PARTITION_MGMT_ON_NONPARTITIONED	=> 1505;
+use constant	ER_DROP_PARTITION_NON_EXISTENT		=> 1507;
 use constant	ER_DROP_LAST_PARTITION			=> 1508;
 use constant	ER_COALESCE_ONLY_ON_HASH_PARTITION	=> 1509;
 use constant	ER_REORG_HASH_ONLY_ON_SAME_NO		=> 1510;
 use constant	ER_REORG_NO_PARAM_ERROR			=> 1511;
 use constant	ER_ONLY_ON_RANGE_LIST_PARTITION		=> 1512;
 use constant	ER_NO_PARTITION_FOR_GIVEN_VALUE		=> 1526;
+use constant	ER_PARTITION_MAXVALUE_ERROR		=> 1481;
+use constant	ER_WRONG_PARTITION_NAME			=> 1567;
 
 use constant	ER_UNKNOWN_KEY_CACHE			=> 1284;
 
@@ -237,6 +242,9 @@ my %err2type = (
 	ER_REORG_NO_PARAM_ERROR()		=> STATUS_SEMANTIC_ERROR,
 	ER_ONLY_ON_RANGE_LIST_PARTITION()	=> STATUS_SEMANTIC_ERROR,
 	ER_NO_PARTITION_FOR_GIVEN_VALUE()	=> STATUS_SEMANTIC_ERROR,
+	ER_DROP_PARTITION_NON_EXISTENT()	=> STATUS_SEMANTIC_ERROR,
+	ER_PARTITION_MAXVALUE_ERROR()		=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_PARTITION_NAME()		=> STATUS_SEMANTIC_ERROR,
 
 	ER_UNKNOWN_KEY_CACHE()	=> STATUS_SEMANTIC_ERROR,
 
@@ -325,7 +333,7 @@ sub execute {
 
 	if (not defined $sth) {			# Error on PREPARE
 		my $errstr = $executor->normalizeError($sth->errstr());
-		$executor->[EXECUTOR_ERROR_STATS]->{$errstr}++ if $executor->debug();
+		$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if $executor->debug() && !$silent;
 		return GenTest::Result->new(
 			query		=> $query,
 			status		=> $executor->getStatusFromErr($dbh->err()) || STATUS_UNKNOWN_ERROR,
@@ -352,13 +360,13 @@ sub execute {
 			($err_type == STATUS_TRANSACTION_ERROR)
 		) {
 			my $errstr = $executor->normalizeError($sth->errstr());
-			$executor->[EXECUTOR_ERROR_STATS]->{$errstr}++ if $executor->debug();
+			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if $executor->debug() && !$silent;
 			if (not defined $reported_errors{$errstr}) {
 				say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
 				$reported_errors{$errstr}++;
 			}
 		} else {
-			$executor->[EXECUTOR_ERROR_STATS]->{$sth->errstr()}++ if $executor->debug();
+			$executor->[EXECUTOR_ERROR_COUNTS]->{$sth->errstr()}++ if $executor->debug() && !$silent;
 			say("Query: $query failed: $err ".$sth->errstr()) if !$silent;
 		}
 
@@ -379,7 +387,7 @@ sub execute {
 			start_time	=> $start_time,
 			end_time	=> $end_time
 		);
-		$executor->[EXECUTOR_ERROR_STATS]->{'(no error)'}++ if $executor->debug();
+		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if $executor->debug() && !$silent;
 	} else {
 		#
 		# We do not use fetchall_arrayref() due to a memory leak
@@ -401,7 +409,7 @@ sub execute {
 			end_time	=> $end_time
 		);
 
-		$executor->[EXECUTOR_ERROR_STATS]->{'(no error)'}++ if $executor->debug();
+		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if $executor->debug() && !$silent;
 	}
 
 	$sth->finish();
@@ -413,10 +421,12 @@ sub execute {
 
 	if (
 		($executor->debug()) &&
-		($query =~ m{^\s*select}sio)
+		($query =~ m{^\s*select}sio) &&
+		(!$silent)
 	) {
 		$executor->explain($query);
-		$executor->[EXECUTOR_ROW_STATS]->{sprintf("%5d",$sth->rows())}++;
+		my $row_group = $sth->rows() > 100 ? '>100' : ($sth->rows() > 10 ? ">10" : sprintf("%5d",$sth->rows()) );
+		$executor->[EXECUTOR_ROW_COUNTS]->{$row_group}++;
 	}
 
 	return $result;
@@ -471,14 +481,28 @@ sub masterStatus {
 sub explain {
 	my ($executor, $query) = @_;
 	my $explain_output = $executor->dbh()->selectall_arrayref("EXPLAIN $query");
+	my @explain_fragments;
 	foreach my $explain_row (@$explain_output) {
-		my $explain_string = $explain_row->[9];
-		my @explain_items = split('; ', $explain_string);
-		foreach my $explain_item (@explain_items) {
-			$explain_item =~ s{0x.*?\)}{%d\)}sgio;
-			$executor->[EXECUTOR_EXPLAIN_STATS]->{$explain_item}++;
+		push @explain_fragments, "select_type: ".($explain_row->[1] || '(empty)');
+
+		push @explain_fragments, "type: ".($explain_row->[3] || '(empty)');
+
+		foreach my $extra_item (split('; ', ($explain_row->[9] || '(empty)')) ) {
+			$extra_item =~ s{0x.*?\)}{%d\)}sgio;
+			$extra_item =~ s{PRIMARY|[a-z_]+_key}{%s}sgio;
+			push @explain_fragments, "extra: ".$extra_item;
 		}
 	}
+	
+	foreach my $explain_fragment (@explain_fragments) {
+		$executor->[EXECUTOR_EXPLAIN_COUNTS]->{$explain_fragment}++;
+		if ($executor->[EXECUTOR_EXPLAIN_COUNTS]->{$explain_fragment} > RARE_QUERY_THRESHOLD) {
+			delete $executor->[EXECUTOR_EXPLAIN_QUERIES]->{$explain_fragment};
+		} else {
+			push @{$executor->[EXECUTOR_EXPLAIN_QUERIES]->{$explain_fragment}}, $query;
+		}
+	}
+
 }
 
 sub DESTROY {
@@ -487,66 +511,90 @@ sub DESTROY {
 		say("Statistics for Executor ".$executor->dsn());
 		use Data::Dumper;
 		$Data::Dumper::Sortkeys = 1;
-		print Dumper $executor->[EXECUTOR_ROW_STATS];
-		print Dumper $executor->[EXECUTOR_EXPLAIN_STATS];
-		print Dumper $executor->[EXECUTOR_ERROR_STATS];
+		say("Rows returned:");
+		print Dumper $executor->[EXECUTOR_ROW_COUNTS];
+		say("Explain items:");
+		print Dumper $executor->[EXECUTOR_EXPLAIN_COUNTS];
+		say("Errors:");
+		print Dumper $executor->[EXECUTOR_ERROR_COUNTS];
+		say("Rare EXPLAIN items:");
+		print Dumper $executor->[EXECUTOR_EXPLAIN_QUERIES];
 	}
 	$executor->dbh()->disconnect();
 }
 
-sub tables {
+sub databases {
 	my $executor = shift;
+
 	return [] if not defined $executor->dbh();
-	$caches{tables} = $executor->dbh()->selectcol_arrayref("SHOW TABLES") if not exists $caches{tables};
-	return $caches{tables};
+
+	$caches{databases} = $executor->dbh()->selectcol_arrayref("SHOW DATABASES") if not exists $caches{databases};
+	return $caches{databases};
+}
+
+sub tables {
+	my ($executor, $database) = @_;
+
+	return [] if not defined $executor->dbh();
+
+	my $cache_key = join('-', ('tables', $database));
+	my $query = "SHOW TABLES ".(defined $database ? "FROM $database" : "");
+	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+	return $caches{$cache_key};
 }
 
 sub fields {
-	my $executor = shift;
-	if (defined $executor->dbh()) {
-		$caches{fields} = $executor->dbh()->selectcol_arrayref("
-			SHOW FIELDS FROM ".$executor->tables()->[0]
-		) if not defined $caches{fields};
-		return $caches{fields};
-	} else {
-		return [];
-	}
+	my ($executor, $table, $database) = @_;
+	
+	return [] if not defined $executor->dbh();
+
+	my $cache_key = join('-', ('fields', $table, $database));
+	my $query = defined $table ? "SHOW FIELDS FROM $table" : "SHOW FIELDS FROM ".$executor->tables($database)->[0];
+	$query .= " FROM $database" if defined $database;
+
+	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+
+	return $caches{$cache_key};
 }
 
 sub fieldsNoPK {
-	my $executor = shift;
-	$caches{fieldsNoPK} = $executor->dbh()->selectcol_arrayref("
+	my ($executor, $table, $database) = @_;
+
+	return [] if not defined $executor->dbh();
+
+	my $cache_key = join('-', ('fields_no_pk', $table, $database));
+	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref("
 		SELECT COLUMN_NAME
 		FROM INFORMATION_SCHEMA.COLUMNS
-		WHERE TABLE_SCHEMA = DATABASE() AND
-		TABLE_NAME = '".$executor->tables()->[0]."'
+		WHERE TABLE_NAME = '".(defined $table ? $table : $executor->tables($database)->[0] )."'
+		AND TABLE_SCHEMA = ".(defined $database ? "'$database'" : 'DATABASE()' )."
 		AND COLUMN_KEY != 'PRI'
-	") if not defined $caches{fieldsNoPK};
+	");
 
-	return $caches{fieldsNoPK};
+	return $caches{$cache_key};
 }
 
 sub fieldsIndexed {
-	my $executor = shift;
-	$caches{fields_indexed} = $executor->dbh()->selectcol_arrayref("
-		SHOW INDEX FROM ".$executor->tables()->[0]
-	, { Columns=>[5] }) if not defined $caches{fields_indexed};
+	my ($executor, $table, $database) = @_;
 
-	return $caches{fields_indexed};
-}
+	return [] if not defined $executor->dbh();
 
-sub fields_indexed {
-	my $executor = shift;
-	$caches{fields_indexed} = $executor->dbh()->selectcol_arrayref("
-		SHOW INDEX  FROM ".$executor->tables()->[0]
-	, { Columns=>[5] } ) if not defined $caches{fields_indexed};
+	my $cache_key = join('-', ('fields_indexed', $table, $database));
 
-	return $caches{fields_indexed};
+	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref("
+		SHOW INDEX
+		FROM ".(defined $table ? $table : $executor->tables($database)->[0]).
+		(defined $database ? " FROM $database " : "")
+	, { Columns=>[5] }) if not defined $caches{$cache_key};
 
+	return $caches{$cache_key};
 }
 
 sub collations {
 	my $executor = shift;
+
+	return [] if not defined $executor->dbh();
+
 	return $executor->dbh()->selectcol_arrayref("
 		SELECT COLLATION_NAME
 		FROM INFORMATION_SCHEMA.COLLATIONS
@@ -555,6 +603,9 @@ sub collations {
 
 sub charsets {
 	my $executor = shift;
+
+	return [] if not defined $executor->dbh();
+
 	return $executor->dbh()->selectcol_arrayref("
 		SELECT DISTINCT CHARACTER_SET_NAME
 		FROM INFORMATION_SCHEMA.COLLATIONS
@@ -563,6 +614,9 @@ sub charsets {
 
 sub database {
 	my $executor = shift;
+
+	return undef if not defined $executor->dbh();
+
 	return $executor->dbh()->selectrow_array("SELECT DATABASE()");
 }
 

@@ -150,6 +150,10 @@ sub next {
 	# And we do multiple iterations, continuously expanding grammar rules and replacing the original rule with its expansion.
 	
 	my %rule_counters;
+	my %invariants;
+
+	my $last_table;
+	my $last_database;
 
 	my $pos = 0;
 	while ($pos <= $#sentence) {
@@ -192,6 +196,7 @@ sub next {
 			$_ = eval("no strict;\n".$_);		# Code
 
 			if ($@ =~ m{at \(.*?\) line}o) {
+				say("Internal grammar error: $@");
 				return undef;			# Code called die()
 			} elsif ($@ ne '') {
 				warn("Syntax error in Perl snippet $orig_item : $@");
@@ -201,6 +206,17 @@ sub next {
 		} elsif ($_ =~ m{^\$}so) {
 			$_ = eval("no strict;\n".$_.";\n");	# Variable
 			next;
+		}
+
+		my $modifier;
+
+		if ($_ =~ m{^(_[a-z_]*?)\[(.*?)\]}sio) {
+			$modifier = $2;
+			if ($modifier eq 'invariant') {
+				$_ = exists $invariants{$orig_item} ? $invariants{$orig_item} : $1 ;
+			} else {
+				$_ = $1;
+			}
 		}
 
 		next if $_ eq uc($_);				# Short-cut for UPPERCASE literals
@@ -230,27 +246,32 @@ sub next {
 			$_ = time();
 		} elsif ($_ eq '_pid') {
 			$_ = $$;
+		} elsif (($_ eq '_database') || ($_ eq '_db')) {
+			my $databases = $executors->[0]->databases();
+			$last_database = $_ = $prng->arrayElement($databases);
+			$_ = '`'.$last_database.'`';
 		} elsif ($_ eq '_table') {
-			my $tables = $executors->[0]->tables();
-			$_ = '`'.$prng->arrayElement($tables).'`';
+			my $tables = $executors->[0]->tables($last_database);
+			$last_table = $prng->arrayElement($tables);
+			$_ = '`'.$last_table.'`';
 		} elsif ($_ eq '_field') {
-			my $fields = $executors->[0]->fields();
+			my $fields = $executors->[0]->fields($last_table, $last_database);
 			$_ = '`'.$prng->arrayElement($fields).'`';
 		} elsif ($_ eq '_field_list') {
-			my $fields = $executors->[0]->fields();
-			$_ = join(', ', @$fields);
+			my $fields = $executors->[0]->fields($last_table, $last_database);
+			$_ = '`'.join('`,`', @$fields).'`';
 		} elsif ($_ eq '_field_count') {
-			my $fields = $executors->[0]->fields();
+			my $fields = $executors->[0]->fields($last_table, $last_database);
 			$_ = $#$fields + 1;
 		} elsif ($_ eq '_field_next') {
 			# Pick the next field that has not been picked recently and increment the $field_pos counter
-			my $fields = $executors->[0]->fields();
+			my $fields = $executors->[0]->fields($last_table, $last_database);
 			$_ = '`'.$fields->[$field_pos++ % $#$fields].'`';
 		} elsif ($_ eq '_field_no_pk') {
-			my $fields = $executors->[0]->fieldsNoPK();
+			my $fields = $executors->[0]->fieldsNoPK($last_table, $last_database);
 			$_ = '`'.$prng->arrayElement($fields).'`';
 		} elsif (($_ eq '_field_indexed') || ($_ eq '_field_key')) {
-			my $fields_indexed = $executors->[0]->fieldsIndexed();
+			my $fields_indexed = $executors->[0]->fieldsIndexed($last_table, $last_database);
 			$_ = '`'.$prng->arrayElement($fields_indexed).'`';
 		} elsif ($_ eq '_collation') {
 			my $collations = $executors->[0]->collations();
@@ -295,7 +316,8 @@ sub next {
 		) {
 			$_ = $_.'`';
 		}
-
+	
+		$invariants{$orig_item} = $_ if $modifier eq 'invariant';
 	}
 
 	$generator->[GENERATOR_SEQ_ID]++;
@@ -306,7 +328,7 @@ sub next {
 	# Otherwise, split it into individual statements so that the error and the result set from each statement
 	# can be examined
 
-	if ($sentence =~ m{^\s*create}sio) {
+	if ($sentence =~ m{^\s*CREATE}sio) {
 		return [ $sentence ];
 	} elsif ($sentence =~ m{;}) {
 		my @sentences = split (';', $sentence);
