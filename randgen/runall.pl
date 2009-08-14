@@ -143,7 +143,7 @@ foreach my $server_id (0..1) {
 	}
 
 	my @mtr_options;
-	push @mtr_options, lc("--mysqld=--$engine") if defined $engine && lc($engine) ne lc('myisam');
+	push @mtr_options, lc("--mysqld=--loose-$engine") if defined $engine && lc($engine) ne lc('myisam');
 
 	if (defined $mysqld_options[$server_id]) {
 		foreach my $mysqld_option (@{$mysqld_options[$server_id]}) {
