@@ -13,11 +13,10 @@ require Exporter;
 	FIELD_TYPE_SET
 	FIELD_TYPE_YEAR
 	FIELD_TYPE_BLOB
-
+	FIELD_TYPE_DICT
 	FIELD_TYPE_DIGIT
 	FIELD_TYPE_LETTER
 	FIELD_TYPE_NULL
-	FIELD_TYPE_ENGLISH
 	FIELD_TYPE_ASCII
 	FIELD_TYPE_EMPTY
 
@@ -73,17 +72,21 @@ use constant FIELD_TYPE_BLOB		=> 11;
 use constant FIELD_TYPE_DIGIT		=> 12;
 use constant FIELD_TYPE_LETTER		=> 13;
 use constant FIELD_TYPE_NULL		=> 14;
-use constant FIELD_TYPE_ENGLISH		=> 15;
+use constant FIELD_TYPE_DICT		=> 15;
 use constant FIELD_TYPE_ASCII		=> 16;
 use constant FIELD_TYPE_EMPTY		=> 17;
 
 use constant FIELD_TYPE_HEX		=> 18;
 use constant FIELD_TYPE_QUID		=> 19;
 
-my %dictionaries;
+use constant FIELD_TYPE_BIT		=> 20;
+
+my %dict_exists;
+my %dict_data;
+my %data_dirs;
 
 my %name2type = (
-	'bit'			=> FIELD_TYPE_NUMERIC,
+	'bit'			=> FIELD_TYPE_BIT,
 	'bool'			=> FIELD_TYPE_NUMERIC,
 	'boolean'		=> FIELD_TYPE_NUMERIC,
 	'tinyint'		=> FIELD_TYPE_NUMERIC,
@@ -101,8 +104,8 @@ my %name2type = (
 	'fixed'			=> FIELD_TYPE_NUMERIC,
 	'char'			=> FIELD_TYPE_STRING,
 	'varchar'		=> FIELD_TYPE_STRING,
-	'binary'		=> FIELD_TYPE_STRING,
-	'varbinary'		=> FIELD_TYPE_STRING,
+	'binary'		=> FIELD_TYPE_BLOB,
+	'varbinary'		=> FIELD_TYPE_BLOB,
 	'tinyblob'		=> FIELD_TYPE_BLOB,
 	'blob'			=> FIELD_TYPE_BLOB,
 	'mediumblob'		=> FIELD_TYPE_BLOB,
@@ -121,7 +124,6 @@ my %name2type = (
 	'null'			=> FIELD_TYPE_NULL,
 	'letter'		=> FIELD_TYPE_LETTER,
 	'digit'			=> FIELD_TYPE_DIGIT,
-	'english'		=> FIELD_TYPE_ENGLISH,
 	'data'			=> FIELD_TYPE_BLOB,
 	'ascii'			=> FIELD_TYPE_ASCII,
 	'string'		=> FIELD_TYPE_STRING,
@@ -136,7 +138,6 @@ my $cwd = cwd();
 # Min and max values for integer data types
 
 my %name2range = (
-	'bit'		=> [0, 1],
 	'bool'		=> [0, 1],
 	'boolean'	=> [0, 1],
         'tinyint'       => [-128, 127],
@@ -195,12 +196,19 @@ sub urand {
         $_[0]->[RANDOM_GENERATOR] * 1103515245 + 12345;
     ## The lower bits are of bad statsictical quality in an LCG, so we
     ## just use the higher bits.
-
+ 
     ## Unfortunetaly, >> is an arithemtic shift so we shift right 15
     ## bits and have take the absoulte value off that to get a 16-bit
     ## unsigned random value.
+    
+    my $rand = $_[0]->[RANDOM_GENERATOR] >> 15;
 
-    return abs($_[0]->[RANDOM_GENERATOR] >> 15);
+    ## Can't use abs() since abs() is a function that use float (SIC!)
+    if ($rand < 0) {
+        return -$rand;
+    } else {
+        return $rand;
+    }
 }
 
 ### Random unsigned 16-bit integer
@@ -210,7 +218,7 @@ sub uint16 {
     $_[0]->[RANDOM_GENERATOR] = 
         $_[0]->[RANDOM_GENERATOR] * 1103515245 + 12345;
     return $_[1] + 
-        (abs($_[0]->[RANDOM_GENERATOR] >> 15) % ($_[2] - $_[1] + 1));
+        ((($_[0]->[RANDOM_GENERATOR] >> 15) & 0xFFFF) % ($_[2] - $_[1] + 1));
 }
 
 ### Signed 64-bit integer of any range.
@@ -224,7 +232,7 @@ sub int {
             $_[0]->[RANDOM_GENERATOR] * 1103515245 + 12345;
         # Since this may be a 64-bit platform, we mask down to 16 bit
         # to ensure the division below becomes correct.
-        $rand = abs(($_[0]->[RANDOM_GENERATOR] >> 15) & 0xFFFF);
+        $rand = ($_[0]->[RANDOM_GENERATOR] >> 15) & 0xFFFF;
     }
     return int($_[1] + (($rand / 0x10000) * ($_[2] - $_[1] + 1)));
 }
@@ -347,11 +355,15 @@ sub string {
 sub quid {
 	my $prng = shift;
     
-	my ($min, $max) = (97, 122);
-    
-	return pack("s*", map {
-		$prng->uint16(97,122);
+	return pack("c*", map {
+		$prng->uint16(65,90);
                 } (1..5));
+}
+
+sub bit {
+	my ($prng, $length) = @_;
+	$length = 1 if not defined $length;
+	return 'b\''.join ('', map { $prng->int(0,1) } (1..$prng->int(1,$length)) ).'\'';
 }
 
 #
@@ -405,8 +417,6 @@ sub fieldType {
 		return $rand->file("$cwd/data");
 	} elsif ($field_type == FIELD_TYPE_NULL) {
 		return undef;
-	} elsif ($field_type == FIELD_TYPE_ENGLISH) {
-		return $rand->fromDictionary('english');
 	} elsif ($field_type == FIELD_TYPE_ASCII) {
 		return $rand->string($field_length, [0, 255]);
 	} elsif ($field_type == FIELD_TYPE_EMPTY) {
@@ -415,6 +425,10 @@ sub fieldType {
 		return $rand->hex(4);
 	} elsif ($field_type == FIELD_TYPE_QUID) {
 		return $rand->quid();
+	} elsif ($field_type == FIELD_TYPE_DICT) {
+		return $rand->fromDictionary($field_base_type);
+	} elsif ($field_type == FIELD_TYPE_BIT) {
+		return $rand->bit($field_length);
 	} else {
 		die ("unknown field type $field_def");
 	}
@@ -422,12 +436,12 @@ sub fieldType {
 
 sub file {
 	my ($prng, $dir) = @_;
-	if (not exists $dictionaries{$dir}) {
+	if (not exists $data_dirs{$dir}) {
 		my @files = <$dir/*>; 
-		$dictionaries{$dir} = \@files;
+		$data_dirs{$dir} = \@files;
 	}
 
-	return "LOAD_FILE('".$prng->arrayElement($dictionaries{$dir})."')";
+	return "LOAD_FILE('".$prng->arrayElement($data_dirs{$dir})."')";
 
 }
 
@@ -437,20 +451,47 @@ sub isFieldType {
 
 	$field_def =~ s{^_}{}sio;
 	my ($field_name) = $field_def =~ m{^([A-Za-z]*)}sio;
-	return $name2type{$field_name};
+
+	if (exists $name2type{$field_name}) {
+		return $name2type{$field_name};
+	} elsif ($rand->isDictionary($field_name)) {
+		$name2type{$field_name} = FIELD_TYPE_DICT;
+		return FIELD_TYPE_DICT;
+	} else {
+		return undef;
+	}
+}
+
+sub isDictionary {
+	my ($rand, $dict_name) = @_;
+
+	if ($dict_exists{$dict_name}) {
+		return 1;
+	} else {
+                my $dict_file = $ENV{RQG_HOME} ne '' ? $ENV{RQG_HOME}."/dict/$dict_name.txt" : "dict/$dict_name.txt";
+
+                if (-e $dict_file) {
+			$dict_exists{$dict_name} = 1;
+			return 1;
+		} else {
+			return undef;
+		}
+	}
 }
 
 sub fromDictionary {
 	my ($rand, $dict_name) = @_;
-	if (not exists $dictionaries{$dict_name}) {
+
+	if (not exists $dict_data{$dict_name}) {
 		my $dict_file = $ENV{RQG_HOME} ne '' ? $ENV{RQG_HOME}."/dict/$dict_name.txt" : "dict/$dict_name.txt";
+
 		open (DICT, $dict_file) or warn "# Unable to load $dict_file: $!";
 		my @dict_data = map { chop; $_ } <DICT>;
 		close DICT;
-		$dictionaries{$dict_name} = \@dict_data;
+		$dict_data{$dict_name} = \@dict_data;
 	}
 
-	return $rand->arrayElement($dictionaries{$dict_name});
+	return $rand->arrayElement($dict_data{$dict_name});
 }
 
 sub shuffleArray {
