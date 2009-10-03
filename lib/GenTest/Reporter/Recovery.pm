@@ -27,7 +27,7 @@ sub monitor {
 	my $pid = $reporter->serverInfo('pid');
 
 	if (time() > $reporter->testEnd() - 19) {
-		say("Sending SIGKILL to mysqld with pid $pid in order to force a recovery.");
+		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
 		kill(9, $pid);
 		return STATUS_SERVER_KILLED;
 	} else {
@@ -67,7 +67,7 @@ sub report {
 	if (defined $dbh_prev) {
 		# Server is still running, kill it.
 		$dbh_prev->disconnect();
-		say("Sending SIGKILL to mysqld with pid $pid in order to force a recovery.");
+		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
 		kill(9, $pid);
 		sleep(10);
 	}

@@ -23,8 +23,6 @@ use POSIX;
 use Getopt::Long;
 use Time::HiRes;
 
-use GenTest::Utilities;
-
 use GenTest::XML::Report;
 use GenTest::XML::Test;
 use GenTest::XML::BuildInfo;
@@ -33,9 +31,6 @@ use GenTest::Result;
 use GenTest::Validator;
 use GenTest::Generator::FromGrammar;
 use GenTest::Executor;
-use GenTest::Executor::MySQL;
-use GenTest::Executor::JavaDB;
-use GenTest::Utilities;
 use GenTest::Mixer;
 use GenTest::Reporter;
 use GenTest::ReporterManager;
@@ -47,7 +42,7 @@ my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
 my $duration = my $default_duration = 3600;
 
-my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file, $validators, $reporters, $mask, $rows, $varchar_len, $xml_output, $views, $start_dirty, $filter);
+my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file, $validators, $reporters, $mask, $rows, $varchar_len, $xml_output, $views, $start_dirty, $filter, $valgrind);
 my $seed = 1;
 
 my @ARGV_saved = @ARGV;
@@ -75,7 +70,8 @@ my $opt_result = GetOptions(
 	'xml-output=s' => \$xml_output,
 	'views'	=> \$views,
 	'start-dirty' => \$start_dirty,
-	'filter=s' => \$filter
+	'filter=s' => \$filter,
+	'valgrind' => \$valgrind
 );
 
 if ($seed eq 'time') {
@@ -126,7 +122,7 @@ exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
 
 foreach my $i (0..2) {
 	next if $dsns[$i] eq '';
-	push @executors, GenTest::Utilites->newFromDSN($dsns[$i]);
+	push @executors, GenTest::Executor->newFromDSN($dsns[$i]);
 }
 
 my $mysql_only = $executors[0]->type == DB_MYSQL;
@@ -164,12 +160,14 @@ my @validators;
 
 if (not defined $validators) {
 	@validators = ('ErrorMessageCorruption') if $mysql_only;
-    if ($dsns[2] ne '') {
-        push @validators, 'ResultsetComparator3';
-    } elsif ($dsns[1] ne '') {
-        push @validators, 'ResultsetComparator';
-    }
+	if ($dsns[2] ne '') {
+		push @validators, 'ResultsetComparator3';
+	} elsif ($dsns[1] ne '') {
+		push @validators, 'ResultsetComparator';
+	}
+
 	push @validators, 'ReplicationSlaveStatus' if $rpl_mode ne '' && $mysql_only;
+	push @validators, 'MarkErrorLog' if (defined $valgrind) && $mysql_only;
 	push @validators, 'QueryProperties' if $grammar->hasProperties() && $mysql_only;
 } else {
 	@validators = split(',', $validators);
@@ -360,7 +358,7 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 
 	exit (STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
 
-	my $max_result;
+	my $max_result = 0;
 
 	foreach my $i (1..$queries) {
 		my $result = $mixer->next();
