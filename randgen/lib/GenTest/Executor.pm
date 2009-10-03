@@ -35,6 +35,27 @@ sub new {
     return $executor;
 }
 
+sub newFromDSN {
+	my ($self,$dsn) = @_;
+	
+	if ($dsn =~ m/^dbi:mysql:/i) {
+		require GenTest::Executor::MySQL;
+		return GenTest::Executor::MySQL->new(dsn => $dsn);
+	} elsif ($dsn =~ m/^dbi:drizzle:/i) {
+		require GenTest::Executor::Drizzle;
+		return GenTest::Executor::Drizzle->new(dsn => $dsn);
+	} elsif ($dsn =~ m/^dbi:JDBC:.*url=jdbc:derby:/i) {
+		require GenTest::Executor::JavaDB;
+		return GenTest::Executor::JavaDB->new(dsn => $dsn);
+	} elsif ($dsn =~ m/^dbi:Pg:/i) {
+		require GenTest::Executor::Postgres;
+		return GenTest::Executor::Postgres->new(dsn => $dsn);
+	} else {
+		say("Unsupported dsn: $dsn");
+		exit(STATUS_ENVIRONMENT_FAILURE);
+	}
+}
+
 sub dbh {
 	return $_[0]->[EXECUTOR_DBH];
 }

@@ -89,7 +89,7 @@ foreach my $trial_id (1..$trials) {
 
 print localtime()." [$$] Summary of various interesting strings from the logs:\n";
 print Dumper \%results;
-foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'exception') {
+foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
 	system("grep -i '$string' $vardir/trial*log");
 } 
 

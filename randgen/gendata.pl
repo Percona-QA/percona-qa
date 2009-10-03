@@ -37,6 +37,7 @@ use constant DATA_NUMBER	=> 0;
 use constant DATA_STRING	=> 1;
 use constant DATA_BLOB		=> 2;
 use constant DATA_TEMPORAL	=> 3;
+use constant DATA_ENUM		=> 4;
 
 my ($config_file, $dbh, $engine, $help, $dsn, $rows, $varchar_len, $views, $server_id);
 my $seed = 1;
@@ -104,6 +105,7 @@ $data_perms[DATA_NUMBER] = $data->{numbers} || ['digit', 'digit', 'digit', 'digi
 $data_perms[DATA_STRING] = $data->{strings} || ['letter', 'letter', 'letter', 'letter', 'null' ];
 $data_perms[DATA_BLOB] = $data->{blobs} || [ 'data', 'data', 'data', 'data', 'null' ];
 $data_perms[DATA_TEMPORAL] = $data->{temporals} || [ 'date', 'time', 'datetime', 'year', 'timestamp', 'null' ];
+$data_perms[DATA_ENUM] = $data->{enum} || ['letter', 'letter', 'letter', 'letter', 'null' ];
 
 my @tables = (undef);
 my @myisam_tables;
@@ -340,6 +342,8 @@ foreach my $table_id (0..$#tables) {
 					$value_type = DATA_BLOB;
 				} elsif ($field->[FIELD_TYPE] =~ m{int|float|double|dec|numeric|fixed|bool|bit}sio) {
 					$value_type = DATA_NUMBER;
+				} elsif ($field->[FIELD_TYPE] eq 'enum') {
+					$value_type = DATA_ENUM;
 				} else {
 					$value_type = DATA_STRING;
 				}

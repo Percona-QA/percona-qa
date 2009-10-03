@@ -9,10 +9,7 @@ use Getopt::Long;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Random;
-use GenTest::Utilities;
 use GenTest::Executor;
-use GenTest::Executor::MySQL;
-use GenTest::Executor::JavaDB;
 
 my $prng = GenTest::Random->new( seed => 0 );
 
@@ -22,9 +19,9 @@ my ($engine, $help, $views);
 my @ARGV_saved = @ARGV;
 
 my $opt_result = GetOptions(
-		'dsn=s' => \$dsn,
+	'dsn=s' => \$dsn,
 	'engine:s' => \$engine,
-		'help' => \$help,
+	'help' => \$help,
 	'views' => \$views
 );
 
@@ -32,7 +29,7 @@ help() if !$opt_result || $help;
 
 say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
 
-my $executor = GenTest::Utilites->newFromDSN($dsn);
+my $executor = GenTest::Executor->newFromDSN($dsn);
 $executor->init();
 
 help() if not defined $executor;
@@ -62,7 +59,10 @@ sub gen_table {
 	my ($name, $size) = @_;
 	say("Creating table $name, size $size rows, engine $engine .");
 
-	if ($executor->type == DB_MYSQL) {
+	if (
+		($executor->type == DB_MYSQL) ||
+		($executor->type == DB_DRIZZLE)
+	) {
 
 		### This variant is needed due to
 		### http://bugs.mysql.com/bug.php?id=47125

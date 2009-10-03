@@ -283,6 +283,7 @@ push @gentest_options, "--varchar-length=$varchar_len" if defined $varchar_len;
 push @gentest_options, "--xml-output=$xml_output" if defined $xml_output;
 push @gentest_options, "--debug" if defined $debug;
 push @gentest_options, "--filter=$filter" if defined $filter;
+push @gentest_options, "--valgrind" if defined $valgrind;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
