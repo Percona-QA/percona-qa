@@ -1,0 +1,14 @@
+$tables = {
+        rows => [100 ],
+        partitions => [ undef ]
+};
+
+$fields = {
+        types => [ 'varchar(255)', 'char(255)' , 'enum', 'text' ],
+        indexes => [ undef, 'key' ],
+};
+
+$data = {
+        strings => [ 'letter', 'english', undef ],
+        blobs => [ 'letter', 'english' ]
+}

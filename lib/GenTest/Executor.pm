@@ -81,17 +81,19 @@ sub setId {
 }
 
 sub type {
-    my ($self) = @_;
-    if ($self =~ m/GenTest::Executor::JavaDB/) {
-        return DB_JAVADB;
-    }elsif ($self =~/^GenTest::Executor::MySQL/) {
-        return DB_MYSQL;
-    }elsif ($self =~ m/GenTest::Executor::Postgres/) {
-        return DB_POSTGRES;
-    } else {
-        return DB_UNKNOWN;
-    }
-    
+	my ($self) = @_;
+	
+	if ($self =~ m/GenTest::Executor::JavaDB/i) {
+		return DB_JAVADB;
+	} elsif ($self =~/^GenTest::Executor::MySQL/i) {
+		return DB_MYSQL;
+	} elsif ($self =~/^GenTest::Executor::Drizzle/i) {
+		return DB_DRIZZLE;
+	} elsif ($self =~ m/GenTest::Executor::Postgres/i) {
+		return DB_POSTGRES;
+	} else {
+		return DB_UNKNOWN;
+	}
 }
 
 my @dbid = ("Unknown","MySQL","Postgres","JavaDB");
