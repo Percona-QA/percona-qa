@@ -287,7 +287,7 @@ sub execute {
 
 	if (not defined $sth) {			# Error on PREPARE
 		my $errstr = $executor->normalizeError($sth->errstr());
-		$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if $executor->debug() && !$silent;
+		$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
 		return GenTest::Result->new(
 			query		=> $query,
 			status		=> $executor->getStatusFromErr($dbh->err()) || STATUS_UNKNOWN_ERROR,
@@ -304,7 +304,7 @@ sub execute {
 
 	my $err = $sth->err();
 	my $result;
-        if ($executor->debug()) {
+        if (rqg_debug()) {
                 say("Running Query--> $query");
         }
 
@@ -317,13 +317,13 @@ sub execute {
 			($err_type == STATUS_TRANSACTION_ERROR)
 		) {
 			my $errstr = $executor->normalizeError($sth->errstr());
-			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if $executor->debug() && !$silent;
+			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
 			if (not defined $reported_errors{$errstr}) {
 				say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
 				$reported_errors{$errstr}++;
 			}
 		} else {
-			$executor->[EXECUTOR_ERROR_COUNTS]->{$sth->errstr()}++ if $executor->debug() && !$silent;
+			$executor->[EXECUTOR_ERROR_COUNTS]->{$sth->errstr()}++ if rqg_debug() && !$silent;
 			say("Query: $query failed: $err ".$sth->errstr()) if !$silent;
 		}
 
@@ -344,7 +344,7 @@ sub execute {
 			start_time	=> $start_time,
 			end_time	=> $end_time
 		);
-		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if $executor->debug() && !$silent;
+		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
 	} else {
 		#
 		# We do not use fetchall_arrayref() due to a memory leak
@@ -366,7 +366,7 @@ sub execute {
 			end_time	=> $end_time
 		);
 
-		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if $executor->debug() && !$silent;
+		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
 	}
 
 	$sth->finish();
@@ -377,7 +377,7 @@ sub execute {
 	}
 
 	if (
-		($executor->debug()) &&
+		(rqg_debug()) &&
 		($query =~ m{^\s*select}sio) &&
 		(!$silent)
 	) {
@@ -464,7 +464,7 @@ sub explain {
 
 sub DESTROY {
 	my $executor = shift;
-	if ($executor->debug()) {
+	if (rqg_debug()) {
 		say("Statistics for Executor ".$executor->dsn());
 		use Data::Dumper;
 		$Data::Dumper::Sortkeys = 1;
