@@ -1,0 +1,17 @@
+$tables = {
+        partitions => [ undef ]
+};
+
+$fields = {
+        types => [ 'int', 'char(64)', 'enum', 'datetime' ],
+        indexes => [undef, 'key' ],
+        null => [undef, 'not null'],
+        default => [undef, 'default null']
+};
+
+$data = {
+        numbers => [ 'digit', 'null', undef ],
+	enum =>  [ 'letter' ],
+        strings => [ 'letter', 'english', 'char(128)' ],
+	temporals => ['date', 'year', 'null', undef ]
+}
