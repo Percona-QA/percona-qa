@@ -12,6 +12,7 @@ use GenTest::Validator;
 use constant MIXER_GENERATOR	=> 0;
 use constant MIXER_EXECUTORS	=> 1;
 use constant MIXER_VALIDATORS	=> 2;
+use constant MIXER_FILTERS	=> 3;
 
 1;
 
@@ -21,7 +22,8 @@ sub new {
 	my $mixer = $class->SUPER::new({
 		'generator'	=> MIXER_GENERATOR,
 		'executors'	=> MIXER_EXECUTORS,
-		'validators'	=> MIXER_VALIDATORS
+		'validators'	=> MIXER_VALIDATORS,
+		'filters'	=> MIXER_FILTERS
 	}, @_);
 
 	foreach my $executor (@{$mixer->executors()}) {
@@ -75,6 +77,7 @@ sub next {
 	my $mixer = shift;
 
 	my $executors = $mixer->executors();
+	my $filters = $mixer->filters();
 
 	my $queries = $mixer->generator()->next($executors);
 	if (not defined $queries) {
@@ -87,8 +90,16 @@ sub next {
 
 	my $max_status = STATUS_OK;
 
-	foreach my $query (@$queries) {
+	query: foreach my $query (@$queries) {
 		next if $query =~ m{^\s*$}o;
+
+		if (defined $filters) {
+			foreach my $filter (@$filters) {
+				my $filter_result = $filter->filter($query);
+				next query if $filter_result == STATUS_SKIP;
+			}
+		}
+
 		my @execution_results;
 		foreach my $executor (@$executors) {
 			my $execution_result = $executor->execute($query);
@@ -121,6 +132,10 @@ sub executors {
 
 sub validators {
 	return $_[0]->[MIXER_VALIDATORS];
+}
+
+sub filters {
+	return $_[0]->[MIXER_FILTERS];
 }
 
 sub setValidators {

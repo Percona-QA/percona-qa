@@ -3,433 +3,939 @@
 # Grammar for testing DML, DDL, FLUSH, LOCK/UNLOCK, transactions
 #
 # Created:
-#    2009-07 Matthias Leich 
+#    2009-07 Matthias Leich (A few grammar items were taken from other grammar files.)
 #
-# This is a prototype which means it might be incomplete and contain errors.
+# Attention:
+# There are modified grammar items because of
+# - Bug#45143 All connections hang on concurrent ALTER TABLE
+# - Bug#46339 crash on REPAIR TABLE merge table USE_FRM
+# - Bug#46425 crash in Diagnostics_area::set_ok_status , empty statement, DELETE IGNORE
+# - Bug#46198 Hang after failed ALTER TABLE on partitioned table.
+#   Duplicate of Bug#40181 Partitions: hang if create index
+#                This was not fixed in 5.4 but in 6.0.
+# - Bug#46224 HANDLER statements within a transaction might lead to deadlocks
+# - Bug#46374 crash, INSERT INTO t1 uses function, function modifies t1
+# - Bug#47098 assert in MDL_context::destroy on HANDLER <damaged merge table> OPEN
+# - Bug#47107 assert in notify_shared_lock on incorrect CREATE TABLE , HANDLER
+# - Bug#46965 crash in ha_innobase::get_auto_increment
 #
-# General architecture rules by thumb and experiences:
-# 1. Work on copies of the objects created by gendata.pl
-# 2. Do not modify the objects created by by gendata.pl
-# Hereby we prevent that we run out of tables or rows etc.
-# 3. Use small name spaces for objects (tables etc.) so that we have a significant likelihood
-#    that a statement hits an existing object.
-# 4. Distinct between two kinds of object name spaces and treat the corresponding objects different.
+# Nothing disabled till now for
+# - Bug#45966 Crash in MDL_context::release_ticket in .\include\master-slave-reset.inc
+# - Bug#43867 ALTER TABLE on a partitioned table causes unnecessary deadlocks
+# - Bug#40419 Not locking metadata on alter procedure
+#   Duplicate of Bug#30977 Concurrent statement using stored function and DROP FUNCTION breaks SBR
+#
+#
+# Bug#45225 Locking: hang if drop table with no timeout
+#           Reporter , LockTableKiller might help
+#
+# General architecture rules:
+# ---------------------------
+# 1. Do not modify the objects created by gendata.pl within this grammar file.
+#    Work on copies of these objects instead. Hereby we prevent that we totally run out of tables
+#    or rows etc. This minimizes also any locks on the objects created by gendata.pl.
+#    Do not
+#    - have tables of "special" types (partitioned, view, merge etc.)
+#    - variate the storage engine
+#    within your object creation grammar file.
+# 2. Have separated name spaces for objects (tables etc.) with configurable width.
+#    - This allows to reduce the likelihood of applying a statement in general or an option to
+#      an object which is not allowed. Example: TRUNCATE TABLE <view>
+#    - Debugging of grammar and understanding server logs becomes easier if the name space
+#      for an object of some type contains type related strings like "base","temp",.. etc.
+#      Example: If there is a
+#                  CREATE VIEW <name which does not belong into the VIEW name space>
+#               than something works not like intended.
+#    - The configurable name space width (-> $name_space_width) allows to influence the likelihood
+#      that some statement hits an object. This gives some control over how much the system is stressed.
+#    - The non default option to put all table related objects (base tables, views, etc.) allows
+#      some additional increase of the stress though the likelihood of failing statement raises.
+# 3. Distinct between two kinds of object name spaces and treat the corresponding objects different.
 #    This is experimental and might be removed in case it does not fulfill the expectations.
-#    "long life" ("ll")
-#    - sequence: CREATE object, maybe fill in content, wait some time, DROP object
-#    - No other DDL on this object
-#    This should ensure that a thread has a chance to run several DML statements on this object
-#    before it gets dropped.
-#    "short life" ("sl")
-#    - no sequence
-#    - there are single DDL statements which CREATE, ALTER, DROP etc. this object
-#    This should ensure that a thread running a transaction has a chance to meet DDL for this
-#    object sent from another session.
-# 5. Any statement sequence has to be in one line.
-# 6. Be carefull when having a ';' before a '|'.
-# 7. There must be no "superfluous" spaces between the beginning of the line and
-#    the first significant character which of course might be a space.
-#    Typical bad effect: Empty filed or table names, statements consisting of '"' etc.
-# 8. Strange effect like above? '|' instead of ';' between statements of a sequence?
-# 9. Names of variables must be surrounded by spaces. Otherwise the name of the variable
-#    and not it's value will be used. -> Problem with SHOW ... LIKE 'table_name'.
-# 10. There must be no space between grammar element name and the ':'.
-#     Example: "a:" but never "a :".
-# 11. There is some auxiliary SQL where I did not found a simple pure PERL based solution
-#     a) SET @aux = SLEEP(...)                Wait some time
-#        Wait some time
-#     b) SET @aux = 'Fill variable <dollar>table_name1 { $table_name1 = $basetablenamesl } ' ;
-#        Fill the content of $basetablenamesl into $table_name1
-#     SET @var ... is better then SELECT ... because RQG seems to run for every SELECT ...
-#     an additional EXPLAIN SELECT ....
-#     Surrounding text like "FILL VARIABLE ..." should support debugging.
-# 12. Use uppercase characters for strings in statements. This avoids any not intended treatment
-#     as grammar item.
+#    "Sequence" ("_S"):
+#       - statement sequence: CREATE object, fill in content (if applicable), COMMIT, wait some
+#         random timespan (-> SLEEP( ... * rand_val * $life_time_unit )) , DROP object
+#       - The COMMIT is intentional. It should ensure that the session running the sequence does
+#         not hold any locks on the object during the wait phase. I am aware that CREATE ... AS SELECT
+#         commits at end, but this might be changed somewhere in future.
+#       - the maximum of the random wait timespan is configurable (-> $max_table_life_time).
+#       - The object must be stored within a database created with the "_S" property.
+#       - No other DDL on this object
+#       This should ensure that other sessions have a chance to run several DML statements using this object
+#       before it gets dropped. The "Sequence" objects are of nearly no value when running with only one thread.
+#    "Normal" ("_N"):
+#       - CREATE and DROP for these objects are not within the same sequency.
+#       - Any session could run DDL (including DROP, ALTER, REPAIR etc.) on this object.
+#       - The object can be stored within any database.
+#       - It is assumed that they have a short lifetime.
+#       This should ensure that a session running a transaction with DML on this object has a chance to meet
+#       an attempt of another session to run DDL (especially ALTER) on this object.
+# 4. There is some "generalization" (I am unsure if this is a good understandable term) of variables and
+#    a corresponding walk up of values.
+#       $database_name_*   --> $database_name
+#       $base_table_name_* --> $base_table_name --> $table_name
+#       $temp_table_name_* --> $temp_table_name --> $table_name
+#       ...
+#       $part_table_name_* --> $part_table_name --> $table_name
+#    This means:
+#    If you run "table_item" which picks a table of random type (base table, temp table ...) and random lifetime
+#    and a corresponding database and automatically assigns values to variables ($database_*,$*_table_name_*)
+#    where the name cannot be predicted, you can find the generated names at least within
+#    $database_name and $table_name .
+#    Please be aware that for example a succeeding call of "procedure_item" modify the content of $database_name .
 #
-# Naming convention:
-# ------------------
-# t1_0* base table (no merge)
-# t1_1* temporary base table
-# t1_2* merge table
-# t1_3* view
-# *_*0  "long life" objects
-# *_*1  "short life" objects
+#
+# Rules by thumb and experiences (important when extending this grammar file):
+# ----------------------------------------------------------------------------
+# 1. Any statement sequence has to be in one line.
+# 2. Be aware of the dual use of ';'. It separates SQL statements in sequences and closes the definition block
+#    of a grammar item. So any ';' before some '|' has a significant impact.
+# 3. Strange not intended effects: '|' or ':' instead of ';' ?
+# 4. There is an open RQG problem with SHOW ... LIKE '<grammar item>'.
+# 5. If there are needs to write some message into a server log than avoid the use of auxiliary SQL (SELECT <message> etc.).
+#    Use something like:
+#       /* <your text> */
+#    instead.
+# 6. Use uppercase characters for strings and keywords in statements. This avoids any not intended
+#    treatment as grammar item.
+# 7. Use the most simple option first in lists. This makes automatic grammar simplification
+#    which walks from right to left more efficient. Example:
+#    where:
+#     	<empty> | WHERE `pk` BETWEEN _digit AND _digit | WHERE function_name_n() = _digit ;
+#
 
-# Done:
-# RENAME, DROP, TRUNCATE, SELECT, select SUBQUERY, select JOIN, select UNION
+# Naming conventions (default)
+# ========================================================
 #
-# Missing: LOAD/UNLOAD, DO, HANDLER ....
-#
-rand_life_time:
-	# { $rand_life_time = $prng->int(0,10)	}	;
-	0.1	;
+# Pattern (standard configuration) | Object
+# -----------------------------------------
+# testdb_*                         | database
+# t1_*                             | table/view
+# p1_*                             | procedure
+# f1_*                             | function
+# p1_*                             | procedure
+# tr1_*                            | trigger
 
-table_name:
-	# Get a random name from the "table" namespace.
-	# "table" name space = UNION of "base table", "temporary base table", "view", "merge table" name spaces
-	# "table" name space = UNION of "base table long life", "base table short life" name spaces
-	{ $tablename       = "t1_" . $prng->int(0,3) . $prng->int(0,9) . $prng->int(0,1) } ;
+# End of grammar item name (default) | characteristic
+# -------------------------------------------------------
+# _S                                 | related to "sequence" object
+# _N                                 | related to "normal" object
 #
-table_name_ll:
-	# Get a random name from the "table long life" namespace.
-	{ $tablenamell     = "t1_" . $prng->int(0,3) . $prng->int(0,9) . "0"             } ;
+# Within grammar item name  | characteristic
+# -----------------------------------------------
+# _name                     | name of the object
+# _item                     | <schema name> . <name of the object>
+# _list                     | either single item (<schema name> . <name of the object>) or comma separated list
+#                           | of such items
+
 #
-table_name_sl:
-	# Get a random name from the "table short life" namespace.
-	{ $tablenamesl     = "t1_" . $prng->int(0,3) . $prng->int(0,9) . "1"             } ;
+# Missing but not really important improvements:
+# - Reduce the amount of cases where "sequence" objects have "normal" objects within their definition.
+#   --> views,functions,procedures
+# - Reduce the amount of cases where the wrong table types occur within object definitions
+#   Example: TABLE for a TRIGGER or VIEW definition. Temporary tables could be computed but are not allowed.
 
 
-########## The base table name space ####################
+# Section of easy changeable items with high impact on the test =============================================#
+query_init:
+	# Default setting:
+	# init_basics                                    ; stress_optimization ; event_scheduler_on ; have_some_initial_objects ;
+	init_basics ; collapse_names_for_table_types   ; stress_optimization ; event_scheduler_on ; have_some_initial_objects ;
+	# Setting for more stress and but also more statements failing because the target object is of wrong
+	# - table type (Example: VIEW where a base TABLE is expected) -> collapse_names_for_table_types
+	# - object type (Example: TABLE where a PROCEDURE is expected) -> collapse_names_for_objects
+	# init_basics ; collapse_names_for_table_types ; collapse_names_for_objects ; stress_optimization ; have_some_initial_objects ;
+	# You might also try:
+	# init_basics ; collapse_names_for_table_types ; collapse_names_for_normal_seq ; stress_optimization ; have_some_initial_objects ;
+
+event_scheduler_on:
+	SET GLOBAL EVENT_SCHEDULER = ON;
+
+event_scheduler_off:
+	SET GLOBAL EVENT_SCHEDULER = OFF;
+
+init_basics:
+	# This initializes everything for default ( number of threads > 0 ) use.
+	# If this grammar element is in "query_init" than following grammar elements might change these settings.
+	# 1. $life_time_unit = maximum lifetime of a table created within a CREATE, wait, DROP sequence.
+	#
+	#    A reasonable value is bigger than any "wait for <whatever> lock" timeout.
+	#
+	#    There are till now not sufficient experiences about the impact of different values on the outcome of the test.
+	#
+	#    sequence object | lifetime 
+	#    --------------------------------------------
+	#    database        | 2   * RAND() * $life_time_unit
+	#    table (no view) | 1   * RAND() * $life_time_unit
+	#    view            | 0.5 * RAND() * $life_time_unit
+	#    procedure       | 0.5 * RAND() * $life_time_unit
+	#    function        | 0.5 * RAND() * $life_time_unit
+	#    trigger         | 0.5 * RAND() * $life_time_unit
+	#
+	#    A DML statement using SLEEP will use 0.5 * RAND() * $life_time_unit
+	#
+	#    one_thread_correction will correct $life_time_unit to 0 if we have only one "worker" thread.
+	#
+	# 2. $name_space_width = Width of a name space
+	#
+	#    Smaller numbers cause a
+	#    - lower fraction of statements failing because of missing object
+	#    - higher fraction of clashes when running with multiple sessions
+	#
+	{ $life_time_unit = 1 ; $name_space_width = 2 ; return undef } ; separated_name_spaces ; nothing_disabled ; init_object_prefixes ; system_table_stuff ;
+
+init_object_prefixes:
+	{ $database_prefix="testdb" ; $table_prefix="t1_" ; $procedure_prefix="p1_" ; $function_prefix="f1_" ; $trigger_prefix="tr1_" ; $event_prefix="e1_" ; return undef } ;
+
+collapse_names_for_objects:
+	{ $database_prefix="o1_"    ; $table_prefix="o1_" ; $procedure_prefix="o1_" ; $function_prefix="o1_" ; $trigger_prefix="o1_"  ; $event_prefix="o1_" ; return undef } ;
+
+separated_name_spaces:
+	# Name spaces for
+	# - tables separated by type of table
+	# - objects in general separated by use in CREATE/wait/DROP sequence or not.
+	{ $base_piece="base_" ; $temp_piece="temp_" ; $merge_piece="merge_" ; $part_piece="part_" ; $view_piece="view_" ; $sequence_piece="_S" ; $normal_piece="_N" ; return undef } ;
+
+collapse_names_for_table_types:
+	# Name spaces for tables not separated by type of table. The part of the name dealing with use around CREATE/DROP will be not modified.
+	# Expected impact:
+	# - maybe higher load on tables of all types in general (depends on size of name space)
+	# - a significant fraction of statements will fail with
+	#   1. 1064 "You have an error in your SQL syntax ..."
+	#      Example: TRUNCATE <view>
+	#   2. <number <> 1064> <This option/whatever is not applicable to the current object/situation/whatever>
+	#   This might look a bit ugly but it has the benefit that these statements are at least tried.
+	#   The goal is not to check the parse process, but there might be temporary MDL locks or in worst
+	#   case remaining permanent MDL lock. Effects of these locks should be also checked.
+	#   Just as a reminder:
+	#   A CREATE VIEW which fails with an error <> "You have an error in your SQL syntax" causes an implicit COMMIT
+	#   of the current transaction.
+	{ $base_piece="all_" ; $temp_piece="all_" ; $merge_piece="all_" ; $part_piece="all_" ; $view_piece="all_" ; $sequence_piece="_S" ; $normal_piece="_N" ; return undef } ;
+
+collapse_names_for_normal_seq:
+	# There are till now no experiences with this setting.
+	{ $sequence_piece="_A" ; $normal_piece="_A" ; return undef } ;
+
+have_some_initial_objects:
+	# It is assumed that this reduces the likelihood of "Table does not exist" significant when running with a small number of "worker" threads.
+	# The amount of create_..._table items within the some_..._tables should depend a bit on the value in $name_space_width but I currently
+	# do not know how to express this in the grammar.
+	create_database ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; some_view_tables ;
+	# create_database ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; create_view ; create_view ; create_view ;
+some_base_tables:
+	create_base_table  ; create_base_table  ; create_base_table  ; create_base_table  ;
+some_temp_tables:
+	create_temp_table  ; create_temp_table  ; create_temp_table  ; create_temp_table  ;
+some_merge_tables:
+	create_merge_table ; create_merge_table ; create_merge_table ; create_merge_table ;
+some_part_tables:
+	create_part_table  ; create_part_table  ; create_part_table  ; create_part_table  ;
+some_view_tables:
+	create_view        ; create_view        ; create_view        ; create_view        ;
+
+stress_optimization:
+	# 1. Disable the CREATE/wait/DROP sequence objects beacuse there is no parallel thread which can use them.
+	# 2. Compact the namespaces by removing the sequence object names
+	{ if ( $ENV{RQG_THREADS} == 1 ) { $life_time_unit = 0 ; $sequence_piece="_A" ; $normal_piece="_A" ; $sequence_begin = "/* Start disabled stuff " ; $sequence_end = " End disabled stuff */"} ; return undef } ;
+
+nothing_disabled:
+	{ $sequence_begin = "/* Sequence start */" ; $sequence_end = "/* Sequence end */" ; return undef } ;
+
+system_table_stuff:
+	# This is used in "grant_revoke".
+	CREATE USER otto@localhost;
+
+
+# Useful grammar items ====================================================================================#
+
+rand_val:
+	{ $rand_val = $prng->int(0,100) / 100 } ;
+
+
+# Name spaces of objects ==========================================================================#
+# An explanation of the name space concept is on top of this file.
+#
+# 1. The database name space ##########################################################################
+database_name_s:
+	{ $database_name_s = $database_prefix . $sequence_piece ; $database_name = $database_name_s } ;
+database_name_n:
+	{ $database_name_n = $database_prefix . $normal_piece   ; $database_name = $database_name_n } ;
+database_name:
+	# Get a random name from the "database" name space.
+	# $database_name gets automatically filled when database_name_s or database_name_n is executed.
+	database_name_s | database_name_n ;
+
+
+# 2. The base table name space ########################################################################
+base_table_name_s:
+	# Get a random name from the "base table long life" name space.
+	{ $base_table_name_s = $table_prefix . $base_piece   . $prng->int(1,$name_space_width) . $sequence_piece ; $base_table_name = $base_table_name_s ; $table_name = $base_table_name } ;
+base_table_name_n:
+	# Get a random name from the "base table short life" name space.
+	{ $base_table_name_n = $table_prefix . $base_piece   . $prng->int(1,$name_space_width) . $normal_piece   ; $base_table_name = $base_table_name_n ; $table_name = $base_table_name } ;
 base_table_name:
 	# Get a random name from the "base table" name space.
-	# "base table" name space = UNION of "base table long life" and "base table short life" name spaces
-	{ $basetablename   = "t1_" . "0"             . $prng->int(0,9) . $prng->int(0,1) } ;
-#
-base_table_name_ll:
-	# Get a random name from the "base table long life" name space.
-	{ $basetablenamell = "t1_" . "0"             . $prng->int(0,9) . "0"             } ;
-#
-base_table_name_sl:
-	# Get a random name from the "base table short life" name space.
-	{ $basetablenamesl = "t1_" . "0"             . $prng->int(0,9) . "1"             } ;
-#
-base_table_list:
-	base_table_name | base_table_name, base_table_name	;
-base_table_list_ll:
-	base_table_name_ll | base_table_name_ll, base_table_name_ll	;
-base_table_list_sl:
-	base_table_name_sl | base_table_name_sl, base_table_name_sl	;
+	base_table_name_s | base_table_name_n ;
 
-########## The temp table name space ####################
+# Sometimes useful stuff:
+base_table_item_s:
+	database_name_s . base_table_name_s { $base_table_item_s = $database_name_s . " . " . $base_table_name_s ; $base_table_item = $base_table_item_s ; return undef } ;
+base_table_item_n:
+	database_name   . base_table_name_n { $base_table_item_n = $database_name   . " . " . $base_table_name_n ; $base_table_item = $base_table_item_n ; return undef } ;
+base_table_item:
+	base_table_item_s | base_table_item_n ;
+base_table_item_list_s:
+	base_table_item_s | base_table_item_s , base_table_item_s ;
+base_table_item_list_n:
+	base_table_item_n | base_table_item_n , base_table_item_n ;
+base_table_item_list:
+	base_table_item   | base_table_item   , base_table_item   ;
+
+
+# 3. The temp table name space ########################################################################
+# Please note that TEMPORARY merge tables will be not generated.
+temp_table_name_s:
+	# Get a random name from the "temp table long life" name space.
+	{ $temp_table_name_s = $table_prefix . $temp_piece   . $prng->int(1,$name_space_width) . $sequence_piece ; $temp_table_name = $temp_table_name_s ; $table_name = $temp_table_name } ;
+temp_table_name_n:
+	# Get a random name from the "temp table short life" name space.
+	{ $temp_table_name_n = $table_prefix . $temp_piece   . $prng->int(1,$name_space_width) . $normal_piece   ; $temp_table_name = $temp_table_name_n ; $table_name = $temp_table_name } ;
 temp_table_name:
 	# Get a random name from the "temp table" name space.
-	# "temp table" name space = UNION of "temp table long life" and "temp table short life" name spaces
-	{ $temptablename   = "t1_" . "1"             . $prng->int(0,9) . $prng->int(0,1) } ;
-#
-temp_table_name_ll:
-	# Get a random name from the "temp table long life" name space.
-	{ $temptablenamell = "t1_" . "1"             . $prng->int(0,9) . "0"             } ;
-#
-temp_table_name_sl:
-	# Get a random name from the "temp table short life" name space.
-	{ $temptablenamesl = "t1_" . "1"             . $prng->int(0,9) . "1"             } ;
-#
-temp_table_list:
-	temp_table_name | temp_table_name, temp_table_name	;
-temp_table_list_ll:
-	temp_table_name_ll | temp_table_name_ll, temp_table_name_ll	;
-temp_table_list_sl:
-	temp_table_name_sl | temp_table_name_sl, temp_table_name_sl	;
+	temp_table_name_s | temp_table_name_n ;
 
-########## The merge table name space ####################
+# Sometimes useful stuff:
+temp_table_item_s:
+	database_name_s . temp_table_name_s { $temp_table_item_s = $database_name_s . " . " . $temp_table_name_s ; $temp_table_item = $temp_table_item_s ; return undef };
+temp_table_item_n:
+	database_name   . temp_table_name_n { $temp_table_item_n = $database_name   . " . " . $temp_table_name_n ; $temp_table_item = $temp_table_item_n ; return undef };
+temp_table_item:
+	temp_table_item_s | temp_table_item_n ;
+temp_table_item_list_s:
+	temp_table_item_s | temp_table_item_s , temp_table_item_s ;
+temp_table_item_list_n:
+	temp_table_item_n | temp_table_item_n , temp_table_item_n ;
+temp_table_item_list:
+	temp_table_item   | temp_table_item   , temp_table_item   ;
+
+
+# 4. The merge table name space #######################################################################
+# Please note that TEMPORARY merge tables will be not generated.
+merge_table_name_s:
+	# Get a random name from the "merge table long life" name space.
+	{ $merge_table_name_s = $table_prefix . $merge_piece . $prng->int(1,$name_space_width) . $sequence_piece ; $merge_table_name = $merge_table_name_s ; $table_name = $merge_table_name } ;
+merge_table_name_n:
+	# Get a random name from the "merge table short life" name space.
+	{ $merge_table_name_n = $table_prefix . $merge_piece . $prng->int(1,$name_space_width) . $normal_piece   ; $merge_table_name = $merge_table_name_n ; $table_name = $merge_table_name } ;
 merge_table_name:
 	# Get a random name from the "merge table" name space.
-	# "merge table" name space = UNION of "merge table long life" and "merge table short life" name spaces
-	{ $mergetablename   = "t1_" . "2"             . $prng->int(0,9) . $prng->int(0,1) } ;
-#
-merge_table_name_ll:
-	# Get a random name from the "merge table long life" name space.
-	{ $mergetablenamell = "t1_" . "2"             . $prng->int(0,9) . "0"             } ;
-#
-merge_table_name_sl:
-	# Get a random name from the "merge table short life" name space.
-	{ $mergetablenamesl = "t1_" . "2"             . $prng->int(0,9) . "1"             } ;
-#
-merge_table_list:
-	merge_table_name | merge_table_name, merge_table_name	;
-merge_table_list_ll:
-	merge_table_name_ll | merge_table_name_ll, merge_table_name_ll	;
-merge_table_list_sl:
-	merge_table_name_sl | merge_table_name_sl, merge_table_name_sl	;
+	merge_table_name_s | merge_table_name_n ;
+
+# Sometimes useful stuff:
+merge_table_item_s:
+	database_name_s . merge_table_name_s { $merge_table_item_s = $database_name_s . " . " . $merge_table_name_s ; $merge_table_item = $merge_table_item_s ; return undef };
+merge_table_item_n:
+	database_name   . merge_table_name_n { $merge_table_item_n = $database_name   . " . " . $merge_table_name_n ; $merge_table_item = $merge_table_item_n ; return undef };
+merge_table_item:
+	merge_table_item_s | merge_table_item_n ;
+merge_table_item_list_s:
+	merge_table_item_s | merge_table_item_s , merge_table_item_s ;
+merge_table_item_list_n:
+	merge_table_item_n | merge_table_item_n , merge_table_item_n ;
+merge_table_item_list:
+	merge_table_item   | merge_table_item   , merge_table_item   ;
 
 
-#
-base_temp_table_name:
-	{ $base_temp_table_name = "t1_" . $prng->int(0,1) . $prng->int(0,9) . $prng->int(0,1) } ;
-#
-base_temp_table_name_ll:
-	{ $temptablenamesl      = "t1_" . $prng->int(0,1) . $prng->int(0,9) . "0"             } ;
-#
-base_temp_table_name_sl:
-	{ $temptablenamesl      = "t1_" . $prng->int(0,1) . $prng->int(0,9) . "1"             } ;
-#
-base_temp_table_list:
-	base_temp_table_name | base_temp_table_name, base_temp_table_name	;
-#
-base_temp_table_list_ll:
-	base_temp_table_name_ll | base_temp_table_name_ll, base_temp_table_name_ll	;
-#
-base_temp_table_list_sl:
-	base_temp_table_name_sl | base_temp_table_name_sl, base_temp_table_name_sl	;
-#
-
-view_name:
-	# Get a random name from the "view table" name space.
-	# "view table" name space = UNION of "view table long life" and "view table short life" name spaces
-	{ $viewname        = "t1_" . "3"             . $prng->int(0,9) . $prng->int(0,1) } ;
-#
-view_name_ll:
+# 5. The view table name space ########################################################################
+view_table_name_s:
 	# Get a random name from the "view table long life" name space.
-	{ $viewnamell      = "t1_" . "3"             . $prng->int(0,9) . "0"             } ;
-#
-view_name_sl:
+	{ $view_table_name_s = $table_prefix . $view_piece   . $prng->int(1,$name_space_width) . $sequence_piece ; $view_table_name = $view_table_name_s ; $table_name = $view_table_name } ;
+view_table_name_n:
 	# Get a random name from the "view table short life" name space.
-	{ $viewnamesl      = "t1_" . "3"             . $prng->int(0,9) . "1"             } ;
+	{ $view_table_name_n = $table_prefix . $view_piece   . $prng->int(1,$name_space_width) . $normal_piece   ; $view_table_name = $view_table_name_n ; $table_name = $view_table_name } ;
+view_table_name:
+	# Get a random name from the "view table" name space.
+	view_table_name_s | view_table_name_n ;
 
+# Sometimes useful stuff:
+view_table_item_s:
+	database_name_s . view_table_name_s { $view_table_item_s = $database_name_s . " . " . $view_table_name_s ; $view_table_item = $view_table_item_s ; return undef };
+view_table_item_n:
+	database_name   . view_table_name_n { $view_table_item_n = $database_name   . " . " . $view_table_name_n ; $view_table_item = $view_table_item_n ; return undef };
+view_table_item:
+	view_table_item_s | view_table_item_n ;
+view_table_item_list_s:
+	view_table_item_s | view_table_item_s , view_table_item_s ;
+view_table_item_list_n:
+	view_table_item_n | view_table_item_n , view_table_item_n ;
+view_table_item_list:
+	view_table_item   | view_table_item   , view_table_item   ;
+
+
+# 6. The partitioned table name space #################################################################
+part_table_name_s:
+	# Get a random name from the "part table long life" name space.
+	{ $part_table_name_s = $table_prefix . $part_piece   . $prng->int(1,$name_space_width) . $sequence_piece ; $part_table_name = $part_table_name_s ; $table_name = $part_table_name } ;
+part_table_name_n:
+	# Get a random name from the "part table short life" name space.
+	{ $part_table_name_n = $table_prefix . $part_piece   . $prng->int(1,$name_space_width) . $normal_piece   ; $part_table_name = $part_table_name_n ; $table_name = $part_table_name } ;
+part_table_name:
+	# Get a random name from the "part table" name space.
+	part_table_name_s | part_table_name_n ;
+
+# Sometimes useful stuff:
+part_table_item_s:
+	database_name_s . part_table_name_s { $part_table_item_s = $database_name_s . " . " . $part_table_name_s ; $part_table_item = $part_table_item_s ; return undef };
+part_table_item_n:
+	database_name   . part_table_name_n { $part_table_item_n = $database_name   . " . " . $part_table_name_n ; $part_table_item = $part_table_item_n ; return undef };
+part_table_item:
+	part_table_item_s | part_table_item_n ;
+part_table_item_list_s:
+	part_table_item_s | part_table_item_s , part_table_item_s ;
+part_table_item_list_n:
+	part_table_item_n | part_table_item_n , part_table_item_n ;
+part_table_item_list:
+	part_table_item   | part_table_item   , part_table_item   ;
+
+
+# 7. Mixed name spaces of tables ################################################################
+
+# 7.1 All tables ( base/temp/merge tables + views + ... #########################################
+table_item_s:
+	base_table_item_s | temp_table_item_s | merge_table_item_s | view_table_item_s | part_table_item_s ;
+table_item_n:
+	base_table_item_n | temp_table_item_n | merge_table_item_n | view_table_item_n | part_table_item_n ;
+table_item:
+	table_item_s | table_item_n ;
+
+table_list:
+	# Less likelihood for lists, because they
+	# - are most probably less often used
+	# - cause a higher likelihood of "table does not exist" errors.
+	table_item | table_item | table_item | table_item | table_item | table_item | table_item | table_item | table_item |
+	table_item , table_item ;
+	
+
+# 7.2 All tables but no views #######################################################################
+table_no_view_item_s:
+	base_table_item_s | temp_table_item_s | merge_table_item_s | part_table_item_s ;
+table_no_view_item_n:
+	base_table_item_n | temp_table_item_n | merge_table_item_n | part_table_item_n ;
+table_no_view_item:
+	table_no_view_item_s | table_no_view_item_n ;
+
+
+# 7.3 All base and temp tables + views ##############################################################
+#     These grammar elements is used to avoid some partioning related bugs.
+base_temp_view_table_item_s:
+	base_table_item_s | temp_table_item_s | view_table_item_s | part_table_item_s ;
+base_temp_view_table_item_n:
+	base_table_item_n | temp_table_item_n | view_table_item_n | part_table_item_n ;
+base_temp_view_table_item:
+	base_temp_view_table_item_s | base_temp_view_table_item ;
+
+
+# 8. Other name spaces ###############################################################
 template_table_name:
-	# Get the name of one of the template tables
-	{ $templatetablename = $prng->arrayElement($executors->[0]->tables()) } ;
+	# Get the name of one of the template tables which were generated via gendata.pl.
+	{ $template_table_name  = $prng->arrayElement($executors->[0]->tables()) } ;
+template_table_item:
+	test . template_table_name { $template_table_item = "test . " . $template_table_name ; return undef } ;
 
+
+procedure_name_s:
+	# Get a random name from the "procedure long life" namespace.
+	{ $procedure_name_s = $procedure_prefix . $prng->int(1,$name_space_width) . $sequence_piece ; $procedure_name = $procedure_name_s } ;
+procedure_name_n:
+	# Get a random name from the "procedure short life" namespace.
+	{ $procedure_name_n = $procedure_prefix . $prng->int(1,$name_space_width) . $normal_piece   ; $procedure_name = $procedure_name_n } ;
 procedure_name:
 	# Get a random name from the "procedure" namespace.
-	# "procedure" name space = UNION of "procedure long life", "procedure short life" name spaces
-	{ $procedurename      = "p1_" . $prng->int(0,9) . $prng->int(0,1) } ;
+	procedure_name_s | procedure_name_n ;
 
-procedure_name_ll:
-	# Get a random name from the "procedure long life" namespace.
-	{ $procedurenamell    = "p1_" . $prng->int(0,9) . "0"             } ;
+# Sometimes useful stuff:
+procedure_item_s:
+	database_name_s . procedure_name_s { $procedure_item_s = $database_name_s . " . " . $procedure_name_s ; $procedure_item = $procedure_item_s ; return undef } ;
+procedure_item_n:
+	database_name   . procedure_name_n { $procedure_item_n = $database_name   . " . " . $procedure_name_n ; $procedure_item = $procedure_item_n ; return undef } ;
+procedure_item:
+	procedure_item_s | procedure_item_n ;
 
-procedure_name_sl:
-	# Get a random name from the "procedure short life" namespace.
-	{ $procedurenamesl    = "p1_" . $prng->int(0,9) . "1"             } ;
-
+function_name_s:
+	# Get a random name from the "function long life" namespace.
+	{ $function_name_s  = $function_prefix . $prng->int(1,$name_space_width) . $sequence_piece  ; $function_name = $function_name_s } ;
+function_name_n:
+	# Get a random name from the "function short life" namespace.
+	{ $function_name_n  = $function_prefix . $prng->int(1,$name_space_width) . $normal_piece    ; $function_name = $function_name_n } ;
 function_name:
 	# Get a random name from the "function" namespace.
-	# "function" name space = UNION of "function long life", "function short life" name spaces
-	{ $functionname      = "f1_" . $prng->int(0,9) . $prng->int(0,1) } ;
+	function_name_s | function_name_n ;
 
-function_name_ll:
-	# Get a random name from the "function long life" namespace.
-	{ $functionnamell    = "f1_" . $prng->int(0,9) . "0"             } ;
+function_item_s:
+	database_name_s . function_name_s { $function_item_s = $database_name_s . " . " . $function_name_s ; $function_item = $function_item_s ; return undef } ;
+function_item_n:
+	database_name   . function_name_n { $function_item_n = $database_name   . " . " . $function_name_n ; $function_item = $function_item_n ; return undef };
+function_item:
+	function_item_s | function_item_n ;
 
-function_name_sl:
-	# Get a random name from the "function short life" namespace.
-	{ $functionnamesl    = "f1_" . $prng->int(0,9) . "1"             } ;
-
+trigger_name_s:
+	# Get a random name from the "trigger long life" namespace.
+	{ $trigger_name_s   = $trigger_prefix . $prng->int(1,$name_space_width) . $sequence_piece ; $trigger_name = $trigger_name_s } ;
+trigger_name_n:
+	# Get a random name from the "trigger short life" namespace.
+	{ $trigger_name_n   = $trigger_prefix . $prng->int(1,$name_space_width) . $normal_piece   ; $trigger_name = $trigger_name_n } ;
 trigger_name:
 	# Get a random name from the "trigger" namespace.
-	# "trigger" name space = UNION of "trigger long life", "trigger short life" name spaces
-	{ $triggername      = "tr1_" . $prng->int(0,9) . $prng->int(0,1) } ;
+	trigger_name_s | trigger_name_n ;
 
-trigger_name_ll:
-	# Get a random name from the "trigger long life" namespace.
-	{ $triggernamell    = "tr1_" . $prng->int(0,9) . "0"             } ;
+trigger_item_s:
+	database_name_s . trigger_name_s { $trigger_item_s = $database_name_s . " . " . $trigger_name_s ; $trigger_item = $trigger_item_s ; return undef };
+trigger_item_n:
+	database_name   . trigger_name_n { $trigger_item_n = $database_name   . " . " . $trigger_name_n ; $trigger_item = $trigger_item_n ; return undef };
+trigger_item:
+	trigger_item_s | trigger_item_n ;
 
-trigger_name_sl:
-	# Get a random name from the "trigger short life" namespace.
-	{ $triggernamesl    = "tr1_" . $prng->int(0,9) . "1"             } ;
+event_name_s:
+	# Get a random name from the "event long life" namespace.
+	{ $event_name_s   = $event_prefix . $prng->int(1,$name_space_width) . $sequence_piece ; $event_name = $event_name_s } ;
+event_name_n:
+	# Get a random name from the "event short life" namespace.
+	{ $event_name_n   = $event_prefix . $prng->int(1,$name_space_width) . $normal_piece   ; $event_name = $event_name_n } ;
+event_name:
+	# Get a random name from the "event" namespace.
+	event_name_s | event_name_n ;
+
+event_item_s:
+	database_name_s . event_name_s { $event_item_s = $database_name_s . " . " . $event_name_s ; $event_item = $event_item_s ; return undef };
+event_item_n:
+	database_name   . event_name_n { $event_item_n = $database_name   . " . " . $event_name_n ; $event_item = $event_item_n ; return undef };
+event_item:
+	event_item_s | event_item_n ;
+
+# Here starts the core of the test grammar ========================================================#
 
 query:
-	ddl | dml | transaction | show ;
-	# ddl | dml | lock | transaction ;
-	# ddl | dml | lock | transaction | flush;
-	# FLUSH TABLES WITH/(without) READ LOCK removed because of Bug#45066
+	# Use if
+	#    Bug#46224 HANDLER statements within a transaction might lead to deadlocks
+	# is fixed (various -> handler removed)
+	# Handler lets currently also runs with one worker session hang.
+	# dml | dml | dml | dml | ddl | transaction | lock_unlock | flush | handler ;
+	dml | dml | dml | dml | ddl | transaction | lock_unlock | flush ;
+
+########## TRANSACTIONS ####################
 
 transaction:
-	START TRANSACTION | COMMIT | ROLLBACK | SAVEPOINT A | ROLLBACK TO SAVEPOINT A ;
+	start_transaction | commit | rollback |
+	start_transaction | commit | rollback |
+	start_transaction | commit | rollback |
+	SAVEPOINT savepoint_id | RELEASE SAVEPOINT savepoint_id | ROLLBACK work_or_empty TO savepoint_or_empty savepoint_id |
+	BEGIN work_or_empty | set_autocommit | kill_query_or_session ;
+	# No impact on mdl.cc , lock.cc ..... set_isolation_level ;
+
+set_isolation_level:
+	SET SESSION TX_ISOLATION = TRIM(' isolation_level ');
+
+isolation_level:
+	REPEATABLE-READ | READ-COMMITTED | SERIALIZABLE ;
+
+
+start_transaction:
+	START TRANSACTION with_consistent_snapshot ;
+with_consistent_snapshot:
+	 | | | | | | | | | WITH CONSISTENT SNAPSHOT ;
+
+commit:
+	COMMIT   work_or_empty chain release ;
+rollback:
+	ROLLBACK work_or_empty chain release ;
+chain:
+	 | | | | AND no_or_empty CHAIN ;
+release:
+	 | | | | | | | | | no_or_empty RELEASE ;
+
+set_autocommit:
+	SET AUTOCOMMIT = zero_or_one ;
+
+kill_query_or_session:
+	lower_id  ; KILL query_or_session @kill_id |
+	own_id    ; KILL query_or_session @kill_id |
+	higher_id ; KILL query_or_session @kill_id ;
+# Note(mleich):
+# 1. The scenario of a KILL failing because the session does not exist is covered by:
+#    a) Current session id is minimum or maximum of all existing id's and lower_id or higher_id
+#       computes NULL as value for @kill_id.  "KILL NULL" gets valuated as "KILL 0".
+#    b) A parallel session kills the session with the just computed id.
+# 2. It is intentional that I do not use "KILL _digit".
+#    In case the RQG test crashes in a scenario with thread=1, it is very likely that during analysis
+#    the test gets converted to a script for mysqltest. Most probably the mysqltest simplifier gets
+#    applied and than it is very likely that the session id's change. The use of a computation
+#    based on CONNECTION_ID(), MIN and MAX leads to more stable results.
+lower_id:
+	SELECT MAX(id) INTO @kill_id FROM information_schema.processlist WHERE id < CONNECTION_ID();
+own_id:
+	SET @kill_id = CONNECTION_ID() ;
+higher_id:
+	SELECT MIN(id) INTO @kill_id FROM information_schema.processlist WHERE id > CONNECTION_ID();
+query_or_session:
+	# MLML QUERY | QUERY | ;
+	 ;
+
+savepoint_id:
+	A | B ;
 
 ddl:
-	TRUNCATE TABLE base_table_name_sl			|
-	create_base_temp_table							|
-	drop_base_temp_table								|
-	alter_base_temp_table							|
-	rename_base_temp_table							|
-	base_table_sequence								|
-	create_merge_table								|
-	drop_merge_table									|
-	alter_merge_table									|
-	merge_table_sequence								|
-	create_view											|
-	drop_view											|
-	alter_view											|
-	rename_view											|
-	view_sequence										|
-	create_procedure									|
-	drop_procedure										|
-	alter_procedure									|
-	procedure_sequence								|
-	create_function									|
-	drop_function										|
-	alter_function										|
-	function_sequence									|
-	create_trigger										|
-	drop_trigger										|
-	trigger_sequence									|
-	analyze_table										|
-	optimize_table										|
-	checksum_table										|
-	check_table											|
-	repair_table										;
+	database_ddl                                        |
+	base_table_ddl  | base_table_ddl  | base_table_ddl  |
+	temp_table_ddl  | temp_table_ddl  | temp_table_ddl  |
+	merge_table_ddl | merge_table_ddl | merge_table_ddl |
+	part_table_ddl  | part_table_ddl  | part_table_ddl  |
+	view_ddl        | view_ddl        | view_ddl        |
+	procedure_ddl   | procedure_ddl   | procedure_ddl   |
+	function_ddl    | function_ddl    | function_ddl    |
+	trigger_ddl     | trigger_ddl     | trigger_ddl     |
+	event_ddl                  |
+	truncate_table             |
+	drop_table_list            |
+	rename_table               |
+	table_maintenance_ddl      |
+	dump_load_data_sequence    |
+	grant_revoke               |
+	rename_column              |
+	sql_mode                   ;
+	# "dump_load_data_sequence" with SELECT ... INTO OUTFILE ...; LOAD DATA ... INFILE
+	# consists more of DML statements, but we place this here under "ddl" because the
+	# statements in "dml" are often executed as prepared statements. And the text after
+	# PREPARE st1 FOR must not contain multiple statements.
 
+
+########## HANDLER ####################
+handler:
+	handler_open | handler_read | handler_close ;
+
+handler_open:
+	HANDLER table_no_view_item OPEN with_alias ;
+
+with_alias:
+	 | as A ;
+
+handler_read:
+	# The use of indexes is omitted
+	HANDLER table_no_view_item READ FIRST handler_read_part ;
+handler_read_part:
+	 | where ;
+
+handler_close:
+	HANDLER table_no_view_item CLOSE ;
+
+
+########## SHOW ####################
+# We run here only object related SHOW commands except SHOW STATUS which checks counters
+# of OPEN tables etc.
 show:
-	show_tables						|
-	show_create_table				|
-	show_table_status				|
-	show_columns					|
-	show_create_view				|
-	show_create_function			|
-	show_function_code			|
-	show_function_status			|
-	show_create_procedure		|
-	show_procedure_code			|
-	show_procedure_status		|
-	show_triggers					|
-	show_create_trigger			;
+	database_show              |
+	table_show                 |
+	routine_show               |
+   SHOW STATUS                ;
+
+database_show:
+	show_databases | show_create_database ;
+
+show_databases:
+	SHOW databases_schemas ;
+databases_schemas:
+	DATABASES | SCHEMAS ;
+
+show_create_database:
+	SHOW CREATE database_schema database_name ;
+
+#----------------------------------
+
+table_show:
+	show_tables       | show_tables       |
+	show_table_status | show_table_status |
+	show_create_table | show_create_view  |
+	show_open_tables  | show_columns      ;
 
 show_tables:
-	SHOW TABLES show_tables_part ;
-#
-show_tables_part:
-	# FIXME: Add "WHERE"
-	 | like_table_name	;
-#
-like_table_name:
-	# all tables, base table name space | temp table name space | .....
-	# Attention: LIKE 'table_name' does not work.
-	LIKE 't1_0%' | LIKE 't1_1%' | LIKE 't1_2%' | LIKE 't1_3%'	;
-#
+	SHOW TABLES;
+
 show_create_table:
 	# Works also for views
-	SHOW CREATE TABLE table_name	;
-#
-#
+	SHOW CREATE TABLE table_item ;
+
+show_open_tables:
+	SHOW OPEN TABLES IN database_name ;
+
 show_table_status:
 	# Works also for views
-	# FIXME: Add "WHERE"
-	SHOW TABLE STATUS show_table_status_part	;
-#
-show_table_status_part:
-	# FIXME: Add "WHERE"
-	 | like_table_name   ;
-#
+	SHOW TABLE STATUS;
+
 show_columns:
-	SHOW full COLUMNS from_in table_name show_columns_part ;
-#
+	SHOW full COLUMNS from_in table_item show_columns_part ;
 full:
-	 | | FULL	;
-#
+	# Only 20 %
+	 | | | | FULL ;
 from_in:
-	FROM | IN	;
+	FROM | IN ;
 show_columns_part:
 	# Attention: LIKE '_field' does not work, because RQG does not expand _field.
 	#            LIKE '%int%' does not work, because RQG expands it to something like LIKE '%822214656%'.
 	# FIXME: Add "WHERE"
-	 | LIKE '%INT%'	;
-#
-#
+	 | LIKE '%INT%' ;
+
 show_create_view:
-	SHOW CREATE VIEW view_name  ;
-#
-#
+	SHOW CREATE VIEW view_table_item ;
+
+#----------------------------------
+routine_show:
+	show_create_function  | show_function_code  | show_function_status  |
+	show_create_procedure | show_procedure_code | show_procedure_status |
+	show_triggers         | show_create_trigger |
+	show_events           | show_create_event   ;
+
 show_create_function:
-	SHOW CREATE FUNCTION function_name	;
+	SHOW CREATE FUNCTION function_item ;
+
 show_function_code:
-	SHOW FUNCTION CODE function_name	;
+	SHOW FUNCTION CODE function_item ;
+
 show_function_status:
-	SHOW FUNCTION STATUS show_function_status_part	;
-show_function_status_part:
-	# FIXME: Add "WHERE"
-	 | LIKE 'f1_%'	;
-#
-#
+	SHOW FUNCTION STATUS;
+
 show_create_procedure:
-	SHOW CREATE PROCEDURE procedure_name	;
+	SHOW CREATE PROCEDURE procedure_item ;
+
 show_procedure_code:
-	SHOW PROCEDURE CODE procedure_name	;
+	SHOW PROCEDURE CODE procedure_item ;
+
 show_procedure_status:
-	SHOW PROCEDURE STATUS show_procedure_status_part	;
-show_procedure_status_part:
-	# FIXME: Add "WHERE"
-	 | LIKE 'p1_%'	;
-#
-#
-#
+	SHOW PROCEDURE STATUS;
+
 show_triggers:
-	SHOW TRIGGERS show_triggers_part	;
-show_triggers_part:
-	# FIXME: Add "WHERE"
-	 | LIKE 'tr1_%';
+	SHOW TRIGGERS;
 
 show_create_trigger:
-	SHOW CREATE TRIGGER trigger_name	;
+	SHOW CREATE TRIGGER trigger_item ;
 
+show_events:
+	SHOW EVENTS from_in database_name ;
 
-########## Base an temporary tables ####################
-create_base_temp_table:
-	CREATE           TABLE base_table_name_sl create_table_part	|
-	CREATE TEMPORARY TABLE temp_table_name_sl create_table_part	;
+show_create_event:
+	SHOW CREATE EVENT event_item_s ;
+	
+########## SELECTS ON THE INFORMATION_SCHEMA ####################
+# We run here only object related SELECTs.
+is_selects:
+	is_schemata | is_tables ;
+is_schemata:
+	/* database_name */ SELECT * FROM information_schema . schemata WHERE schema_name = TRIM(' $database_name ');
+is_tables:
+	/* table_item */ SELECT * FROM information_schema . tables WHERE table_schema = TRIM(' $database_name ') AND table_name = TRIM(' $table_name ');
+is_columns:
+	/* table_item */ SELECT * FROM information_columns . tables WHERE table_schema = TRIM(' $database_name ') AND table_name = TRIM(' $table_name ') AND column_name = TRIM(' _field ');
+# 19.1. The INFORMATION_SCHEMA SCHEMATA Table
+# 19.2. The INFORMATION_SCHEMA TABLES Table
+# 19.3. The INFORMATION_SCHEMA COLUMNS Table
+# 19.4. The INFORMATION_SCHEMA STATISTICS Table
+# 19.5. The INFORMATION_SCHEMA USER_PRIVILEGES Table
+# 19.6. The INFORMATION_SCHEMA SCHEMA_PRIVILEGES Table
+# 19.7. The INFORMATION_SCHEMA TABLE_PRIVILEGES Table
+# 19.8. The INFORMATION_SCHEMA COLUMN_PRIVILEGES Table
+# 19.9. The INFORMATION_SCHEMA CHARACTER_SETS Table
+# 19.10. The INFORMATION_SCHEMA COLLATIONS Table
+# 19.11. The INFORMATION_SCHEMA COLLATION_CHARACTER_SET_APPLICABILITY Table
+# 19.12. The INFORMATION_SCHEMA TABLE_CONSTRAINTS Table
+# 19.13. The INFORMATION_SCHEMA KEY_COLUMN_USAGE Table
+# 19.14. The INFORMATION_SCHEMA ROUTINES Table
+# 19.15. The INFORMATION_SCHEMA VIEWS Table
+# 19.16. The INFORMATION_SCHEMA TRIGGERS Table
+# 19.17. The INFORMATION_SCHEMA PLUGINS Table
+# 19.18. The INFORMATION_SCHEMA ENGINES Table
+# 19.19. The INFORMATION_SCHEMA PARTITIONS Table
+# 19.20. The INFORMATION_SCHEMA EVENTS Table
+# 19.21. The INFORMATION_SCHEMA FILES Table
+# 19.22. The INFORMATION_SCHEMA TABLESPACES Table
+# 19.23. The INFORMATION_SCHEMA PROCESSLIST Table
+# 19.24. The INFORMATION_SCHEMA REFERENTIAL_CONSTRAINTS Table
+# 19.25. The INFORMATION_SCHEMA GLOBAL_STATUS and SESSION_STATUS Tables
+# 19.26. The INFORMATION_SCHEMA GLOBAL_VARIABLES and SESSION_VARIABLES Tables
+# 19.27. The INFORMATION_SCHEMA PARAMETERS Table
+# 19.28. The INFORMATION_SCHEMA PROFILING Table
+# 19.29. Other INFORMATION_SCHEMA Tables
 #
+
+
+########## DATABASE ####################
+database_ddl:
+	create_database   | create_database | create_database |
+	drop_database     | alter_database  |
+	database_sequence ;
+
+create_database:
+	CREATE database_schema if_not_exists database_name_n database_spec ;
+
+database_schema:
+	DATABASE | SCHEMA ;
+
+database_spec:
+	# We do not want to test CHARACTER SETs and COLLATIONs, but we need something for ALTER DATABASE.
+	default_word CHARACTER SET equal utf8 | default_word COLLATE equal utf8_bin ;
+
+drop_database:
+	DROP database_schema if_exists database_name_n ;
+
+alter_database:
+	ALTER database_schema database_name_n database_spec ;
+
+database_sequence:
+	# Have a bigger lifetime for databases because the objects with extended lifetime are stored there.
+	$sequence_begin CREATE database_schema database_name_s ; wait_till_drop_database ; DROP database_schema $database_name_s $sequence_end ;
+wait_till_drop_database:
+	SELECT SLEEP( 2 * rand_val * $life_time_unit ) ;
+
+
+########## BASE AND TEMPORARY TABLES ####################
+base_table_ddl:
+	create_base_table   | create_base_table | create_base_table | create_base_table | create_base_table | create_base_table |
+	drop_base_table     | alter_base_table  |
+	base_table_sequence ;
+
+create_base_table:
+	CREATE           TABLE if_not_exists base_table_item_n create_table_part ;
 create_table_part:
-	LIKE template_table_name	|
-	AS used_select					;
-#
-#
-drop_base_temp_table:
-	DROP           TABLE base_table_list_ll	|
-	DROP TEMPORARY TABLE temp_table_list_sl	;
-#
-#
-alter_base_temp_table:
-	ALTER ignore TABLE base_temp_table_name_sl alter_base_temp_table_part	;
-	# "online" removed because of Bug#45143
-#
+	LIKE template_table_item ; ALTER TABLE $base_table_item_n ENGINE = engine ; INSERT INTO $base_table_item_n SELECT * FROM $template_table_item |
+	AS used_select           ;
+
+drop_base_table:
+	# DROP two tables is in "drop_table_list"
+	DROP           TABLE if_exists base_table_item_n restrict_cascade ;
+
+alter_base_table:
+	ALTER online ignore TABLE base_table_item_n alter_base_temp_table_part ;
+
 alter_base_temp_table_part:
-	ENGINE = engine				|
-	COMMENT = 'UPDATED NOW()'	;
+	# Reasons why "ENGINE = engine" should be rather rare:
+	# 1. ALTER ... ENGINE = <engine> is rather rare within a production system running under DML load
+	# 2. ALTER ... ENGINE = <engine != MyISAM> "damages" any MERGE table using the affected table as base table.
+	#    As a consequence nerly all statements on the MERGE table will fail.
+	COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' |
+	COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' |
+	ENGINE = engine           ;
+
+base_table_sequence:
+	$sequence_begin CREATE TABLE if_not_exists base_table_item_s LIKE template_table_item ; ALTER TABLE $base_table_item_s ENGINE = engine ; INSERT INTO $base_table_item_s SELECT * FROM $template_table_item ; COMMIT ; wait_till_drop_table ; DROP TABLE $base_table_item_s $sequence_end ;
+
+wait_till_drop_table:
+	SELECT SLEEP( rand_val * $life_time_unit ) ;
+
+temp_table_ddl:
+	# Attention: temp_table_sequence is intentionally omitted, because no other session will be
+	#            able to use this table.
+	create_temp_table | create_temp_table | create_temp_table | create_temp_table | create_temp_table | create_temp_table |
+	drop_temp_table   | alter_temp_table  ;
+
+create_temp_table:
+	CREATE TEMPORARY TABLE if_not_exists temp_table_item_n create_table_part ;
+
+drop_temp_table:
+	# DROP two tables is in "drop_table_list"
+	# A pure DROP TABLE is allowed, but we get no implicit COMMITs for that.
+	DROP TEMPORARY TABLE if_exists temp_table_item_n |
+	DROP           TABLE if_exists temp_table_item_n ;
+
+alter_temp_table:
+	ALTER online ignore TABLE temp_table_item_n alter_base_temp_table_part ;
+
+########## MAINTENANCE FOR ANY TABLE ####################
+# The server accepts these statements for all table types (VIEWs, base tables, ...) though they
+# should have partially no effect. We run them on all table types because everything which gets
+# accepted has to be checked even if the command should do nothing.
+# Example:
+#    OPTIMIZE ... TABLE <view> ...
+#       Table  Op Msg_type Msg_text
+#       test.v1   optimize Error Table 'test.v1' doesn't exist
+#       test.v1   optimize status   Operation failed
+#    OPTIMIZE ... TABLE <merge table> ...
+#       Table  Op      Msg_type        Msg_text
+#       test.t1m       optimize        note    The storage engine for the table doesn't support optimize
 #
-#
+table_maintenance_ddl:
+	analyze_table | optimize_table | checksum_table | check_table | repair_table ;
+
 analyze_table:
-	ANALYZE not_to_binlog_local TABLE base_table_list	;
-#
+	ANALYZE not_to_binlog_local TABLE table_list ;
 not_to_binlog_local:
-	 | NO_WRITE_TO_BINLOG | LOCAL	;
-#
+	 | NO_WRITE_TO_BINLOG | LOCAL ;
+
 optimize_table:
-	# VIEW : Statement not disallowed but server response is
-	#    Table	Op	Msg_type	Msg_text
-	#    test.v1	optimize	Error	Table 'test.v1' doesn't exist
-	#    test.v1	optimize	status	Operation failed
-	# MERGE TABLE : Statement allowed, but no efffect.
-	#    Table  Op      Msg_type        Msg_text
-	#    +test.t1m       optimize        note    The storage engine for the table doesn't support optimize
-	# -> We run this for all table types.
-	OPTIMIZE not_to_binlog_local TABLE base_table_list ;
-#
+	OPTIMIZE not_to_binlog_local TABLE table_list ;
+
 checksum_table:
-	CHECKSUM TABLE base_table_list quick_extended	;
-#
+	CHECKSUM TABLE table_list quick_extended ;
 quick_extended:
-	 | QUICK | EXTENDED	;
-#
+	 | quick | extended ;
 extended:
-	 | | | | | | | | | EXTENDED ;
 	# Only 10 %
-#
+	 | | | | | | | | | EXTENDED ;
+
 check_table:
-	CHECK TABLE base_table_list check_table_options	;
-#
+	CHECK TABLE table_list check_table_options ;
 check_table_options:
 	 | FOR UPGRADE | QUICK | FAST | MEDIUM | EXTENDED | CHANGED ;
-#
-#
-repair_table:
-	REPAIR not_to_binlog_local TABLE base_table_list quick extended use_frm	;
-#
-rename_base_temp_table:
-	# RENAME TABLE works also on VIEWs but we do not generate it here.
-	# FIXME: Reduce the redundancy if possible.
-	RENAME TABLE base_table_name_sl TO base_table_name_sl |
-	RENAME TABLE base_table_name_sl TO base_table_name_sl, base_table_name_sl TO base_table_name_sl |
-	RENAME TABLE base_table_name_sl TO base_table_name_sl |
-	RENAME TABLE base_table_name_sl TO base_table_name_sl, temp_table_name_sl TO temp_table_name_sl ;
-#
-#
-base_table_sequence:
-	CREATE TABLE base_table_name_ll LIKE template_table_name ; INSERT INTO $basetablenamell SELECT * FROM $templatetablename ; COMMIT ; SET @aux = SLEEP( rand_life_time ) ; DROP TABLE $basetablenamell |
-	CREATE TABLE base_table_name_ll AS used_select ;                                                                                    SET @aux = SLEEP( rand_life_time ) ; DROP TABLE $basetablenamell	;
-#
 
-########## Merge table ####################
+repair_table:
+	# Use if
+	#    Bug#46339 crash on REPAIR TABLE merge table USE_FRM
+	# is fixed  (base_temp_table_view_list instead of table_list because of Bug#46339)
+	# REPAIR not_to_binlog_local TABLE table_list quick extended use_frm ;
+	REPAIR not_to_binlog_local TABLE table_list quick extended ;
+
+use_frm:
+	# Only 10 %
+	 | | | | | | | |  | USE_FRM ;
+
+
+########## MIXED TABLE RELATED DDL #################################
+truncate_table:
+	TRUNCATE table_word table_no_view_item_n ;
+table_word:
+	 | TABLE ;
+
+drop_table_list:
+	# DROP one table is in "drop_*table"
+	# 1. We mix here all tables except VIEWs up.
+	# 2. We have an increased likelihood that the statement fails because of use of
+	#    - "temporary" (only correct in case of a temporary table)
+	#    - two tables (some might not exist)
+	DROP temporary TABLE if_exists table_no_view_item_n , table_no_view_item_n restrict_cascade ;
+
+rename_table:
+	# RENAME TABLE works also on all types of tables (includes VIEWs)
+	RENAME TABLE rename_item_list ;
+rename_item_list:
+	rename_item | rename_item , rename_item ;
+rename_item:
+	# Preserve the object type (base,temp,....) and type (Normal) otherwise debugging becomes difficult and
+	# the concept with different lifetimes gets broken.
+	base_table_item_n  TO base_table_item_n  |
+	temp_table_item_n  TO temp_table_item_n  |
+	merge_table_item_n TO merge_table_item_n |
+	part_table_item_n  TO part_table_item_n  ;
+
+rename_column:
+	ALTER TABLE table_no_view_item_s CHANGE COLUMN column_to_change my_column INT | 
+	ALTER TABLE table_no_view_item_s CHANGE COLUMN my_column column_to_change INT;
+
+column_to_change:
+	`int` | `int_key` | `pk` ;
+
+
+########## MERGE TABLE DDL ####################
+merge_table_ddl:
+	create_merge_table   | create_merge_table | create_merge_table | create_merge_table   | create_merge_table |  create_merge_table |
+	drop_merge_table     | alter_merge_table  |
+	merge_table_sequence ;
+
 create_merge_table:
 	# There is a high risk that the tables which we pick for merging do not fit together because they
 	# have different structures. We try to reduce this risk to end up with no merge table at all
@@ -439,219 +945,294 @@ create_merge_table:
 	# 2. Let the merge table be based on the first base table.
 	#    ALTER TABLE <merge table> ENGINE = MERGE UNION(<first base table>)
 	# 3. Add the second base table to the merge table.
-	#    ALTER TABLE <merge table> UNION(<first base table>, <second merge table>) 
-	pick_table_name1 ; pick_table_name2 ; CREATE TABLE merge_table_name_sl LIKE $table_name1 ; convert_to_merge_table	;
-pick_table_name1:
-	# Fill $table_name1
-	SET @aux = 'MERGE TABLE WILL USE base_table_name_sl FOR THE BASE'; SET @aux = 'FILL VARIABLE <dollar>table_name1 { $table_name1 = $basetablenamesl } ' ;
-pick_table_name2:
-	# Fill $table_name2
-	SET @aux = 'MERGE TABLE WILL USE base_table_name_sl FOR THE BASE'; SET @aux = 'FILL VARIABLE <dollar>table_name2 { $table_name2 = $basetablenamesl } ' ;
-convert_to_merge_table:
-	ALTER TABLE $mergetablenamesl ENGINE = MERGE UNION ( $table_name1 ) ; ALTER TABLE $mergetablenamesl ENGINE = MERGE UNION ( $table_name1 , $table_name2 ) insert_method	;
+	#    ALTER TABLE <merge table> UNION(<first base table>, <second merge table>)
+	merge_init_n build_partner1 ; build_partner2 ; create_merge ;
+
 insert_method:
-	 | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value | | INSERT_METHOD = insert_method_value	;
+	 | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value ;
 insert_method_value:
-	NO | FIRST | LAST	;
+	NO | FIRST | LAST ;
+
 drop_merge_table:
-	DROP TABLE merge_table_name_sl ;
+	# DROP two tables is in "drop_table_list"
+	DROP TABLE if_exists merge_table_item_n ;
+
 merge_table_sequence:
 	# Notes:
 	# There is a significant likelihood that a random picked table names as base for the merge table cannot
 	# be used for the creation of a merge table because the corresponding tables
 	# - must exist
 	# - use the storage engine MyISAM
-	# - have the same layout.
+	# - have the same layout
 	# Therefore we create here all we need.
-	# But the use of "base_table_name_sl" for the tables to be merged guarantees that these tables
+	# The use of "base_table_name_n" for the tables to be merged guarantees that these tables
 	# are under full DDL/DML load.
-	# I do not DROP the underlying tables at sequence end because I hope that "drop_base_temp_table" will do this sooner or later.
-	pick_template_name ; create_table1_for_merging ; create_table2_for_merging ; create_merge_table_ll ; 
-create_table1_for_merging:
-	pick_table_name1 ; CREATE TABLE $table_name1 LIKE $templatetablename ; ALTER TABLE $table_name1 ENGINE = MyISAM ; INSERT INTO $table_name1 SELECT * FROM $templatetablename ;
-create_table2_for_merging:
-	pick_table_name2 ; CREATE TABLE $table_name2 LIKE $templatetablename ; ALTER TABLE $table_name2 ENGINE = MyISAM ; INSERT INTO $table_name2 SELECT * FROM $templatetablename ;
-create_merge_table_ll:
-	CREATE TABLE merge_table_name_ll LIKE $templatetablename ; ALTER TABLE $mergetablenamell ENGINE = MERGE UNION ( $table_name1 , $table_name2 )	insert_method	;
-pick_template_name:
-	# Fill $templatetablename
-	SET @aux = 'WILL USE template_table_name AS TEMPLATE FOR MERGE TABLES' ;
-#
-#
-alter_merge_table:
-	# "online" removed because of Bug#45143
-	# We do not chenage here the UNION because of the high risk that this fails.
-	# And we have already ALTER ... UNION within convert_to_merge_table. There the base tables could be already under DML/DDL load.
-	ALTER ignore TABLE merge_table_name_ll COMMENT = 'UPDATED NOW()'	;
+	# I do not DROP the underlying tables at sequence end because I hope that "drop_base_table" or similar will do this sooner or later.
+	$sequence_begin merge_init_s build_partner1 ; build_partner2 ; create_merge ; wait_till_drop_table ; DROP TABLE $mt $sequence_end ;
 
-########## Views ####################
+alter_merge_table:
+	# We do not change here the UNION because of the high risk that this fails.
+	# A simple change of the insert_method_value is also not doable because we
+	# would need to mention also the UNION.
+	# It is intentional that we use merge_table_name and not merge_table_name_n.
+	ALTER online ignore TABLE merge_table_item_n COMMENT = 'UPDATED NOW()' ;
+
+merge_init_s:
+	/* merge_table_item_s { $mt = $merge_table_item_s ; return undef } consists of ( base_table_item_s { $mp1 = $base_table_item_s ; return undef } , base_table_item_s { $mp2 = $base_table_item_s ; return undef } ) based on template_table_item */ ;
+merge_init_n:
+	/* merge_table_item_n { $mt = $merge_table_item_n ; return undef } consists of ( base_table_item_n { $mp1 = $base_table_item_n ; return undef } , base_table_item_n { $mp2 = $base_table_item_n ; return undef } ) based on template_table_item */ ;
+build_partner1:
+	# This also initializes $database_name and $base_table_name which gets used by the other commands within the sequence.
+	CREATE TABLE if_not_exists $mp1 LIKE $template_table_item ; ALTER TABLE $mp1 ENGINE = MyISAM ; INSERT INTO $mp1 SELECT * FROM $template_table_item ;
+build_partner2:
+	# This also initializes $database_name and $base_table_name which gets used by the other commands within the sequence.
+	CREATE TABLE if_not_exists $mp2 LIKE $template_table_item ; ALTER TABLE $mp2 ENGINE = MyISAM ; INSERT INTO $mp2 SELECT * FROM $template_table_item ;
+create_merge:
+	CREATE TABLE if_not_exists $mt LIKE $template_table_item ; ALTER TABLE $mt ENGINE = MERGE UNION ( $mp1 , $mp2 ); COMMIT ;
+
+
+########## PARTITIONED TABLE DDL ####################
+part_table_ddl:
+	create_part_table   | create_part_table | create_part_table | create_part_table | create_part_table | create_part_table |
+	drop_part_table     |
+	# If
+	#    Bug#46198 Hang after failed ALTER TABLE on partitioned table.
+	# is fixed (alter_part_table removed because of Bug#46198)
+	# alter_part_table  |
+	part_table_sequence ;
+
+create_part_table:
+	# We do not need sophisticated partitioning here.
+	CREATE TABLE if_not_exists part_table_item_n ENGINE = MyISAM PARTITION BY KEY (pk) PARTITIONS 2 AS used_select ;
+
+drop_part_table:
+	# DROP two tables is in "drop_table_list"
+	DROP TABLE if_exists part_table_item_n ;
+
+alter_part_table:
+	ALTER online ignore TABLE part_table_item_n alter_part_table_part ;
+
+alter_part_table_part:
+	PARTITION BY LINEAR HASH(pk) PARTITIONS 3 |
+	COMMENT = 'UPDATED NOW()'                 ;
+
+part_table_sequence:
+	$sequence_begin CREATE TABLE if_not_exists part_table_item_s AS SELECT * FROM template_table_item ; COMMIT ; wait_till_drop_table ; DROP TABLE $part_table_item_s $sequence_end ;
+
+
+########## VIEW DDL ####################
+view_ddl:
+	create_view   | create_view | create_view | create_view | create_view | create_view | create_view | create_view |
+	drop_view     | alter_view  |
+	view_sequence ;
+	
 create_view:
-	CREATE ALGORITHM = view_algoritm VIEW view_name_sl AS used_select ;
-#
+	CREATE view_replace ALGORITHM = view_algoritm VIEW view_table_item_n AS used_select ;
+view_replace:
+	# Only 20 %
+	 | | | | OR REPLACE ;
 view_algoritm:
 	UNDEFINED | MERGE | TEMPTABLE ;
-#
-view_replace:
-	 | | OR REPLACE ;
-#
-#
+
 drop_view:
-	DROP VIEW view_list restrict_cascade ;
-#
-view_list:
-	view_name_sl | view_name_sl, view_name_sl ;
-#
+	DROP VIEW if_exists view_table_item_n restrict_cascade ;
+
 restrict_cascade:
 	# RESTRICT and CASCADE, if given, are parsed and ignored.
 	 | RESTRICT | CASCADE ;
-#
-#
+
 alter_view:
 	# Attention: Only changing the algorithm is not allowed.
-	ALTER ALGORITHM = view_algoritm VIEW view_name_sl AS used_select ;
-#
-#
-rename_view:
-	# RENAME TABLE works also on VIEWs as long as the SCHEMA is not changed.
-	# RENAME VIEW does not exist.
-	RENAME TABLE view_name_sl TO view_name_sl											|
-	RENAME TABLE view_name_sl TO view_name_sl, view_name_sl TO view_name_sl	;
-#
-#
+	ALTER ALGORITHM = view_algoritm VIEW view_table_item_n AS used_select ;
+
 view_sequence:
-	CREATE ALGORITHM = view_algoritm VIEW view_name_ll AS used_select ; SET @aux = SLEEP( rand_life_time ) ; DROP VIEW $viewnamell	;
+	$sequence_begin CREATE ALGORITHM = view_algoritm VIEW view_table_item_s AS used_select ; COMMIT ; SELECT wait_short ; DROP VIEW $view_table_item_s $sequence_end ;
 
 
-########## Stored procedure ####################
+########## STORED PROCEDURE DDL ####################
+procedure_ddl:
+	create_procedure   | create_procedure |
+	drop_procedure     | alter_procedure  |
+	procedure_sequence ;
+
 create_procedure:
-	CREATE PROCEDURE procedure_name_sl  () BEGIN proc_stmt ; proc_stmt ; END ;
-#
-drop_procedure:
-	DROP PROCEDURE IF EXISTS procedure_name_sl ;
-#
+	CREATE PROCEDURE procedure_item_n () BEGIN proc_stmt ; proc_stmt ; END ;
 proc_stmt:
-	select | insert ;
-#
+	select | update ;
+
+drop_procedure:
+	DROP PROCEDURE if_exists procedure_item_n ;
+
 alter_procedure:
-	ALTER PROCEDURE procedure_name_sl COMMENT 'UPDATED NOW()';
-#
+	ALTER PROCEDURE procedure_item_n COMMENT 'UPDATED NOW()' ;
+
 procedure_sequence:
-	CREATE PROCEDURE procedure_name_ll  () BEGIN proc_stmt ; proc_stmt ; END ; SET @aux = SLEEP( rand_life_time ) ; DROP PROCEDURE $procedurenamell ;
+	# FIXME: The PROCEDURE should touch base_table_name_s only .
+	$sequence_begin CREATE PROCEDURE procedure_item_s () BEGIN proc_stmt ; proc_stmt ; END ; COMMIT ; SELECT wait_short ; DROP PROCEDURE $procedure_item_s $sequence_end ;
 
-########## Function ####################
+
+########## STORED FUNCTION DDL ####################
+function_ddl:
+	create_function   | create_function |
+	drop_function     | alter_function  |
+	function_sequence ;
+
 create_function:
-	CREATE FUNCTION function_name_sl () RETURNS INTEGER BEGIN func_statement ; func_statement ; RETURN 1 ; END	;
-
+	CREATE FUNCTION function_item_n () RETURNS INTEGER BEGIN func_statement ; func_statement ; RETURN 1 ; END ;
 func_statement:
 	# All result sets of queries within a function must be processed within the function.
 	# -> Use a CURSOR or SELECT ... INTO ....
-	insert | delete | SELECT MAX(_field) FROM table_name INTO @aux	;
-
-# RETURNS CHAR(50) DETERMINISTIC
-	# -> RETURN CONCAT('Hello, ',s,'!')	;
+	# Use if
+	#    Bug#46374   crash, INSERT INTO t1 uses function, function modifies t1
+	# is fixed     (insert, delete removed because of Bug#46374)
+	# SET @my_var = 1 | SELECT MAX( _field ) FROM table_item INTO @my_var | insert | delete ;
+	SET @my_var = 1 | SELECT MAX( _field ) FROM table_item INTO @my_var ;
 
 drop_function:
-	DROP FUNCTION function_name_sl	;
-#
-alter_function:
-	ALTER FUNCTION function_name_sl COMMENT 'UPDATED NOW()'	;
-#
-function_sequence:
-	CREATE FUNCTION function_name_ll () RETURNS INTEGER RETURN ( SELECT MOD(COUNT(DISTINCT _field),10) FROM base_table_name_sl )	; SET @aux = SLEEP( rand_life_time ) ; DROP PROCEDURE $functionnamell ;
+	DROP FUNCTION if_exists function_item_n ;
 
-########## Trigger ####################
+alter_function:
+	ALTER FUNCTION function_item_n COMMENT 'UPDATED NOW()' ;
+
+function_sequence:
+	$sequence_begin CREATE FUNCTION function_item_s () RETURNS INTEGER RETURN ( SELECT MOD( COUNT( DISTINCT _field ) , 10 ) FROM table_item_s ) ; COMMIT ; SELECT wait_short ; DROP FUNCTION $function_item_s $sequence_end ;
+
+
+########## TRIGGER DDL ####################
+trigger_ddl:
+	create_trigger   | create_trigger |
+	drop_trigger     |
+	trigger_sequence ;
+	
 create_trigger:
-	CREATE TRIGGER trigger_name_sl trigger_time trigger_event ON base_table_name_sl FOR EACH ROW BEGIN trigger_action ; END ;
-#
+	CREATE TRIGGER trigger_item_n trigger_time trigger_event ON base_table_name_n FOR EACH ROW BEGIN trigger_action ; END ;
 trigger_time:
 	BEFORE | AFTER ;
-#
 trigger_event:
 	INSERT | DELETE ;
-#
 trigger_action:
-	insert | replace | delete | update | call procedure_name ;
-#
-#
-drop_trigger:
-	DROP TRIGGER trigger_name_sl	;
-#
-trigger_sequence:
-	CREATE TRIGGER trigger_name_ll trigger_time trigger_event ON base_table_name_sl FOR EACH ROW BEGIN trigger_action ; END ; SET @aux = SLEEP( rand_life_time ) ; DROP TRIGGER $triggernamell ;
+	insert | replace | delete | update | CALL procedure_item ;
 
+drop_trigger:
+	DROP TRIGGER if_exists trigger_item_n ;
+
+trigger_sequence:
+	# FIXME: The action within the trigger should touch base_table_name_s only.
+	$sequence_begin CREATE TRIGGER trigger_item_s trigger_time trigger_event ON table_item_s FOR EACH ROW BEGIN trigger_action ; END ; COMMIT ; SELECT wait_short ; DROP TRIGGER $trigger_item_s $sequence_end ;
+
+
+########## EVENT DDL ####################
+event_ddl:
+	create_event | create_event | create_event | create_event | create_event | create_event | create_event | create_event |
+	drop_event   | alter_event  | drop_event   | alter_event  | drop_event   | alter_event  | drop_event   | alter_event  |
+	event_scheduler_on | event_scheduler_off ;
+create_event:
+	CREATE EVENT if_not_exists event_item_s ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO SELECT * FROM table_item LIMIT 1;
+completion_handling:
+	ON COMPLETION not_or_empty PRESERVE ;
+drop_event:
+	DROP EVENT if_exists event_item_s ;
+alter_event:
+	ALTER EVENT event_item_s COMMENT 'UPDATED NOW()';
+
+########## DML ####################
 
 dml:
-	PREPARE st1 FROM " dml2 " ; EXECUTE st1 ; DEALLOCATE PREPARE st1 |
-	dml2 ;
+	# Have only 10 % prepared statements.
+	#    SQL Statements to be handled via PREPARE, EXECUTE and DEALLOCATE cause a bigger amount of
+	#    failing statements than SQL statements which are executed in non prepared mode.
+	#    The reason is that we run the EXECUTE and DEALLOCATE independent of the outcome of the
+	#    PREPARE. So if the PREPARE fails because some table is missing, we loose the old
+	#    prepared statement handle, if there was any, and get no new one. Therefore the succeeding
+	#    EXECUTE and DEALLOCATE will also failcw because of missing statement handle.
+	dml2 | dml2 | dml2 | dml2 | dml2 | dml2 | dml2 | dml2 | dml2 |
+	PREPARE st1 FROM " dml2 " ; EXECUTE st1 ; DEALLOCATE PREPARE st1 ;
 
 dml2:
-	select | insert | replace | delete | update | call procedure_name | show ;
+	select | select | select  |
+	do     | insert | replace | delete | update | CALL procedure_item | show | is_selects ;
 
+########## DO ####################
+do:
+	# A lot options like HIGH_PRIORITY etc. are not allowed in connection with DO.
+	# The SELECT must give one column.
+	SELECT COUNT(*) FROM table_item WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 20 ;
+
+########## SELECT ####################
 select:
+	select_normal | select_normal | select_normal | select_normal | select_with_sleep ;
+
+select_normal:
 	# select = Just a query = A statement starting with "SELECT".
-	select_part1 addition              into for_update_lock_in_share_mode ;
+	select_part1 addition into for_update_lock_in_share_mode ;
+
+select_with_sleep:
+	# Run a SELECT which holds locks (if there are any) longer.
+	SELECT 1 FROM table_item WHERE wait_short = 0 LIMIT 1;
 
 used_select:
-	# used_select = The SELECT used in CREATE VIEW/TABLE ... AS <SELECT>, INSERT INTO ... SELECT
+	# used_select = The SELECT used in CREATE VIEW/TABLE ... AS SELECT, INSERT INTO ... SELECT
 	# "PROCEDURE ANALYSE" and "INTO DUMPFILE/OUTFILE/@var" are not generated because they
 	# are partially disallowed or cause garbage (PROCEDURE).
-	select_part1 addition_no_procedure      for_update_lock_in_share_mode ;
+	select_part1 addition_no_procedure ;
 
 select_part1:
-	SELECT high_priority cache_results * FROM first_table_in_select AS A ;
-
-high_priority:
-	 | | | | HIGH_PRIORITY;
-	# Only 20 %
+	SELECT high_priority cache_results table_field_list FROM table_in_select as A ;
 
 cache_results:
-	 | | | | SQL_CACHE | | | | | SQL_NO_CACHE ;
-	# Only 20 %
+	 | sql_no_cache | sql_cache ;
+sql_no_cache:
+	# Only 10 %
+	 | | | | | | | | | SQL_NO_CACHE ;
+sql_cache:
+	# Only 10 %
+	 | | | | | | | | | SQL_CACHE ;
 
-first_table_in_select:
-	# Attention: Derived tables are disallowed in views. Therefore they should be rare.
-	table_name | table_name | table_name | table_name | table_name | (SELECT * FROM table_name) ;
+table_in_select:
+	# Attention: In case of CREATE VIEW a subquery in the FROM clause (derived table) is disallowed.
+	#            Therefore they should be rare.
+	table_item | table_item | table_item | table_item | table_item | ( SELECT table_field_list FROM table_item ) ;
 
 addition:
 	# Involve one (simple where condition) or two tables (subquery | join | union)
-	where procedure | subquery procedure | join where procedure | procedure union where ;
+	where procedure_analyze | subquery procedure_analyze | join where procedure_analyze | procedure_analyze union where ;
 
 addition_no_procedure:
 	# Involve one (simple where condition) or two tables (subquery | join | union)
-	# Don't add procedure.
-	where           | subquery           | join where           |           union where ;
+	# Don't add procedure_analyze.
+	where | where | where | where | where | where | where |
+	subquery | join where | union where ;
 
 where:
-	 | WHERE `pk` BETWEEN _digit AND _digit | WHERE function_name_sl() = _digit ;
+	# The very selective condition is intentional.
+	# It should ensure that
+	# - result sets (just SELECT) do not become too big because this affects the performance in general and
+	#   the memery consumption of RQG (I had a ~ 3.5 GB virt memory RQG perl process during some simplifier run!)
+	# - tables (INSERT ... SELECT, REPLACE) do not become too big
+	# - tables (DELETE) do not become permanent empty
+	# Please not that there are some cases where LIMIT cannot be used.
+	# mleich: Temporary omit functions
+	# WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 | WHERE function_item () = _digit AND `pk` = _digit ;
+	WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 ;
 
 union:
-	UNION SELECT * FROM table_name AS B;
+	UNION SELECT * FROM table_in_select as B ;
 
 join:
 	# Do not place a where condition here.
-	NATURAL JOIN table_name B ;
+	NATURAL JOIN table_item B ;
 
 subquery:
 	correlated | non_correlated ;
-
 subquery_part1:
-	WHERE A.`pk` IN (SELECT `pk` FROM table_name AS B WHERE B.`pk` = ;
-
+	WHERE A.`pk` IN ( SELECT `pk` FROM table_item AS B WHERE B.`pk` = ;
 correlated:
 	subquery_part1 A.`pk` ) ;
-	# WHERE A.`pk` IN (SELECT `pk` FROM table_name AS B WHERE A.`pk` = B.`pk`);
-
 non_correlated:
 	subquery_part1 _digit ) ;
-	# WHERE A.`pk` IN (SELECT `pk` FROM table_name AS B WHERE A.`pk` = _digit);
 
-procedure:
-	# procedure disabled because of Bug#46184 Crash, SELECT ... FROM derived table procedure analyze
-	# | | | | | | | | | PROCEDURE ANALYSE(10, 2000);
-	# Only 10 %
-	;
-
-	# Correct place of PROCEDURE ANALYSE(10, 2000)
+procedure_analyze:
+	# Correct place of PROCEDURE ANALYSE( 10 , 2000 )
 	# 0. Attention: The result set of the SELECT gets replaced  by PROCEDURE ANALYSE output.
 	# 1. WHERE ... PROCEDURE (no UNION of JOIN)
 	# 2. SELECT ... PROCEDURE UNION SELECT ... (never after UNION)
@@ -662,10 +1243,12 @@ procedure:
 	# 6. CREATE TABLE ... AS SELECT PROCEDURE -> The table contains the PROCEDURE result set.
 	# 7. INSERT ... SELECT ... PROCEDURE -> It's tried to INSERT the PROCEDURE result set.
 	#    High likelihood of ER_WRONG_VALUE_COUNT_ON_ROW
+	# Only 10 %
+	 | | | | | | | |  | PROCEDURE ANALYSE( 10 , 2000 ) ;
 
 into:
-	 | | | | | | | | | | INTO into_object;
 	# Only 10 %
+	 | | | | | | | |  | INTO into_object ;
 
 into_object:
 	# INSERT ... SELECT ... INTO DUMPFILE/OUTFILE/@var is not allowed
@@ -674,97 +1257,268 @@ into_object:
 	#    -> @_letter disabled till I find a solution.
 	# 2. DUMPFILE requires a result set of one row
 	#    Therefore 1172 Result consisted of more than one row is very likely.
-	# OUTFILE _tmpnam | DUMPFILE _tmpnam | @_letter;
+	# OUTFILE _tmpnam | DUMPFILE _tmpnam | @_letter ;
 	OUTFILE _tmpnam ;
 
 for_update_lock_in_share_mode:
-	 | | | | | | | | | | | | | | | | | | FOR UPDATE | LOCK IN SHARE MODE ;
+	 | for_update | lock_share ;
+for_update:
+	# Only 10 %
+	 | | | | | | | |  | FOR UPDATE ;
+lock_share:
+	# Only 10 %
+	 | | | | | | | |  | LOCK IN SHARE MODE ;
 
+
+########## INSERT ####################
 insert:
-	# FIXME: Case with one assigned row is missing.
-	INSERT low_priority_delayed_high_priority INTO table_name            used_select            on_duplicate_key_update ;
-	# INSERT low_priority_delayed_high_priority INTO table_name ( _field ) used_select            on_duplicate_key_update |
-	# INSERT low_priority_delayed_high_priority INTO table_name ( _field ) VALUES ( _digit ) on_duplicate_key_update ;
+	insert_normal | insert_normal | insert_normal | insert_normal | insert_with_sleep ;
+insert_normal:
+	INSERT low_priority_delayed_high_priority into_word table_item simple_or_complicated on_duplicate_key_update ;
+simple_or_complicated:
+	( _field ) VALUES ( digit_or_null ) |
+	braced_table_field_list used_select LIMIT 1 ;
+on_duplicate_key_update:
+	# Only 10 %
+	 | | | | | | | |  | ON DUPLICATE KEY UPDATE _field = _digit ;
+insert_with_sleep:
+	INSERT INTO table_item ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_item WHERE wait_short = 0 LIMIT 1;
 
+
+########## REPLACE ####################
 replace:
 	# 1. No ON DUPLICATE .... option. In case of DUPLICATE key it runs DELETE old row INSERT new row.
 	# 2. HIGH_PRIORITY is not allowed
-	# FIXME: Case with one assigned row is missing.
-	REPLACE low_priority_delayed INTO table_name used_select ;
-	# REPLACE low_priority_delayed INTO table_name ( _field ) VALUES ( _digit ) ;
+	REPLACE low_priority_delayed into_word table_item simple_or_complicated ;
 
-on_duplicate_key_update:
-	 | | | | | | | | | ON DUPLICATE KEY UPDATE _field = _digit ;
-	# Only 10 %
 
+########## DUMP_LOAD_DATA ####################
+dump_load_data_sequence:
+	# We omit a lot stuff which could be assigned after the table name. This stuff should
+	# be important for locking tests.
+	# We generate an outfile so that we have a chance to find an infile.
+	# Go with the next command as soon as "LOCAL" is supported. (not supported in 5.4)
+	# generate_outfile ; LOAD DATA low_priority_concurrent local_or_empty INFILE tmpnam replace_ignore INTO TABLE table_item ;
+	generate_outfile ; LOAD DATA low_priority_concurrent INFILE tmpnam replace_ignore INTO TABLE table_item ;
+generate_outfile:
+	SELECT * FROM template_table_name INTO OUTFILE _tmpnam ;
+low_priority_concurrent:
+	 | low_priority | concurrent ;
+concurrent:
+	# Only 20 % <> empty.
+	 | | | | CONCURRENT ;
+replace_ignore:
+	 | replace_option | ignore ;
+
+
+########## GRANT_REVOKE ####################
+# We mix here some trouble I can imagine on mysql.tables_priv.  It's basically how we access it's content.
+grant_revoke:
+	GRANT  ALL ON table_item TO otto@localhost                                           |
+	REVOKE ALL ON table_item FROM otto@localhost                                         |
+	SELECT COUNT(*) FROM mysql.tables_priv WHERE user = LOWER('OTTO')                    |
+	DELETE FROM mysql.tables_priv WHERE user = LOWER('OTTO') ; FLUSH PRIVILEGES          |
+	/* table_item */ INSERT INTO mysql.tables_priv (host,db,user,table_name,grantor,table_priv) VALUES (LOWER('LOCALHOST'),TRIM(' $database '),LOWER('OTTO'),TRIM(' $table_name '),LOWER('ROOT@LOCALHOST'),'Select') ; FLUSH PRIVILEGES |
+	SELECT COUNT(*) FROM information_schema.table_privileges WHERE grantee LIKE '%OTTO%' |
+	SHOW GRANTS FOR otto@localhost ;
+
+########## SQL MODE ########################
+sql_mode:
+	empty_mode | empty_mode | empty_mode | empty_mode |
+	empty_mode | empty_mode | empty_mode | empty_mode |
+	empty_mode | empty_mode | empty_mode | empty_mode |
+	traditional_mode ;
+empty_mode:
+	SET SESSION SQL_MODE='' ;
+traditional_mode:
+	SET SESSION SQL_MODE=LOWER('TRADITIONAL');
+
+
+########## DELETE ####################
 delete:
-	# LIMIT row_count is disallowed in case we have multi table delete.
-	# Example: DELETE low_priority quick ignore A , B FROM table_name AS A join where LIMIT _digit |
+	delete_normal | delete_normal | delete_normal | delete_normal | delete_with_sleep ;
+delete_normal:
+	# LIMIT row_count is disallowed in case we have a multi table delete.
+	# Example: DELETE low_priority quick ignore A , B FROM table_item AS A join where LIMIT _digit |
 	# DELETE is ugly because a table alias is not allowed.
-	DELETE low_priority quick ignore       FROM table_name      WHERE   `pk` > _digit LIMIT _digit |
-	DELETE low_priority quick ignore A , B FROM table_name AS A join where |
-	DELETE low_priority quick ignore A     FROM table_name AS A where_subquery ;
-
+	# If
+	#    Bug#46425 crash in Diagnostics_area::set_ok_status , empty statement, DELETE IGNORE
+	# is fixed (ignore removed because of Bug#46425)
+	# DELETE low_priority quick ignore       FROM table_item      WHERE   `pk` > _digit LIMIT 1 |
+	# DELETE low_priority quick ignore A , B FROM table_item AS A join where |
+	# DELETE low_priority quick ignore A     FROM table_item AS A where_subquery ;
+	DELETE low_priority quick       FROM table_item      WHERE   `pk` > _digit LIMIT 1 |
+	DELETE low_priority quick A , B FROM table_item AS A join where                    |
+	DELETE low_priority quick A     FROM table_item AS A where_subquery                ;
 where_subquery:
-	where           | subquery           ;
+	where | subquery ;
+delete_with_sleep:
+	DELETE low_priority quick       FROM table_item      WHERE   `pk` + wait_short = _digit ;
 
+
+########## UPDATE ####################
 update:
-	UPDATE low_priority ignore table_name SET _field = _digit WHERE `pk` > _digit LIMIT _digit |
-	UPDATE low_priority ignore table_name AS A join SET A._field = _digit, B._field = _digit;
+	update_normal | update_normal | update_normal | update_normal | update_with_sleep ;
+update_normal:
+	UPDATE low_priority ignore table_item SET _field = _digit WHERE `pk` > _digit LIMIT _digit  |
+	UPDATE low_priority ignore table_item AS A join SET A. _field = _digit , B. _field = _digit ;
+update_with_sleep:
+	UPDATE low_priority ignore table_item SET _field = _digit WHERE wait_short = 0 LIMIT 1 ;
 
-quick:
-	 | | | | | | | | | QUICK ;
-	# Only 10 %
+
+########## LOCK/UNLOCK ####################
+lock_unlock:
+	lock | unlock | unlock | unlock | unlock ;
+lock:
+	LOCK TABLES lock_list ;
+lock_list:
+	# Less likelihood for lists, because they
+	# - are most probably less often used
+	# - cause a higher likelihood of "table does not exist" errors.
+	lock_item | lock_item | lock_item | lock_item | lock_item | lock_item | lock_item | lock_item | lock_item |
+	lock_item , lock_item ;
+lock_item:
+	# Have a low risk to get a clash of same table alias.
+	table_item AS _letter lock_type ;
+lock_type:
+	READ local_or_empty      |
+	low_priority WRITE       |
+	IN SHARE MODE nowait     |
+	IN EXCLUSIVE MODE nowait ;
+nowait:
+	NOWAIT | ;
+
+unlock:
+	UNLOCK TABLES ;
+
+
+########## FLUSH ####################
+flush:
+	# WITH READ LOCK causes that nearly all following statements will fail with
+	# Can't execute the query because you have a conflicting read lock
+	# Therefore it should
+	# - be rare
+	# - last only very short time
+	# So I put it into a sequence with FLUSH ... ; wait a bit ; UNLOCK TABLES
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | 
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | 
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | 
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+	FLUSH TABLES WITH READ LOCK ;
+
+
+########## TINY GRAMMAR ITEMS USED AT MANY PLACES ###########
+as:
+	 | AS ;
+
+braced_table_field_list:
+	# In case of <empty> for braced_table_field_list we have a significant fraction of
+	# INSERT/REPLACE INTO <table> <no field list>
+	# failing with: 1394 Can not insert into join view 'test.t1_view_0_S' without fields list
+	# Therefore <empty> is only 20 %.
+	( _field_list ) | ( _field_list ) | ( _field_list ) | ( _field_list ) | ;
+
+default_word:
+	 | DEFAULT ;
+
+digit_or_null:
+	_digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit | NULL ;
 
 engine:
 	MEMORY | MyISAM | InnoDB ;
 
-online:
-	ONLINE | ;
+equal:
+	 | = ;
 
-lock:
-	LOCK TABLE lock_list |
-	UNLOCK TABLES ;
-
-flush:
-	FLUSH TABLES WITH READ LOCK |
-	FLUSH TABLE table_name , table_name ;
-
-lock_list:
-	lock_item |
-	lock_item , lock_item ;
-
-lock_item:
-	table_name lock_type ;
-
-lock_type:
-	READ local |
-	low_priority WRITE ;
-
-local:
-	LOCAL | ;
-
-low_priority:
-	 | | | | | | | | | LOW_PRIORITY ;
+delayed:
 	# Only 10 %
+	 | | | | | | | | | DELAYED ;
 
-sql_buffer_result:
-	SQL_BUFFER_RESULT | ;
-
-sql_cache:
-	SQL_CACHE | SQL_NO_CACHE | ;
-
-low_priority_delayed_high_priority:
-	 | | | | | | | | | | | | | | | | | | | | | | | | | | | LOW_PRIORITY | DELAYED | HIGH_PRIORITY ;
-	# Only 10 %
-	# DELAYED removed because of Bug#45067
-
-low_priority_delayed:
-	 | | | | | | | | | | | | | | | | | | LOW_PRIORITY | DELAYED ;
-	# Only 10 %
-	# DELAYED removed because of Bug#45067
+high_priority:
+	# Only 20 %
+	 | | | | HIGH_PRIORITY ;
 
 ignore:
-	 | | | | | | | | | IGNORE ;
 	# Only 10 %
+	 | | | | | | | | | IGNORE ;
+
+if_exists:
+	# 90 %, this reduces the amount of failing DROPs
+	 | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS ;
+
+if_not_exists:
+	# 90 %, this reduces the amount of failing CREATEs
+	 | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS ;
+
+into_word:
+	# Only 50 %
+	 | INTO ;
+
+local_or_empty:
+	# Only 20%
+	 | | | | LOCAL ;
+
+low_priority_delayed_high_priority:
+	 | low_priority | delayed | high_priority ;
+
+low_priority_delayed:
+	 | low_priority | delayed ;
+
+low_priority:
+	# Only 10 %
+	 | | | | | | | | | LOW_PRIORITY ;
+
+no_or_empty:
+	 | NO ;
+
+not_or_empty:
+	 | NOT ;
+
+online:
+	# Use if
+	#    Bug#45143   All connections hang on concurrent ALTER TABLE
+	# is fixed     (ONLINE removed because of Bug#45143)
+	# Only 20 %
+	# | | | | ONLINE ;
+	;
+
+quick:
+	# Only 10 %
+	 | | | | | | | | | QUICK ;
+
+replace_option:
+	# Only 20 % <> empty.
+	 | | | | REPLACE ;
+
+savepoint_or_empty:
+	SAVEPOINT | ;
+
+sql_buffer_result:
+	# Only 50%
+	 | SQL_BUFFER_RESULT ;
+
+table_field_list:
+	_field_list | _field_list | _field_list | _field_list | * ;
+
+temporary:
+	# Attention:
+	# Do not apply CREATE/DROP TEMPORARY on "long life" whatever tables.
+	# Use "short life" (-> <whatever>_n) tables only.
+	# 1. In case of "long life" (-> <whatever>_s) tables the CREATE and DROP must be within
+	#    a sequence with some "wait_till_drop_table" between. TEMPORARY tables are session specific.
+	#    So no other session can use this table.
+	# 2. In case of "short life" tables the CREATE and DROP are isolated. So the session
+	#    which created the table will pick a random statement and maybe do something on
+	#    the table <> DROP.
+	# Only 10 % because no other session can use this table.
+	 | | | | | | | |  | TEMPORARY ;
+
+wait_short:
+	SLEEP( 0.5 * rand_val * $life_time_unit ) ;
+
+work_or_empty:
+	 | WORK ;
+
+zero_or_one:
+	0 | 1 ;
 

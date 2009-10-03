@@ -24,6 +24,7 @@ sub compare {
 	return STATUS_OK if $#resultsets == 0;
 
 	foreach my $i (0..($#resultsets-1)) {
+
 		my $resultset1 = $resultsets[$i];
 		my $resultset2 = $resultsets[$i+1];
 		if ($resultset1->status() != $resultset2->status()) {

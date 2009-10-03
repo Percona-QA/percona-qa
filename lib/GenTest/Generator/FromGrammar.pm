@@ -23,7 +23,8 @@ use constant GENERATOR_SEQ_ID		=> 7;
 use constant GENERATOR_MASK		=> 8;
 use constant GENERATOR_VARCHAR_LENGTH	=> 9;
 
-use constant GENERATOR_MAX_OCCURRENCES	=> 50;
+use constant GENERATOR_MAX_OCCURRENCES	=> 500;
+use constant GENERATOR_MAX_LENGTH	=> 1024;
 
 my $field_pos;
 
@@ -157,6 +158,10 @@ sub next {
 
 	my $pos = 0;
 	while ($pos <= $#sentence) {
+		if ($#sentence > GENERATOR_MAX_LENGTH) {
+			say("Sentence is now longer than ".GENERATOR_MAX_OCCURRENCES()." symbols. Possible endless loop in grammar. Aborting.");
+			return undef;
+		}
 		if (ref($sentence[$pos]) eq 'GenTest::Grammar::Rule') {
 			splice (@sentence, $pos, 1 , map {
 
@@ -210,9 +215,11 @@ sub next {
 
 		my $modifier;
 
+		my $invariant_substitution=0;
 		if ($_ =~ m{^(_[a-z_]*?)\[(.*?)\]}sio) {
 			$modifier = $2;
 			if ($modifier eq 'invariant') {
+				$invariant_substitution=1;
 				$_ = exists $invariants{$orig_item} ? $invariants{$orig_item} : $1 ;
 			} else {
 				$_ = $1;
@@ -221,9 +228,7 @@ sub next {
 
 		next if $_ eq uc($_);				# Short-cut for UPPERCASE literals
 
-		if ($_ =~ m{^['"].*['"]$}sio) {
-			$_ = substr($_, 1, length($_) - 2);	# String literals
-		} elsif ( ($_ eq 'letter') || ($_ eq '_letter') ) {
+		if ( ($_ eq 'letter') || ($_ eq '_letter') ) {
 			$_ = $prng->letter();
 		} elsif ($_ eq '_hex') {
 			$_ = $prng->hex();
@@ -246,6 +251,8 @@ sub next {
 			$_ = time();
 		} elsif ($_ eq '_pid') {
 			$_ = $$;
+		} elsif ($_ eq '_thread_count') {
+			$_ = $ENV{RQG_THREADS};
 		} elsif (($_ eq '_database') || ($_ eq '_db')) {
 			my $databases = $executors->[0]->databases();
 			$last_database = $_ = $prng->arrayElement($databases);
@@ -288,7 +295,7 @@ sub next {
 			$_ = $prng->fieldType($_);
 		} elsif ($prng->isFieldType($_)) {
 			$_ = $prng->fieldType($_);
-			if ($orig_item =~ m{`$}so) {
+			if (($orig_item =~ m{`$}so) || ($_ =~ m{^(b'|0x)}so)) {
 				# Do not quote, quotes are already present
 			} elsif ($_ =~ m{'}so) {
 				$_ = '"'.$_.'"';
@@ -299,7 +306,7 @@ sub next {
 			$item_nodash = $1;
 			if ($prng->isFieldType($item_nodash)) {
 				$_ = "'".$prng->fieldType($item_nodash)."'";
-				if ($_ =~ m{'}sio) {
+				if ($_ =~ m{'}so) {
 					$_ = '"'.$_.'"';
 				} else {
 					$_ = "'".$_."'";
@@ -328,7 +335,10 @@ sub next {
 	# Otherwise, split it into individual statements so that the error and the result set from each statement
 	# can be examined
 
-	if ($sentence =~ m{^\s*CREATE}sio) {
+	if (
+		($sentence =~ m{CREATE}sio) && 
+		($sentence =~ m{BEGIN|END}sio)
+	) {
 		return [ $sentence ];
 	} elsif ($sentence =~ m{;}) {
 		my @sentences = split (';', $sentence);

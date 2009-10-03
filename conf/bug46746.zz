@@ -1,0 +1,20 @@
+# 
+# For functional testing of metadata locking, table contents do not matter
+# So we create the simplest tables possible and populate them with a constant
+# integer. We expect that during the test we will always be able to read
+# constant integers regardless of how the database objects get modified
+#
+
+$tables = {
+	rows => [100],
+	primary_key => [ undef ]
+};
+
+$fields = {
+	types => [ 'int' ],
+	indexes => [ 'key' ]
+};
+
+$data = {
+	numbers => [ '5' ]
+}

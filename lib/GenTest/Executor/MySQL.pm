@@ -17,6 +17,7 @@ use constant RARE_QUERY_THRESHOLD	=> 5;
 my %reported_errors;
 
 my @errors = (
+	"The target table .*? of the .*? is",
 	"Duplicate entry '.*?' for key '.*?'",
 	"Can't DROP '.*?'",
 	"Duplicate key name '.*?'",
@@ -46,7 +47,16 @@ my @errors = (
 	"FUNCTION .*? already exists",
 	"'.*?' isn't in GROUP BY",
 	"non-grouping field '.*?' is used in HAVING clause",
-	"Table has no partition for value .*?"
+	"Table has no partition for value .*?",
+	"Unknown prepared statement handler (.*?) given to EXECUTE",
+	"Unknown prepared statement handler (.*?) given to DEALLOCATE PREPARE",
+	"Can't execute the query because you have a conflicting read lock",
+	"Can't execute the given command because you have active locked tables or an active transaction",
+	"Not unique table/alias: '.*?'",
+	"View .* references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them",
+	"Unknown thread id: .*?" ,
+	"Unknown table '.*?' in .*?",
+	"Table '.*?' is read only"
 );
 
 my @patterns = map { qr{$_}i } @errors;
@@ -137,8 +147,28 @@ use constant	ER_NO_PARTITION_FOR_GIVEN_VALUE		=> 1526;
 use constant	ER_PARTITION_MAXVALUE_ERROR		=> 1481;
 use constant	ER_WRONG_PARTITION_NAME			=> 1567;
 
+use constant	ER_NON_INSERTABLE_TABLE			=> 1471;
+use constant	ER_NON_UPDATABLE_TABLE			=> 1288;
+
 use constant	ER_UNKNOWN_KEY_CACHE			=> 1284;
 
+use constant 	ER_CANT_CHANGE_TX_ISOLATION		=> 1568;
+
+# The PREPARE already failed
+use constant  	ER_UNKNOWN_STMT_HANDLER => 1243 ;
+# Table mentioned more than once in statement processing a table list.
+use constant  	ER_NONUNIQ_TABLE	=> 1066 ;
+# Base table of a view was modified or dropped or ..
+use constant  	ER_VIEW_INVALID	=> 1356 ;
+
+use constant	ER_NO_SUCH_THREAD			=> 1094;
+use constant	ER_QUERY_INTERRUPTED			=> 1317;
+
+use constant	ER_UNKNOWN_TABLE			=> 1109;
+use constant	ER_FILE_NOT_FOUND			=> 1017;
+use constant 	ER_WRONG_MRG_TABLE			=> 1168;
+
+use constant	ER_OPEN_AS_READONLY			=> 1036;
 
 # Transaction errors
 
@@ -147,6 +177,9 @@ use constant	ER_LOCK_WAIT_TIMEOUT	=> 1205;
 use constant	ER_CHECKREAD		=> 1020;
 use constant	ER_DUP_KEY		=> 1022;
 use constant	ER_DUP_ENTRY		=> 1062;
+use constant	ER_LOCK_OR_ACTIVE_TRANSACTION	=> 1192;
+# The table is already read locked by the same seeion.
+use constant  	ER_CANT_UPDATE_WITH_READLOCK => 1223 ;
 
 # Storage engine failures
 
@@ -246,7 +279,27 @@ my %err2type = (
 	ER_PARTITION_MAXVALUE_ERROR()		=> STATUS_SEMANTIC_ERROR,
 	ER_WRONG_PARTITION_NAME()		=> STATUS_SEMANTIC_ERROR,
 
-	ER_UNKNOWN_KEY_CACHE()	=> STATUS_SEMANTIC_ERROR,
+	ER_NON_INSERTABLE_TABLE()		=> STATUS_SEMANTIC_ERROR,
+	ER_NON_UPDATABLE_TABLE()		=> STATUS_SEMANTIC_ERROR,
+
+	ER_UNKNOWN_KEY_CACHE()			=> STATUS_SEMANTIC_ERROR,
+	
+	ER_CANT_CHANGE_TX_ISOLATION()		=> STATUS_SEMANTIC_ERROR,
+
+	ER_UNKNOWN_STMT_HANDLER()		=> STATUS_SEMANTIC_ERROR,
+	ER_CANT_UPDATE_WITH_READLOCK()		=> STATUS_SEMANTIC_ERROR,
+	ER_NONUNIQ_TABLE()			=> STATUS_SEMANTIC_ERROR,
+	ER_VIEW_INVALID()			=> STATUS_SEMANTIC_ERROR,
+
+	ER_NO_SUCH_THREAD()			=> STATUS_SEMANTIC_ERROR,
+	ER_QUERY_INTERRUPTED()			=> STATUS_SEMANTIC_ERROR,
+
+	ER_UNKNOWN_TABLE()			=> STATUS_SEMANTIC_ERROR,
+	ER_FILE_NOT_FOUND()			=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_MRG_TABLE()			=> STATUS_SEMANTIC_ERROR,
+	ER_OPEN_AS_READONLY()			=> STATUS_SEMANTIC_ERROR,
+
+	ER_LOCK_OR_ACTIVE_TRANSACTION => STATUS_TRANSACTION_ERROR,
 
 	ER_LOCK_DEADLOCK()	=> STATUS_TRANSACTION_ERROR,
 	ER_LOCK_WAIT_TIMEOUT()	=> STATUS_TRANSACTION_ERROR,
@@ -317,6 +370,8 @@ sub execute {
 
 	return GenTest::Result->new( query => $query, status => STATUS_UNKNOWN_ERROR ) if not defined $dbh;
 
+    $query = $executor->preprocess($query);
+
 	if (
 		(not defined $executor->[EXECUTOR_MYSQL_AUTOCOMMIT]) &&
 		(
@@ -333,7 +388,7 @@ sub execute {
 
 	if (not defined $sth) {			# Error on PREPARE
 		my $errstr = $executor->normalizeError($sth->errstr());
-		$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if $executor->debug() && !$silent;
+		$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
 		return GenTest::Result->new(
 			query		=> $query,
 			status		=> $executor->getStatusFromErr($dbh->err()) || STATUS_UNKNOWN_ERROR,
@@ -346,6 +401,7 @@ sub execute {
 	}
 
 	my $affected_rows = $sth->execute();
+
 	my $end_time = Time::HiRes::time();
 
 	my $err = $sth->err();
@@ -360,19 +416,38 @@ sub execute {
 			($err_type == STATUS_TRANSACTION_ERROR)
 		) {
 			my $errstr = $executor->normalizeError($sth->errstr());
-			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if $executor->debug() && !$silent;
+			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
 			if (not defined $reported_errors{$errstr}) {
 				say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
 				$reported_errors{$errstr}++;
 			}
+		} elsif (
+			($err_type == STATUS_SERVER_CRASHED) ||
+			($err_type == STATUS_SERVER_KILLED)
+		) {
+			$dbh = DBI->connect($executor->dsn(), undef, undef, {
+				PrintError => 0,
+				RaiseError => 0,
+				AutoCommit => 1,
+				mysql_multi_statements => 1
+			} );
+
+			# If server is still connectable, it is not a real crash, but most likely a KILL query
+
+			if (defined $dbh) {
+				$err_type = STATUS_SEMANTIC_ERROR;
+				$executor->setDbh($dbh);
+			}
+
+			say("Query: $query failed: $err ".$sth->errstr()) if !$silent;
 		} else {
-			$executor->[EXECUTOR_ERROR_COUNTS]->{$sth->errstr()}++ if $executor->debug() && !$silent;
+			$executor->[EXECUTOR_ERROR_COUNTS]->{$sth->errstr()}++ if rqg_debug() && !$silent;
 			say("Query: $query failed: $err ".$sth->errstr()) if !$silent;
 		}
 
 		$result = GenTest::Result->new(
 			query		=> $query,
-			status		=> $err2type{$err} || STATUS_UNKNOWN_ERROR,
+			status		=> $err_type || STATUS_UNKNOWN_ERROR,
 			err		=> $err,
 			errstr		=> $sth->errstr(),
 			sqlstate	=> $sth->state(),
@@ -387,7 +462,7 @@ sub execute {
 			start_time	=> $start_time,
 			end_time	=> $end_time
 		);
-		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if $executor->debug() && !$silent;
+		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
 	} else {
 		#
 		# We do not use fetchall_arrayref() due to a memory leak
@@ -409,7 +484,7 @@ sub execute {
 			end_time	=> $end_time
 		);
 
-		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if $executor->debug() && !$silent;
+		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
 	}
 
 	$sth->finish();
@@ -420,7 +495,7 @@ sub execute {
 	}
 
 	if (
-		($executor->debug()) &&
+		(rqg_debug()) &&
 		($query =~ m{^\s*select}sio) &&
 		(!$silent)
 	) {
@@ -480,14 +555,21 @@ sub masterStatus {
 
 sub explain {
 	my ($executor, $query) = @_;
-	my $explain_output = $executor->dbh()->selectall_arrayref("EXPLAIN $query");
+
+	my $sth_output = $executor->dbh()->prepare("EXPLAIN /*!50100 PARTITIONS */ $query");
+
+	$sth_output->execute();
+
 	my @explain_fragments;
-	foreach my $explain_row (@$explain_output) {
-		push @explain_fragments, "select_type: ".($explain_row->[1] || '(empty)');
 
-		push @explain_fragments, "type: ".($explain_row->[3] || '(empty)');
+	while (my $explain_row = $sth_output->fetchrow_hashref()) {
+		push @explain_fragments, "select_type: ".($explain_row->{select_type} || '(empty)');
 
-		foreach my $extra_item (split('; ', ($explain_row->[9] || '(empty)')) ) {
+		push @explain_fragments, "type: ".($explain_row->{type} || '(empty)');
+
+		push @explain_fragments, "partitions: ".$explain_row->{table}.":".$explain_row->{partitions} if defined $explain_row->{partitions};
+
+		foreach my $extra_item (split('; ', ($explain_row->{Extra} || '(empty)')) ) {
 			$extra_item =~ s{0x.*?\)}{%d\)}sgio;
 			$extra_item =~ s{PRIMARY|[a-z_]+_key}{%s}sgio;
 			push @explain_fragments, "extra: ".$extra_item;
@@ -507,7 +589,7 @@ sub explain {
 
 sub DESTROY {
 	my $executor = shift;
-	if ($executor->debug()) {
+	if (rqg_debug()) {
 		say("Statistics for Executor ".$executor->dsn());
 		use Data::Dumper;
 		$Data::Dumper::Sortkeys = 1;
@@ -538,7 +620,7 @@ sub tables {
 	return [] if not defined $executor->dbh();
 
 	my $cache_key = join('-', ('tables', $database));
-	my $query = "SHOW TABLES ".(defined $database ? "FROM $database" : "");
+	my $query = "SHOW TABLES ".(defined $database ? "FROM $database" : "FROM test");
 	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
 	return $caches{$cache_key};
 }
@@ -563,13 +645,14 @@ sub fieldsNoPK {
 	return [] if not defined $executor->dbh();
 
 	my $cache_key = join('-', ('fields_no_pk', $table, $database));
+
 	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref("
 		SELECT COLUMN_NAME
 		FROM INFORMATION_SCHEMA.COLUMNS
 		WHERE TABLE_NAME = '".(defined $table ? $table : $executor->tables($database)->[0] )."'
 		AND TABLE_SCHEMA = ".(defined $database ? "'$database'" : 'DATABASE()' )."
 		AND COLUMN_KEY != 'PRI'
-	");
+	") if not exists $caches{$cache_key};
 
 	return $caches{$cache_key};
 }
@@ -585,7 +668,7 @@ sub fieldsIndexed {
 		SHOW INDEX
 		FROM ".(defined $table ? $table : $executor->tables($database)->[0]).
 		(defined $database ? " FROM $database " : "")
-	, { Columns=>[5] }) if not defined $caches{$cache_key};
+	, { Columns=>[5] }) if not exists $caches{$cache_key};
 
 	return $caches{$cache_key};
 }
@@ -628,11 +711,11 @@ sub errorType {
 sub normalizeError {
 	my ($executor, $errstr) = @_;
 
-	$errstr =~ s{\d+}{%d}sgio if $errstr !~ m{from storage engine}sio; # Make all errors involving numbers the same, e.g. duplicate key errors
-
 	foreach my $i (0..$#errors) {
 		last if $errstr =~ s{$patterns[$i]}{$errors[$i]}si;
 	}
+
+	$errstr =~ s{\d+}{%d}sgio if $errstr !~ m{from storage engine}sio; # Make all errors involving numbers the same, e.g. duplicate key errors
 
 	$errstr =~ s{\.\*\?}{%s}sgio;
 

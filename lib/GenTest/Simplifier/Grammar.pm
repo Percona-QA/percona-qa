@@ -14,6 +14,7 @@ use constant SIMPLIFIER_ORACLE		=> 0;
 use constant SIMPLIFIER_CACHE		=> 1;
 use constant SIMPLIFIER_GRAMMAR_OBJ	=> 2;
 use constant SIMPLIFIER_RULES_VISITED	=> 3;
+use constant SIMPLIFIER_GRAMMAR_FLAGS	=> 4;
 
 1;
 
@@ -21,7 +22,8 @@ sub new {
         my $class = shift;
 
 	my $simplifier = $class->SUPER::new({
-		'oracle'	=> SIMPLIFIER_ORACLE
+		'oracle'	=> SIMPLIFIER_ORACLE,
+		'grammar_flags'	=> SIMPLIFIER_GRAMMAR_FLAGS
 	}, @_);
 
 	return $simplifier;
@@ -45,7 +47,8 @@ sub simplify {
 
 	foreach my $trial (0..1) {
 		$simplifier->[SIMPLIFIER_GRAMMAR_OBJ] = GenTest::Grammar->new(
-			grammar_string => $grammar_string
+			grammar_string	=> $grammar_string,
+			grammar_flags	=> $simplifier->[SIMPLIFIER_GRAMMAR_FLAGS]
 		);
 
 		return undef if not defined $simplifier->[SIMPLIFIER_GRAMMAR_OBJ];
@@ -95,10 +98,10 @@ sub descend {
 		splice (@$orig_components, $component_id, 1);
 
 		if ($simplifier->oracle($grammar_obj->toString())) {
-		 	say("Problem still repeatable after removing ".join(' ', @$orig_component).". Deleting component.");
+		 	say("Outcome still repeatable after removing ".join(' ', @$orig_component).". Deleting component.");
 			next;
 		} else {
-			say("Problem no longer repeatable after removing ".join(' ', @$orig_component).". Keeping component.");
+			say("Outcome no longer repeatable after removing ".join(' ', @$orig_component).". Keeping component.");
 
 			# Undo the change and dig deeper, into the parts of the rule component
 

@@ -7,12 +7,16 @@ use strict;
 
 use GenTest;
 use GenTest::Constants;
-use GenTest::Transformer;
 use GenTest::Comparator;
 use GenTest::Simplifier::SQL;
 use GenTest::Simplifier::Test;
+use GenTest::Translator;
+use GenTest::Translator::Mysqldump2ANSI;
+use GenTest::Translator::Mysqldump2javadb;
+use GenTest::Translator::MysqlDML2ANSI;
 
 my @transformer_names;
+my @transformers;
 
 sub BEGIN {
 	@transformer_names = (
@@ -21,10 +25,18 @@ sub BEGIN {
 		'LimitDecrease',
 		'LimitIncrease',
 		'OrderBy',
-		'StraightJoin'
+		'StraightJoin',
+		'InlineSubqueries',
+		'Count'
 	);
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
+
+	foreach my $transformer_name (@transformer_names) {
+		eval ("require GenTest::Transform::'".$transformer_name) or die $@;
+		my $transformer = ('GenTest::Transform::'.$transformer_name)->new();
+		push @transformers, $transformer;
+	}
 }
 
 sub validate {
@@ -39,8 +51,8 @@ sub validate {
 	return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK;
 
 	my $max_transformer_status; 
-	foreach my $transformer_name (@transformer_names) {
-		my $transformer_status = $validator->transform($transformer_name, $executors, $results);
+	foreach my $transformer (@transformers) {
+		my $transformer_status = $validator->transform($transformer, $executor, $results);
 		$max_transformer_status = $transformer_status if $transformer_status > $max_transformer_status;
 	}
 
@@ -48,40 +60,26 @@ sub validate {
 }
 
 sub transform {
-	my ($validator, $transformer_name, $executors, $results) = @_;
+	my ($validator, $transformer, $executor, $results) = @_;
 
-	my $executor = $executors->[0];
 	my $original_result = $results->[0];
 	my $original_query = $original_result->query();
 
-	my $transformer = GenTest::Transformer->new(
-		class => 'GenTest::Transform::'.$transformer_name
-	);
-
-	my $transformed_query = $transformer->transform($original_query);
-	
-	return $transformed_query if $transformed_query =~ m{^\d+$}sgio;
-
-	my $result_transformed = $executor->execute($transformed_query);
-	my $transform_outcome = $transformer->validate([ $original_result, $result_transformed ]);
+	my ($transform_outcome, $transformed_query, $transformed_result) = $transformer->transformExecuteValidate($original_query, $original_result, $executor);
 
 	return STATUS_OK if $transform_outcome == STATUS_OK;
 
-	say("Query $original_query failed transformation with Transformer $transformer_name");
+	say("Original query: $original_query failed transformation with Transformer ".$transformer->name());
+	say("Transformed query: $transformed_query");
 
 	my $simplifier_query = GenTest::Simplifier::SQL->new(
 		oracle => sub {
 			my $oracle_query = shift;
 			my $oracle_result = $executor->execute($oracle_query, 1);
-			return ORACLE_ISSUE_NO_LONGER_REPEATABLE if $oracle_result->status() != STATUS_OK;
 
-			my $oracle_transformed_query = $transformer->transform($oracle_query);
-			return ORACLE_ISSUE_NO_LONGER_REPEATABLE if $oracle_transformed_query == STATUS_WONT_HANDLE;
+			return ORACLE_ISSUE_STATUS_UNKNOWN if $oracle_result->status() != STATUS_OK;
 
-			my $oracle_transformed_result = $executor->execute($oracle_transformed_query, 1);
-			return ORACLE_ISSUE_NO_LONGER_REPEATABLE if $oracle_transformed_result->status() != STATUS_OK;
-
-			my $oracle_outcome = $transformer->validate([ $oracle_result, $oracle_transformed_result ]);
+			my ($oracle_outcome, $oracle_transformed_query, $oracle_transformed_result) = $transformer->transformExecuteValidate($oracle_query, $oracle_result, $executor);
 
 			if (
 				($oracle_outcome == STATUS_CONTENT_MISMATCH) ||
@@ -96,7 +94,7 @@ sub transform {
 	
 	my $simplified_query = $simplifier_query->simplify($original_query);
 
-	my $simplified_result = $executor->execute($simplified_query);
+	my $simplified_result = $executor->execute($simplified_query, 1);
 	if (defined $simplified_result->warnings()) {
 		say("Simplified query produced warnings, will not dump a test case.");
 		return STATUS_WONT_HANDLE;
@@ -104,15 +102,17 @@ sub transform {
 
 	if (not defined $simplified_query) {
 		say("Simplification failed -- failure is likely sporadic.");
+#		use Data::Dumper;
+#		print Dumper $original_result, $transformed_result;
 		return STATUS_WONT_HANDLE;
 	}
 
-	say("Simplified query is: $simplified_query");
+	say("Simplified query: $simplified_query");
 
-	my $simplified_transformed_query = $transformer->transform($simplified_query);
-	say("Simplified transformed query is: $simplified_transformed_query");
+	my $simplified_transformed_query = $transformer->transform($simplified_query, $executor);
+	say("Simplified transformed query: $simplified_transformed_query");
 
-	my $simplified_transformed_result = $executor->execute($simplified_transformed_query);
+	my $simplified_transformed_result = $executor->execute($simplified_transformed_query, 1);
 	if (defined $simplified_transformed_result->warnings()) {
 		say("Simplified transformed query produced warnings, will not dump a test case.");
 		return STATUS_WONT_HANDLE;
@@ -132,7 +132,24 @@ sub transform {
 	print TESTFILE $test;
 	close (TESTFILE);
 	
-	say("Test dumped to $testfile");
+	say("MySQL test dumped to $testfile");
+
+    my $translator = GenTest::Translator::Mysqldump2javadb->new();
+    my $javadbtest = $translator->translate($test);
+    if ($javadbtest) {
+        $translator = GenTest::Translator::MysqlDML2ANSI->new();
+        $javadbtest = $translator->translate($javadbtest);
+    }
+
+    if ($javadbtest) {
+        $testfile = tmpdir()."/".time()."-javadb.test";
+        open (TESTFILE , ">$testfile");
+        print TESTFILE $javadbtest;
+        close (TESTFILE);
+        say("JavaDB test dumped to $testfile");
+    } else {
+        say(" Test case contains mysql-specific constructs. Creating a JavaDB test case is not possible.");
+    }
 
 	return $transform_outcome;
 }

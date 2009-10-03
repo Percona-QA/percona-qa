@@ -2,6 +2,9 @@ package GenTest::Grammar;
 
 require Exporter;
 @ISA = qw(GenTest);
+@EXPORT = qw(
+	GRAMMAR_FLAG_COMPACT_RULES
+);
 
 use strict;
 
@@ -12,6 +15,9 @@ use GenTest::Grammar::Rule;
 use constant GRAMMAR_RULES	=> 0;
 use constant GRAMMAR_FILE	=> 1;
 use constant GRAMMAR_STRING	=> 2;
+use constant GRAMMAR_FLAGS	=> 3;
+
+use constant GRAMMAR_FLAG_COMPACT_RULES	=> 1;
 
 1;
 
@@ -21,7 +27,8 @@ sub new {
 
 	my $grammar = $class->SUPER::new({
 		'grammar_file'          => GRAMMAR_FILE,
-		'grammar_string'        => GRAMMAR_STRING
+		'grammar_string'        => GRAMMAR_STRING,
+		'grammar_flags'		=> GRAMMAR_FLAGS
 	}, @_);
 
         $grammar->[GRAMMAR_RULES] = {} if not defined $grammar->rules();
@@ -60,6 +67,8 @@ sub parseFromFile {
 
 	open (GF, $grammar_file) or die "Unable to open() grammar $grammar_file: $!";
 	read (GF, my $grammar_string, -s $grammar_file) or die "Unable to read() $grammar_file: $!";
+
+	$grammar->[GRAMMAR_STRING] = $grammar_string;
 
 	return $grammar->parseFromString($grammar_string);
 }
@@ -102,41 +111,50 @@ sub parseFromString {
 	my %rules;
 
 	foreach my $rule_string (@rule_strings) {
-		my ($rule_name, $components_string) = $rule_string =~ m{^(.*?):(.*)$}sio;
+		my ($rule_name, $components_string) = $rule_string =~ m{^(.*?)\s*:(.*)$}sio;
+
 		$rule_name =~ s{[\r\n]}{}gsio;
 		$rule_name =~ s{^\s*}{}gsio;
 
 		next if $rule_name eq '';
 
-		if (exists $rules{$rule_name}) {
-			say("Rule $rule_name is defined twice.");
-			return STATUS_ENVIRONMENT_FAILURE;
-		}
+		say("Warning: Rule $rule_name is defined twice.") if exists $rules{$rule_name};
 
 		my @component_strings = split (m{\|}, $components_string);
 		my @components;
-		foreach my $component_strings (@component_strings) {
+		my %components;
+
+		foreach my $component_string (@component_strings) {
 			# Remove leading whitespace
-			$component_strings =~ s{^\s+}{}sgio;
-			$component_strings =~ s{\s+$}{}sgio;
+			$component_string =~ s{^\s+}{}sgio;
+			$component_string =~ s{\s+$}{}sgio;
 		
 			# Rempove repeating whitespaces
-			$component_strings =~ s{\s+}{ }sgio;
+			$component_string =~ s{\s+}{ }sgio;
 
 			# Split this so that each identifier is separated from all syntax elements
 			# The identifier can start with a lowercase letter or an underscore , plus quotes
 
-			$component_strings =~ s{([_a-z0-9'"`\{\}\$]+)}{|$1|}sgo;
+			$component_string =~ s{([_a-z0-9'"`\{\}\$\[\]]+)}{|$1|}sgo;
 
 			# Revert overzealous splitting that splits things like _varchar(32) into several tokens
 		
-			$component_strings =~ s{([a-z0-9_]+)\|\(\|(\d+)\|\)}{$1($2)|}sgo;
+			$component_string =~ s{([a-z0-9_]+)\|\(\|(\d+)\|\)}{$1($2)|}sgo;
 
 			# Remove leading and trailing pipes
-			$component_strings =~ s{^\|}{}sgio;
-			$component_strings =~ s{\|$}{}sgio;
+			$component_string =~ s{^\|}{}sgio;
+			$component_string =~ s{\|$}{}sgio;
 
-			my @component_parts = split (m{\|}, $component_strings);
+			if (
+				(exists $components{$component_string}) &&
+				($grammar->[GRAMMAR_FLAGS] & GRAMMAR_FLAG_COMPACT_RULES)
+			) {
+				next;
+			} else {
+				$components{$component_string}++;
+			}
+
+			my @component_parts = split (m{\|}, $component_string);
 
 			#
 			# If this grammar rule contains Perl code, assemble it between the various
@@ -194,6 +212,18 @@ sub rules {
 
 sub deleteRule {
 	delete $_[0]->[GRAMMAR_RULES]->{$_[1]};
+}
+
+#
+# Check if the grammar is tagged with query properties such as RESULTSET_ or ERROR_1234
+#
+
+sub hasProperties {
+	if ($_[0]->[GRAMMAR_STRING] =~ m{RESULTSET_|ERROR_}so) {
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 1;

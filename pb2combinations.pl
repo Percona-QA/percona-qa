@@ -47,6 +47,15 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--trials=100
 		--seed=time
 	';
+} elsif ($test =~ m{innodb_combinations_stress}io ) {
+	$command = '
+		--grammar=conf/engine_stress.yy
+		--gendata=conf/engine_stress.zz
+		--config=conf/innodb_simple.cc
+		--duration=600
+		--trials=100
+		--seed=time
+	';
 } elsif ($test =~ m{falcon_combinations_varchar}io ) {
 	$command = '
 		--grammar=conf/varchar.yy

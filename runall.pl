@@ -37,7 +37,7 @@ my @master_ports = ('19306','19308');
 my $slave_port = '19308';
 my @master_dsns;
 
-my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode, $engine, $help, $debug, $validators, $reporters, $grammar_file, $seed, $mask, $mem, $rows, $varchar_len, $xml_output, $valgrind, $views, $start_dirty);
+my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode, $engine, $help, $debug, $validators, $reporters, $grammar_file, $seed, $mask, $mem, $rows, $varchar_len, $xml_output, $valgrind, $views, $start_dirty, $filter);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -59,7 +59,7 @@ my $opt_result = GetOptions(
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
 	'threads=i' => \$threads,
-	'queries=i' => \$queries,
+	'queries=s' => \$queries,
 	'duration=i' => \$duration,
 	'help' => \$help,
 	'debug' => \$debug,
@@ -74,7 +74,8 @@ my $opt_result = GetOptions(
 	'xml-output=s'	=> \$xml_output,
 	'valgrind'	=> \$valgrind,
 	'views'		=> \$views,
-	'start-dirty'	=> \$start_dirty
+	'start-dirty'	=> \$start_dirty,
+	'filter=s'	=> \$filter
 );
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
@@ -143,7 +144,7 @@ foreach my $server_id (0..1) {
 	}
 
 	my @mtr_options;
-	push @mtr_options, lc("--mysqld=--loose-$engine") if defined $engine && lc($engine) ne lc('myisam');
+	push @mtr_options, lc("--mysqld=--$engine") if defined $engine && lc($engine) ne lc('myisam');
 
 	if (defined $mysqld_options[$server_id]) {
 		foreach my $mysqld_option (@{$mysqld_options[$server_id]}) {
@@ -203,10 +204,17 @@ foreach my $server_id (0..1) {
 #	my $out_file = "/tmp/mtr-".$$."-".$server_id.".out";
 	my $mtr_command = "perl mysql-test-run.pl --start-and-exit ".join(' ', @mtr_options)." 2>&1";
 	say("Running $mtr_command .");
+
+	my $vardir = $vardirs[$server_id] || $basedirs[$server_id].'/mysql-test/var';
+
+	open (MTR_COMMAND, '>'.$mtr_path.'/mtr_command') or say("Unable to open mtr_command: $!");
+	print MTR_COMMAND $mtr_command;
+	close MTR_COMMAND;
+
 	my $mtr_status = system($mtr_command);
+
 	if ($mtr_status != 0) {
 #		system("cat $out_file");
-		my $vardir =  $vardirs[$server_id] || $basedirs[$server_id].'/mysql-test/var';
 		system("cat \"$vardir/log/master.err\"");
 		exit_test($mtr_status >> 8);
 	}
@@ -274,6 +282,11 @@ push @gentest_options, "--views" if defined $views;
 push @gentest_options, "--varchar-length=$varchar_len" if defined $varchar_len;
 push @gentest_options, "--xml-output=$xml_output" if defined $xml_output;
 push @gentest_options, "--debug" if defined $debug;
+push @gentest_options, "--filter=$filter" if defined $filter;
+
+# Push the number of "worker" threads into the environment.
+# lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
+$ENV{RQG_THREADS}= $threads;
 
 my $gentest_result = system("perl $ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_options));
 say("gentest.pl exited with exit status ".($gentest_result >> 8));
@@ -286,7 +299,9 @@ if ($rpl_mode) {
 	exit_test(STATUS_UNKNOWN_ERROR) if !defined $file;
 
 	my $slave_dsn = "dbi:mysql:host=127.0.0.1:port=".$slave_port.":user=root:database=".$database;
-	my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { RaiseError => 1 } );
+	my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { PrintError => 1 } );
+
+	exit_test(STATUS_REPLICATION_FAILURE) if not defined $slave_dbh;
 
 	$slave_dbh->do("START SLAVE");
 	my $wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");

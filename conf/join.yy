@@ -1,6 +1,3 @@
-\query_init:
-        SET GLOBAL optimizer_use_mrr = 'disable';
-
 query:
 	{ @nonaggregates = () ; $tables = 0 ; $fields = 0 ; "" } select ;
 
@@ -19,10 +16,13 @@ select_list:
 
 join_list:
 	new_table_item |
-	(new_table_item join_type join_list ON ( current_table_item . _field = previous_table_item . _field ));
+	(new_table_item join_type new_table_item ON ( current_table_item . _field_key = previous_table_item . _field )) |
+	(new_table_item join_type new_table_item ON ( current_table_item . _field = previous_table_item . _field_key )) |
+	(new_table_item join_type new_table_item ON ( current_table_item . _field_key = previous_table_item . _field_key )) |
+	(new_table_item join_type join_list ON ( current_table_item . _field_key = previous_table_item . _field_key ));
 
 join_type:
-	INNER JOIN | CROSS JOIN | left_right outer JOIN | STRAIGHT_JOIN ;  
+	INNER JOIN | left_right outer JOIN | STRAIGHT_JOIN ;  
 
 left_right:
 	LEFT | RIGHT ;
@@ -35,10 +35,10 @@ where:
 where_list:
 	not where_item |
 	not (where_list AND where_item) |
-	not (where_list OR where_item) |
-	where_item IS not NULL ;
+	not (where_list OR where_item) ;
+
 not:
-	| NOT;
+	| | | NOT;
 
 where_item:
 	existing_table_item . _field sign value |
@@ -88,8 +88,11 @@ nonaggregate_select_item:
 aggregate_select_item:
 	aggregate table_one_two . _field ) AS { "field".++$fields };
 
+# Only 20% table2, since sometimes table2 is not present at all
+
 table_one_two:
-	table1 | table2 | table3;
+	table1 | table1 | table1 | table1 |
+	table2 ;
 
 aggregate:
 	COUNT( | SUM( | MIN( | MAX( ;
@@ -115,5 +118,14 @@ sign:
 value:
 	_digit | _char(2) | _datetime ;
 
+# Avoid A , AA since those tables are optimized away
+# Avoid E, F since those tables are too big for the nested joins
+
 _table:
-	A | B | C | AA | BB ;
+	B | C | BB | CC ;
+
+# Avoid 0, so that no LIMIT 0 queries are produced
+
+_digit:
+	1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 ;
+

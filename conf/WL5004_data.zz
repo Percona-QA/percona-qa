@@ -1,27 +1,27 @@
 # WL#5004 Comprehensive Locking Stress Test for Azalea
 #
-# Grammar for generation of templates of testing objects
+# Grammar for generation of templates of testing objects (tables).
+# 
+# We finally
+#    - work on copies of the objects
+#    - do not modify the objects
+# created here.
 #
-# This is a prototype which means it might be incomplete and contain errors.
+# Therefore specialities like
+# 1. "Special" tables like partitioned, merged, views etc.
+# 2. Varaition of the storage engine
+# make no sense.
 #
-# General architecture rule:
-#    We
-#    - work on copies of the objects created via gendata.pl
-#    - do not modify the objects via gendata.pl
+# Please read conf/WL5004_sql.yy for more information.
 #
 
 $tables = {
 	rows => [0, 1, 10 ]
-	# partitions => [ undef , 'KEY (pk) PARTITIONS 2' ]
 };
 
 $fields = {
-	types => [ 'int', 'char', 'enum', 'set' ],
-	indexes => [undef, 'key' ],
-	null => [undef, 'not null'],
-	default => [undef, 'default null'],
-	sign => [undef, 'unsigned'],
-	charsets => ['utf8', 'latin1']
+	types => [ 'int' ],
+	indexes => [undef, 'key' ]
 };
 
 $data = {

@@ -19,7 +19,8 @@ sub validate {
 	my $query = $results->[0]->query();
 	my $compare_outcome = GenTest::Comparator::compare($results->[0], $results->[1]);
 
-	return STATUS_OK if $results->[0]->status() == STATUS_SEMANTIC_ERROR || $results->[1]->status() == STATUS_SEMANTIC_ERROR;
+	return STATUS_WONT_HANDLE if $results->[0]->status() == STATUS_SEMANTIC_ERROR || $results->[1]->status() == STATUS_SEMANTIC_ERROR;
+	return STATUS_WONT_HANDLE if $results->[0]->query() =~ m{EXPLAIN}sio;
 
 	if ($compare_outcome == STATUS_LENGTH_MISMATCH) {
 		if ($query =~ m{^\s*select}io) {
@@ -40,10 +41,10 @@ sub validate {
 	# If the discrepancy is on an UPDATE, then the servers have diverged and the test can not continue safely.
 	# 
 
-	if ($query =~ m{^[\s/*!0-9]*(SELECT|ALTER|LOAD\s+INDEX|CACHE\s+INDEX)}io) {
+	if ($query =~ m{^[\s/*!0-9]*(EXPLAIN|SELECT|ALTER|LOAD\s+INDEX|CACHE\s+INDEX)}io) {
 		return $compare_outcome - STATUS_SELECT_REDUCTION;
 	} else {
-		$compare_outcome;
+		return $compare_outcome;
 	}
 }
 

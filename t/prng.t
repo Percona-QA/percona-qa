@@ -11,4 +11,4 @@ my $prng = GenTest::Random->new(
 );
 
 my $numbers = join(' ', map { $prng->digit() } (0..9));
-ok($numbers eq '3 0 5 4 4 7 2 5 7 8', 'prng_stability');
+ok($numbers eq '7 4 9 8 4 1 2 1 5 2', 'prng_stability');

@@ -16,6 +16,7 @@ require GenTest::Simplifier::SQL;
 #
 
 my $query = " SELECT table3 .`date_key` field1  FROM B table1  LEFT  JOIN B  JOIN ( B table3  JOIN ( AA table4  JOIN ( C table6  JOIN A table7  ON table6 .`varchar_nokey`  )  ON table6 .`int_key`  )  ON table6 .`int_nokey`  )  ON table6 .`varchar_nokey`  ON table6 .`date_key`  WHERE  NOT ( (  NOT (  NOT (  NOT (  NOT table7 .`int_key`  >= table1 .`varchar_key`  OR table3 .`time_nokey`  <> table1 .`pk`  )  AND table4 .`date_key`  >= table1 .`date_key`  )  OR table3 .`time_key`  > '2005-07-24 11:06:03' )  AND table1 .`datetime_key`  <=  8  )  AND table7 .`pk`  <  6  )  GROUP  BY field1  ORDER  BY field1  , field1  , field1  , field1  LIMIT  7 ";
+my $trials = 1000;
 
 my $dsn = 'dbi:mysql:host=127.0.0.1:port=19306:user=root:database=test';
 my $dbh = DBI->connect($dsn);
@@ -25,7 +26,7 @@ my $simplifier = GenTest::Simplifier::SQL->new(
 		my $query = shift;
 		print "testing $query\n";
 		my %outcomes;
-		foreach my $trial (1..1000) {
+		foreach my $trial (1..$trials) {
 			my $sth = $dbh->prepare($query);
 			$sth->execute();
 			return 0 if $sth->err() > 0;
@@ -39,9 +40,3 @@ my $simplifier = GenTest::Simplifier::SQL->new(
 my $simplified = $simplifier->simplify($query);
 
 print "Simplified query:\n$simplified;\n";
-
-	
-
-
-
- 

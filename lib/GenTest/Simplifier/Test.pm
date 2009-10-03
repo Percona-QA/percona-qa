@@ -8,6 +8,8 @@ use strict;
 
 use lib 'lib';
 use GenTest::Simplifier::Tables;
+use GenTest::Comparator;
+use GenTest::Constants;
 
 use constant SIMPLIFIER_EXECUTORS	=> 0;
 use constant SIMPLIFIER_QUERIES		=> 1;
@@ -23,7 +25,7 @@ my @optimizer_variables = (
 1;
 
 sub new {
-        my $class = shift;
+		my $class = shift;
 
 	my $simplifier = $class->SUPER::new({
 		executors	=> SIMPLIFIER_EXECUTORS,
@@ -40,21 +42,24 @@ sub simplify {
 	my $test;
 
 	my $executors = $simplifier->executors();
+
 	my $results = $simplifier->results();
 	my $queries = $simplifier->queries();
+	my ($foo, $tcp_port) = $executors->[0]->dbh()->selectrow_array("SHOW VARIABLES LIKE 'port'");
 
 	# If we have two Executors determine the differences in Optimizer settings and print them as test comments
 	# If there is only one executor, dump its settings directly into the test as test queries
 
-	if (defined $executors->[1]) {
-		my $version1 = $executors->[0]->version();
-		my $version2 = $executors->[1]->version();
-
-		if ($version1 ne $version2) {
-			$test .= "# Server0: version = $version1\n";
-			$test .= "# Server1: version = $version2\n\n";
+	foreach my $i (0,1) {
+		if (defined $executors->[$i]) {
+			my $version = $executors->[$i]->getName()." ".$executors->[$i]->version();
+			$test .= "/* Server".$i.": $version */\n";
 		}
+	}
+	$test .= "\n";
 
+
+	if (defined $executors->[1] and $executors->[0]->type() == DB_MYSQL and $executors->[1]->type() == DB_MYSQL) {
 		foreach my $optimizer_variable (@optimizer_variables) {
 			my @optimizer_values;
 			foreach my $i (0..1) {
@@ -64,16 +69,16 @@ sub simplify {
 			}
 
 			if ($optimizer_values[0] ne $optimizer_values[1]) {
-				$test .= "# The value of $optimizer_variable is distinct between the two servers:\n";
+				$test .= "/* The value of $optimizer_variable is distinct between the two servers: */\n";
 				foreach my $i (0..1) {
 					if ($optimizer_values[$i] =~ m{^\d+$}) {
-						$test .= "# Server $i : SET SESSION $optimizer_variable = $optimizer_values[$i];\n";
+						$test .= "/* Server $i : SET SESSION $optimizer_variable = $optimizer_values[$i]; */\n";
 					} else {
-						$test .= "# Server $i : SET SESSION $optimizer_variable = '$optimizer_values[$i]';\n";
+						$test .= "/* Server $i : SET SESSION $optimizer_variable = '$optimizer_values[$i]' */;\n";
 					}
 				}
 			} else {
-				$test .= "# The value of $optimizer_variable is common between the two servers:\n";
+				$test .= "/* The value of $optimizer_variable is common between the two servers: */\n";
 				$test .= "/*!50400 SET SESSION $optimizer_variable = $optimizer_values[0] */;\n";
 			}
 
@@ -105,9 +110,9 @@ sub simplify {
 			$query = $results->[$query_id]->[0]->query();
 		}
 
-		$test .= "# Begin test case for query $query_id\n\n";
+		$test .= "/* Begin test case for query $query_id */\n\n";
 
-		my $simplified_database = 'query'.$query_id;
+		my $simplified_database = 'query'.$query_id.$$;
 
 		my $tables_simplifier = GenTest::Simplifier::Tables->new(
 			dsn		=> $executors->[0]->dsn(),
@@ -119,13 +124,15 @@ sub simplify {
 		
 		if ($#participating_tables > -1) {
 			$test .= "--disable_warnings\n";
-			$test .= "DROP TABLE IF EXISTS ".join(', ', @participating_tables).";\n";
+			foreach my $tab (@participating_tables) {
+				$test .= "DROP TABLE /*! IF EXISTS */ $tab;\n";
+			}
 			$test .= "--enable_warnings\n\n"
 		}
 			
-		my $mysqldump_cmd = "mysqldump -uroot --no-set-names --compact --force --protocol=tcp --port=19306 $simplified_database ";
+		my $mysqldump_cmd = "mysqldump -uroot --extended-insert=FALSE --no-set-names --compact --force --protocol=tcp --port=$tcp_port $simplified_database ";
 		$mysqldump_cmd .= join(' ', @participating_tables) if $#participating_tables > -1;
-		open (MYSQLDUMP, "$mysqldump_cmd|");
+		open (MYSQLDUMP, "$mysqldump_cmd|") or say("Unable to run $mysqldump_cmd: $!");
 		while (<MYSQLDUMP>) {
 			next if $_=~ m{SET \@saved_cs_client}sio;
 			next if $_=~ m{SET character_set_client}sio;
@@ -142,7 +149,7 @@ sub simplify {
 			(defined $results) &&
 			(defined $results->[$query_id])
 		) {
-			$test .= "# Diff:\n\n";
+			$test .= "/* Diff: */\n\n";
 
 			# Add comments to each line in the diff, since MTR has issues with /* */ comment blocks.
 
@@ -151,12 +158,16 @@ sub simplify {
 				$simplifier->results()->[$query_id]->[1]
 			);
 
-			$test .= "# ".join("\n# ", split("\n", $diff))."\n\n\n";
+			$test .= "/* ".join("\n# ", split("\n", $diff))." */\n\n\n";
 		}
 
-		$test .= "DROP TABLE ".join(', ', @participating_tables).";\n\n" if $#participating_tables > -1;
+		if ($#participating_tables > -1) {
+			foreach my $tab (@participating_tables) {
+				$test .= "DROP TABLE $tab;\n";
+			}
+		}
 	
-		$test .= "# End of test case for query $query_id\n\n";
+		$test .= "/* End of test case for query $query_id */\n\n";
 	}
 
 	return $test;

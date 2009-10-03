@@ -23,6 +23,8 @@ use POSIX;
 use Getopt::Long;
 use Time::HiRes;
 
+use GenTest::Utilities;
+
 use GenTest::XML::Report;
 use GenTest::XML::Test;
 use GenTest::XML::BuildInfo;
@@ -30,10 +32,14 @@ use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Validator;
 use GenTest::Generator::FromGrammar;
+use GenTest::Executor;
 use GenTest::Executor::MySQL;
+use GenTest::Executor::JavaDB;
+use GenTest::Utilities;
 use GenTest::Mixer;
 use GenTest::Reporter;
 use GenTest::ReporterManager;
+use GenTest::Filter::Regexp;
 
 my @dsns;
 $dsns[0] = my $default_dsn = 'dbi:mysql:host=127.0.0.1:port=9306:user=root:database=test';
@@ -41,7 +47,7 @@ my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
 my $duration = my $default_duration = 3600;
 
-my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file, $validators, $reporters, $mask, $rows, $varchar_len, $xml_output, $views, $start_dirty);
+my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file, $validators, $reporters, $mask, $rows, $varchar_len, $xml_output, $views, $start_dirty, $filter);
 my $seed = 1;
 
 my @ARGV_saved = @ARGV;
@@ -50,12 +56,13 @@ my $opt_result = GetOptions(
 	'dsn=s'	=> \$dsns[0],
 	'dsn1=s' => \$dsns[0],
 	'dsn2=s' => \$dsns[1],
+	'dsn3=s' => \$dsns[2],
 	'engine=s' => \$engine,
 	'gendata:s' => \$gendata,
 	'grammar=s' => \$grammar_file,
 	'threads=i' => \$threads,
-	'queries=i' => \$queries,
-	'duration=i' => \$duration,
+	'queries=s' => \$queries,
+	'duration=s' => \$duration,
 	'help' => \$help,
 	'debug' => \$debug,
 	'rpl_mode=s' => \$rpl_mode,
@@ -67,10 +74,19 @@ my $opt_result = GetOptions(
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s' => \$xml_output,
 	'views'	=> \$views,
-	'start-dirty' => \$start_dirty
+	'start-dirty' => \$start_dirty,
+	'filter=s' => \$filter
 );
 
-$seed = time() if $seed eq 'time';
+if ($seed eq 'time') {
+	$seed = time();
+	say("Converting --seed=time to --seed=$seed");
+}
+
+$ENV{RQG_DEBUG} = 1 if $debug;
+
+$queries =~ s{K}{000}so;
+$queries =~ s{M}{000000}so;
 
 help() if !$opt_result || $help || not defined $grammar_file;
 
@@ -81,12 +97,12 @@ if ((defined $gendata) && (not defined $start_dirty)) {
 		next if $dsn eq '';
 		my $gendata_result;
 		if ($gendata eq '') {
-			$gendata_result = system("perl $ENV{RQG_HOME}gendata-old.pl --dsn=$dsn ".
-				(defined $engine ? "--engine=$engine" : "").
-				(defined $views ? "--views" : "")
+			$gendata_result = system("perl $ENV{RQG_HOME}gendata-old.pl --dsn=\"$dsn\" ".
+								(defined $views ? "--views " : "").
+				(defined $engine ? "--engine=$engine" : "")
 			);
 		} else {
-			$gendata_result = system("perl $ENV{RQG_HOME}gendata.pl --config=$gendata --dsn=$dsn ".
+			$gendata_result = system("perl $ENV{RQG_HOME}gendata.pl --config=$gendata --dsn=\"$dsn\" ".
 				(defined $engine ? "--engine=$engine" : "")." ".
 				(defined $seed ? "--seed=$seed" : "")." ".
 				(defined $rows ? "--rows=$rows" : "")." ".
@@ -100,10 +116,27 @@ if ((defined $gendata) && (not defined $start_dirty)) {
 my $test_start = time();
 my $test_end = $test_start + $duration;
 
-my (@executors, @reporters);
+my ($grammar, @executors, @reporters);
+
+my $grammar = GenTest::Grammar->new(
+	grammar_file => $grammar_file
+);
+
+exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
+
+foreach my $i (0..2) {
+	next if $dsns[$i] eq '';
+	push @executors, GenTest::Utilites->newFromDSN($dsns[$i]);
+}
+
+my $mysql_only = $executors[0]->type == DB_MYSQL;
+$mysql_only = $mysql_only && $executors[1]->type == DB_MYSQL if $#executors > 0;
+
 
 if (not defined $reporters) {
-	@reporters = ('ErrorLog', 'Backtrace');
+	if ($mysql_only) {
+		@reporters = ('ErrorLog', 'Backtrace');
+	}
 } else {
 	@reporters = split(',', $reporters);
 }
@@ -112,42 +145,50 @@ say("Reporters: ".($#reporters > -1 ? join(', ', @reporters) : "(none)"));
 
 my $reporter_manager = GenTest::ReporterManager->new();
 
-foreach my $i (0,1) {
-	next if $dsns[$i] eq '';
-
-	push @executors, GenTest::Executor::MySQL->new(
-		dsn => $dsns[$i],
-		debug => $debug
-	);
-
-	foreach my $reporter (@reporters) {
-		my $add_result = $reporter_manager->addReporter($reporter, {
-			dsn 		=> $dsns[$i],
-			test_start	=> $test_start,
-			test_end	=> $test_end,
-			test_duration	=> $duration
-		} );
-		exit($add_result) if $add_result > STATUS_OK;
+if ($mysql_only) {
+	foreach my $i (0..2) {
+		next if $dsns[$i] eq '';
+		foreach my $reporter (@reporters) {
+			my $add_result = $reporter_manager->addReporter($reporter, {
+				dsn			=> $dsns[$i],
+				test_start	=> $test_start,
+				test_end	=> $test_end,
+				test_duration	=> $duration
+															} );
+			exit($add_result) if $add_result > STATUS_OK;
+		}
 	}
 }
 
 my @validators;
 
 if (not defined $validators) {
-	@validators = ('ErrorMessageCorruption');
-	push @validators, 'ResultsetComparator' if $dsns[1] ne '';
-	push @validators, 'ReplicationSlaveStatus' if $rpl_mode ne '';
+	@validators = ('ErrorMessageCorruption') if $mysql_only;
+    if ($dsns[2] ne '') {
+        push @validators, 'ResultsetComparator3';
+    } elsif ($dsns[1] ne '') {
+        push @validators, 'ResultsetComparator';
+    }
+	push @validators, 'ReplicationSlaveStatus' if $rpl_mode ne '' && $mysql_only;
+	push @validators, 'QueryProperties' if $grammar->hasProperties() && $mysql_only;
 } else {
 	@validators = split(',', $validators);
 }
 
 say("Validators: ".($#validators > -1 ? join(', ', @validators) : "(none)"));
 
+my $filter_obj;
+
+$filter_obj = GenTest::Filter::Regexp->new( file => $filter ) if defined $filter;
+
 say("Starting $threads processes, $queries queries each, duration $duration seconds.");
 
-my $buildinfo = GenTest::XML::BuildInfo->new(
-	dsns => \@dsns
-);
+my $buildinfo;
+if (defined $xml_output) {
+	$buildinfo = GenTest::XML::BuildInfo->new(
+		dsns => \@dsns
+		);
+}
 
 my $test = GenTest::XML::Test->new(
 	id => Time::HiRes::time(),
@@ -301,9 +342,9 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 	# We are a child process, execute the desired queries and terminate
 
 	my $generator = GenTest::Generator::FromGrammar->new(
-		grammar_file => $grammar_file,
+		grammar => $grammar,
 		varchar_length => $varchar_len,
-		seed => $seed eq 'time' ? time() : $seed, 
+		seed => $seed,
 		thread_id => $id,
 		mask => $mask
 	);
@@ -313,7 +354,8 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 	my $mixer = GenTest::Mixer->new(
 		generator => $generator,
 		executors => \@executors,
-		validators => \@validators
+		validators => \@validators,
+		filters => defined $filter_obj ? [ $filter_obj ] : undef
 	);
 
 	exit (STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
@@ -345,16 +387,16 @@ sub help {
 
 	print <<EOF
 
-        $0 - Testing via random query generation. Options:
+		$0 - Testing via random query generation. Options:
 
-        --dsn           : MySQL DBI resource to connect to (default $default_dsn)
+		--dsn			: MySQL DBI resource to connect to (default $default_dsn)
 	--gendata	: Execute gendata.pl in order to populate tables with sample data (default NO)
-        --engine        : Table engine to use when creating tables with gendata (default: no ENGINE for CREATE TABLE)
+		--engine		: Table engine to use when creating tables with gendata (default: no ENGINE for CREATE TABLE)
 	--threads	: Number of threads to spawn (default $default_threads)
 	--queries	: Numer of queries to execute per thread (default $default_queries);
-        --duration      : Duration of the test in seconds (default $default_duration seconds);
+		--duration		: Duration of the test in seconds (default $default_duration seconds);
 	--grammar	: Grammar file to use for generating the queries (REQUIRED);
-        --help          : This help message
+		--help			: This help message
 	--debug		: Provide debug output
 EOF
 	;
