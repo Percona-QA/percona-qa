@@ -1,9 +1,15 @@
 package GenTest::Transform::OrderBy;
 
+require Exporter;
+@ISA = qw(GenTest GenTest::Transform);
+
 use strict;
 use lib 'lib';
 
+use GenTest;
+use GenTest::Transform;
 use GenTest::Constants;
+
 
 sub transform {
 	my ($class, $original_query) = @_;

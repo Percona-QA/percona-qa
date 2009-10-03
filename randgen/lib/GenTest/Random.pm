@@ -246,7 +246,9 @@ sub letter {
 }
 
 sub hex {
-	return sprintf('x\'%04X\'', $_[0]->urand());
+	my ($prng, $length) = @_;
+	$length = 4 if not defined $length;
+	return '0x'.join ('', map { (0..9,'A'..'F')[$prng->int(0,15)] } (1..$prng->int(1,$length)) );
 }
 
 sub date {
@@ -422,7 +424,7 @@ sub fieldType {
 	} elsif ($field_type == FIELD_TYPE_EMPTY) {
 		return '';
 	} elsif ($field_type == FIELD_TYPE_HEX) {
-		return $rand->hex(4);
+		return $rand->hex($field_length);
 	} elsif ($field_type == FIELD_TYPE_QUID) {
 		return $rand->quid();
 	} elsif ($field_type == FIELD_TYPE_DICT) {

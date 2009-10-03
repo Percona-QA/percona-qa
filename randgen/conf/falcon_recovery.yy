@@ -11,7 +11,7 @@ query:
 #
 
 stall_serial_log_rotation:
-	START TRANSACTION ; CREATE TEMPORARY TABLE IF NOT EXISTS stall ( `f1` INTEGER , `connection_id` INTEGER ) ENGINE = Falcon ; INSERT IGNORE INTO stall SELECT `int`, CONNECTION_ID() FROM _table LIMIT _digit ; UPDATE stall SET f1 = f1 + 1 WHERE connection_id = CONNECTION_ID() ; SELECT IF( CONNECTION_ID() = 10 , SLEEP(1800) , 1 ) ;
+	START TRANSACTION ; CREATE TEMPORARY TABLE IF NOT EXISTS stall ( `f1` INTEGER , `connection_id` INTEGER ) ENGINE = Falcon ; INSERT INTO stall VALUES (_digit, CONNECTION_ID()) ; UPDATE stall SET f1 = f1 + 1 WHERE connection_id = CONNECTION_ID() ; SELECT IF( CONNECTION_ID() = 10 , SLEEP(1800) , 1 ) ;
 
 serial_log_event:
 	blob_delete |

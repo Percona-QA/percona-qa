@@ -29,13 +29,16 @@ use constant TABLE_PARTITION	=> 5;
 use constant TABLE_PK		=> 6;
 use constant TABLE_SQL		=> 7;
 use constant TABLE_NAME		=> 8;
+use constant TABLE_VIEWS	=> 9;
+use constant TABLE_MERGES	=> 10;
+use constant TABLE_NAMES	=> 11;
 
 use constant DATA_NUMBER	=> 0;
 use constant DATA_STRING	=> 1;
 use constant DATA_BLOB		=> 2;
 use constant DATA_TEMPORAL	=> 3;
 
-my ($config_file, $dbh, $engine, $help, $dsn, $rows, $varchar_len);
+my ($config_file, $dbh, $engine, $help, $dsn, $rows, $varchar_len, $views, $server_id);
 my $seed = 1;
 
 my $opt_result = GetOptions(
@@ -45,7 +48,9 @@ my $opt_result = GetOptions(
 	'seed=s' => \$seed,
 	'engine:s' => \$engine,
 	'rows=i' => \$rows,
-	'varchar-length=i' => \$varchar_len
+	'views' => \$views,
+	'varchar-length=i' => \$varchar_len,
+	'server-id=i' > \$server_id
 );
 
 help() if not defined $opt_result || $help;
@@ -80,8 +85,13 @@ $table_perms[TABLE_ENGINE] = $tables->{engines} || [ $engine ];
 $table_perms[TABLE_CHARSET] = $tables->{charsets} || [ undef ];
 $table_perms[TABLE_COLLATION] = $tables->{collations} || [ undef ];
 $table_perms[TABLE_PARTITION] = $tables->{partitions} || [ undef ];
-$table_perms[TABLE_PK] = $tables->{pk} || [ 'integer auto_increment' ];
+$table_perms[TABLE_PK] = $tables->{pk} || $tables->{primary_key} || [ 'integer auto_increment' ];
 $table_perms[TABLE_ROW_FORMAT] = $tables->{row_formats} || [ undef ];
+
+$table_perms[TABLE_VIEWS] = $tables->{views} || (defined $views ? [ "" ] : undef );
+$table_perms[TABLE_MERGES] = $tables->{merges} || undef ;
+
+$table_perms[TABLE_NAMES] = $tables->{names} || [ ];
 
 $field_perms[FIELD_TYPE] = $fields->{types} || [ 'int', 'varchar', 'date', 'time', 'datetime' ];
 $field_perms[FIELD_NULLABILITY] = $fields->{null} || $fields->{nullability} || [ undef ];
@@ -96,8 +106,9 @@ $data_perms[DATA_BLOB] = $data->{blobs} || [ 'data', 'data', 'data', 'data', 'nu
 $data_perms[DATA_TEMPORAL] = $data->{temporals} || [ 'date', 'time', 'datetime', 'year', 'timestamp', 'null' ];
 
 my @tables = (undef);
+my @myisam_tables;
 
-foreach my $cycle (TABLE_ROW, TABLE_ENGINE, TABLE_CHARSET, TABLE_COLLATION, TABLE_PARTITION, TABLE_PK, TABLE_ROW_FORMAT ) {
+foreach my $cycle (TABLE_ROW, TABLE_ENGINE, TABLE_CHARSET, TABLE_COLLATION, TABLE_PARTITION, TABLE_PK, TABLE_ROW_FORMAT) {
 	@tables = map {
 		my $old_table = $_;
 		if (not defined $table_perms[$cycle]) {
@@ -135,7 +146,7 @@ foreach my $cycle (FIELD_TYPE, FIELD_NULLABILITY, FIELD_SIGN, FIELD_INDEX, FIELD
 			$old_field;	# Retain old field, sign does not apply to non-integer types
 		} elsif (
 			($cycle == FIELD_CHARSET) &&
-			($old_field->[FIELD_TYPE] =~ m{bit|int|bool|float|double|dec|numeric|fixed|blob|date|time|year}sio)
+			($old_field->[FIELD_TYPE] =~ m{bit|int|bool|float|double|dec|numeric|fixed|blob|date|time|year|binary}sio)
 		) {
 			$old_field;	# Retain old field, charset does not apply to integer types
 		} else {
@@ -189,7 +200,7 @@ foreach my $field_id (0..$#fields) {
 	my $key_len;
 	
 	if (
-		($field_copy[FIELD_TYPE] =~ m{blob|text}sio ) &&  
+		($field_copy[FIELD_TYPE] =~ m{blob|text|binary}sio ) &&  
 		($field_copy[FIELD_TYPE] !~ m{\(}sio )
 	) {
 		$key_len = " (255)";
@@ -207,33 +218,44 @@ foreach my $field_id (0..$#fields) {
 	$fields[$field_id]->[FIELD_SQL] = "`$field_name` ". join(' ' , grep { $_ ne '' } @field_copy);
 
 	if ($field_copy[FIELD_TYPE] =~ m{timestamp}sio ) {
-		$field->[FIELD_SQL] .= ' DEFAULT 0';
+		$field->[FIELD_SQL] .= ' NULL DEFAULT 0';
 	}
 }
 
 foreach my $table_id (0..$#tables) {
 	my $table = $tables[$table_id];
 	my @table_copy = @$table;
-	my $table_name;
 
-	$table_name = "table".join('_', grep { $_ ne '' } @table_copy);
-	$table_name =~ s{[^A-Za-z0-9]}{_}sgio;
-	$table_name =~ s{ }{_}sgio;
-	$table_name =~ s{_+}{_}sgio;
-	$table_name =~ s{auto_increment}{autoinc}siog;
-	$table_name =~ s{partition_by}{part_by}siog;
-	$table_name =~ s{partition}{part}siog;
-	$table_name =~ s{partitions}{parts}siog;
-	$table_name =~ s{values_less_than}{}siog;
-	$table_name =~ s{integer}{int}siog;
+	if ($#{$table_perms[TABLE_NAMES]} > -1) {
+		$table->[TABLE_NAME] = shift @{$table_perms[TABLE_NAMES]};
+	} else {
+		my $table_name;
+		$table_name = "table".join('_', grep { $_ ne '' } @table_copy);
+		$table_name =~ s{[^A-Za-z0-9]}{_}sgio;
+		$table_name =~ s{ }{_}sgio;
+		$table_name =~ s{_+}{_}sgio;
+		$table_name =~ s{auto_increment}{autoinc}siog;
+		$table_name =~ s{partition_by}{part_by}siog;
+		$table_name =~ s{partition}{part}siog;
+		$table_name =~ s{partitions}{parts}siog;
+		$table_name =~ s{values_less_than}{}siog;
+		$table_name =~ s{integer}{int}siog;
 
-	$table->[TABLE_NAME] = $table_name;
+		if (
+			(uc($table_copy[TABLE_ENGINE]) eq 'MYISAM') ||
+			($table_copy[TABLE_ENGINE] eq '')
+		) {
+			push @myisam_tables, $table_name;
+		}
+	
+		$table->[TABLE_NAME] = $table_name;
+	}
 
 	$table_copy[TABLE_ENGINE] = "ENGINE=".$table_copy[TABLE_ENGINE] if $table_copy[TABLE_ENGINE] ne '';
 	$table_copy[TABLE_ROW_FORMAT] = "ROW_FORMAT=".$table_copy[TABLE_ROW_FORMAT] if $table_copy[TABLE_ROW_FORMAT] ne '';
 	$table_copy[TABLE_CHARSET] = "CHARACTER SET ".$table_copy[TABLE_CHARSET] if $table_copy[TABLE_CHARSET] ne '';
 	$table_copy[TABLE_COLLATION] = "COLLATE ".$table_copy[TABLE_COLLATION] if $table_copy[TABLE_COLLATION] ne '';
-	$table_copy[TABLE_PARTITION] = "PARTITION BY ".$table_copy[TABLE_PARTITION] if $table_copy[TABLE_PARTITION] ne '';
+	$table_copy[TABLE_PARTITION] = "/*!50100 PARTITION BY ".$table_copy[TABLE_PARTITION]." */" if $table_copy[TABLE_PARTITION] ne '';
 
 	delete $table_copy[TABLE_ROW];	# Do not include number of rows in the CREATE TABLE
 	delete $table_copy[TABLE_PK];	# Do not include PK definition at the end of CREATE TABLE
@@ -246,7 +268,7 @@ foreach my $table_id (0..$#tables) {
 	my @table_copy = @$table;
 	my @fields_copy = @fields;
 	
-	if (lc($table->[TABLE_ENGINE]) eq 'falcon') {
+	if (uc($table->[TABLE_ENGINE]) eq 'FALCON') {
 		@fields_copy =  grep {
 			!($_->[FIELD_TYPE] =~ m{blob|text}io && $_->[FIELD_INDEX] ne '')
 		} @fields ;
@@ -279,10 +301,17 @@ foreach my $table_id (0..$#tables) {
 
 	my $index_sqls = $#index_fields > -1 ? join(",\n", map { $_->[FIELD_INDEX_SQL] } @index_fields) : undef;
 
-	my $create_result = output ("CREATE TABLE `$table->[TABLE_NAME]` (".join(",\n\t", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
+	my $create_result = output ("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n\t", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
 	if ($create_result > 1) {
 		say("# Unable to create table $table->[TABLE_NAME], skipping...");
 		next;
+	}
+
+	if (defined $table_perms[TABLE_VIEWS]) {
+		foreach my $view_id (0..$#{$table_perms[TABLE_VIEWS]}) {
+			my $view_name = 'v'.$table->[TABLE_NAME]."_$view_id";
+			output("CREATE OR REPLACE ".uc($table_perms[TABLE_VIEWS]->[$view_id])." VIEW `$view_name` AS SELECT * FROM `$table->[TABLE_NAME]`");
+		}
 	}
 
 	if ($table->[TABLE_ROW] > 1000) {
@@ -307,7 +336,7 @@ foreach my $table_id (0..$#tables) {
 
 				if ($field->[FIELD_TYPE] =~ m{date|time|year}sio) {
 					$value_type = DATA_TEMPORAL;
-				} elsif ($field->[FIELD_TYPE] =~ m{blob|text}sio) {
+				} elsif ($field->[FIELD_TYPE] =~ m{blob|text|binary}sio) {
 					$value_type = DATA_BLOB;
 				} elsif ($field->[FIELD_TYPE] =~ m{int|float|double|dec|numeric|fixed|bool|bit}sio) {
 					$value_type = DATA_NUMBER;
@@ -363,6 +392,16 @@ foreach my $table_id (0..$#tables) {
 
 output("COMMIT");
 
+if (
+	(defined $table_perms[TABLE_MERGES]) && 
+	($#myisam_tables > -1)
+) {
+	foreach my $merge_id (0..$#{$table_perms[TABLE_MERGES]}) {
+		my $merge_name = 'merge_'.$merge_id;
+		output ("CREATE TABLE `$merge_name` LIKE `".$myisam_tables[0]."`");
+		output ("ALTER TABLE `$merge_name` ENGINE=MERGE UNION(".join(',',@myisam_tables).") ".uc($table_perms[TABLE_MERGES]->[$merge_id]));
+	}
+}
 
 sub output {
 	my $statement = shift;

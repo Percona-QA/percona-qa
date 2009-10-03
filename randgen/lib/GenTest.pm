@@ -1,6 +1,6 @@
 package GenTest;
 use base 'Exporter';
-@EXPORT = ('say', 'tmpdir', 'safe_exit', 'windows', 'xml_timestamp');
+@EXPORT = ('say', 'tmpdir', 'safe_exit', 'windows', 'xml_timestamp', 'rqg_debug');
 
 use strict;
 
@@ -97,6 +97,14 @@ sub xml_timestamp {
 	
 	return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year, $mon ,$mday ,$hour, $min, $sec);
 	
+}
+
+sub rqg_debug {
+	if ($ENV{RQG_DEBUG}) {
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 1;

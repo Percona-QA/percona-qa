@@ -10,12 +10,15 @@ use GenTest::Generator::FromGrammar;
 my %grammars = (
 	'1simplest'		=> '1 a A',
 	'2numbers'		=> '1 11 111',
-	'3single_char_quoted'	=> '`1` `A` `a`',
+	'2quotes'		=> "\" ' `",
+	'3single_char_backtick'	=> '`1` `A` `a`',
+	'3single_char_quotes'	=> "'1' 'A' 'a'",
+	'3single_char_doubleq'	=> '"1" "A" "a"',
 	'4composite'		=> 'A 1A1 A1A a1a 1a1 `1A1` `A1A` `a1a` `1a1`',
 	'5identifiers'		=> 'a.a a.a.a A.A A.A.A',
 );
 
-use Test::More tests => 22;
+use Test::More tests => 29;
 
 foreach my $grammar_name (sort keys %grammars) {
 
@@ -74,3 +77,20 @@ foreach my $perl_id (0..1) {
 	ok($output_perl eq '0 A B C 0', '6perl'.$perl_id);
 }
 
+my $grammar_compact = GenTest::Grammar->new(
+		grammar_string	=> '
+rule1:
+	| a | b | c;
+
+view_replace:
+        # Only 20 %
+         | | | | OR REPLACE ;
+
+rule2:
+	x | y | z ;
+',
+		grammar_flags	=> GRAMMAR_FLAG_COMPACT_RULES
+);
+
+my $elements = $grammar_compact->rule('view_replace')->components();
+ok ($#$elements == 1, 'grammar_compact');

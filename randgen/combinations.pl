@@ -6,8 +6,8 @@ use GenTest::Random;
 use Getopt::Long;
 use Data::Dumper;
 
-my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata);
-my $seed = 1;
+my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, $seed);
+
 my $combinations;
 my %results;
 my @commands;
@@ -32,6 +32,8 @@ open(CONF, $config_file) or die "unable to open config file '$config_file': $!";
 read(CONF, my $config_text, -s $config_file);
 eval ($config_text);
 die "Unable to load $config_file: $@" if $@;
+
+mkdir($basedir);
 
 my $comb_count = $#$combinations + 1;
 

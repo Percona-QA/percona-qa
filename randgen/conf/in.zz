@@ -1,0 +1,14 @@
+$tables = {
+        rows => [100],
+        primary_key => [ undef ]
+};
+
+$fields = {
+        types => [ 'int' ],
+        indexes => [ 'key' ]
+};
+
+$data = {
+        numbers => [ '5' ]
+}
+

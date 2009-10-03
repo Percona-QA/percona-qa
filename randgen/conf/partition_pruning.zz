@@ -1,0 +1,63 @@
+$tables = {
+          names => ['PP_A', 'PP_B', 'PP_C', 'PP_D', 'PP_E', 'PP_F', 'PP_G', 'PP_H', 'PP_I', 'PP_J', 'PP_K', 'PP_L', 'PP_M',
+                    'PP_N', 'PP_O', 'PP_P', 'PP_Q', 'PP_R', 'PP_S', 'PP_T' ],
+          rows => [ 5000 ] ,
+          engines => [ 'MyISAM', 'MEMORY' ] ,
+          pk => [ undef ] , 
+          partitions => [
+                          "LINEAR HASH(TO_SECONDS(`datetime`)) PARTITIONS 7",
+                          "RANGE COLUMN_LIST(int_signed, varchar_5) 
+                          ( PARTITION p0 VALUES LESS THAN (COLUMN_LIST(5, 'm')), 
+                          PARTITION p1 VALUES LESS THAN (COLUMN_LIST(10, 'za' )))",
+                          "RANGE COLUMN_LIST(int_signed, varchar_10)
+                          SUBPARTITION BY HASH( TO_SECONDS(`datetime`))
+                          SUBPARTITIONS 3 (
+                          PARTITION p0 VALUES LESS THAN (COLUMN_LIST(2, 'b')),
+                          PARTITION p1 VALUES LESS THAN (COLUMN_LIST(4, 'd')),
+                          PARTITION p2 VALUES LESS THAN (COLUMN_LIST(10,'za')))",
+                          "RANGE COLUMN_LIST(varchar_5, varchar_10)
+                          SUBPARTITION BY HASH ( YEAR(`date`))
+                          SUBPARTITIONS 2 (
+                          PARTITION p0 VALUES LESS THAN (COLUMN_LIST('m','m')),
+                          PARTITION p1 VALUES LESS THAN (COLUMN_LIST('za','za')))",
+                          "LIST COLUMN_LIST(int_signed)
+                          SUBPARTITION BY HASH( TO_SECONDS(`date`))
+                          SUBPARTITIONS 2 (
+                          PARTITION p0 VALUES IN (COLUMN_LIST(NULL), COLUMN_LIST(0),
+                                                 COLUMN_LIST(1), COLUMN_LIST(2),
+                                                 COLUMN_LIST(3), COLUMN_LIST(4),
+                                                 COLUMN_LIST(5), COLUMN_LIST(6),
+                                                 COLUMN_LIST(7), COLUMN_LIST(8),
+                                                 COLUMN_LIST(9)))",
+                          "LIST COLUMN_LIST(int_signed)
+                           SUBPARTITION BY LINEAR HASH( TO_SECONDS(`date`))
+                           SUBPARTITIONS 4 (
+                           PARTITION p0 VALUES IN (COLUMN_LIST(1),COLUMN_LIST(3),
+                                                  COLUMN_LIST(5),COLUMN_LIST(7),
+                                                  COLUMN_LIST(9),COLUMN_LIST(NULL)),
+                           PARTITION p1 VALUES IN (COLUMN_LIST(2),COLUMN_LIST(4),
+                                                  COLUMN_LIST(6),COLUMN_LIST(8),
+                                                  COLUMN_LIST(0)))" ,
+                          "LIST COLUMN_LIST(int_signed)
+                          SUBPARTITION BY HASH( TO_SECONDS(`date`))
+                          SUBPARTITIONS 2 (
+                          PARTITION p0 VALUES IN (COLUMN_LIST(1), COLUMN_LIST(2),
+                                                 COLUMN_LIST(3), COLUMN_LIST(4),
+                                                 COLUMN_LIST(5), COLUMN_LIST(6),
+                                                 COLUMN_LIST(7), COLUMN_LIST(8),
+                                                 COLUMN_LIST(9), COLUMN_LIST(0),
+                                                 COLUMN_LIST(NULL)))" ]
+  
+};
+
+
+$fields = {
+          types => [ 'int' , 'varchar(5)' , 'varchar(10)' , 'date' ,  'datetime' ] ,
+          sign => [ 'signed' ]
+
+};
+
+$data => {
+numbers => [ 'digit' , 'digit' , 'digit' , 'digit' , 'null' ],
+strings => [ 'letter' , 'letter' , 'letter' , 'letter' , 'null' ]
+};

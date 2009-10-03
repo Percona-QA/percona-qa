@@ -20,10 +20,10 @@ select_list:
 
 join_list:
 	new_table_item |
-	(new_table_item join_type new_table_item ON ( current_table_item . _field_key = previous_table_item . _field_key ) ) ;
+	(new_table_item join_type new_table_item ON ( current_table_item . _field = previous_table_item . _field ) ) ;
 
 join_type:
-	INNER JOIN | CROSS JOIN | left_right outer JOIN | STRAIGHT_JOIN ;  
+	INNER JOIN | left_right outer JOIN | STRAIGHT_JOIN ;  
 
 left_right:
 	LEFT | RIGHT ;

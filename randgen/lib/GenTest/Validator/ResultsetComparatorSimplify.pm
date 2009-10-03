@@ -27,6 +27,9 @@ sub validate {
 	my ($comparator, $executors, $results) = @_;
 
 	return STATUS_WONT_HANDLE if $#$results != 1;
+
+	return STATUS_WONT_HANDLE if $results->[0]->query() =~ m{EXPLAIN}sio;
+
 	return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK;
 	return STATUS_WONT_HANDLE if $results->[1]->status() != STATUS_OK;
 
@@ -56,19 +59,33 @@ sub validate {
 		my $simplifier_sql = GenTest::Simplifier::SQL->new(
 			oracle => sub {
 				my $oracle_query = shift;
+
 				my @oracle_results;
 				foreach my $executor (@$executors) {
-					push @oracle_results, $executor->execute($oracle_query, 1);
+					my $oracle_result = $executor->execute($oracle_query, 1);
 
+					return ORACLE_ISSUE_STATUS_UNKNOWN if $oracle_result->status() != STATUS_OK;
+
+					push @oracle_results, $oracle_result;
 				}
+
 				my $oracle_compare = GenTest::Comparator::compare($oracle_results[0], $oracle_results[1]);
-				if (
+
+				#
+				# If both result sets are empty, we can not decide if the issue continues to be repeatable
+				# or not. So, to be safe, we return "unknown", otherwise we risk messing up the differential
+				# coverage reports
+				#
+
+				if (($oracle_results[0]->rows() == 0) && ($oracle_results[1]->rows() == 0)) {
+					return ORACLE_ISSUE_STATUS_UNKNOWN;
+				} elsif (
 					($oracle_compare == STATUS_LENGTH_MISMATCH) ||
 					($oracle_compare == STATUS_CONTENT_MISMATCH)
 				) {
-					return 1;
+					return ORACLE_ISSUE_STILL_REPEATABLE;
 				} else {
-					return 0;
+					return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
 				}
 		        }
 		);
@@ -79,8 +96,8 @@ sub validate {
 			say("Simplified query: $simplified_query;");
 			my $simplified_results = [];
 
-			$simplified_results->[0] = $executors->[0]->execute($simplified_query);
-			$simplified_results->[1] = $executors->[1]->execute($simplified_query);
+			$simplified_results->[0] = $executors->[0]->execute($simplified_query, 1);
+			$simplified_results->[1] = $executors->[1]->execute($simplified_query, 1);
 			say(GenTest::Comparator::dumpDiff($simplified_results->[0], $simplified_results->[1]));
 
 			my $simplifier_test = GenTest::Simplifier::Test->new(
@@ -107,10 +124,10 @@ sub validate {
 	# If the discrepancy is on an UPDATE, then the servers have diverged and the test can not continue safely.
 	# 
 
-	if ($query =~ m{^\s*(select|alter)}io) {
+        if ($query =~ m{^[\s/*!0-9]*(EXPLAIN|SELECT|ALTER|LOAD\s+INDEX|CACHE\s+INDEX)}io) {
 		return $compare_outcome - STATUS_SELECT_REDUCTION;
 	} else {
-		$compare_outcome;
+		return $compare_outcome;
 	}
 }
 

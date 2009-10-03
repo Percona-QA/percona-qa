@@ -50,6 +50,7 @@ sub report {
 
 	my $binary = $reporter->serverInfo('binary');
 	my $language = $reporter->serverVariable('language');
+	my $lc_messages_dir = $reporter->serverVariable('lc_messages_dir');
 	my $datadir = $reporter->serverVariable('datadir');
 	$datadir =~ s{[\\/]$}{}sgio;
 	my $recovery_datadir = $datadir.'_recovery';
@@ -84,6 +85,7 @@ sub report {
 		'--loose-falcon-debug-mask=65019',
 		'--loose-skip-falcon-support-xa',
 		'--language='.$language,
+		'--loose-lc-messages-dir='.$lc_messages_dir,
 		'--datadir="'.$recovery_datadir.'"',
 		'--log-output=file',
 		'--log="'.$recovery_datadir.'/query.log"',
@@ -184,7 +186,7 @@ sub report {
 				} elsif ($column_name =~ m{char}sio) {
 					$main_predicate = "WHERE `$column_name` >= ''";
 				} elsif ($column_name =~ m{date}sio) {
-					$main_predicate = "WHERE `$column_name` >= '0000-00-00'";
+					$main_predicate = "WHERE `$column_name` >= '1900-01-01'";
 				} elsif ($column_name =~ m{time}sio) {
 					$main_predicate = "WHERE `$column_name` >= '-838:59:59'";
 				} else {
@@ -259,7 +261,8 @@ sub report {
 						if ($sth->{NUM_OF_FIELDS} > 0) {
 							my $result = Dumper($sth->fetchall_arrayref());
 							print $result;
-							return STATUS_DATABASE_CORRUPTION if $result =~ m{error|corrupt|repaired|invalid|key|crashed}sio;
+							next if $result =~ m{is not BASE TABLE}sio;	# Do not process VIEWs
+							return STATUS_DATABASE_CORRUPTION if $result =~ m{error|corrupt|repaired|invalid|crashed}sio;
 						};
 
 						$sth->finish();

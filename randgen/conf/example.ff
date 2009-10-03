@@ -1,0 +1,5 @@
+$rules = {
+	'test_regexp'	=> qr{update}si,
+	'test_string'	=> 'DELETE FROM `DD` WHERE `time_nokey` < 0 LIMIT 4',
+	'test_sub'	=> sub { m{insert}sio }
+};

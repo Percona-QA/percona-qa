@@ -1,15 +1,19 @@
 $combinations = [
 	[
 	'
+		--grammar=conf/engine_stress.yy
+		--gendata=conf/engine_stress.zz
 		--engine=Innodb
 		--reporters=Deadlock,ErrorLog,Backtrace,Recovery,Shutdown
 		--mysqld=--loose-falcon-lock-wait-timeout=1
 		--mysqld=--loose-innodb-lock-wait-timeout=1
 		--mysqld=--log-output=none
 		--mysqld=--skip-safemalloc
+		--mem
+		--duration=1200
 	'], [
-		'--mysqld=--innodb-thread-concurrency-timer-based=TRUE',
-		'--mysqld=--innodb-thread-concurrency-timer-based=FALSE'
+		'--mysqld=--loose-innodb-thread-concurrency-timer-based=TRUE',
+		'--mysqld=--loose-innodb-thread-concurrency-timer-based=FALSE'
 	], [
 		'--rows=10',
 		'--rows=100',

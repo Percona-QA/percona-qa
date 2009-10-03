@@ -19,10 +19,10 @@ use constant PROCESSLIST_PROCESS_INFO		=> 7;
 use constant CONNECT_TIMEOUT_THRESHOLD		=> 60;
 
 # Minimum lifetime of a query before it is considered suspicios
-use constant QUERY_LIFETIME_THRESHOLD		=> 300;	# Seconds = 5 minutes
+use constant QUERY_LIFETIME_THRESHOLD		=> 600;	# Seconds
 
 # Number of suspicious queries required before a deadlock is declared
-use constant STALLED_QUERY_COUNT_THRESHOLD	=> 3;
+use constant STALLED_QUERY_COUNT_THRESHOLD	=> 5;
 
 sub monitor {
 	my $reporter = shift;
@@ -80,8 +80,8 @@ sub monitor_nonthreaded {
 
 		foreach my $status_query (
 			"SHOW PROCESSLIST",
-			"SHOW ENGINE INNODB STATUS",
-			"SHOW OPEN TABLES"
+			"SHOW ENGINE INNODB STATUS"
+			# "SHOW OPEN TABLES" - disabled due to bug #46433
 		) {
 			say("Executing $status_query:");
 			my $status_result = $dbh->selectall_arrayref($status_query);

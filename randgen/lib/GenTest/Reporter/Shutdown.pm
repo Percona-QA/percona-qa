@@ -16,11 +16,24 @@ sub report {
 	my $reporter = shift;
 
 	my $dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
-
-	say("Shutting down the server.");
+	my $pid = $reporter->serverInfo('pid');
 
 	if (defined $dbh) {
+		say("Shutting down the server...");
 		$dbh->func('shutdown', 'admin');
+	}
+
+	if (!windows()) {
+		say("Waiting for mysqld with pid $pid to terminate...");
+		foreach my $i (1..60) {
+			if (! -e "/proc/$pid") {
+				print "\n";
+				last;
+			}
+			sleep(1);
+			print "*";
+		}
+		say("... waiting complete.");
 	}
 	
 	return STATUS_OK;
