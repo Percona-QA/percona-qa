@@ -78,7 +78,7 @@ if ($config_file ne '') {
 	die "Unable to load $config_file: $@" if $@;
 }
 
-output("SET SQL_MODE='NO_ENGINE_SUBSTITUTION'");
+#output("SET SQL_MODE='NO_ENGINE_SUBSTITUTION'");
 output("SET STORAGE_ENGINE='$engine'") if $engine ne '';
 
 $table_perms[TABLE_ROW] = $tables->{rows} || (defined $rows ? [ $rows ] : undef ) || [0, 1, 2, 10, 100];
