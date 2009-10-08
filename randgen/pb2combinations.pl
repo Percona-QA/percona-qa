@@ -4,7 +4,7 @@ use Cwd;
 
 my ($basedir, $vardir, $tree, $test) = @ARGV;
 
-chdir('gentest/mysql-test/gentest');
+chdir('randgen');
 
 print localtime()." [$$] Information on the host system:\n";
 system("uname -a");
