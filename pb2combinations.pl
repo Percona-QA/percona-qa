@@ -26,7 +26,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata=conf/combinations.zz
 		--config=conf/falcon_simple.cc
 		--duration=900
-		--trials=100
+		--trials=4
 		--seed=time
 	';
 } elsif ($test =~ m{falcon_combinations_transactions}io ) {
@@ -35,7 +35,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata=conf/transactions.zz
 		--config=conf/falcon_simple.cc
 		--duration=900
-		--trials=100
+		--trials=4
 		--seed=time
 	';
 } elsif ($test =~ m{innodb_combinations_simple}io ) {
@@ -44,7 +44,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata=conf/combinations.zz
 		--config=conf/innodb_simple.cc
 		--duration=1800
-		--trials=100
+		--trials=4
 		--seed=time
 	';
 } elsif ($test =~ m{innodb_combinations_stress}io ) {
@@ -53,7 +53,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata=conf/engine_stress.zz
 		--config=conf/innodb_simple.cc
 		--duration=600
-		--trials=100
+		--trials=4
 		--seed=time
 	';
 } elsif ($test =~ m{falcon_combinations_varchar}io ) {
@@ -62,7 +62,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata=conf/varchar.zz
 		--config=conf/falcon_varchar.cc
 		--duration=900
-		--trials=100
+		--trials=4
 		--seed=time
 	';
 } else {
