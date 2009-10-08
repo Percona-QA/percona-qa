@@ -96,7 +96,7 @@ sub type {
 	}
 }
 
-my @dbid = ("Unknown","MySQL","Postgres","JavaDB");
+my @dbid = ("Unknown","MySQL","Postgres","JavaDB","Drizzle");
 
 sub getName {
     my ($self) = @_;
