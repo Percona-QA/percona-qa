@@ -7,7 +7,9 @@ use lib "$ENV{RQG_HOME}/lib";
 use DBI;
 use Getopt::Long;
 use GenTest;
+use GenTest::Constants;
 use GenTest::Random;
+use GenTest::Executor;
 
 use constant FIELD_TYPE			=> 0;
 use constant FIELD_CHARSET		=> 1;
@@ -65,6 +67,11 @@ my $prng = GenTest::Random->new(
 
 $dbh = DBI->connect($dsn, undef, undef, { PrintError => 1 } ) if defined $dsn;
 
+my $executor = GenTest::Executor->newFromDSN($dsn);
+$executor->init();
+
+help() if not defined $executor;
+
 #  
 # The configuration file is actually a perl script, so we read it by eval()-ing it
 #  
@@ -79,7 +86,7 @@ if ($config_file ne '') {
 	die "Unable to load $config_file: $@" if $@;
 }
 
-output("SET SQL_MODE='NO_ENGINE_SUBSTITUTION'");
+$executor->execute("SET SQL_MODE= 'NO_ENGINE_SUBSTITUTION'") if $executor->type == DB_MYSQL;
 output("SET STORAGE_ENGINE='$engine'") if $engine ne '';
 
 $table_perms[TABLE_ROW] = $tables->{rows} || (defined $rows ? [ $rows ] : undef ) || [0, 1, 2, 10, 100];
