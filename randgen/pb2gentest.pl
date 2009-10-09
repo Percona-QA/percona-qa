@@ -13,7 +13,7 @@ if (
 	($^O eq 'MSWin64')
 ) {
 	# For tail and for cdb
-	$ENV{PATH} = 'G:\pb2\scripts\gentest\mysql-test\gentest\bin;G:\pb2\scripts\bin;C:\Program Files\Debugging Tools for Windows (x86);'.$ENV{PATH};
+	$ENV{PATH} = 'G:\pb2\scripts\randgen\bin;G:\pb2\scripts\bin;C:\Program Files\Debugging Tools for Windows (x86);'.$ENV{PATH};
 	$ENV{_NT_SYMBOL_PATH} = 'srv*c:\\cdb_symbols*http://msdl.microsoft.com/download/symbols;cache*c:\\cdb_symbols';
 
 	# For vlad
@@ -35,7 +35,7 @@ if (
 	system("date");
 }
 
-chdir('gentest/mysql-test/gentest');
+chdir('randgen');
 
 print localtime()." [$$] Information on the host system:\n";
 system("hostname");

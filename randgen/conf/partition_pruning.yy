@@ -54,10 +54,10 @@ char_update:
   char_update_query ; char_select_count ;
 
 char_update_query:
-  UPDATE _table[invariant] SET `varchar_5` = _char[invariant] WHERE special_where_list;
+  UPDATE _table[invariant] SET `varchar_5_utf8` = _char[invariant] WHERE special_where_list;
 
 char_select_count:
-  SELECT COUNT(*) FROM _table[invariant] WHERE `varchar_5` = _char[invariant];
+  SELECT COUNT(*) FROM _table[invariant] WHERE `varchar_5_utf8` = _char[invariant];
 
 
 delete:
@@ -117,21 +117,34 @@ where_item:
   table1 . partitioned_int_field arithmetic_operator _digit |
   table1 . partitioned_int_field not BETWEEN _digit[invariant] AND ( _digit[invariant] + _digit ) |
   table1 . partitioned_int_field not IN ( number_list ) |
-  table1 . partitioned_char_field arithmetic_operator existing_table_item . char_field |
   table1 . partitioned_char_field arithmetic_operator _char |
-  table1 . partitioned_char_field not IN (char_list ) ;
+  table1 . partitioned_char_field not IN (char_list ) | 
+  table1 . utf8_char_field arithmetic_operator existing_table_item . utf8_char_field |
+  table1 . latin1_char_field arithmetic_operator existing_table_item . latin1_char_field |
+  table1 . cp932_char_field arithmetic_operator existing_table_item . cp932_char_field ; 
+  
 
 partitioned_int_field:
     `int_signed` ;
 
 partitioned_char_field:
-    `varchar_5` ;
+    `varchar_5_utf8` | `varchar_5_cp932` | `varchar_5_latin1` |
+    `varchar_10_utf8` | `varchar_10_cp932` | `varchar_10_latin1` ;
 
 int_field:
     `int_signed` | `int_signed_key` ;
 
+utf8_char_field:
+  `varchar_5_utf8` | `varchar_5_utf8_key` | `varchar_10_utf8` | `varchar_10_utf8_key` ;
+
+latin1_char_field:
+  `varchar_5_latin1` | `varchar_5_latin1_key` | `varchar_10_latin1` | `varchar_10_latin1_key`;
+
+cp932_char_field:
+  `varchar_5_cp932` | `varchar_5_cp932_key` | `varchar_10_cp932` | `varchar_10_cp932_key` ; 
+
 char_field:
-    `varchar_5` | `varchar_5_key` | `varchar_10` | `varchar_10_key` ;
+  utf8_char_field | latin1_char_field | cp932_char_field ;
 
 date_field:
   `datetime` | `date_key` | `datetime_key` | `date` ; 
