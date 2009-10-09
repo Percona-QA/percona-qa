@@ -39,12 +39,13 @@ use constant DATA_BLOB		=> 2;
 use constant DATA_TEMPORAL	=> 3;
 use constant DATA_ENUM		=> 4;
 
-my ($config_file, $dbh, $engine, $help, $dsn, $rows, $varchar_len, $views, $server_id);
+my ($config_file, $debug, $dbh, $engine, $help, $dsn, $rows, $varchar_len, $views, $server_id);
 my $seed = 1;
 
 my $opt_result = GetOptions(
 	'help'	=> \$help,
 	'config:s' => \$config_file,
+	'debug'	=> \$debug,
 	'dsn:s'	=> \$dsn,
 	'seed=s' => \$seed,
 	'engine:s' => \$engine,
@@ -410,6 +411,9 @@ if (
 sub output {
 	my $statement = shift;
 	if (defined $dbh) {
+		if ($debug) {
+			printf("In gendata executing ==> %s\n",$statement);
+		}
 		$dbh->do($statement);
 		return $dbh->err();
 	} else {
@@ -424,7 +428,8 @@ sub help {
 
         $0 - Random Data Generator. Options:
 
-        --dsn           : MySQL DBI resource to connect to (default: no DSN, print CREATE/INSERT statements to STDOUT)
+        --debug         : Turn on debugging for additional output
+        --dsn           : DBI resource to connect to (default: no DSN, print CREATE/INSERT statements to STDOUT)
         --engine        : Table engine to use when creating tables with gendata (default: no ENGINE for CREATE TABLE)
         --config        : Configuration ZZ file describing the data (see RandomDataGenerator in MySQL Wiki)
 	--rows		: Number of rows to generate for each table, unless specified in the ZZ file
