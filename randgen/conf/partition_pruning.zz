@@ -1,7 +1,7 @@
 $tables = {
           names => ['PP_A', 'PP_B', 'PP_C', 'PP_D', 'PP_E', 'PP_F', 'PP_G', 'PP_H', 'PP_I', 'PP_J', 'PP_K', 'PP_L', 'PP_M',
                     'PP_N', 'PP_O', 'PP_P', 'PP_Q', 'PP_R', 'PP_S', 'PP_T' , 'PP_U', 'PP_V', 'PP_W', 'PP_X', 'PP_Y', 'PP_Z'],
-          rows => [ 100 ] ,
+          rows => [ 5000 ] ,
           engines => [ 'MyISAM', 'Innodb' ] ,
           pk => [ undef ] , 
           partitions => [
