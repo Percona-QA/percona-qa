@@ -271,6 +271,8 @@ sub execute {
 
 	return GenTest::Result->new( query => $query, status => STATUS_UNKNOWN_ERROR ) if not defined $dbh;
 
+	$query = $executor->preprocess($query);
+
 	if (
 		(not defined $executor->[EXECUTOR_DRIZZLE_AUTOCOMMIT]) &&
 		(
@@ -322,6 +324,24 @@ sub execute {
 				say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
 				$reported_errors{$errstr}++;
 			}
+		} elsif (
+			($err_type == STATUS_SERVER_CRASHED) ||
+			($err_type == STATUS_SERVER_KILLED)
+		) {
+			$dbh = DBI->connect($executor->dsn(), undef, undef, {
+				PrintError => 0,
+				RaiseError => 0,
+				AutoCommit => 1
+			} );
+
+			# If server is still connectable, it is not a real crash, but most likely a KILL query
+
+			if (defined $dbh) {
+				$err_type = STATUS_SEMANTIC_ERROR;
+				$executor->setDbh($dbh);
+			}
+
+			say("Query: $query failed: $err ".$sth->errstr()) if !$silent;
 		} else {
 			$executor->[EXECUTOR_ERROR_COUNTS]->{$sth->errstr()}++ if rqg_debug() && !$silent;
 			say("Query: $query failed: $err ".$sth->errstr()) if !$silent;
@@ -329,7 +349,7 @@ sub execute {
 
 		$result = GenTest::Result->new(
 			query		=> $query,
-			status		=> $err2type{$err} || STATUS_UNKNOWN_ERROR,
+			status		=> $err_type || STATUS_UNKNOWN_ERROR,
 			err		=> $err,
 			errstr		=> $sth->errstr(),
 			sqlstate	=> $sth->state(),
@@ -437,14 +457,21 @@ sub masterStatus {
 
 sub explain {
 	my ($executor, $query) = @_;
-	my $explain_output = $executor->dbh()->selectall_arrayref("EXPLAIN $query");
+
+	my $sth_output = $executor->dbh()->prepare("EXPLAIN /*!50100 PARTITIONS */ $query");
+
+	$sth_output->execute();
+
 	my @explain_fragments;
-	foreach my $explain_row (@$explain_output) {
-		push @explain_fragments, "select_type: ".($explain_row->[1] || '(empty)');
 
-		push @explain_fragments, "type: ".($explain_row->[3] || '(empty)');
+	while (my $explain_row = $sth_output->fetchrow_hashref()) {
+		push @explain_fragments, "select_type: ".($explain_row->{select_type} || '(empty)');
 
-		foreach my $extra_item (split('; ', ($explain_row->[9] || '(empty)')) ) {
+		push @explain_fragments, "type: ".($explain_row->{type} || '(empty)');
+
+		push @explain_fragments, "partitions: ".$explain_row->{table}.":".$explain_row->{partitions} if defined $explain_row->{partitions};
+
+		foreach my $extra_item (split('; ', ($explain_row->{Extra} || '(empty)')) ) {
 			$extra_item =~ s{0x.*?\)}{%d\)}sgio;
 			$extra_item =~ s{PRIMARY|[a-z_]+_key}{%s}sgio;
 			push @explain_fragments, "extra: ".$extra_item;
@@ -461,7 +488,6 @@ sub explain {
 	}
 
 }
-
 sub DESTROY {
 	my $executor = shift;
 	if (rqg_debug()) {
@@ -495,7 +521,7 @@ sub tables {
 	return [] if not defined $executor->dbh();
 
 	my $cache_key = join('-', ('tables', $database));
-	my $query = "SHOW TABLES ".(defined $database ? "FROM $database" : "");
+	my $query = "SHOW TABLES ".(defined $database ? "FROM $database" : "FROM test");
 	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
 	return $caches{$cache_key};
 }
@@ -520,13 +546,14 @@ sub fieldsNoPK {
 	return [] if not defined $executor->dbh();
 
 	my $cache_key = join('-', ('fields_no_pk', $table, $database));
+
 	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref("
 		SELECT COLUMN_NAME
 		FROM INFORMATION_SCHEMA.COLUMNS
 		WHERE TABLE_NAME = '".(defined $table ? $table : $executor->tables($database)->[0] )."'
 		AND TABLE_SCHEMA = ".(defined $database ? "'$database'" : 'DATABASE()' )."
 		AND COLUMN_KEY != 'PRI'
-	");
+	") if not exists $caches{$cache_key};
 
 	return $caches{$cache_key};
 }
@@ -542,7 +569,7 @@ sub fieldsIndexed {
 		SHOW INDEX
 		FROM ".(defined $table ? $table : $executor->tables($database)->[0]).
 		(defined $database ? " FROM $database " : "")
-	, { Columns=>[5] }) if not defined $caches{$cache_key};
+	, { Columns=>[5] }) if not exists $caches{$cache_key};
 
 	return $caches{$cache_key};
 }
@@ -585,11 +612,11 @@ sub errorType {
 sub normalizeError {
 	my ($executor, $errstr) = @_;
 
-	$errstr =~ s{\d+}{%d}sgio if $errstr !~ m{from storage engine}sio; # Make all errors involving numbers the same, e.g. duplicate key errors
-
 	foreach my $i (0..$#errors) {
 		last if $errstr =~ s{$patterns[$i]}{$errors[$i]}si;
 	}
+
+	$errstr =~ s{\d+}{%d}sgio if $errstr !~ m{from storage engine}sio; # Make all errors involving numbers the same, e.g. duplicate key errors
 
 	$errstr =~ s{\.\*\?}{%s}sgio;
 
