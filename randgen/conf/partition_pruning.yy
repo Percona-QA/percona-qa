@@ -92,9 +92,12 @@ simple_select_list:
    nonaggregate_select_item | nonaggregate_select_item | nonaggregate_select_item |
    nonaggregate_select_item | nonaggregate_select_item, simple_select_list | nonaggregate_select_item, simple_select_list ;
 
+join_list_disabled:
+   ( new_table_item join_type ( ( new_table_item join_type new_table_item ON ( join_condition ) ) ) ON ( join_condition ) ) ;
+
 join_list:
    new_table_item join_type new_table_item ON ( join_condition ) |
-   new_table_item | new_table_item | new_table_item | new_table_item ;
+   new_table_item | new_table_item | new_table_item | new_table_item | new_table_item  ;
 
 join_type:
    INNER JOIN | left_right outer JOIN | STRAIGHT_JOIN ;
@@ -121,8 +124,11 @@ where_item:
   table1 . partitioned_char_field not IN (char_list ) | 
   table1 . utf8_char_field arithmetic_operator existing_table_item . utf8_char_field |
   table1 . latin1_char_field arithmetic_operator existing_table_item . latin1_char_field |
-  table1 . cp932_char_field arithmetic_operator existing_table_item . cp932_char_field ; 
-  
+  table1 . cp932_char_field arithmetic_operator existing_table_item . cp932_char_field | 
+  TO_SECONDS( table1 . `date` ) arithmetic_operator TO_SECONDS( _date ) | 
+  table1 . `date` arithmetic_operator _date |
+  TO_SECONDS( table1 . `datetime` ) arithmetic_operator TO_SECONDS( _datetime ) | 
+  table1 . `datetime` arithmetic_operator _datetime ;
 
 partitioned_int_field:
     `int_signed` ;
@@ -216,7 +222,15 @@ new_table_item:
 	_table AS { "table".++$tables };
 
 table_one_two:
-      table1 | table1 | table1 | table1 | table2 ;
+      table1 ;
+
+# disabled this to reduce number of bad queries
+# can merge with rule table_one_two to add more
+# variety to queries, but it is recommended that   
+# table1 is still favored disproportionately
+# (there aren't a lot of joins)
+table_one_two_disabled:
+ table2 ;
 
 current_table_item:
 	{ "table".$tables };
@@ -240,7 +254,7 @@ int_indexed:
     `int_signed_key` ;
 
 char_indexed:
-    `varchar_5_key` | `varchar_10_key` ;
+    `varchar_5_utf8_key` | `varchar_10_utf8_key` ;
 
 arithmetic_operator:
 	= | > | < | != | <> | <= | >= ;
