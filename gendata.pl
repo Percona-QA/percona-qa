@@ -41,7 +41,7 @@ use constant DATA_BLOB		=> 2;
 use constant DATA_TEMPORAL	=> 3;
 use constant DATA_ENUM		=> 4;
 
-my ($config_file, $debug, $dbh, $engine, $help, $dsn, $rows, $varchar_len, $views, $server_id);
+my ($config_file, $debug, $engine, $help, $dsn, $rows, $varchar_len, $views, $server_id);
 my $seed = 1;
 
 my $opt_result = GetOptions(
@@ -65,8 +65,6 @@ my $prng = GenTest::Random->new(
 	varchar_length => $varchar_len
 );
 
-$dbh = DBI->connect($dsn, undef, undef, { PrintError => 1 } ) if defined $dsn;
-
 my $executor = GenTest::Executor->newFromDSN($dsn);
 $executor->init();
 
@@ -87,7 +85,7 @@ if ($config_file ne '') {
 }
 
 $executor->execute("SET SQL_MODE= 'NO_ENGINE_SUBSTITUTION'") if $executor->type == DB_MYSQL;
-output("SET STORAGE_ENGINE='$engine'") if $engine ne '';
+$executor->execute("SET STORAGE_ENGINE='$engine'") if $engine ne '';
 
 $table_perms[TABLE_ROW] = $tables->{rows} || (defined $rows ? [ $rows ] : undef ) || [0, 1, 2, 10, 100];
 $table_perms[TABLE_ENGINE] = $tables->{engines} || [ $engine ];
@@ -301,7 +299,7 @@ foreach my $table_id (0..$#tables) {
 	
 	$prng->shuffleArray(\@fields_copy);
 	
-	output ("DROP TABLE IF EXISTS $table->[TABLE_NAME]");
+	$executor->execute("DROP TABLE IF EXISTS $table->[TABLE_NAME]");
 
 	# Compose the CREATE TABLE statement by joining all fields and indexes and appending the table options
 
@@ -311,22 +309,18 @@ foreach my $table_id (0..$#tables) {
 
 	my $index_sqls = $#index_fields > -1 ? join(",\n", map { $_->[FIELD_INDEX_SQL] } @index_fields) : undef;
 
-	my $create_result = output ("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n\t", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
-	if ($create_result > 1) {
-		say("# Unable to create table $table->[TABLE_NAME], skipping...");
-		next;
-	}
+	$executor->execute("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n\t", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
 
 	if (defined $table_perms[TABLE_VIEWS]) {
 		foreach my $view_id (0..$#{$table_perms[TABLE_VIEWS]}) {
 			my $view_name = 'v'.$table->[TABLE_NAME]."_$view_id";
-			output("CREATE OR REPLACE ".uc($table_perms[TABLE_VIEWS]->[$view_id])." VIEW `$view_name` AS SELECT * FROM `$table->[TABLE_NAME]`");
+			$executor->execute("CREATE OR REPLACE ".uc($table_perms[TABLE_VIEWS]->[$view_id])." VIEW `$view_name` AS SELECT * FROM `$table->[TABLE_NAME]`");
 		}
 	}
 
 	if ($table->[TABLE_ROW] > 1000) {
-		output("SET AUTOCOMMIT=OFF");
-		output("START TRANSACTION");
+		$executor->execute("SET AUTOCOMMIT=OFF");
+		$executor->execute("START TRANSACTION");
 	}
 
 	my @row_buffer;
@@ -390,19 +384,19 @@ foreach my $table_id (0..$#tables) {
 			(($row_id % 10) == 0) ||
 			($row_id == $table->[TABLE_ROW])
 		) {
-			output("INSERT IGNORE INTO $table->[TABLE_NAME] VALUES ".join(', ', @row_buffer));
+			$executor->execute("INSERT IGNORE INTO $table->[TABLE_NAME] VALUES ".join(', ', @row_buffer));
 			@row_buffer = ();
 		}
 
 		if (($row_id % 10000) == 0) {
-			output("COMMIT");
+			$executor->execute("COMMIT");
 			say("# Progress: loaded $row_id out of $table->[TABLE_ROW] rows");
 		}
 	}
-	output("COMMIT");
+	$executor->execute("COMMIT");
 }
 
-output("COMMIT");
+$executor->execute("COMMIT");
 
 if (
 	(defined $table_perms[TABLE_MERGES]) && 
@@ -410,22 +404,8 @@ if (
 ) {
 	foreach my $merge_id (0..$#{$table_perms[TABLE_MERGES]}) {
 		my $merge_name = 'merge_'.$merge_id;
-		output ("CREATE TABLE `$merge_name` LIKE `".$myisam_tables[0]."`");
-		output ("ALTER TABLE `$merge_name` ENGINE=MERGE UNION(".join(',',@myisam_tables).") ".uc($table_perms[TABLE_MERGES]->[$merge_id]));
-	}
-}
-
-sub output {
-	my $statement = shift;
-	if (defined $dbh) {
-		if ($debug) {
-			printf("In gendata executing ==> %s\n",$statement);
-		}
-		$dbh->do($statement);
-		return $dbh->err();
-	} else {
-		print "$statement;\n";
-		return undef;
+		$executor->execute("CREATE TABLE `$merge_name` LIKE `".$myisam_tables[0]."`");
+		$executor->execute("ALTER TABLE `$merge_name` ENGINE=MERGE UNION(".join(',',@myisam_tables).") ".uc($table_perms[TABLE_MERGES]->[$merge_id]));
 	}
 }
 
