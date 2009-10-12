@@ -11,6 +11,9 @@ use strict;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Grammar::Rule;
+use GenTest::Random;
+
+use Data::Dumper;
 
 use constant GRAMMAR_RULES	=> 0;
 use constant GRAMMAR_FILE	=> 1;
@@ -26,22 +29,28 @@ sub new {
 
 
 	my $grammar = $class->SUPER::new({
-		'grammar_file'          => GRAMMAR_FILE,
-		'grammar_string'        => GRAMMAR_STRING,
-		'grammar_flags'		=> GRAMMAR_FLAGS
+		'grammar_file'			=> GRAMMAR_FILE,
+		'grammar_string'		=> GRAMMAR_STRING,
+		'grammar_flags'		=> GRAMMAR_FLAGS,
+		'grammar_rules'		=> GRAMMAR_RULES
 	}, @_);
 
-        $grammar->[GRAMMAR_RULES] = {} if not defined $grammar->rules();
 
-	if (defined $grammar->file()) {
-		my $parse_result = $grammar->parseFromFile($grammar->file());
-		return undef if $parse_result > STATUS_OK;
-	}
-
-	if (defined $grammar->string()) {
-		my $parse_result = $grammar->parseFromString($grammar->string());
-		return undef if $parse_result > STATUS_OK;
-	}
+    if (defined $grammar->rules()) {
+        $grammar->[GRAMMAR_STRING] = $grammar->toString();
+    } else {
+        $grammar->[GRAMMAR_RULES] = {};
+        
+        if (defined $grammar->file()) {
+            my $parse_result = $grammar->parseFromFile($grammar->file());
+            return undef if $parse_result > STATUS_OK;
+        }
+        
+        if (defined $grammar->string()) {
+            my $parse_result = $grammar->parseFromString($grammar->string());
+            return undef if $parse_result > STATUS_OK;
+        }
+    }
 
 	return $grammar;
 }
@@ -224,6 +233,140 @@ sub hasProperties {
 	} else {
 		return 0;
 	}
+}
+
+##
+## Make a new grammar using the patch_grammar to replace old rules and
+## add new rules.
+##
+sub patch {
+    my ($self, $patch_grammar) = @_;
+
+    my $patch_rules = $patch_grammar->rules();
+    my %patch_rules = %$patch_rules;
+
+    my $rules = $self->rules();
+    my %rules = %$rules;
+
+    foreach my $ruleName (keys %patch_rules) {
+        $rules{$ruleName} = $patch_rules{$ruleName};
+    }
+
+    my $new_grammar = GenTest::Grammar->new(grammar_rules => \%rules);
+    return $new_grammar;
+}
+
+
+sub firstMatchingRule {
+    my ($self, @ids) = @_;
+    foreach my $x (@ids) {
+        return $self->rule($x) if defined $self->rule($x);
+    }
+}
+
+##
+## The "body" of topGrammar
+##
+
+sub topGrammarX {
+    my ($self, $level, $max, @rules) = @_;
+    if ($max > 0) {
+        my %result;
+        foreach my $rule (@rules) {
+            my $components = $rule->components();
+            my @components = @$components;
+            foreach my $c (@components) {
+                my @subrules = ();
+                foreach my $cp (@$c) {
+                    push @subrules,$self->rule($cp) if defined $self->rule($cp);
+                }
+                my $componentrules = 
+                    $self->topGrammarX($level + 1, $max -1,@subrules);
+                if (defined  $componentrules) {
+                    my %x = %$componentrules;
+                    foreach my $sr (keys %x) {
+                        $result{$sr} = $x{$sr};
+                    }
+                }
+            }
+            $result{$rule->name()} = $rule;
+        }
+        return \%result;
+    } else {
+        return undef;
+    }
+}
+
+
+##
+## Produce a new grammar which is the toplevel $level rules of this
+## grammar
+##
+
+sub topGrammar {
+    my ($self, $levels, @startrules) = @_;
+
+    my $start = $self->firstMatchingRule(@startrules);
+
+    my $rules = $self->topGrammarX(0,$levels, $start);
+
+    return GenTest::Grammar->new(grammar_rules => $rules);
+}
+
+##
+## Produce a new grammar keeping a masked set of rules. The mask is 16
+## bits. If the mask is too short, we use the original mask as a seed
+## for a random number generator and generate more 16-bit values as
+## needed. The mask is applied in alphapetical order on the rules to
+## ensure a deterministicresult since I don't trust the Perl %hashes
+## to be always ordered the same twhen they are produced e.g. from
+## topGrammar or whatever...
+##
+
+
+sub mask {
+    my ($self, $mask) = @_;
+
+
+    my $rules = $self->rules();
+
+    my %newRuleset;
+
+    my $i = 0;
+    my $prng;
+    foreach my $rulename (sort keys %$rules) {
+        my $rule = $self->rule($rulename);
+        my $components = $rule->components();
+        my @components = @$components;
+        my @newComponents;
+        foreach my $x (@components) {
+            push @newComponents, $x if (1 << ($i++)) & $mask;
+            if ($i % 16 == 0) {
+                # We need more bits!
+                $i = 0;
+                $prng = GenTest::Random->new(seed => $mask) 
+                    if not defined $prng;
+                $mask = $prng->uint16(0,0x7fff);
+            }
+        }
+        
+        my $newRule;
+
+        ## If no components were chosen, we chose all to have a working
+        ## grammar.
+        if ($#newComponents < 0) {
+            $newRule = $rule;
+        } else {
+            $newRule= GenTest::Grammar::Rule->new(name => $rulename,
+                                              components => \@newComponents);
+        }
+        $newRuleset{$rulename}= $newRule;
+        
+    }
+
+    print Dumper(%newRuleset);
+    
+    return GenTest::Grammar->new(grammar_rules => \%newRuleset);
 }
 
 1;
