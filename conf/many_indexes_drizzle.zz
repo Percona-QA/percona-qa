@@ -10,5 +10,6 @@ $fields = {
 
 $data = {
         strings => [ 'letter', 'english', undef ],
+        enum => [ 'letter' ],
         blobs => [ 'letter', 'english' ]
 }

@@ -101,6 +101,7 @@ if ((defined $gendata) && (not defined $start_dirty)) {
 			$gendata_result = system("perl $ENV{RQG_HOME}gendata.pl --config=$gendata --dsn=\"$dsn\" ".
 				(defined $engine ? "--engine=$engine" : "")." ".
 				(defined $seed ? "--seed=$seed" : "")." ".
+				(defined $debug ? "--debug" : "")." ".
 				(defined $rows ? "--rows=$rows" : "")." ".
 				(defined $views ? "--views" : "")." ".
 				(defined $varchar_len ? "--varchar-length=$varchar_len" : "")." ");
