@@ -6,7 +6,8 @@ query_type:
   select | select | select | select | select |
   select | select | select | select | select |
   select | select | select | select | select |
-  update | update | update | delete | delete ;
+  update | update | update | delete | delete |
+  insert | insert ;
 
 distict:  DISTINCT | | | | | | | | | ;
 
@@ -67,18 +68,25 @@ int_delete:
   int_delete_query ; int_select_count ;
 
 int_delete_query:
-  DELETE FROM _table[invariant] WHERE `int_signed` = _digit[invariant] and_or special_where_list ;
+  DELETE FROM _table[invariant] WHERE `int_signed` = _digit[invariant] AND special_where_list ;
 
 special_where_list:
-  ( special_where_item ) | ( special_where_item ) |
+  not ( special_where_item ) | not ( special_where_item ) |
   ( special_where_list and_or special_where_item ) ;
 
 special_where_item:
-  _table[invariant] . partitioned_int_field arithmetic_operator _digit |
+  _table[invariant] . partitioned_int_field comparison_operator _digit  |
+  _table[invariant] . int_field comparison_operator _digit  |
   _table[invariant] . partitioned_int_field not BETWEEN _digit[invariant] AND ( _digit[invariant] + _digit ) |
+  _table[invariant] . int_field not BETWEEN _digit[invariant] AND ( _digit[invariant] + _digit ) |
   _table[invariant] . partitioned_int_field not IN ( number_list ) |
-  _table[invariant] . partitioned_char_field arithmetic_operator _char |
-  _table[invariant] . partitioned_char_field not IN (char_list ) ;
+  _table[invariant] . int_field not in (number_list) |
+  _table[invariant] . partitioned_char_field comparison_operator _char |
+  _table[invariant] . partitioned_char_field not IN (char_list ) |
+  _table[invariant] . char_field not IN (char_list) ; 
+
+insert:
+  INSERT INTO _table SELECT _field_list FROM _table[invariant] WHERE special_where_list ORDER BY _field_list LIMIT _digit ;
 
 #######################################################
 # query clause rules
@@ -112,23 +120,24 @@ join_condition:
 #########################################################
 
 where_list:
-  ( where_item ) | ( where_item ) |
-  ( where_list and_or where_item ) ;
+  not ( where_item ) | not ( where_item ) |
+  not ( where_list and_or where_item ) ;
 
 where_item:
-  table1 . partitioned_int_field arithmetic_operator existing_table_item . int_field |
-  table1 . partitioned_int_field arithmetic_operator _digit |
+  table1 . partitioned_int_field comparison_operator existing_table_item . int_field  |
+  table1 . partitioned_int_field comparison_operator _digit  |
   table1 . partitioned_int_field not BETWEEN _digit[invariant] AND ( _digit[invariant] + _digit ) |
   table1 . partitioned_int_field not IN ( number_list ) |
-  table1 . partitioned_char_field arithmetic_operator _char |
+  table1 . partitioned_char_field comparison_operator _char  |
   table1 . partitioned_char_field not IN (char_list ) | 
-  table1 . utf8_char_field arithmetic_operator existing_table_item . utf8_char_field |
-  table1 . latin1_char_field arithmetic_operator existing_table_item . latin1_char_field |
-  table1 . cp932_char_field arithmetic_operator existing_table_item . cp932_char_field | 
-  TO_SECONDS( table1 . `date` ) arithmetic_operator TO_SECONDS( _date ) | 
-  table1 . `date` arithmetic_operator _date |
-  TO_SECONDS( table1 . `datetime` ) arithmetic_operator TO_SECONDS( _datetime ) | 
-  table1 . `datetime` arithmetic_operator _datetime ;
+  table1 . utf8_char_field comparison_operator existing_table_item . utf8_char_field  |
+  table1 . latin1_char_field comparison_operator existing_table_item . latin1_char_field  |
+  table1 . cp932_char_field comparison_operator existing_table_item . cp932_char_field  | 
+  table1 . `date` comparison_operator _date  |
+  table1 . `datetime` comparison_operator _datetime  |
+  table1 . date_field comparison_operator _date  |
+  table1 . char_field comparison_operator _char  |
+  table1 . int_field  comparison_operator _digit  ;
 
 partitioned_int_field:
     `int_signed` ;
@@ -177,16 +186,17 @@ having_clause:
         | | | | | | | | | HAVING having_list;
 
 having_list:
-        having_item |
-        having_item |
+        not ( having_item ) |
+        not ( having_item ) |
         (having_list and_or having_item)  ;
 
 having_item:
-        existing_select_item arithmetic_operator value |
-        existing_select_item arithmetic_operator value |
-        existing_select_item arithmetic_operator value |
-        existing_select_item arithmetic_operator value |
-        existing_select_item arithmetic_operator existing_select_item ;
+         existing_table_item . char_field comparison_operator _char |
+         existing_table_item . int_field comparison_operator _digit |
+         existing_table_item . date_field comparison_operator _date |
+         existing_table_item . char_field comparison_operator existing_table_item . char_field |
+         existing_table_item . int_field comparison_operator existing_table_item . int_field |
+         existing_table_item . date_field comparison_operator existing_table_tiem . date_field ;
 
 order_by_clause:
  | | | | ORDER BY total_order_by desc limit ;
@@ -256,7 +266,7 @@ int_indexed:
 char_indexed:
     `varchar_5_utf8_key` | `varchar_10_utf8_key` ;
 
-arithmetic_operator:
+comparison_operator:
 	= | > | < | != | <> | <= | >= ;
 
 aggregate:
@@ -266,7 +276,7 @@ int_aggregate:
         SUM( | aggregate ;
 
 and_or:
-        AND | AND | OR ;
+        AND | AND | AND | AND | OR | OR | XOR ;
 
 not:
    | | | | NOT ;
@@ -275,3 +285,4 @@ not:
 value:
         _digit | _digit | _digit | _digit | _digit |
         _char | _char | _char | _char | _char ;
+
