@@ -61,7 +61,7 @@ sub new {
 		);
 	}
         
-    if (not defined $generator->mask_level() {
+    if (not defined $generator->maskLevel()) {
         $generator->[GENERATOR_MASK_LEVEL] = 1;    
     }
 
@@ -115,7 +115,7 @@ sub next {
 	my $grammar = $generator->grammar();
 	my $prng = $generator->prng();
 	my $mask = $generator->mask();
-    my $mask_level = $generator->mask_level();
+    my $mask_level = $generator->maskLevel();
     
 	#
 	# If a temporary file has been left from a previous statement, unlink it.
