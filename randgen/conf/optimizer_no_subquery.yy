@@ -10,7 +10,7 @@
 #       queries: 10k+.  We can see a lot with lower values, but over 10k is    #
 #                best.  The intersect optimization happens with low frequency  #
 #                so larger values help us to hit it at least some of the time  #
-#       engines: MyISAM *and* Innodb.  Certain optimizations are only hit with #
+#       engines: MyISAM, Innodb, Memory.  Certain optimizations are only hit with #
 #                one engine or another and we should use both to ensure we     #
 #                are getting maximum coverage                                  #
 #       Validators:  ResultsetComparatorSimplify                               #
@@ -62,10 +62,11 @@ loose_select_item:
 # The bulk of interesting things happen with this main rule                    #
 ################################################################################
 main_select:
-        simple_select | simple_select | mixed_select ;
+        simple_select | simple_select | aggregate_select | 
+        mixed_select |  mixed_select | mixed_select ;
 
 mixed_select:
-	SELECT distinct select_option select_list
+	SELECT distinct straight_join select_option select_list
 	FROM join_list
 	where_clause
 	group_by_clause
@@ -73,7 +74,7 @@ mixed_select:
 	order_by_clause ;
 
 simple_select:
-        SELECT distinct select_option simple_select_list
+        SELECT distinct straight_join select_option simple_select_list
         FROM join_list
         where_clause
         optional_group_by
@@ -81,7 +82,7 @@ simple_select:
         order_by_clause ;
  
 aggregate_select:
-        SELECT distinct select_option aggregate_select_list
+        SELECT distinct straight_join select_option aggregate_select_list
         FROM join_list
         where_clause
         optional_group_by
@@ -91,6 +92,8 @@ aggregate_select:
 distinct: DISTINCT | | | |  ;
 
 select_option:  | | | | | | | | | SQL_SMALL_RESULT ;
+
+straight_join:  | | | | | | | | | | | STRAIGHT_JOIN ;
 
 select_list:
 	new_select_item |

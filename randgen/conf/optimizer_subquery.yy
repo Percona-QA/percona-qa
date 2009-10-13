@@ -30,14 +30,34 @@
 query:
 	{ @nonaggregates = () ; $tables = 0 ; $fields = 0 ; $subquery_idx=0 ; $child_subquery_idx=0 ; "" } main_select ;
 
-
 main_select:
+        simple_select | simple_select | simple_select | simple_select |
+        mixed_select |  mixed_select |  mixed_select |  mixed_select  | 
+        aggregate_select ;
+
+mixed_select:
 	explain_extended SELECT distinct straight_join select_option select_list
 	FROM join_list
 	where_clause
 	group_by_clause
         having_clause
 	order_by_clause ;
+
+simple_select:
+        explain_extended SELECT distinct straight_join select_option simple_select_list
+        FROM join_list
+        where_clause
+        optional_group_by
+        having_clause
+        order_by_clause ;
+ 
+aggregate_select:
+        explain_extended SELECT distinct straight_join select_option aggregate_select_list
+        FROM join_list
+        where_clause
+        optional_group_by
+        having_clause
+        order_by_clause ;
 
 explain_extended:
     | | | | | | | | | explain_extended2 ;
@@ -54,6 +74,15 @@ select_list:
 	new_select_item |
 	new_select_item , select_list |
         new_select_item , select_list ;
+
+simple_select_list:
+        nonaggregate_select_item |
+        nonaggregate_select_item , simple_select_list |
+        nonaggregate_select_item , simple_select_list ;
+
+aggregate_select_list:
+        aggregate_select_item | aggreagate_select_item |
+        aggregate_select_item, aggregate_select_list ;
 
 join_list:
 ################################################################################
@@ -511,8 +540,10 @@ char_list:
 # that the query doesn't lend itself to variable result sets                   #
 ################################################################################
 group_by_clause:
-        |
 	{ scalar(@nonaggregates) > 0 ? " GROUP BY ".join (', ' , @nonaggregates ) : "" }  ;
+
+optional_group_by:
+        | | group_by_clause ;
 
 having_clause:
 	| HAVING having_list;
