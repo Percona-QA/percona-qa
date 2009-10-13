@@ -12,7 +12,7 @@ use Getopt::Long;
 
 $| = 1;
 
-my ($gendata, $help, $grammar_file, $mask, $dsn);
+my ($gendata, $help, $grammar_file, $mask, $mask_level, $dsn);
 my $queries = my $default_queries = 1000;
 my $seed = 1;
 
@@ -24,6 +24,7 @@ my $opt_result = GetOptions(
 	'help' => \$help,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
+	'mask-level=i' => \$mask_level,
 	'dsn=s' => \$dsn
 );
 
@@ -32,7 +33,8 @@ help() if !$opt_result || $help || not defined $grammar_file;
 my $generator = GenTest::Generator::FromGrammar->new(
 	grammar_file => $grammar_file,
 	seed => ($seed eq 'time') ? time() : $seed,
-	mask => $mask
+	mask => $mask,
+        mask_level => $mask_level
 );
 
 return STATUS_ENVIRONMENT_FAILURE if not defined $generator;

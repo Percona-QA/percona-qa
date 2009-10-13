@@ -115,7 +115,7 @@ sub next {
 	my $grammar = $generator->grammar();
 	my $prng = $generator->prng();
 	my $mask = $generator->mask();
-    my $mask_level = $generator->maskLevel();
+	my $mask_level = $generator->maskLevel();
     
 	#
 	# If a temporary file has been left from a previous statement, unlink it.
@@ -140,7 +140,7 @@ sub next {
         my $top = $grammar->topGrammar($mask_level,
                                        "thread".$generator->threadId(),
                                        "query");
-        my $maskedTop = $top->mak($mask);
+        my $maskedTop = $top->mask($mask);
         $grammar = $grammar->patch($maskedTop);
 	}
 
