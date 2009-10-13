@@ -106,7 +106,7 @@ simple_select_list:
         nonaggregate_select_item , simple_select_list ;
 
 aggregate_select_list:
-        aggregate_select_item | aggreagate_select_item |
+        aggregate_select_item | aggregate_select_item |
         aggregate_select_item, aggregate_select_list ;
 
 join_list:
