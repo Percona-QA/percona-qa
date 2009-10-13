@@ -262,6 +262,7 @@ sub firstMatchingRule {
     foreach my $x (@ids) {
         return $self->rule($x) if defined $self->rule($x);
     }
+    return undef;
 }
 
 ##
