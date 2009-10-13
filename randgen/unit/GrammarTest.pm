@@ -40,7 +40,7 @@ sub test_patch_grammar {
     $self->assert_not_null($patchedGrammar->rule('item2'));
 
 
-    $item1= $patchedGrammar->rule('item1');
+    my $item1= $patchedGrammar->rule('item1');
     $self->assert_not_null($item1);
     $self->assert_matches(qr/foobar/, $item1->toString());
 }
@@ -52,6 +52,18 @@ sub test_top_grammar {
     $self->assert_not_null($topGrammar);
     $self->assert_not_null($topGrammar->rule('query'));
     $self->assert_null($topGrammar->rule('itme1'));
+}
+
+sub test_mask_grammar {
+    my $self =shift;
+
+    my $maskedGrammar = $grammar->mask(0xaaaa);
+
+    $self->assert_not_null($maskedGrammar);
+    my $query = $maskedGrammar->rule('query');
+    $self->assert_not_null($query);
+    $self->assert_does_not_match(qr/item1/,$query->toString());
+
 }
 
 1;

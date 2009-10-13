@@ -364,8 +364,6 @@ sub mask {
         
     }
 
-    print Dumper(%newRuleset);
-    
     return GenTest::Grammar->new(grammar_rules => \%newRuleset);
 }
 
