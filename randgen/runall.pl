@@ -37,7 +37,7 @@ my @master_ports = ('19306','19308');
 my $slave_port = '19308';
 my @master_dsns;
 
-my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode, $engine, $help, $debug, $validators, $reporters, $grammar_file, $seed, $mask, $mem, $rows, $varchar_len, $xml_output, $valgrind, $views, $start_dirty, $filter);
+my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode, $engine, $help, $debug, $validators, $reporters, $grammar_file, $seed, $mask, $mask_level, $mem, $rows, $varchar_len, $xml_output, $valgrind, $views, $start_dirty, $filter);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -68,6 +68,7 @@ my $opt_result = GetOptions(
 	'gendata=s' => \$gendata,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
+        'mask-level=i' => \$mask_level,
 	'mem' => \$mem,
 	'rows=i' => \$rows,
 	'varchar-length=i' => \$varchar_len,
@@ -277,6 +278,7 @@ push @gentest_options, "--dsn2=$master_dsns[1]" if defined $master_dsns[1];
 push @gentest_options, "--grammar=$grammar_file";
 push @gentest_options, "--seed=$seed" if defined $seed;
 push @gentest_options, "--mask=$mask" if defined $mask;
+push @gentest_options, "--mask-level=$mask_level" if defined $mask_level;
 push @gentest_options, "--rows=$rows" if defined $rows;
 push @gentest_options, "--views" if defined $views;
 push @gentest_options, "--varchar-length=$varchar_len" if defined $varchar_len;
