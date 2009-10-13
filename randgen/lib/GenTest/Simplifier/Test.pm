@@ -19,7 +19,8 @@ my @optimizer_variables = (
 	'optimizer_switch',
 	'optimizer_use_mrr',
 	'engine_condition_pushdown',
-	'join_cache_level'
+	'join_cache_level',
+	'debug'
 );
 
 1;
