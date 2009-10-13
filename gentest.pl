@@ -42,7 +42,7 @@ my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
 my $duration = my $default_duration = 3600;
 
-my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file, $validators, $reporters, $mask, $rows, $varchar_len, $xml_output, $views, $start_dirty, $filter, $valgrind);
+my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file, $validators, $reporters, $mask, $mask_level, $rows, $varchar_len, $xml_output, $views, $start_dirty, $filter, $valgrind);
 my $seed = 1;
 
 my @ARGV_saved = @ARGV;
@@ -65,6 +65,7 @@ my $opt_result = GetOptions(
 	'reporters:s' => \$reporters,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
+        'mask-level=i' => \$mask_level,
 	'rows=i' => \$rows,
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s' => \$xml_output,
@@ -201,6 +202,7 @@ my $test = GenTest::XML::Test->new(
 		reporters => join (',', @reporters),
 		seed => $seed,
 		mask => $mask,
+		mask => $mask_level,
 		rows => $rows,
 		'varchar-length' => $varchar_len
 	}
@@ -345,7 +347,8 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 		varchar_length => $varchar_len,
 		seed => $seed,
 		thread_id => $id,
-		mask => $mask
+		mask => $mask,
+	        mask_level => $mask_level
 	);
 
 	exit (STATUS_ENVIRONMENT_FAILURE) if not defined $generator;
