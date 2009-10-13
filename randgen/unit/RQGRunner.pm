@@ -42,19 +42,22 @@ sub _print {
 sub add_error {
     my $self = shift;
     my ($test, $exception) = @_; 
-    $self->_print("Error: ". $test->name(). "\n");
+    my $tn = ref $test;
+    $self->_print("Error: ".$tn."::".$test->name()."\n");
 }
 	
 sub add_failure {
     my $self = shift;
     my ($test, $exception) = @_;
-    $self->_print("Failure: ". $test->name(). "\n");
+    my $tn = ref $test;
+    $self->_print("Failure: ".$tn."::".$test->name()."\n");
 }
 
 sub add_pass {
     my $self = shift;
-    my ($test, $exception) = @_;
-    $self->_print("Success: ". $test->name(). "\n");
+    my ($test, $exception) = @_;    my $tn = ref $test;
+    my $tn = ref $test;
+    $self->_print("Success: ".$tn."::".$test->name()."\n");
 }
 
 sub do_run {
@@ -201,7 +204,6 @@ sub start {
 sub start_test {
     my $self = shift;
     my ($test) = @_;
-    $self->_print(".");
 }
 
 1;
