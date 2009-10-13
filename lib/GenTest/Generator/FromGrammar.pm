@@ -12,6 +12,8 @@ use GenTest::Grammar::Rule;
 use GenTest;
 use Cwd;
 
+use Data::Dumper;
+
 use constant GENERATOR_GRAMMAR_FILE	=> 0;
 use constant GENERATOR_GRAMMAR_STRING	=> 1;
 use constant GENERATOR_GRAMMAR		=> 2;
@@ -21,7 +23,8 @@ use constant GENERATOR_TMPNAM		=> 5;
 use constant GENERATOR_THREAD_ID	=> 6;
 use constant GENERATOR_SEQ_ID		=> 7;
 use constant GENERATOR_MASK		=> 8;
-use constant GENERATOR_VARCHAR_LENGTH	=> 9;
+use constant GENERATOR_MASK_LEVEL => 9;
+use constant GENERATOR_VARCHAR_LENGTH	=> 10;
 
 use constant GENERATOR_MAX_OCCURRENCES	=> 500;
 use constant GENERATOR_MAX_LENGTH	=> 1024;
@@ -38,6 +41,7 @@ sub new {
 		'prng'			=> GENERATOR_PRNG,
 		'thread_id'		=> GENERATOR_THREAD_ID,
 		'mask'			=> GENERATOR_MASK,
+        'mask_level'    => GENERATOR_MASK_LEVEL,
 		'varchar_length'	=> GENERATOR_VARCHAR_LENGTH
 	}, @_);
 
@@ -56,6 +60,10 @@ sub new {
 			varchar_length => $generator->[GENERATOR_VARCHAR_LENGTH]
 		);
 	}
+        
+    if (not defined $generator->mask_level() {
+        $generator->[GENERATOR_MASK_LEVEL] = 1;    
+    }
 
 	$generator->[GENERATOR_SEQ_ID] = 0;
 
@@ -90,6 +98,10 @@ sub mask {
 	return $_[0]->[GENERATOR_MASK];
 }
 
+sub maskLevel {
+	return $_[0]->[GENERATOR_MASK_LEVEL];
+}
+
 #
 # Generate a new query. We do this by iterating over the array containing grammar rules and expanding each grammar rule
 # to one of its right-side components . We do that in-place in the array.
@@ -103,7 +115,8 @@ sub next {
 	my $grammar = $generator->grammar();
 	my $prng = $generator->prng();
 	my $mask = $generator->mask();
-
+    my $mask_level = $generator->mask_level();
+    
 	#
 	# If a temporary file has been left from a previous statement, unlink it.
 	#
@@ -114,37 +127,30 @@ sub next {
 	my $starting_rule;
 
 	# If this is our first query, we look for a rule named "threadN_init" or "query_init"
-
 	if ($generator->seqId() == 0) {
-		$starting_rule = $grammar->rule("thread".$generator->threadId()."_init") || $grammar->rule("query_init");
-		$mask = 0 if defined $starting_rule;						# Do not apply mask on _init rules.
+		$starting_rule = 
+            $grammar->firstMatchingRule("thread".$generator->threadId()."_init",
+                                        "query_init");
+		$mask = 0 if defined $starting_rule;
+        # Do not apply mask on _init rules.
 	}
 
-	# Otherwise, we look for rules named "threadN" or "query"
-
-	$starting_rule = $grammar->rule("thread".$generator->threadId()) || $grammar->rule("query") if not defined $starting_rule;
-
-	my @sentence;
-
+    ## Apply mask if any
 	if ($mask > 0) {
-		my $starting_sentence = $starting_rule->components();
-		my @components;
-		foreach my $i (0..$#$starting_sentence) {
-			push @components, $starting_sentence->[$i] if ( 1 << $i ) & $mask;
-		}
-
-		if ($#components == -1) {
-			say("No rule components match mask $mask. Using all components.") if $generator->seqId() == 1;
-		} else {
-			say("Rule components remaining after mask $mask: ".join(', ', map {$_->[0] } @components)) if $generator->seqId() == 1;
-			$starting_rule = GenTest::Grammar::Rule->new(
-				name => 'masked',
-				components => \@components
-	                );
-		}
+        my $top = $grammar->topGrammar($mask_level,
+                                       "thread".$generator->threadId(),
+                                       "query");
+        my $maskedTop = $top->mak($mask);
+        $grammar = $grammar->patch($maskedTop);
 	}
 
-	@sentence = ($starting_rule);
+	# If no init starting rule, we look for rules named "threadN" or "query"
+	$starting_rule = 
+        $grammar->firstMatchingRule("thread".$generator->threadId(),
+                                    "query") 
+        if not defined $starting_rule;
+    
+	my @sentence = ($starting_rule);
 
 	my $grammar_rules = $grammar->rules();
 
