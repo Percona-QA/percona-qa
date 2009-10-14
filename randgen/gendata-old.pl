@@ -32,7 +32,7 @@ say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
 my $executor = GenTest::Executor->newFromDSN($dsn);
 $executor->init();
 
-help() if not defined $executor;
+help() if not defined $executor->dbh();
 
 my @names = ('A', 'B', 'C', 'D', 'E', 'AA', 'BB', 'CC', 'DD');
 my @sizes = (0, 1, 20, 100, 1000, 0, 1, 20, 100);
@@ -212,12 +212,12 @@ sub gen_table {
 
 sub help {
 print <<EOF
+$0 - Simple data generator. Options:
 
-	$0 - Sample table generator. Options:
-
-	--dsn		: MySQL DBI resource to connect to (default $default_dsn)
-	--engine	: Table engine to use when creating tables (default: no ENGINE in CREATE TABLE )
-	--help		: This help message 
+    --dsn       : MySQL DBI resource to connect to (default $default_dsn)
+    --engine    : Table engine to use when creating tables (default: no ENGINE in CREATE TABLE )
+    --views     : Generate views
+    --help      : This help message 
 EOF
 ;
 	safe_exit(1);

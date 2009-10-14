@@ -387,19 +387,41 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 
 sub help {
 
-	print <<EOF
+    print <<EOF
+$0 - Testing via random query generation. Options:
 
-		$0 - Testing via random query generation. Options:
-
-		--dsn			: MySQL DBI resource to connect to (default $default_dsn)
-	--gendata	: Execute gendata.pl in order to populate tables with sample data (default NO)
-		--engine		: Table engine to use when creating tables with gendata (default: no ENGINE for CREATE TABLE)
-	--threads	: Number of threads to spawn (default $default_threads)
-	--queries	: Numer of queries to execute per thread (default $default_queries);
-		--duration		: Duration of the test in seconds (default $default_duration seconds);
-	--grammar	: Grammar file to use for generating the queries (REQUIRED);
-		--help			: This help message
-	--debug		: Provide debug output
+        --dsnX      : DBI resource to connect to (default $default_dsn).
+                      X may be empty, or 1-3. 
+                      Supported databases are MySQL, Drizzle, PostgreSQL, JavaDB
+                      --dsn1 must be to MySQL or Drizzle
+        --gendata   : Execute gendata-old.pl in order to populate tables with simple data (default NO)
+        --gendata=s : Execute gendata.pl in order to populate tables with data 
+                      using the argument as config file to gendata.pl
+        --engine    : Table engine to use when creating tables with gendata (default: no ENGINE for CREATE TABLE)
+        --threads   : Number of threads to spawn (default $default_threads)
+        --queries   : Numer of queries to execute per thread (default $default_queries);
+        --duration  : Duration of the test in seconds (default $default_duration seconds);
+        --grammar   : Grammar file to use for generating the queries (REQUIRED);
+        --seed      : PRNG seed (default 1). If --seed=time, the current time will be used.
+        --rpl_mode  : Replication mode
+        --validators: Validator classes to be used. Defaults
+                           ErrorMessageCorruption if one or two MySQL dsns
+                           ResultsetComparator3 if 3 dsns
+                           ResultsetComparartor if 2 dsns
+        --reporters : ErrorLog, Backtrace if one or two MySQL dsns
+        --mask      : A 16-bit mask applied to the top levels of the grammar to reduce it. 
+                      The mask is extended using the original value as a PRNBG seed if needed.
+        --mask-level: How many levels deep the mask is applied (default 1)
+        --rows      : Number of rows to generate for each table in gendata.pl, unless specified in the ZZ file
+        --varchar-length: maximum length of strings (deault 1) in gendata.pl
+        --views     : Pass --views to gendata-old.pl or gendata.pl
+        --filter    : ......
+        --start-dirty: ......
+        --xml-output: ......
+        --valgrind  : ......
+        --filter    : ......
+        --help      : This help message
+        --debug     : Provide debug output
 EOF
 	;
 	safe_exit(1);
