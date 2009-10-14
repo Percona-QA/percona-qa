@@ -13,7 +13,7 @@ sub new {
 
 my $grammar;
 sub set_up {
-    $grammar = GenTest::Grammar->new(grammar_string => "query: item1 | item2 ;\nitem1: a | b ;\n");
+    $grammar = GenTest::Grammar->new(grammar_file => "unit/testGrammar.yy");
 }
 
 sub tear_down {
