@@ -57,7 +57,8 @@ my $opt_result = GetOptions(
 	'server-id=i' > \$server_id
 );
 
-help() if not defined $opt_result || $help;
+help() if !$opt_result || $help || not defined $config_file;
+
 exit(1) if !$opt_result;
 
 my $prng = GenTest::Random->new(
@@ -412,14 +413,16 @@ if (
 sub help {
 
         print <<EOF
-
-        $0 - Random Data Generator. Options:
+$0 - Random Data Generator. Options:
 
         --debug         : Turn on debugging for additional output
         --dsn           : DBI resource to connect to (default: no DSN, print CREATE/INSERT statements to STDOUT)
         --engine        : Table engine to use when creating tables with gendata (default: no ENGINE for CREATE TABLE)
         --config        : Configuration ZZ file describing the data (see RandomDataGenerator in MySQL Wiki)
-	--rows		: Number of rows to generate for each table, unless specified in the ZZ file
+        --rows          : Number of rows to generate for each table, unless specified in the ZZ file
+        --seed          : Seed to PRNG. if --seed=time the current time will be used. (default 1)
+        --views         : Generate views
+        --varchar-length: maximum length of strings (deault 1)
         --help          : This help message
 EOF
         ;
