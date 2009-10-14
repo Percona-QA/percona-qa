@@ -14,7 +14,7 @@ sub new {
 my $generator;
 sub set_up {
     $generator = GenTest::Generator::FromGrammar->
-        new(grammar_string => "query: item1 | item2 ;\nitem1: a | b ;\n");
+        new(grammar_file => "unit/testGrammar.yy");
 }
 
 sub tear_down {

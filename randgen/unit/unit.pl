@@ -1,3 +1,5 @@
+#!/usr/bin/perl
+
 use lib unit;
 
 use strict;
