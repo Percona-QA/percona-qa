@@ -25,7 +25,7 @@ sub tear_down {
 
 sub test_parse {
     my $self = shift;
-    open FILE,"unit/grammarList.dat";
+    open FILE,"ls -1 conf/*.yy|";
     while (<FILE>) {
         chop;
         my $grammar = new GenTest::Grammar(grammar_file => $_);
