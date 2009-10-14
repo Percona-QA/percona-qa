@@ -32,13 +32,13 @@ drop_procedure:
 	DROP PROCEDURE procedure_name ;
 call_procedure:
 	CALL procedure_name ( value , value , value ) |
-	CALL procedure_name1 () ;
+	CALL procedure_name1 ()                       ;
 procedure_statement:
-	set_variable |
+	set_variable    |
 	signal_resignal |
-	if |
-	call_procedure |
-	update ;
+	if              |
+	call_procedure  |
+	update          ;
 
 create_procedure1:
 	# Some brute force generated nesting.
@@ -60,7 +60,7 @@ create_begin:
 procedure_name1:
 	{ $procedure_name = 'p1_'.$prng->int(1,$width) } ;
 add_left:
-	{ $begin_count++ ;                  return undef } BEGIN some_statement                                                                                       |
+	{ $begin_count++ ;                  return undef } BEGIN some_statement                                                                                      |
 	{ $begin_count++ ; $begin_count++ ; return undef } BEGIN some_declare_condition DECLARE handler_type HANDLER FOR handler_condition_list BEGIN handler_action ;
 middle:
 	some_statement ;
@@ -97,7 +97,7 @@ condition_name_use:
 	{ return 'cond'.$cond_count } ;
 handler_type:
 	# UNDO is not supported
-	# UNDO     |  
+	# UNDO   |
 	CONTINUE |
 	EXIT     ;
 signal:
@@ -118,9 +118,9 @@ drop_procedure1:
 
 # This is currently unused and might be removed later.
 # declaration:
-# 	declare_handler |
+# 	declare_handler   |
 # 	declare_condition |
-# 	declare_variable ;
+# 	declare_variable  ;
 
 update:
 	UPDATE _table SET _field = value ;
@@ -135,10 +135,21 @@ set_variable:
 	SET at_variable_name = value ;
 
 value:
-	_english |
-	_digit |
-	at_variable_name |
-	function_name ( _english , _digit , at_variable_name ) ;
+	CONVERT( _english USING some_charset )                 |
+	_digit                                                 |
+	at_variable_name                                       |
+	function_name ( _english , _digit , at_variable_name ) |
+	RPAD( _letter , some_size , 'A123456789' )             ;
+
+some_size:
+	17 | 17 | 17 | 17 | 17 | 17 | 17 | 17 | 17 | 17 | 17 | 17 | 17 | 17 | 17 | 17 |
+	32  + 1 | 32  + 1 | 32  + 1 | 32  + 1 | 32  + 1 | 32  + 1 | 32  + 1 | 32  + 1 |
+	64  + 1 | 64  + 1 | 64  + 1 | 64  + 1 |
+	256 + 1 | 256 + 1 |
+	256 * 256 + 1 ;
+
+some_charset:
+	UTF8 | BINARY | LATIN1 ;
 
 variable_name:
 	var1 ;
@@ -152,8 +163,8 @@ variable_type:
 	INTEGER | VARCHAR(32) ;
 
 default_value:
-	# ML: If the default is NULL than we assign NULL to condition_information_item
-	#     --> error
+	# If the default is NULL than we assign in some situation NULL to
+	# condition_information_item --> error
 	 | DEFAULT _english | DEFAULT _digit ;
 
 declare_condition:
@@ -225,24 +236,21 @@ condition_information_item:
 ;
 
 simple_value_specification:
-	_english |
-	_digit |
-	variable_name |
+	_english         |
+	_digit           |
+	variable_name    |
 	at_variable_name ;
 	
-#resignal:
-#;
-
 mysql_error_code:
 	# 0 causes an error in the context where this grammar item is used.
 	# Therefore it should be rare.
-	0 | 
+	0 |
 	1022 | 1022 | # ER_DUP_KEY
 	1062 | 1062 | # ER_DUP_ENTRY
 	1106 | 1106 | # ER_UNKNOWN_PROCEDURE
 	1305 | 1305 | # ER_SP_DOES_NOT_EXIST
 	1146 | 1146 | # ER_NO_SUCH_TABLE
-	1319 | 1319   # ER_SP_COND_MISMATCH 
+	1319 | 1319   # ER_SP_COND_MISMATCH
 ;
 
 sqlstate_value:
