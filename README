@@ -1,4 +1,5 @@
-The purpose of this framework is to test the server using queries randomly generated from a config file.
+The purpose of this framework is to test the server using queries
+randomly generated from a config file.
 
 Wiki:
 
@@ -8,6 +9,6 @@ Launchpad homepage:
 
 * https://launchpad.net/randgen
 
-Code repository:
+Bazaar ode repository:
 
-* lp:~randgen/randgen/main 
+* lp:randgen
