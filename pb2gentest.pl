@@ -5,6 +5,12 @@ use Cwd;
 my ($basedir, $vardir, $tree, $test) = @ARGV;
 
 #
+# For further details about tests and recommended RQG options, see
+# http://forge.mysql.com/wiki/RandomQueryGeneratorTests
+#
+
+
+#
 # Prepare ENV variables
 #
 
@@ -232,7 +238,28 @@ if ($test =~ m{transactions}io ) {
 		--gendata=conf/replication_single_engine.zz
 		--grammar=conf/replication_simple.yy
 		--mysqld=--log-output=table,file
-	';	
+	';
+} elsif ($test =~ m{^rpl_semisync$}io) {
+	# --rpl_mode=default is used because the .YY file changes the binary log format dynamically.
+	# --threads=1 is used to avoid any replication failures due to concurrent DDL.
+	# --validator= line will remove the default replication Validator, which would otherwise
+	#   report test failure when the slave I/O thread is stopped, which is OK in the context
+	#   of this particular test.
+	# --plugin-dir is relative (to the server's basedir)
+	$command = '
+		--gendata=conf/replication_innodb_myisam.zz
+		--grammar=conf/replication.yy
+		--rpl_mode=default
+		--mysqld=--plugin-dir=lib/mysql/plugin
+		--mysqld=--plugin-load=rpl_semi_sync_master=libsemisync_master.so:rpl_semi_sync_slave=libsemisync_slave.so
+		--mysqld=--rpl_semi_sync_master_enabled=1
+		--mysqld=--rpl_semi_sync_slave_enabled=1
+		--reporter=ReplicationSemiSync,Deadlock,Backtrace,ErrorLog
+		--validator=
+		--threads=1
+		--duration=300
+		--queries=1M
+	';
 } elsif ($test =~ m{complex}io) {
 	$command = '
 		--gendata=conf/replication_single_engine_pk.zz
@@ -309,8 +336,8 @@ if ($test =~ m{transactions}io ) {
 		--grammar=conf/invariant.yy
 		--validator=Invariant
 		--reporters=Deadlock,ErrorLog,Backtrace,BackupAndRestoreInvariant,Shutdown
-    --duration=600
-    --threads=25
+		--duration=600
+		--threads=25
 	';
 }
 
