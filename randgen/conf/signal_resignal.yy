@@ -135,8 +135,8 @@ set_variable:
 	SET at_variable_name = value ;
 
 value:
-	CONVERT( _varchar(128) USING some_charset )            |
-	_varchar(256)						|	
+	CONVERT( _varchar(512) USING some_charset )            |
+	_varchar(512)						|	
 	_digit                                                 |
 	at_variable_name                                       |
 	function_name ( _english , _digit , at_variable_name ) |
