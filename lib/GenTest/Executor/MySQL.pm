@@ -56,7 +56,11 @@ my @errors = (
 	"View .* references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them",
 	"Unknown thread id: .*?" ,
 	"Unknown table '.*?' in .*?",
-	"Table '.*?' is read only"
+	"Table '.*?' is read only",
+	"Duplicate condition: .*?",
+	"Duplicate condition information item '.*?'",
+	"Undefined CONDITION: .*?",
+	"Incorrect .*? value '.*?'"
 );
 
 my @patterns = map { qr{$_}i } @errors;
@@ -169,6 +173,13 @@ use constant	ER_FILE_NOT_FOUND			=> 1017;
 use constant 	ER_WRONG_MRG_TABLE			=> 1168;
 
 use constant	ER_OPEN_AS_READONLY			=> 1036;
+
+use constant	ER_SP_DUP_COND				=> 1332;
+use constant	ER_SP_DUP_HANDLER			=> 1413;
+use constant	ER_SIGNAL_BAD_CONDITION_TYPE		=> 1784;
+use constant	ER_SP_COND_MISMATCH			=> 1319;
+use constant	ER_DUP_SIGNAL_SET			=> 1779;
+use constant	ER_WRONG_VALUE				=> 1525;
 
 # Transaction errors
 
@@ -298,6 +309,13 @@ my %err2type = (
 	ER_FILE_NOT_FOUND()			=> STATUS_SEMANTIC_ERROR,
 	ER_WRONG_MRG_TABLE()			=> STATUS_SEMANTIC_ERROR,
 	ER_OPEN_AS_READONLY()			=> STATUS_SEMANTIC_ERROR,
+
+	ER_SP_DUP_COND()			=> STATUS_SEMANTIC_ERROR,
+	ER_SP_DUP_HANDLER()			=> STATUS_SEMANTIC_ERROR,
+	ER_SIGNAL_BAD_CONDITION_TYPE()		=> STATUS_SEMANTIC_ERROR,
+	ER_SP_COND_MISMATCH()			=> STATUS_SEMANTIC_ERROR,
+	ER_DUP_SIGNAL_SET()			=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_VALUE()			=> STATUS_SEMANTIC_ERROR,
 
 	ER_LOCK_OR_ACTIVE_TRANSACTION => STATUS_TRANSACTION_ERROR,
 
