@@ -246,12 +246,23 @@ if ($test =~ m{transactions}io ) {
 	#   report test failure when the slave I/O thread is stopped, which is OK in the context
 	#   of this particular test.
 	# --plugin-dir is relative (to the server's basedir)
-	$command = '
+
+	# File name extension for plugins varies. Using .ddl for Windows and .so for others (*nix).
+	# TODO: If plugins are used for more tests, generalize e.g. into a variable for the file extension only.
+	my $plugins;
+	if (	($^O eq 'MSWin32') ||
+		($^O eq 'MSWin64')
+	) {
+		$plugins = 'rpl_semi_sync_master=libsemisync_master.dll:rpl_semi_sync_slave=libsemisync_slave.dll'
+	} else {
+		$plugins = 'rpl_semi_sync_master=libsemisync_master.so:rpl_semi_sync_slave=libsemisync_slave.so'
+	}
+	$command = "
 		--gendata=conf/replication_innodb_myisam.zz
 		--grammar=conf/replication.yy
 		--rpl_mode=default
 		--mysqld=--plugin-dir=lib/mysql/plugin
-		--mysqld=--plugin-load=rpl_semi_sync_master=libsemisync_master.so:rpl_semi_sync_slave=libsemisync_slave.so
+		--mysqld=--plugin-load=$plugins
 		--mysqld=--rpl_semi_sync_master_enabled=1
 		--mysqld=--rpl_semi_sync_slave_enabled=1
 		--reporter=ReplicationSemiSync,Deadlock,Backtrace,ErrorLog
@@ -259,7 +270,7 @@ if ($test =~ m{transactions}io ) {
 		--threads=1
 		--duration=300
 		--queries=1M
-	';
+	";
 } elsif ($test =~ m{complex}io) {
 	$command = '
 		--gendata=conf/replication_single_engine_pk.zz
