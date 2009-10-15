@@ -135,7 +135,8 @@ set_variable:
 	SET at_variable_name = value ;
 
 value:
-	CONVERT( _english USING some_charset )                 |
+	CONVERT( _varchar(128) USING some_charset )            |
+	_varchar(256)						|	
 	_digit                                                 |
 	at_variable_name                                       |
 	function_name ( _english , _digit , at_variable_name ) |
@@ -218,6 +219,7 @@ condition_value:
 # SIGNAL/RESIGNAL can only use a CONDITION defined with SQLSTATE.
 # Therefore we decrease the likelihood of mysql_error_code.
 	sql_state_value  | sql_state_value |
+	sql_state_value  | sql_state_value |
 	mysql_error_code ;
 	
 condition_information_item:
@@ -231,8 +233,10 @@ condition_information_item:
 	| TABLE_NAME
 	| COLUMN_NAME
 	| CURSOR_NAME
-	| MESSAGE_TEXT
-	| MYSQL_ERRNO
+	| MESSAGE_TEXT	| MESSAGE_TEXT 	| MESSAGE_TEXT	| MESSAGE_TEXT	| MESSAGE_TEXT
+	| MESSAGE_TEXT	| MESSAGE_TEXT 	| MESSAGE_TEXT	| MESSAGE_TEXT	| MESSAGE_TEXT
+	| MESSAGE_TEXT	| MESSAGE_TEXT 	| MESSAGE_TEXT 	| MESSAGE_TEXT 	| MESSAGE_TEXT
+	| MYSQL_ERRNO 	| MYSQL_ERRNO 	| MYSQL_ERRNO 	| MYSQL_ERRNO	| MYSQL_ERRNO
 ;
 
 simple_value_specification:
