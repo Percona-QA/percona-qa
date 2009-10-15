@@ -23,7 +23,7 @@ sub validate {
 			(defined $result->errstr()) &&
 			($result->errstr() =~ m{[^$ascii_min-$ascii_max\s]}siox )
 		) {
-			say("Error: '".$result->errstr()."' indicates memory corruption.");
+			say("Error: '".$result->errstr()."' indicates memory corruption. Note that this may be a false alarm if the test contains non-ascii character sets and non-alphanumeric characters.");
 			return STATUS_DATABASE_CORRUPTION;
 		}
 	}		
