@@ -10,18 +10,12 @@
 # - Bug#45143 All connections hang on concurrent ALTER TABLE
 # - Bug#46339 crash on REPAIR TABLE merge table USE_FRM
 # - Bug#46425 crash in Diagnostics_area::set_ok_status , empty statement, DELETE IGNORE
-# - Bug#46198 Hang after failed ALTER TABLE on partitioned table.
-#   Duplicate of Bug#40181 Partitions: hang if create index
-#                This was not fixed in 5.4 but in 6.0.
 # - Bug#46224 HANDLER statements within a transaction might lead to deadlocks
-# - Bug#46374 crash, INSERT INTO t1 uses function, function modifies t1
-# - Bug#47098 assert in MDL_context::destroy on HANDLER <damaged merge table> OPEN
-# - Bug#47107 assert in notify_shared_lock on incorrect CREATE TABLE , HANDLER
 # - Bug#46965 crash in ha_innobase::get_auto_increment
+# - Bug#47633 assert in ha_myisammrg::info during OPTIMIZE
 #
 # Nothing disabled till now for
 # - Bug#45966 Crash in MDL_context::release_ticket in .\include\master-slave-reset.inc
-# - Bug#43867 ALTER TABLE on a partitioned table causes unnecessary deadlocks
 # - Bug#40419 Not locking metadata on alter procedure
 #   Duplicate of Bug#30977 Concurrent statement using stored function and DROP FUNCTION breaks SBR
 #
@@ -133,30 +127,15 @@
 # - Reduce the amount of cases where "sequence" objects have "normal" objects within their definition.
 #   --> views,functions,procedures
 # - Reduce the amount of cases where the wrong table types occur within object definitions
-#   Example: TABLE for a TRIGGER or VIEW definition. Temporary tables could be computed but are not allowed.
+#   Example: TABLE for a TRIGGER or VIEW definition. Names of temporary tables could be computed but are not allowed.
+#
 
 
 # Section of easy changeable items with high impact on the test =============================================#
 query_init:
-	# Default setting:
-	# init_basics                                    ; stress_optimization ; event_scheduler_on ; have_some_initial_objects ;
-	init_basics ; collapse_names_for_table_types   ; stress_optimization ; event_scheduler_on ; have_some_initial_objects ;
-	# Setting for more stress and but also more statements failing because the target object is of wrong
-	# - table type (Example: VIEW where a base TABLE is expected) -> collapse_names_for_table_types
-	# - object type (Example: TABLE where a PROCEDURE is expected) -> collapse_names_for_objects
-	# init_basics ; collapse_names_for_table_types ; collapse_names_for_objects ; stress_optimization ; have_some_initial_objects ;
-	# You might also try:
-	# init_basics ; collapse_names_for_table_types ; collapse_names_for_normal_seq ; stress_optimization ; have_some_initial_objects ;
-
-event_scheduler_on:
-	SET GLOBAL EVENT_SCHEDULER = ON;
-
-event_scheduler_off:
-	SET GLOBAL EVENT_SCHEDULER = OFF;
+	init_basics ; init_name_spaces ; event_scheduler_on ; have_some_initial_objects ;
 
 init_basics:
-	# This initializes everything for default ( number of threads > 0 ) use.
-	# If this grammar element is in "query_init" than following grammar elements might change these settings.
 	# 1. $life_time_unit = maximum lifetime of a table created within a CREATE, wait, DROP sequence.
 	#
 	#    A reasonable value is bigger than any "wait for <whatever> lock" timeout.
@@ -182,22 +161,34 @@ init_basics:
 	#    - lower fraction of statements failing because of missing object
 	#    - higher fraction of clashes when running with multiple sessions
 	#
-	{ $life_time_unit = 1 ; $name_space_width = 2 ; return undef } ; separated_name_spaces ; nothing_disabled ; init_object_prefixes ; system_table_stuff ;
+	# Some notes:
+	# - In case of one thread a $life_time_unit <> 0 does not make sense, because there is no parallel
+	#   "worker" thread which could do something with the object during the "wait" period.
+	{ $life_time_unit = 1 ; $name_space_width = 2 ; if ( $ENV{RQG_THREADS} == 1 ) { $life_time_unit = 0 } ; return undef } avoid_bugs ; nothing_disabled ; system_table_stuff ;
 
-init_object_prefixes:
-	{ $database_prefix="testdb" ; $table_prefix="t1_" ; $procedure_prefix="p1_" ; $function_prefix="f1_" ; $trigger_prefix="tr1_" ; $event_prefix="e1_" ; return undef } ;
+init_name_spaces:
+   # Please choose between the following alternatives 
+	# separate_objects         -- no_separate_objects
+	# separate_normal_sequence -- no_separate_normal_sequence
+	# separate_table_types     -- no_separate_table_types
+   # 1. Low amount of failing statements, low risk to run into known not locking related crashes
+	separate_objects ; separate_normal_sequence ; separate_table_types ;
+   # 2. Higher amount of failing statements, risk to run into known temporary table related crashes
+	# separate_objects ; separate_normal_sequence ; no_separate_table_types ;
+   # 3. Total chaos
+	# High amount of failing statements, risk to run into known temporary table related crashes
+	# no_separate_objects ; separate_normal_sequence ; no_separate_table_types ;
 
-collapse_names_for_objects:
-	{ $database_prefix="o1_"    ; $table_prefix="o1_" ; $procedure_prefix="o1_" ; $function_prefix="o1_" ; $trigger_prefix="o1_"  ; $event_prefix="o1_" ; return undef } ;
-
-separated_name_spaces:
-	# Name spaces for
-	# - tables separated by type of table
-	# - objects in general separated by use in CREATE/wait/DROP sequence or not.
-	{ $base_piece="base_" ; $temp_piece="temp_" ; $merge_piece="merge_" ; $part_piece="part_" ; $view_piece="view_" ; $sequence_piece="_S" ; $normal_piece="_N" ; return undef } ;
-
-collapse_names_for_table_types:
-	# Name spaces for tables not separated by type of table. The part of the name dealing with use around CREATE/DROP will be not modified.
+separate_table_types:
+	# Effect: Distinction between
+	#         - base, temporary, merge and partioned tables + views
+	#         - tables of any type and functions,procedures,triggers,events
+	#         Only statements which are applicable to this type of table will be generated.
+	#         Example: ALTER VIEW <existing partitioned table> ... should be not generated.
+	# Advantage: Less failing statements, logs are much easier to read
+	# Disadvantage: The avoided suitations are not tested.
+	{ $base_piece="base" ; $temp_piece="temp" ; $merge_piece="merge" ; $part_piece="part" ; $view_piece="view" ; return undef } ;
+no_separate_table_types:
 	# Expected impact:
 	# - maybe higher load on tables of all types in general (depends on size of name space)
 	# - a significant fraction of statements will fail with
@@ -210,18 +201,51 @@ collapse_names_for_table_types:
 	#   Just as a reminder:
 	#   A CREATE VIEW which fails with an error <> "You have an error in your SQL syntax" causes an implicit COMMIT
 	#   of the current transaction.
-	{ $base_piece="all_" ; $temp_piece="all_" ; $merge_piece="all_" ; $part_piece="all_" ; $view_piece="all_" ; $sequence_piece="_S" ; $normal_piece="_N" ; return undef } ;
+	{ $base_piece="" ; $temp_piece="" ; $merge_piece="" ; $part_piece="" ; $view_piece="" ; return undef } ;
+separate_normal_sequence:
+	# Advantages/Disadvantages: To be discovered
+	{ $sequence_piece="_S" ; $normal_piece="_N" ; return undef } ;
+no_separate_normal_sequence:
+	# Advantages/Disadvantages: To be discovered
+	{ $sequence_piece="" ; $normal_piece="" ; return undef } ;
+separate_objects:
+	# Effect: Distinction between schemas, tables, functions, triggers, procedures and events
+	#         Only statements which are applicable to this type of object will be generated.
+	#         Example: CALL <existing partitioned table> ... should be not generated.
+	# Advantage: Less failing statements, logs are much easier to read
+	# Disadvantage: The avoided suitations are not tested.
+	{ $database_prefix="testdb" ; $table_prefix="t1_" ; $procedure_prefix="p1_" ; $function_prefix="f1_" ; $trigger_prefix="tr1_" ; $event_prefix="e1_" ; return undef } ;
+no_separate_objects:
+	# Effect: At least no distinction between functions, triggers, procedures and events
+	#         If no_separate_table_types is added, than also tables are no more separated.
+	#         Example: CALL <existing partitioned table> ... should be not generated.
+	# Advantage: More coverage
+	# Disadvantage: More failing statements
+	{ $database_prefix="o1_1" ; $table_prefix="o1_" ; $procedure_prefix="o1_" ; $function_prefix="o1_" ; $trigger_prefix="o1_"  ; $event_prefix="o1_" ; return undef } ;
 
-collapse_names_for_normal_seq:
-	# There are till now no experiences with this setting.
-	{ $sequence_piece="_A" ; $normal_piece="_A" ; return undef } ;
+avoid_bugs:
+	# Set this grammar item to "empty" if
+	#    Bug#47338 assertion in handler::ha_external_lock           --> optimizer_use_mrr='disable'
+	#    Bug#47367 Crash in Name_resolution_context::process_error  --> semijoin=off
+	# are fixed.
+	SET GLOBAL optimizer_use_mrr='disable' ; SET SESSION optimizer_use_mrr='disable' ; SET GLOBAL optimizer_switch = 'semijoin=off' ; SET SESSION optimizer_switch = 'semijoin=off' ;
+
+event_scheduler_on:
+	SET GLOBAL EVENT_SCHEDULER = ON ;
+
+event_scheduler_off:
+	SET GLOBAL EVENT_SCHEDULER = OFF ;
 
 have_some_initial_objects:
 	# It is assumed that this reduces the likelihood of "Table does not exist" significant when running with a small number of "worker" threads.
 	# The amount of create_..._table items within the some_..._tables should depend a bit on the value in $name_space_width but I currently
 	# do not know how to express this in the grammar.
-	create_database ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; some_view_tables ;
+	# MLML Bug#47633 assert in ha_myisammrg::info during OPTIMIZE -> merge tables disabled.
+	# create_database ; some_base_tables ; some_temp_tables ; some_part_tables ; some_view_tables ;
 	# create_database ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; create_view ; create_view ; create_view ;
+	some_databases ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
+some_databases:
+	create_database    ; create_database    ; create_database    ; create_database    ;
 some_base_tables:
 	create_base_table  ; create_base_table  ; create_base_table  ; create_base_table  ;
 some_temp_tables:
@@ -232,18 +256,21 @@ some_part_tables:
 	create_part_table  ; create_part_table  ; create_part_table  ; create_part_table  ;
 some_view_tables:
 	create_view        ; create_view        ; create_view        ; create_view        ;
-
-stress_optimization:
-	# 1. Disable the CREATE/wait/DROP sequence objects beacuse there is no parallel thread which can use them.
-	# 2. Compact the namespaces by removing the sequence object names
-	{ if ( $ENV{RQG_THREADS} == 1 ) { $life_time_unit = 0 ; $sequence_piece="_A" ; $normal_piece="_A" ; $sequence_begin = "/* Start disabled stuff " ; $sequence_end = " End disabled stuff */"} ; return undef } ;
+some_functions:
+	create_function    ; create_function    ; create_function    ; create_function    ;
+some_procedures:
+	create_procedure   ; create_procedure   ; create_procedure   ; create_procedure   ;
+some_trigger:
+	create_trigger     ; create_trigger     ; create_trigger     ; create_trigger     ;
+some_events:
+	create_event       ; create_event       ; create_event       ; create_event       ;
 
 nothing_disabled:
 	{ $sequence_begin = "/* Sequence start */" ; $sequence_end = "/* Sequence end */" ; return undef } ;
 
 system_table_stuff:
 	# This is used in "grant_revoke".
-	CREATE USER otto@localhost;
+	CREATE USER otto@localhost ;
 
 
 # Useful grammar items ====================================================================================#
@@ -306,9 +333,9 @@ temp_table_name:
 
 # Sometimes useful stuff:
 temp_table_item_s:
-	database_name_s . temp_table_name_s { $temp_table_item_s = $database_name_s . " . " . $temp_table_name_s ; $temp_table_item = $temp_table_item_s ; return undef };
+	database_name_s . temp_table_name_s { $temp_table_item_s = $database_name_s . " . " . $temp_table_name_s ; $temp_table_item = $temp_table_item_s ; return undef } ;
 temp_table_item_n:
-	database_name   . temp_table_name_n { $temp_table_item_n = $database_name   . " . " . $temp_table_name_n ; $temp_table_item = $temp_table_item_n ; return undef };
+	database_name   . temp_table_name_n { $temp_table_item_n = $database_name   . " . " . $temp_table_name_n ; $temp_table_item = $temp_table_item_n ; return undef } ;
 temp_table_item:
 	temp_table_item_s | temp_table_item_n ;
 temp_table_item_list_s:
@@ -333,9 +360,9 @@ merge_table_name:
 
 # Sometimes useful stuff:
 merge_table_item_s:
-	database_name_s . merge_table_name_s { $merge_table_item_s = $database_name_s . " . " . $merge_table_name_s ; $merge_table_item = $merge_table_item_s ; return undef };
+	database_name_s . merge_table_name_s { $merge_table_item_s = $database_name_s . " . " . $merge_table_name_s ; $merge_table_item = $merge_table_item_s ; return undef } ;
 merge_table_item_n:
-	database_name   . merge_table_name_n { $merge_table_item_n = $database_name   . " . " . $merge_table_name_n ; $merge_table_item = $merge_table_item_n ; return undef };
+	database_name   . merge_table_name_n { $merge_table_item_n = $database_name   . " . " . $merge_table_name_n ; $merge_table_item = $merge_table_item_n ; return undef } ;
 merge_table_item:
 	merge_table_item_s | merge_table_item_n ;
 merge_table_item_list_s:
@@ -474,7 +501,7 @@ function_name:
 function_item_s:
 	database_name_s . function_name_s { $function_item_s = $database_name_s . " . " . $function_name_s ; $function_item = $function_item_s ; return undef } ;
 function_item_n:
-	database_name   . function_name_n { $function_item_n = $database_name   . " . " . $function_name_n ; $function_item = $function_item_n ; return undef };
+	database_name   . function_name_n { $function_item_n = $database_name   . " . " . $function_name_n ; $function_item = $function_item_n ; return undef } ;
 function_item:
 	function_item_s | function_item_n ;
 
@@ -489,9 +516,9 @@ trigger_name:
 	trigger_name_s | trigger_name_n ;
 
 trigger_item_s:
-	database_name_s . trigger_name_s { $trigger_item_s = $database_name_s . " . " . $trigger_name_s ; $trigger_item = $trigger_item_s ; return undef };
+	database_name_s . trigger_name_s { $trigger_item_s = $database_name_s . " . " . $trigger_name_s ; $trigger_item = $trigger_item_s ; return undef } ;
 trigger_item_n:
-	database_name   . trigger_name_n { $trigger_item_n = $database_name   . " . " . $trigger_name_n ; $trigger_item = $trigger_item_n ; return undef };
+	database_name   . trigger_name_n { $trigger_item_n = $database_name   . " . " . $trigger_name_n ; $trigger_item = $trigger_item_n ; return undef } ;
 trigger_item:
 	trigger_item_s | trigger_item_n ;
 
@@ -506,9 +533,9 @@ event_name:
 	event_name_s | event_name_n ;
 
 event_item_s:
-	database_name_s . event_name_s { $event_item_s = $database_name_s . " . " . $event_name_s ; $event_item = $event_item_s ; return undef };
+	database_name_s . event_name_s { $event_item_s = $database_name_s . " . " . $event_name_s ; $event_item = $event_item_s ; return undef } ;
 event_item_n:
-	database_name   . event_name_n { $event_item_n = $database_name   . " . " . $event_name_n ; $event_item = $event_item_n ; return undef };
+	database_name   . event_name_n { $event_item_n = $database_name   . " . " . $event_name_n ; $event_item = $event_item_n ; return undef } ;
 event_item:
 	event_item_s | event_item_n ;
 
@@ -563,22 +590,38 @@ kill_query_or_session:
 # Note(mleich):
 # 1. The scenario of a KILL failing because the session does not exist is covered by:
 #    a) Current session id is minimum or maximum of all existing id's and lower_id or higher_id
-#       computes NULL as value for @kill_id.  "KILL NULL" gets valuated as "KILL 0".
-#    b) A parallel session kills the session with the just computed id.
+#       does not exist -> NULL as value for @kill_id.  "KILL NULL" gets valuated as "KILL 0".
+#    b) A parallel session kills the session with the just computed id before we run the KILL.
 # 2. It is intentional that I do not use "KILL _digit".
-#    In case the RQG test crashes in a scenario with thread=1, it is very likely that during analysis
-#    the test gets converted to a script for mysqltest. Most probably the mysqltest simplifier gets
-#    applied and than it is very likely that the session id's change. The use of a computation
-#    based on CONNECTION_ID(), MIN and MAX leads to more stable results.
+# 2.1 In case the RQG test crashes in a scenario with thread=1, it is very likely that during analysis
+#     the test gets converted to a script for mysqltest. Most probably the mysqltest simplifier gets
+#     applied and than it is very likely that the session id's change. The use of a computation
+#     based on CONNECTION_ID(), MIN and MAX leads to more stable results.
+# 2.2 There is the risk that we compute the id iand KILL an auxiliary RQG session (reporter,validator).
+# 2.2.1 The impact of such an operation on RQG (automatic judgement about test result, deadlock detection
+#       etc. is currently unknown. 
+# 2.2.2 Effects caused by killing of such an auxiliary RQG session are out of testing scope.
+#     Therefore we avoid this by the grammar item "pick_executors_only"
+#       etc. is currently unknown.
+# 2.3 We must avoid to kill a test executor session within an early phase when it probably pulls
+#     meta data (table names, column names, data types, ...). This could end up with RQG exit status 255.
+#     Philip mentioned "Can't use an undefined value as an ARRAY reference at lib/GenTest/Generator/FromGrammar.pm line 269."
 lower_id:
-	SELECT MAX(id) INTO @kill_id FROM information_schema.processlist WHERE id < CONNECTION_ID();
+	SELECT MAX(id) INTO @kill_id FROM information_schema.processlist WHERE id < CONNECTION_ID() pick_executors_only ensure_all_up ;
 own_id:
-	SET @kill_id = CONNECTION_ID() ;
+	SET @kill_id = CONNECTION_ID() ensure_all_up ;
 higher_id:
-	SELECT MIN(id) INTO @kill_id FROM information_schema.processlist WHERE id > CONNECTION_ID();
+	SELECT MIN(id) INTO @kill_id FROM information_schema.processlist WHERE id > CONNECTION_ID() pick_executors_only ensure_all_up ;
 query_or_session:
-	# MLML QUERY | QUERY | ;
-	 ;
+	QUERY | QUERY | ;
+pick_executors_only:
+	AND (INFO LIKE CONCAT('%',TRIM(' database_name_s '),'%') OR INFO LIKE CONCAT('%',TRIM(' database_name_n '),'%')) ;
+ensure_all_up:
+	# In case of MAX(id) > _thread_count it is very likely that the majority of executor sessions are started. 
+	# In case of 'Uptime' it is likely that 
+	AND _thread_count + 3 < (SELECT MAX(id) FROM information_schema.processlist)
+	AND 10 > (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME='Uptime') ;
+
 
 savepoint_id:
 	A | B ;
@@ -587,7 +630,8 @@ ddl:
 	database_ddl                                        |
 	base_table_ddl  | base_table_ddl  | base_table_ddl  |
 	temp_table_ddl  | temp_table_ddl  | temp_table_ddl  |
-	merge_table_ddl | merge_table_ddl | merge_table_ddl |
+	# Bug#47633 assert in ha_myisammrg::info during OPTIMIZE -> merge tables disabled.
+	# merge_table_ddl | merge_table_ddl | merge_table_ddl |
 	part_table_ddl  | part_table_ddl  | part_table_ddl  |
 	view_ddl        | view_ddl        | view_ddl        |
 	procedure_ddl   | procedure_ddl   | procedure_ddl   |
@@ -635,7 +679,7 @@ show:
 	database_show              |
 	table_show                 |
 	routine_show               |
-   SHOW STATUS                ;
+	SHOW STATUS                ;
 
 database_show:
 	show_databases | show_create_database ;
@@ -668,7 +712,7 @@ show_open_tables:
 
 show_table_status:
 	# Works also for views
-	SHOW TABLE STATUS;
+	SHOW TABLE STATUS ;
 
 show_columns:
 	SHOW full COLUMNS from_in table_item show_columns_part ;
@@ -728,11 +772,11 @@ show_create_event:
 is_selects:
 	is_schemata | is_tables ;
 is_schemata:
-	/* database_name */ SELECT * FROM information_schema . schemata WHERE schema_name = TRIM(' $database_name ');
+	/* database_name */ SELECT * FROM information_schema . schemata WHERE schema_name = TRIM(' $database_name ') ;
 is_tables:
-	/* table_item */ SELECT * FROM information_schema . tables WHERE table_schema = TRIM(' $database_name ') AND table_name = TRIM(' $table_name ');
+	/* table_item */ SELECT * FROM information_schema . tables WHERE table_schema = TRIM(' $database_name ') AND table_name = TRIM(' $table_name ') ;
 is_columns:
-	/* table_item */ SELECT * FROM information_columns . tables WHERE table_schema = TRIM(' $database_name ') AND table_name = TRIM(' $table_name ') AND column_name = TRIM(' _field ');
+	/* table_item */ SELECT * FROM information_columns . tables WHERE table_schema = TRIM(' $database_name ') AND table_name = TRIM(' $table_name ') AND column_name = TRIM(' _field ') ;
 # 19.1. The INFORMATION_SCHEMA SCHEMATA Table
 # 19.2. The INFORMATION_SCHEMA TABLES Table
 # 19.3. The INFORMATION_SCHEMA COLUMNS Table
@@ -839,7 +883,7 @@ create_temp_table:
 
 drop_temp_table:
 	# DROP two tables is in "drop_table_list"
-	# A pure DROP TABLE is allowed, but we get no implicit COMMITs for that.
+	# A pure DROP TABLE is allowed, but we get an implicit COMMITs for that.
 	DROP TEMPORARY TABLE if_exists temp_table_item_n |
 	DROP           TABLE if_exists temp_table_item_n ;
 
@@ -924,7 +968,7 @@ rename_item:
 
 rename_column:
 	ALTER TABLE table_no_view_item_s CHANGE COLUMN column_to_change my_column INT | 
-	ALTER TABLE table_no_view_item_s CHANGE COLUMN my_column column_to_change INT;
+	ALTER TABLE table_no_view_item_s CHANGE COLUMN my_column column_to_change INT ;
 
 column_to_change:
 	`int` | `int_key` | `pk` ;
@@ -995,10 +1039,7 @@ create_merge:
 part_table_ddl:
 	create_part_table   | create_part_table | create_part_table | create_part_table | create_part_table | create_part_table |
 	drop_part_table     |
-	# If
-	#    Bug#46198 Hang after failed ALTER TABLE on partitioned table.
-	# is fixed (alter_part_table removed because of Bug#46198)
-	# alter_part_table  |
+	alter_part_table    |
 	part_table_sequence ;
 
 create_part_table:
@@ -1082,11 +1123,7 @@ create_function:
 func_statement:
 	# All result sets of queries within a function must be processed within the function.
 	# -> Use a CURSOR or SELECT ... INTO ....
-	# Use if
-	#    Bug#46374   crash, INSERT INTO t1 uses function, function modifies t1
-	# is fixed     (insert, delete removed because of Bug#46374)
-	# SET @my_var = 1 | SELECT MAX( _field ) FROM table_item INTO @my_var | insert | delete ;
-	SET @my_var = 1 | SELECT MAX( _field ) FROM table_item INTO @my_var ;
+	SET @my_var = 1 | SELECT MAX( _field ) FROM table_item INTO @my_var | insert | delete ;
 
 drop_function:
 	DROP FUNCTION if_exists function_item_n ;
@@ -1210,7 +1247,7 @@ where:
 	#   the memery consumption of RQG (I had a ~ 3.5 GB virt memory RQG perl process during some simplifier run!)
 	# - tables (INSERT ... SELECT, REPLACE) do not become too big
 	# - tables (DELETE) do not become permanent empty
-	# Please not that there are some cases where LIMIT cannot be used.
+	# Please note that there are some cases where LIMIT cannot be used.
 	# mleich: Temporary omit functions
 	# WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 | WHERE function_item () = _digit AND `pk` = _digit ;
 	WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 ;
@@ -1403,8 +1440,8 @@ flush:
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | 
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | 
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | 
-	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-	FLUSH TABLES WITH READ LOCK ;
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list ;
+	# temporary disabled FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
 
 
 ########## TINY GRAMMAR ITEMS USED AT MANY PLACES ###########
@@ -1425,7 +1462,11 @@ digit_or_null:
 	_digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit | NULL ;
 
 engine:
-	MEMORY | MyISAM | InnoDB ;
+	# Use if
+	#    Bug#46965 crash in ha_innobase::get_auto_increment
+	# is fixed (InnoDB Disabled because of Bug#46965)
+	# MEMORY | MyISAM | InnoDB ;
+	MEMORY | MyISAM ;
 
 equal:
 	 | = ;

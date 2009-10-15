@@ -239,7 +239,7 @@ if ($rpl_mode) {
 
 	my ($foo, $master_version) = $master_dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
 
-	if ($master_version !~ m{^5\.0}sio) {
+	if (($master_version !~ m{^5\.0}sio) && ($rpl_mode ne 'default')) {
 		$master_dbh->do("SET GLOBAL BINLOG_FORMAT = '$rpl_mode'");
 		$slave_dbh->do("SET GLOBAL BINLOG_FORMAT = '$rpl_mode'");
 	}
