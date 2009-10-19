@@ -34,16 +34,15 @@ where:
 	WHERE where_list ;
 
 where_list:
-	not where_item ;
-# |
-#	not (where_list AND where_item) |
-#	not (where_list OR where_item) ;
+	not where_item |
+	not (where_list AND where_item) |
+	not (where_list OR where_item) ;
 
 not:
 	| | | NOT;
 
 where_item:
-#	existing_table_item . _field sign value |
+	existing_table_item . _field sign value |
 	existing_table_item . _field sign existing_table_item . _field ;
 
 group_by:
