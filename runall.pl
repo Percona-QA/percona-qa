@@ -33,11 +33,12 @@ use DBI;
 use Cwd;
 
 my $database = 'test';
-my @master_ports = ('19306','19308');
-my $slave_port = '19308';
 my @master_dsns;
 
-my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode, $engine, $help, $debug, $validators, $reporters, $grammar_file, $seed, $mask, $mask_level, $mem, $rows, $varchar_len, $xml_output, $valgrind, $views, $start_dirty, $filter);
+my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
+    $engine, $help, $debug, $validators, $reporters, $grammar_file,
+    $seed, $mask, $mask_level, $mem, $rows, $varchar_len, $xml_output,
+    $valgrind, $views, $start_dirty, $filter, $build_thread);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -76,7 +77,8 @@ my $opt_result = GetOptions(
 	'valgrind'	=> \$valgrind,
 	'views'		=> \$views,
 	'start-dirty'	=> \$start_dirty,
-	'filter=s'	=> \$filter
+	'filter=s'	=> \$filter,
+    'mtr-build-thread=i' => \$build_thread
 );
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
@@ -89,8 +91,36 @@ say("Please see http://forge.mysql.com/wiki/Category:RandomQueryGenerator for mo
 say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
 
 #
-# If the user has provided two vardirs and one basedir, start second server using the same basedir
+# Calculate master and slave ports based on MTR_BUILD_THREAD (MTR
+# Version 1 behaviour)
 #
+
+if (not defined $build_thread) {
+    if (defined $ENV{MTR_BUILD_THREAD}) {
+        $build_thread = $ENV{MTR_BUILD_THREAD}
+    } else {
+        $build_thread = 250;
+    }
+}
+
+if ( $build_thread eq 'auto' ) {
+    say ("Please set the environment variable MTR_BUILD_THREAD to a value <> 'auto' (recommended) or unset it (will take the value 250) ");
+    exit 1;
+}
+
+my $master_port = 10000 + 10 * $build_thread;
+my $slave_port = 10000 + 10 * $build_thread + 2;
+my @master_ports = ($master_port,$slave_port);
+
+say("master_port : $master_port slave_port : $slave_port master_ports : @master_ports MTR_BUILD_THREAD : $build_thread ");
+
+$ENV{MTR_BUILD_THREAD} = $build_thread;
+
+#
+# If the user has provided two vardirs and one basedir, start second
+# server using the same basedir
+#
+
 
 if (
 	($vardirs[1] ne '') && 
@@ -397,6 +427,7 @@ $0 - Run a complete random query generation test, including server start with re
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr.
+    --build-thread: Value used for MTR_BUILD_THREAD when servers are started and accessed.
     --debug     : Debug mode
     --help      : This help message
 
