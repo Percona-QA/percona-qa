@@ -33,11 +33,12 @@ use DBI;
 use Cwd;
 
 my $database = 'test';
-my @master_ports = ('19306','19308');
-my $slave_port = '19308';
 my @master_dsns;
 
-my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode, $engine, $help, $debug, $validators, $reporters, $grammar_file, $seed, $mask, $mask_level, $mem, $rows, $varchar_len, $xml_output, $valgrind, $views, $start_dirty, $filter);
+my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
+    $engine, $help, $debug, $validators, $reporters, $grammar_file,
+    $seed, $mask, $mask_level, $mem, $rows, $varchar_len, $xml_output,
+    $valgrind, $views, $start_dirty, $filter, $build_thread);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -76,7 +77,8 @@ my $opt_result = GetOptions(
 	'valgrind'	=> \$valgrind,
 	'views'		=> \$views,
 	'start-dirty'	=> \$start_dirty,
-	'filter=s'	=> \$filter
+	'filter=s'	=> \$filter,
+    'mtr-build-thread=i' => \$build_thread
 );
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
@@ -89,8 +91,36 @@ say("Please see http://forge.mysql.com/wiki/Category:RandomQueryGenerator for mo
 say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
 
 #
-# If the user has provided two vardirs and one basedir, start second server using the same basedir
+# Calculate master and slave ports based on MTR_BUILD_THREAD (MTR
+# Version 1 behaviour)
 #
+
+if (not defined $build_thread) {
+    if (defined $ENV{MTR_BUILD_THREAD}) {
+        $build_thread = $ENV{MTR_BUILD_THREAD}
+    } else {
+        $build_thread = 250;
+    }
+}
+
+if ( $build_thread eq 'auto' ) {
+    say ("Please set the environment variable MTR_BUILD_THREAD to a value <> 'auto' (recommended) or unset it (will take the value 250) ");
+    exit 1;
+}
+
+my $master_port = 10000 + 10 * $build_thread;
+my $slave_port = 10000 + 10 * $build_thread + 2;
+my @master_ports = ($master_port,$slave_port);
+
+say("master_port : $master_port slave_port : $slave_port master_ports : @master_ports MTR_BUILD_THREAD : $build_thread ");
+
+$ENV{MTR_BUILD_THREAD} = $build_thread;
+
+#
+# If the user has provided two vardirs and one basedir, start second
+# server using the same basedir
+#
+
 
 if (
 	($vardirs[1] ne '') && 
@@ -355,28 +385,54 @@ if ($rpl_mode || (defined $basedirs[1])) {
 sub help {
 
 	print <<EOF
+Copyright (c) 2008 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.
 
-	Copyright (c) 2008 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.
+$0 - Run a complete random query generation test, including server start with replication and master/slave verification
+    
+    Options related to one standalone MySQL server:
 
-        $0 - Run a complete random query generation test, including server start with replication and master/slave verification
+    --basedir   : Specifies the base directory of the stand-alone MySQL installation;
+    --mysqld    : Options passed to the MySQL server
+    --vardir    : Optional. (default \$basedir/mysql-test/var);
 
-	--basedir	: Specifies the base directory of the stand-alone MySQL installation;
-	--basedir1	: Specifies the base directory of the first MySQL installation;
-	--basedir2	: Specifies the base directory of the second MySQL installation;
-	--grammar	: Grammar file to use when generating queries (REQUIRED);
-	--rpl_mode	: Replication type to use (statement|row|mixed) (default: no replication);
-	--vardir	: Optional. (default \$basedir/mysql-test/var);
-	--vardir1	: Optional.
-	--vardir2	: Optional. 
-	--engine        : Table engine to use when creating tables with gendata (default no ENGINE in CREATE TABLE);
-	--threads	: Number of threads to spawn (default $default_threads);
-	--queries	: Number of queries to execute per thread (default $default_queries);
-	--duration	: Duration of the test in seconds (default $default_duration seconds);
-        --help          : This help message
-	--debug		: Debug mode
+    Options related to two MySQL servers
 
-	If you specify --basedir1 and --basedir2 or --vardir1 and --vardir2, two servers will be started and the results from the queries
-	will be compared between them.
+    --basedir1  : Specifies the base directory of the first MySQL installation;
+    --basedir2  : Specifies the base directory of the second MySQL installation;
+    --mysqld1   : Options passed to the first MySQL server
+    --mysqld2   : Options passed to the second MySQL server
+    --vardir1   : Optional. (default \$basedir1/mysql-test/var);
+    --vardir2   : Optional. (default \$basedir2/mysql-test/var);
+
+    General options
+
+    --grammar   : Grammar file to use when generating queries (REQUIRED);
+    --rpl_mode  : Replication type to use (statement|row|mixed) (default: no replication);
+    --vardir1   : Optional.
+    --vardir2   : Optional. 
+    --engine    : Table engine to use when creating tables with gendata (default no ENGINE in CREATE TABLE);
+    --threads   : Number of threads to spawn (default $default_threads);
+    --queries   : Number of queries to execute per thread (default $default_queries);
+    --duration  : Duration of the test in seconds (default $default_duration seconds);
+    --validators: The validators to use
+    --reporters : The reporters to use
+    --gendata   : Generate data option. Passed to gentest.pl
+    --seed      : PRNG seed. Passed to gentest.pl
+    --mask      : Grammar mask. Passed to gentest.pl
+    --mask-level: Grammar mask level. Passed to gentest.pl
+    --rows      : No of rows. Passed to gentest.pl
+    --varchar-length: length of strings. passed to gentest.pl
+    --xml-outputs: Passed to gentest.pl
+    --views     : Generate views. Passed to gentest.pl
+    --valgrind  : Passed to gentest.pl
+    --filter    : Passed to gentest.pl
+    --mem       : Passed to mtr.
+    --build-thread: Value used for MTR_BUILD_THREAD when servers are started and accessed.
+    --debug     : Debug mode
+    --help      : This help message
+
+    If you specify --basedir1 and --basedir2 or --vardir1 and --vardir2, two servers will be started and the results from the queries
+    will be compared between them.
 EOF
 	;
 	exit_test(STATUS_UNKNOWN_ERROR);
