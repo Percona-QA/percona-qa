@@ -355,28 +355,53 @@ if ($rpl_mode || (defined $basedirs[1])) {
 sub help {
 
 	print <<EOF
+Copyright (c) 2008 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.
 
-	Copyright (c) 2008 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.
+$0 - Run a complete random query generation test, including server start with replication and master/slave verification
+    
+    Options related to one standalone MySQL server:
 
-        $0 - Run a complete random query generation test, including server start with replication and master/slave verification
+    --basedir   : Specifies the base directory of the stand-alone MySQL installation;
+    --mysqld    : Options passed to the MySQL server
+    --vardir    : Optional. (default \$basedir/mysql-test/var);
 
-	--basedir	: Specifies the base directory of the stand-alone MySQL installation;
-	--basedir1	: Specifies the base directory of the first MySQL installation;
-	--basedir2	: Specifies the base directory of the second MySQL installation;
-	--grammar	: Grammar file to use when generating queries (REQUIRED);
-	--rpl_mode	: Replication type to use (statement|row|mixed) (default: no replication);
-	--vardir	: Optional. (default \$basedir/mysql-test/var);
-	--vardir1	: Optional.
-	--vardir2	: Optional. 
-	--engine        : Table engine to use when creating tables with gendata (default no ENGINE in CREATE TABLE);
-	--threads	: Number of threads to spawn (default $default_threads);
-	--queries	: Number of queries to execute per thread (default $default_queries);
-	--duration	: Duration of the test in seconds (default $default_duration seconds);
-        --help          : This help message
-	--debug		: Debug mode
+    Options related to two MySQL servers
 
-	If you specify --basedir1 and --basedir2 or --vardir1 and --vardir2, two servers will be started and the results from the queries
-	will be compared between them.
+    --basedir1  : Specifies the base directory of the first MySQL installation;
+    --basedir2  : Specifies the base directory of the second MySQL installation;
+    --mysqld1   : Options passed to the first MySQL server
+    --mysqld2   : Options passed to the second MySQL server
+    --vardir1   : Optional. (default \$basedir1/mysql-test/var);
+    --vardir2   : Optional. (default \$basedir2/mysql-test/var);
+
+    General options
+
+    --grammar   : Grammar file to use when generating queries (REQUIRED);
+    --rpl_mode  : Replication type to use (statement|row|mixed) (default: no replication);
+    --vardir1   : Optional.
+    --vardir2   : Optional. 
+    --engine    : Table engine to use when creating tables with gendata (default no ENGINE in CREATE TABLE);
+    --threads   : Number of threads to spawn (default $default_threads);
+    --queries   : Number of queries to execute per thread (default $default_queries);
+    --duration  : Duration of the test in seconds (default $default_duration seconds);
+    --validators: The validators to use
+    --reporters : The reporters to use
+    --gendata   : Generate data option. Passed to gentest.pl
+    --seed      : PRNG seed. Passed to gentest.pl
+    --mask      : Grammar mask. Passed to gentest.pl
+    --mask-level: Grammar mask level. Passed to gentest.pl
+    --rows      : No of rows. Passed to gentest.pl
+    --varchar-length: length of strings. passed to gentest.pl
+    --xml-outputs: Passed to gentest.pl
+    --views     : Generate views. Passed to gentest.pl
+    --valgrind  : Passed to gentest.pl
+    --filter    : Passed to gentest.pl
+    --mem       : Passed to mtr.
+    --debug     : Debug mode
+    --help      : This help message
+
+    If you specify --basedir1 and --basedir2 or --vardir1 and --vardir2, two servers will be started and the results from the queries
+    will be compared between them.
 EOF
 	;
 	exit_test(STATUS_UNKNOWN_ERROR);
