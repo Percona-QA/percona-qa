@@ -251,7 +251,7 @@ if ($test =~ m{transactions}io ) {
 } elsif ($test =~ m{^info_schema$}io ) {
 	$command = '
 		--grammar=conf/information_schema.yy
-		--threads=100
+		--threads=10
 		--duration=300
 	';
 } elsif ($test =~ m{signal_resignal}io ) {
