@@ -50,6 +50,9 @@ sub newFromDSN {
 	} elsif ($dsn =~ m/^dbi:Pg:/i) {
 		require GenTest::Executor::Postgres;
 		return GenTest::Executor::Postgres->new(dsn => $dsn);
+    } elsif ($dsn eq "dummy") {
+		require GenTest::Executor::Dummy;
+		return GenTest::Executor::Dummy->new(dsn => $dsn);
 	} else {
 		say("Unsupported dsn: $dsn");
 		exit(STATUS_ENVIRONMENT_FAILURE);
@@ -91,12 +94,14 @@ sub type {
 		return DB_DRIZZLE;
 	} elsif ($self =~ m/GenTest::Executor::Postgres/i) {
 		return DB_POSTGRES;
+    } elsif ($self =~m/GenTest::Executor::Dummy/i) {
+        return DB_DUMMY;
 	} else {
 		return DB_UNKNOWN;
 	}
 }
 
-my @dbid = ("Unknown","MySQL","Postgres","JavaDB","Drizzle");
+my @dbid = ("Unknown","Dummy", "MySQL","Postgres","JavaDB","Drizzle");
 
 sub getName {
     my ($self) = @_;
