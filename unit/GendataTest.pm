@@ -5,6 +5,7 @@
 package GendataTest;
 use base qw(Test::Unit::TestCase);
 use lib 'lib';
+use GenTest::Constants;
 use GenTest::App::Gendata;
 use GenTest::App::GendataSimple;
 
@@ -29,7 +30,10 @@ sub test_simple {
     
     my $gen = GenTest::App::GendataSimple->new(dsn => "dummy");
 
-    $gen->run();
+    my $status = $gen->run();
+
+    $self->assert_equals(STATUS_OK, $status);
+
 }
 
 sub test_advanced {
@@ -39,7 +43,9 @@ sub test_advanced {
                                          config_file => "conf/example.zz",
                                          rows => 10000000,
                                          views => 1);
-    $gen->run();
+    my $status = $gen->run();
+
+    $self->assert_equals(STATUS_OK, $status);
 }
 
 1;
