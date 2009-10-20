@@ -26,7 +26,10 @@ sub init {
 sub execute {
 	my ($executor, $query, $silent) = @_;
 
-    print "Executing $query\n";
+    if ($ENV{RQG_DEBUG}) {
+        print "Executing $query\n";
+    }
+
 
 	return new GenTest::Result(query => $query,
                                status => STATUS_OK);
