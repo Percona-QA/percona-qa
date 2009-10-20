@@ -243,7 +243,7 @@ sub run {
 #	$field_copy[FIELD_INDEX] = 'nokey' if $field_copy[FIELD_INDEX] eq '';
 
         my $field_name;
-        $field_name = join('_', grep { $_ ne '' } @field_copy)."_f";
+        $field_name = join('_', grep { $_ ne '' } @field_copy);
         $field_name =~ s{[^A-Za-z0-9]}{_}sgio;
         $field_name =~ s{ }{_}sgio;
         $field_name =~ s{_+}{_}sgio;
