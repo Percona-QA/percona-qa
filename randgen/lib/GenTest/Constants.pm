@@ -46,6 +46,7 @@ require Exporter;
 	ORACLE_ISSUE_STATUS_UNKNOWN
 
 	DB_UNKNOWN
+    DB_DUMMY
 	DB_MYSQL
 	DB_POSTGRES
 	DB_JAVADB
@@ -101,9 +102,10 @@ use constant ORACLE_ISSUE_NO_LONGER_REPEATABLE	=> 0;
 use constant ORACLE_ISSUE_STATUS_UNKNOWN	=> 2;
 
 use constant DB_UNKNOWN		=> 0;
-use constant DB_MYSQL		=> 1;
-use constant DB_POSTGRES	=> 2;
-use constant DB_JAVADB		=> 3;
-use constant DB_DRIZZLE		=> 4;
+use constant DB_DUMMY        => 1;
+use constant DB_MYSQL		=> 2;
+use constant DB_POSTGRES	=> 3;
+use constant DB_JAVADB		=> 4;
+use constant DB_DRIZZLE		=> 5;
 
 1;

@@ -3,6 +3,9 @@ use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use strict;
 use GenTest;
+use GenTest::Constants;
+use GenTest::App::Gendata;
+use GenTest::App::GendataSimple;
 
 $| = 1;
 my $ctrl_c = 0;
@@ -42,7 +45,11 @@ my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
 my $duration = my $default_duration = 3600;
 
-my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file, $validators, $reporters, $mask, $mask_level, $rows, $varchar_len, $xml_output, $views, $start_dirty, $filter, $valgrind);
+my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file,
+    $redefine_file, $validators, $reporters, $mask, $mask_level,
+    $rows, $varchar_len, $xml_output, $views, $start_dirty, $filter,
+    $valgrind);
+
 my $seed = 1;
 
 my @ARGV_saved = @ARGV;
@@ -55,6 +62,7 @@ my $opt_result = GetOptions(
 	'engine=s' => \$engine,
 	'gendata:s' => \$gendata,
 	'grammar=s' => \$grammar_file,
+    'redefine=s' => \$redefine_file,
 	'threads=i' => \$threads,
 	'queries=s' => \$queries,
 	'duration=s' => \$duration,
@@ -93,21 +101,24 @@ if ((defined $gendata) && (not defined $start_dirty)) {
 	foreach my $dsn (@dsns) {
 		next if $dsn eq '';
 		my $gendata_result;
+        my $datagen;
 		if ($gendata eq '') {
-			$gendata_result = system("perl $ENV{RQG_HOME}gendata-old.pl --dsn=\"$dsn\" ".
-								(defined $views ? "--views " : "").
-				(defined $engine ? "--engine=$engine" : "")
-			);
+            $datagen = GenTest::App::GendataSimple->new(dsn => $dsn,
+                                                       views => $views,
+                                                       engine => $engine);
 		} else {
-			$gendata_result = system("perl $ENV{RQG_HOME}gendata.pl --config=$gendata --dsn=\"$dsn\" ".
-				(defined $engine ? "--engine=$engine" : "")." ".
-				(defined $seed ? "--seed=$seed" : "")." ".
-				(defined $debug ? "--debug" : "")." ".
-				(defined $rows ? "--rows=$rows" : "")." ".
-				(defined $views ? "--views" : "")." ".
-				(defined $varchar_len ? "--varchar-length=$varchar_len" : "")." ");
+            $datagen = GenTest::App::Gendata->new(config_file => $gendata,
+                                                  dsn => $dsn,
+                                                  engine => $engine,
+                                                  seed => $seed,
+                                                  debug => $debug,
+                                                  rows => $rows,
+                                                  views => $views,
+                                                  varchar_length => $varchar_len);
 		}
-		safe_exit ($gendata_result >> 8) if $gendata_result > 0;
+        $gendata_result = $datagen->run();
+        
+		safe_exit ($gendata_result >> 8) if $gendata_result > STATUS_OK;
 	}
 }
 
@@ -121,6 +132,15 @@ my $grammar = GenTest::Grammar->new(
 );
 
 exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
+
+if (defined $redefine_file) {
+    my $patch_grammar = GenTest::Grammar->new(
+        grammar_file => $redefine_file);
+    $grammar = $grammar->patch($patch_grammar);
+}
+
+exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
+
 
 foreach my $i (0..2) {
 	next if $dsns[$i] eq '';
@@ -404,6 +424,7 @@ $0 - Testing via random query generation. Options:
         --queries   : Numer of queries to execute per thread (default $default_queries);
         --duration  : Duration of the test in seconds (default $default_duration seconds);
         --grammar   : Grammar file to use for generating the queries (REQUIRED);
+        --redefine  : Grammar file to redefine and/or add rules to the given grammar
         --seed      : PRNG seed (default 1). If --seed=time, the current time will be used.
         --rpl_mode  : Replication mode
         --validators: Validator classes to be used. Defaults
@@ -418,7 +439,7 @@ $0 - Testing via random query generation. Options:
         --varchar-length: maximum length of strings (deault 1) in gendata.pl
         --views     : Pass --views to gendata-old.pl or gendata.pl
         --filter    : ......
-        --start-dirty: ......
+        --start-dirty: Do not generate data (use existing database(s))
         --xml-output: ......
         --valgrind  : ......
         --filter    : ......

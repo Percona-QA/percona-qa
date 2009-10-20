@@ -27,7 +27,7 @@ use constant GENERATOR_MASK_LEVEL => 9;
 use constant GENERATOR_VARCHAR_LENGTH	=> 10;
 
 use constant GENERATOR_MAX_OCCURRENCES	=> 500;
-use constant GENERATOR_MAX_LENGTH	=> 1024;
+use constant GENERATOR_MAX_LENGTH	=> 2048;
 
 my $field_pos;
 
@@ -165,7 +165,7 @@ sub next {
 	my $pos = 0;
 	while ($pos <= $#sentence) {
 		if ($#sentence > GENERATOR_MAX_LENGTH) {
-			say("Sentence is now longer than ".GENERATOR_MAX_OCCURRENCES()." symbols. Possible endless loop in grammar. Aborting.");
+			say("Sentence is now longer than ".GENERATOR_MAX_LENGTH()." symbols. Possible endless loop in grammar. Aborting.");
 			return undef;
 		}
 		if (ref($sentence[$pos]) eq 'GenTest::Grammar::Rule') {
