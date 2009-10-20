@@ -3,6 +3,8 @@ use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use strict;
 use GenTest;
+use GenTest::App::Gendata;
+use GenTest::App::GendataSimple;
 
 $| = 1;
 my $ctrl_c = 0;
@@ -93,20 +95,23 @@ if ((defined $gendata) && (not defined $start_dirty)) {
 	foreach my $dsn (@dsns) {
 		next if $dsn eq '';
 		my $gendata_result;
+        my $datagen;
 		if ($gendata eq '') {
-			$gendata_result = system("perl $ENV{RQG_HOME}gendata-old.pl --dsn=\"$dsn\" ".
-								(defined $views ? "--views " : "").
-				(defined $engine ? "--engine=$engine" : "")
-			);
+            $datagen = GenTest::App::GendataSimple->new(dsn => $dsn,
+                                                       views => $views,
+                                                       engine => $engine);
 		} else {
-			$gendata_result = system("perl $ENV{RQG_HOME}gendata.pl --config=$gendata --dsn=\"$dsn\" ".
-				(defined $engine ? "--engine=$engine" : "")." ".
-				(defined $seed ? "--seed=$seed" : "")." ".
-				(defined $debug ? "--debug" : "")." ".
-				(defined $rows ? "--rows=$rows" : "")." ".
-				(defined $views ? "--views" : "")." ".
-				(defined $varchar_len ? "--varchar-length=$varchar_len" : "")." ");
+            $datagen = GenTest::App::Gendata->new(config_file => $gendata,
+                                                  dsn => $dsn,
+                                                  engine => $engine,
+                                                  seed => $seed,
+                                                  debug => $debug,
+                                                  rows => $rows,
+                                                  views => $views,
+                                                  varchar_length => $varchar_len);
 		}
+        $gendata_result = $datagen->run();
+        
 		safe_exit ($gendata_result >> 8) if $gendata_result > 0;
 	}
 }
@@ -416,7 +421,7 @@ $0 - Testing via random query generation. Options:
         --varchar-length: maximum length of strings (deault 1) in gendata.pl
         --views     : Pass --views to gendata-old.pl or gendata.pl
         --filter    : ......
-        --start-dirty: ......
+        --start-dirty: Do not generate data (use existing database(s))
         --xml-output: ......
         --valgrind  : ......
         --filter    : ......
