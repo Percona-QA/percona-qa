@@ -9,6 +9,8 @@ my ($basedir, $vardir, $tree, $test) = @ARGV;
 # http://forge.mysql.com/wiki/RandomQueryGeneratorTests
 #
 
+# Autoflush output buffers (needed when using POSIX::_exit())
+$| = 1;
 
 #
 # Prepare ENV variables
@@ -41,6 +43,29 @@ if (
 	system("date");
 }
 
+##
+## subroutines
+##
+
+#
+# Skips the test, displays reason (argument to the routine) and exits with
+# exit code 0.
+#
+sub skip_test {
+	my $reason = @_[0];
+	my $message = "$test";
+	# Using MTR-style output for the readers' convenience.
+	# (at least 41 chars before "[ skipped ]")
+	while (length $message < 40)
+	{
+		$message = $message.' ';
+	}
+        $message = $message." [ skipped ] ".$reason;
+	print "$message\n";
+	print localtime()." [$$] $0 will exit with exit status 0.\n";
+	POSIX::_exit (0);
+}
+
 chdir('randgen');
 
 print localtime()." [$$] Information on the host system:\n";
@@ -67,6 +92,11 @@ if (($rpl_mode) = $test =~ m{(rbr|sbr|mbr|statement|mixed|row)}io) {
 	$rpl_mode = 'row' if $rpl_mode eq 'rbr';
 }
 
+#
+# Start defining tests. Test name can be whatever matches the regex in the if().
+# TODO: Define less ambiguous test names to avoid accidental misconfiguration.
+# Starting out with "legacy" Falcon tests.
+#
 if ($test =~ m{transactions}io ) {
 	$command = '
 		--grammar=conf/transactions.yy
@@ -215,6 +245,23 @@ if ($test =~ m{transactions}io ) {
 		--threads=1
 		--reporters=
 	';
+#
+# END OF FALCON TESTS
+#
+} elsif ($test =~ m{^info_schema$}io ) {
+	$command = '
+		--grammar=conf/information_schema.yy
+		--threads=10
+		--duration=300
+	';
+} elsif ($test =~ m{signal_resignal}io ) {
+	$command = '
+		--threads=10
+		--queries=1M
+		--duration=300
+		--grammar=conf/signal_resignal.yy
+		--mysqld=--max-sp-recursion-depth=10
+	';
 } elsif ($test =~ m{stress}io ) {
 	$command = '
 		--grammar=conf/maria_stress.yy
@@ -253,15 +300,19 @@ if ($test =~ m{transactions}io ) {
 	if (	($^O eq 'MSWin32') ||
 		($^O eq 'MSWin64')
 	) {
-		$plugins = 'rpl_semi_sync_master=libsemisync_master.dll:rpl_semi_sync_slave=libsemisync_slave.dll'
+		$plugins = 'rpl_semi_sync_master=libsemisync_master.dll:rpl_semi_sync_slave=libsemisync_slave.dll';
+
+		# We are on Windows OS, but the feature (semisynchroneous replication (plugins))
+		# is not yet supported there, so we skip this test for the time being.
+		skip_test("This feature/test does not support the Windows platform at this time");
 	} else {
-		$plugins = 'rpl_semi_sync_master=libsemisync_master.so:rpl_semi_sync_slave=libsemisync_slave.so'
+		$plugins = 'rpl_semi_sync_master=libsemisync_master.so:rpl_semi_sync_slave=libsemisync_slave.so';
 	}
 	$command = "
 		--gendata=conf/replication_innodb_myisam.zz
 		--grammar=conf/replication.yy
 		--rpl_mode=default
-		--mysqld=--plugin-dir=lib/mysql/plugin
+		--mysqld=--plugin-dir=$basedir/lib/mysql/plugin
 		--mysqld=--plugin-load=$plugins
 		--mysqld=--rpl_semi_sync_master_enabled=1
 		--mysqld=--rpl_semi_sync_slave_enabled=1
@@ -352,12 +403,24 @@ if ($test =~ m{transactions}io ) {
 	';
 }
 
+#
+# Specify some "default" Reporters if none have been specified already.
+# The RQG itself also specifies some default values for some options if not set.
+#
 if ($command =~ m{--reporters}io) {
 	# Reporters have already been specified	
 } elsif ($test =~ m{rpl}io ) {
-	$command = $command.' --reporters=Deadlock,ErrorLog,Backtrace,WinPackage';
+	# Don't include Recovery for replication tests, because
+	$command = $command.' --reporters=Deadlock,ErrorLog,Backtrace';
+} elsif ($test =~ m{falcon}io ) {
+	# Include the Recovery reporter for Falcon tests in order to test
+	# recovery by default after each such test.
+	$command = $command.' --reporters=Deadlock,ErrorLog,Backtrace,Recovery,Shutdown';
+	# Falcon-only options (avoid "unknown variable" warnings in non-Falcon builds)
+	$command = $command.' --mysqld=--loose-falcon-lock-wait-timeout=5 --mysqld=--loose-falcon-debug-mask=2';
 } else {
-	$command = $command.' --reporters=Deadlock,ErrorLog,Backtrace,Recovery,WinPackage,Shutdown';
+	# Default reporters for tests whose name does not contain "rpl" or "falcon"
+	$command = $command.' --reporters=Deadlock,ErrorLog,Backtrace,Shutdown';
 }
 
 if ($command !~ m{--duration}io ) {
@@ -388,7 +451,7 @@ if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
 	$command = $command." --rpl_mode=$rpl_mode";
 }
 	
-$command = "perl runall.pl --basedir=\"$basedir\" --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--loose-falcon-lock-wait-timeout=5 --mysqld=--loose-falcon-debug-mask=2 --mysqld=--skip-safemalloc ".$command;
+$command = "perl runall.pl --basedir=\"$basedir\" --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
 
 $command =~ s{[\r\n\t]}{ }sgio;
 my $command_result = system($command);
