@@ -44,7 +44,11 @@ my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
 my $duration = my $default_duration = 3600;
 
-my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file, $validators, $reporters, $mask, $mask_level, $rows, $varchar_len, $xml_output, $views, $start_dirty, $filter, $valgrind);
+my ($gendata, $engine, $help, $debug, $rpl_mode, $grammar_file,
+    $redefine_file, $validators, $reporters, $mask, $mask_level,
+    $rows, $varchar_len, $xml_output, $views, $start_dirty, $filter,
+    $valgrind);
+
 my $seed = 1;
 
 my @ARGV_saved = @ARGV;
@@ -57,6 +61,7 @@ my $opt_result = GetOptions(
 	'engine=s' => \$engine,
 	'gendata:s' => \$gendata,
 	'grammar=s' => \$grammar_file,
+    'redefine=s' => \$redefine_file,
 	'threads=i' => \$threads,
 	'queries=s' => \$queries,
 	'duration=s' => \$duration,
@@ -126,6 +131,15 @@ my $grammar = GenTest::Grammar->new(
 );
 
 exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
+
+if (defined $redefine_file) {
+    my $patch_grammar = GenTest::Grammar->new(
+        grammar_file => $redefine_file);
+    $grammar = $grammar->patch($patch_grammar);
+}
+
+exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
+
 
 foreach my $i (0..2) {
 	next if $dsns[$i] eq '';
@@ -407,6 +421,7 @@ $0 - Testing via random query generation. Options:
         --queries   : Numer of queries to execute per thread (default $default_queries);
         --duration  : Duration of the test in seconds (default $default_duration seconds);
         --grammar   : Grammar file to use for generating the queries (REQUIRED);
+        --redefine  : Grammar file to redefine and/or add rules to the given grammar
         --seed      : PRNG seed (default 1). If --seed=time, the current time will be used.
         --rpl_mode  : Replication mode
         --validators: Validator classes to be used. Defaults
