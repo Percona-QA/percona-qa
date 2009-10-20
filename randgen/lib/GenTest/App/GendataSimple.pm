@@ -69,6 +69,7 @@ sub run {
     $executor->execute("INSERT INTO DUMMY VALUES(0)");
     
     $executor->execute("SET SQL_MODE= 'NO_ENGINE_SUBSTITUTION'") if $executor->type == DB_MYSQL;
+    return STATUS_OK;
 }
 
 sub gen_table {
@@ -233,7 +234,6 @@ sub gen_table {
 			@values = ();
 		}
 	}
-    return STATUS_OK;
 }
 
 1;
