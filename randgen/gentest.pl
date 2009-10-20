@@ -3,6 +3,7 @@ use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use strict;
 use GenTest;
+use GenTest::Constants;
 use GenTest::App::Gendata;
 use GenTest::App::GendataSimple;
 
@@ -117,7 +118,7 @@ if ((defined $gendata) && (not defined $start_dirty)) {
 		}
         $gendata_result = $datagen->run();
         
-		safe_exit ($gendata_result >> 8) if $gendata_result > 0;
+		safe_exit ($gendata_result >> 8) if $gendata_result > STATUS_OK;
 	}
 }
 
