@@ -147,12 +147,14 @@ foreach my $i (0..2) {
 	push @executors, GenTest::Executor->newFromDSN($dsns[$i]);
 }
 
+my $drizzle_only = $executors[0]->type == DB_DRIZZLE;
+$drizzle_only = $drizzle_only && $executors[1]->type == DB_DRIZZLE if $#executors > 0;
+
 my $mysql_only = $executors[0]->type == DB_MYSQL;
 $mysql_only = $mysql_only && $executors[1]->type == DB_MYSQL if $#executors > 0;
 
-
 if (not defined $reporters) {
-	if ($mysql_only) {
+	if ($mysql_only || $drizzle_only) {
 		@reporters = ('ErrorLog', 'Backtrace');
 	}
 } else {
@@ -163,7 +165,7 @@ say("Reporters: ".($#reporters > -1 ? join(', ', @reporters) : "(none)"));
 
 my $reporter_manager = GenTest::ReporterManager->new();
 
-if ($mysql_only) {
+if ($mysql_only ) {
 	foreach my $i (0..2) {
 		next if $dsns[$i] eq '';
 		foreach my $reporter (@reporters) {
@@ -181,16 +183,16 @@ if ($mysql_only) {
 my @validators;
 
 if (not defined $validators) {
-	@validators = ('ErrorMessageCorruption') if $mysql_only;
+	@validators = ('ErrorMessageCorruption') if ($mysql_only || $drizzle_only);
 	if ($dsns[2] ne '') {
 		push @validators, 'ResultsetComparator3';
 	} elsif ($dsns[1] ne '') {
 		push @validators, 'ResultsetComparator';
 	}
 
-	push @validators, 'ReplicationSlaveStatus' if $rpl_mode ne '' && $mysql_only;
-	push @validators, 'MarkErrorLog' if (defined $valgrind) && $mysql_only;
-	push @validators, 'QueryProperties' if $grammar->hasProperties() && $mysql_only;
+	push @validators, 'ReplicationSlaveStatus' if $rpl_mode ne '' && ($mysql_only || $drizzle_only);
+	push @validators, 'MarkErrorLog' if (defined $valgrind) && ($mysql_only || $drizzle_only);
+	push @validators, 'QueryProperties' if $grammar->hasProperties() && ($mysql_only || $drizzle_only);
 } else {
 	@validators = split(',', $validators);
 }
