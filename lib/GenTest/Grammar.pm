@@ -334,19 +334,19 @@ sub mask {
     my %newRuleset;
 
     my $i = 0;
-    my $prng;
+    my $prng = GenTest::Random->new(seed => $mask);
+    ## Generate the first 16 bits.
+    my $mask16 = $prng->uint16(0,0x7fff);
     foreach my $rulename (sort keys %$rules) {
         my $rule = $self->rule($rulename);
         my $components = $rule->components();
         my @components = @$components;
         my @newComponents;
         foreach my $x (@components) {
-            push @newComponents, $x if (1 << ($i++)) & $mask;
+            push @newComponents, $x if (1 << ($i++)) & $mask16;
             if ($i % 16 == 0) {
                 # We need more bits!
                 $i = 0;
-                $prng = GenTest::Random->new(seed => $mask) 
-                    if not defined $prng;
                 $mask = $prng->uint16(0,0x7fff);
             }
         }
