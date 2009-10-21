@@ -99,13 +99,13 @@ if (not defined $build_thread) {
     if (defined $ENV{MTR_BUILD_THREAD}) {
         $build_thread = $ENV{MTR_BUILD_THREAD}
     } else {
-        $build_thread = 250;
+        $build_thread = DEFAULT_MTR_BUILD_THREAD;
     }
 }
 
 if ( $build_thread eq 'auto' ) {
-    say ("Please set the environment variable MTR_BUILD_THREAD to a value <> 'auto' (recommended) or unset it (will take the value 250) ");
-    exit 1;
+    say ("Please set the environment variable MTR_BUILD_THREAD to a value <> 'auto' (recommended) or unset it (will take the value ".DEFAULT_MTR_BUILD_THREAD.") ");
+    exit (STATUS_ENVIRONMENT_FAILURE);
 }
 
 my $master_port = 10000 + 10 * $build_thread;

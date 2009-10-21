@@ -7,6 +7,7 @@ use lib "$ENV{RQG_HOME}/lib";
 use DBI;
 use Getopt::Long;
 use GenTest;
+use GenTest::Constants;
 use GenTest::App::GendataSimple;
 
 my ($dsn, $engine, $help, $views);
@@ -32,13 +33,7 @@ say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
 
 my $status = $app->run();
 
-if ($status > STATUS_OK) {
-    exit $status;
-} else {
-    exit(0);
-}
-
-
+exit $status;
 
 sub help {
 print <<EOF

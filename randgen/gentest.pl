@@ -224,7 +224,7 @@ my $test = GenTest::XML::Test->new(
 		reporters => join (',', @reporters),
 		seed => $seed,
 		mask => $mask,
-		mask => $mask_level,
+		mask_level => $mask_level,
 		rows => $rows,
 		'varchar-length' => $varchar_len
 	}
@@ -432,8 +432,7 @@ $0 - Testing via random query generation. Options:
                            ResultsetComparator3 if 3 dsns
                            ResultsetComparartor if 2 dsns
         --reporters : ErrorLog, Backtrace if one or two MySQL dsns
-        --mask      : A 16-bit mask applied to the top levels of the grammar to reduce it. 
-                      The mask is extended using the original value as a PRNBG seed if needed.
+        --mask      : A seed to a random mask used to mask (reeduce) the grammar.
         --mask-level: How many levels deep the mask is applied (default 1)
         --rows      : Number of rows to generate for each table in gendata.pl, unless specified in the ZZ file
         --varchar-length: maximum length of strings (deault 1) in gendata.pl
