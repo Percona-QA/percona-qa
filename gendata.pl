@@ -43,11 +43,7 @@ my $app = GenTest::App::Gendata->new(config_file => $config_file,
 
 my $status = $app->run();
 
-if ($status > STATUS_OK) {
-    exit $status;
-} else {
-    exit(0);
-}
+exit $status;
 
 sub help {
 
