@@ -83,13 +83,13 @@ sub gen_table {
     my $engine = $self->engine();
     my $views = $self->views();
 
-	say("Creating table $name, size $size rows, engine $engine .");
-    
 	if (
 		($executor->type == DB_MYSQL) ||
 		($executor->type == DB_DRIZZLE)
 	) {
 
+        say("Creating ".$executor->getName()." table $name, size $size rows, engine $engine .");
+    
 		### This variant is needed due to
 		### http://bugs.mysql.com/bug.php?id=47125
 
@@ -124,6 +124,8 @@ sub gen_table {
 			);
 		
     } elsif ($executor->type == DB_POSTGRES) {
+        say("Creating ".$executor->getName()." table $name, size $size rows");
+    
         my $increment_size = (length($name) > 1 ? (length($name) * 5) : 1);
 		$executor->execute("DROP TABLE /*! IF EXISTS */ $name");
         $executor->execute("DROP SEQUENCE ".$name."_seq");
@@ -155,6 +157,8 @@ sub gen_table {
 		$executor->execute("CREATE INDEX ".$name."_varchar_key ON $name(varchar_key, int_key)");
 
 	} else {
+        say("Creating ".$executor->getName()." table $name, size $size rows");
+
 		$executor->execute("DROP TABLE /*! IF EXISTS */ $name");
 		$executor->execute("
 		CREATE TABLE $name (
