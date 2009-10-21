@@ -7,6 +7,7 @@ use lib "$ENV{RQG_HOME}/lib";
 use DBI;
 use Getopt::Long;
 use GenTest;
+use GenTest::Constants;
 use GenTest::App::GendataSimple;
 
 my ($dsn, $engine, $help, $views);
