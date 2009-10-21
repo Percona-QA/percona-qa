@@ -224,7 +224,7 @@ my $test = GenTest::XML::Test->new(
 		reporters => join (',', @reporters),
 		seed => $seed,
 		mask => $mask,
-		mask => $mask_level,
+		mask_level => $mask_level,
 		rows => $rows,
 		'varchar-length' => $varchar_len
 	}
