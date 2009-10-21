@@ -76,8 +76,7 @@ $0 - Generate random queries from an SQL grammar and pipe them to STDOUT
         --seed      : Seed for the pseudo-random generator
         --queries   : Numer of queries to generate (default $default_queries);
         --dsn       : The DSN of the database that will be used to resolve rules such as _table , _field
-        --mask      : A 16-bit mask applied to the top levels of the grammar to reduce it. 
-                      The mask is extended using the original value as a PRNBG seed if needed.
+        --mask      : A seed to a random mask used to mask (reeduce) the grammar.
         --mask-level: How many levels deep the mask is applied (default 1)
         --help      : This help message
 EOF
