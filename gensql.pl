@@ -6,7 +6,7 @@ use strict;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Generator::FromGrammar;
-use GenTest::Executor::MySQL;
+use GenTest::Executor;
 
 use Getopt::Long;
 
@@ -42,9 +42,7 @@ return STATUS_ENVIRONMENT_FAILURE if not defined $generator;
 my $executor;
 
 if (defined $dsn) {
-	$executor = GenTest::Executor::MySQL->new(
-		dsn => $dsn
-	);
+	$executor = GenTest::Executor->newFromDSN($dsn);
 	exit (STATUS_ENVIRONMENT_FAILURE) if not defined $executor;
 }
 
