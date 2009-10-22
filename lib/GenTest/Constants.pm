@@ -51,9 +51,11 @@ require Exporter;
 	DB_POSTGRES
 	DB_JAVADB
 	DB_DRIZZLE
+
+    DEFAULT_MTR_BUILD_THREAD
 );
 
-use constant STATUS_OK				=> 1;
+use constant STATUS_OK				=> 0; ## Suitable for exit code
 use constant STATUS_UNKNOWN_ERROR		=> 2;
 
 use constant STATUS_ANY_ERROR			=> 3;	# Used in util/simplify* to not differentiate based on error code
@@ -107,5 +109,7 @@ use constant DB_MYSQL		=> 2;
 use constant DB_POSTGRES	=> 3;
 use constant DB_JAVADB		=> 4;
 use constant DB_DRIZZLE		=> 5;
+
+use constant DEFAULT_MTR_BUILD_THREAD => 930; ## Legacy...
 
 1;
