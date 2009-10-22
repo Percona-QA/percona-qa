@@ -1,7 +1,6 @@
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 
-
 use strict;
 use Cwd;
 use DBI;
@@ -19,13 +18,21 @@ my ($basedir, $vardir, $tree, $test) = @ARGV;
 $| = 1;
 
 #
-# Prepare ENV variables
+# Check OS. Windows and Unix/Linux are too different.
 #
-
+my $windowsOS;
 if (
 	($^O eq 'MSWin32') ||
 	($^O eq 'MSWin64')
 ) {
+	$windowsOS = 'true';
+}
+
+#
+# Prepare ENV variables
+#
+
+if ($windowsOS) {
 	# For tail and for cdb
 	$ENV{PATH} = 'G:\pb2\scripts\randgen\bin;G:\pb2\scripts\bin;C:\Program Files\Debugging Tools for Windows (x86);'.$ENV{PATH};
 	$ENV{_NT_SYMBOL_PATH} = 'srv*c:\\cdb_symbols*http://msdl.microsoft.com/download/symbols;cache*c:\\cdb_symbols';
@@ -116,6 +123,9 @@ chdir('randgen');
 
 print localtime()." [$$] Information on the host system:\n";
 system("hostname");
+print("tree=   $tree\n");
+print("test=   $test\n");
+print("vardir= $vardir\n");
 
 #print localtime()." [$$] Information on Random Query Generator version:\n";
 #system("bzr parent");
@@ -145,8 +155,8 @@ $port_range_id = get_pb2_branch_id();
 if (not defined $port_range_id) {
 	print("# Unable to get port base id from pb2 database. Picking a random one...\n");
 	$port_range_id = pick_random_port_range_id();
-	print("# MTR_BUILD_THREAD=$port_range_id\n");
 }
+print("MTR_BUILD_THREAD=$port_range_id\n");
 
 my $cwd = cwd();
 
@@ -370,9 +380,7 @@ if ($test =~ m{transactions}io ) {
 	# File name extension for plugins varies. Using .ddl for Windows and .so for others (*nix).
 	# TODO: If plugins are used for more tests, generalize e.g. into a variable for the file extension only.
 	my $plugins;
-	if (	($^O eq 'MSWin32') ||
-		($^O eq 'MSWin64')
-	) {
+	if ($windowsOS) {
 		$plugins = 'rpl_semi_sync_master=libsemisync_master.dll:rpl_semi_sync_slave=libsemisync_slave.dll';
 
 		# We are on Windows OS, but the feature (semisynchroneous replication (plugins))
@@ -528,15 +536,16 @@ if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
 $command = "perl runall.pl --basedir=\"$basedir\" --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
 
 # Add env variable to specify unique port range to use to avoid conflicts.
-$command = "MTR_BUILD_THREAD=$port_range_id ".$command;
+if ($windowsOS) {
+	$command = "set MTR_BUILD_THREAD=$port_range_id && ".$command;
+} else {
+	$command = "MTR_BUILD_THREAD=$port_range_id ".$command;
+}
 
 $command =~ s{[\r\n\t]}{ }sgio;
 my $command_result = system($command);
 
-if (
-	($^O ne 'MSWin32') &&
-	($^O ne 'MSWin64')
-) {
+if ($windowsOS) {
 	system("killall -15 mysqld");
 	system("ps -A | grep mysqld | awk -F' ' '{ print \$1 }' | xargs kill -15");
 	sleep(5);
