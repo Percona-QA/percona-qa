@@ -309,14 +309,15 @@ if ($test =~ m{transactions}io ) {
 		$plugins = 'rpl_semi_sync_master=libsemisync_master.so:rpl_semi_sync_slave=libsemisync_slave.so';
 	}
 	$command = "
-		--gendata=conf/replication_innodb_myisam.zz
+		--gendata=conf/replication_single_engine.zz
+		--engine=InnoDB
 		--grammar=conf/replication.yy
 		--rpl_mode=default
-		--mysqld=--plugin-dir=$basedir/lib/mysql/plugin
+		--mysqld=--plugin-dir=$basedir/plugin/semisync/.libs
 		--mysqld=--plugin-load=$plugins
 		--mysqld=--rpl_semi_sync_master_enabled=1
 		--mysqld=--rpl_semi_sync_slave_enabled=1
-		--reporter=ReplicationSemiSync,Deadlock,Backtrace,ErrorLog
+		--reporters=ReplicationSemiSync,Deadlock,Backtrace,ErrorLog
 		--validator=
 		--threads=1
 		--duration=300
