@@ -127,9 +127,9 @@ print("tree=   $tree\n");
 print("test=   $test\n");
 print("vardir= $vardir\n");
 
-#print localtime()." [$$] Information on Random Query Generator version:\n";
-#system("bzr parent");
-#system("bzr version-info");
+print localtime()." [$$] Information on Random Query Generator version:\n";
+system("bzr info");
+system("bzr version-info");
 
 # Server port numbers:
 #
