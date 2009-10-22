@@ -46,7 +46,7 @@ sub monitor {
 	$slave_dbh->do("SET GLOBAL rpl_semi_sync_slave_enabled = 1");
 
 	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh);
-	sleep(1);
+	sleep(5);
 
 	my ($unused2, $rpl_semi_sync_master_status_first) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
 
@@ -70,7 +70,7 @@ sub monitor {
 
 	# Pick a sleep interval that is either more or less than the semisync timeout
 
-	my $sleep_interval = $prng->int(0, 1) == 1 ? ($rpl_semi_sync_master_timeout + 5) : 5;
+	my $sleep_interval = $prng->int(0, 1) == 1 ? ($rpl_semi_sync_master_timeout * 2) : 5;
 	say("GenTest::Reporter::ReplicationSemiSync: Sleeping for $sleep_interval seconds.");
 	sleep($sleep_interval);
 
@@ -124,7 +124,7 @@ sub monitor {
 	#
 
 	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh);
-	sleep(1);
+	sleep(5);
 
 	my ($unused7, $rpl_semi_sync_master_status_last) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
 	if ($rpl_semi_sync_master_status_last eq 'OFF') {
