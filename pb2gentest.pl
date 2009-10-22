@@ -1,6 +1,12 @@
+use lib 'lib';
+use lib "$ENV{RQG_HOME}/lib";
+
+
 use strict;
-use POSIX;
 use Cwd;
+use DBI;
+use GenTest::Random;
+use POSIX;
 
 my ($basedir, $vardir, $tree, $test) = @ARGV;
 
@@ -43,9 +49,11 @@ if (
 	system("date");
 }
 
+################################################################################
 ##
 ## subroutines
 ##
+################################################################################
 
 #
 # Skips the test, displays reason (argument to the routine) and exits with
@@ -66,6 +74,44 @@ sub skip_test {
 	POSIX::_exit (0);
 }
 
+#
+# Returns a random number between 1 and 499.
+#
+sub pick_random_port_range_id {
+	my $prng = GenTest::Random->new( seed => time );
+	return $prng->uint16(1,499);
+}
+
+#
+# Get the bzr branch ID from the pushbuild2 database (internal), based on the
+# branch name ($tree variable).
+#
+# If the branch name (tree) is not found in the database, or we are unable to
+# connect to the database, undef is returned.
+#
+sub get_pb2_branch_id {
+
+	my $dsn_pb2 = 'dbi:mysql:host=trollheim:port=3306:user=readonly:database=pushbuild2';
+	my $SQL_getBranchId = "SELECT branch_id FROM branches WHERE branch_name = '$tree'";
+
+	my $dbh = DBI->connect($dsn_pb2, undef, undef, {
+		PrintError => 1,
+		RaiseError => 0,
+		AutoCommit => 0,
+	} );
+
+	if (not defined $dbh) {
+		print("connect() to dsn ".$dsn_pb2." failed: ".$DBI::errstr."\n");
+		return;
+	}
+
+	my $id = $dbh->selectrow_array($SQL_getBranchId);
+	$dbh->disconnect;
+	return $id;
+}
+
+#### end subroutines ###########################################################
+
 chdir('randgen');
 
 print localtime()." [$$] Information on the host system:\n";
@@ -74,6 +120,33 @@ system("hostname");
 #print localtime()." [$$] Information on Random Query Generator version:\n";
 #system("bzr parent");
 #system("bzr version-info");
+
+# Server port numbers:
+#
+# Use a port range ID (integer) that is unique for this host at this time.
+# This ID is used by the RQG framework to designate a port range to use for the
+# test run. Passed to RQG using the MTR_BUILD_THREAD environment variable
+# (this naming is a legacy from MTR, which is used by RQG to start the MySQL
+# server).
+#
+# In PB2, several instances of this script may run at the same time on the same
+# host (but usually for different branches) causing port number conflicts.
+#
+# Solution: Use unique port range id per branch. Use "branch_id" as recorded
+#           in PB2 database (guaranteed unique per branch).
+# Potential issue 1: Unable to connect to pb2 database.
+# Solution 1: Pick a random ID between 1 and some sensible number (e.g. 500).
+# Potential issue 2: Clashing resources when running multiple pushes in same branch?
+# Potential solution 2: Keep track of used ids in local file(s). Pick unused id.
+#                       (not implemented yet)
+
+my $port_range_id; # Corresponding to MTR_BUILD_THREAD in the MySQL MTR world.
+$port_range_id = get_pb2_branch_id();
+if (not defined $port_range_id) {
+	print("# Unable to get port base id from pb2 database. Picking a random one...\n");
+	$port_range_id = pick_random_port_range_id();
+	print("# MTR_BUILD_THREAD=$port_range_id\n");
+}
 
 my $cwd = cwd();
 
@@ -453,6 +526,9 @@ if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
 }
 	
 $command = "perl runall.pl --basedir=\"$basedir\" --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
+
+# Add env variable to specify unique port range to use to avoid conflicts.
+$command = "MTR_BUILD_THREAD=$port_range_id ".$command;
 
 $command =~ s{[\r\n\t]}{ }sgio;
 my $command_result = system($command);
