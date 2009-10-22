@@ -1,5 +1,6 @@
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
+use lib 'randgen/lib';
 
 use strict;
 use Cwd;
