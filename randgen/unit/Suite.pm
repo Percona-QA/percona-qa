@@ -10,6 +10,7 @@ GrammarTest
 FromGrammarTest 
 ParseAllGrammars
 GendataTest
+TestScripts
 ) }
 
 1;
