@@ -33,13 +33,7 @@ say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
 
 my $status = $app->run();
 
-if ($status > STATUS_OK) {
-    exit $status;
-} else {
-    exit(0);
-}
-
-
+exit $status;
 
 sub help {
 print <<EOF
