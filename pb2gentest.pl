@@ -313,7 +313,7 @@ if ($test =~ m{transactions}io ) {
 		--engine=InnoDB
 		--grammar=conf/replication.yy
 		--rpl_mode=default
-		--mysqld=--plugin-dir=$basedir/plugin/semisync/.libs
+		--mysqld=--plugin-dir=$basedir/lib/mysql/plugin
 		--mysqld=--plugin-load=$plugins
 		--mysqld=--rpl_semi_sync_master_enabled=1
 		--mysqld=--rpl_semi_sync_slave_enabled=1
