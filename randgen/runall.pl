@@ -37,8 +37,9 @@ my @master_dsns;
 
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file,
-    $seed, $mask, $mask_level, $mem, $rows, $varchar_len, $xml_output,
-    $valgrind, $views, $start_dirty, $filter, $build_thread);
+    $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
+    $varchar_len, $xml_output, $valgrind, $views, $start_dirty,
+    $filter, $build_thread);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -59,6 +60,7 @@ my $opt_result = GetOptions(
 	'rpl_mode=s' => \$rpl_mode,
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
+	'redefine=s' => \$redefine_file,
 	'threads=i' => \$threads,
 	'queries=s' => \$queries,
 	'duration=i' => \$duration,
@@ -306,6 +308,7 @@ push @gentest_options, "--duration=$duration" if defined $duration;
 push @gentest_options, "--dsn1=$master_dsns[0]" if defined $master_dsns[0];
 push @gentest_options, "--dsn2=$master_dsns[1]" if defined $master_dsns[1];
 push @gentest_options, "--grammar=$grammar_file";
+push @gentest_options, "--redefine=$redefine_file" if defined $redefine_file;
 push @gentest_options, "--seed=$seed" if defined $seed;
 push @gentest_options, "--mask=$mask" if defined $mask;
 push @gentest_options, "--mask-level=$mask_level" if defined $mask_level;
@@ -407,6 +410,7 @@ $0 - Run a complete random query generation test, including server start with re
     General options
 
     --grammar   : Grammar file to use when generating queries (REQUIRED);
+    --redefine  : Grammar file to redefine and/or add rules to the given grammar
     --rpl_mode  : Replication type to use (statement|row|mixed) (default: no replication);
     --vardir1   : Optional.
     --vardir2   : Optional. 
