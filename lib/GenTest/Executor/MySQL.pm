@@ -60,7 +60,8 @@ my @errors = (
 	"Duplicate condition: .*?",
 	"Duplicate condition information item '.*?'",
 	"Undefined CONDITION: .*?",
-	"Incorrect .*? value '.*?'"
+	"Incorrect .*? value '.*?'",
+	"Recursive limit \d+ (as set by the max_sp_recursion_depth variable) was exceeded for routine .*?"
 );
 
 my @patterns = map { qr{$_}i } @errors;
@@ -176,10 +177,18 @@ use constant	ER_OPEN_AS_READONLY			=> 1036;
 
 use constant	ER_SP_DUP_COND				=> 1332;
 use constant	ER_SP_DUP_HANDLER			=> 1413;
-use constant	ER_SIGNAL_BAD_CONDITION_TYPE		=> 1784;
+use constant	ER_SIGNAL_BAD_CONDITION_TYPE		=> 1646;
 use constant	ER_SP_COND_MISMATCH			=> 1319;
-use constant	ER_DUP_SIGNAL_SET			=> 1779;
+use constant	ER_DUP_SIGNAL_SET			=> 1641;
 use constant	ER_WRONG_VALUE				=> 1525;
+use constant	ER_SP_NO_RECURSION			=> 1424;
+use constant	ER_SIGNAL_EXCEPTION			=> 1644;
+use constant	ER_RESIGNAL_WITHOUT_ACTIVE_HANDLER	=> 1645;
+use constant	ER_WRONG_VALUE_FOR_VAR			=> 1231;
+use constant	ER_SP_NO_RETSET				=> 1415;
+use constant	ER_SP_NORETURNEND			=> 1321;
+use constant	ER_CANT_UPDATE_USED_TABLE_IN_SF_OR_TRG	=> 1442;
+use constant	ER_SP_RECURSION_LIMIT			=> 1456;
 
 # Transaction errors
 
@@ -316,6 +325,14 @@ my %err2type = (
 	ER_SP_COND_MISMATCH()			=> STATUS_SEMANTIC_ERROR,
 	ER_DUP_SIGNAL_SET()			=> STATUS_SEMANTIC_ERROR,
 	ER_WRONG_VALUE()			=> STATUS_SEMANTIC_ERROR,
+	ER_SP_NO_RECURSION()			=> STATUS_SEMANTIC_ERROR,
+	ER_SIGNAL_EXCEPTION()			=> STATUS_SEMANTIC_ERROR,
+	ER_RESIGNAL_WITHOUT_ACTIVE_HANDLER()	=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_VALUE_FOR_VAR()		=> STATUS_SEMANTIC_ERROR,
+	ER_SP_NO_RETSET()			=> STATUS_SEMANTIC_ERROR,
+	ER_SP_NORETURNEND()			=> STATUS_SEMANTIC_ERROR,
+	ER_CANT_UPDATE_USED_TABLE_IN_SF_OR_TRG()=> STATUS_SEMANTIC_ERROR,
+	ER_SP_RECURSION_LIMIT()			=> STATUS_SEMANTIC_ERROR,
 
 	ER_LOCK_OR_ACTIVE_TRANSACTION => STATUS_TRANSACTION_ERROR,
 

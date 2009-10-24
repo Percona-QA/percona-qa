@@ -240,6 +240,7 @@ condition_information_item:
 ;
 
 simple_value_specification:
+	_varchar(512)	|
 	_english         |
 	_digit           |
 	variable_name    |
