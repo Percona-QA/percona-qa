@@ -86,15 +86,15 @@ sub setId {
 sub type {
 	my ($self) = @_;
 	
-	if ($self =~ m/GenTest::Executor::JavaDB/i) {
+	if (ref($self) eq "GenTest::Executor::JavaDB") {
 		return DB_JAVADB;
-	} elsif ($self =~/^GenTest::Executor::MySQL/i) {
+	} elsif (ref($self) eq "GenTest::Executor::MySQL") {
 		return DB_MYSQL;
-	} elsif ($self =~/^GenTest::Executor::Drizzle/i) {
+	} elsif (ref($self) eq "GenTest::Executor::Drizzle") {
 		return DB_DRIZZLE;
-	} elsif ($self =~ m/GenTest::Executor::Postgres/i) {
+	} elsif (ref($self) eq "GenTest::Executor::Postgres") {
 		return DB_POSTGRES;
-    } elsif ($self =~m/GenTest::Executor::Dummy/i) {
+    } elsif (ref($self) eq "GenTest::Executor::Dummy") {
         return DB_DUMMY;
 	} else {
 		return DB_UNKNOWN;
