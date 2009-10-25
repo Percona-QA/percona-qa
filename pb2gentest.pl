@@ -7,6 +7,7 @@ use Cwd;
 use DBI;
 use GenTest::Random;
 use POSIX;
+use Sys::Hostname;
 
 my ($basedir, $vardir, $tree, $test) = @ARGV;
 
@@ -76,7 +77,7 @@ sub skip_test {
 	{
 		$message = $message.' ';
 	}
-        $message = $message." [ skipped ] ".$reason;
+	$message = $message." [ skipped ] ".$reason;
 	print "$message\n";
 	print localtime()." [$$] $0 will exit with exit status 0.\n";
 	POSIX::_exit (0);
@@ -99,17 +100,30 @@ sub pick_random_port_range_id {
 #
 sub get_pb2_branch_id {
 
-	my $dsn_pb2 = 'dbi:mysql:host=trollheim:port=3306:user=readonly:database=pushbuild2';
-	my $SQL_getBranchId = "SELECT branch_id FROM branches WHERE branch_name = '$tree'";
+	# Lookup by branch name. Get branch name from tree, which could be url.
+	my $branch_name = $tree;
+	if ($tree =~ m{/}) {
+		# Found '/', assuming tree is URL.
+		# Find last substring that is between a '/' and either end-of-string or a '/' followed by end of string.
+		$tree =~ m{.*/([^/]+)($|/$)};
+		$branch_name=$1;
+	}
+
+	my $dsn_pb2 = 'dbi:mysql:host=trollheim.norway.sun.com:port=3306:user=readonly:database=pushbuild2';
+	my $SQL_getBranchId = "SELECT branch_id FROM branches WHERE branch_name = '$branch_name'";
+
+	print("Using branch name $branch_name\n");
+	print("Trying to connect to pushbuild2 database...\n");
 
 	my $dbh = DBI->connect($dsn_pb2, undef, undef, {
-		PrintError => 1,
+		mysql_connect_timeout => 5,
+		PrintError => 0,
 		RaiseError => 0,
 		AutoCommit => 0,
 	} );
 
 	if (not defined $dbh) {
-		print("connect() to dsn ".$dsn_pb2." failed: ".$DBI::errstr."\n");
+		print("connect() to pushbuild2 database failed: ".$DBI::errstr."\n");
 		return;
 	}
 
@@ -122,15 +136,22 @@ sub get_pb2_branch_id {
 
 chdir('randgen');
 
-print localtime()." [$$] Information on the host system:\n";
-system("hostname");
-print("tree=   $tree\n");
-print("test=   $test\n");
-print("vardir= $vardir\n");
-
-print localtime()." [$$] Information on Random Query Generator version:\n";
+print("==================== Starting $0 ====================\n");
+print("***** Information on the host system: *****\n");
+print(" - Local time  : ".localtime()."\n");
+print(" - Hostname    : ".hostname()."\n");
+print(" - PID         : $$\n");
+print(" - Working dir : ".cwd()."\n");
+print(" - Script arguments:\n");
+print("       basedir = $basedir\n");
+print("       vardir  = $vardir\n");
+print("       tree    = $tree\n");
+print("       test    = $test\n");
+print("\n");
+print("***** Information on Random Query Generator version (bzr): *****\n");
 system("bzr info");
 system("bzr version-info");
+print("\n");
 
 # Server port numbers:
 #
@@ -150,14 +171,19 @@ system("bzr version-info");
 # Potential issue 2: Clashing resources when running multiple pushes in same branch?
 # Potential solution 2: Keep track of used ids in local file(s). Pick unused id.
 #                       (not implemented yet)
-
+print("***** Determining port base id: *****\n");
 my $port_range_id; # Corresponding to MTR_BUILD_THREAD in the MySQL MTR world.
 $port_range_id = get_pb2_branch_id();
 if (not defined $port_range_id) {
-	print("# Unable to get port base id from pb2 database. Picking a random one...\n");
+	print("Unable to get branch id from pb2 database. Picking a 'random' port base id...\n");
 	$port_range_id = pick_random_port_range_id();
+} else {
+        print("Connect successful. Using pb2 branch ID as port base ID.\n");
 }
 print("MTR_BUILD_THREAD=$port_range_id\n");
+print("\n");
+
+print("Configuring test...\n");
 
 my $cwd = cwd();
 
@@ -544,6 +570,7 @@ if ($windowsOS) {
 }
 
 $command =~ s{[\r\n\t]}{ }sgio;
+print("Running runall.pl...\n");
 my $command_result = system($command);
 
 if ($windowsOS) {
