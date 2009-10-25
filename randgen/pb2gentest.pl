@@ -573,7 +573,7 @@ $command =~ s{[\r\n\t]}{ }sgio;
 print("Running runall.pl...\n");
 my $command_result = system($command);
 
-if ($windowsOS) {
+if (!$windowsOS) {
 	system("killall -15 mysqld");
 	system("ps -A | grep mysqld | awk -F' ' '{ print \$1 }' | xargs kill -15");
 	sleep(5);
