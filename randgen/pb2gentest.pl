@@ -16,6 +16,8 @@ my ($basedir, $vardir, $tree, $test) = @ARGV;
 # http://forge.mysql.com/wiki/RandomQueryGeneratorTests
 #
 
+print("==================== Starting $0 ====================\n");
+
 # Autoflush output buffers (needed when using POSIX::_exit())
 $| = 1;
 
@@ -100,6 +102,14 @@ sub pick_random_port_range_id {
 #
 sub get_pb2_branch_id {
 
+	# First, check if the environment variable BRANCH_ID is set.
+	if (defined $ENV{BRANCH_ID}) {
+		return $ENV{BRANCH_ID};
+	} else {
+		# Disable db lookup for the time being due to issues on sparc32.
+		# Remove this "else" block to enable
+		return;
+	}
 	# Lookup by branch name. Get branch name from tree, which could be url.
 	my $branch_name = $tree;
 	if ($tree =~ m{/}) {
@@ -136,7 +146,6 @@ sub get_pb2_branch_id {
 
 chdir('randgen');
 
-print("==================== Starting $0 ====================\n");
 print("***** Information on the host system: *****\n");
 print(" - Local time  : ".localtime()."\n");
 print(" - Hostname    : ".hostname()."\n");
@@ -175,10 +184,10 @@ print("***** Determining port base id: *****\n");
 my $port_range_id; # Corresponding to MTR_BUILD_THREAD in the MySQL MTR world.
 $port_range_id = get_pb2_branch_id();
 if (not defined $port_range_id) {
-	print("Unable to get branch id from pb2 database. Picking a 'random' port base id...\n");
+	print("Unable to get branch id. Picking a 'random' port base id...\n");
 	$port_range_id = pick_random_port_range_id();
 } else {
-        print("Connect successful. Using pb2 branch ID as port base ID.\n");
+        print("Using pb2 branch ID as port base ID.\n");
 }
 print("MTR_BUILD_THREAD=$port_range_id\n");
 print("\n");
