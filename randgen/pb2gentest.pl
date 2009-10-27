@@ -435,7 +435,7 @@ if ($test =~ m{transactions}io ) {
 	$command = "
 		--gendata=conf/replication_single_engine.zz
 		--engine=InnoDB
-		--grammar=conf/replication.yy
+		--grammar=conf/replication_simple.yy
 		--rpl_mode=default
 		--mysqld=--plugin-dir=$plugin_dir
 		--mysqld=--plugin-load=$plugins

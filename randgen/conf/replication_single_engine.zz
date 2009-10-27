@@ -5,7 +5,7 @@ $tables = {
 };
 
 $fields = {
-	types => [ 'bit', 'int', 'char(255)', 'enum', 'set', 'blob', 'float', 'decimal' ],
+	types => [ 'bit', 'int', 'char(255)', 'enum', 'set', 'float', 'decimal' ],
 	indexes => [ undef, 'key' ],
 	null => [undef, 'not null'],
 	default => [undef, 'default null' ],
