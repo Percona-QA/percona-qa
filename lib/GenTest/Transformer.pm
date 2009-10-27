@@ -52,11 +52,11 @@ sub new {
 }
 
 sub transform {
-	my ($transformer, $original_query) = @_;
+	my ($transformer, $original_query, $executor) = @_;
 
 	my $class = $transformer->class();
 
-	return $class->transform($original_query);
+	return $class->transform($original_query, $executor);
 }
 
 sub validate {
