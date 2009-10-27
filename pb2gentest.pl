@@ -67,8 +67,15 @@ if ($windowsOS) {
 ################################################################################
 
 #
-# Skips the test, displays reason (argument to the routine) and exits with
-# exit code 0.
+# Skips the test, displays reason (argument to the routine) quasi-MTR-style and
+# exits with exit code 0.
+#
+# Example usage:
+#   # This feature is not yet supported on Windows, so skip this test
+#   skip_test("This feature/test does not support the Windows platform at this time");
+#
+# will appear in output as:
+#   rpl_semisync                             [ skipped ] This feature/test does not support the Windows platform at this time
 #
 sub skip_test {
 	my $reason = @_[0];
@@ -411,18 +418,18 @@ if ($test =~ m{transactions}io ) {
 	# --validator= line will remove the default replication Validator, which would otherwise
 	#   report test failure when the slave I/O thread is stopped, which is OK in the context
 	#   of this particular test.
-	# --plugin-dir is relative (to the server's basedir)
 
-	# File name extension for plugins varies. Using .ddl for Windows and .so for others (*nix).
-	# TODO: If plugins are used for more tests, generalize e.g. into a variable for the file extension only.
+	# Plugin file names and location vary between platforms.
+	# TODO: Also support simple build from source (current paths are
+	#       adjusted for PB2 builds and 'make install' locations).
+	my $plugin_dir;
 	my $plugins;
 	if ($windowsOS) {
-		$plugins = 'rpl_semi_sync_master=libsemisync_master.dll:rpl_semi_sync_slave=libsemisync_slave.dll';
-
-		# We are on Windows OS, but the feature (semisynchroneous replication (plugins))
-		# is not yet supported there, so we skip this test for the time being.
-		skip_test("This feature/test does not support the Windows platform at this time");
+		$plugin_dir="$basedir\\plugin\\semisync\\RelWithDebInfo";
+		$plugins = 'rpl_semi_sync_master=semisync_master.dll;rpl_semi_sync_slave=semisync_slave.dll';
 	} else {
+		# tested on Linux and Solaris
+		$plugin_dir="$basedir/lib/mysql/plugin";
 		$plugins = 'rpl_semi_sync_master=libsemisync_master.so:rpl_semi_sync_slave=libsemisync_slave.so';
 	}
 	$command = "
@@ -430,7 +437,7 @@ if ($test =~ m{transactions}io ) {
 		--engine=InnoDB
 		--grammar=conf/replication.yy
 		--rpl_mode=default
-		--mysqld=--plugin-dir=$basedir/lib/mysql/plugin
+		--mysqld=--plugin-dir=$plugin_dir
 		--mysqld=--plugin-load=$plugins
 		--mysqld=--rpl_semi_sync_master_enabled=1
 		--mysqld=--rpl_semi_sync_slave_enabled=1
