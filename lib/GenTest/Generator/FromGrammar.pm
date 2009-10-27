@@ -9,6 +9,7 @@ use GenTest::Random;
 use GenTest::Generator;
 use GenTest::Grammar;
 use GenTest::Grammar::Rule;
+use GenTest::Stack::Stack;
 use GenTest;
 use Cwd;
 
@@ -130,6 +131,8 @@ sub next {
 	my $prng = $generator->prng();
 	my $mask = $generator->mask();
 	my $mask_level = $generator->maskLevel();
+
+    my $stack = GenTest::Stack::Stack->new();
     
 	#
 	# If a temporary file has been left from a previous statement, unlink it.

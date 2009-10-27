@@ -24,6 +24,11 @@ sub test_gensql {
     my $status = system("perl gensql.pl --grammar=conf/example.yy --dsn=dummy --queries=1");
 
     $self->assert_equals(0, $status);
+
+    my $status = system("perl gensql.pl --grammar=unit/testStack.yy --dsn=dummy --queries=5");
+
+    $self->assert_equals(0, $status);
+
 }
 
 sub test_gendata {
