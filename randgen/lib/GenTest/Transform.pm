@@ -40,13 +40,33 @@ sub transformExecuteValidate {
 	$transformer->[TRANSFORMER_QUERIES_PROCESSED]++;
 
 	my $transformed_query = $transformer->transform($original_query, $executor);
+	my $result_transformed;
 
-	return STATUS_OK if $transformed_query == STATUS_OK || $transformed_query == STATUS_WONT_HANDLE;
-	return $transformed_query if $transformed_query =~ m{^\d+$}sgio;
+	if (
+		($transformed_query eq STATUS_OK) ||
+		($transformed_query == STATUS_WONT_HANDLE)
+	) {
+		return STATUS_OK;
+	} elsif ($transformed_query =~ m{^\d+$}sgio) {
+		return $transformed_query;
+	} elsif (ref($transformed_query) eq 'ARRAY') {
+		# If the Transformer returned several queries, execute each one independently
+		# and pick the first result set that was returned and use it during further processing.
+
+		foreach my $transformed_query_part (@$transformed_query) {
+			my $part_result = $executor->execute($transformed_query_part, 1);
+			$result_transformed = $part_result if defined $part_result->data();
+		}
+	
+		# Join the separate queries together for further printing and analysis
+
+		$transformed_query = join('; ',@$transformed_query);
+	} else {
+		$result_transformed = $executor->execute($transformed_query, 1);
+	}
 
 	$transformer->[TRANSFORMER_QUERIES_TRANSFORMED]++;
 
-	my $result_transformed = $executor->execute($transformed_query, 1);
 	my $transform_outcome = $transformer->validate([ $original_result, $result_transformed ]);
 
 	return ($transform_outcome, $transformed_query, $result_transformed);
