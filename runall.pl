@@ -439,6 +439,7 @@ $0 - Run a complete random query generation test, including server start with re
     will be compared between them.
 EOF
 	;
+	print "$0 arguments were: ".join(' ', @ARGV_saved)."\n";
 	exit_test(STATUS_UNKNOWN_ERROR);
 }
 
