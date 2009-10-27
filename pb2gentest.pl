@@ -545,6 +545,12 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--duration=600
 		--threads=25
 	';
+} else {
+	print("[ERROR]: Test configuration for test name '$test' is not ".
+		"defined in this script.\n");
+	my $exitCode = 1;
+	print("Will exit $0 with exit code $exitCode.\n");
+	POSIX::_exit ($exitCode);
 }
 
 #
