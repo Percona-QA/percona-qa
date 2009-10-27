@@ -9,6 +9,7 @@ use GenTest::Random;
 use GenTest::Generator;
 use GenTest::Grammar;
 use GenTest::Grammar::Rule;
+use GenTest::Stack::Stack;
 use GenTest;
 use Cwd;
 
@@ -25,6 +26,7 @@ use constant GENERATOR_SEQ_ID		=> 7;
 use constant GENERATOR_MASK		=> 8;
 use constant GENERATOR_MASK_LEVEL => 9;
 use constant GENERATOR_VARCHAR_LENGTH	=> 10;
+use constant GENERATOR_MASKED_GRAMMAR => 11;
 
 use constant GENERATOR_MAX_OCCURRENCES	=> 500;
 use constant GENERATOR_MAX_LENGTH	=> 2048;
@@ -67,6 +69,15 @@ sub new {
 
 	$generator->[GENERATOR_SEQ_ID] = 0;
 
+    if ($generator->mask() > 0) {
+        my $grammar = $generator->grammar();
+        my $top = $grammar->topGrammar($generator->maskLevel(),
+                                       "thread".$generator->threadId(),
+                                       "query");
+        my $maskedTop = $top->mask($generator->mask());
+        $generator->[GENERATOR_MASKED_GRAMMAR] = $grammar->patch($maskedTop);
+    }
+
 	return $generator;
 }
 
@@ -102,6 +113,10 @@ sub maskLevel {
 	return $_[0]->[GENERATOR_MASK_LEVEL];
 }
 
+sub maskedGrammar {
+	return $_[0]->[GENERATOR_MASKED_GRAMMAR];
+}
+
 #
 # Generate a new query. We do this by iterating over the array containing grammar rules and expanding each grammar rule
 # to one of its right-side components . We do that in-place in the array.
@@ -116,6 +131,8 @@ sub next {
 	my $prng = $generator->prng();
 	my $mask = $generator->mask();
 	my $mask_level = $generator->maskLevel();
+
+    my $stack = GenTest::Stack::Stack->new();
     
 	#
 	# If a temporary file has been left from a previous statement, unlink it.
@@ -136,12 +153,8 @@ sub next {
 	}
 
     ## Apply mask if any
-	if ($mask > 0) {
-        my $top = $grammar->topGrammar($mask_level,
-                                       "thread".$generator->threadId(),
-                                       "query");
-        my $maskedTop = $top->mask($mask);
-        $grammar = $grammar->patch($maskedTop);
+	if (defined $generator->maskedGrammar()) {
+        $grammar = $generator->maskedGrammar();
 	}
 
 	# If no init starting rule, we look for rules named "threadN" or "query"
