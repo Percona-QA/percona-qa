@@ -189,12 +189,19 @@ print("\n");
 #                       (not implemented yet)
 print("***** Determining port base id: *****\n");
 my $port_range_id; # Corresponding to MTR_BUILD_THREAD in the MySQL MTR world.
-$port_range_id = get_pb2_branch_id();
-if (not defined $port_range_id) {
-	print("Unable to get branch id. Picking a 'random' port base id...\n");
-	$port_range_id = pick_random_port_range_id();
+# First, see if use has supplied us with a value for MTR_BUILD_THREAD:
+$port_range_id = $ENV{MTR_BUILD_THREAD};
+if (defined $port_range_id) {
+	print("Environment variable MTR_BUILD_THREAD was already set.\n");
 } else {
-        print("Using pb2 branch ID as port base ID.\n");
+	# try to obtain branch id, somehow
+	$port_range_id = get_pb2_branch_id();
+	if (not defined $port_range_id) {
+		print("Unable to get branch id. Picking a 'random' port base id...\n");
+		$port_range_id = pick_random_port_range_id();
+	} else {
+		print("Using pb2 branch ID as port base ID.\n");
+	}
 }
 print("MTR_BUILD_THREAD=$port_range_id\n");
 print("\n");
