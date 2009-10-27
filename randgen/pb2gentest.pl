@@ -228,9 +228,10 @@ if (($rpl_mode) = $test =~ m{(rbr|sbr|mbr|statement|mixed|row)}io) {
 #
 # Start defining tests. Test name can be whatever matches the regex in the if().
 # TODO: Define less ambiguous test names to avoid accidental misconfiguration.
+#
 # Starting out with "legacy" Falcon tests.
 #
-if ($test =~ m{transactions}io ) {
+if ($test =~ m{falcon_.*transactions}io ) {
 	$command = '
 		--grammar=conf/transactions.yy
 		--gendata=conf/transactions.zz
@@ -239,7 +240,7 @@ if ($test =~ m{transactions}io ) {
 		--validator=DatabaseConsistency
 		--mem
 	';
-} elsif ($test =~ m{durability}io ) {
+} elsif ($test =~ m{falcon_.*durability}io ) {
 	$command = '
 		--grammar=conf/transaction_durability.yy
 		--vardir1='.$vardir.'/vardir-'.$engine.'
@@ -249,7 +250,7 @@ if ($test =~ m{transactions}io ) {
 		--mysqld2=--default-storage-engine=Innodb
 		--validator=ResultsetComparator
 	';
-} elsif ($test =~ m{repeatable_read}io ) {
+} elsif ($test =~ m{falcon_repeatable_read}io ) {
 	$command = '
 		--grammar=conf/repeatable_read.yy
 		--gendata=conf/transactions.zz
@@ -259,20 +260,7 @@ if ($test =~ m{transactions}io ) {
 		--mysqld=--falcon-consistent-read=1
 		--mem
 	';
-} elsif ($test =~ m{blob_recovery}io ) {
-	$command = '
-		--grammar=conf/falcon_blobs.yy
-		--gendata=conf/falcon_blobs.zz
-		--duration=130
-		--threads=1
-		--mysqld=--falcon-page-cache-size=128M
-	';
-} elsif ($test =~ m{many_indexes}io ) {
-	$command = '
-		--grammar=conf/many_indexes.yy
-		--gendata=conf/many_indexes.zz
-	';
-} elsif ($test =~ m{chill_thaw_compare}io) {
+} elsif ($test =~ m{falcon_chill_thaw_compare}io) {
 	$command = '
 	        --grammar=conf/falcon_chill_thaw.yy
 		--gendata=conf/falcon_chill_thaw.zz
@@ -283,27 +271,27 @@ if ($test =~ m{transactions}io ) {
 		--vardir2='.$vardir.'/default-vardir
 		--reporters=Deadlock,ErrorLog,Backtrace
 	';
-} elsif ($test =~ m{chill_thaw}io) {
+} elsif ($test =~ m{falcon_chill_thaw}io) {
 	$command = '
 	        --grammar=conf/falcon_chill_thaw.yy 
 	        --mysqld=--falcon-index-chill-threshold=4K 
 	        --mysqld=--falcon-record-chill-threshold=4K
 	';
-} elsif ($test =~ m{online_alter}io) {
+} elsif ($test =~ m{falcon_online_alter}io) {
 	$command = '
 	        --grammar=conf/falcon_online_alter.yy 
 	';
-} elsif ($test =~ m{ddl}io) {
+} elsif ($test =~ m{falcon_ddl}io) {
 	$command = '
 	        --grammar=conf/falcon_ddl.yy
 	';
-} elsif ($test =~ m{limit_compare_self}io ) {
+} elsif ($test =~ m{falcon_limit_compare_self}io ) {
 	$command = '
 		--grammar=conf/falcon_nolimit.yy
 		--threads=1
 		--validator=Limit
 	';
-} elsif ($test =~ m{limit_compare_innodb}io ) {
+} elsif ($test =~ m{falcon_limit_compare_innodb}io ) {
 	$command = '
 		--grammar=conf/limit_compare.yy
 		--vardir1='.$vardir.'/vardir-falcon
@@ -313,41 +301,35 @@ if ($test =~ m{transactions}io ) {
 		--threads=1
 		--reporters=
 	';
-} elsif ($test =~ m{limit}io ) {
+} elsif ($test =~ m{falcon_limit}io ) {
 	$command = '
 	        --grammar=conf/falcon_limit.yy
 		--mysqld=--loose-maria-pagecache-buffer-size=64M
 	';
-} elsif ($test =~ m{recovery}io ) {
+} elsif ($test =~ m{falcon_recovery}io ) {
 	$command = '
 	        --grammar=conf/falcon_recovery.yy
 		--gendata=conf/falcon_recovery.zz
 		--mysqld=--falcon-checkpoint-schedule="1 1 1 1 1"
 	';
-} elsif ($test =~ m{pagesize_32K}io ) {
+} elsif ($test =~ m{falcon_pagesize_32K}io ) {
 	$command = '
 		--grammar=conf/falcon_pagesize.yy
 		--mysqld=--falcon-page-size=32K
 		--gendata=conf/falcon_pagesize32K.zz
 	';
-} elsif ($test =~ m{pagesize_2K}io) {
+} elsif ($test =~ m{falcon_pagesize_2K}io) {
 	$command = '
 		--grammar=conf/falcon_pagesize.yy
 		--mysqld=--falcon-page-size=2K
 		--gendata=conf/falcon_pagesize2K.zz
 	';
-} elsif ($test =~ m{select_autocommit}io) {
+} elsif ($test =~ m{falcon_select_autocommit}io) {
 	$command = '
 		--grammar=conf/falcon_select_autocommit.yy
 		--queries=10000000
 	';
-} elsif ($test =~ m{tiny_inserts}io) {
-	$command = '
-		--gendata=conf/falcon_tiny_inserts.zz
-		--grammar=conf/falcon_tiny_inserts.yy
-		--queries=10000000
-	';
-} elsif ($test =~ m{backlog}io ) {
+} elsif ($test =~ m{falcon_backlog}io ) {
 	$command = '
 		--grammar=conf/falcon_backlog.yy
 		--gendata=conf/falcon_backlog.zz
@@ -356,7 +338,7 @@ if ($test =~ m{transactions}io ) {
 		--mysqld=--falcon-record-chill-threshold=1K
 		--mysqld=--falcon-page-cache-size=128M
 	';
-} elsif ($test =~ m{compare_self}io ) {
+} elsif ($test =~ m{falcon_compare_self}io ) {
 	$command = '
 		--grammar=conf/falcon_data_types.yy
 		--gendata=conf/falcon_data_types.zz
@@ -377,6 +359,32 @@ if ($test =~ m{transactions}io ) {
 		--mysqld2=--default-storage-engine=Innodb
 		--threads=1
 		--reporters=
+	';
+} elsif ($test =~ m{(falcon|myisam)_blob_recovery}io ) {
+	$command = '
+		--grammar=conf/falcon_blobs.yy
+		--gendata=conf/falcon_blobs.zz
+		--duration=130
+		--threads=1
+	';
+	if ($test =~ m{falcon}io) {
+		# this option works with Falcon-enabled builds only
+		$command = $command.'
+			--mysqld=--falcon-page-cache-size=128M
+		';
+	}
+} elsif ($test =~ m{many_indexes}io ) {
+	# used for falcon_many_indexes, but is actually engine independent
+	$command = '
+		--grammar=conf/many_indexes.yy
+		--gendata=conf/many_indexes.zz
+	';
+} elsif ($test =~ m{tiny_inserts}io) {
+	# used for falcon_tiny_inserts, but is actually engine independent
+	$command = '
+		--gendata=conf/falcon_tiny_inserts.zz
+		--grammar=conf/falcon_tiny_inserts.yy
+		--queries=10000000
 	';
 #
 # END OF FALCON TESTS
@@ -414,9 +422,19 @@ if ($test =~ m{transactions}io ) {
 		--grammar=conf/maria_bulk_insert.yy
 	';
 } elsif ($test =~ m{^rpl_.*?_simple$}io) {
+	# Not used; rpl testing needs adjustments (some of the failures this
+	# produces are known replication issues documented in the manual).
 	$command = '
 		--gendata=conf/replication_single_engine.zz
 		--grammar=conf/replication_simple.yy
+		--mysqld=--log-output=table,file
+	';
+} elsif ($test =~ m{^rpl_.*?_complex}io) {
+	# Not used; rpl testing needs adjustments (some of the failures this
+	# produces are known replication issues documented in the manual).
+	$command = '
+		--gendata=conf/replication_single_engine_pk.zz
+		--grammar=conf/replication.yy
 		--mysqld=--log-output=table,file
 	';
 } elsif ($test =~ m{^rpl_semisync$}io) {
@@ -454,12 +472,6 @@ if ($test =~ m{transactions}io ) {
 		--duration=300
 		--queries=1M
 	";
-} elsif ($test =~ m{complex}io) {
-	$command = '
-		--gendata=conf/replication_single_engine_pk.zz
-		--grammar=conf/replication.yy
-		--mysqld=--log-output=table,file
-	';
 } elsif ($test =~ m{optimizer_semijoin$}io) {
 	$command = '
 		--grammar=conf/subquery_semijoin.yy
