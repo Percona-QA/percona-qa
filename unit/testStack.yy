@@ -6,14 +6,14 @@ join:
        { $stack->push() }      
        table_or_join 
        { $stack->set("left",$stack->get("result")); }
-       { $stack->get("arg") } JOIN table_or_join 
+       { $stack->get("arg") } JOIN 
+       table_or_join 
        ON 
-       { my $left = $stack->get("left"); my %s=map{$_=>1} @$left; my @r=(keys %s); $prng->arrayElement(\@r).".col = " }
-       { my $right = $stack->get("result"); my %s=map{$_=>1} @$right; my @r=(keys %s); $prng->arrayElement(\@r).".col" }
-       { my $left = $stack->get("left");  my $right = $stack->get("result"); my @n = (); push(@n,@$right); push(@n,@$left); $stack->pop(\@n); return undef } ;
+       { $prng->arrayElement($stack->get("left")).".col = ".$prng->arrayElement($stack->get("result")).".col" }
+       { $stack->pop([keys %{{map {$_=>1} (@{$stack->get("left")},@{$stack->get("result")})}}]) } ;
 
 table_or_join:
         table | table | join ;
 
 table:
-       { $stack->push(); my $x = "t".$prng->digit();  my @s=($x); $stack->pop(\@s); $x } ;
+       { $stack->push(); my $x = "t".$prng->digit();  $stack->pop([$x]); $x } ;
