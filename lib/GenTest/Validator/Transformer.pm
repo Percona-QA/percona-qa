@@ -27,7 +27,8 @@ sub BEGIN {
 		'OrderBy',
 		'StraightJoin',
 		'InlineSubqueries',
-		'Count'
+		'Count',
+		'ExecuteAsView'
 	);
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
@@ -96,26 +97,25 @@ sub transform {
 
 	my $simplified_result = $executor->execute($simplified_query, 1);
 	if (defined $simplified_result->warnings()) {
-		say("Simplified query produced warnings, will not dump a test case.");
-		return STATUS_WONT_HANDLE;
+		say("Simplified query produced warnings.");
+#		return STATUS_WONT_HANDLE;
 	}
 
 	if (not defined $simplified_query) {
 		say("Simplification failed -- failure is likely sporadic.");
-#		use Data::Dumper;
-#		print Dumper $original_result, $transformed_result;
 		return STATUS_WONT_HANDLE;
 	}
 
 	say("Simplified query: $simplified_query");
 
 	my $simplified_transformed_query = $transformer->transform($simplified_query, $executor);
+	$simplified_transformed_query = join('; ', @$simplified_transformed_query) if ref($simplified_transformed_query) eq 'ARRAY';
 	say("Simplified transformed query: $simplified_transformed_query");
 
 	my $simplified_transformed_result = $executor->execute($simplified_transformed_query, 1);
 	if (defined $simplified_transformed_result->warnings()) {
-		say("Simplified transformed query produced warnings, will not dump a test case.");
-		return STATUS_WONT_HANDLE;
+		say("Simplified transformed query produced warnings.");
+#		return STATUS_WONT_HANDLE;
 	}
 
 	say(GenTest::Comparator::dumpDiff($simplified_result, $simplified_transformed_result));
