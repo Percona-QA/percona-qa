@@ -193,9 +193,7 @@ sub execute {
 sub normalize {
     my ($self, $row) = @_;
 
-    my @row = @$row;
-
-    foreach my $e (@row) {
+    foreach my $e (@$row) {
         ## Remove .0 fractions from timestamps
         $e =~ s/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\.0+$/\1/;
     }
