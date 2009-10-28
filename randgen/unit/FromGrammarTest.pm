@@ -31,14 +31,12 @@ sub test_generator_next {
     my $self = shift;
 
     my $x = $generator->next();
-    my @x = @$x;
-    $self->assert_equals(0, $#x);
-    $self->assert_equals('b', $x[0]);
+    $self->assert_equals(0, $#{$x});
+    $self->assert_equals('b', $x->[0]);
 
     my $x = $generator->next();
-    my @x = @$x;
-    $self->assert_equals(0, $#x);
-    $self->assert_equals('item2', $x[0]);
+    $self->assert_equals(0, $#{$x});
+    $self->assert_equals('item2', $x->[0]);
 }
 
 
