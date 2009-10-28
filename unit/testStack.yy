@@ -1,5 +1,5 @@
 query_init:
-        { $global->set("count",0); } ;
+        { $global->set("count",0) } SHOW TABLES ;
 query: 
         { $global->set("count",$global->get("count")+1); $stack->push(); $stack->set("arg","LEFT"); } SELECT * from join { $stack->pop(undef) } |
         { $global->set("count",$global->get("count")+1); $stack->push(); $stack->set("arg","RIGHT"); } SELECT * from join { $stack->pop(undef) } ;
