@@ -436,6 +436,14 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--threads=1
 		--queries=100K
 	';
+} elsif ($test =~ m{^partition_pruning$}io ) {
+	$command = '
+		--gendata=conf/partition_pruning.zz
+		--grammar=conf/partition_pruning.yy
+		--threads=1
+		--queries=100000
+		--reporters=Shutdown
+	';
 } elsif ($test =~ m{^rpl_.*?_simple$}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
 	# produces are known replication issues documented in the manual).
