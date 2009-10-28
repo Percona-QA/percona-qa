@@ -68,7 +68,7 @@ my $opt_result = GetOptions(
 	'debug' => \$debug,
 	'validators:s' => \$validators,
 	'reporters:s' => \$reporters,
-	'gendata=s' => \$gendata,
+	'gendata:s' => \$gendata,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
         'mask-level=i' => \$mask_level,
