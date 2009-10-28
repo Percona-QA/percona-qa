@@ -430,6 +430,12 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata=conf/maria.zz
 		--grammar=conf/maria_mostly_selects.yy
 	';
+} elsif ($test =~ m{^partition_ddl$}io ) {
+	$command = '
+		--grammar=conf/partitions-ddl.yy
+		--threads=1
+		--queries=100K
+	';
 } elsif ($test =~ m{^rpl_.*?_simple$}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
 	# produces are known replication issues documented in the manual).
