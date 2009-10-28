@@ -13,7 +13,8 @@ sub new {
 
 sub set {
     my ($self, $name, $value) = @_;
-    return $self->{$name}=$value;
+    $self->{$name}=$value;
+    return undef;
 }
 
 sub get {
