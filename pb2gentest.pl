@@ -366,6 +366,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata=conf/falcon_blobs.zz
 		--duration=130
 		--threads=1
+		--reporters=Deadlock,ErrorLog,Backtrace,Recovery,Shutdown
 	';
 	if ($test =~ m{falcon}io) {
 		# this option works with Falcon-enabled builds only
