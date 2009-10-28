@@ -360,6 +360,9 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--threads=1
 		--reporters=
 	';
+#
+# END OF FALCON-ONLY TESTS
+#
 } elsif ($test =~ m{(falcon|myisam)_blob_recovery}io ) {
 	$command = '
 		--grammar=conf/falcon_blobs.yy
@@ -375,52 +378,57 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		';
 	}
 } elsif ($test =~ m{many_indexes}io ) {
-	# used for falcon_many_indexes, but is actually engine independent
+	# used for both falcon and myisam
 	$command = '
 		--grammar=conf/many_indexes.yy
 		--gendata=conf/many_indexes.zz
 	';
 } elsif ($test =~ m{tiny_inserts}io) {
-	# used for falcon_tiny_inserts, but is actually engine independent
+	# used for both falcon and myisam
 	$command = '
 		--gendata=conf/falcon_tiny_inserts.zz
 		--grammar=conf/falcon_tiny_inserts.yy
 		--queries=10000000
 	';
 #
-# END OF FALCON TESTS
+# END OF TESTS USED FOR FALCON (and possibly other engines as well)
 #
-} elsif ($test =~ m{^info_schema$}io ) {
+# Keep the following tests in alphabetical order (based on letters in regex)
+# for easy lookup.
+#
+} elsif ($test =~ m{^backup_.*?_simple$}io) {
 	$command = '
-		--grammar=conf/information_schema.yy
-		--threads=10
-		--duration=300
+		--grammar=conf/backup_simple.yy
+		--reporters=Deadlock,ErrorLog,Backtrace
 	';
-} elsif ($test =~ m{signal_resignal}io ) {
+} elsif ($test =~ m{^backup_.*?_consistency$}io) {
 	$command = '
-		--threads=10
-		--queries=1M
-		--duration=300
-		--grammar=conf/signal_resignal.yy
-		--mysqld=--max-sp-recursion-depth=10
+		--gendata=conf/invariant.zz
+		--grammar=conf/invariant.yy
+		--validator=Invariant
+		--reporters=Deadlock,ErrorLog,Backtrace,BackupAndRestoreInvariant,Shutdown
+		--duration=600
+		--threads=25
 	';
-} elsif ($test =~ m{stress}io ) {
+} elsif ($test =~ m{bulk_insert}io ) {
 	$command = '
-		--grammar=conf/maria_stress.yy
+		--grammar=conf/maria_bulk_insert.yy
 	';
 } elsif ($test =~ m{dml_alter}io ) {
 	$command = '
 		--gendata=conf/maria.zz
 		--grammar=conf/maria_dml_alter.yy
 	';
+} elsif ($test =~ m{^info_schema$}io ) {
+	$command = '
+		--grammar=conf/information_schema.yy
+		--threads=10
+		--duration=300
+	';
 } elsif ($test =~ m{mostly_selects}io ) {
 	$command = '
 		--gendata=conf/maria.zz
 		--grammar=conf/maria_mostly_selects.yy
-	';
-} elsif ($test =~ m{bulk_insert}io ) {
-	$command = '
-		--grammar=conf/maria_bulk_insert.yy
 	';
 } elsif ($test =~ m{^rpl_.*?_simple$}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
@@ -473,19 +481,17 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--duration=300
 		--queries=1M
 	";
-} elsif ($test =~ m{^backup_.*?_simple$}io) {
+} elsif ($test =~ m{signal_resignal}io ) {
 	$command = '
-		--grammar=conf/backup_simple.yy
-		--reporters=Deadlock,ErrorLog,Backtrace
+		--threads=10
+		--queries=1M
+		--duration=300
+		--grammar=conf/signal_resignal.yy
+		--mysqld=--max-sp-recursion-depth=10
 	';
-} elsif ($test =~ m{^backup_.*?_consistency$}io) {
+} elsif ($test =~ m{stress}io ) {
 	$command = '
-		--gendata=conf/invariant.zz
-		--grammar=conf/invariant.yy
-		--validator=Invariant
-		--reporters=Deadlock,ErrorLog,Backtrace,BackupAndRestoreInvariant,Shutdown
-		--duration=600
-		--threads=25
+		--grammar=conf/maria_stress.yy
 	';
 } else {
 	print("[ERROR]: Test configuration for test name '$test' is not ".
