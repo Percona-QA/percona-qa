@@ -27,6 +27,7 @@ use constant GENERATOR_MASK		=> 8;
 use constant GENERATOR_MASK_LEVEL => 9;
 use constant GENERATOR_VARCHAR_LENGTH	=> 10;
 use constant GENERATOR_MASKED_GRAMMAR => 11;
+use constant GENERATOR_GLOBAL_FRAME => 12;
 
 use constant GENERATOR_MAX_OCCURRENCES	=> 500;
 use constant GENERATOR_MAX_LENGTH	=> 2048;
@@ -117,6 +118,13 @@ sub maskedGrammar {
 	return $_[0]->[GENERATOR_MASKED_GRAMMAR];
 }
 
+sub globalFrame {
+    my ($self) = @_;
+    $self->[GENERATOR_GLOBAL_FRAME] = GenTest::Stack::StackFrame->new()
+        if not defined $self->[GENERATOR_GLOBAL_FRAME];
+    return $self->[GENERATOR_GLOBAL_FRAME];
+}
+
 #
 # Generate a new query. We do this by iterating over the array containing grammar rules and expanding each grammar rule
 # to one of its right-side components . We do that in-place in the array.
@@ -133,6 +141,7 @@ sub next {
 	my $mask_level = $generator->maskLevel();
 
     my $stack = GenTest::Stack::Stack->new();
+    my $global = $generator->globalFrame();
     
 	#
 	# If a temporary file has been left from a previous statement, unlink it.

@@ -360,12 +360,16 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--threads=1
 		--reporters=
 	';
+#
+# END OF FALCON-ONLY TESTS
+#
 } elsif ($test =~ m{(falcon|myisam)_blob_recovery}io ) {
 	$command = '
 		--grammar=conf/falcon_blobs.yy
 		--gendata=conf/falcon_blobs.zz
 		--duration=130
 		--threads=1
+		--reporters=Deadlock,ErrorLog,Backtrace,Recovery,Shutdown
 	';
 	if ($test =~ m{falcon}io) {
 		# this option works with Falcon-enabled builds only
@@ -374,52 +378,70 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		';
 	}
 } elsif ($test =~ m{many_indexes}io ) {
-	# used for falcon_many_indexes, but is actually engine independent
+	# used for both falcon and myisam
 	$command = '
 		--grammar=conf/many_indexes.yy
 		--gendata=conf/many_indexes.zz
 	';
 } elsif ($test =~ m{tiny_inserts}io) {
-	# used for falcon_tiny_inserts, but is actually engine independent
+	# used for both falcon and myisam
 	$command = '
 		--gendata=conf/falcon_tiny_inserts.zz
 		--grammar=conf/falcon_tiny_inserts.yy
 		--queries=10000000
 	';
 #
-# END OF FALCON TESTS
+# END OF TESTS USED FOR FALCON (and possibly other engines as well)
 #
-} elsif ($test =~ m{^info_schema$}io ) {
+# Keep the following tests in alphabetical order (based on letters in regex)
+# for easy lookup.
+#
+} elsif ($test =~ m{^backup_.*?_simple$}io) {
 	$command = '
-		--grammar=conf/information_schema.yy
-		--threads=10
-		--duration=300
+		--grammar=conf/backup_simple.yy
+		--reporters=Deadlock,ErrorLog,Backtrace
 	';
-} elsif ($test =~ m{signal_resignal}io ) {
+} elsif ($test =~ m{^backup_.*?_consistency$}io) {
 	$command = '
-		--threads=10
-		--queries=1M
-		--duration=300
-		--grammar=conf/signal_resignal.yy
-		--mysqld=--max-sp-recursion-depth=10
+		--gendata=conf/invariant.zz
+		--grammar=conf/invariant.yy
+		--validator=Invariant
+		--reporters=Deadlock,ErrorLog,Backtrace,BackupAndRestoreInvariant,Shutdown
+		--duration=600
+		--threads=25
 	';
-} elsif ($test =~ m{stress}io ) {
+} elsif ($test =~ m{bulk_insert}io ) {
 	$command = '
-		--grammar=conf/maria_stress.yy
+		--grammar=conf/maria_bulk_insert.yy
 	';
 } elsif ($test =~ m{dml_alter}io ) {
 	$command = '
 		--gendata=conf/maria.zz
 		--grammar=conf/maria_dml_alter.yy
 	';
+} elsif ($test =~ m{^info_schema$}io ) {
+	$command = '
+		--grammar=conf/information_schema.yy
+		--threads=10
+		--duration=300
+	';
 } elsif ($test =~ m{mostly_selects}io ) {
 	$command = '
 		--gendata=conf/maria.zz
 		--grammar=conf/maria_mostly_selects.yy
 	';
-} elsif ($test =~ m{bulk_insert}io ) {
+} elsif ($test =~ m{^partition_ddl$}io ) {
 	$command = '
-		--grammar=conf/maria_bulk_insert.yy
+		--grammar=conf/partitions-ddl.yy
+		--threads=1
+		--queries=100K
+	';
+} elsif ($test =~ m{partition_pruning$}io ) {
+	$command = '
+		--gendata=conf/partition_pruning.zz
+		--grammar=conf/partition_pruning.yy
+		--threads=1
+		--queries=100000
 	';
 } elsif ($test =~ m{^rpl_.*?_simple$}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
@@ -472,78 +494,17 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--duration=300
 		--queries=1M
 	";
-} elsif ($test =~ m{optimizer_semijoin$}io) {
+} elsif ($test =~ m{signal_resignal}io ) {
 	$command = '
-		--grammar=conf/subquery_semijoin.yy
-		--mysqld=--log-output=table,file
+		--threads=10
+		--queries=1M
+		--duration=300
+		--grammar=conf/signal_resignal.yy
+		--mysqld=--max-sp-recursion-depth=10
 	';
-} elsif ($test =~ m{optimizer_semijoin_nested}io) {
+} elsif ($test =~ m{stress}io ) {
 	$command = '
-		--grammar=conf/subquery_semijoin_nested.yy
-		--mysqld=--log-output=table,file
-	';
-} elsif ($test =~ m{optimizer_semijoin_compare}io) {
-	$command = '
-		--threads=1
-		--engine=Innodb
-		--grammar=conf/subquery_semijoin.yy
-		--mysqld=--log-output=table,file
-		--vardir1='.$vardir.'/vardir-semijoin
-		--vardir2='.$vardir.'/vardir-nosemijoin
-		--validator=ResultsetComparator
-		--mysqld2=--init-file='.$cwd.'/init/no_semijoin.sql
-		--reporters=
-	';
-} elsif ($test =~ m{optimizer_materialization_compare}io) {
-	$command = '
-		--threads=1
-		--engine=Innodb
-		--grammar=conf/subquery_materialization.yy
-		--mysqld=--log-output=table,file
-		--vardir1='.$vardir.'/vardir-materialization
-		--vardir2='.$vardir.'/vardir-nomaterialization
-		--validator=ResultsetComparator
-		--mysqld2=--init-file='.$cwd.'/init/no_materialization.sql
-		--reporters=
-	';
-} elsif ($test =~ m{optimizer_semijoin_engines}io) {
-	$command = '
-		--threads=1
-		--grammar=conf/subquery_semijoin.yy
-		--mysqld=--log-output=table,file
-		--mysqld=--default-storage-engine=MyISAM
-		--mysqld2=--default-storage-engine=Innodb
-		--vardir1='.$vardir.'/vardir-myisam
-		--vardir2='.$vardir.'/vardir-innodb
-		--validator=ResultsetComparator
-		--reporters=
-	';
-} elsif ($test =~ m{optimizer_semijoin_orderby}io) {
-	$command = '
-		--threads=1
-		--grammar=conf/subquery_semijoin.yy
-		--validator=OrderBy
-		--mysqld=--log-output=table,file
-	';
-} elsif ($test =~ m{optimizer_subquery_stability}io) {
-	$command = '
-		--threads=1
-		--grammar=conf/subquery_materialization.yy
-		--validator=SelectStability
-	';
-} elsif ($test =~ m{^backup_.*?_simple$}io) {
-	$command = '
-		--grammar=conf/backup_simple.yy
-		--reporters=Deadlock,ErrorLog,Backtrace
-	';
-} elsif ($test =~ m{^backup_.*?_consistency$}io) {
-	$command = '
-		--gendata=conf/invariant.zz
-		--grammar=conf/invariant.yy
-		--validator=Invariant
-		--reporters=Deadlock,ErrorLog,Backtrace,BackupAndRestoreInvariant,Shutdown
-		--duration=600
-		--threads=25
+		--grammar=conf/maria_stress.yy
 	';
 } else {
 	print("[ERROR]: Test configuration for test name '$test' is not ".
@@ -574,11 +535,11 @@ if ($command =~ m{--reporters}io) {
 }
 
 if ($command !~ m{--duration}io ) {
-	if ($rpl_mode ne '') {
-		$command = $command.' --duration=600';
-	} else {
-		$command = $command.' --duration=1200';
-	}
+	# Set default duration for tests where duration is not specified.
+	# In PB2 we cannot run tests for too long since there are many branches
+	# and many pushes (or other test triggers).
+	# Setting it to 10 minutes for now.
+	$command = $command.' --duration=600';
 }
 
 if ($command !~ m{--vardir}io && $command !~ m{--mem}io ) {

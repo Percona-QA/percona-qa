@@ -1,6 +1,8 @@
+query_init:
+        { $global->set("count",0) } SHOW TABLES ;
 query: 
-        { $stack->push(); $stack->set("arg","LEFT"); } SELECT * from join { $stack->pop(undef) } |
-        { $stack->push(); $stack->set("arg","RIGHT"); } SELECT * from join { $stack->pop(undef) } ;
+        { $global->set("count",$global->get("count")+1); $stack->push(); $stack->set("arg","LEFT"); } SELECT * from join { $stack->pop(undef) } |
+        { $global->set("count",$global->get("count")+1); $stack->push(); $stack->set("arg","RIGHT"); } SELECT * from join { $stack->pop(undef) } ;
 
 join:
        { $stack->push() }      
@@ -16,4 +18,4 @@ table_or_join:
         table | table | join ;
 
 table:
-       { $stack->push(); my $x = "t".$prng->digit();  $stack->pop([$x]); $x } ;
+       { $stack->push(); my $x = "s".$global->get("count").".t".$prng->digit();  $stack->pop([$x]); $x } ;
