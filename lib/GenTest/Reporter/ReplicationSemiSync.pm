@@ -78,7 +78,7 @@ sub monitor {
 
 	# Pick a sleep interval that is either more or less than the semisync timeout
 
-	my $sleep_interval = $prng->int(0, 1) == 1 ? ($rpl_semi_sync_master_timeout + 5) : 5;
+	my $sleep_interval = $prng->int(0, 1) == 1 ? ($rpl_semi_sync_master_timeout * 2) : 5;
 	say("GenTest::Reporter::ReplicationSemiSync: Sleeping for $sleep_interval seconds.");
 	sleep($sleep_interval);
 
