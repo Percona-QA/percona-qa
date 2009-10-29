@@ -172,13 +172,13 @@ int_field:
     `int_signed` | `int_signed_key` ;
 
 utf8_char_field:
-  `varchar_5_utf8` | `varchar_5_utf8_key ` | `varchar_256_utf8` | `varchar_256_utf8_key` | `varchar_512_utf8` | `varchar_512_utf8_key` ;
+  `varchar_5_utf8` | `varchar_5_utf8_key` | `varchar_256_utf8` | `varchar_256_utf8_key` | `varchar_512_utf8` | `varchar_512_utf8_key` ;
 
 latin1_char_field:
   `varchar_5_latin1`  | `varchar_5_latin1_key` | `varchar_256_latin1` | `varchar_256_latin1_key` | `varchar_512_latin1` | `varchar_512_latin1_key`;
 
 cp932_char_field:
-  `varchar_5_cp932` | `varchar_5_cp932_key ` | `varchar_256_cp932` | `varchar_256_cp932_key` | `varchar_512_cp932` | `varchar_512_cp932_key` ; 
+  `varchar_5_cp932` | `varchar_5_cp932_key` | `varchar_256_cp932` | `varchar_256_cp932_key` | `varchar_512_cp932` | `varchar_512_cp932_key` ; 
 
 char_field:
   utf8_char_field | latin1_char_field | cp932_char_field ;
