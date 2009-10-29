@@ -536,11 +536,11 @@ if ($command =~ m{--reporters}io) {
 }
 
 if ($command !~ m{--duration}io ) {
-	if ($rpl_mode ne '') {
-		$command = $command.' --duration=600';
-	} else {
-		$command = $command.' --duration=1200';
-	}
+	# Set default duration for tests where duration is not specified.
+	# In PB2 we cannot run tests for too long since there are many branches
+	# and many pushes (or other test triggers).
+	# Setting it to 10 minutes for now.
+	$command = $command.' --duration=600';
 }
 
 if ($command !~ m{--vardir}io && $command !~ m{--mem}io ) {
