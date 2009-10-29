@@ -43,34 +43,42 @@ sub monitor {
 	my $master_dbh = DBI->connect($master_dsn);
 
 	$master_dbh->do("SET GLOBAL rpl_semi_sync_master_enabled = 1");
+	$master_dbh->do("SET GLOBAL rpl_semi_sync_master_trace_level = 80");
 	$slave_dbh->do("SET GLOBAL rpl_semi_sync_slave_enabled = 1");
+	$slave_dbh->do("SET GLOBAL rpl_semi_sync_slave_trace_level = 80");
 
-	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh);
-	sleep(5);
+	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh, 1);
+# 	sleep(1);
 
-	my ($unused2, $rpl_semi_sync_master_status_first) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
+# 	my ($unused2, $rpl_semi_sync_master_status_first) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
 
-	if (
-		($rpl_semi_sync_master_status_first eq '') ||
-		($rpl_semi_sync_master_status_first eq 'OFF')
-	) {
-		say("GenTest::Reporter::ReplicationSemiSync: Semisync replication is not enabled: rpl_semi_sync_master_status = $rpl_semi_sync_master_status_first.");
-		return STATUS_REPLICATION_FAILURE;
-	}
+# 	if (
+# 		($rpl_semi_sync_master_status_first eq '') ||
+# 		($rpl_semi_sync_master_status_first eq 'OFF')
+# 	) {
+# 		say("GenTest::Reporter::ReplicationSemiSync: Semisync replication is not enabled: rpl_semi_sync_master_status = $rpl_semi_sync_master_status_first.");
+# 		return STATUS_REPLICATION_FAILURE;
+# 	}
 
-	$master_dbh->do("SET GLOBAL rpl_semi_sync_master_timeout = ".($rpl_semi_sync_master_timeout * 1000));
-	say("GenTest::Reporter::ReplicationSemiSync: stopping slave IO thread.");
-	$slave_dbh->do("STOP SLAVE IO_THREAD");
+#	$master_dbh->do("SET GLOBAL rpl_semi_sync_master_timeout = ".($rpl_semi_sync_master_timeout * 1000));
+#	say("GenTest::Reporter::ReplicationSemiSync: Acquiring the global read lock.");
+#	$master_dbh->do("FLUSH NO_WRITE_TO_BINLOG TABLES WITH READ LOCK");
+#	say("GenTest::Reporter::ReplicationSemiSync: stopping slave IO thread.");
+#	$slave_dbh->do("STOP SLAVE IO_THREAD");
+#	say("GenTest::Reporter::ReplicationSemiSync: stopped slave IO thread.");
 
 #	return STATUS_REPLICATION_FAILURE if isSlaveBehind($master_dbh, $slave_dbh);
 
-	$master_dbh->do("FLUSH NO_WRITE_TO_BINLOG STATUS");
+#	$master_dbh->do("FLUSH NO_WRITE_TO_BINLOG STATUS");
+#	say("GenTest::Reporter::ReplicationSemiSync: Flushed status.");
+#	$master_dbh->do("UNLOCK TABLES");
+#	say("GenTest::Reporter::ReplicationSemiSync: Released the global read lock.");
 #	my ($unusedA, $rpl_semi_sync_master_yes_tx_atflush) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_yes_tx'");
 #	my ($unusedB, $rpl_semi_sync_master_no_tx_atflush) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_no_tx'");
 
 	# Pick a sleep interval that is either more or less than the semisync timeout
 
-	my $sleep_interval = $prng->int(0, 1) == 1 ? ($rpl_semi_sync_master_timeout * 2) : 5;
+	my $sleep_interval = $prng->int(0, 1) == 1 ? ($rpl_semi_sync_master_timeout + 5) : 5;
 	say("GenTest::Reporter::ReplicationSemiSync: Sleeping for $sleep_interval seconds.");
 	sleep($sleep_interval);
 
@@ -123,16 +131,16 @@ sub monitor {
 	# Make sure master and slave can reconcile and semisync will be turned on again
 	#
 
-	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh);
-	sleep(5);
+	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh, 0);
+# 	sleep(1);
 
-	my ($unused7, $rpl_semi_sync_master_status_last) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
-	if ($rpl_semi_sync_master_status_last eq 'OFF') {
-		say("GenTest::Reporter::ReplicationSemiSync: Master has failed to return to semisync replication even after the slave has reconnected.");
-		return STATUS_REPLICATION_FAILURE;
-	}
+# 	my ($unused7, $rpl_semi_sync_master_status_last) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
+# 	if ($rpl_semi_sync_master_status_last eq 'OFF') {
+# 		say("GenTest::Reporter::ReplicationSemiSync: Master has failed to return to semisync replication even after the slave has reconnected.");
+# 		return STATUS_REPLICATION_FAILURE;
+# 	}
 
-	say("GenTest::Reporter::ReplicationSemiSync: test cycle ending with Rpl_semi_sync_master_status = $rpl_semi_sync_master_status_last.");
+# 	say("GenTest::Reporter::ReplicationSemiSync: test cycle ending with Rpl_semi_sync_master_status = $rpl_semi_sync_master_status_last.");
 
 	return STATUS_OK;
 }
@@ -164,7 +172,7 @@ sub isSlaveBehind {
 }
 
 sub waitForSlave {
-	my ($master_dbh, $slave_dbh) = @_;
+	my ($master_dbh, $slave_dbh, $stop_slave) = @_;
 
 	say("GenTest::Reporter::ReplicationSemiSync: Flushing tables with read lock on master...");
 	$master_dbh->do("FLUSH NO_WRITE_TO_BINLOG TABLES WITH READ LOCK");
@@ -178,8 +186,27 @@ sub waitForSlave {
 	}
 
 	say("GenTest::Reporter::ReplicationSemiSync: Waiting for slave...");
+	#say("SHOW MASTER STATUS: " . $file . ", " . $pos);
 	my $wait_status = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT(?, ?)", undef, $file, $pos);
 	say("GenTest::Reporter::ReplicationSemiSync: ... slave caught up with master.");
+
+	#my ($new_file, $new_pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
+	#say("SHOW MASTER STATUS: " . $new_file . ", " . $new_pos);
+
+	my ($unused2, $rpl_semi_sync_master_status) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
+	if (not $rpl_semi_sync_master_status eq 'ON') {
+	    say("GenTest::Reporter::ReplicationSemiSync: Master has failed to return to semisync replication even after the slave has caught up.");
+	    return STATUS_REPLICATION_FAILURE;
+	}
+
+	if ($stop_slave) {
+	    $master_dbh->do("FLUSH NO_WRITE_TO_BINLOG STATUS");
+	    say("GenTest::Reporter::ReplicationSemiSync: Flushed status.");
+	    $master_dbh->do("SET GLOBAL rpl_semi_sync_master_timeout = ".($rpl_semi_sync_master_timeout * 1000));
+	    say("GenTest::Reporter::ReplicationSemiSync: stopping slave IO thread.");
+	    $slave_dbh->do("STOP SLAVE IO_THREAD");
+	    say("GenTest::Reporter::ReplicationSemiSync: stopped slave IO thread.");
+	}
 
 	$master_dbh->do("UNLOCK TABLES");
 
