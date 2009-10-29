@@ -243,16 +243,14 @@ sub patch {
     my ($self, $patch_grammar) = @_;
 
     my $patch_rules = $patch_grammar->rules();
-    my %patch_rules = %$patch_rules;
 
     my $rules = $self->rules();
-    my %rules = %$rules;
 
-    foreach my $ruleName (keys %patch_rules) {
-        $rules{$ruleName} = $patch_rules{$ruleName};
+    foreach my $ruleName (keys %$patch_rules) {
+        $rules->{$ruleName} = $patch_rules->{$ruleName};
     }
 
-    my $new_grammar = GenTest::Grammar->new(grammar_rules => \%rules);
+    my $new_grammar = GenTest::Grammar->new(grammar_rules => $rules);
     return $new_grammar;
 }
 
@@ -272,11 +270,9 @@ sub firstMatchingRule {
 sub topGrammarX {
     my ($self, $level, $max, @rules) = @_;
     if ($max > 0) {
-        my %result;
+        my $result={};
         foreach my $rule (@rules) {
-            my $components = $rule->components();
-            my @components = @$components;
-            foreach my $c (@components) {
+            foreach my $c (@{$rule->components()}) {
                 my @subrules = ();
                 foreach my $cp (@$c) {
                     push @subrules,$self->rule($cp) if defined $self->rule($cp);
@@ -284,15 +280,14 @@ sub topGrammarX {
                 my $componentrules = 
                     $self->topGrammarX($level + 1, $max -1,@subrules);
                 if (defined  $componentrules) {
-                    my %x = %$componentrules;
-                    foreach my $sr (keys %x) {
-                        $result{$sr} = $x{$sr};
+                    foreach my $sr (keys %$componentrules) {
+                        $result->{$sr} = $componentrules->{$sr};
                     }
                 }
             }
-            $result{$rule->name()} = $rule;
+            $result->{$rule->name()} = $rule;
         }
-        return \%result;
+        return $result;
     } else {
         return undef;
     }
@@ -339,10 +334,8 @@ sub mask {
     my $mask16 = $prng->uint16(0,0x7fff);
     foreach my $rulename (sort keys %$rules) {
         my $rule = $self->rule($rulename);
-        my $components = $rule->components();
-        my @components = @$components;
         my @newComponents;
-        foreach my $x (@components) {
+        foreach my $x (@{$rule->components()}) {
             push @newComponents, $x if (1 << ($i++)) & $mask16;
             if ($i % 16 == 0) {
                 # We need more bits!

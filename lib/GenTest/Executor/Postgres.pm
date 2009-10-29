@@ -163,6 +163,16 @@ sub execute {
     return $result;
 }
 
+sub findStatus {
+    my ($self, $state) = @_;
+
+    if ($state eq "22000") {
+	return STATUS_SERVER_CRASHED;
+    } else {
+	return $self->SUPER::find_status(@_);
+    }
+}
+
 sub version {
 	my $self = shift;
 	my $dbh = $self->dbh();
