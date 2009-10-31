@@ -179,12 +179,6 @@ foreach my $server_id (0..1) {
 	my @mtr_options;
 	push @mtr_options, lc("--mysqld=--$engine") if defined $engine && lc($engine) ne lc('myisam');
 
-	if (defined $mysqld_options[$server_id]) {
-		foreach my $mysqld_option (@{$mysqld_options[$server_id]}) {
-			push @mtr_options, '--mysqld="'.$mysqld_option.'"';
-		}
-	}
-
 	push @mtr_options, "--mem" if defined $mem;
 	push @mtr_options, "--valgrind" if defined $valgrind;
 
@@ -217,6 +211,12 @@ foreach my $server_id (0..1) {
 	
 	push @mtr_options, "--vardir=$vardirs[$server_id]" if defined $vardirs[$server_id];
 	push @mtr_options, "--master_port=".$master_ports[$server_id];
+
+	if (defined $mysqld_options[$server_id]) {
+		foreach my $mysqld_option (@{$mysqld_options[$server_id]}) {
+			push @mtr_options, '--mysqld="'.$mysqld_option.'"';
+		}
+	}
 
 	if (
 		($rpl_mode ne '') &&
