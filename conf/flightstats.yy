@@ -87,7 +87,7 @@ zipcode_table:
 where:
 	WHERE
 	{ $condition_table = 'ontime' ; return undef; } start_condition ontime_condition end_condition AND
-	( where_list and_or where_list );
+	( where_list AND where_list );
 
 where_list:
 	( where_condition ) | 
@@ -134,7 +134,7 @@ generic_carrier_expression:
 airport_condition:
 	table_alias . `code` generic_char_expression |
 	table_alias . `state` generic_state_expression |
-	( table_alias . `state` generic_state_expression ) and_or ( table_alias . `city` generic_char_expression);
+	( table_alias . `state` generic_state_expression ) AND ( table_alias . `city` generic_char_expression);
 
 aircraft_condition:
 	table_alias . `tail_num` generic_char_expression |
