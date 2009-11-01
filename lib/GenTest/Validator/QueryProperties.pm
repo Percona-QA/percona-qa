@@ -14,7 +14,8 @@ use GenTest::Validator;
 my @properties = (
 	'RESULTSET_HAS_SAME_DATA_IN_EVERY_ROW',
 	'RESULTSET_IS_SINGLE_INTEGER_ONE',
-	'RESULTSET_HAS_ZERO_OR_ONE_ROWS'
+	'RESULTSET_HAS_ZERO_OR_ONE_ROWS',
+	'RESULTSET_HAS_ONE_ROW'
 );
 
 my %properties;
@@ -89,6 +90,16 @@ sub RESULTSET_HAS_ZERO_OR_ONE_ROWS {
 	my ($validator, $result) = @_;
 	
 	if ($result->rows() > 1) {
+		return STATUS_LENGTH_MISMATCH;
+	} else {
+		return STATUS_OK;
+	}
+}
+
+sub RESULTSET_HAS_ONE_ROW {
+	my ($validator, $result) = @_;
+	
+	if ($result->rows() != 1) {
 		return STATUS_LENGTH_MISMATCH;
 	} else {
 		return STATUS_OK;
