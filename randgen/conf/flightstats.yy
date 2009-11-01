@@ -1,16 +1,43 @@
+#
+# This grammar is an example on how to create grammars that operate against tables
+# which have different structure and it only makes sense to join them in certain
+# ways and on certain fields. The following principles apply:
+#
+# * The first table is always the ontime table, with alias a1. This provies a fixed reference
+#	point for subsequent joins
+#
+# * The SELECT list is either SELECT * , SELECT COUNT(*) , or may use the fact that the fields
+#	in the a1 table are always known
+#
+# * There is always a join, therefore there is always an a2 table, however it may be one of
+#	several options
+#
+# * Each potential join is listed separately with a specific join condition that should be realistic
+# 
+# * In the WHERE clause, if we generate a condition for which the table is not present, the condition is
+#	commented out in order to avoid semantic errors
+#
+
 query_init:
 	USE flightstats;
 
-# The queries from this grammar can produce extremely long results
+# The queries from this grammar may produce resultsets of varying length
 # to avoid excessive memory usage, we reduce all queries to a COUNT(*)
 # This way, we also do not have to tinker with any field names in the SELECT list
 
 query:
 	{ $alias_count = 0 ; %tables = () ; %aliases = () ; return undef ; }
-	SELECT COUNT(*)
-	FROM join_list
-	where
-	LIMIT _tinyint_unsigned;
+	select ;
+
+select:
+	SELECT aggregate_item FROM join_list WHERE where |
+	SELECT a1 . * FROM join_list WHERE where ORDER BY a1 . `id` LIMIT _digit ;
+
+aggregate_item:
+	COUNT(*) | MIN(a1 . dep_time) | SUM( distinct a1 . distance) | MAX(a1 . id) | COUNT( distinct a1 . tail_num ) ;
+
+distinct:
+	| DISTINCT ;
 
 #
 # We divide the joins into "big", those containing the `ontime` table, and 
@@ -18,59 +45,73 @@ query:
 #
 
 join_list:
-	big_join_item |
-	( big_join_item ) JOIN ( small_join_item );
+#	big_join_item |
+	( big_join_item ) third_join_item |
+	( big_join_item ) CROSS JOIN small_join_item ;
 
 big_join_item:
-	ontime2carriers | ontime2airport | aircraft2ontime ;
+	ontime2carrier | ontime2airport | ontime2aircraft ;
 	
 small_join_item:
-	airport2state | airport2zipcode ;
+	airport2state | airport2zipcode | aircraft2engine | airport2remark;
+
+third_join_item:
+	first2carrier | first2airport | first2aircraft ;
 
 #
-# Here we define only joins that are meaningful, useful and
-# very likely to use indexes.
+# Here we define only joins that are meaningful, useful and very likely to use indexes.
 #
 
-ontime2carriers:
-	ontime_table
-	LEFT JOIN carrier_table
-	ON ( previous_table . `carrier` = current_table . `code` );
+ontime2carrier:
+	ontime_table INNER JOIN carrier_table ON ( previous_table . `carrier` = current_table . `code` );
+
+first2carrier:
+	INNER JOIN carrier_table ON ( a1 . `carrier` = current_table . `code` );
 
 ontime2airport:
-	ontime_table
-	LEFT JOIN airport_table
-	ON ( previous_table . origin_destination = current_table .`code` );
+	ontime_table INNER JOIN airport_table ON ( previous_table . origin_destination = current_table .`code` ) ;
 
+first2airport:
+	INNER JOIN airport_table ON ( a1 . origin_destination = current_table .`code` );
+	
 origin_destination:
 	`origin` | `destination` ;
 
-aircraft2ontime:
-	ontime_table
-	LEFT JOIN aircraft_table
-	ON ( current_table .`tail_num` = previous_table .`tail_num` );
+ontime2aircraft:
+	ontime_table INNER JOIN aircraft_table ON ( current_table .`tail_num` = previous_table .`tail_num` ) ;
+
+first2aircraft:
+	INNER JOIN aircraft_table ON ( a1 .`tail_num` = current_table .`tail_num` );
 
 airport2state:
-	airport_table
-	LEFT JOIN state_table
-	ON ( previous_table . `state` = current_table . `state_code` );
+	airport_table INNER JOIN state_table ON ( previous_table . `state` = current_table . `state_code` );
 
 airport2zipcode:
-	airport_table
-	LEFT JOIN zipcode_table
-	ON ( previous_table . `state` = current_table . `state_code` );
+	airport_table INNER JOIN zipcode_table ON ( previous_table . `state` = current_table . `state_code` );
+
+airport2remark:
+	airport_table INNER JOIN remark_table USING ( `site_number` ) ;
+
+aircraft2engine:
+	aircraft_table INNER JOIN engine_table USING ( `aircraft_engine_code` ) ;
 
 ontime_table:
-	`ontime_2005_12` { $table_name = 'ontime'; return undef;  } new_table;
+	`ontime_mysiam` { $table_name = 'ontime'; return undef; } new_table;
 
 carrier_table:
-	`carriers` { $table_name = 'carriers'; return undef; } new_table;
+	`carriers` { $table_name = 'carriers'; return undef; } new_table ;
 
 airport_table:
-	`airports` { $table_name = 'airports'; return undef; } new_table;
+	`airports` { $table_name = 'airports'; return undef; } new_table ;
+
+remark_table:
+	`airport_remarks` { $table_name = 'airport_remarks' ; return undef; } new_table ;
 
 aircraft_table:
 	`aircraft` { $table_name = 'aircraft'; return undef; } new_table;
+
+engine_table:
+	`aircraft_engines` { $table_name = 'aircraft_engines' ; return undef ; } new_table;
 
 state_table:
 	`states` { $table_name = 'states' ; return undef; } new_table ;
@@ -85,15 +126,11 @@ zipcode_table:
 #
 
 where:
-	WHERE
 	{ $condition_table = 'ontime' ; return undef; } start_condition ontime_condition end_condition AND
-	( where_list AND where_list );
+	( where_list );
 
 where_list:
-	( where_condition ) | 
-	( where_condition AND where_list ) |
-	( where_condition AND where_list ) |
-	( where_condition AND where_list ) ;
+	where_condition AND where_condition AND where_condition AND where_condition AND where_condition AND where_condition ;
 
 #
 # Each of the conditions described below are valid and meaningful for the particular table in question
@@ -106,12 +143,16 @@ where_condition:
 	{ $condition_table = 'aircraft'; return undef; } start_condition aircraft_condition end_condition |
 	{ $condition_table = 'airports'; return undef; } start_condition airport_condition end_condition |
 	{ $condition_table = 'states'; return undef; } start_condition state_condition end_condition |
-	{ $condition_table = 'zipcodes'; return undef; } start_condition zipcode_condition end_condition ;
+	{ $condition_table = 'zipcodes'; return undef; } start_condition zipcode_condition end_condition |
+	{ $condition_table = 'airport_remarks'; return undef; } start_condition remark_condition end_condition |
+	{ $condition_table = 'aircraft_engines'; return undef; } start_condition engine_condition end_condition ;
 
 ontime_condition:
 	table_alias . `carrier` generic_carrier_expression |
-	table_alias . `origin` generic_char_expression |
-	table_alias . `destination` generic_char_expression |
+	table_alias . `origin` generic_code_expression |
+	table_alias . `destination` generic_code_expression |
+	table_alias . `origin` generic_code_expression AND table_alias . `destination` generic_code_expression |
+	table_alias . `origin` generic_code_expression OR table_alias . `destination` generic_code_expression |
 	table_alias . `tail_num` generic_char_expression ;
 
 state_condition:
@@ -132,19 +173,44 @@ generic_carrier_expression:
 	IN ( carrier_list ) ;
 
 airport_condition:
-	table_alias . `code` generic_char_expression |
+	table_alias . `code` generic_code_expression |
 	table_alias . `state` generic_state_expression |
-	( table_alias . `state` generic_state_expression ) AND ( table_alias . `city` generic_char_expression);
+	( table_alias . `state` generic_state_expression ) AND ( table_alias . `city` generic_char_expression) |
+	table_alias . `longitude` BETWEEN _tinyint AND _tinyint_unsigned ;
 
 aircraft_condition:
 	table_alias . `tail_num` generic_char_expression |
 	table_alias . `state` generic_state_expression ;
 
+engine_condition:
+	table_alias . `manufacturer` generic_char_expression ;
+
+remark_condition:
+	table_alias . `airport_remark_id` BETWEEN _tinyint_unsigned AND _smallint_unsigned ;
+
 generic_char_expression:
-	BETWEEN _char[invariant] AND CHAR(ASCII( _char[invariant] ) + one_two ) ;
+	BETWEEN _char[invariant] AND CHAR(ASCII( _char[invariant] ) + one_two ) |
+	LIKE 'N10%' |	# 6098 aircraft with tail num starting with N10 
+	LIKE 'N9Q%' ;	# 10 aircraft starting with N9Q
 
 one_two:
 	1 | 2 ;
+
+generic_code_expression:
+#	BETWEEN _char[invariant] AND CHAR(ASCII( _char[invariant] ) + one_two ) |
+	= single_airport |
+	IN ( airport_list ) ;
+
+single_airport:
+	'ORD' |		# busiest airport
+	'AKN' |		# un-busiest airport
+	'BIS' |		# 100 flights 
+	'LIT' |		# 1000 flights
+	'MSP' ; 	# 10000 flights
+
+airport_list:
+	single_airport |
+	single_airport , airport_list ;
 
 generic_state_expression:
 	= single_state |
