@@ -32,6 +32,7 @@ my @errors = (
 	"Unknown column '.*?'",
 	"Column '.*?' specified twice",
 	"Column '.*?' cannot be null",
+	"Column '.*?' in .*? clause is ambiguous",
 	"Duplicate partition name .*?",
 	"Tablespace '.*?' not empty",
 	"Tablespace '.*?' already exists",
@@ -140,6 +141,7 @@ use constant	ER_EVENT_ALREADY_EXISTS		=> 1537;
 use constant	ER_TRG_ALREADY_EXISTS		=> 1359;
 use constant	ER_WRONG_FIELD_WITH_GROUP	=> 1055;
 use constant	ER_NON_GROUPING_FIELD_USED	=> 1463;
+use constant	ER_NON_UNIQ_ERROR		=> 1052;
 
 use constant	ER_PARTITION_MGMT_ON_NONPARTITIONED	=> 1505;
 use constant	ER_DROP_PARTITION_NON_EXISTENT		=> 1507;
@@ -287,6 +289,7 @@ my %err2type = (
 	ER_TRG_ALREADY_EXISTS()		=> STATUS_SEMANTIC_ERROR,
 	ER_WRONG_FIELD_WITH_GROUP()	=> STATUS_SEMANTIC_ERROR,
 	ER_NON_GROUPING_FIELD_USED()	=> STATUS_SEMANTIC_ERROR,
+	ER_NON_UNIQ_ERROR()		=> STATUS_SEMANTIC_ERROR,
 
 	ER_PARTITION_MGMT_ON_NONPARTITIONED()	=> STATUS_SEMANTIC_ERROR,
 	ER_DROP_LAST_PARTITION()		=> STATUS_SEMANTIC_ERROR,
