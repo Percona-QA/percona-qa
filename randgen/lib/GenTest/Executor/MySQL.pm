@@ -658,7 +658,10 @@ sub tables {
 	return [] if not defined $executor->dbh();
 
 	my $cache_key = join('-', ('tables', $database));
-	my $query = "SHOW TABLES ".(defined $database ? "FROM $database" : "FROM test");
+	my $query = 
+		"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES ". 
+		"WHERE TABLE_SCHEMA = ".defined $database ? "'$database'" : "'test'" .
+		" AND table_name != 'DUMMY'";
 	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
 	return $caches{$cache_key};
 }
