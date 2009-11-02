@@ -436,7 +436,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--threads=1
 		--queries=100K
 	';
-} elsif ($test =~ m{partition_pruning$}io ) {
+} elsif ($test =~ m{partn_pruning$}io ) {
 	$command = '
 		--gendata=conf/partition_pruning.zz
 		--grammar=conf/partition_pruning.yy
