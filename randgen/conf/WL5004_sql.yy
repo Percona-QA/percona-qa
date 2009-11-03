@@ -7,7 +7,6 @@
 #
 # Attention:
 # There are modified grammar items because of
-# - Bug#45143 All connections hang on concurrent ALTER TABLE
 # - Bug#46339 crash on REPAIR TABLE merge table USE_FRM
 # - Bug#46425 crash in Diagnostics_area::set_ok_status , empty statement, DELETE IGNORE
 # - Bug#46224 HANDLER statements within a transaction might lead to deadlocks
@@ -18,6 +17,7 @@
 # - Bug#45966 Crash in MDL_context::release_ticket in .\include\master-slave-reset.inc
 # - Bug#40419 Not locking metadata on alter procedure
 #   Duplicate of Bug#30977 Concurrent statement using stored function and DROP FUNCTION breaks SBR
+# .. there are a lot more please search for open bugs reported by Matthias Leich
 #
 #
 # Bug#45225 Locking: hang if drop table with no timeout
@@ -133,7 +133,12 @@
 
 # Section of easy changeable items with high impact on the test =============================================#
 query_init:
-	init_basics ; init_name_spaces ; event_scheduler_on ; have_some_initial_objects ;
+	# Variant 1: 
+	#    Advantage: Less failing (table does not exist ...) statements within the first phase of the test.
+	# init_basics : init_name_spaces ; event_scheduler_on ; have_some_initial_objects ;
+	# Variant 2:
+	#    Advantage: Better performance during bug hunt, test simplification etc.
+	init_basics ; init_name_spaces ;
 
 init_basics:
 	# 1. $life_time_unit = maximum lifetime of a table created within a CREATE, wait, DROP sequence.
@@ -167,15 +172,15 @@ init_basics:
 	{ $life_time_unit = 1 ; $name_space_width = 2 ; if ( $ENV{RQG_THREADS} == 1 ) { $life_time_unit = 0 } ; return undef } avoid_bugs ; nothing_disabled ; system_table_stuff ;
 
 init_name_spaces:
-   # Please choose between the following alternatives 
+	# Please choose between the following alternatives 
 	# separate_objects         -- no_separate_objects
 	# separate_normal_sequence -- no_separate_normal_sequence
 	# separate_table_types     -- no_separate_table_types
-   # 1. Low amount of failing statements, low risk to run into known not locking related crashes
+	# 1. Low amount of failing statements, low risk to run into known not locking related crashes
 	separate_objects ; separate_normal_sequence ; separate_table_types ;
-   # 2. Higher amount of failing statements, risk to run into known temporary table related crashes
+	# 2. Higher amount of failing statements, risk to run into known temporary table related crashes
 	# separate_objects ; separate_normal_sequence ; no_separate_table_types ;
-   # 3. Total chaos
+	# 3. Total chaos
 	# High amount of failing statements, risk to run into known temporary table related crashes
 	# no_separate_objects ; separate_normal_sequence ; no_separate_table_types ;
 
@@ -241,9 +246,8 @@ have_some_initial_objects:
 	# The amount of create_..._table items within the some_..._tables should depend a bit on the value in $name_space_width but I currently
 	# do not know how to express this in the grammar.
 	# MLML Bug#47633 assert in ha_myisammrg::info during OPTIMIZE -> merge tables disabled.
-	# create_database ; some_base_tables ; some_temp_tables ; some_part_tables ; some_view_tables ;
-	# create_database ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; create_view ; create_view ; create_view ;
-	some_databases ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
+	# some_databases ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
+	some_databases ; some_base_tables ; some_temp_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
 some_databases:
 	create_database    ; create_database    ; create_database    ; create_database    ;
 some_base_tables:
@@ -1191,9 +1195,17 @@ dml2:
 
 ########## DO ####################
 do:
-	# A lot options like HIGH_PRIORITY etc. are not allowed in connection with DO.
+	DO 1                                                                                                   |
+	# A lot options like HIGH_PRIORITY (after SELECT ) etc. are not allowed in connection with DO.
 	# The SELECT must give one column.
-	SELECT COUNT(*) FROM table_item WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 20 ;
+	DO ( SELECT COUNT(*) FROM table_item WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 20 ) |
+	DO user_lock_action                                                                                    ;
+
+user_lock_action:
+	IS_FREE_LOCK(TRIM(' _digit '))                                |
+	IS_USED_LOCK(TRIM(' _digit '))                                |
+	RELEASE_LOCK(TRIM(' _digit '))                                |
+	GET_LOCK(TRIM(' _digit '), 0.5 * rand_val * $life_time_unit ) ;
 
 ########## SELECT ####################
 select:
@@ -1338,7 +1350,7 @@ dump_load_data_sequence:
 	# generate_outfile ; LOAD DATA low_priority_concurrent local_or_empty INFILE tmpnam replace_ignore INTO TABLE table_item ;
 	generate_outfile ; LOAD DATA low_priority_concurrent INFILE tmpnam replace_ignore INTO TABLE table_item ;
 generate_outfile:
-	SELECT * FROM template_table_name INTO OUTFILE _tmpnam ;
+	SELECT * FROM template_table_item INTO OUTFILE _tmpnam ;
 low_priority_concurrent:
 	 | low_priority | concurrent ;
 concurrent:
@@ -1516,12 +1528,8 @@ not_or_empty:
 	 | NOT ;
 
 online:
-	# Use if
-	#    Bug#45143   All connections hang on concurrent ALTER TABLE
-	# is fixed     (ONLINE removed because of Bug#45143)
 	# Only 20 %
-	# | | | | ONLINE ;
-	;
+	| | | | ONLINE ;
 
 quick:
 	# Only 10 %
