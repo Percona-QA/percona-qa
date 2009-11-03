@@ -561,6 +561,10 @@ if ($command !~ m{--duration}io ) {
 	$command = $command.' --duration=600';
 }
 
+if ($command !~ m{--basedir}io ) {
+	$command = $command." --basedir=\"$basedir\"";
+}
+
 if ($command !~ m{--vardir}io && $command !~ m{--mem}io ) {
 	$command = $command." --vardir=\"$vardir\"";
 }
@@ -581,7 +585,7 @@ if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
 	$command = $command." --rpl_mode=$rpl_mode";
 }
 	
-$command = "perl runall.pl --basedir=\"$basedir\" --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
+$command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
 
 # Add env variable to specify unique port range to use to avoid conflicts.
 if ($windowsOS) {
