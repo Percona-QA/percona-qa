@@ -33,8 +33,11 @@ if (
 }
 
 #
-# Prepare ENV variables
+# Prepare ENV variables and other settings.
 #
+
+# Local "installation" of MySQL 5.0. Default is for Unix hosts. See below for Windows.
+my $basedirRelease50 = '/export/home/mysql-releases/mysql-5.0';
 
 if ($windowsOS) {
 	# For tail and for cdb
@@ -46,6 +49,9 @@ if ($windowsOS) {
 
 	system("date /T");
 	system("time /T");
+
+	# Path to MySQL releases used for comparison runs.
+	$basedirRelease50 = 'G:\mysql-releases\mysql-5.0.87-win32'; # loki06
 } elsif ($^O eq 'solaris') {
 	# For libmysqlclient
 	$ENV{LD_LIBRARY_PATH}=$ENV{LD_LIBRARY_PATH}.':/export/home/pb2/scripts/lib/';
@@ -58,6 +64,7 @@ if ($windowsOS) {
 
 	system("uname -a");
 	system("date");
+
 }
 
 ################################################################################
@@ -442,6 +449,18 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--grammar=conf/partition_pruning.yy
 		--threads=1
 		--queries=100000
+	';
+} elsif ($test =~ m{^partn_pruning_compare_50$}io) {
+	$command = '
+	--gendata=conf/partition_pruning.zz
+	--grammar=conf/partition_pruning.yy
+	--basedir1='.$basedir.'
+	--basedir2='.$basedirRelease50.'
+	--vardir1='.$vardir.'/vardir-bzr
+	--vardir2='.$vardir.'/vardir-5.0
+	--validators=ResultsetComparatorSimplify
+	--threads=1
+	--queries=10000
 	';
 } elsif ($test =~ m{^rpl_.*?_simple$}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
