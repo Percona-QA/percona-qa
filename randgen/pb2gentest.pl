@@ -33,8 +33,11 @@ if (
 }
 
 #
-# Prepare ENV variables
+# Prepare ENV variables and other settings.
 #
+
+# Local "installation" of MySQL 5.0. Default is for Unix hosts. See below for Windows.
+my $basedirRelease50 = '/export/home/mysql-releases/mysql-5.0';
 
 if ($windowsOS) {
 	# For tail and for cdb
@@ -46,6 +49,9 @@ if ($windowsOS) {
 
 	system("date /T");
 	system("time /T");
+
+	# Path to MySQL releases used for comparison runs.
+	$basedirRelease50 = 'G:\mysql-releases\mysql-5.0.87-win32'; # loki06
 } elsif ($^O eq 'solaris') {
 	# For libmysqlclient
 	$ENV{LD_LIBRARY_PATH}=$ENV{LD_LIBRARY_PATH}.':/export/home/pb2/scripts/lib/';
@@ -58,6 +64,7 @@ if ($windowsOS) {
 
 	system("uname -a");
 	system("date");
+
 }
 
 ################################################################################
@@ -168,6 +175,15 @@ print("***** Information on Random Query Generator version (bzr): *****\n");
 system("bzr info");
 system("bzr version-info");
 print("\n");
+
+# Test name:
+#   In PB2, tests run via this script are prefixed with "rqg_" so that it is
+#   easy to distinguish these tests from other "external" tests.
+#   For a while we will support test names both with and without the prefix.
+#   For this reason we strip off the "rqg_" prefix before continuing.
+#   This also means that you cannot try to match against "rqg_" prefix in test
+#   "definitions" (if statements) below.
+$test =~ s/^rqg_//;
 
 # Server port numbers:
 #
@@ -443,6 +459,18 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--threads=1
 		--queries=100000
 	';
+} elsif ($test =~ m{^partn_pruning_compare_50$}io) {
+	$command = '
+	--gendata=conf/partition_pruning.zz
+	--grammar=conf/partition_pruning.yy
+	--basedir1='.$basedir.'
+	--basedir2='.$basedirRelease50.'
+	--vardir1='.$vardir.'/vardir-bzr
+	--vardir2='.$vardir.'/vardir-5.0
+	--validators=ResultsetComparatorSimplify
+	--threads=1
+	--queries=10000
+	';
 } elsif ($test =~ m{^rpl_.*?_simple$}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
 	# produces are known replication issues documented in the manual).
@@ -542,6 +570,10 @@ if ($command !~ m{--duration}io ) {
 	$command = $command.' --duration=600';
 }
 
+if ($command !~ m{--basedir}io ) {
+	$command = $command." --basedir=\"$basedir\"";
+}
+
 if ($command !~ m{--vardir}io && $command !~ m{--mem}io ) {
 	$command = $command." --vardir=\"$vardir\"";
 }
@@ -562,7 +594,7 @@ if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
 	$command = $command." --rpl_mode=$rpl_mode";
 }
 	
-$command = "perl runall.pl --basedir=\"$basedir\" --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
+$command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
 
 # Add env variable to specify unique port range to use to avoid conflicts.
 if ($windowsOS) {
