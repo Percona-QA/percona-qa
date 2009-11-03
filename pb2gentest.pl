@@ -176,6 +176,15 @@ system("bzr info");
 system("bzr version-info");
 print("\n");
 
+# Test name:
+#   In PB2, tests run via this script are prefixed with "rqg_" so that it is
+#   easy to distinguish these tests from other "external" tests.
+#   For a while we will support test names both with and without the prefix.
+#   For this reason we strip off the "rqg_" prefix before continuing.
+#   This also means that you cannot try to match against "rqg_" prefix in test
+#   "definitions" (if statements) below.
+$test =~ s/^rqg_//;
+
 # Server port numbers:
 #
 # Use a port range ID (integer) that is unique for this host at this time.
