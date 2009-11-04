@@ -4,25 +4,27 @@ require Exporter;
 @ISA = qw(GenTest::Reporter);
 
 use strict;
-use DBI;
-use Data::Dumper;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Reporter;
 use GenTest::Executor::MySQL;
 
+use DBI;
+use Data::Dumper;
+use POSIX;
+
 use constant PROCESSLIST_PROCESS_TIME		=> 5;
 use constant PROCESSLIST_PROCESS_INFO		=> 7;
 
 # The time, in seconds, we will wait for a connect before we declare the server hanged
-use constant CONNECT_TIMEOUT_THRESHOLD		=> 60;
+use constant CONNECT_TIMEOUT_THRESHOLD		=> 20;
 
 # Minimum lifetime of a query before it is considered suspicios
-use constant QUERY_LIFETIME_THRESHOLD		=> 600;	# Seconds
+use constant QUERY_LIFETIME_THRESHOLD		=> 20;	# Seconds
 
 # Number of suspicious queries required before a deadlock is declared
-use constant STALLED_QUERY_COUNT_THRESHOLD	=> 5;
+use constant STALLED_QUERY_COUNT_THRESHOLD	=> 2;
 
 sub monitor {
 	my $reporter = shift;
@@ -44,24 +46,23 @@ sub monitor_nonthreaded {
 	# We directly call exit() in the handler because attempting to catch and handle the signal in a more civilized 
 	# manner does not work for some reason -- the read() call from the server gets restarted instead
 
-	local $SIG{ALRM} = sub {
-#		say("Entire-server deadlock detected.");
-		exit (STATUS_SERVER_DEADLOCKED);
-	};
+	sigaction SIGALRM, new POSIX::SigAction sub {
+                exit (STATUS_SERVER_DEADLOCKED);
+	} or die "Error setting SIGALRM handler: $!\n";
 
 	my $prev_alarm1 = alarm (CONNECT_TIMEOUT_THRESHOLD);
 	$dbh = DBI->connect($dsn, undef, undef, { mysql_connect_timeout => CONNECT_TIMEOUT_THRESHOLD * 2} );
-	alarm ($prev_alarm1);
 
 	if (defined GenTest::Executor::MySQL::errorType($DBI::err)) {
+		alarm (0);
 		return GenTest::Executor::MySQL::errorType($DBI::err);
 	} elsif (not defined $dbh) {
+		alarm (0);
 		return STATUS_UNKNOWN_ERROR;
 	}
 
-	my $prev_alarm2 = alarm (CONNECT_TIMEOUT_THRESHOLD);
 	my $processlist = $dbh->selectall_arrayref("SHOW FULL PROCESSLIST");
-	alarm ($prev_alarm2);
+	alarm (0);
 
 	my $stalled_queries = 0;
 
