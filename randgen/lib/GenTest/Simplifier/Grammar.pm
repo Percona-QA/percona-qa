@@ -34,6 +34,7 @@ sub simplify {
 
 	if (!$simplifier->oracle($initial_grammar_string)) {
 		warn("Initial grammar failed oracle check.");
+		warn("Are duration and/or trials too small or is a different value for seed required?");
 		return undef;
 	}
 	
