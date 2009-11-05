@@ -21,10 +21,10 @@ use constant PROCESSLIST_PROCESS_INFO		=> 7;
 use constant CONNECT_TIMEOUT_THRESHOLD		=> 20;
 
 # Minimum lifetime of a query before it is considered suspicios
-use constant QUERY_LIFETIME_THRESHOLD		=> 20;	# Seconds
+use constant QUERY_LIFETIME_THRESHOLD		=> 600;	# Seconds
 
 # Number of suspicious queries required before a deadlock is declared
-use constant STALLED_QUERY_COUNT_THRESHOLD	=> 2;
+use constant STALLED_QUERY_COUNT_THRESHOLD	=> 5;
 
 sub monitor {
 	my $reporter = shift;
