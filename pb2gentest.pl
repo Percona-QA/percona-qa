@@ -17,6 +17,11 @@ my ($basedir, $vardir, $tree, $test) = @ARGV;
 #
 
 print("==================== Starting $0 ====================\n");
+# Print MTR-style output saying which test suite/mode this is for PB2 reporting.
+# So far we only support running one test at a time.
+print("##############################################################################\n");
+print("# $test\n");
+print("##############################################################################\n");
 
 # Autoflush output buffers (needed when using POSIX::_exit())
 $| = 1;
@@ -190,7 +195,9 @@ print("\n");
 #   For this reason we strip off the "rqg_" prefix before continuing.
 #   This also means that you cannot try to match against "rqg_" prefix in test
 #   "definitions" (if statements) below.
-$test =~ s/^rqg_//;
+my $test_name = $test;
+my $test_suite_name = 'serverqa'; # used for xref reporting
+$test =~ s/^rqg_//;	# test_name without prefix
 
 # Server port numbers:
 #
@@ -613,6 +620,30 @@ if ($windowsOS) {
 $command =~ s{[\r\n\t]}{ }sgio;
 print("Running runall.pl...\n");
 my $command_result = system($command);
+# shift result code to the right to obtain the code returned from the called script
+my $command_result_shifted = ($command_result >> 8);
+
+# Report test result in an MTR fashion so that PB2 will see it and add to
+# xref database etc.
+# Format: TESTSUITE.TESTCASE 'TESTMODE' [ RESULT ]
+# Example: ndb.ndb_dd_alter 'InnoDB plugin'     [ fail ]
+# Not using TESTMODE for now.
+
+my $full_test_name = $test_suite_name.'.'.$test_name;
+# keep test statuses more or less vertically aligned
+while (length $full_test_name < 40)
+{
+	$full_test_name = $full_test_name.' ';
+}
+
+if ($command_result_shifted > 0) {
+	# test failed
+	print($full_test_name." [ fail ]\n");
+	print('runall.pl failed with exit code '.$command_result_shifted."\n");
+	print("Look above this message in the test log for failure details.\n");
+} else {
+	print($full_test_name." [ pass ]\n");
+}
 
 if (!$windowsOS) {
 	system("killall -15 mysqld");
@@ -622,4 +653,4 @@ if (!$windowsOS) {
 	system("ps -A | grep mysqld | awk -F' ' '{ print \$1 }' | xargs kill -9");
 }
 
-POSIX::_exit ($command_result >> 8);
+POSIX::_exit ($command_result_shifted);
