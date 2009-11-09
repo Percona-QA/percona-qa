@@ -646,11 +646,17 @@ if ($command_result_shifted > 0) {
 }
 
 if (!$windowsOS) {
-	system("killall -15 mysqld");
-	system("ps -A | grep mysqld | awk -F' ' '{ print \$1 }' | xargs kill -15");
-	sleep(5);
-	system("killall -9 mysqld");
-	system("ps -A | grep mysqld | awk -F' ' '{ print \$1 }' | xargs kill -9");
+	# Kill remaining mysqld processes.
+	# Avoid "bad argument count" messages from kill by checking first.
+	if (system("pgrep mysqld") == 0) {
+		print(" ^--- Found running mysqld process(es), to be killed.\n");
+		system("pgrep mysqld | xargs kill -15"); # "soft" kill
+		sleep(5);
+		if (system("pgrep mysqld > /dev/null") == 0) {
+			# process is still around...
+			system("pgrep mysqld | xargs kill -9"); # "hard" kill
+		}
+	}
 }
 
 POSIX::_exit ($command_result_shifted);
