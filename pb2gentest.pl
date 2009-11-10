@@ -467,11 +467,13 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--queries=100K
 	';
 } elsif ($test =~ m{partn_pruning$}io ) {
+	# reduced duration to half since gendata phase takes longer in this case
 	$command = '
 		--gendata='.$conf.'/partition_pruning.zz
 		--grammar='.$conf.'/partition_pruning.yy
 		--threads=1
 		--queries=100000
+		--duration=300
 	';
 } elsif ($test =~ m{^partn_pruning_compare_50$}io) {
 	$command = '
