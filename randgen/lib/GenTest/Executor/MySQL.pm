@@ -528,7 +528,7 @@ sub execute {
 	$sth->finish();
 
 	if ($sth->{mysql_warning_count} > 0) {
-		my $warnings = $dbh->selectcol_arrayref("SHOW WARNINGS");
+		my $warnings = $dbh->selectall_arrayref("SHOW WARNINGS");
 		$result->setWarnings($warnings);
 	}
 

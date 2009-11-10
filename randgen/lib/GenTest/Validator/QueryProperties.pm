@@ -15,7 +15,8 @@ my @properties = (
 	'RESULTSET_HAS_SAME_DATA_IN_EVERY_ROW',
 	'RESULTSET_IS_SINGLE_INTEGER_ONE',
 	'RESULTSET_HAS_ZERO_OR_ONE_ROWS',
-	'RESULTSET_HAS_ONE_ROW'
+	'RESULTSET_HAS_ONE_ROW',
+	'QUERY_IS_REPLICATION_SAFE'
 );
 
 my %properties;
@@ -27,7 +28,7 @@ sub validate {
 	my ($validator, $executors, $results) = @_;
 
 	my $query = $results->[0]->query();
-	my @query_properties = $query =~ m{((?:RESULTSET_|ERROR_).*?)[^A-Z_0-9]}sog;
+	my @query_properties = $query =~ m{((?:RESULTSET_|ERROR_|QUERY_).*?)[^A-Z_0-9]}sog;
 
 	return STATUS_WONT_HANDLE if $#query_properties == -1;
 
@@ -59,7 +60,7 @@ sub validate {
 	}
 
 	if ($query_status != STATUS_OK) {
-		say("Query: $query does not have the declared properties.");
+		say("Query: $query does not have the declared properties: ".join(', ', @query_properties));
 		print Dumper $results if rqg_debug();
 	}
 	
@@ -120,6 +121,20 @@ sub RESULTSET_IS_SINGLE_INTEGER_ONE {
 	} else {
 		return STATUS_OK;
 	}
+}
+
+sub QUERY_IS_REPLICATION_SAFE {
+
+	my ($validator, $result) = @_;
+
+	my $warnings = $result->warnings();
+
+	if (defined $warnings) {
+		foreach my $warning (@$warnings) {
+			return STATUS_ENVIRONMENT_FAILURE if $warning->[1] == 1592;
+		}
+	}
+	return STATUS_OK;
 }
 
 1;
