@@ -19,6 +19,20 @@
 #   Duplicate of Bug#30977 Concurrent statement using stored function and DROP FUNCTION breaks SBR
 # .. there are a lot more please search for open bugs reported by Matthias Leich
 #
+# TODO:
+#   - Add subtest for
+#     Bug #48315 Metadata lock is not taken for merged views that use an INFORMATION_SCHEMA table
+#     Simple:
+#        Philip: using an I_S in a meaningless subselect would be best, just have
+#                ( SELECT user + 0 FROM INFORMATION_SCHEMA.USERS LIMIT 1)
+#     Complete:
+#        mleich:
+#           But IS tables used in VIEWs, SELECT, DELETE/UPDATE subqueries/join,
+#           PROCEDURES etc. are complete missing.
+#           Could Inject this in subquery?
+#   - Simplify grammar:
+#           Name space concept is good for grammar development, avoiding failing statements,
+#           understanding statement logs but bad for grammar simplification speed.
 #
 # Bug#45225 Locking: hang if drop table with no timeout
 #           Reporter , LockTableKiller might help
@@ -137,7 +151,8 @@ query_init:
 	#    Advantage: Less failing (table does not exist ...) statements within the first phase of the test.
 	# init_basics : init_name_spaces ; event_scheduler_on ; have_some_initial_objects ;
 	# Variant 2:
-	#    Advantage: Better performance during bug hunt, test simplification etc.
+	#    Advantage: Better performance during bug hunt, test simplification etc. because objects are created at
+	#               on place (<object>_ddl) only and not also in "have_some_initial_objects".
 	init_basics ; init_name_spaces ;
 
 init_basics:
@@ -245,7 +260,9 @@ have_some_initial_objects:
 	# It is assumed that this reduces the likelihood of "Table does not exist" significant when running with a small number of "worker" threads.
 	# The amount of create_..._table items within the some_..._tables should depend a bit on the value in $name_space_width but I currently
 	# do not know how to express this in the grammar.
-	# MLML Bug#47633 assert in ha_myisammrg::info during OPTIMIZE -> merge tables disabled.
+	# Use if
+	#   Bug#47633 assert in ha_myisammrg::info during OPTIMIZE
+	# is fixed (merge tables disabled)
 	# some_databases ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
 	some_databases ; some_base_tables ; some_temp_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
 some_databases:
@@ -466,12 +483,11 @@ base_temp_view_table_item:
 	base_temp_view_table_item_s | base_temp_view_table_item ;
 
 
-# 8. Other name spaces ###############################################################
-template_table_name:
-	# Get the name of one of the template tables which were generated via gendata.pl.
-	{ $template_table_name  = $prng->arrayElement($executors->[0]->tables()) } ;
+# 8. Other name spaces ##############################################################a
 template_table_item:
-	test . template_table_name { $template_table_item = "test . " . $template_table_name ; return undef } ;
+	{ $template_table_item = "test.table0_int_autoinc" }  |
+	{ $template_table_item = "test.table1_int_autoinc" }  |
+	{ $template_table_item = "test.table10_int_autoinc" } ;
 
 
 procedure_name_s:
@@ -573,16 +589,16 @@ isolation_level:
 start_transaction:
 	START TRANSACTION with_consistent_snapshot ;
 with_consistent_snapshot:
-	 | | | | | | | | | WITH CONSISTENT SNAPSHOT ;
+	| | | | | | | | | WITH CONSISTENT SNAPSHOT ;
 
 commit:
 	COMMIT   work_or_empty chain release ;
 rollback:
 	ROLLBACK work_or_empty chain release ;
 chain:
-	 | | | | AND no_or_empty CHAIN ;
+	| | | | AND no_or_empty CHAIN ;
 release:
-	 | | | | | | | | | no_or_empty RELEASE ;
+	| | | | | | | | | no_or_empty RELEASE ;
 
 set_autocommit:
 	SET AUTOCOMMIT = zero_or_one ;
@@ -634,7 +650,9 @@ ddl:
 	database_ddl                                        |
 	base_table_ddl  | base_table_ddl  | base_table_ddl  |
 	temp_table_ddl  | temp_table_ddl  | temp_table_ddl  |
-	# Bug#47633 assert in ha_myisammrg::info during OPTIMIZE -> merge tables disabled.
+	# Use if
+	#   Bug#47633 assert in ha_myisammrg::info during OPTIMIZE
+	# is fixed (merge tables disabled)
 	# merge_table_ddl | merge_table_ddl | merge_table_ddl |
 	part_table_ddl  | part_table_ddl  | part_table_ddl  |
 	view_ddl        | view_ddl        | view_ddl        |
@@ -664,13 +682,13 @@ handler_open:
 	HANDLER table_no_view_item OPEN with_alias ;
 
 with_alias:
-	 | as A ;
+	| as A ;
 
 handler_read:
 	# The use of indexes is omitted
 	HANDLER table_no_view_item READ FIRST handler_read_part ;
 handler_read_part:
-	 | where ;
+	| where ;
 
 handler_close:
 	HANDLER table_no_view_item CLOSE ;
@@ -722,14 +740,14 @@ show_columns:
 	SHOW full COLUMNS from_in table_item show_columns_part ;
 full:
 	# Only 20 %
-	 | | | | FULL ;
+	| | | | FULL ;
 from_in:
 	FROM | IN ;
 show_columns_part:
 	# Attention: LIKE '_field' does not work, because RQG does not expand _field.
 	#            LIKE '%int%' does not work, because RQG expands it to something like LIKE '%822214656%'.
 	# FIXME: Add "WHERE"
-	 | LIKE '%INT%' ;
+	| LIKE '%INT%' ;
 
 show_create_view:
 	SHOW CREATE VIEW view_table_item ;
@@ -774,13 +792,13 @@ show_create_event:
 ########## SELECTS ON THE INFORMATION_SCHEMA ####################
 # We run here only object related SELECTs.
 is_selects:
-	is_schemata | is_tables ;
+	is_schemata | is_tables | is_columns ;
 is_schemata:
 	/* database_name */ SELECT * FROM information_schema . schemata WHERE schema_name = TRIM(' $database_name ') ;
 is_tables:
 	/* table_item */ SELECT * FROM information_schema . tables WHERE table_schema = TRIM(' $database_name ') AND table_name = TRIM(' $table_name ') ;
 is_columns:
-	/* table_item */ SELECT * FROM information_columns . tables WHERE table_schema = TRIM(' $database_name ') AND table_name = TRIM(' $table_name ') AND column_name = TRIM(' _field ') ;
+	/* table_item */ SELECT * FROM information_schema . columns WHERE table_schema = TRIM(' $database_name ') AND table_name = TRIM(' $table_name ') AND column_name = random_field_quoted ;
 # 19.1. The INFORMATION_SCHEMA SCHEMATA Table
 # 19.2. The INFORMATION_SCHEMA TABLES Table
 # 19.3. The INFORMATION_SCHEMA COLUMNS Table
@@ -913,7 +931,7 @@ table_maintenance_ddl:
 analyze_table:
 	ANALYZE not_to_binlog_local TABLE table_list ;
 not_to_binlog_local:
-	 | NO_WRITE_TO_BINLOG | LOCAL ;
+	| NO_WRITE_TO_BINLOG | LOCAL ;
 
 optimize_table:
 	OPTIMIZE not_to_binlog_local TABLE table_list ;
@@ -921,15 +939,15 @@ optimize_table:
 checksum_table:
 	CHECKSUM TABLE table_list quick_extended ;
 quick_extended:
-	 | quick | extended ;
+	| quick | extended ;
 extended:
 	# Only 10 %
-	 | | | | | | | | | EXTENDED ;
+	| | | | | | | | | EXTENDED ;
 
 check_table:
 	CHECK TABLE table_list check_table_options ;
 check_table_options:
-	 | FOR UPGRADE | QUICK | FAST | MEDIUM | EXTENDED | CHANGED ;
+	| FOR UPGRADE | QUICK | FAST | MEDIUM | EXTENDED | CHANGED ;
 
 repair_table:
 	# Use if
@@ -940,14 +958,14 @@ repair_table:
 
 use_frm:
 	# Only 10 %
-	 | | | | | | | |  | USE_FRM ;
+	| | | | | | | |  | USE_FRM ;
 
 
 ########## MIXED TABLE RELATED DDL #################################
 truncate_table:
 	TRUNCATE table_word table_no_view_item_n ;
 table_word:
-	 | TABLE ;
+	| TABLE ;
 
 drop_table_list:
 	# DROP one table is in "drop_*table"
@@ -997,7 +1015,7 @@ create_merge_table:
 	merge_init_n build_partner1 ; build_partner2 ; create_merge ;
 
 insert_method:
-	 | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value ;
+	| INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value ;
 insert_method_value:
 	NO | FIRST | LAST ;
 
@@ -1084,7 +1102,7 @@ drop_view:
 
 restrict_cascade:
 	# RESTRICT and CASCADE, if given, are parsed and ignored.
-	 | RESTRICT | CASCADE ;
+	| RESTRICT | CASCADE ;
 
 alter_view:
 	# Attention: Only changing the algorithm is not allowed.
@@ -1127,7 +1145,7 @@ create_function:
 func_statement:
 	# All result sets of queries within a function must be processed within the function.
 	# -> Use a CURSOR or SELECT ... INTO ....
-	SET @my_var = 1 | SELECT MAX( _field ) FROM table_item INTO @my_var | insert | delete ;
+	SET @my_var = 1 | SELECT MAX( random_field_quoted1 ) FROM table_item INTO @my_var | insert | delete ;
 
 drop_function:
 	DROP FUNCTION if_exists function_item_n ;
@@ -1136,7 +1154,7 @@ alter_function:
 	ALTER FUNCTION function_item_n COMMENT 'UPDATED NOW()' ;
 
 function_sequence:
-	$sequence_begin CREATE FUNCTION function_item_s () RETURNS INTEGER RETURN ( SELECT MOD( COUNT( DISTINCT _field ) , 10 ) FROM table_item_s ) ; COMMIT ; SELECT wait_short ; DROP FUNCTION $function_item_s $sequence_end ;
+	$sequence_begin CREATE FUNCTION function_item_s () RETURNS INTEGER RETURN ( SELECT MOD( COUNT( DISTINCT random_field_quoted1 ) , 10 ) FROM table_item_s ) ; COMMIT ; SELECT wait_short ; DROP FUNCTION $function_item_s $sequence_end ;
 
 
 ########## TRIGGER DDL ####################
@@ -1226,21 +1244,24 @@ used_select:
 	select_part1 addition_no_procedure ;
 
 select_part1:
-	SELECT high_priority cache_results table_field_list FROM table_in_select as A ;
+	SELECT high_priority cache_results table_field_list_or_star FROM table_in_select as A ;
 
 cache_results:
-	 | sql_no_cache | sql_cache ;
+	| sql_no_cache | sql_cache ;
 sql_no_cache:
 	# Only 10 %
-	 | | | | | | | | | SQL_NO_CACHE ;
+	| | | | | | | | |
+	SQL_NO_CACHE ;
 sql_cache:
 	# Only 10 %
-	 | | | | | | | | | SQL_CACHE ;
+	| | | | | | | | |
+	SQL_CACHE ;
 
 table_in_select:
 	# Attention: In case of CREATE VIEW a subquery in the FROM clause (derived table) is disallowed.
 	#            Therefore they should be rare.
-	table_item | table_item | table_item | table_item | table_item | ( SELECT table_field_list FROM table_item ) ;
+	table_item | table_item | table_item | table_item | table_item |
+	( SELECT table_field_list_or_star FROM table_item ) ;
 
 addition:
 	# Involve one (simple where condition) or two tables (subquery | join | union)
@@ -1293,11 +1314,13 @@ procedure_analyze:
 	# 7. INSERT ... SELECT ... PROCEDURE -> It's tried to INSERT the PROCEDURE result set.
 	#    High likelihood of ER_WRONG_VALUE_COUNT_ON_ROW
 	# Only 10 %
-	 | | | | | | | |  | PROCEDURE ANALYSE( 10 , 2000 ) ;
+	| | | | | | | |  |
+	PROCEDURE ANALYSE( 10 , 2000 ) ;
 
 into:
 	# Only 10 %
-	 | | | | | | | |  | INTO into_object ;
+	| | | | | | | | |
+	INTO into_object ;
 
 into_object:
 	# INSERT ... SELECT ... INTO DUMPFILE/OUTFILE/@var is not allowed
@@ -1310,13 +1333,15 @@ into_object:
 	OUTFILE _tmpnam ;
 
 for_update_lock_in_share_mode:
-	 | for_update | lock_share ;
+	| for_update | lock_share ;
 for_update:
 	# Only 10 %
-	 | | | | | | | |  | FOR UPDATE ;
+	| | | | | | | | |
+	FOR UPDATE ;
 lock_share:
 	# Only 10 %
-	 | | | | | | | |  | LOCK IN SHARE MODE ;
+	| | | | | | | | |
+	LOCK IN SHARE MODE ;
 
 
 ########## INSERT ####################
@@ -1325,13 +1350,14 @@ insert:
 insert_normal:
 	INSERT low_priority_delayed_high_priority into_word table_item simple_or_complicated on_duplicate_key_update ;
 simple_or_complicated:
-	( _field ) VALUES ( digit_or_null ) |
+	( random_field_quoted1 ) VALUES ( digit_or_null ) |
 	braced_table_field_list used_select LIMIT 1 ;
 on_duplicate_key_update:
 	# Only 10 %
-	 | | | | | | | |  | ON DUPLICATE KEY UPDATE _field = _digit ;
+	| | | | | | | | |
+	ON DUPLICATE KEY UPDATE random_field_quoted1 = _digit ;
 insert_with_sleep:
-	INSERT INTO table_item ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_item WHERE wait_short = 0 LIMIT 1;
+	INSERT INTO table_item ( table_field_list ) SELECT $table_field_list FROM table_item WHERE wait_short = 0 LIMIT 1;
 
 
 ########## REPLACE ####################
@@ -1352,12 +1378,12 @@ dump_load_data_sequence:
 generate_outfile:
 	SELECT * FROM template_table_item INTO OUTFILE _tmpnam ;
 low_priority_concurrent:
-	 | low_priority | concurrent ;
+	| low_priority | concurrent ;
 concurrent:
 	# Only 20 % <> empty.
-	 | | | | CONCURRENT ;
+	| | | | CONCURRENT ;
 replace_ignore:
-	 | replace_option | ignore ;
+	| replace_option | ignore ;
 
 
 ########## GRANT_REVOKE ####################
@@ -1409,10 +1435,10 @@ delete_with_sleep:
 update:
 	update_normal | update_normal | update_normal | update_normal | update_with_sleep ;
 update_normal:
-	UPDATE low_priority ignore table_item SET _field = _digit WHERE `pk` > _digit LIMIT _digit  |
-	UPDATE low_priority ignore table_item AS A join SET A. _field = _digit , B. _field = _digit ;
+	UPDATE low_priority ignore table_item SET random_field_quoted1 = _digit WHERE `pk` > _digit LIMIT _digit  |
+	UPDATE low_priority ignore table_item AS A join SET A. random_field_quoted1 = _digit , B. random_field_quoted1 = _digit ;
 update_with_sleep:
-	UPDATE low_priority ignore table_item SET _field = _digit WHERE wait_short = 0 LIMIT 1 ;
+	UPDATE low_priority ignore table_item SET random_field_quoted1 = _digit WHERE wait_short = 0 LIMIT 1 ;
 
 
 ########## LOCK/UNLOCK ####################
@@ -1431,9 +1457,10 @@ lock_item:
 	table_item AS _letter lock_type ;
 lock_type:
 	READ local_or_empty      |
-	low_priority WRITE       |
-	IN SHARE MODE nowait     |
-	IN EXCLUSIVE MODE nowait ;
+	low_priority WRITE       ;
+	# Transactional locking is not relevant for Celosia (no backport of fixes)
+	# IN SHARE MODE nowait     |
+	# IN EXCLUSIVE MODE nowait ;
 nowait:
 	NOWAIT | ;
 
@@ -1465,13 +1492,14 @@ braced_table_field_list:
 	# INSERT/REPLACE INTO <table> <no field list>
 	# failing with: 1394 Can not insert into join view 'test.t1_view_0_S' without fields list
 	# Therefore <empty> is only 20 %.
-	( _field_list ) | ( _field_list ) | ( _field_list ) | ( _field_list ) | ;
+	( table_field_list ) | ( table_field_list ) | ( table_field_list ) | ( table_field_list ) | ;
 
 default_word:
 	 | DEFAULT ;
 
 digit_or_null:
-	_digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit | NULL ;
+	_digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit |
+	NULL ;
 
 engine:
 	# Use if
@@ -1481,51 +1509,54 @@ engine:
 	MEMORY | MyISAM ;
 
 equal:
-	 | = ;
+	| = ;
 
 delayed:
 	# Only 10 %
-	 | | | | | | | | | DELAYED ;
+	# Kostja: Known problem | | | | | | | | | DELAYED ;
+	;
 
 high_priority:
 	# Only 20 %
-	 | | | | HIGH_PRIORITY ;
+	| | | | HIGH_PRIORITY ;
 
 ignore:
 	# Only 10 %
-	 | | | | | | | | | IGNORE ;
+	| | | | | | | | |
+	IGNORE ;
 
 if_exists:
 	# 90 %, this reduces the amount of failing DROPs
-	 | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS ;
+	| IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS ;
 
 if_not_exists:
 	# 90 %, this reduces the amount of failing CREATEs
-	 | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS ;
+	| IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS ;
 
 into_word:
 	# Only 50 %
-	 | INTO ;
+	| INTO ;
 
 local_or_empty:
 	# Only 20%
-	 | | | | LOCAL ;
+	| | | | LOCAL ;
 
 low_priority_delayed_high_priority:
-	 | low_priority | delayed | high_priority ;
+	| low_priority | delayed | high_priority ;
 
 low_priority_delayed:
-	 | low_priority | delayed ;
+	| low_priority | delayed ;
 
 low_priority:
 	# Only 10 %
-	 | | | | | | | | | LOW_PRIORITY ;
+	| | | | | | | | |
+	LOW_PRIORITY ;
 
 no_or_empty:
-	 | NO ;
+	| NO ;
 
 not_or_empty:
-	 | NOT ;
+	| NOT ;
 
 online:
 	# Only 20 %
@@ -1533,21 +1564,37 @@ online:
 
 quick:
 	# Only 10 %
-	 | | | | | | | | | QUICK ;
+	| | | | | | | | |
+	QUICK ;
+
+random_field_quoted:
+	'int_key' | 'int' | 'pk' ;
+
+random_field_quoted1:
+	`int_key` | `int` | `pk` ;
 
 replace_option:
 	# Only 20 % <> empty.
-	 | | | | REPLACE ;
+	| | | | REPLACE ;
 
 savepoint_or_empty:
 	SAVEPOINT | ;
 
 sql_buffer_result:
 	# Only 50%
-	 | SQL_BUFFER_RESULT ;
+	| SQL_BUFFER_RESULT ;
+
+table_field_list_or_star:
+	table_field_list | table_field_list | table_field_list | table_field_list |
+	{ $table_field_list = "*" }                                               ;
 
 table_field_list:
-	_field_list | _field_list | _field_list | _field_list | * ;
+	{ $table_field_list = "`int_key` , `int`     , `pk`      "} |
+	{ $table_field_list = "`int_key` , `pk`      , `int`     "} |
+	{ $table_field_list = "`int`     , `pk`      , `int_key` "} |
+	{ $table_field_list = "`int`     , `int_key` , `pk`      "} |
+	{ $table_field_list = "`pk`      , `int`     , `int_key` "} |
+	{ $table_field_list = "`pk`      , `int_key` , `pk`      "} ;
 
 temporary:
 	# Attention:
@@ -1560,13 +1607,14 @@ temporary:
 	#    which created the table will pick a random statement and maybe do something on
 	#    the table <> DROP.
 	# Only 10 % because no other session can use this table.
-	 | | | | | | | |  | TEMPORARY ;
+	| | | | | | | | |
+	TEMPORARY ;
 
 wait_short:
 	SLEEP( 0.5 * rand_val * $life_time_unit ) ;
 
 work_or_empty:
-	 | WORK ;
+	| WORK ;
 
 zero_or_one:
 	0 | 1 ;
