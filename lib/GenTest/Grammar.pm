@@ -228,7 +228,7 @@ sub deleteRule {
 #
 
 sub hasProperties {
-	if ($_[0]->[GRAMMAR_STRING] =~ m{RESULTSET_|ERROR_}so) {
+	if ($_[0]->[GRAMMAR_STRING] =~ m{RESULTSET_|ERROR_|QUERY_}so) {
 		return 1;
 	} else {
 		return 0;
