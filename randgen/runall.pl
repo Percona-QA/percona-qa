@@ -431,7 +431,8 @@ $0 - Run a complete random query generation test, including server start with re
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr.
-    --build-thread: Value used for MTR_BUILD_THREAD when servers are started and accessed.
+    --mtr-build-thread: 
+                  Value used for MTR_BUILD_THREAD when servers are started and accessed.
     --debug     : Debug mode
     --help      : This help message
 
