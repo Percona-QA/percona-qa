@@ -366,7 +366,7 @@ if ($rpl_mode || (defined $basedirs[1])) {
 		say("Dumping server on port $dump_ports[$i]...");
 		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
 
-		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root $database | sort > $dump_files[$i]");
+		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root $database | sort > $dump_files[$i]");
 		exit_test($dump_result >> 8) if $dump_result > 0;
 	}
 
