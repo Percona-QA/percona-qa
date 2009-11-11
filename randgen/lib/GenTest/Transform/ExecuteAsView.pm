@@ -18,7 +18,8 @@ sub transform {
 	return [
 		"CREATE DATABASE IF NOT EXISTS views_db",
 		"CREATE OR REPLACE VIEW views_db.view_$$ AS $original_query",
-		"SELECT * FROM views_db.view_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */"
+		"SELECT * FROM views_db.view_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"DROP VIEW IF EXISTS views_db.view_$$"
 	];
 }
 
