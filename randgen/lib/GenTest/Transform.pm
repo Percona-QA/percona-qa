@@ -76,6 +76,8 @@ sub validate {
 	my ($transformer, $results) = @_;
 
 	foreach my $result (@$results) {
+		# Account for the fact that the transformed query may have failed
+		return STATUS_OK if not defined $result;
 		return STATUS_OK if not defined $result->data();
 	}
 
