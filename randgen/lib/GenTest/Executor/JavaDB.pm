@@ -224,4 +224,43 @@ sub version {
 }
 
 
+sub tables {
+	my ($executor, $database) = @_;
+
+	return [] if not defined $executor->dbh();
+
+	my $cache_key = join('-', ('tables', $database));
+	my $dbname = defined $database ? "$database" : "APP";
+	my $query = 
+        "SELECT t.tablename FROM ". 
+        " sys.systables AS t INNER JOIN sys.sysschemas AS s ".
+        " ON t.schemaid = s.schemaid ".
+        " WHERE s.schemaname = '$dbname' ".
+        " AND t.tablename != 'DUMMY'";
+	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+	return $caches{$cache_key};
+}
+
+sub fields {
+	my ($executor, $table, $database) = @_;
+	
+	return [] if not defined $executor->dbh();
+
+	my $cache_key = join('-', ('fields', $table, $database));
+	my $dbname = defined $database ? "$database" : "APP";
+	$table = $executor->tables($database)->[0] if not defined $table;
+
+    my $query = 
+        "SELECT c.columnname FROM ".
+        "sys.systables AS t INNER JOIN sys.sysschemas AS s ".
+        "ON t.schemaid = s.schemaid INNER JOIN sys.syscolumns as c ".
+        "ON t.tableid = c.referenceid ".
+        " where s.schemaname='$dbname' and t.tablename = '$table'";
+
+    
+	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+    
+	return $caches{$cache_key};
+}
+
 1;
