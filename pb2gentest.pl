@@ -657,10 +657,10 @@ if ($command_result_shifted > 0) {
 print("Checking for remaining mysqld processes...\n");
 if ($windowsOS) {
 	# assumes MS Sysinternals PsTools is installed in C:\bin
-	if (system("C:\bin\pslist mysqld") == 0) {
+	if (system('C:\bin\pslist mysqld') == 0) {
 		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
-		system("C:\bin\pskill mysqld > $vardir/pskill_mysqld.out");
-		system("C:\bin\pskill mysqld-nt > $vardir/pskill_mysqld-nt.out");
+		system('C:\bin\pskill mysqld > '.$vardir.'/pskill_mysqld.out 2>&1');
+		system('C:\bin\pskill mysqld-nt > '.$vardir.'/pskill_mysqld-nt.out 2>&1');
 	} else { print("  None found.\n"); }
 	
 } else {
