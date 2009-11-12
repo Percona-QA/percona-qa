@@ -52,6 +52,7 @@ mkdir($vardir);
 
 my $command;
 
+# setting number of trials to 1 until we have more stable runs and proper output handling.
 
 if ($test =~ m{falcon_combinations_simple}io ) {
 	$command = '
@@ -59,7 +60,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata='.$conf.'/combinations.zz
 		--config='.$conf.'/falcon_simple.cc
 		--duration=900
-		--trials=4
+		--trials=1
 		--seed=time
 	';
 } elsif ($test =~ m{falcon_combinations_transactions}io ) {
@@ -68,7 +69,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata='.$conf.'/transactions.zz
 		--config='.$conf.'/falcon_simple.cc
 		--duration=900
-		--trials=4
+		--trials=1
 		--seed=time
 	';
 } elsif ($test =~ m{innodb_combinations_simple}io ) {
@@ -77,7 +78,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata='.$conf.'/combinations.zz
 		--config='.$conf.'/innodb_simple.cc
 		--duration=1800
-		--trials=4
+		--trials=1
 		--seed=time
 	';
 } elsif ($test =~ m{innodb_combinations_stress}io ) {
@@ -86,7 +87,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata='.$conf.'/engine_stress.zz
 		--config='.$conf.'/innodb_simple.cc
 		--duration=600
-		--trials=4
+		--trials=1
 		--seed=time
 	';
 } elsif ($test =~ m{falcon_combinations_varchar}io ) {
@@ -95,7 +96,7 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 		--gendata='.$conf.'/varchar.zz
 		--config='.$conf.'/falcon_varchar.cc
 		--duration=900
-		--trials=4
+		--trials=1
 		--seed=time
 	';
 } else {
