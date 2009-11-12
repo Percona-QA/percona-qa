@@ -483,9 +483,11 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	--basedir2='.$basedirRelease50.'
 	--vardir1='.$vardir.'/vardir-bzr
 	--vardir2='.$vardir.'/vardir-5.0
-	--validators=ResultsetComparatorSimplify
+	--validators=ResultsetComparator
+	--reporters=Deadlock,ErrorLog,Backtrace
 	--threads=1
 	--queries=10000
+	--duration=300
 	';
 } elsif ($test =~ m{^rpl_.*?_simple$}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
