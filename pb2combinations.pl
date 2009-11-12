@@ -52,6 +52,7 @@ mkdir($vardir);
 
 my $command;
 
+
 if ($test =~ m{falcon_combinations_simple}io ) {
 	$command = '
 		--grammar='.$conf.'/combinations.yy
@@ -136,19 +137,34 @@ if ($command_result_shifted > 0) {
 } else {
 	print($full_test_name." [ pass ]\n");
 }
-# Print first and last part of log file (assuming it is longer than 100-200 lines).
+# Print only parts of the output if it is "too large" for PB2.
 # This is hopefully just a temporary hack solution...
-# Caveats: If the file is shorter than 100 lines, the output will be duplicated on std out.
-#          If the file is between 100 and 200 lines, some of the output will be duplicated on std out.
-#          Using 'head' and 'tail', so probably won't work on windows (unless required gnu utils are installed)
+# Caveats: If the file is shorter than 201 lines, all the output will be sent to std out.
+#          If the file is longer than 200 lines, only the first and last parts of the output
+#          will be sent to std out.
+#          Using 'wc', 'head' and 'tail', so probably won't work on windows (unless required gnu utils are installed)
 #          Hanged proceses not especially handled.
 #          etc.
-my $lines = 100;
-print("----->  Printing first $lines and last $lines lines (may overlap) from test output...\n");
-print('----->  See log file '.basename($log_file)." for full output.\n\n");
-system("head -$lines $log_file");
-print("\n.\n.\n.\n.\n.\n(...)\n.\n.\n.\n.\n.\n\n");
-system("tail -$lines $log_file");
-print("\n");
+my $log_lines = `wc -l < $log_file`;	# number of lines in the log file
+if ($log_lines <= 200) {
+	# log has 200 lines or less. Display the entire log.
+	print("----->  See below for failure details...\n");
+	print("----->  Test log will now be displayed...\n\n");
+	open LOGFILE, $log_file or warn "***Failed to open log file [$log_file]";
+	print while(<LOGFILE>);
+	close LOGFILE;
+} elsif ($log_lines > 200) {
+	# the log has more than 200 lines. Display the first and last 100 lines.
+	my $lines = 100;
+	print("----->  See below for failure details...\n");
+	print("----->  Printing first $lines and last $lines lines from test output...\n");
+	print('----->  See log file '.basename($log_file)." for full output.\n\n");
+	system("head -$lines $log_file");
+	print("\n.\n.\n.\n.\n.\n(...)\n.\n.\n.\n.\n.\n\n"); # something to visually separate the head and the tail
+	system("tail -$lines $log_file");
+} else {
+	# something went wrong. wc did not work?
+	warn("***ERROR during log processing. wc -l did not work? (\$log_lines=$log_lines)\n");
+}
 print localtime()." [$$] $0 will exit with exit status ".$command_result_shifted."\n";
 POSIX::_exit ($command_result_shifted);
