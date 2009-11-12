@@ -483,9 +483,11 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	--basedir2='.$basedirRelease50.'
 	--vardir1='.$vardir.'/vardir-bzr
 	--vardir2='.$vardir.'/vardir-5.0
-	--validators=ResultsetComparatorSimplify
+	--validators=ResultsetComparator
+	--reporters=Deadlock,ErrorLog,Backtrace
 	--threads=1
 	--queries=10000
+	--duration=300
 	';
 } elsif ($test =~ m{^rpl_.*?_simple$}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
@@ -647,18 +649,33 @@ if ($command_result_shifted > 0) {
 	print($full_test_name." [ pass ]\n");
 }
 
-if (!$windowsOS) {
-	# Kill remaining mysqld processes.
-	# Avoid "bad argument count" messages from kill by checking first.
+
+
+# Kill remaining mysqld processes.
+# Assuming only one test run going on at the same time, and that all mysqld
+# processes are ours.
+print("Checking for remaining mysqld processes...\n");
+if ($windowsOS) {
+	# assumes MS Sysinternals PsTools is installed in C:\bin
+	if (system('C:\bin\pslist mysqld') == 0) {
+		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
+		system('C:\bin\pskill mysqld > '.$vardir.'/pskill_mysqld.out 2>&1');
+		system('C:\bin\pskill mysqld-nt > '.$vardir.'/pskill_mysqld-nt.out 2>&1');
+	} else { print("  None found.\n"); }
+	
+} else {
+	# Unix/Linux.
+	# Avoid "bad argument count" messages from kill by checking if process exists first.
 	if (system("pgrep mysqld") == 0) {
-		print(" ^--- Found running mysqld process(es), to be killed.\n");
+		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
 		system("pgrep mysqld | xargs kill -15"); # "soft" kill
 		sleep(5);
 		if (system("pgrep mysqld > /dev/null") == 0) {
 			# process is still around...
 			system("pgrep mysqld | xargs kill -9"); # "hard" kill
 		}
-	}
+	} else { print("  None found.\n"); }
 }
 
+print(" [$$] $0 will exit with exit status ".$command_result_shifted."\n");
 POSIX::_exit ($command_result_shifted);
