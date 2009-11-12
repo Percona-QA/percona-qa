@@ -45,7 +45,7 @@ if (
 my $basedirRelease50 = '/export/home/mysql-releases/mysql-5.0';
 
 # Location of grammars and other test configuration files.
-# Will use env variable RQG_CONF is set. 
+# Will use env variable RQG_CONF if set.
 # Default is currently "conf" while using legacy setup.
 # If not absolute path, it is relative to cwd at run time, which is the randgen directory.
 my $conf = $ENV{RQG_CONF};
@@ -657,6 +657,9 @@ if ($command_result_shifted > 0) {
 print("Checking for remaining mysqld processes...\n");
 if ($windowsOS) {
 	# assumes MS Sysinternals PsTools is installed in C:\bin
+	# If you need to run pslist or pskill as non-Admin user, some adjustments
+	# may be needed. See:
+	#   http://blogs.technet.com/markrussinovich/archive/2007/07/09/1449341.aspx
 	if (system('C:\bin\pslist mysqld') == 0) {
 		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
 		system('C:\bin\pskill mysqld > '.$vardir.'/pskill_mysqld.out 2>&1');

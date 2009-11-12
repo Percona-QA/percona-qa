@@ -18,14 +18,10 @@ $| = 1;
 
 chdir('randgen');
 
-#print localtime()." [$$] Information on Random Query Generator version:\n";
-#system("bzr parent");
-#system("bzr version-info");
-
 my $cwd = cwd();
 
 # Location of grammars and other test configuration files.
-# Will use env variable RQG_CONF is set.
+# Will use env variable RQG_CONF if set.
 # Default is currently "conf" while using legacy setup.
 # If not absolute path, it is relative to cwd at run time, which is the randgen directory.
 my $conf = $ENV{RQG_CONF};
