@@ -15,6 +15,7 @@ use GenTest::Translator::Mysqldump2ANSI;
 use GenTest::Translator::MysqlDML2pgsql;
 use GenTest::Translator::Mysqldump2pgsql;
 use Time::HiRes;
+use Data::Dumper;
 
 sub init {
 	my $self = shift;
@@ -35,6 +36,8 @@ sub init {
 
     return STATUS_OK;
 }
+
+my %caches;
 
 my %acceptedErrors = (
     "42P01" => 1 # DROP TABLE on non-existing table is accepted since
@@ -178,5 +181,39 @@ sub version {
 	my $dbh = $self->dbh();
     return $dbh->get_info(18);
 }
+
+sub tables {
+	my ($executor, $database) = @_;
+
+	return [] if not defined $executor->dbh();
+
+	my $cache_key = join('-', ('tables', $database));
+	my $dbname = defined $database ? "$database" : "public";
+	my $query = 
+		"SELECT table_name FROM information_schema.tables ". 
+		"WHERE table_schema = '$dbname' " .
+		" AND table_name != 'dummy'";
+	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+	return $caches{$cache_key};
+}
+
+sub fields {
+	my ($executor, $table, $database) = @_;
+	
+	return [] if not defined $executor->dbh();
+
+	my $cache_key = join('-', ('fields', $table, $database));
+	my $dbname = defined $database ? "$database" : "public";
+	$table = $executor->tables($database)->[0] if not defined $table;
+    
+    my $query = 
+        "SELECT column_name FROM information_schema.columns ".
+        " WHERE table_schema = '$dbname' AND table_name = '$table'";
+
+	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+
+	return $caches{$cache_key};
+}
+
 
 1;
