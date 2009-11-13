@@ -16,9 +16,20 @@ print("#########################################################################
 # Autoflush output buffers (needed when using POSIX::_exit())
 $| = 1;
 
+# Working dir.
 chdir('randgen');
-
 my $cwd = cwd();
+
+#
+# Check OS, for later convenience. Windows and Unix/Linux are too different.
+#
+my $windowsOS;    # undefined if not Windows
+if (
+	($^O eq 'MSWin32') ||
+	($^O eq 'MSWin64')
+) {
+	$windowsOS = 'true';
+}
 
 # Location of grammars and other test configuration files.
 # Will use env variable RQG_CONF if set.
@@ -163,5 +174,35 @@ if ($log_lines <= 200) {
 	# something went wrong. wc did not work?
 	warn("***ERROR during log processing. wc -l did not work? (\$log_lines=$log_lines)\n");
 }
+
+# Kill remaining mysqld processes.
+# Assuming only one test run going on at the same time, and that all mysqld
+# processes are ours.
+print("Checking for remaining mysqld processes...\n");
+if ($windowsOS) {
+	# assumes MS Sysinternals PsTools is installed in C:\bin
+	# If you need to run pslist or pskill as non-Admin user, some permission
+	# adjustments may be needed. See:
+	#   http://blogs.technet.com/markrussinovich/archive/2007/07/09/1449341.aspx
+	if (system('C:\bin\pslist mysqld') == 0) {
+		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
+		system('C:\bin\pskill mysqld > '.$vardir.'/pskill_mysqld.out 2>&1');
+		system('C:\bin\pskill mysqld-nt > '.$vardir.'/pskill_mysqld-nt.out 2>&1');
+	} else { print("  None found.\n"); }
+
+} else {
+	# Unix/Linux.
+	# Avoid "bad argument count" messages from kill by checking if process exists first.
+	if (system("pgrep mysqld") == 0) {
+		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
+		system("pgrep mysqld | xargs kill -15"); # "soft" kill
+		sleep(5);
+		if (system("pgrep mysqld > /dev/null") == 0) {
+			# process is still around...
+			system("pgrep mysqld | xargs kill -9"); # "hard" kill
+		}
+	} else { print("  None found.\n"); }
+}
+
 print localtime()." [$$] $0 will exit with exit status ".$command_result_shifted."\n";
 POSIX::_exit ($command_result_shifted);
