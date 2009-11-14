@@ -177,43 +177,77 @@ sub findStatus {
 }
 
 sub version {
-	my $self = shift;
-	my $dbh = $self->dbh();
+    my $self = shift;
+    my $dbh = $self->dbh();
     return $dbh->get_info(18);
 }
 
 sub tables {
-	my ($executor, $database) = @_;
+    my ($executor, $database) = @_;
 
-	return [] if not defined $executor->dbh();
-
-	my $cache_key = join('-', ('tables', $database));
-	my $dbname = defined $database ? "$database" : "public";
-	my $query = 
-		"SELECT table_name FROM information_schema.tables ". 
-		"WHERE table_schema = '$dbname' " .
-		" AND table_name != 'dummy'";
-	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-	return $caches{$cache_key};
+    return [] if not defined $executor->dbh();
+    
+    my $cache_key = join('-', ('tables', $database));
+    my $dbname = defined $database ? "$database" : "public";
+    my $query = 
+	"SELECT table_name FROM information_schema.tables ". 
+	"WHERE table_schema = '$dbname' " .
+	"AND table_type = 'BASE TABLE' ".	"AND table_name != 'dummy'";
+    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+    return $caches{$cache_key};
 }
 
 sub fields {
-	my ($executor, $table, $database) = @_;
+    my ($executor, $table, $database) = @_;
 	
-	return [] if not defined $executor->dbh();
+    return [] if not defined $executor->dbh();
 
-	my $cache_key = join('-', ('fields', $table, $database));
-	my $dbname = defined $database ? "$database" : "public";
-	$table = $executor->tables($database)->[0] if not defined $table;
+    my $cache_key = join('-', ('fields', $table, $database));
+    my $dbname = defined $database ? "$database" : "public";
+    $table = $executor->tables($database)->[0] if not defined $table;
     
     my $query = 
         "SELECT column_name FROM information_schema.columns ".
         " WHERE table_schema = '$dbname' AND table_name = '$table'";
 
-	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
 
-	return $caches{$cache_key};
+    return $caches{$cache_key};
 }
 
+
+sub fieldsIndexed {
+    ## FIXME, don't know how yet
+    my ($executor, $table, $database) = @_;
+    return $executor->fields($table, $database);
+}
+
+
+sub fieldsNoPk {
+    my ($executor, $table, $database) = @_;
+	
+    return [] if not defined $executor->dbh();
+
+    my $cache_key = join('-', ('fields_no_pk', $table, $database));
+    my $dbname = defined $database ? "$database" : "public";
+    $table = $executor->tables($database)->[0] if not defined $table;
+    
+    my $query = 
+	"select column_name from information_schema.columns ".
+	"where table_schema = 'public' and ".
+	"table_name = '$table' and ".
+	"table_schema = '$dbname' and ".
+	"column_name not in ".
+	    "(select k.column_name from ".
+	     "information_schema.key_column_usage as k ".
+	     "inner join information_schema.columns ".
+	     "using(table_name, table_schema, column_name) ".
+	     "where table_name='$table' and table_schema='$dbname')";
+    
+    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+    
+    return $caches{$cache_key};
+    
+}
 
 1;

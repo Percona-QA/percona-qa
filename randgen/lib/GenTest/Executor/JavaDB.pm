@@ -242,25 +242,58 @@ sub tables {
 }
 
 sub fields {
-	my ($executor, $table, $database) = @_;
+    my ($executor, $table, $database) = @_;
 	
-	return [] if not defined $executor->dbh();
-
-	my $cache_key = join('-', ('fields', $table, $database));
-	my $dbname = defined $database ? "$database" : "APP";
-	$table = $executor->tables($database)->[0] if not defined $table;
-
+    return [] if not defined $executor->dbh();
+    
+    my $cache_key = join('-', ('fields', $table, $database));
+    my $dbname = defined $database ? "$database" : "APP";
+    $table = $executor->tables($database)->[0] if not defined $table;
+    
     my $query = 
         "SELECT c.columnname FROM ".
         "sys.systables AS t INNER JOIN sys.sysschemas AS s ".
         "ON t.schemaid = s.schemaid INNER JOIN sys.syscolumns as c ".
         "ON t.tableid = c.referenceid ".
         " where s.schemaname='$dbname' and t.tablename = '$table'";
-
     
-	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
     
-	return $caches{$cache_key};
+    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
+    
+    return $caches{$cache_key};
 }
+
+sub fieldsIndexed {
+    my ($executor, $table, $database) = @_;
+
+    return [] if not defined $executor->dbh();
+
+    my $cache_key = join('-', ('fields_indexed', $table, $database));
+    my $dbname = defined $database ? "$database" : "APP";
+    $table = $executor->tables($database)->[0] if not defined $table;
+	
+    my $query = 
+	"SELECT columnname FROM ".
+	"sys.syskeys AS keys ".
+	"INNER JOIN sys.sysconglomerates AS cong ON keys.conglomerateid = cong.conglomerateid ".
+	"INNER JOIN sys.systables AS tab ON cong.tableid = tab.tableid ".
+	"INNER JOIN sys.sysschemas AS sch ON tab.schemaid = sch.schemaid ".
+	"INNER JOIN sys.syscolumns AS col ON col.referenceid = tab.tableid ".
+	"WHERE cong.isindex AND tablename = '$table' ".
+	"AND schemaname = '$dbname'";
+    
+    
+    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref(query) 
+	if not exists $caches{$cache_key};
+    
+    return $caches{$cache_key};
+}
+
+sub fieldsNoPK {
+    ## FIXME dont know how yet
+    my ($executor, $table, $database) = @_;
+    return $executor->fields($table, $database);
+}
+
 
 1;
