@@ -283,7 +283,7 @@ sub fieldsIndexed {
 	"AND schemaname = '$dbname'";
     
     
-    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref(query) 
+    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) 
 	if not exists $caches{$cache_key};
     
     return $caches{$cache_key};
