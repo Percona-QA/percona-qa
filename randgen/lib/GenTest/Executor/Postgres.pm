@@ -192,7 +192,7 @@ sub tables {
     my $query = 
 	"SELECT table_name FROM information_schema.tables ". 
 	"WHERE table_schema = '$dbname' " .
-	"AND table_type = 'BASE TABLE' ".	"AND table_name != 'dummy'";
+	"AND table_name != 'dummy'";
     $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
     return $caches{$cache_key};
 }
