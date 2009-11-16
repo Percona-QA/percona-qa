@@ -463,6 +463,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 } elsif ($test =~ m{^partition_ddl$}io ) {
 	$command = '
 		--grammar='.$conf.'/partitions-ddl.yy
+		--mysqld=--innodb
 		--threads=1
 		--queries=100K
 	';
@@ -471,6 +472,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	$command = '
 		--gendata='.$conf.'/partition_pruning.zz
 		--grammar='.$conf.'/partition_pruning.yy
+		--mysqld=--innodb
 		--threads=1
 		--queries=100000
 		--duration=300
@@ -483,6 +485,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	--basedir2='.$basedirRelease50.'
 	--vardir1='.$vardir.'/vardir-bzr
 	--vardir2='.$vardir.'/vardir-5.0
+	--mysqld=--innodb
 	--validators=ResultsetComparator
 	--reporters=Deadlock,ErrorLog,Backtrace
 	--threads=1
@@ -504,6 +507,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/replication_single_engine_pk.zz
 		--grammar='.$conf.'/replication.yy
 		--mysqld=--log-output=table,file
+		--mysqld=--innodb
 	';
 } elsif ($test =~ m{^rpl_semisync$}io) {
 	# --rpl_mode=default is used because the .YY file changes the binary log format dynamically.
