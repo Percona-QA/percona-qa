@@ -45,7 +45,7 @@ sub xml {
 
 	my $writer = XML::Writer->new(
 		OUTPUT		=> \$report_xml,
-		UNSAFE		=> 1
+		UNSAFE		=> 1	# required for use of 'raw()'
 	);
 
 	$writer->xmlDecl('ISO-8859-1');
@@ -67,8 +67,8 @@ sub xml {
 	  $writer->dataElement('operator', $ENV{'USERNAME'});
 	}
 
-	$writer->raw($report->[XMLREPORT_BUILDINFO]->xml()) if defined $report->[XMLREPORT_BUILDINFO];
 	$writer->raw($report->[XMLREPORT_ENVIRONMENT]->xml()) if defined $report->[XMLREPORT_BUILDINFO];
+	$writer->raw($report->[XMLREPORT_BUILDINFO]->xml()) if defined $report->[XMLREPORT_BUILDINFO];
 
 	$writer->startTag('testsuites');
 	$writer->startTag('testsuite', id => 0);
