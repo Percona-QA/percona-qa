@@ -192,10 +192,11 @@ if (not defined $validators) {
 
 	push @validators, 'ReplicationSlaveStatus' if $rpl_mode ne '' && ($mysql_only || $drizzle_only);
 	push @validators, 'MarkErrorLog' if (defined $valgrind) && ($mysql_only || $drizzle_only);
-	push @validators, 'QueryProperties' if $grammar->hasProperties() && ($mysql_only || $drizzle_only);
 } else {
 	@validators = split(',', $validators);
 }
+
+push @validators, 'QueryProperties' if $grammar->hasProperties() && ($mysql_only || $drizzle_only);
 
 say("Validators: ".($#validators > -1 ? join(', ', @validators) : "(none)"));
 
