@@ -52,12 +52,20 @@ sub xml {
 	$writer->startTag('report',
 		'xmlns'			=> "http://clustra.norway.sun.com/intraweb/organization/qa/cassiopeia",
 		'xmlns:xsi'		=> "http://www.w3.org/2001/XMLSchema-instance",
-		'xsi:schemaLocation'	=> "http://clustra.norway.sun.com/intraweb/organization/qa/cassiopeia http://clustra.norway.sun.com/intraweb/organization/qa/cassiopeia/cassiopeia-testresult.xsd"
+		'xsi:schemaLocation'	=> "http://clustra.norway.sun.com/intraweb/organization/qa/cassiopeia http://clustra.norway.sun.com/intraweb/organization/qa/cassiopeia/testresult-schema-1-2.xsd",
+		'version'		=> "1.2"
 	);
 	
 	$writer->dataElement('date', $report->[XMLREPORT_DATE]);
 	$writer->dataElement('version', 1);
-	$writer->dataElement('operator', $<);
+	if ($^O eq 'linux' || $^O eq 'solaris')
+	{
+	  $writer->dataElement('operator', $ENV{'LOGNAME'});
+	}
+	else
+	{
+	  $writer->dataElement('operator', $ENV{'USERNAME'});
+	}
 
 	$writer->raw($report->[XMLREPORT_BUILDINFO]->xml()) if defined $report->[XMLREPORT_BUILDINFO];
 	$writer->raw($report->[XMLREPORT_ENVIRONMENT]->xml()) if defined $report->[XMLREPORT_BUILDINFO];
