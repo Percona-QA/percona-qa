@@ -42,7 +42,7 @@ sub xml {
 	$writer->startTag('software');
 	$writer->startTag('program');
 	$writer->dataElement('name', 'perl');
-	$writer->dataElement('version', $^V);
+	#$writer->dataElement('version', $^V); # Solaris yields: Code point \u0005 is not a valid character in XML at lib/GenTest/XML/Environment.pm line 45
 	$writer->dataElement('path', $^X);
 	$writer->endTag('program');
 	$writer->endTag('software');
