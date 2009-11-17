@@ -1,0 +1,24 @@
+$tables = {
+        # rows => [0, 1, 10, 100],
+        rows => [0, 1, 10],
+        # partitions => [ undef , 'KEY (pk) PARTITIONS 2' ],
+        engines => [ undef, 'MyISAM', 'InnoDB' ],
+        # engines => [ undef, 'MyISAM', 'InnoDB' ],
+        pk => [ 'int auto_increment' ]
+};
+
+$fields = {
+        # decimal(M,N) is not supproted by RQG. I would have taken decimal(65,30),decimal(10,0).
+        types => [ 'bit(4)','tinyint','smallint','mediumint','int', 'bigint','float','double','decimal(35)','decimal','char(1)','char(10)','varchar(1)','varchar(10)','varchar(257)', 'enum', 'set', 'text', 'blob' ],
+        indexes => [ undef ],
+        # null => [undef, 'not null'],
+        # default => [undef, 'default null' ],
+        # sign => [undef, 'unsigned' ],
+        # charsets => ['utf8', 'latin1' ]
+};
+
+$data => {
+        numbers => [ 'digit', 'null', undef ],
+        strings => [ 'letter', 'english', 'null' ],
+        blobs => [ 'english', 'data' ]
+}
