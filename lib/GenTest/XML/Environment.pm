@@ -22,8 +22,9 @@ our $encoding;
 our $timezone;
 our $osType;
 our $osVer;
-our $patch;
-
+my $patch;  # temp for osRev until getInfo() is fixed
+our $osRev;
+our $osBit;
 
 
 our $DEBUG=0;
@@ -78,8 +79,10 @@ sub xml {
     # <os>
     $writer->startTag('program');
     $writer->dataElement('name', $osType);
+    $writer->dataElement('type', 'os');
     $writer->dataElement('version', $osVer);
-    $writer->dataElement('patch', $patch) if defined $patch;
+    $writer->dataElement('revision', $patch);
+    $writer->dataElement('bit', $osBit);
     $writer->endTag('program');
 
     # <perl>
