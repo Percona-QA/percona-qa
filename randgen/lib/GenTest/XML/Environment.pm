@@ -4,11 +4,12 @@ require Exporter;
 @ISA = qw(GenTest);
 
 use strict;
+use Carp;
 use GenTest;
 use Net::Domain qw(hostfqdn);
 
 # Global variables keeping environment info
-our $hostName = Net::Domain->hostfqdn();
+our $hostname = Net::Domain->hostfqdn();
 our $arch;
 our $kernel;
 our $bit;
@@ -69,7 +70,7 @@ sub xml {
     $writer->dataElement('role', 'server');
     $writer->dataElement('locale', $locale);
     $writer->dataElement('encoding', $encoding);
-    $writer->dataElement('timezone', $tz);
+    $writer->dataElement('timezone', $timezone);
 
     # <software> ...
     $writer->startTag('software');
@@ -153,7 +154,7 @@ sub getInfo()
         }
 
         #TimeZone
-        $tz = trim(`date +%Z`);
+        $timezone = trim(`date +%Z`);
     }
     elsif($^O eq 'solaris')
     {
@@ -208,7 +209,7 @@ sub getInfo()
         }
 
         #TimeZone
-        $tz = trim(`date +%Z`);
+        $timezone = trim(`date +%Z`);
     }
     elsif($^O eq 'cygwin' || $^O eq 'MSWin32' || $^O eq 'MSWin64')
     {
@@ -228,14 +229,14 @@ sub getInfo()
         if ($? != 0)
         {
             carp "systeminfo command failed with: $?";
-            $cpu    = "UNKNOWN";
-            $osType = "UNKNOWN";
-            $osVer  = "UNKNOWN";
-            $arch   = "UNKNOWN";
-            $kernel = "UNKNOWN";
-            $memory = "UNKNOWN";
-            $locale = "UNKNOWN";
-            $tz     = "UNKNOWN";
+            $cpu        = "UNKNOWN";
+            $osType     = "UNKNOWN";
+            $osVer      = "UNKNOWN";
+            $arch       = "UNKNOWN";
+            $kernel     = "UNKNOWN";
+            $memory     = "UNKNOWN";
+            $locale     = "UNKNOWN";
+            $timezone   = "UNKNOWN";
         }
         else
         {
@@ -285,7 +286,7 @@ sub getInfo()
                 }
                 elsif ($line =~ /Time Zone:\s+(.*?)\s*$/)
                 {
-                    $tz = $1;
+                    $timezone = $1;
                 }
             }
         }
@@ -297,14 +298,14 @@ sub getInfo()
 
     if ($DEBUG)
     {
-        print "cpu    = $cpu\n";
-        print "os     =  $osType\n";
-        print "OS ver = $osVer\n";
-        print "Arch   = $arch\n";
-        print "Kernel = $kernel\n";
-        print "memory = $memory\n";
-        print "locale = $locale\n";
-        print "Timezone = $tz\n";
+        print "cpu      = $cpu\n";
+        print "os       =  $osType\n";
+        print "OS ver   = $osVer\n";
+        print "Arch     = $arch\n";
+        print "Kernel   = $kernel\n";
+        print "memory   = $memory\n";
+        print "locale   = $locale\n";
+        print "Timezone = $timezone\n";
     }
 }
 
