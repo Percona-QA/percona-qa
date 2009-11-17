@@ -430,16 +430,24 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	$command = '
 		--grammar='.$conf.'/backup_simple.yy
 		--reporters=Deadlock,ErrorLog,Backtrace
+		--mysqld=--mysql-backup
 	';
+	if ($test =~ m{innodb}io) {
+		$command = $command.' --mysqld=--innodb';
+	}
 } elsif ($test =~ m{^backup_.*?_consistency$}io) {
 	$command = '
 		--gendata='.$conf.'/invariant.zz
 		--grammar='.$conf.'/invariant.yy
 		--validator=Invariant
 		--reporters=Deadlock,ErrorLog,Backtrace,BackupAndRestoreInvariant,Shutdown
+		--mysqld=--mysql-backup
 		--duration=600
 		--threads=25
 	';
+	if ($test =~ m{innodb}io) {
+		$command = $command.' --mysqld=--innodb';
+	}
 } elsif ($test =~ m{bulk_insert}io ) {
 	$command = '
 		--grammar='.$conf.'/maria_bulk_insert.yy
