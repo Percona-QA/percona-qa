@@ -57,7 +57,6 @@ sub xml {
 	);
 	
 	$writer->dataElement('date', $report->[XMLREPORT_DATE]);
-	$writer->dataElement('version', 1);
 	if ($^O eq 'linux' || $^O eq 'solaris')
 	{
 	  $writer->dataElement('operator', $ENV{'LOGNAME'});
