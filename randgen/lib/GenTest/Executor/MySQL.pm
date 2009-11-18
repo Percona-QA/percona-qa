@@ -30,6 +30,7 @@ my @errors = (
 	"Unknown database '.*?'",
 	"Unknown table '.*?'",
 	"Unknown column '.*?'",
+	"Unknown event '.*?'",
 	"Column '.*?' specified twice",
 	"Column '.*?' cannot be null",
 	"Column '.*?' in .*? clause is ambiguous",
@@ -62,7 +63,10 @@ my @errors = (
 	"Duplicate condition information item '.*?'",
 	"Undefined CONDITION: .*?",
 	"Incorrect .*? value '.*?'",
-	"Recursive limit \d+ (as set by the max_sp_recursion_depth variable) was exceeded for routine .*?"
+	"Recursive limit \d+ (as set by the max_sp_recursion_depth variable) was exceeded for routine .*?",
+	"There is no such grant defined for user '.*?' on host '.*?'",
+        "There is no such grant defined for user '.*?' on host '.*?' on table '.*?'",
+	"'.*?' is not a .*?"
 );
 
 my @patterns = map { qr{$_}i } @errors;
@@ -142,6 +146,12 @@ use constant	ER_TRG_ALREADY_EXISTS		=> 1359;
 use constant	ER_WRONG_FIELD_WITH_GROUP	=> 1055;
 use constant	ER_NON_GROUPING_FIELD_USED	=> 1463;
 use constant	ER_NON_UNIQ_ERROR		=> 1052;
+use constant	ER_EVENT_DOES_NOT_EXIST		=> 1539;
+use constant 	ER_NONEXISTING_GRANT		=> 1141;
+use constant	ER_NONEXISTING_TABLE_GRANT	=> 1147;
+use constant	ER_WRONG_AUTO_KEY		=> 1075;
+use constant	ER_SP_DUP_PARAM			=> 1330;
+use constant	ER_WRONG_OBJECT			=> 1347;
 
 use constant	ER_PARTITION_MGMT_ON_NONPARTITIONED	=> 1505;
 use constant	ER_DROP_PARTITION_NON_EXISTENT		=> 1507;
@@ -153,6 +163,7 @@ use constant	ER_ONLY_ON_RANGE_LIST_PARTITION		=> 1512;
 use constant	ER_NO_PARTITION_FOR_GIVEN_VALUE		=> 1526;
 use constant	ER_PARTITION_MAXVALUE_ERROR		=> 1481;
 use constant	ER_WRONG_PARTITION_NAME			=> 1567;
+use constant	ER_NO_PARTS_ERROR			=> 1504;
 
 use constant	ER_NON_INSERTABLE_TABLE			=> 1471;
 use constant	ER_NON_UPDATABLE_TABLE			=> 1288;
@@ -293,6 +304,12 @@ my %err2type = (
 	ER_WRONG_FIELD_WITH_GROUP()	=> STATUS_SEMANTIC_ERROR,
 	ER_NON_GROUPING_FIELD_USED()	=> STATUS_SEMANTIC_ERROR,
 	ER_NON_UNIQ_ERROR()		=> STATUS_SEMANTIC_ERROR,
+	ER_EVENT_DOES_NOT_EXIST()	=> STATUS_SEMANTIC_ERROR,
+	ER_NONEXISTING_GRANT()		=> STATUS_SEMANTIC_ERROR,
+	ER_NONEXISTING_TABLE_GRANT()	=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_AUTO_KEY()		=> STATUS_SEMANTIC_ERROR,
+	ER_SP_DUP_PARAM()		=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_OBJECT()		=> STATUS_SEMANTIC_ERROR,
 
 	ER_PARTITION_MGMT_ON_NONPARTITIONED()	=> STATUS_SEMANTIC_ERROR,
 	ER_DROP_LAST_PARTITION()		=> STATUS_SEMANTIC_ERROR,
@@ -304,6 +321,7 @@ my %err2type = (
 	ER_DROP_PARTITION_NON_EXISTENT()	=> STATUS_SEMANTIC_ERROR,
 	ER_PARTITION_MAXVALUE_ERROR()		=> STATUS_SEMANTIC_ERROR,
 	ER_WRONG_PARTITION_NAME()		=> STATUS_SEMANTIC_ERROR,
+	ER_NO_PARTS_ERROR()			=> STATUS_SEMANTIC_ERROR,
 
 	ER_NON_INSERTABLE_TABLE()		=> STATUS_SEMANTIC_ERROR,
 	ER_NON_UPDATABLE_TABLE()		=> STATUS_SEMANTIC_ERROR,
