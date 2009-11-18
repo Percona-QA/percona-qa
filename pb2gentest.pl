@@ -462,6 +462,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--grammar='.$conf.'/information_schema.yy
 		--threads=10
 		--duration=300
+		--mysqld=--log-output=file
 	';
 } elsif ($test =~ m{mostly_selects}io ) {
 	$command = '
