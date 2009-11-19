@@ -432,13 +432,13 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	        --grammar='.$conf.'/falcon_limit.yy
 		--duration=100
 	';
-} elsif ($test =~ m{^backup_.*?_simple$}io) {
+} elsif ($test =~ m{^backup_.*?_simple}io) {
 	$command = '
 		--grammar='.$conf.'/backup_simple.yy
 		--reporters=Deadlock,ErrorLog,Backtrace
 		--mysqld=--mysql-backup
 	';
-} elsif ($test =~ m{^backup_.*?_consistency$}io) {
+} elsif ($test =~ m{^backup_.*?_consistency}io) {
 	$command = '
 		--gendata='.$conf.'/invariant.zz
 		--grammar='.$conf.'/invariant.yy
@@ -457,7 +457,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/maria.zz
 		--grammar='.$conf.'/maria_dml_alter.yy
 	';
-} elsif ($test =~ m{^info_schema$}io ) {
+} elsif ($test =~ m{^info_schema}io ) {
 	$command = '
 		--grammar='.$conf.'/information_schema.yy
 		--threads=10
@@ -469,14 +469,14 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/maria.zz
 		--grammar='.$conf.'/maria_mostly_selects.yy
 	';
-} elsif ($test =~ m{^partition_ddl$}io ) {
+} elsif ($test =~ m{^partition_ddl}io ) {
 	$command = '
 		--grammar='.$conf.'/partitions-ddl.yy
 		--mysqld=--innodb
 		--threads=1
 		--queries=100K
 	';
-} elsif ($test =~ m{partn_pruning$}io ) {
+} elsif ($test =~ m{partn_pruning(|.valgrind)$}io ) {
 	# reduced duration to half since gendata phase takes longer in this case
 	$command = '
 		--gendata='.$conf.'/partition_pruning.zz
@@ -486,7 +486,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--queries=100000
 		--duration=300
 	';
-} elsif ($test =~ m{^partn_pruning_compare_50$}io) {
+} elsif ($test =~ m{^partn_pruning_compare_50}io) {
 	$command = '
 	--gendata='.$conf.'/partition_pruning.zz
 	--grammar='.$conf.'/partition_pruning.yy
@@ -501,7 +501,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	--queries=10000
 	--duration=300
 	';
-} elsif ($test =~ m{^rpl_.*?_simple$}io) {
+} elsif ($test =~ m{^rpl_.*?_simple}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
 	# produces are known replication issues documented in the manual).
 	$command = '
@@ -518,7 +518,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--mysqld=--log-output=table,file
 		--mysqld=--innodb
 	';
-} elsif ($test =~ m{^rpl_semisync$}io) {
+} elsif ($test =~ m{^rpl_semisync}io) {
 	# --rpl_mode=default is used because the .YY file changes the binary log format dynamically.
 	# --threads=1 is used to avoid any replication failures due to concurrent DDL.
 	# --validator= line will remove the default replication Validator, which would otherwise
@@ -633,6 +633,16 @@ if ( ($test =~ m{innodb}io) && ($command !~ m{mysqld=--innodb}io) ){
 
 if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
 	$command = $command." --rpl_mode=$rpl_mode";
+}
+
+# if test name contains (usually ends with) "valgrind", add the valgrind option to runall.pl
+if ($test =~ m{valgrind}io){
+	print("Detected that this test should enable valgrind instrumentation.\n");
+	if (system("valgrind --version")) {
+		print("  *** valgrind executable not found! Not setting --valgrind flag.\n");
+	} else {
+		$command = $command.' --valgrind';
+	}
 }
 	
 $command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
