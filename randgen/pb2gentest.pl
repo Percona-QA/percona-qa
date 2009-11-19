@@ -426,15 +426,18 @@ if ($test =~ m{falcon_.*transactions}io ) {
 # Keep the following tests in alphabetical order (based on letters in regex)
 # for easy lookup.
 #
+} elsif ($test =~ m{innodb_limit}io ) {
+	# TEMP test for testing this script (innodb defaults, plugin, etc.)
+	$command = '
+	        --grammar='.$conf.'/falcon_limit.yy
+		--duration=100
+	';
 } elsif ($test =~ m{^backup_.*?_simple$}io) {
 	$command = '
 		--grammar='.$conf.'/backup_simple.yy
 		--reporters=Deadlock,ErrorLog,Backtrace
 		--mysqld=--mysql-backup
 	';
-	if ($test =~ m{innodb}io) {
-		$command = $command.' --mysqld=--innodb';
-	}
 } elsif ($test =~ m{^backup_.*?_consistency$}io) {
 	$command = '
 		--gendata='.$conf.'/invariant.zz
@@ -445,9 +448,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--duration=600
 		--threads=25
 	';
-	if ($test =~ m{innodb}io) {
-		$command = $command.' --mysqld=--innodb';
-	}
 } elsif ($test =~ m{bulk_insert}io ) {
 	$command = '
 		--grammar='.$conf.'/maria_bulk_insert.yy
@@ -547,6 +547,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--mysqld=--plugin-load='.$plugins.'
 		--mysqld=--rpl_semi_sync_master_enabled=1
 		--mysqld=--rpl_semi_sync_slave_enabled=1
+		--mysqld=--innodb
 		--reporters=ReplicationSemiSync,Deadlock,Backtrace,ErrorLog
 		--validator=
 		--threads=1
@@ -593,6 +594,10 @@ if ($command =~ m{--reporters}io) {
 	$command = $command.' --reporters=Deadlock,ErrorLog,Backtrace,Shutdown';
 }
 
+#
+# Other defaults...
+#
+
 if ($command !~ m{--duration}io ) {
 	# Set default duration for tests where duration is not specified.
 	# In PB2 we cannot run tests for too long since there are many branches
@@ -619,6 +624,11 @@ if ($command !~ m{--queries}io) {
 
 if (($command !~ m{--(engine|default-storage-engine)}io) && (defined $engine)) {
 	$command = $command." --engine=$engine";
+}
+
+# if test name contains "innodb", add the --mysqld=--innodb option if it is not there already.
+if ( ($test =~ m{innodb}io) && ($command !~ m{mysqld=--innodb}io) ){
+	$command = $command.' --mysqld=--innodb';
 }
 
 if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
