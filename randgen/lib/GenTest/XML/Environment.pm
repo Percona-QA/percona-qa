@@ -16,13 +16,12 @@ our $bit;
 our $cpu;
 our $memory;
 #our $disk;
-#our role;
+our $role = 'server';
 our $locale;
 our $encoding;
 our $timezone;
 our $osType;
 our $osVer;
-my $patch;  # temp for osRev until getInfo() is fixed
 our $osRev;
 our $osBit;
 
@@ -68,7 +67,7 @@ sub xml {
     $writer->dataElement('cpu', $cpu);
     $writer->dataElement('memory', $memory);
     $writer->dataElement('disk', '');
-    $writer->dataElement('role', 'server');
+    $writer->dataElement('role', $role);
     $writer->dataElement('locale', $locale);
     $writer->dataElement('encoding', $encoding);
     $writer->dataElement('timezone', $timezone);
@@ -81,7 +80,7 @@ sub xml {
     $writer->dataElement('name', $osType);
     $writer->dataElement('type', 'os');
     $writer->dataElement('version', $osVer);
-    $writer->dataElement('revision', $patch);
+    $writer->dataElement('revision', $osRev);
     $writer->dataElement('bit', $osBit);
     $writer->endTag('program');
 
@@ -110,12 +109,7 @@ sub getInfo()
     # lets see what OS type we have
     if ($^O eq 'linux')
     {
-        #$hostName = `hostname`;
-        #my $tmpHost = `host $hostName`;
-        #if ($tmpHost =~ m/has address/){
-        #  ($hostName,my $trash) = split(/has address/,$tmpHost);
-        #  $hostName = trim($hostName);
-        #}
+        
         # Get the CPU info
         $cpu = trim(`cat /proc/cpuinfo | grep -i "model name" | head -n 1 | cut -b 14-`);
         my $numOfP = trim(`cat /proc/cpuinfo | grep processor |wc -l`);
@@ -127,11 +121,11 @@ sub getInfo()
         elsif (-e "/etc/debian_version"){$osVer=`cat /etc/debian_version  |head -n 1`;}
         else {$osVer="linux-unknown";}
         $osVer=trim($osVer);
-        if (-e "/etc/SuSE-release"){$patch=`cat /etc/SuSE-release  |tail -n 1`;}
-        elsif (-e "/etc/redhat-release"){$patch=`cat /etc/redhat-release  |tail -n 1`;}
-        elsif (-e "/etc/debian_version"){$patch=`cat /etc/debian_version  |tail -n 1`;}
-        else {$patch="unknown";}
-        (my $trash, $patch) = split(/=/,$patch);
+        if (-e "/etc/SuSE-release"){$osRev=`cat /etc/SuSE-release  |tail -n 1`;}
+        elsif (-e "/etc/redhat-release"){$osRev=`cat /etc/redhat-release  |tail -n 1`;}
+        elsif (-e "/etc/debian_version"){$osRev=`cat /etc/debian_version  |tail -n 1`;}
+        else {$osRev="unknown";}
+        (my $trash, $osRev) = split(/=/,$osRev);
         $osType="Linux";
         $arch=trim(`uname -m`);
         ($trash, $bit) = split(/_/,$arch);
@@ -161,12 +155,7 @@ sub getInfo()
     }
     elsif($^O eq 'solaris')
     {
-        #$hostName = `hostname`;
-        #my $tmpHost = `host $hostName`;
-        #if ($tmpHost =~ m/has address/){
-        #  ($hostName,my $trash) = split(/has address/,$tmpHost);
-        #  $hostName = trim($hostName);
-        #}
+        
         # Get the CPU info
         my $tmpVar = `/usr/sbin/psrinfo -v | grep -i "operates" | head -1`;
         ($cpu, my $speed) = split(/processor operates at/,$tmpVar);
@@ -189,7 +178,14 @@ sub getInfo()
         $cpu ="$numOfP"."x"."$cpu"."$speed";
 
         #try to get OS Information
-        ($osType,$osVer,$arch,$kernel) = split (/ /, trim(`uname -srpm`));
+        ($osType,$osVer,$arch) = split (/ /, trim(`uname -srp`));
+        # use of uname -m is discouraged (man pages), so use isainfo instead
+        $kernel = `isainfo -k`;
+        $osBit = `isainfo -b`;
+        my $trash; # variable functioning as /dev/null
+        ($trash, $trash, my $osRev1, my $osRev2, $trash) = split(/ /, trim(`cat /etc/release | head -1`));
+        my $osRev3 = `uname -v`;
+        $osRev = $osRev1.' '.$osRev2.' '.$osRev3;
 
         #Memory
         $memory = `/usr/sbin/prtconf | grep Memory`;
