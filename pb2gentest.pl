@@ -626,9 +626,15 @@ if (($command !~ m{--(engine|default-storage-engine)}io) && (defined $engine)) {
 	$command = $command." --engine=$engine";
 }
 
-# if test name contains "innodb", add the --mysqld=--innodb option if it is not there already.
-if ( ($test =~ m{innodb}io) && ($command !~ m{mysqld=--innodb}io) ){
-	$command = $command.' --mysqld=--innodb';
+# if test name contains "innodb", add the --mysqld=--innodb and --engine=innodb 
+# options if they are not there already.
+if ( ($test =~ m{innodb}io) ){
+	if ($command !~ m{mysqld=--innodb}io){
+		$command = $command.' --mysqld=--innodb';
+	}
+	if ($command !~ m{engine=innodb}io){
+		$command = $command.' --engine=innodb';
+	}
 }
 
 if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
