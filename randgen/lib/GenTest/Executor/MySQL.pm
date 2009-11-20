@@ -66,7 +66,8 @@ my @errors = (
 	"Recursive limit \d+ (as set by the max_sp_recursion_depth variable) was exceeded for routine .*?",
 	"There is no such grant defined for user '.*?' on host '.*?'",
         "There is no such grant defined for user '.*?' on host '.*?' on table '.*?'",
-	"'.*?' is not a .*?"
+	"'.*?' is not a .*?",
+	"Incorrect usage of .*? and .*?"
 );
 
 my @patterns = map { qr{$_}i } @errors;
@@ -152,6 +153,9 @@ use constant	ER_NONEXISTING_TABLE_GRANT	=> 1147;
 use constant	ER_WRONG_AUTO_KEY		=> 1075;
 use constant	ER_SP_DUP_PARAM			=> 1330;
 use constant	ER_WRONG_OBJECT			=> 1347;
+use constant	ER_WRONG_USAGE			=> 1221;
+use constant	ER_VIEW_SELECT_DERIVED		=> 1349;
+use constant	ER_DB_CREATE_EXISTS		=> 1007;
 
 use constant	ER_PARTITION_MGMT_ON_NONPARTITIONED	=> 1505;
 use constant	ER_DROP_PARTITION_NON_EXISTENT		=> 1507;
@@ -310,6 +314,9 @@ my %err2type = (
 	ER_WRONG_AUTO_KEY()		=> STATUS_SEMANTIC_ERROR,
 	ER_SP_DUP_PARAM()		=> STATUS_SEMANTIC_ERROR,
 	ER_WRONG_OBJECT()		=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_USAGE()		=> STATUS_SEMANTIC_ERROR,
+	ER_VIEW_SELECT_DERIVED()	=> STATUS_SEMANTIC_ERROR,
+	ER_DB_CREATE_EXISTS()		=> STATUS_SEMANTIC_ERROR,
 
 	ER_PARTITION_MGMT_ON_NONPARTITIONED()	=> STATUS_SEMANTIC_ERROR,
 	ER_DROP_LAST_PARTITION()		=> STATUS_SEMANTIC_ERROR,
