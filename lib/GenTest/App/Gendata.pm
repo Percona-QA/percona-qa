@@ -389,8 +389,10 @@ sub run {
                 $executor->execute("CREATE OR REPLACE ".uc($table_perms[TABLE_VIEWS]->[$view_id])." VIEW `$view_name` AS SELECT * FROM `$table->[TABLE_NAME]`");
             }
         }
+
+	$executor->execute("ALTER TABLE `$table->[TABLE_NAME]` DISABLE KEYS");
         
-        if ($table->[TABLE_ROW] > 1000) {
+        if ($table->[TABLE_ROW] > 100) {
             $executor->execute("SET AUTOCOMMIT=OFF");
             $executor->execute("START TRANSACTION");
         }
@@ -453,7 +455,7 @@ sub run {
             push @row_buffer, " (".join(', ', @data).") ";
             
             if (
-                (($row_id % 10) == 0) ||
+                (($row_id % 50) == 0) ||
                 ($row_id == $table->[TABLE_ROW])
                 ) {
                 $executor->execute("INSERT /*! IGNORE */ INTO $table->[TABLE_NAME] VALUES ".join(', ', @row_buffer));
@@ -466,6 +468,8 @@ sub run {
             }
         }
         $executor->execute("COMMIT");
+
+	$executor->execute("ALTER TABLE `$table->[TABLE_NAME]` ENABLE KEYS");
     }
     
     $executor->execute("COMMIT");
