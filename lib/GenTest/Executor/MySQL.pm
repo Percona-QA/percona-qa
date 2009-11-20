@@ -64,8 +64,8 @@ my @errors = (
 	"Undefined CONDITION: .*?",
 	"Incorrect .*? value '.*?'",
 	"Recursive limit \d+ (as set by the max_sp_recursion_depth variable) was exceeded for routine .*?",
-	"There is no such grant defined for user '.*?' on host '.*?'",
         "There is no such grant defined for user '.*?' on host '.*?' on table '.*?'",
+	"There is no such grant defined for user '.*?' on host '.*?'",
 	"'.*?' is not a .*?",
 	"Incorrect usage of .*? and .*?"
 );
