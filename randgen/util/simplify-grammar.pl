@@ -40,7 +40,7 @@ use Time::HiRes;
 # get configuration
 
 my $options = {};
-GetOptions($options, 'config=s', 'trials=i','storage=s','expected_output=s@');
+GetOptions($options, 'config=s', 'trials=i','storage_prefix=s','expected_output=s@');
 my $config = GenTest::Properties->new(options => $options,
     legal => ['desired_status_codes',
               'expected_output',
@@ -51,7 +51,7 @@ my $config = GenTest::Properties->new(options => $options,
               'search_var_size',
               'rqg_options',
               'vardir_prefix',
-              'storage'],
+              'storage_prefix'],
      defaults => {expected_output => []},
     );
 
@@ -93,10 +93,10 @@ my $vardir = $config->vardir_prefix.'/var_'.$run_id;
 mkdir ($vardir);
 push my @mtr_options, "--vardir=$vardir";
 
-if ( ! -d $config->storage) {
-   croak("storage ('$config->storage') is not an existing directory");
+if ( ! -d $config->storage_prefix) {
+   croak("storage_prefix ('$config->storage_prefix') is not an existing directory");
 }
-my $storage = $config->storage.'/'.$run_id;
+my $storage = $config->storage_prefix.'/'.$run_id;
 say "Storage is $storage";
 mkdir ($storage);
 
