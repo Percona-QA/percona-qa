@@ -426,16 +426,19 @@ if ($test =~ m{falcon_.*transactions}io ) {
 # Keep the following tests in alphabetical order (based on letters in regex)
 # for easy lookup.
 #
-} elsif ($test =~ m{^backup_.*?_simple$}io) {
+} elsif ($test =~ m{innodb_limit}io ) {
+	# TEMP test for testing this script (innodb defaults, plugin, etc.)
+	$command = '
+	        --grammar='.$conf.'/falcon_limit.yy
+		--duration=100
+	';
+} elsif ($test =~ m{^backup_.*?_simple}io) {
 	$command = '
 		--grammar='.$conf.'/backup_simple.yy
 		--reporters=Deadlock,ErrorLog,Backtrace
 		--mysqld=--mysql-backup
 	';
-	if ($test =~ m{innodb}io) {
-		$command = $command.' --mysqld=--innodb';
-	}
-} elsif ($test =~ m{^backup_.*?_consistency$}io) {
+} elsif ($test =~ m{^backup_.*?_consistency}io) {
 	$command = '
 		--gendata='.$conf.'/invariant.zz
 		--grammar='.$conf.'/invariant.yy
@@ -445,9 +448,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--duration=600
 		--threads=25
 	';
-	if ($test =~ m{innodb}io) {
-		$command = $command.' --mysqld=--innodb';
-	}
 } elsif ($test =~ m{bulk_insert}io ) {
 	$command = '
 		--grammar='.$conf.'/maria_bulk_insert.yy
@@ -457,7 +457,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/maria.zz
 		--grammar='.$conf.'/maria_dml_alter.yy
 	';
-} elsif ($test =~ m{^info_schema$}io ) {
+} elsif ($test =~ m{^info_schema}io ) {
 	$command = '
 		--grammar='.$conf.'/information_schema.yy
 		--threads=10
@@ -469,14 +469,26 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/maria.zz
 		--grammar='.$conf.'/maria_mostly_selects.yy
 	';
-} elsif ($test =~ m{^partition_ddl$}io ) {
+} elsif ($test =~ m{^mdl_innodb}io ) {
+	# --engine=innodb and --mysqld=--innodb added automatically later.
+	# Change/reduce above regex if to be run against other engines as well.
+	#
+	# Seems like --gendata=conf/WL5004_data.zz unexplicably causes more test
+	# failures, so let's leave this out of PB2 for the time being (pstoev).
+	$command = '
+		--grammar=conf/WL5004_sql.yy
+		--threads=10
+		--queries=1M
+		--duration=1800
+	';
+} elsif ($test =~ m{^partition_ddl}io ) {
 	$command = '
 		--grammar='.$conf.'/partitions-ddl.yy
 		--mysqld=--innodb
 		--threads=1
 		--queries=100K
 	';
-} elsif ($test =~ m{partn_pruning$}io ) {
+} elsif ($test =~ m{partn_pruning(|.valgrind)$}io ) {
 	# reduced duration to half since gendata phase takes longer in this case
 	$command = '
 		--gendata='.$conf.'/partition_pruning.zz
@@ -486,7 +498,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--queries=100000
 		--duration=300
 	';
-} elsif ($test =~ m{^partn_pruning_compare_50$}io) {
+} elsif ($test =~ m{^partn_pruning_compare_50}io) {
 	$command = '
 	--gendata='.$conf.'/partition_pruning.zz
 	--grammar='.$conf.'/partition_pruning.yy
@@ -501,7 +513,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	--queries=10000
 	--duration=300
 	';
-} elsif ($test =~ m{^rpl_.*?_simple$}io) {
+} elsif ($test =~ m{^rpl_.*?_simple}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
 	# produces are known replication issues documented in the manual).
 	$command = '
@@ -518,7 +530,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--mysqld=--log-output=table,file
 		--mysqld=--innodb
 	';
-} elsif ($test =~ m{^rpl_semisync$}io) {
+} elsif ($test =~ m{^rpl_semisync}io) {
 	# --rpl_mode=default is used because the .YY file changes the binary log format dynamically.
 	# --threads=1 is used to avoid any replication failures due to concurrent DDL.
 	# --validator= line will remove the default replication Validator, which would otherwise
@@ -547,6 +559,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--mysqld=--plugin-load='.$plugins.'
 		--mysqld=--rpl_semi_sync_master_enabled=1
 		--mysqld=--rpl_semi_sync_slave_enabled=1
+		--mysqld=--innodb
 		--reporters=ReplicationSemiSync,Deadlock,Backtrace,ErrorLog
 		--validator=
 		--threads=1
@@ -593,6 +606,10 @@ if ($command =~ m{--reporters}io) {
 	$command = $command.' --reporters=Deadlock,ErrorLog,Backtrace,Shutdown';
 }
 
+#
+# Other defaults...
+#
+
 if ($command !~ m{--duration}io ) {
 	# Set default duration for tests where duration is not specified.
 	# In PB2 we cannot run tests for too long since there are many branches
@@ -621,8 +638,29 @@ if (($command !~ m{--(engine|default-storage-engine)}io) && (defined $engine)) {
 	$command = $command." --engine=$engine";
 }
 
+# if test name contains "innodb", add the --mysqld=--innodb and --engine=innodb 
+# options if they are not there already.
+if ( ($test =~ m{innodb}io) ){
+	if ($command !~ m{mysqld=--innodb}io){
+		$command = $command.' --mysqld=--innodb';
+	}
+	if ($command !~ m{engine=innodb}io){
+		$command = $command.' --engine=innodb';
+	}
+}
+
 if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
 	$command = $command." --rpl_mode=$rpl_mode";
+}
+
+# if test name contains (usually ends with) "valgrind", add the valgrind option to runall.pl
+if ($test =~ m{valgrind}io){
+	print("Detected that this test should enable valgrind instrumentation.\n");
+	if (system("valgrind --version")) {
+		print("  *** valgrind executable not found! Not setting --valgrind flag.\n");
+	} else {
+		$command = $command.' --valgrind';
+	}
 }
 	
 $command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
