@@ -66,7 +66,8 @@ sub new {
         'required'	=> PROPS_REQUIRED,
         'options' => PROPS_OPTIONS,
         'legal' => PROPS_LEGAL,
-        'help' => PROPS_HELP}, @_);
+        # 'help' => PROPS_HELP ## disabled since I get weird warning....
+       }, @_);
     
     ## List of legal properties, if no such list, all properties are
     ## legal. The PROPS_LEGAL_HASH becomes the union of PROPS_LEGAL,
@@ -243,7 +244,7 @@ sub _help {
 
     if (defined $self->[PROPS_HELP]) {
         if (UNIVERSAL::isa($self->[PROPS_HELP],"CODE")) {
-            &{$$self->[PROPS_HELP]};
+            &{$self->[PROPS_HELP]};
         } else {
             print $self->[PROPS_HELP]."\n";
         }
