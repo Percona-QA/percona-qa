@@ -15,7 +15,8 @@ use constant PROPS_OPTIONS => 2;  ## Legal options to check for
 use constant PROPS_HELP => 3;     ## Help text
 use constant PROPS_LEGAL => 4;    ## List of legal properies
 use constant PROPS_LEGAL_HASH => 5; ## Hash of legal propertis
-use constant PROPS_PROPS => 6;    ## the actual properties
+use constant PROPS_REQUIRED => 6; ## Required properties
+use constant PROPS_PROPS => 7;    ## the actual properties
 
 1;
 
@@ -40,6 +41,7 @@ sub new {
 	my $props = $class->SUPER::new({
         'name' => PROPS_NAME,
         'defaults'	=> PROPS_DEFAULTS,
+        'required'	=> PROPS_REQUIRED,
         'options' => PROPS_OPTIONS,
         'legal' => PROPS_LEGAL,
         'help' => PROPS_HELP}, @_);
@@ -49,6 +51,12 @@ sub new {
     
     if (defined $props->[PROPS_LEGAL]) {
         foreach my $legal (@{$props->[PROPS_LEGAL]}) {
+            $props->[PROPS_LEGAL_HASH]->{$legal}=1;
+        }
+    }
+    
+    if (defined $props->[PROPS_REQUIRED]) {
+        foreach my $legal (@{$props->[PROPS_REQUIRED]}) {
             $props->[PROPS_LEGAL_HASH]->{$legal}=1;
         }
     }
@@ -78,6 +86,15 @@ sub new {
     
     $props->[PROPS_PROPS] = _mergeProps($defaults, $from_file);
     $props->[PROPS_PROPS] = _mergeProps($props->[PROPS_PROPS], $from_cli);
+
+    if (defined $props->[PROPS_REQUIRED]) {
+        my @missing;
+        foreach my $p (@{$props->[PROPS_REQUIRED]}) {
+            push (@missing, $p) if not exists $props->[PROPS_PROPS]->{$p};
+        }
+        croak "The following options are required: ".
+            join(", ", map {"'".$_."'"} @missing) if defined @missing;
+    }
     
     return $props;
 }
