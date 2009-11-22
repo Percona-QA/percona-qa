@@ -26,7 +26,7 @@ sub init {
 sub execute {
 	my ($executor, $query, $silent) = @_;
 
-    if ($ENV{RQG_DEBUG}) {
+    if ($ENV{RQG_DEBUG} or $executor->dsn() =~ m/print/) {
         print "Executing $query\n";
     }
 
