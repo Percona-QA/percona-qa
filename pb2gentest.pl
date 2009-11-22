@@ -469,6 +469,18 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/maria.zz
 		--grammar='.$conf.'/maria_mostly_selects.yy
 	';
+} elsif ($test =~ m{^mdl_innodb}io ) {
+	# --engine=innodb and --mysqld=--innodb added automatically later.
+	# Change/reduce above regex if to be run against other engines as well.
+	#
+	# Seems like --gendata=conf/WL5004_data.zz unexplicably causes more test
+	# failures, so let's leave this out of PB2 for the time being (pstoev).
+	$command = '
+		--grammar=conf/WL5004_sql.yy
+		--threads=10
+		--queries=1M
+		--duration=1800
+	';
 } elsif ($test =~ m{^partition_ddl}io ) {
 	$command = '
 		--grammar='.$conf.'/partitions-ddl.yy

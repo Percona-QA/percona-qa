@@ -51,7 +51,7 @@ sub help {
 $0 - Random Data Generator. Options:
 
         --debug         : Turn on debugging for additional output
-        --dsn           : DBI resource to connect to (default: no DSN, print CREATE/INSERT statements to STDOUT)
+        --dsn           : DBI resource to connect to
         --engine        : Table engine to use when creating tables with gendata (default: no ENGINE for CREATE TABLE)
         --config        : Configuration ZZ file describing the data (see RandomDataGenerator in MySQL Wiki)
         --rows          : Number of rows to generate for each table, unless specified in the ZZ file

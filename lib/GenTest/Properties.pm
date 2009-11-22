@@ -27,8 +27,7 @@ use constant PROPS_HELP => 3;     ## Help text
 use constant PROPS_LEGAL => 4;    ## List of legal properies
 use constant PROPS_LEGAL_HASH => 5; ## Hash of legal propertis
 use constant PROPS_REQUIRED => 6; ## Required properties
-use constant PROPS_HELP => 7;     ## Help text or function"
-use constant PROPS_PROPS => 8;    ## the actual properties
+use constant PROPS_PROPS => 7;    ## the actual properties
 
 1;
 
@@ -61,12 +60,12 @@ sub new {
     my $class = shift;
     
 	my $props = $class->SUPER::new({
-        'name' => PROPS_NAME,
-        'defaults'	=> PROPS_DEFAULTS,
-        'required'	=> PROPS_REQUIRED,
-        'options' => PROPS_OPTIONS,
-        'legal' => PROPS_LEGAL,
-        # 'help' => PROPS_HELP ## disabled since I get weird warning....
+	    'name' => PROPS_NAME,
+	    'defaults'	=> PROPS_DEFAULTS,
+	    'required'	=> PROPS_REQUIRED,
+	    'options' => PROPS_OPTIONS,
+	    'legal' => PROPS_LEGAL,
+	    'help' => PROPS_HELP ## disabled since I get weird warning....
        }, @_);
     
     ## List of legal properties, if no such list, all properties are
@@ -249,7 +248,7 @@ sub _help {
             print $self->[PROPS_HELP]."\n";
         }
     } else {
-        print "Legal properties/options:\n";
+        print "$0 - Legal properties/options:\n";
         foreach my $k (keys %{$self->[PROPS_LEGAL_HASH]}) {
             ## Required, command line options etc should be marked.
             print "    $k,\n";
