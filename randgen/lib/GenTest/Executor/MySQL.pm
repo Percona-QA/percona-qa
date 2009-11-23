@@ -67,7 +67,10 @@ my @errors = (
         "There is no such grant defined for user '.*?' on host '.*?' on table '.*?'",
 	"There is no such grant defined for user '.*?' on host '.*?'",
 	"'.*?' is not a .*?",
-	"Incorrect usage of .*? and .*?"
+	"Incorrect usage of .*? and .*?",
+	"Can't reopen table: '.*?'",
+	"Trigger's '.*?' is view or temporary table",
+	"Column '.*?' is not updatable"
 );
 
 my @patterns = map { qr{$_}i } @errors;
@@ -156,6 +159,10 @@ use constant	ER_WRONG_OBJECT			=> 1347;
 use constant	ER_WRONG_USAGE			=> 1221;
 use constant	ER_VIEW_SELECT_DERIVED		=> 1349;
 use constant	ER_DB_CREATE_EXISTS		=> 1007;
+use constant	ER_CANT_REOPEN_TABLE		=> 1137;
+use constant	ER_TRG_ON_VIEW_OR_TEMP_TABLE	=> 1361;
+use constant	ER_VIEW_SELECT_TMPTABLE		=> 1352;
+use constant	ER_NONUPDATEABLE_COLUMN		=> 1348;
 
 use constant	ER_PARTITION_MGMT_ON_NONPARTITIONED	=> 1505;
 use constant	ER_DROP_PARTITION_NON_EXISTENT		=> 1507;
@@ -250,6 +257,7 @@ use constant	ER_STACK_OVERRUN	=> 1119;
 use constant   ER_SERVER_SHUTDOWN      => 1053;
 
 my %err2type = (
+
 	ER_GET_ERRNO()		=> STATUS_SEMANTIC_ERROR,
 
 	ER_CONNECTION_ERROR()	=> STATUS_SERVER_CRASHED,
@@ -317,6 +325,10 @@ my %err2type = (
 	ER_WRONG_USAGE()		=> STATUS_SEMANTIC_ERROR,
 	ER_VIEW_SELECT_DERIVED()	=> STATUS_SEMANTIC_ERROR,
 	ER_DB_CREATE_EXISTS()		=> STATUS_SEMANTIC_ERROR,
+	ER_CANT_REOPEN_TABLE()		=> STATUS_SEMANTIC_ERROR,
+	ER_TRG_ON_VIEW_OR_TEMP_TABLE()	=> STATUS_SEMANTIC_ERROR,
+	ER_VIEW_SELECT_TMPTABLE()	=> STATUS_SEMANTIC_ERROR,
+	ER_NONUPDATEABLE_COLUMN()	=> STATUS_SEMANTIC_ERROR,
 
 	ER_PARTITION_MGMT_ON_NONPARTITIONED()	=> STATUS_SEMANTIC_ERROR,
 	ER_DROP_LAST_PARTITION()		=> STATUS_SEMANTIC_ERROR,
