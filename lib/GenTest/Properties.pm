@@ -142,16 +142,17 @@ sub new {
     
     my $message;
     $message .= "The following properties are not legal: ".
-        join(", ", map {"'".$_."'"} @illegal). ". " if defined @illegal;
+        join(", ", map {"'--".$_."'"} sort @illegal). ". " if defined @illegal;
 
     $message .= "The following required properties  are missing: ".
-        join(", ", map {"'".$_."'"} @missing). ". " if defined @missing;
+        join(", ", map {"'--".$_."'"} sort @missing). ". " if defined @missing;
 
     if (defined $message) {
         $props->_help();
         croak($message);
     }
     
+    print Dumper($props);
     return $props;
 }
 
@@ -243,15 +244,19 @@ sub _help {
 
     if (defined $self->[PROPS_HELP]) {
         if (UNIVERSAL::isa($self->[PROPS_HELP],"CODE")) {
+            ## Help routine provided
             &{$self->[PROPS_HELP]};
         } else {
+            ## Help text provided
             print $self->[PROPS_HELP]."\n";
         }
     } else {
+        ## Generic help (not very helpful, but better than nothing).
         print "$0 - Legal properties/options:\n";
-        foreach my $k (keys %{$self->[PROPS_LEGAL_HASH]}) {
+        my $required = {map {$_=>1} @{$self->[PROPS_REQUIRED]}};
+        foreach my $k (sort keys %{$self->[PROPS_LEGAL_HASH]}) {
             ## Required, command line options etc should be marked.
-            print "    $k,\n";
+            print "    --$k ".(defined $required->{$k}?"(required)":"").",\n";
         }
     }
 }

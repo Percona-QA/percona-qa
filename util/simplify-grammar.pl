@@ -41,7 +41,8 @@ use Time::HiRes;
 
 my $options = {};
 GetOptions($options, 'config=s', 'trials=i','storage_prefix=s','expected_output=s@');
-my $config = GenTest::Properties->new(options => $options,
+my $config = GenTest::Properties->new(
+    options => $options,
     legal => ['desired_status_codes',
               'expected_output',
               'initial_grammar_file',
@@ -52,7 +53,11 @@ my $config = GenTest::Properties->new(options => $options,
               'rqg_options',
               'vardir_prefix',
               'storage_prefix'],
-     defaults => {expected_output => []},
+    required=>['rqg_options',
+               'initial_grammar_file',
+               'vardir_prefix',
+               'storage_prefix'],
+    defaults => {expected_output => []},
     );
 
 # Dump settings
