@@ -469,7 +469,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/maria.zz
 		--grammar='.$conf.'/maria_mostly_selects.yy
 	';
-} elsif ($test =~ m{^mdl}io ) {
+} elsif ($test =~ m{^mdl_stress}io ) {
 	# Seems like --gendata=conf/WL5004_data.zz unexplicably causes more test
 	# failures, so let's leave this out of PB2 for the time being (pstoev).
 	#
