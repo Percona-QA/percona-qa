@@ -1,3 +1,6 @@
+query_init:
+	START TRANSACTION ;
+
 query:
 	transaction |
 	select | select | call |
