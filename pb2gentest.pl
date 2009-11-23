@@ -469,7 +469,24 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/maria.zz
 		--grammar='.$conf.'/maria_mostly_selects.yy
 	';
-} elsif ($test =~ m{^mdl}io ) {
+} elsif ($test =~ m{^mdl_stability}io ) {
+	$command = '
+		--grammar='.$conf.'/metadata_stability.yy
+		--gendata='.$conf.'/metadata_stability.zz
+		--mem
+		--validator=SelectStability,QueryProperties
+		--engine=Innodb
+		--mysqld=--innodb
+		--mysqld=--default-storage-engine=Innodb
+		--mysqld=--transaction-isolation=SERIALIZABLE
+		--mysqld=--innodb-flush-log-at-trx-commit=2
+		--mysqld=--table-lock-wait-timeout=1
+		--mysqld=--innodb-lock-wait-timeout=1
+		--mysqld=--log-output=file
+		--queries=1M
+		--duration=600
+	';
+} elsif ($test =~ m{^mdl_stress}io ) {
 	# Seems like --gendata=conf/WL5004_data.zz unexplicably causes more test
 	# failures, so let's leave this out of PB2 for the time being (pstoev).
 	#
