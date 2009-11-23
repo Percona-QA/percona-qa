@@ -12,17 +12,34 @@ use GenTest::Simplifier::Test;
 # Please modify those settings to fit your environment before you run this script
 #
 
-my $basedir = '/build/bzr/azalea-perfschema';
-my $vardir = '/build/bzr/azalea-perfschema/mysql-test/var';
+my $basedir = '/build/bzr/mysql-next-mr-bugfixing';
+my $vardir = '/build/bzr/mysql-next-mr-bugfixing/mysql-test/var';
 my $dsn = 'dbi:mysql:host=127.0.0.1:port=19306:user=root:database=test';
-my $original_query = " SELECT * FROM (`information_schema` . `COLUMNS` AS table1 INNER JOIN `performance_schema` . `PROCESSLIST` AS table2 ON ( table2 . `ID` = table1 . `ORDINAL_POSITION` ) ) WHERE  table1 . `COLUMN_KEY` = table2 . `ID`   ORDER BY table1 . `TABLE_CATALOG` , table1 . `COLUMN_TYPE`";
+my $original_query = "
+SELECT    table5 . `pk` AS field1 , table2 . `pk` AS field2 , table3 . `pk` AS field3 ,
+table4 . `pk` AS field4 , table1 . `int_key` AS field5 , table1 . `int_key` AS field6 ,
+COUNT( table1 . `pk` ) AS field7 FROM  BB AS table1  LEFT  JOIN    CC AS table2  LEFT 
+JOIN  CC AS table3  LEFT  JOIN  CC AS table4  RIGHT  JOIN D AS table5 ON  table4 . `pk` =
+ table5 . `pk`  ON  table3 . `int_key` =  table4 . `int_key`  ON  table2 . `int_key` = 
+table4 . `pk`   LEFT  JOIN   CC AS table6  LEFT  JOIN  C AS table7  LEFT  JOIN B AS
+table8 ON  table7 . `pk` =  table8 . `pk`  ON  table6 . `int_key` =  table7 . `pk`  
+RIGHT  JOIN  C AS table9  LEFT  JOIN C AS table10 ON  table9 . `int_key` =  table10 .
+`int_key`  ON  table6 . `int_key` =  table9 . `pk`  ON  table5 . `int_key` =  table9 .
+`pk`   RIGHT  JOIN  C AS table11  LEFT  JOIN  CC AS table12  LEFT  JOIN  B AS table13 
+LEFT OUTER JOIN D AS table14 ON  table13 . `int_key` =  table14 . `int_key`  ON  table12
+. `pk` =  table14 . `int_key`  ON  table11 . `int_key` =  table12 . `pk`  ON  table9 .
+`int_key` =  table11 . `int_key`  ON  table1 . `pk` =  table12 . `pk`  WHERE ( table4 .
+`pk` >= table1 . `pk` OR table1 . `int_nokey` <> table1 . `pk` )  GROUP BY field1,
+field2, field3, field4, field5, field6 HAVING field4 < 1 ORDER BY field2 ASC , field4
+";
+# Maximum number of seconds a query will be allowed to proceed. It is assumed that most crashes will happen immediately after takeoff
+my $timeout = 2;
 
 my @mtr_options = (
 	'--start-and-exit',
 	'--start-dirty',
 	"--vardir=$vardir",
 	"--master_port=19306",
-	"--mysqld=--init-file=/randgen/gentest/mysql-test/gentest/init/no_mrr.sql",
 	'--skip-ndbcluster',
 	'1st'	# Required for proper operation of MTR --start-and-exit
 );
@@ -36,11 +53,16 @@ start_server();
 my $simplifier = GenTest::Simplifier::SQL->new(
 	oracle => sub {
 		my $oracle_query = shift;
+		my $dbh = $executor->dbh();
+	
+		my $connection_id = $dbh->selectrow_array("SELECT CONNECTION_ID()");
+		$dbh->do("CREATE EVENT timeout ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL $timeout SECOND DO KILL QUERY $connection_id");
+
 		my $oracle_result = $executor->execute($oracle_query);
-		if (
-			($oracle_result->status() == STATUS_SERVER_CRASHED) ||
-			(!$executor->dbh()->ping())
-                ) {
+
+		$dbh->do("DROP EVENT IF EXISTS timeout");
+
+		if (!$executor->dbh()->ping()) {
 			start_server();
 			return ORACLE_ISSUE_STILL_REPEATABLE;
 		} else {
@@ -69,6 +91,8 @@ sub start_server {
 	$executor = GenTest::Executor::MySQL->new( dsn => $dsn );
 
 	$executor->init();
+
+	my $dbh = $executor->dbh();
+
+	$dbh->do("SET GLOBAL EVENT_SCHEDULER = ON");
 }
-
-
