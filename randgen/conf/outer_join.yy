@@ -1,5 +1,5 @@
 query: 
-        { @nonaggregates = () ; $tables = 0 ; $fields = 0 ; "" } query_type ;
+        { @nonaggregates = () ; $tables = 0 ; $fields = 0 ; @table_set = ("C", "C", "C", "C", "C", "C", "CC", "CC", "CC", "CC", "CC", "B", "BB", "A", "D"); "" } query_type ;
 
 query_type:
   simple_select | simple_select | mixed_select | mixed_select | mixed_select | aggregate_select ;
@@ -18,11 +18,6 @@ distinct: DISTINCT | | | |  ;
 select_option:  | | | | | | | | | SQL_SMALL_RESULT ;
 
 straight_join:  | | | | | | | | | | | STRAIGHT_JOIN ;
-
-select_list:
-	new_select_item |
-	new_select_item , select_list |
-        new_select_item , select_list ;
 
 select_list:
 	new_select_item |
@@ -73,10 +68,10 @@ where_item:
         existing_table_item . int_field_name comparison_operator existing_table_item . int_field_name |
         existing_table_item . int_field_name IS not NULL |
         existing_table_item . int_field_name not IN (number_list) |
-        existing_table_item . int_field_name  not BETWEEN _tinyint_unsigned[invariant] AND ( _tinyint_unsigned[invariant] + _tinyint_unsigned );
+        existing_table_item . int_field_name  not BETWEEN _digit[invariant] AND ( _digit[invariant] + _digit );
 
 number_list:
-        _tinyint_unsigned | number_list, _tinyint_unsigned ;
+        _digit | number_list, _digit ;
 
 ################################################################################
 # We ensure that a GROUP BY statement includes all nonaggregates.              #
@@ -132,9 +127,14 @@ limit:
 	| | LIMIT limit_size | LIMIT limit_size OFFSET _digit;
 
 table_or_join:
-        table | table | table | table | join | join ;
+           table |table |table | join ;
 
 table:
+# We use the "AS table" bit here so we can have unique aliases if we use the same table many times
+       { $stack->push(); my $x = $prng->arrayElement(\@table_set)." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
+
+
+table_disabled:
 # We use the "AS table" bit here so we can have unique aliases if we use the same table many times
        { $stack->push(); my $x = $prng->arrayElement($executors->[0]->tables())." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
 
@@ -156,7 +156,9 @@ existing_select_item:
 	{ "field".$prng->int(1,$fields) };
 
 _digit:
+    1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
     1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | _tinyint_unsigned ;
+ 
 
 and_or:
    AND | AND | OR ;
