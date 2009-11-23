@@ -1,5 +1,6 @@
-query: 
-        { @nonaggregates = () ; $tables = 0 ; $fields = 0 ; @table_set = ("C", "C", "C", "C", "C", "C", "CC", "CC", "CC", "CC", "CC", "B", "BB", "A", "D"); "" } query_type ;
+
+query:
+  { @nonaggregates = () ; $tables = 0 ; $fields = 0 ;  "" } query_type ;
 
 query_type:
   simple_select | simple_select | mixed_select | mixed_select | mixed_select | aggregate_select ;
@@ -127,27 +128,30 @@ limit:
 	| | LIMIT limit_size | LIMIT limit_size OFFSET _digit;
 
 table_or_join:
-           table |table |table | join ;
+           table | table | table | table | table | table | 
+           table | table | table | table | join | join ;
 
-table:
+table_disabled:
 # We use the "AS table" bit here so we can have unique aliases if we use the same table many times
        { $stack->push(); my $x = $prng->arrayElement(\@table_set)." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
 
 
-table_disabled:
+table:
 # We use the "AS table" bit here so we can have unique aliases if we use the same table many times
        { $stack->push(); my $x = $prng->arrayElement($executors->[0]->tables())." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
 
 int_field_name:
-  `pk` | `int_key` | `int_nokey` ;
+  `pk` | `int_key` | `int` ;
 
 int_indexed:
    `pk` | `int_key` ;
 
 table_alias:
-  table1 | table1 | table1 | table1 | table1 |
-  table2 | table2 | table2 | table3 | table3 |
-  table4 | table5  ;
+  table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 |
+  table2 | table2 | table2 | table2 | table2 | table2 | table2 | table2 | table2 | other_table ;
+
+other_table:
+  table3 | table3 | table3 | table3 | table3 | table4 | table4 | table5 ;
 
 existing_table_item:
 	{ "table".$prng->int(1,$tables) };
