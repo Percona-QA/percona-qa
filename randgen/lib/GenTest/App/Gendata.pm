@@ -42,7 +42,7 @@ use constant DATA_TEMPORAL	=> 3;
 use constant DATA_ENUM		=> 4;
 
 
-use constant GD_CONFIG => 0;
+use constant GD_SPEC => 0;
 use constant GD_DEBUG => 1;
 use constant GD_DSN => 2;
 use constant GD_SEED => 3;
@@ -56,7 +56,7 @@ sub new {
     my $class = shift;
     
     my $self = $class->SUPER::new({
-        'config_file' => GD_CONFIG,
+        'spec_file' => GD_SPEC,
         'debug' => GD_DEBUG,
         'dsn' => GD_DSN,
         'seed' => GD_SEED,
@@ -74,8 +74,8 @@ sub new {
 }
 
 
-sub config_file {
-return $_[0]->[GD_CONFIG];
+sub spec_file {
+return $_[0]->[GD_SPEC];
 }
 
 
@@ -123,7 +123,7 @@ sub server_id {
 sub run {
     my ($self) = @_;
 
-    my $config_file = $self->config_file();
+    my $spec_file = $self->spec_file();
     
     my $prng = GenTest::Random->new(
         seed => $self->seed() eq 'time' ? time() : $self->seed(),
@@ -134,17 +134,22 @@ sub run {
     $executor->init();
 
 #  
-# The configuration file is actually a perl script, so we read it by eval()-ing it
+# The specification file is actually a perl script, so we read it by
+# eval()-ing it
 #  
     
-    my ($tables, $fields, $data); 			# Configuration as read from the config file.
-    my (@table_perms, @field_perms, @data_perms);	# Configuration after defaults have been substituted
+    my ($tables, $fields, $data);  # Specification as read from the
+                                   # spec file.
+    my (@table_perms, @field_perms, @data_perms);	# Specification
+                                                    # after defaults
+                                                    # have been
+                                                    # substituted
 
-    if ($config_file ne '') {
-        open(CONF , $config_file) or die "unable to open config file '$config_file': $!";
-        read(CONF, my $config_text, -s $config_file);
-        eval ($config_text);
-        die "Unable to load $config_file: $@" if $@;
+    if ($spec_file ne '') {
+        open(CONF , $spec_file) or die "unable to open specification file '$spec_file': $!";
+        read(CONF, my $spec_text, -s $spec_file);
+        eval ($spec_text);
+        die "Unable to load $spec_file: $@" if $@;
     }
 
     $executor->execute("SET SQL_MODE= 'NO_ENGINE_SUBSTITUTION'") if $executor->type == DB_MYSQL;

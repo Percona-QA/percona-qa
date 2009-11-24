@@ -4,17 +4,19 @@ $| = 1;
 use strict;
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
+use Carp;
 use GenTest;
 use GenTest::Constants;
 use GenTest::App::Gendata;
 use Getopt::Long;
 
-my ($config_file, $debug, $engine, $help, $dsn, $rows, $varchar_len,
+my ($spec_file, $config_file, $debug, $engine, $help, $dsn, $rows, $varchar_len,
     $views, $server_id, $seed);
 
 my $opt_result = GetOptions(
 	'help'	=> \$help,
-	'config:s' => \$config_file,
+	'config:s' => \$config_file, ## Kept for backward compatability.
+	'spec:s' => \$spec_file,
 	'debug'	=> \$debug,
 	'dsn:s'	=> \$dsn,
 	'seed=s' => \$seed,
@@ -25,12 +27,17 @@ my $opt_result = GetOptions(
 	'server-id=i' > \$server_id
 );
 
-help() if !$opt_result || $help || not defined $config_file;
+if (defined $config_file) {
+    carp("--config is deprecated. Use --spec");
+    $spec_file = $config_file if not defined $spec_file;
+}
+
+help() if !$opt_result || $help || not defined $spec_file;
 
 exit(1) if !$opt_result;
 
 
-my $app = GenTest::App::Gendata->new(config_file => $config_file,
+my $app = GenTest::App::Gendata->new(spec_file => $spec_file,
                                      debug => $debug,
                                      dsn => $dsn,
                                      seed => $seed,
@@ -53,7 +60,7 @@ $0 - Random Data Generator. Options:
         --debug         : Turn on debugging for additional output
         --dsn           : DBI resource to connect to
         --engine        : Table engine to use when creating tables with gendata (default: no ENGINE for CREATE TABLE)
-        --config        : Configuration ZZ file describing the data (see RandomDataGenerator in MySQL Wiki)
+        --spec          : Specification ZZ file describing the data (see RandomDataGenerator in MySQL Wiki)
         --rows          : Number of rows to generate for each table, unless specified in the ZZ file
         --seed          : Seed to PRNG. if --seed=time the current time will be used. (default 1)
         --views         : Generate views
