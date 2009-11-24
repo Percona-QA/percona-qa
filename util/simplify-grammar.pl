@@ -57,7 +57,8 @@ my $config = GenTest::Properties->new(
                'initial_grammar_file',
                'vardir_prefix',
                'storage_prefix'],
-    defaults => {expected_output => []},
+    defaults => {expected_output => [],
+                 desired_status_codes => [+STATUS_ANY_ERROR]}
     );
 
 # Dump settings
@@ -82,24 +83,22 @@ my $run_id = time();
 say("The ID of this run is $run_id.");
 
 open(INITIAL_GRAMMAR, $config->initial_grammar_file) 
-    or croak "Unable to open '$config->initial_grammar_file': $!";;
+    or croak "Unable to open initial_grammar_file '" . $config->initial_grammar_file . "' : $!";;
 read(INITIAL_GRAMMAR, my $initial_grammar , -s $config->initial_grammar_file);
 close(INITIAL_GRAMMAR);
 
 if ( ! -d $config->vardir_prefix ) {
-    croak("vardir_prefix '".
-          $config->vardir_prefix.
-          "' is not an existing directory");
+   croak("vardir_prefix '" . $config->vardir_prefix . "' is not an existing directory");
 }
 
 # Calculate a unique vardir (use $MTR_BUILD_THREAD or $run_id)
 
-my $vardir = $config->vardir_prefix.'/var_'.$run_id;
+my $vardir = $config->vardir_prefix . '/var_' . $run_id;
 mkdir ($vardir);
 push my @mtr_options, "--vardir=$vardir";
 
 if ( ! -d $config->storage_prefix) {
-   croak("storage_prefix ('$config->storage_prefix') is not an existing directory");
+   croak("storage_prefix '" . $config->storage_prefix . "' is not an existing directory");
 }
 my $storage = $config->storage_prefix.'/'.$run_id;
 say "Storage is $storage";
@@ -141,9 +140,9 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
             # Note(mleich): The grammar used is iteration specific. Don't
             #		 store per trial.  Shouldn't the next command be
             #		 outside of the loop ?
-            my $current_grammar = $storage.'/'.$iteration.'.yy';
-            my $current_rqg_log = $storage.'/'.$iteration.'-'.$trial.'.log';
-            my $errfile = $vardir.'/log/master.err';
+            my $current_grammar = $storage . '/' . $iteration . '.yy';
+            my $current_rqg_log = $storage . '/' . $iteration . '-'. $trial . '.log';
+            my $errfile = $vardir . '/log/master.err';
             open (GRAMMAR, ">$current_grammar") 
                 or croak "unable to create $current_grammar : $!";
             print GRAMMAR $oracle_grammar;
@@ -214,6 +213,10 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
                     }
                 } # End of check if the output matches given string patterns
             } # End of loop over desired_status_codes
+            if ($rqg_status == STATUS_OK) {
+               # Run with exit status 0 -> RQG output is not of interest
+               unlink($current_rqg_log);
+            }
         } # End of loop over the trials
         return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
     }
