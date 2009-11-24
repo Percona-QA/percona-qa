@@ -6,6 +6,7 @@ use strict;
 
 use Cwd;
 use POSIX;
+use Carp;
 
 my $tmpdir;
 
@@ -31,7 +32,7 @@ sub BEGIN {
 		$tmpdir = $tmpdir.'/';
 	}
 
-	die("Unable to locate suitable temporary directory.") if not defined $tmpdir;
+	croak("Unable to locate suitable temporary directory.") if not defined $tmpdir;
 	
 	return 1;
 }
@@ -48,7 +49,7 @@ sub new {
                 if (exists $args->{$_[$i * 2]}) {
                         $obj->[$args->{$_[$i * 2]}] = $_[$i * 2 + 1];
                 } else {
-                        warn("Unkown argument '$_[$i * 2]' to ".$class.'->new()');
+                        carp("Unkown argument '$_[$i * 2]' to ".$class.'->new()');
                 }
         }
 

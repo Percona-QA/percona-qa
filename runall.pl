@@ -300,13 +300,13 @@ push @gentest_options, "--start-dirty" if defined $start_dirty;
 push @gentest_options, "--gendata=$gendata";
 push @gentest_options, "--engine=$engine" if defined $engine;
 push @gentest_options, "--rpl_mode=$rpl_mode" if defined $rpl_mode;
-push @gentest_options, "--validators=$validators" if defined $validators;
-push @gentest_options, "--reporters=$reporters" if defined $reporters;
+push @gentest_options, map {'--validators='.$_} split(/,/,$validators) if defined $validators;
+push @gentest_options, map {'--reporters='.$_} split(/,/,$reporters) if defined $reporters;
 push @gentest_options, "--threads=$threads" if defined $threads;
 push @gentest_options, "--queries=$queries" if defined $queries;
 push @gentest_options, "--duration=$duration" if defined $duration;
-push @gentest_options, "--dsn1=$master_dsns[0]" if defined $master_dsns[0];
-push @gentest_options, "--dsn2=$master_dsns[1]" if defined $master_dsns[1];
+push @gentest_options, "--dsn=$master_dsns[0]" if defined $master_dsns[0];
+push @gentest_options, "--dsn=$master_dsns[1]" if defined $master_dsns[1];
 push @gentest_options, "--grammar=$grammar_file";
 push @gentest_options, "--redefine=$redefine_file" if defined $redefine_file;
 push @gentest_options, "--seed=$seed" if defined $seed;
@@ -418,8 +418,8 @@ $0 - Run a complete random query generation test, including server start with re
     --threads   : Number of threads to spawn (default $default_threads);
     --queries   : Number of queries to execute per thread (default $default_queries);
     --duration  : Duration of the test in seconds (default $default_duration seconds);
-    --validators: The validators to use
-    --reporters : The reporters to use
+    --validator : The validators to use
+    --reporter  : The reporters to use
     --gendata   : Generate data option. Passed to gentest.pl
     --seed      : PRNG seed. Passed to gentest.pl
     --mask      : Grammar mask. Passed to gentest.pl
