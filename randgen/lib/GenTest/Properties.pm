@@ -7,6 +7,11 @@
 ##        properties is the union between default, options, required
 ##        and legal. 
 ## legal and required is not (yet) recursive defined.
+##
+## Usage:
+## my $options = {}
+## GetOptions($options,'config=s'................);
+## my $config=GenTest::Properties->new(options=>$options......);
 
 ##
 package GenTest::Properties;
