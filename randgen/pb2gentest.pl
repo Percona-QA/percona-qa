@@ -177,6 +177,7 @@ print(" - Local time  : ".localtime()."\n");
 print(" - Hostname    : ".hostname()."\n");
 print(" - PID         : $$\n");
 print(" - Working dir : ".cwd()."\n");
+print(" - PATH        : ".$ENV{'PATH'}."\n");
 print(" - Script arguments:\n");
 print("       basedir = $basedir\n");
 print("       vardir  = $vardir\n");
