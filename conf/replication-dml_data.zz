@@ -8,13 +8,34 @@ $tables = {
 };
 
 $fields = {
-        # decimal(M,N) is not supproted by RQG. I would have taken decimal(65,30),decimal(10,0).
-        types => [ 'bit(4)','tinyint','smallint','mediumint','int', 'bigint','float','double','decimal(35)','decimal','char(1)','char(10)','varchar(1)','varchar(10)','varchar(257)', 'enum', 'set', 'text', 'blob' ],
+        # We mention here data types according to the order within the manual
+        types => [
+        # Numeric
+           # 'bit','bit(4)','bit(64)',
+           # 'tinyint','smallint','mediumint','int',
+           'bigint',
+           # 'float','double',
+           # decimal(M,N) is not supported by RQG. I would have taken decimal(65,30),decimal(10,0).
+           # 'decimal','decimal(35)',
+        # String
+        # Manual: Specifying the CHARACTER SET binary attribute for a character data type causes
+        #         the column to be created as the corresponding binary data type:
+        #         CHAR becomes BINARY, VARCHAR becomes VARBINARY, and TEXT becomes BLOB.
+        # We do not mention *BINARY and BLOB here + but have 'binary' between the charsets.
+           # 'enum', 'set',
+           # Variable length
+           # 'varchar','varchar(10)','varchar(257)',
+           # Not all storage engines support text
+           # 'tinytext','text','mediumtext','longtext',
+           # Fixed length
+           'char','char(10)'
+                   ],
         indexes => [ undef ],
+        name_suffix => '_',
         # null => [undef, 'not null'],
         # default => [undef, 'default null' ],
         # sign => [undef, 'unsigned' ],
-        # charsets => ['utf8', 'latin1' ]
+        charsets => ['utf8', 'latin1' , 'binary' ]
 };
 
 $data => {
