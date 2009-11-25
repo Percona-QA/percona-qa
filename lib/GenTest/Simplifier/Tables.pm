@@ -34,7 +34,7 @@ sub simplify {
 
 	my @tables_named = $initial_query =~ m{(table[a-z0-9_]*)}sgio;
 	my @tables_quoted = $initial_query =~ m{`(.*?)`}sgio;
-	my @tables_letters = $initial_query =~ m{[ `](AAA|BBB|CCC|AA|BB|CC|DD|A|B|C|D|E)[ `]}sgo;
+	my @tables_letters = $initial_query =~ m{[ `]([A-Z]{1,3})[ `]}sgo;
 	
 	my @participating_tables = (@tables_named, @tables_quoted, @tables_letters);
 	my %participating_tables;
