@@ -474,7 +474,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	$command = '
 		--grammar='.$conf.'/metadata_stability.yy
 		--gendata='.$conf.'/metadata_stability.zz
-		--mem
 		--validator=SelectStability,QueryProperties
 		--engine=Innodb
 		--mysqld=--innodb
