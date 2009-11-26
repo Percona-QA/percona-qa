@@ -209,6 +209,10 @@ sub _mergeProps {
     return $result;
 }
 
+sub help {
+    $_[0]->_help;
+}
+
 ## Global print method
 sub printProps {
     my ($self) = @_;
