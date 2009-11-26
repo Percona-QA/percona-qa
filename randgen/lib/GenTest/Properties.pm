@@ -209,7 +209,7 @@ sub _mergeProps {
     return $result;
 }
 
-sub help {
+sub printHelp {
     $_[0]->_help;
 }
 
