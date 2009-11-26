@@ -406,7 +406,7 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 	my $generator = GenTest::Generator::FromGrammar->new(
 		grammar => $grammar,
 		varchar_length => $config->property('varchar-length'),
-		seed => $config->seed,
+		seed => $config->seed + $id,
 		thread_id => $id,
 		mask => $config->mask,
 	        mask_level => $config->property('mask-level')
