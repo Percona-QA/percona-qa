@@ -11,14 +11,28 @@ use GenTest::Constants;
 use GenTest::Simplifier::Mysqltest;
 
 my $options = {};
-GetOptions($options, 
+my $o = GetOptions($options, 
            'config=s',
            'input_file=s',
            'basedir=s',
-           'expected_mr_output=s',
-           'verbose!');
+           'expected_mtr_output=s',
+           'verbose!',
+           'mtr_options=s',
+           'replication!');
 my $config = GenTest::Properties->new(
     options => $options,
+    legal => [
+        'config',
+        'input_file',
+        'basedir',
+        'expected_mtr_output',
+        'mtr_options',
+        'vebose',
+        'replication'
+    ],
+    required => [
+        'basedir',
+        'input_file'],
     defaults => {
         mtr_options => {
             'skip-ndbcluster' => undef,
@@ -31,6 +45,7 @@ my $config = GenTest::Properties->new(
     }
     );
 
+$config->help if not $o;
 $config->printProps;
 
 # End of user-configurable section
@@ -93,11 +108,11 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
 my $simplified_mysqltest;
 
 if ($config->input_file =~ m{\.csv$}sgio) {
-	say("Treating $config->input_file as a CSV file");
+	say("Treating ".$config->input_file." as a CSV file");
 	$simplified_mysqltest = $simplifier->simplifyFromCSV($config->input_file);
 } elsif ($config->input_file =~ m{\.test$}sgio) {
-	say("Treating $config->input_file as a mysqltest file");
-	open (MYSQLTEST_FILE , $config->input_file) or croak "Unable to open $config->input_file as a .test file: $!";
+	say("Treating ".$config->input_file." as a mysqltest file");
+	open (MYSQLTEST_FILE , $config->input_file) or croak "Unable to open ".$config->input_file." as a .test file: $!";
 	read (MYSQLTEST_FILE , my $initial_mysqltest, -s $config->input_file);
 	close (MYSQLTEST_FILE);
 	$simplified_mysqltest = $simplifier->simplify($initial_mysqltest);
@@ -107,6 +122,6 @@ if (defined $simplified_mysqltest) {
 	say "Simplified mysqltest:\n\n$simplified_mysqltest.\n";
 	exit (STATUS_OK);
 } else {
-	say "Unable to simplify $config->input_file.\n";
+	say "Unable to simplify ". $config->input_file.".\n";
 	exit (STATUS_ENVIRONMENT_FAILURE);
 }
