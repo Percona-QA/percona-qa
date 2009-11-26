@@ -346,6 +346,7 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 		open (XML , ">$xml_output") or say("Unable to open $xml_output: $!");
 		print XML $report->xml();
 		close XML;
+		say("XML report written to ".$xml_output);
 	}
 
 	if ($total_status == STATUS_OK) {
