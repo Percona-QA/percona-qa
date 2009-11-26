@@ -55,18 +55,13 @@ my $run_id = time();
 
 say("run_id = $run_id");
 
-my $basedir = $config->basedir;
-if ($config->input_file =~ m{$basedir}sio) {
-	croak "The input file is inside the basedir and will be overwritten by MTR. Please move it out of the way";
-}
-
 my $simplifier = GenTest::Simplifier::Mysqltest->new(
 	oracle => sub {
 		my $oracle_mysqltest = shift;
 		$iteration++;
         
-		chdir($basedir.'/mysql-test');
-		chdir($basedir.'\mysql-test');
+		chdir($config->basedir.'/mysql-test');
+		chdir($config->basedir.'\mysql-test');
 
 		my $tmpfile = $run_id.'-'.$iteration.'.test';
         
@@ -109,21 +104,35 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
 
 my $simplified_mysqltest;
 
-if ($config->input_file =~ m{\.csv$}sgio) {
-	say("Treating ".$config->input_file." as a CSV file");
-	$simplified_mysqltest = $simplifier->simplifyFromCSV($config->input_file);
-} elsif ($config->input_file =~ m{\.test$}sgio) {
-	say("Treating ".$config->input_file." as a mysqltest file");
-	open (MYSQLTEST_FILE , $config->input_file) or croak "Unable to open ".$config->input_file." as a .test file: $!";
-	read (MYSQLTEST_FILE , my $initial_mysqltest, -s $config->input_file);
-	close (MYSQLTEST_FILE);
-	$simplified_mysqltest = $simplifier->simplify($initial_mysqltest);
-}
+## Copy input file
+if (-f $config->input_file){
+    $config->input_file =~ m/\.([a-z]+$)/i;
+    my $extension = $1;
+    my $input_file_copy = $config->basedir."/mysql-test/t/".$run_id."-0.".$extension;
+    system("cp ".$config->input_file." ".$input_file_copy);
+    
+    if (lc($extension) eq 'csv') {
+        say("Treating ".$config->input_file." as a CSV file");
+        $simplified_mysqltest = $simplifier->simplifyFromCSV($input_file_copy);
+    } elsif (lc($extension) eq 'test') {
+        say("Treating ".$config->input_file." as a mysqltest file");
+        open (MYSQLTEST_FILE , $input_file_copy) or croak "Unable to open ".$input_file_copy." as a .test file: $!";
+        read (MYSQLTEST_FILE , my $initial_mysqltest, -s $input_file_copy);
+        close (MYSQLTEST_FILE);
+        $simplified_mysqltest = $simplifier->simplify($initial_mysqltest);
+    } else {
+        carp "Unknown file type for ".$config->input_file;
+    }
 
-if (defined $simplified_mysqltest) {
-	say "Simplified mysqltest:\n\n$simplified_mysqltest.\n";
-	exit (STATUS_OK);
+    if (defined $simplified_mysqltest) {
+        say "Simplified mysqltest:\n\n$simplified_mysqltest.\n";
+        exit (STATUS_OK);
+    } else {
+        say "Unable to simplify ". $config->input_file.".\n";
+        exit (STATUS_ENVIRONMENT_FAILURE);
+    }
 } else {
-	say "Unable to simplify ". $config->input_file.".\n";
-	exit (STATUS_ENVIRONMENT_FAILURE);
+    croak "Can't find ".$config->input_file;
 }
+##
+
