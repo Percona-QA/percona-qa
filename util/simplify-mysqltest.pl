@@ -55,7 +55,8 @@ my $run_id = time();
 
 say("run_id = $run_id");
 
-if ($config->input_file =~ m{$config->basedir}sio) {
+my $basedir = $config->basedir;
+if ($config->input_file =~ m{$basedir}sio) {
 	croak "The input file is inside the basedir and will be overwritten by MTR. Please move it out of the way";
 }
 
@@ -64,8 +65,8 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
 		my $oracle_mysqltest = shift;
 		$iteration++;
         
-		chdir($config->basedir.'/mysql-test');
-		chdir($config->basedir.'\mysql-test');
+		chdir($basedir.'/mysql-test');
+		chdir($basedir.'\mysql-test');
 
 		my $tmpfile = $run_id.'-'.$iteration.'.test';
         
@@ -91,9 +92,10 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
 		# the --croak construct, to be printed to stdout.
 		#
 
+        my $expected_mtr_output = $config->expected_mtr_output;
 		if (
-			($mysqltest_output =~ m{$config->expected_mtr_output}sio) &&
-			($mysqltest_output !~ m{--croak}sio)
+			($mysqltest_output =~ m{$expected_mtr_output}sio) &&
+			($mysqltest_output !~ m{--die}sio)
 		) {
 			say("Issue repeatable with $tmpfile");
 			return ORACLE_ISSUE_STILL_REPEATABLE;
