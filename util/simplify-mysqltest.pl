@@ -45,7 +45,7 @@ my $config = GenTest::Properties->new(
     }
     );
 
-$config->help if not $o;
+$config->printHelp if not $o;
 $config->printProps;
 
 # End of user-configurable section
