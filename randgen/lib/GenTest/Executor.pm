@@ -111,7 +111,18 @@ sub getName {
 sub preprocess {
     my ($self, $query) = @_;
 
-    my $id = $dbid[$self->type()];
+    my $id;
+    if ($self->type() == DB_DUMMY) {
+        if ($self->dsn() =~ m/javadb/i) {
+            $id = $dbid[DB_JAVADB];            
+        } elsif ($self->dsn() =~ m/postgres/i) {
+            $id = $dbid[DB_POSTGRES];            
+        } else {
+            $id = $dbid[DB_DUMMY];            
+        }
+    } else {
+        $id = $dbid[$self->type()];
+    }
 
     
     # Keep if match (+)
