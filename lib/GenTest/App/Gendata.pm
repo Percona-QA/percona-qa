@@ -171,7 +171,7 @@ sub run {
     $table_perms[TABLE_NAMES] = $tables->{names} || [ ];
     
     $field_perms[FIELD_TYPE] = $fields->{types} || [ 'int', 'varchar', 'date', 'time', 'datetime' ];
-    if (not ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE)) {
+    if (not ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE or $executor->type==DB_DUMMY)) {
         my @datetimestuff = grep(/date|time/,@{$fields->{types}});
         if ($#datetimestuff > -1) {
             croak "Dates and times are severly broken. Cannot be used for other than MySQL/Drizzle";
@@ -389,7 +389,7 @@ sub run {
             @index_fields = grep { $_->[FIELD_INDEX_SQL] =~ m/primary/ } @fields_copy;
         }
         
-        my $index_sqls = $#index_fields > -1 ? ",".join(",\n", map { $_->[FIELD_INDEX_SQL] } @index_fields) : undef;
+        my $index_sqls = $#index_fields > -1 ? join(",\n", map { $_->[FIELD_INDEX_SQL] } @index_fields) : undef;
         
         $executor->execute("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n\t", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
 
