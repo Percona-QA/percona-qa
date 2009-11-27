@@ -184,11 +184,14 @@ query:
 	binlog_event ;
 
 query_init:
-	# 1. The early metadata query SELECT ' _table ', ' _field ' should help to avoid the RQG RC = 255 problem.
-	# 2. For debugging the grammar :   $safety_check = "/* QUERY_IS_REPLICATION_SAFE */"
+	# 1. The early metadata query SELECT ' _table ', ' _field ' should help to avoid the RQG RC = 255 problem later.
+	# 2. "query_init1" is needed because we want run statements which involve tables in different databases.
+	# 3. The final SELECT SLEEP(10); is needed, because parallel CREATE
+	#    <OBJECTS> and SELECT ' _table ', ' _field ' would cause the RQG RC = 255 problem.
+	# 4. For debugging the grammar :   $safety_check = "/* QUERY_IS_REPLICATION_SAFE */"
 	#    For faster execution      :   $safety_check = ""
-	SELECT ' _table ', ' _field ' ; { $safety_check = "/* QUERY_IS_REPLICATION_SAFE */" ; return undef } ; query_init1 ;
-	# SELECT ' _table ', ' _field ' ; { $safety_check = "" ; return undef } ; query_init1 ;
+	{ $safety_check = "/* QUERY_IS_REPLICATION_SAFE */" ; return undef } SELECT ' _table ', ' _field ' ; query_init1 ; SELECT SLEEP(10);
+	# { $safety_check = "" ; return undef } SELECT ' _table ', ' _field ' ; query_init1 ; SELECT SLEEP(10);
 query_init1:
 	CREATE DATABASE IF NOT EXISTS test1; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ;
 copy_table:
