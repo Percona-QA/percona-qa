@@ -3,8 +3,10 @@ use lib "$ENV{RQG_HOME}/lib";
 use lib 'randgen/lib';
 
 use strict;
+use Carp;
 use Cwd;
 use DBI;
+use File::Find;
 use GenTest::Random;
 use POSIX;
 use Sys::Hostname;
@@ -117,6 +119,38 @@ sub skip_test {
 sub pick_random_port_range_id {
 	my $prng = GenTest::Random->new( seed => time );
 	return $prng->uint16(1,499);
+}
+
+#
+# Searches recursively for a given file name under the given directory.
+# Default top search directory is $basedir.
+#
+# Arg1 (mandatory): file name (excluding path)
+# Arg2 (optional) : directory where search will start
+#
+# Returns full path to the directory where the file resides, if found.
+# If more than one matching file is found, the directory of the first one found
+# in a depth-first search will be returned.
+# Returns undef if none is found.
+#
+sub findDirectory {
+	my ($plugin_name, $dir) = @_;
+	if (not defined $plugin_name) {
+		carp("File name required as argument to subroutine findDirectory()");
+	}
+	if (not defined $dir) {
+		$dir = $basedir;
+	}
+	my $fullPath;	# the result
+	find(sub {
+			# This subroutine is called for each file and dir it finds.
+			# According to docs it does depth-first search.
+			if ($_ eq $plugin_name) {
+				$fullPath = $File::Find::dir if not defined $fullPath;
+			}
+			# any return value is ignored
+		}, $dir);
+	return $fullPath;
 }
 
 #
@@ -556,17 +590,34 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	#   of this particular test.
 
 	# Plugin file names and location vary between platforms.
-	# TODO: Also support simple build from source (current paths are
-	#       adjusted for PB2 builds and 'make install' locations).
+	# We search for the respective file names under basedir (recursively).
+	# The first matching file that is found is used.
+	# We assume that both master and slave plugins are in the same dir.
 	my $plugin_dir;
 	my $plugins;
 	if ($windowsOS) {
-		$plugin_dir="$basedir\\plugin\\semisync\\RelWithDebInfo";
-		$plugins = 'rpl_semi_sync_master=semisync_master.dll;rpl_semi_sync_slave=semisync_slave.dll';
+		my $master_plugin_name = "semisync_master.dll";
+		$plugin_dir=findDirectory($master_plugin_name);
+		if (not defined $plugin_dir) {
+			carp "Unable to find semisync plugin $master_plugin_name!";
+		}
+		$plugins = 'rpl_semi_sync_master='.$master_plugin_name.';rpl_semi_sync_slave=semisync_slave.dll';
 	} else {
 		# tested on Linux and Solaris
-		$plugin_dir="$basedir/lib/mysql/plugin";
-		$plugins = 'rpl_semi_sync_master=libsemisync_master.so:rpl_semi_sync_slave=libsemisync_slave.so';
+		my $prefix;	# for Bug#48351
+		my $master_plugin_name = "semisync_master.so";
+		$plugin_dir=findDirectory($master_plugin_name);
+		if (not defined $plugin_dir) {
+			# Until fix for Bug#48351 is widespread it may happen
+			# that the Unix plugin names are prefixed with "lib".
+			# Remove this when no longer needed.
+			$prefix = 'lib';
+			$plugin_dir=findDirectory($prefix.$master_plugin_name);
+			if (not defined $plugin_dir) {
+				carp "Unable to find semisync plugin! ($master_plugin_name or $prefix$master_plugin_name)";
+			}
+		}
+		$plugins = 'rpl_semi_sync_master='.$prefix.$master_plugin_name.':rpl_semi_sync_slave='.$prefix.'semisync_slave.so';
 	}
 	$command = '
 		--gendata='.$conf.'/replication_single_engine.zz
