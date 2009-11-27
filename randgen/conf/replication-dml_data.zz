@@ -3,7 +3,7 @@ $tables = {
         rows => [0, 1, 10],
         # partitions => [ undef , 'KEY (pk) PARTITIONS 2' ],
         engines => [ undef, 'MyISAM', 'InnoDB' ],
-        # engines => [ undef, 'MyISAM', 'InnoDB' ],
+        # engines => [ undef, 'MyISAM' ],
         pk => [ 'int auto_increment' ]
 };
 
@@ -11,12 +11,12 @@ $fields = {
         # We mention here data types according to the order within the manual
         types => [
         # Numeric
-           # 'bit','bit(4)','bit(64)',
-           # 'tinyint','smallint','mediumint','int',
+           # 'bit', 'bit(4)', 'bit(64)',
+           # 'tinyint', 'smallint', 'mediumint', 'int',
            'bigint',
-           # 'float','double',
+           # 'float', 'double',
            # decimal(M,N) is not supported by RQG. I would have taken decimal(65,30),decimal(10,0).
-           # 'decimal','decimal(35)',
+           # 'decimal', 'decimal(35)',
         # String
         # Manual: Specifying the CHARACTER SET binary attribute for a character data type causes
         #         the column to be created as the corresponding binary data type:
@@ -24,11 +24,13 @@ $fields = {
         # We do not mention *BINARY and BLOB here + but have 'binary' between the charsets.
            # 'enum', 'set',
            # Variable length
-           # 'varchar','varchar(10)','varchar(257)',
+           # 'varchar', 'varchar(10)', 'varchar(257)',
            # Not all storage engines support text
-           # 'tinytext','text','mediumtext','longtext',
+           # 'tinytext', 'text', 'mediumtext', 'longtext',
            # Fixed length
-           'char','char(10)'
+           'char', 'char(10)',
+        # Date/time
+           'datetime', 'date', 'timestamp', 'time','year' 
                    ],
         indexes => [ undef ],
         name_suffix => '_',
@@ -39,7 +41,8 @@ $fields = {
 };
 
 $data => {
-        numbers => [ 'digit', 'null', undef ],
-        strings => [ 'letter', 'english', 'null' ],
-        blobs => [ 'english', 'data' ]
+        numbers   => [ 'digit', 'null', undef ],
+        strings   => [ 'letter', 'english', 'null' ],
+        blobs     => [ 'english', 'data' ],
+        temporals => [ undef, 'null', 'time', 'date', 'datetime', 'year(2)', 'year(4)', 'timestamp' ]
 }
