@@ -147,7 +147,7 @@ if ((defined $config->gendata) &&
             $datagen = GenTest::App::Gendata->new(spec_file => $config->gendata,
                                                   dsn => $dsn,
                                                   engine => $config->engine,
-                                                  seed => $config->seed,
+                                                  seed => $seed,
                                                   debug => $config->debug,
                                                   rows => $config->rows,
                                                   views => $config->views,
