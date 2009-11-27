@@ -358,7 +358,8 @@ sub run {
             } @fields ;
         }
         
-        say("# Creating table $table_copy[TABLE_NAME] .");
+        say("# Creating ".$executor->getName().
+            " table $table_copy[TABLE_NAME] .");
         
         if ($table_copy[TABLE_PK] ne '') {
             my $pk_field;
@@ -393,7 +394,19 @@ sub run {
 
         $executor->execute("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n/*Indices*/\n", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
 
-
+        if (not ($executor->type() == DB_MYSQL || 
+                 $executor->type() == DB_DRIZZLE)) {
+            @index_fields = grep { $_->[FIELD_INDEX_SQL] ne '' } @fields_copy;
+            foreach my $idx (@index_fields) {
+                my $key_sql = $idx->[FIELD_INDEX_SQL];
+                if ($key_sql =~ m/^key \((`[a-z0-9_]*)/) {
+                    $executor->execute("CREATE INDEX idx_".
+                                       $table->[TABLE_NAME]."_$1".
+                                       " ON ".$table->[TABLE_NAME]."($1)");
+                }
+            }
+        }
+        
         
         
         if (defined $table_perms[TABLE_VIEWS]) {
