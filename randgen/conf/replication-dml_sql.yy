@@ -4,7 +4,7 @@
 # ... automatic switching from statement-based to row-based replication takes place under the following conditions:
 # DML updates an NDBCLUSTER table
 # When a function contains UUID().
-#   --> "value_string"
+#   --> "value_unsafe_for_sbr"
 # When 2 or more tables with AUTO_INCREMENT columns are updated.
 #   --> "update","delete"
 # When any INSERT DELAYED is executed.
@@ -21,9 +21,9 @@
 #        SELECT FOUND_ROWS();
 #    FOUND_ROWS() or ROW_COUNT() are bigint(21) ;
 #    Without SQL_CALC_FOUND_ROWS within the previous SELECT, FOUND_ROWS() = number of rows found by this SELECT.
-#    --> "value_numeric", but no SQL_CALC_FOUND_ROWS
+#    --> "value_unsafe_for_sbr", but no SQL_CALC_FOUND_ROWS
 # When USER(), CURRENT_USER(), or CURRENT_USER is used. (Bug#28086)
-#    --> "value_string"
+#    --> "value_unsafe_for_sbr"
 # When a statement refers to one or more system variables. (Bug#31168)
 #     --> "shake_clock" affects timestamp
 #
@@ -43,6 +43,7 @@
 #   For information about how replication treats sql_mode, see Section 16.3.1.30, “Replication and Variables”.
 #   * When one of the tables involved is a log table in the mysql database.
 #   * When the LOAD_FILE() function is used. (Bug#39701)
+#   --> "value_unsafe_for_sbr"
 #-----------------------------
 # When using statement-based replication, the LOAD DATA INFILE statement's CONCURRENT  option is not replicated;
 # that is, LOAD DATA CONCURRENT INFILE is replicated as LOAD DATA INFILE, and LOAD DATA CONCURRENT LOCAL INFILE
@@ -183,17 +184,20 @@ query:
 	binlog_event ;
 
 query_init:
-	# 1. Bernt says an early metadata query helps to avoid the RQG RC = 255 problem.
+	# 1. The early metadata query SELECT ' _table ', ' _field ' should help to avoid the RQG RC = 255 problem.
 	# 2. For debugging the grammar :   $safety_check = "/* QUERY_IS_REPLICATION_SAFE */"
 	#    For faster execution      :   $safety_check = ""
-	SELECT ' _table ', ' _field ' ; { $safety_check = "/* QUERY_IS_REPLICATION_SAFE */" ; return undef } ;
-	# SELECT ' _table ', ' _field ' ; { $safety_check = "" ; return undef } ;
+	SELECT ' _table ', ' _field ' ; { $safety_check = "/* QUERY_IS_REPLICATION_SAFE */" ; return undef } ; query_init1 ;
+	# SELECT ' _table ', ' _field ' ; { $safety_check = "" ; return undef } ; query_init1 ;
+query_init1:
+	CREATE DATABASE IF NOT EXISTS test1; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ;
+copy_table:
+	CREATE TABLE IF NOT EXISTS test1. _table[invariant] LIKE test. _table[invariant] ;
 
 binlog_event:
 	/* BEGIN 1 */ single_dml_event    /* 1 END */  |
 	/* BEGIN 2 */ single_dml_event    /* 2 END */  |
 	/* BEGIN 3 */ sequence_dml_event  /* 3 END */  |
-	# xid_event |
 	set_iso_level      |
 	shake_clock        |
 	rotate_event       ;
@@ -213,7 +217,9 @@ plus_minus:
 
 rotate_event:
 	# Cause that the master switches to a new binary log file 
-	#    ? RESET MASTER ?
+	# RESET MASTER is not useful here because it causes
+	# - master.err: [ERROR] Failed to open log (file '/dev/shm/var_290/log/master-bin.000002', errno 2)
+	# - the RQG test does not terminate in usual way (RQG assumes deadlock)
 	{ return $safety_check } FLUSH LOGS ;
 	
 xid_event:
@@ -223,9 +229,11 @@ xid_event:
 	implicit_commit ;
 
 implicit_commit:
-	# mleich: A failing (<> wrong syntax) CREATE TABLE make also an implicite COMMIT
-	#         RPL has problems with concurrent DDL but is this also valid for a
-	#         CREATE TABLE <already exists> AS SELECT 1 AS my_col   ?
+	# mleich: A CREATE/ALTER TABLE which fails because the object already exists/does not exist causes an
+	#         implicite COMMIT before the "core" of the statement is executed.
+	#         RPL has problems with concurrent DDL but is this also valid for such cases?
+   CREATE TABLE mysql.user ( f1 BIGINT )    |
+   ALTER TABLE does_not_exist CHANGE COLUMN f1 f2 BIGINT |
 	# CREATE DATABASE ic ; CREATE TABLE ic . _letter SELECT * FROM _table LIMIT digit ; DROP DATABASE ic |
 	# CREATE USER _letter | DROP USER _letter | RENAME USER _letter TO _letter |
 	SET AUTOCOMMIT = ON | SET AUTOCOMMIT = OFF |
@@ -242,7 +250,7 @@ implicit_commit:
 single_dml_event:
 	COMMIT ; binlog_format_set ; dml ; xid_event ;
 sequence_dml_event:
-	COMMIT ; binlog_format_set ; dml ; dml ; dml ; dml ;dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; xid_event ;
+	COMMIT ; binlog_format_set ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; xid_event ;
 
 binlog_format_set:
 	{ return $safety_check } SET BINLOG_FORMAT = rand_binlog_format ;
@@ -253,42 +261,48 @@ rand_binlog_format:
 
 dml:
 	# LOAD DATA is temporary disabled
-	# generate_outfile ; { return $safety_check } LOAD DATA concurrent_or_empty INFILE tmpnam REPLACE INTO TABLE _table |
+	# generate_outfile ; { return $safety_check } LOAD DATA concurrent_or_empty INFILE tmpnam REPLACE INTO TABLE pick_schema _table |
 	{ return $safety_check } update |
 	{ return $safety_check } delete |
 	{ return $safety_check } insert |
-	# generate_outfile ; { return $safety_check } PREPARE st1 FROM "LOAD DATA INFILE tmpnam REPLACE INTO TABLE _table" ; { return $safety_check } EXECUTE st1 ; DEALLOCATE PREPARE st1 |
+	# generate_outfile ; { return $safety_check } PREPARE st1 FROM "LOAD DATA INFILE tmpnam REPLACE INTO TABLE pick_schema _table" ; { return $safety_check } EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	{ return $safety_check } PREPARE st1 FROM " update " ; { return $safety_check } EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	{ return $safety_check } PREPARE st1 FROM " delete " ; { return $safety_check } EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	{ return $safety_check } PREPARE st1 FROM " insert " ; { return $safety_check } EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	# We need the next statement for other statements which should use a user variable.
 	{ return $safety_check } SET @aux = value |
-	xid_event  ;
+	# We need the next statements for other statements which should be affected by switching the database.
+   # The "USE `mysql`" is disabled because a get a strange PERL error message.
+	USE `test` | USE `test` | USE `test` | USE `test1` | USE `test1` | # USE `mysql` |
+	xid_event       ;
 
 generate_outfile:
-	SELECT * FROM _table ORDER BY _field INTO OUTFILE tmpnam ;
+	SELECT * FROM pick_schema _table ORDER BY _field INTO OUTFILE tmpnam ;
 concurrent_or_empty:
 	| CONCURRENT ;
 
-#---------------------
+pick_schema:
+	|
+	test .  |
+	test1 . ;
 
 delete:
 	# Delete in one table, search in one table
 	# Unsafe in statement based replication except we add ORDER BY
-	# DELETE       FROM _table            LIMIT 1   |
-	DELETE       FROM _table               where    |
+	# DELETE       FROM pick_schema _table            LIMIT 1   |
+	DELETE       FROM pick_schema _table               where    |
 	# Delete in two tables, search in two tables
-	DELETE A , B FROM _table AS A join     where    |
+	DELETE A , B FROM pick_schema _table AS A join     where    |
 	# Delete in one table, search in two tables
-	DELETE A     FROM _table AS A where subquery    ;
+	DELETE A     FROM pick_schema _table AS A where subquery    ;
 
 join:
 	# Do not place a where condition here.
-	NATURAL JOIN _table B ;
+	NATURAL JOIN pick_schema _table B ;
 subquery:
 	correlated | non_correlated ;
 subquery_part1:
-	AND A.`pk` IN ( SELECT `pk` FROM _table AS B  ;
+	AND A.`pk` IN ( SELECT `pk` FROM pick_schema _table AS B  ;
 correlated:
 	subquery_part1 WHERE B.`pk` = A.`pk` ) ;
 non_correlated:
@@ -299,17 +313,17 @@ where:
 insert:
 	# mleich: Does an additional "on_duplicate_key_update" give an advantage?
 	# Insert into one table, search in no other table
-	INSERT delayed_or_empty INTO _table ( _field ) VALUES ( value ) |
+	INSERT delayed_or_empty INTO pick_schema _table ( _field ) VALUES ( value ) |
 	# Insert into one table, search in >= 1 tables
-	INSERT delayed_or_empty INTO _table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
+	INSERT delayed_or_empty INTO pick_schema _table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 delayed_or_empty:
 	;
 	# DELAYED is unsafe if binlog format = STATEMENT
 	# See comment on top of file{ return $unsafe_b } DELAYED { return $unsafe_e } ;
 
 table_in_select:
-	_table                                        |
-	( SELECT _field_list[invariant] FROM _table ) ;
+	pick_schema _table                                        |
+	( SELECT _field_list[invariant] FROM pick_schema _table ) ;
 
 addition:
 	where | where subquery | join where | where union where ;
@@ -318,22 +332,11 @@ union:
 	UNION SELECT _field_list[invariant] FROM table_in_select AS B ;
 
 update:
-	# mleich: Search within another table etc. should be covered by "delete" and "insert".
+	# mleich: Search within another table etc. should be already sufficient covered by "delete" and "insert".
 	# Update one table
-	UPDATE _table SET _field = value where |
+	UPDATE pick_schema _table SET _field = value where |
 	# Update two tables
-	UPDATE _table AS A join SET A. _field = value , B. _field = _digit where ;
-
-#---------------------
-
-engine:
-	Innodb | MyISAM ;
-
-order_by:
-	| ORDER BY _field ;
-
-limit:
-	| LIMIT digit ;
+	UPDATE pick_schema _table AS A join SET A. _field = value , B. _field = _digit where ;
 
 value:
 	value_numeric          |
@@ -358,7 +361,7 @@ value_unsafe_for_sbr:
 	# varchar(77) CHARACTER SET utf8
 	CURRENT_USER()    |
 	USER()            |
-	# _data gets replace by LOAD_FILE( <some path> ) which is unsafe
+	# _data gets replace by LOAD_FILE( <some path> ) which is unsafe for SBR.
 	# mleich: I assume this refers to the risk that an input file
 	#         might exist on the master but probably not on the slave.
 	#         This is irrelevant for the usual RQG test configuration. 
@@ -373,14 +376,14 @@ value_numeric:
 	#                  outside of the allowed value ranges
 	- _digit   | _digit              |
 	_bit(1)    | _bit(4)             |
-	# _tinyint   | _tinyint_unsigned   |
-	# _smallint  | _smallint_unsigned  |
-	# _mediumint | _mediumint_unsigned |
-	# _int       | _int_unsigned       |
-	# _bigint    | _bigint_unsigned    |
-	# _bigint    | _bigint_unsigned    |
-	# -2.0E+10   | -2.0E+10            |
-	-2.0E+100  | -2.0E+100             |
+	_tinyint   | _tinyint_unsigned   |
+	_smallint  | _smallint_unsigned  |
+	_mediumint | _mediumint_unsigned |
+	_int       | _int_unsigned       |
+	_bigint    | _bigint_unsigned    |
+	_bigint    | _bigint_unsigned    |
+	-2.0E+10   | -2.0E+10            |
+	-2.0E+100  | -2.0E+100           |
 	# int(10)
 	CONNECTION_ID()   |
 	# Value of the AUTOINCREMENT (per manual only applicable to integer and floating-point types)
@@ -393,14 +396,14 @@ value_string:
 	# We have 'char' -> char(1),'char(10)',
 	# 'varchar' - varchar(1),'varchar(10)','varchar(257)',
 	# 'tinytext','text','mediumtext','longtext',
-	#     I fear values > 16 MB are risky, so I omit them.
 	# 'enum', 'set'
-	# mleich : FIXME Playing with character set etc. is missing
+	# mleich: I fear values > 16 MB are risky, so I omit them.
 	_char(1)    | _char(10)    |
 	_varchar(1) | _varchar(10) | _varchar(257)   |
-	# _text(255)  | _text(65535) | _text(16777215) |
-   # The manual says VERSION() is unsafe in SBR. mleich : It does not generate a warning.
+	_text(255)  | _text(65535) | _text(16777215) |
+	# The manual says VERSION() is unsafe in SBR. mleich : It does not generate a warning.
 	VERSION()   |
+	DATABASE()  |
 	_set        ;
 
 value_string_converted:
@@ -416,8 +419,8 @@ value_temporal:
 	#    _timestamp - a date+time value in the MySQL format 20000101000000
 	#    _time - a time in the range from 00:00:00 to 29:59:59
 	#    _year - a year in the range 2000 to 2010
-	_datetime | _date | _time | _datetime | _timestamp |
-   # The manual says SYSDATE() is unsafe in SBR. mleich : It does not generate a warning.
-	SYSDATE()         |
-	NOW() ;
+	_datetime | _date | _time | _datetime | _timestamp | _year |
+	# The manual says SYSDATE() is unsafe in SBR. mleich : It does not generate a warning.
+	SYSDATE() |
+	NOW()     ;
 
