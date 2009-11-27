@@ -34,6 +34,6 @@ value:
 	_tinyint_unsigned ;
 
 _field:
-	`int_key` | `int_nokey` ;
+	`col_int_key` | `col_int_nokey` ;
 
 # | _english | _digit | _date | _datetime | _time ;

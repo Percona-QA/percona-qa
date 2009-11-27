@@ -123,13 +123,13 @@ field_name:
 	int_field_name | char_field_name | date_field_name;
 
 int_field_name:
-        `pk` | `int_key` | `int_nokey` ;
+        `pk` | `col_int_key` | `col_int_nokey` ;
 
 date_field_name:
-        `date_key` | `date_nokey` | `datetime_key` | `datetime_nokey` | `time_key` | `time_nokey` ;
+        `col_date_key` | `col_date_nokey` | `col_datetime_key` | `col_datetime_nokey` | `col_time_key` | `col_time_nokey` ;
 
 char_field_name:
-        `varchar_key` | `varchar_nokey` ;
+        `col_varchar_key` | `col_varchar_nokey` ;
 
 outer_table_name:
 	B | C ;

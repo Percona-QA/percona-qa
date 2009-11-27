@@ -97,27 +97,27 @@ sub gen_table {
 		$executor->execute("
 		CREATE TABLE $name (
 			pk INTEGER AUTO_INCREMENT,
-			int_nokey INTEGER $nullability,
-			int_key INTEGER $nullability,
+			col_int_nokey INTEGER $nullability,
+			col_int_key INTEGER $nullability,
 
-			date_key DATE $nullability,
-			date_nokey DATE $nullability,
+			col_date_key DATE $nullability,
+			col_date_nokey DATE $nullability,
 
-			time_key TIME $nullability,
-			time_nokey TIME $nullability,
+			col_time_key TIME $nullability,
+			col_time_nokey TIME $nullability,
 
-			datetime_key DATETIME $nullability,
-			datetime_nokey DATETIME $nullability,
+			col_datetime_key DATETIME $nullability,
+			col_datetime_nokey DATETIME $nullability,
 
-			varchar_key VARCHAR($varchar_length) $nullability,
-			varchar_nokey VARCHAR($varchar_length) $nullability,
+			col_varchar_key VARCHAR($varchar_length) $nullability,
+			col_varchar_nokey VARCHAR($varchar_length) $nullability,
 
 			PRIMARY KEY (pk),
-			KEY (int_key),
-			KEY (date_key),
-			KEY (time_key),
-			KEY (datetime_key),
-			KEY (varchar_key, int_key)
+			KEY (col_int_key),
+			KEY (col_date_key),
+			KEY (col_time_key),
+			KEY (col_datetime_key),
+			KEY (col_varchar_key, col_int_key)
 		) ".(length($name) > 1 ? " AUTO_INCREMENT=".(length($name) * 5) : "").($engine ne '' ? " ENGINE=$engine" : "")
 						   # For tables named like CC and CCC, start auto_increment with some offset. This provides better test coverage since
 						   # joining such tables on PK does not produce only 1-to-1 matches.
@@ -133,28 +133,28 @@ sub gen_table {
 		$executor->execute("
 		CREATE TABLE $name (
 			pk INTEGER DEFAULT nextval('".$name."_seq') NOT NULL,
-			int_nokey INTEGER $nullability,
-			int_key INTEGER $nullability,
+			col_int_nokey INTEGER $nullability,
+			col_int_key INTEGER $nullability,
 
-			date_key DATE $nullability,
-			date_nokey DATE $nullability,
+			col_date_key DATE $nullability,
+			col_date_nokey DATE $nullability,
 
-			time_key TIME $nullability,
-			time_nokey TIME $nullability,
+			col_time_key TIME $nullability,
+			col_time_nokey TIME $nullability,
 
-			datetime_key DATETIME $nullability,
-			datetime_nokey DATETIME $nullability,
+			col_datetime_key DATETIME $nullability,
+			col_datetime_nokey DATETIME $nullability,
 
-			varchar_key VARCHAR($varchar_length) $nullability,
-			varchar_nokey VARCHAR($varchar_length) $nullability,
+			col_varchar_key VARCHAR($varchar_length) $nullability,
+			col_varchar_nokey VARCHAR($varchar_length) $nullability,
 
 			PRIMARY KEY (pk))");
 
-		$executor->execute("CREATE INDEX ".$name."_int_key ON $name(int_key)");
-		$executor->execute("CREATE INDEX ".$name."_date_key ON $name(date_key)");
-		$executor->execute("CREATE INDEX ".$name."_time_key ON $name(time_key)");
-		$executor->execute("CREATE INDEX ".$name."_datetime_key ON $name(datetime_key)");
-		$executor->execute("CREATE INDEX ".$name."_varchar_key ON $name(varchar_key, int_key)");
+		$executor->execute("CREATE INDEX ".$name."_int_key ON $name(col_int_key)");
+		$executor->execute("CREATE INDEX ".$name."_date_key ON $name(col_date_key)");
+		$executor->execute("CREATE INDEX ".$name."_time_key ON $name(col_time_key)");
+		$executor->execute("CREATE INDEX ".$name."_datetime_key ON $name(col_datetime_key)");
+		$executor->execute("CREATE INDEX ".$name."_varchar_key ON $name(col_varchar_key, col_int_key)");
 
 	} else {
         say("Creating ".$executor->getName()." table $name, size $size rows");
@@ -163,20 +163,20 @@ sub gen_table {
 		$executor->execute("
 		CREATE TABLE $name (
 			pk INTEGER AUTO_INCREMENT,
-			int_nokey INTEGER $nullability,
-			int_key INTEGER $nullability,
+			col_int_nokey INTEGER $nullability,
+			col_int_key INTEGER $nullability,
 
-			date_key DATE $nullability,
-			date_nokey DATE $nullability,
+			col_date_key DATE $nullability,
+			col_date_nokey DATE $nullability,
 
-			time_key TIME $nullability,
-			time_nokey TIME $nullability,
+			col_time_key TIME $nullability,
+			col_time_nokey TIME $nullability,
 
-			datetime_key DATETIME $nullability,
-			datetime_nokey DATETIME $nullability,
+			col_datetime_key DATETIME $nullability,
+			col_datetime_nokey DATETIME $nullability,
 
-			varchar_key VARCHAR($varchar_length) $nullability,
-			varchar_nokey VARCHAR($varchar_length) $nullability,
+			col_varchar_key VARCHAR($varchar_length) $nullability,
+			col_varchar_nokey VARCHAR($varchar_length) $nullability,
 
 			PRIMARY KEY (pk)
 		) ".(length($name) > 1 ? " AUTO_INCREMENT=".(length($name) * 5) : "").($engine ne '' ? " ENGINE=$engine" : "")
@@ -184,11 +184,11 @@ sub gen_table {
 						   # joining such tables on PK does not produce only 1-to-1 matches.
 			);
 		
-		$executor->execute("CREATE INDEX ".$name."_int_key ON $name(int_key)");
-		$executor->execute("CREATE INDEX ".$name."_date_key ON $name(date_key)");
-		$executor->execute("CREATE INDEX ".$name."_time_key ON $name(time_key)");
-		$executor->execute("CREATE INDEX ".$name."_datetime_key ON $name(datetime_key)");
-		$executor->execute("CREATE INDEX ".$name."_varchar_key ON $name(varchar_key, int_key)");
+		$executor->execute("CREATE INDEX ".$name."_int_key ON $name(col_int_key)");
+		$executor->execute("CREATE INDEX ".$name."_date_key ON $name(col_date_key)");
+		$executor->execute("CREATE INDEX ".$name."_time_key ON $name(col_time_key)");
+		$executor->execute("CREATE INDEX ".$name."_datetime_key ON $name(col_datetime_key)");
+		$executor->execute("CREATE INDEX ".$name."_varchar_key ON $name(col_varchar_key, col_int_key)");
 	};
 
 	if (defined $views) {
@@ -229,11 +229,11 @@ sub gen_table {
 		if ($row % 500 == 0 || $row == $size) {
 			$executor->execute("
 			INSERT /*! IGNORE */ INTO $name (
-				int_key, int_nokey,
-				date_key, date_nokey,
-				time_key, time_nokey,
-				datetime_key, datetime_nokey,
-				varchar_key, varchar_nokey
+				col_int_key, col_int_nokey,
+				col_date_key, col_date_nokey,
+				col_time_key, col_time_nokey,
+				col_datetime_key, col_datetime_nokey,
+				col_varchar_key, col_varchar_nokey
 			) VALUES " . join(",",@values));
 			@values = ();
 		}

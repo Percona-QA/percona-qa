@@ -993,7 +993,7 @@ rename_column:
 	ALTER TABLE table_no_view_item_s CHANGE COLUMN my_column column_to_change INT ;
 
 column_to_change:
-	`int` | `int_key` | `pk` ;
+	`col_int` | `col_int_key` | `pk` ;
 
 
 ########## MERGE TABLE DDL ####################
@@ -1571,7 +1571,7 @@ random_field_quoted:
 	'int_key' | 'int' | 'pk' ;
 
 random_field_quoted1:
-	`int_key` | `int` | `pk` ;
+	`col_int_key` | `col_int` | `pk` ;
 
 replace_option:
 	# Only 20 % <> empty.
@@ -1589,12 +1589,12 @@ table_field_list_or_star:
 	{ $table_field_list = "*" }                                               ;
 
 table_field_list:
-	{ $table_field_list = "`int_key` , `int`     , `pk`      "} |
-	{ $table_field_list = "`int_key` , `pk`      , `int`     "} |
-	{ $table_field_list = "`int`     , `pk`      , `int_key` "} |
-	{ $table_field_list = "`int`     , `int_key` , `pk`      "} |
-	{ $table_field_list = "`pk`      , `int`     , `int_key` "} |
-	{ $table_field_list = "`pk`      , `int_key` , `pk`      "} ;
+	{ $table_field_list = "`col_int_key` , `col_int`     , `pk`      "} |
+	{ $table_field_list = "`col_int_key` , `pk`      , `col_int`     "} |
+	{ $table_field_list = "`col_int`     , `pk`      , `col_int_key` "} |
+	{ $table_field_list = "`col_int`     , `col_int_key` , `pk`      "} |
+	{ $table_field_list = "`pk`      , `col_int`     , `col_int_key` "} |
+	{ $table_field_list = "`pk`      , `col_int_key` , `pk`      "} ;
 
 temporary:
 	# Attention:

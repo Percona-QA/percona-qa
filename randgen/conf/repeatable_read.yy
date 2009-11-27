@@ -13,7 +13,7 @@ delete:
 	DELETE FROM _table WHERE condition LIMIT _digit ;
 
 insert:
-	INSERT INTO _table ( `int_key`, `int` ) VALUES ( _digit , _digit ) ;
+	INSERT INTO _table ( `col_int_key`, `col_int` ) VALUES ( _digit , _digit ) ;
 
 condition:
 	1 = 1 |

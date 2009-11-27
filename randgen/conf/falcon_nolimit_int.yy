@@ -43,4 +43,4 @@ value:
 # Use only indexed fields:
 
 _field:
-	`int_key` ;
+	`col_int_key` ;

@@ -16,7 +16,7 @@ table_name:
 	_table ;
 
 field_name:
-	`varchar_key` | `varchar_nokey` ;
+	`col_varchar_key` | `col_varchar_nokey` ;
 
 oper:
 	= | > | < | >= | <= | <> ;

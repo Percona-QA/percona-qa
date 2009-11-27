@@ -53,7 +53,7 @@ update_between:
 	SET @var = half_digit ; UPDATE _table SET update_both WHERE `pk` BETWEEN @var AND @var + 1 ;
 	
 update_two:
-	UPDATE _table SET `int_key` = `int_key` - 10 WHERE `pk` = small ; UPDATE _table SET `int_key` = `int_key` + 10 WHERE `pk` = big ;
+	UPDATE _table SET `col_int_key` = `col_int_key` - 10 WHERE `pk` = small ; UPDATE _table SET `col_int_key` = `col_int_key` + 10 WHERE `pk` = big ;
 
 update_limit:
 	UPDATE _table SET update_one_half + IF(`pk` % 2 = 1 , 20, -20) WHERE `pk` >= half_digit ORDER BY `pk` ASC LIMIT 2 ;
@@ -62,24 +62,24 @@ update_in:
 	UPDATE _table SET update_one_half  + IF(`pk` % 2 = 1 , 30, -30) WHERE `pk` IN ( even_odd ) ;
 
 insert_one:
-	INSERT INTO _table ( `pk` , `int_key` , `int`) VALUES ( NULL , 100 , 100 ) |
+	INSERT INTO _table ( `pk` , `col_int_key` , `col_int`) VALUES ( NULL , 100 , 100 ) |
 	INSERT INTO _table ( `pk` ) VALUES ( NULL ) ; ROLLBACK ;
 
 insert_multi:
-	INSERT INTO _table ( `pk` , `int_key` , `int`) VALUES ( NULL , 100 , 100 ) , ( NULL , 100 , 100 ) |
+	INSERT INTO _table ( `pk` , `col_int_key` , `col_int`) VALUES ( NULL , 100 , 100 ) , ( NULL , 100 , 100 ) |
 	INSERT INTO _table ( `pk` ) VALUES ( NULL ) , ( NULL ) , ( NULL ) ; ROLLBACK ;
 
 insert_select:
-	INSERT INTO _table ( `int_key` , `int` ) SELECT `int` , `int_key` FROM _table WHERE `pk` > 10 LIMIT _digit ;
+	INSERT INTO _table ( `col_int_key` , `col_int` ) SELECT `col_int` , `col_int_key` FROM _table WHERE `pk` > 10 LIMIT _digit ;
 
 insert_delete:
-	INSERT INTO _table ( `pk` , `int_key` , `int` ) VALUES ( NULL , 50 , 60 ) ; DELETE FROM _table WHERE `pk` = @@LAST_INSERT_ID ;
+	INSERT INTO _table ( `pk` , `col_int_key` , `col_int` ) VALUES ( NULL , 50 , 60 ) ; DELETE FROM _table WHERE `pk` = @@LAST_INSERT_ID ;
 
 insert_update:
-	INSERT INTO _table ( `pk` , `int_key` , `int` ) VALUES ( NULL, 170 , 180 ) ; UPDATE _table SET `int_key` = `int_key` - 80 , `int` = `int` - 70 WHERE `pk` = _digit ;
+	INSERT INTO _table ( `pk` , `col_int_key` , `col_int` ) VALUES ( NULL, 170 , 180 ) ; UPDATE _table SET `col_int_key` = `col_int_key` - 80 , `col_int` = `col_int` - 70 WHERE `pk` = _digit ;
 
 replace:
-	REPLACE INTO _table ( `pk` , `int_key` , `int` ) VALUES ( NULL, 100 , 100 ) |
+	REPLACE INTO _table ( `pk` , `col_int_key` , `col_int` ) VALUES ( NULL, 100 , 100 ) |
 	REPLACE INTO _table ( `pk` ) VALUES ( _digit ) ; ROLLBACK ;
 
 delete_one:
@@ -89,15 +89,15 @@ delete_multi:
 	DELETE FROM _table WHERE `pk` > _tinyint_unsigned AND `pk` > 10 LIMIT _digit ;
 
 update_both:
-	`int_key` = `int_key` - 20, `int` = `int` + 20 |
-	`int` = `int` + 30, `int_key` = `int_key` - 30 ;
+	`col_int_key` = `col_int_key` - 20, `col_int` = `col_int` + 20 |
+	`col_int` = `col_int` + 30, `col_int_key` = `col_int_key` - 30 ;
 
 update_one_half:
-	`int_key` = `int_key` |
-	`int` = `int` ;
+	`col_int_key` = `col_int_key` |
+	`col_int` = `col_int` ;
 
 key_nokey_pk:
-	`int_key` | `int` | `pk` ;
+	`col_int_key` | `col_int` | `pk` ;
 
 value:
 	_digit;

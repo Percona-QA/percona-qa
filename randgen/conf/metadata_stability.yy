@@ -11,7 +11,7 @@ transaction:
 	START TRANSACTION | COMMIT | ROLLBACK ;
 
 select:
-	SELECT /* RESULTSET_SAME_DATA_IN_EVERY_ROW */ select_item AS `int_key`
+	SELECT /* RESULTSET_SAME_DATA_IN_EVERY_ROW */ select_item AS `col_int_key`
 	FROM join_list
 	where;
 
@@ -25,7 +25,7 @@ dml:
 	insert_select ;
 
 update:
-	pick_table_name UPDATE $table_name SET `int_key` = _digit ;
+	pick_table_name UPDATE $table_name SET `col_int_key` = _digit ;
 
 insert_select:
 	pick_table_name INSERT INTO $table_name SELECT * FROM $table_name LIMIT 0 ;
@@ -36,7 +36,7 @@ delete:
 select_item:
 	_digit |
 	function_name ( _digit ) |
-	function_name ( `int_key` ) ;
+	function_name ( `col_int_key` ) ;
 
 join_list:
 	selectable_object;
@@ -51,7 +51,7 @@ where:
 	WHERE argument operator argument;
 
 argument:
-	`int_key` |
+	`col_int_key` |
 	_digit |
 	function_name ( argument ) ;
 
@@ -116,7 +116,7 @@ create_procedure:
 	CREATE PROCEDURE $procedure_name (INOUT inout1 INT) procedure_body ;
 
 create_table:
-	CREATE temporary TABLE $table_name ( `int_key` INTEGER, KEY (`int_key`) ) select ;
+	CREATE temporary TABLE $table_name ( `col_int_key` INTEGER, KEY (`col_int_key`) ) select ;
 
 create_view:
 	CREATE OR REPLACE ALGORITHM = view_algorithm VIEW $view_name AS select ;
