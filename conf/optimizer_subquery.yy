@@ -109,8 +109,8 @@ join_type:
 join_condition_item:
     current_table_item . int_indexed = previous_table_item . int_field_name on_subquery |
     current_table_item . int_field_name = previous_table_item . int_indexed on_subquery |
-    current_table_item . `varchar_key` = previous_table_item . char_field_name on_subquery |
-    current_table_item . char_field_name = previous_table_item . `varchar_key` on_subquery ;
+    current_table_item . `col_varchar_key` = previous_table_item . char_field_name on_subquery |
+    current_table_item . char_field_name = previous_table_item . `col_varchar_key` on_subquery ;
 
 on_subquery:
     |||||||||||||||||||| { $subquery_idx += 1 ; $subquery_tables=0 ; ""} and_or general_subquery ;
@@ -306,8 +306,8 @@ subquery_join_list:
 subquery_join_condition_item:
     subquery_current_table_item . int_field_name = subquery_previous_table_item . int_indexed subquery_on_subquery |
     subquery_current_table_item . int_indexed = subquery_previous_table_item . int_field_name subquery_on_subquery |
-    subquery_current_table_item . `varchar_key` = subquery_previous_table_item . char_field_name subquery_on_subquery |
-    subquery_current_table_item . char_field_name = subquery_previous_table_item . `varchar_key` subquery_on_subquery ;
+    subquery_current_table_item . `col_varchar_key` = subquery_previous_table_item . char_field_name subquery_on_subquery |
+    subquery_current_table_item . char_field_name = subquery_previous_table_item . `col_varchar_key` subquery_on_subquery ;
 
 subquery_on_subquery:
     |||||||||||||||||||| { $child_subquery_idx += 1 ; $child_subquery_tables=0 ; ""} and_or general_child_subquery ;
@@ -462,8 +462,8 @@ child_subquery_join_list:
 child_subquery_join_condition_item:
     child_subquery_current_table_item . int_field_name = child_subquery_previous_table_item . int_indexed |
     child_subquery_current_table_item . int_indexed = child_subquery_previous_table_item . int_field_name |
-    child_subquery_current_table_item . `varchar_key` = child_subquery_previous_table_item . char_field_name |
-    child_subquery_current_table_item . char_field_name = child_subquery_previous_table_item . `varchar_key` ;
+    child_subquery_current_table_item . `col_varchar_key` = child_subquery_previous_table_item . char_field_name |
+    child_subquery_current_table_item . char_field_name = child_subquery_previous_table_item . `col_varchar_key` ;
 
 single_child_subquery_group_by:
     | | | | | | | | | GROUP BY { child_subquery.$child_subquery_idx."_field1" } ;
@@ -498,11 +498,11 @@ range_predicate1_list:
 
 range_predicate1_item:
          table1 . int_indexed not BETWEEN _tinyint_unsigned[invariant] AND ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
-         table1 . `varchar_key` arithmetic_operator _char[invariant]  |
+         table1 . `col_varchar_key` arithmetic_operator _char[invariant]  |
          table1 . int_indexed not IN (number_list) |
-         table1 . `varchar_key` not IN (char_list) |
+         table1 . `col_varchar_key` not IN (char_list) |
          table1 . `pk` > _tinyint_unsigned[invariant] AND table1 . `pk` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
-         table1 . `int_key` > _tinyint_unsigned[invariant] AND table1 . `int_key` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) ;
+         table1 . `col_int_key` > _tinyint_unsigned[invariant] AND table1 . `col_int_key` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) ;
 
 ################################################################################
 # The range_predicate_2* rules below are in place to ensure we hit the         #
@@ -517,12 +517,12 @@ range_predicate2_list:
 
 range_predicate2_item:
         table1 . `pk` = _tinyint_unsigned |
-        table1 . `int_key` = _tinyint_unsigned |
-        table1 . `varchar_key` = _char |
+        table1 . `col_int_key` = _tinyint_unsigned |
+        table1 . `col_varchar_key` = _char |
         table1 . int_indexed = _tinyint_unsigned |
-        table1 . `varchar_key` = _char |
+        table1 . `col_varchar_key` = _char |
         table1 . int_indexed = existing_table_item . int_indexed |
-        table1 . `varchar_key` = existing_table_item . `varchar_key` ;
+        table1 . `col_varchar_key` = existing_table_item . `col_varchar_key` ;
 
 ################################################################################
 # The number and char_list rules are for creating WHERE conditions that test   #
@@ -758,14 +758,14 @@ _digit:
     1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | _tinyint_unsigned ;
 
 int_field_name:
-    `pk` | `int_key` | `int_nokey` ;
+    `pk` | `col_int_key` | `col_int_nokey` ;
 
 int_indexed:
-    `pk` | `int_key` ;
+    `pk` | `col_int_key` ;
 
 
 char_field_name:
-    `varchar_key` | `varchar_nokey` ;
+    `col_varchar_key` | `col_varchar_nokey` ;
 
 ################################################################################
 # We define LIMIT_rows in this fashion as LIMIT values can differ depending on      #

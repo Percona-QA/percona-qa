@@ -6,9 +6,9 @@ query:
 create_table:
 	CREATE TABLE IF NOT EXISTS table_name (
 		`pk` INTEGER NOT NULL AUTO_INCREMENT ,
-		`int` INTEGER ,
+		`col_int` INTEGER ,
 		PRIMARY KEY ( `pk` )
-	) partition SELECT `pk` , `int_key` FROM source_table ;
+	) partition SELECT `pk` , `col_int_key` FROM source_table ;
 
 drop_table:
 	DROP TABLE IF EXISTS table_name ;
@@ -47,7 +47,7 @@ select:
 	SELECT * FROM table_or_view_name ;
 
 insert:
-	INSERT INTO table_or_view_name ( `int` ) VALUES ( digit ) , ( digit ) , ( digit ) ;
+	INSERT INTO table_or_view_name ( `col_int` ) VALUES ( digit ) , ( digit ) , ( digit ) ;
 
 update:
 	UPDATE table_or_view_name SET field_name = digit WHERE field_name = digit ;
@@ -78,7 +78,7 @@ view_name:
 	letter;
 
 field_name:
-	`pk` | `int` ;
+	`pk` | `col_int` ;
 
 source_table:
 	D | E ;
