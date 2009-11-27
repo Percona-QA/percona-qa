@@ -141,10 +141,10 @@ table:
        { $stack->push(); my $x = $prng->arrayElement($executors->[0]->tables())." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
 
 int_field_name:
-  `pk` | `int_key` | `int` ;
+  `pk` | `col_int_key` | `col_int` ;
 
 int_indexed:
-   `pk` | `int_key` ;
+   `pk` | `col_int_key` ;
 
 table_alias:
   table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 |
