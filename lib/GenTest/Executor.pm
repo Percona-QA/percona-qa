@@ -95,7 +95,15 @@ sub type {
 	} elsif (ref($self) eq "GenTest::Executor::Postgres") {
 		return DB_POSTGRES;
     } elsif (ref($self) eq "GenTest::Executor::Dummy") {
-        return DB_DUMMY;
+        if ($self->dsn =~ m/mysql/) {
+            return DB_MYSQL;
+        } elsif ($self->dsn =~ m/postgres/) {
+            return DB_POSTGRES;
+        } if ($self->dsn =~ m/javadb/) {
+            return DB_JAVADB;
+        } else {
+            return DB_DUMMY;
+        }
 	} else {
 		return DB_UNKNOWN;
 	}
@@ -111,19 +119,7 @@ sub getName {
 sub preprocess {
     my ($self, $query) = @_;
 
-    my $id;
-    if ($self->type() == DB_DUMMY) {
-        if ($self->dsn() =~ m/javadb/i) {
-            $id = $dbid[DB_JAVADB];            
-        } elsif ($self->dsn() =~ m/postgres/i) {
-            $id = $dbid[DB_POSTGRES];            
-        } else {
-            $id = $dbid[DB_DUMMY];            
-        }
-    } else {
-        $id = $dbid[$self->type()];
-    }
-
+    my $id = $dbid[$self->type()];
     
     # Keep if match (+)
 
