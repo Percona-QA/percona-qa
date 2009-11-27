@@ -172,7 +172,7 @@ sub findStatus {
     if ($state eq "22000") {
 	return STATUS_SERVER_CRASHED;
     } else {
-	return $self->SUPER::find_status(@_);
+	return $self->SUPER::findStatus(@_);
     }
 }
 
