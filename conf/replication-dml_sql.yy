@@ -47,6 +47,7 @@
 # When using statement-based replication, the LOAD DATA INFILE statement's CONCURRENT  option is not replicated;
 # that is, LOAD DATA CONCURRENT INFILE is replicated as LOAD DATA INFILE, and LOAD DATA CONCURRENT LOCAL INFILE
 # is replicated as LOAD DATA LOCAL INFILE. The CONCURRENT option is replicated when using row-based replication. (Bug#34628)
+#   --> Use of "concurrent_or_empty" in "dml"
 #-------------------------------
 # If you have databases on the master with character sets that differ from the global character_set_server value, you should
 # design your CREATE TABLE statements so that tables in those databases do not implicitly rely on the database default character set.
@@ -147,6 +148,36 @@
 # My (mleich) markings:
 # X needs sub test
 # I most probably already covered (FIXME: Check in hex dump)
+#------------------------------------------------
+# The following restriction applies to statement-based replication only, not to row-based replication.
+# The GET_LOCK(), RELEASE_LOCK(), IS_FREE_LOCK(), and IS_USED_LOCK() functions that handle user-level locks are replicated
+# without the slave knowing the concurrency context on master. Therefore, these functions should not be used to insert
+# into a master's table because the content on the slave would differ.
+# (For example, do not issue a statement such as INSERT INTO mytable VALUES(GET_LOCK(...)).) 
+#------------------------------------------------
+# http://dev.mysql.com/doc/refman/5.4/en/replication-features-functions.html
+# The USER(), CURRENT_USER(), UUID(), VERSION(), and LOAD_FILE() functions are replicated without change and thus do not
+# work reliably on the slave unless row-based replication is enabled. This is also true for CURRENT_USER. (See Section 16.1.2, “Replication Formats”.)
+#
+# USER(), CURRENT_USER(), and CURRENT_USER are automatically replicated using row-based replication when using MIXED mode, and generate a warning in STATEMENT mode. (Bug#28086)
+# mleich: VERSION() does not generate a warning.
+# the SYSDATE() function is not replication-safe
+# mleich: SYSDATE() does not generate a warning.
+# FOUND_ROWS() and ROW_COUNT() functions are not replicated reliably using statement-based + generate a warning in STATEMENT mode
+# --> "values"
+
+#################################################
+# From the discussion:
+# - If you want to change the replication format, do so outside the boundaries of a transaction. (SBR?)
+#   --> "*_dml_event"
+# - In statement based replication, any non-transactional statement should be either placed outside the boundaries of a transaction or before any transactional statement.
+#   note(mleich): transactional/non-transactional statement refers to the table/tables where something is modified
+#------------------------------------------------
+# "DELAYED" is declared to be unsafe whenever the GLOBAL binlog_format is 'statement'.
+# --> Either
+#     - set GLOBAL binlog_format during query_init, don't switch it later and adjust usage of delayed ?
+#     or
+#     - do not use DELAYED (my choice, mleich)
 
 query:
 	binlog_event ;
@@ -170,11 +201,7 @@ binlog_event:
 set_iso_level:
 	{ return $safety_check } SET global_or_session TRANSACTION ISOLATION LEVEL iso_level ;
 iso_level:
-	# READ UNCOMMITTED , READ COMMITTED are not safe for InnoDB and binary logging in mode STATEMENT
-	# Will the next work like expected?
-	{ if ( $format == 'STATEMENT' ) { return 'REPEATABLE READ' } else { return 'READ UNCOMMITTED' } } |
-	{ if ( $format == 'STATEMENT' ) { return 'SERIALIZABLE'    } else { return 'READ COMMITTED'   } } |
-	REPEATABLE READ | SERIALIZABLE ;
+	{ if ( $unsafe_b == '/*' ) { return $prng->arrayElement(['REPEATABLE READ','SERIALIZABLE']) } else { return $prng->arrayElement(['READ UNCOMMITTED','READ COMMITTED','REPEATABLE READ','SERIALIZABLE']) } } ;
 
 global_or_session:
 	SESSION | GLOBAL ;
@@ -211,21 +238,18 @@ implicit_commit:
 	# LOAD DATA INFILE causes an implicit commit only for tables using the NDB storage engine
 	{ return $safety_check } LOCK TABLE _table WRITE ; { return $safety_check } UNLOCK TABLES ;
 
+# Guarantee that the transaction has ended before we switch the binlog format
 single_dml_event:
-	binlog_format_save ; binlog_format_set ; dml ; binlog_format_restore ;
+	COMMIT ; binlog_format_set ; dml ; xid_event ;
 sequence_dml_event:
-	binlog_format_save ; binlog_format_set ; START TRANSACTION ; dml ; dml ; dml ; dml ;dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ;  COMMIT ; binlog_format_restore ;
+	COMMIT ; binlog_format_set ; dml ; dml ; dml ; dml ;dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; xid_event ;
 
-binlog_format_save:
-	{ return $safety_check } SET @binlog_format_saved = @@binlog_format ;
 binlog_format_set:
 	{ return $safety_check } SET BINLOG_FORMAT = rand_binlog_format ;
-binlog_format_restore:
-	SET BINLOG_FORMAT = @binlog_format_saved ;
 rand_binlog_format:
-	# 'STATEMENT' | 'MIXED' | 'ROW' ;
-	# FIXME: Do we need to adjust $format when executing binlog_format_save or binlog_format_restore ?
-	{ $val = $prng->int(0,2); if ($val == 0) { $format = 'STATEMENT' } elsif ($val == 1) {$format = 'MIXED'} else {$format = 'ROW'} ; return $format} ;
+	STATEMENT { $unsafe_b = '/*' ; $unsafe_e = '*/' ; $safe_b = ''   ; $safe_e = ''   ; return undef } |
+	MIXED     { $unsafe_b = ''   ; $unsafe_e = ''   ; $safe_b = '/*' ; $safe_e = '*/' ; return undef } |
+	ROW       { $unsafe_b = ''   ; $unsafe_e = ''   ; $safe_b = '/*' ; $safe_e = '*/' ; return undef } ;
 
 dml:
 	# LOAD DATA is temporary disabled
@@ -279,9 +303,9 @@ insert:
 	# Insert into one table, search in >= 1 tables
 	INSERT delayed_or_empty INTO _table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 delayed_or_empty:
-	|
+	;
 	# DELAYED is unsafe if binlog format = STATEMENT
-	{ if ( $format == 'STATEMENT' ) { return '' } else { return 'DELAYED' } } ;
+	# See comment on top of file{ return $unsafe_b } DELAYED { return $unsafe_e } ;
 
 table_in_select:
 	_table                                        |
@@ -318,7 +342,27 @@ value:
 	value_string           |
 	value_temporal         |
 	@aux                   |
-	NULL                   ;
+	NULL                   |
+	{ return $unsafe_b } value_unsafe_for_sbr { return $unsafe_e } { return $safe_b } 13 { return $safe_e } ;
+
+value_unsafe_for_sbr:
+# Functions which are unsafe when bin log format = 'STATEMENT'
+# + we get a warning : "Statement may not be safe to log in statement format"
+	# bigint(21)
+	FOUND_ROWS()      |
+	ROW_COUNT()       |
+	# varchar(36) CHARACTER SET utf8
+	UUID()            |
+	# bigint(21) unsigned
+	UUID_SHORT()      |
+	# varchar(77) CHARACTER SET utf8
+	CURRENT_USER()    |
+	USER()            |
+	# _data gets replace by LOAD_FILE( <some path> ) which is unsafe
+	# mleich: I assume this refers to the risk that an input file
+	#         might exist on the master but probably not on the slave.
+	#         This is irrelevant for the usual RQG test configuration. 
+	_data             ;
 
 value_numeric:
 	# We have 'bit' -> bit(1),'bit(4)','bit(64)','tinyint','smallint','mediumint','int','bigint',
@@ -338,11 +382,7 @@ value_numeric:
 	# -2.0E+10   | -2.0E+10            |
 	-2.0E+100  | -2.0E+100             |
 	# int(10)
-	CONNECTION_ID()                    |
-	# FOUND_ROWS() is bigint(21) and unsafe if binlog format = STATEMENT
-	{ if ( $format == 'STATEMENT' ) { return '0' } else { return 'FOUND_ROWS()' } } |
-	# ROW_COUNT() is bigint(21) and unsafe if binlog format = STATEMENT
-	{ if ( $format == 'STATEMENT' ) { return '0' } else { return 'ROW_COUNT()' } } |
+	CONNECTION_ID()   |
 	# Value of the AUTOINCREMENT (per manual only applicable to integer and floating-point types)
 	# column for the last INSERT.
 	LAST_INSERT_ID()       ;
@@ -359,17 +399,9 @@ value_string:
 	_char(1)    | _char(10)    |
 	_varchar(1) | _varchar(10) | _varchar(257)   |
 	# _text(255)  | _text(65535) | _text(16777215) |
-	# mleich: _data causes warnings
-	#         "Statement may not be safe to log in statement format"
-	#         I assume this refers to the risk that an input file
-	#         might exist on the master but probably not on the slave.
-	#         This is irrelevant for our RQG tests.
-	# _data       |
-	_set        |
-	# UUID() is varchar(36) CHARACTER SET utf8 and unsafe if binlog format = STATEMENT
-	{ if ( $format == 'STATEMENT' ) { return 'replacement' } else { return 'UUID()' } } |
-	# USER() is varchar(77) CHARACTER SET utf8 and unsafe if binlog format = STATEMENT
-	{ if ( $format == 'STATEMENT' ) { return 'replacement' } else { return 'USER()' } } ;
+   # The manual says VERSION() is unsafe in SBR. mleich : It does not generate a warning.
+	VERSION()   |
+	_set        ;
 
 value_string_converted:
 	CONVERT( value_string USING character_set );
@@ -385,5 +417,7 @@ value_temporal:
 	#    _time - a time in the range from 00:00:00 to 29:59:59
 	#    _year - a year in the range 2000 to 2010
 	_datetime | _date | _time | _datetime | _timestamp |
+   # The manual says SYSDATE() is unsafe in SBR. mleich : It does not generate a warning.
+	SYSDATE()         |
 	NOW() ;
 
