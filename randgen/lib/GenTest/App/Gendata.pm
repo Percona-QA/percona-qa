@@ -449,10 +449,12 @@ sub run {
                         $quote = 1;
                     } elsif ($field->[FIELD_TYPE] =~ m{blob|text|binary}sio) {
                         $value_type = DATA_BLOB;
+                        $quote = 1;
                     } elsif ($field->[FIELD_TYPE] =~ m{int|float|double|dec|numeric|fixed|bool|bit}sio) {
                         $value_type = DATA_NUMBER;
                     } elsif ($field->[FIELD_TYPE] eq 'enum') {
                         $value_type = DATA_ENUM;
+                        $quote = 1;
                     } else {
                         $value_type = DATA_STRING;
                         $quote = 1;
