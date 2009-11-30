@@ -5,6 +5,7 @@ require Exporter;
 
 use strict;
 use Carp;
+use File::Spec;
 use GenTest;
 use Net::Domain qw(hostfqdn);
 
@@ -72,7 +73,9 @@ sub xml {
     $writer->dataElement('encoding', $encoding);
     $writer->dataElement('timezone', $timezone);
 
+    #
     # <software> ...
+    #
     $writer->startTag('software');
 
     # <os>
@@ -84,13 +87,28 @@ sub xml {
     $writer->dataElement('bit', $osBit);
     $writer->endTag('program');
 
-    # <perl>
+    # <program> perl
     $writer->startTag('program');
     $writer->dataElement('name', 'perl');
+    $writer->dataElement('type', 'perl');
     #$writer->dataElement('version', $^V); # Solaris yields: Code point \u0005 is not a valid character in XML at lib/GenTest/XML/Environment.pm line 45
+    $writer->dataElement('version', $]);
     $writer->dataElement('path', $^X);
     $writer->endTag('program');
 
+    # <program> harness
+    $writer->startTag('program');
+    $writer->dataElement('name', 'Random Query Generator');
+    $writer->dataElement('type', 'harness');
+    my $rqg_path = File::Spec->rel2abs();   # assuming cwd is the randgen dir
+    $writer->dataElement('path', $rqg_path);
+    ## TODO (if applicable):
+    #<xsd:element name="version" type="xsd:string" minOccurs="0" maxOccurs="1" form="qualified"/>
+    #<xsd:element name="revision" type="xsd:int" minOccurs="0" form="qualified"/>
+    #<xsd:element name="commandline_options" type="cassiopeia:Options" minOccurs="0" form="qualified"/>
+    #<xsd:element name="commandline" minOccurs="0" type="xsd:string" form="qualified" /> # alternative to the above
+    $writer->endTag('program');
+    
     $writer->endTag('software');
 
     $writer->endTag('host');

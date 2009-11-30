@@ -33,9 +33,11 @@ sub new {
 
         my $server;
 
+        # TODO: Add support for non-MySQL dsns.
         $server->[BUILDINFO_SERVER_VERSION] = $dbh->selectrow_array('SELECT @@version');
         $server->[BUILDINFO_SERVER_PACKAGE] = $dbh->selectrow_array('SELECT @@version_comment');
-        $server->[BUILDINFO_SERVER_BIT] = $dbh->selectrow_array('SELECT @@version_compile_machine');
+        # According to the schema, bit must be "32" or "64".
+        #$server->[BUILDINFO_SERVER_BIT] = $dbh->selectrow_array('SELECT @@version_compile_machine');
         $server->[BUILDINFO_SERVER_PATH] = $dbh->selectrow_array('SELECT @@basedir');
         $server->[BUILDINFO_SERVER_VARIABLES] = [];
 
@@ -65,7 +67,7 @@ sub xml {
     );
 
     $writer->startTag('product');
-    $writer->dataElement('name','mysql');
+    $writer->dataElement('name','MySQL');
     $writer->startTag('builds');
 
     foreach my $id (0..$#{$buildinfo->[BUILDINFO_DSNS]})
@@ -76,9 +78,15 @@ sub xml {
         $writer->startTag('build', id => $id);
         $writer->dataElement('version', $server->[BUILDINFO_SERVER_VERSION]);
         $writer->dataElement('package', $server->[BUILDINFO_SERVER_PACKAGE]);
-        $writer->dataElement('bit', $server->[BUILDINFO_SERVER_BIT]);
+        #$writer->dataElement('bit', $server->[BUILDINFO_SERVER_BIT]); # Must be 32 or 64
         $writer->dataElement('path', $server->[BUILDINFO_SERVER_PATH]);
-        # <compile_options>
+        ## TODO (if applicable):
+        #<xsd:element name="tree" type="xsd:string" minOccurs="0" form="qualified"/>
+        #<xsd:element name="revision" type="xsd:string" minOccurs="0" form="qualified"/>
+        #<xsd:element name="tag" type="xsd:string" minOccurs="0" form="qualified"/>
+        #<xsd:element name="compile_options" type="cassiopeia:Options" minOccurs="0" form="qualified"/>
+        #<xsd:element name="commandline" type="xsd:string" minOccurs="0" form="qualified" />
+        #<xsd:element name="buildscript" minOccurs="0" type="xsd:string" form="qualified" />
         $writer->endTag('build');
     }
 
@@ -96,6 +104,8 @@ sub xml {
         $writer->dataElement('name', 'mysqld');
         $writer->startTag('commandline_options');
 
+    # TODO: List actual commmand-line options (and config file options /
+    #       RQG-defaults?), not all server variables?
         foreach my $option (@{$server->[BUILDINFO_SERVER_VARIABLES]})
         {
             $writer->startTag('option');

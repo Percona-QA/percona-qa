@@ -76,6 +76,9 @@ sub xml {
     $writer->dataElement('starttime', $report->[XMLREPORT_DATE]);
     $writer->dataElement('endtime', xml_timestamp());
     $writer->dataElement('description', 'http://forge.mysql.com/wiki/RQG');
+    # TODO (if applicable):
+    #<xsd:element name="logdir" type="xsd:string" minOccurs="0" form="qualified"/>
+    #<xsd:element name="attributes" type="cassiopeia:Attributes" minOccurs="0" form="qualified"/> # pairs of (name, value)
     $writer->startTag('tests');
 
     foreach my $test (@{$report->[XMLREPORT_TESTS]}) {
