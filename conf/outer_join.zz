@@ -5,7 +5,7 @@ $tables = {
 };
 
 $fields = {
-        types => [ 'int', 'varchar(10)', 'varchar(1024)', 'time', 'date' ],
+        types => [ 'int', 'varchar(10)', 'varchar(1024)' ],
         indexes => [undef, 'key' ],
         null => [undef ],
         charsets => ['utf8', 'latin1']

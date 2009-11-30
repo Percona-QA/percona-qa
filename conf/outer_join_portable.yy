@@ -1,5 +1,7 @@
 
 query:
+  { @table_alias_set = ("table1", "table1", "table1", "table1", "table2", "table2", "table2", "table3", "table4", "table5", "table1", "table1", "table2") ; "" }
+  { @int_field_set = ("pk", "col_int", "col_int_key") ; "" } 
   { @nonaggregates = () ; $tables = 0 ; $fields = 0 ;  "" } query_type ;
 
 query_type:
@@ -42,8 +44,9 @@ new_select_item:
         nonaggregate_select_item |
 	aggregate_select_item ;
 
+
 nonaggregate_select_item:
-        table_alias . int_field_name AS { my $f = "field".++$fields ; push @nonaggregates , $f ; $f } ;
+        { my $x = $prng->arrayElement(\@table_alias_set)." . ".$prng->arrayElement(\@int_field_set); push @nonaggregates , $x ; $x } AS {my $f = "field".++$fields ; $f };
 
 aggregate_select_item:
         aggregate table_alias . int_field_name ) AS {"field".++$fields } ; 
@@ -86,15 +89,20 @@ optional_group_by:
         | | | | | | | | group_by_clause ;
 
 having_clause:
-	| HAVING having_list;
+  | ;
+
+having_clause_disabled:
+	| | | | HAVING having_list;
 
 having_list:
         having_item |
         having_item |
 	(having_list and_or having_item)  ;
 
+# NOTE:  It would be nice if we also had aggregates in the pool for HAVING clause items, but the code overhead
+# isn't necessarily worth it in the portable grammar - we do test this more thoroughly in the regular version of the grammar
 having_item:
-	existing_select_item comparison_operator _digit ;
+	{ my $y = $prng->arrayElement(/@nonaggregates) ; $y  }  comparison_operator _digit ;
 
 ################################################################################
 # We use the total_order_by rule when using the LIMIT operator to ensure that  #
@@ -102,9 +110,9 @@ having_item:
 ################################################################################
 
 order_by_clause:
-	|
-        ORDER BY total_order_by desc limit |
-	ORDER BY order_by_list ;
+	| | | 
+        ORDER BY total_order_by desc /*+javadb:postgres: NULLS FIRST*/ limit  |
+	ORDER BY order_by_list /*+javadb:postgres: NULLS FIRST*/ ;
 
 total_order_by:
 	{ join(', ', map { "field".$_ } (1..$fields) ) };
