@@ -91,6 +91,8 @@ sub xml {
         $writer->endTag('incidents');
     }
 
+    # TODO: <metrics> (name, value, unit, attributes, timestamp)
+
     $writer->endTag('test');
 
     $writer->end();
