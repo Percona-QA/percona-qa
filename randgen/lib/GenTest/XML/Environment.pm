@@ -24,6 +24,7 @@ our $timezone;
 our $osType;
 our $osVer;
 our $osRev;
+our $osPatch;
 our $osBit;
 
 
@@ -83,7 +84,7 @@ sub xml {
     $writer->dataElement('name', $osType);
     $writer->dataElement('type', 'os');
     $writer->dataElement('version', $osVer);
-    $writer->dataElement('revision', $osRev);
+    #$writer->dataElement('patch', $osPatch); # not in XML schema
     $writer->dataElement('bit', $osBit);
     $writer->endTag('program');
 
@@ -139,11 +140,11 @@ sub getInfo()
         elsif (-e "/etc/debian_version"){$osVer=`cat /etc/debian_version  |head -n 1`;}
         else {$osVer="linux-unknown";}
         $osVer=trim($osVer);
-        if (-e "/etc/SuSE-release"){$osRev=`cat /etc/SuSE-release  |tail -n 1`;}
-        elsif (-e "/etc/redhat-release"){$osRev=`cat /etc/redhat-release  |tail -n 1`;}
-        elsif (-e "/etc/debian_version"){$osRev=`cat /etc/debian_version  |tail -n 1`;}
-        else {$osRev="unknown";}
-        (my $trash, $osRev) = split(/=/,$osRev);
+        if (-e "/etc/SuSE-release"){$osPatch=`cat /etc/SuSE-release  |tail -n 1`;}
+        elsif (-e "/etc/redhat-release"){$osPatch=`cat /etc/redhat-release  |tail -n 1`;}
+        elsif (-e "/etc/debian_version"){$osPatch=`cat /etc/debian_version  |tail -n 1`;}
+        else {$osPatch="unknown";}
+        (my $trash, $osPatch) = split(/=/,$osPatch);
         $osType="Linux";
         $arch=trim(`uname -m`);
         ($trash, $bit) = split(/_/,$arch);
@@ -201,9 +202,10 @@ sub getInfo()
         $kernel = `isainfo -k`;
         $osBit = `isainfo -b`;
         my $trash; # variable functioning as /dev/null
-        ($trash, $trash, my $osRev1, my $osRev2, $trash) = split(/ /, trim(`cat /etc/release | head -1`));
-        my $osRev3 = `uname -v`;
-        $osRev = $osRev1.' '.$osRev2.' '.$osRev3;
+        ($trash, $trash, my $osPatch1, my $osPatch2, $trash) = split(/ /, trim(`cat /etc/release | head -1`));
+        my $osPatch3 = `uname -v`;
+        $osPatch = $osPatch1.' '.$osPatch2.' '.$osPatch3;
+        $osPatch = trim($osPatch);
 
         #Memory
         $memory = `/usr/sbin/prtconf | grep Memory`;

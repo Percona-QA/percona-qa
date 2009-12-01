@@ -71,12 +71,13 @@ sub xml {
 
     $writer->startTag('testsuites');
     $writer->startTag('testsuite', id => 0);
-    $writer->dataElement('name', 'Random Query Generator');
+    $writer->dataElement('name', 'RQG_misc');
     $writer->dataElement('environment_id', 0);
     $writer->dataElement('starttime', $report->[XMLREPORT_DATE]);
     $writer->dataElement('endtime', xml_timestamp());
     $writer->dataElement('description', 'http://forge.mysql.com/wiki/RQG');
     # TODO (if applicable):
+    # test-suite specific descriptions (once we have defined testsuites)?
     #<xsd:element name="logdir" type="xsd:string" minOccurs="0" form="qualified"/>
     #<xsd:element name="attributes" type="cassiopeia:Attributes" minOccurs="0" form="qualified"/> # pairs of (name, value)
     $writer->startTag('tests');
