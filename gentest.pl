@@ -67,10 +67,8 @@ my $opt_result = GetOptions($options,
                             'help',
                             'debug',
                             'rpl_mode=s',
-                            'validators:s',
-                            'reporters:s',
-                            'validator:s@',
-                            'reporter:s@',
+                            'validators:s@',
+                            'reporters:s@',
                             'seed=s',
                             'mask=i',
                             'mask-level=i',
@@ -100,8 +98,8 @@ my $config = GenTest::Properties->new(
               'help',
               'debug',
               'rpl_mode',
-              'validator',
-              'reporter',
+              'validators',
+              'reporters',
               'seed',
               'mask',
               'mask-level',
@@ -188,21 +186,28 @@ $drizzle_only = $drizzle_only && $executors[1]->type == DB_DRIZZLE if $#executor
 my $mysql_only = $executors[0]->type == DB_MYSQL;
 $mysql_only = $mysql_only && $executors[1]->type == DB_MYSQL if $#executors > 0;
 
-if (not defined $config->reporter) {
-    $config->reporter([]);
+if (not defined $config->reporters or $#{$config->reporters} < 0) {
+    $config->reporters([]);
 	if ($mysql_only || $drizzle_only) {
-		$config->reporter(['ErrorLog', 'Backtrace']);
+		$config->reporters(['ErrorLog', 'Backtrace']);
 	}
+} else {
+    ## Remove the "None" reporter
+    foreach my $i (0..$#{$config->reporters}) {
+        delete $config->reporters->[$i] 
+            if $config->reporters->[$i] eq "None" 
+            or $config->reporters->[$i] eq '';
+    }
 }
 
-say("Reporters: ".($#{$config->reporter} > -1 ? join(', ', @{$config->reporter}) : "(none)"));
+say("Reporters: ".($#{$config->reporters} > -1 ? join(', ', @{$config->reporters}) : "(none)"));
 
 my $reporter_manager = GenTest::ReporterManager->new();
 
 if ($mysql_only ) {
 	foreach my $i (0..2) {
 		next if $config->dsn->[$i] eq '';
-		foreach my $reporter (@{$config->reporter}) {
+		foreach my $reporter (@{$config->reporters}) {
 			my $add_result = $reporter_manager->addReporter($reporter, {
 				dsn			=> $config->dsn->[$i],
 				test_start	=> $test_start,
@@ -214,26 +219,32 @@ if ($mysql_only ) {
 	}
 }
 
-
-if (not defined $config->validator) {
-    $config->validator([]);
-	push(@{$config->validator}, 'ErrorMessageCorruption') 
+if (not defined $config->validators or $#{$config->validators} < 0) {
+    $config->validators([]);
+	push(@{$config->validators}, 'ErrorMessageCorruption') 
         if ($mysql_only || $drizzle_only);
     if ($config->dsn->[2] ne '') {
-		push @{$config->validator}, 'ResultsetComparator3';
+		push @{$config->validators}, 'ResultsetComparator3';
     } elsif ($config->dsn->[1] ne '') {
-		push @{$config->validator}, 'ResultsetComparator';
+		push @{$config->validators}, 'ResultsetComparator';
     }
     
-    push @{$config->validator}, 'ReplicationSlaveStatus' 
+    push @{$config->validators}, 'ReplicationSlaveStatus' 
         if $config->rpl_mode ne '' && ($mysql_only || $drizzle_only);
-    push @{$config->validator}, 'MarkErrorLog' 
+    push @{$config->validators}, 'MarkErrorLog' 
         if (defined $config->valgrind) && ($mysql_only || $drizzle_only);
     
-    push @{$config->validator}, 'QueryProperties' 
+    push @{$config->validators}, 'QueryProperties' 
         if $grammar->hasProperties() && ($mysql_only || $drizzle_only);
+} else {
+    ## Remove the "None" validator
+    foreach my $i (0..$#{$config->validators}) {
+        delete $config->validators->[$i] 
+            if $config->validators->[$i] eq "None"
+            or $config->validators->[$i] eq '';
+    }
 }
-say("Validators: ".($config->validator and $#{$config->validator} > -1 ? join(', ', @{$config->validator}) : "(none)"));
+say("Validators: ".($config->validators and $#{$config->validators} > -1 ? join(', ', @{$config->validators}) : "(none)"));
 
 my $filter_obj;
 
@@ -259,8 +270,8 @@ my $test = GenTest::XML::Test->new(
 		grammar => $config->grammar,
 		threads => $config->threads,
 		queries => $config->queries,
-		validators => join (',', @{$config->validator}),
-		reporters => join (',', @{$config->reporter}),
+		validators => join (',', @{$config->validators}),
+		reporters => join (',', @{$config->reporters}),
 		seed => $config->seed,
 		mask => $config->mask,
 		mask_level => $config->property('mask-level'),
@@ -417,7 +428,7 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 	my $mixer = GenTest::Mixer->new(
 		generator => $generator,
 		executors => \@executors,
-		validators => $config->validator,
+		validators => $config->validators,
 		filters => defined $filter_obj ? [ $filter_obj ] : undef
 	);
 
@@ -506,21 +517,16 @@ sub backwardCompatability {
         $options->{dsn} = \@dsns;
     }
     
-    if (defined $options->{reporters}) {
-        if (defined $options->{reporter}) {
-            croak ("Do not combine --reporter and --reporters");
-        } else {
-            $options->{reporter} = [split(/,/,$options->{reporters})];
-            delete $options->{reporters};
-        }
+    
+    if (grep (/,/,@{$options->{reporters}})) {
+        my $newreporters = [];
+        map {push(@$newreporters,split(/,/,$_))} @{$options->{reporters}};
+        $options->{reporters}=$newreporters ;
     }
-    if (defined $options->{validators}) {
-        if (defined $options->{validator}) {
-            croak ("Do not combine --validator and --validators");
-        } else {
-            $options->{validator} = [split(/,/,$options->{validators})];
-            delete $options->{validators};
-        }
+    if (grep (/,/,@{$options->{validators}})) {
+        my $newvalidators = [];
+        map {push(@$newvalidators,split(/,/,$_))} @{$options->{validators}};
+        $options->{validators}=$newvalidators ;
     }
 }
 
