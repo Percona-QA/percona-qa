@@ -213,7 +213,7 @@ if (defined $xml_output) {
 }
 
 my $test = GenTest::XML::Test->new(
-	id => Time::HiRes::time(),
+	id => time(),
 	attributes => {
 		engine => $engine,
 		gendata => $gendata,
