@@ -78,7 +78,11 @@ sub xml {
     if (defined $test->[TEST_ATTRIBUTES]) {
         $writer->startTag('attributes');
         while (my ($name, $value) = each %{$test->[TEST_ATTRIBUTES]}) {
-            $writer->emptyTag('attribute', 'name' => $name, 'value' => $value);
+            $writer->startTag('attribute');
+            $writer->dataElement('name',    $name);
+            $writer->dataElement('value',    $value);
+            $writer->endTag('attribute');
+            #$writer->emptyTag('attribute', 'name' => $name, 'value' => $value);
         }
         $writer->endTag('attributes');
     }
