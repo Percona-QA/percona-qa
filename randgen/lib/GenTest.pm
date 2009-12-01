@@ -95,7 +95,7 @@ sub xml_timestamp {
 	$mday++;
 	$year += 1900;
 	
-	return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year, $mon ,$mday ,$hour, $min, $sec);
+	return sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $year, $mon ,$mday ,$hour, $min, $sec);
 	
 }
 
