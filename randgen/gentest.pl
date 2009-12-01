@@ -214,6 +214,7 @@ if (defined $xml_output) {
 
 my $test = GenTest::XML::Test->new(
 	id => time(),
+	name => 'NO_NAME',  # TODO: Get test name from somewhere (new option?)
 	attributes => {
 		engine => $engine,
 		gendata => $gendata,
