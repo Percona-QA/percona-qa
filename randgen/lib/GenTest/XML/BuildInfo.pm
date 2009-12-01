@@ -93,15 +93,16 @@ sub xml {
 
     $writer->endTag('builds');
 
-    $writer->startTag('binaries');
+    $writer->startTag('binaries'); # --> <software> = <program>
 
     foreach my $id (0..$#{$buildinfo->[BUILDINFO_DSNS]})
     {
         my $server = $buildinfo->[BUILDINFO_SERVERS]->[$id];
         next if not defined $server;
 
-        $writer->startTag('binary');
+        $writer->startTag('program');
         $writer->dataElement('name', 'mysqld');
+        $writer->dataElement('type', 'database');
         $writer->startTag('commandline_options');
 
     # TODO: List actual commmand-line options (and config file options /
@@ -115,7 +116,7 @@ sub xml {
         }
 
         $writer->endTag('commandline_options');
-        $writer->endTag('binary');
+        $writer->endTag('program');
     }
 
     $writer->endTag('binaries');
