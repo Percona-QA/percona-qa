@@ -82,7 +82,6 @@ sub xml {
             $writer->dataElement('name',    $name);
             $writer->dataElement('value',    $value);
             $writer->endTag('attribute');
-            #$writer->emptyTag('attribute', 'name' => $name, 'value' => $value);
         }
         $writer->endTag('attributes');
     }
