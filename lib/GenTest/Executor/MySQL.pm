@@ -446,7 +446,7 @@ sub init {
 
 #	say("Executor initialized, id ".$executor->id());
 
-    $executor->defaultSchema($executor->dbh()->selectrow_array("SELECT DATABASE()"));
+    $executor->defaultSchema($executor->currentSchema());
     say "Default schema: ".$executor->defaultSchema();
 
 	return STATUS_OK;
@@ -789,12 +789,17 @@ sub charsets {
 }
 
 sub currentSchema {
-	my $executor = shift;
+	my ($executor,$schema) = @_;
 
 	return undef if not defined $executor->dbh();
 
+    if (defined $schema) {
+        $executor->execute("USE $schema");
+    }
+    
 	return $executor->dbh()->selectrow_array("SELECT DATABASE()");
 }
+
 
 sub errorType {
 	return undef if not defined $_[0];

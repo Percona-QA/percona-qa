@@ -28,6 +28,8 @@ sub init {
     ## Just to have somthing that is not undefined
 	$executor->setDbh($executor); 
 
+    $executor->defaultSchema("default");
+
 	return STATUS_OK;
 }
 
@@ -86,6 +88,11 @@ sub fields {
     my @f = ("MYFIELD");
 
     return \@f;
+}
+
+sub currentSchema {
+    my ($self,$schema) = @_;
+    return $self->defaultSchema();
 }
 
 1;

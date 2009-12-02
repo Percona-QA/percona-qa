@@ -54,8 +54,7 @@ sub init {
     
     $self->setDbh($dbh);
     
-    $self->defaultSchema($self->dbh()->selectrow_array("VALUES CURRENT SCHEMA"));
-
+    $self->defaultSchema($self->currentSchema());
     say "Default schema: ".$self->defaultSchema();
 
     return STATUS_OK;
@@ -313,11 +312,15 @@ sub fieldsNoPK {
 
 
 sub currentSchema {
-	my $executor = shift;
+	my ($self,$schema) = @_;
 
-	return undef if not defined $executor->dbh();
+	return undef if not defined $self->dbh();
 
-	return $executor->dbh()->selectrow_array("VALUES CURRENT SCHEMA");
+    if (defined $schema) {
+        $self->execute("SET SCHEMA = $schema");
+    }
+    
+	return $self->dbh()->selectrow_array("VALUES CURRENT SCHEMA");
 }
 
 

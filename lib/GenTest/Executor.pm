@@ -11,6 +11,7 @@ require Exporter;
 );
 
 use strict;
+use Carp;
 use GenTest;
 use GenTest::Constants;
 
@@ -166,7 +167,7 @@ sub defaultSchema {
 }
 
 sub currentSchema {
-    return undef;
+    croak "currentSchema not defined for ". (ref $_[0]);
 }
 
 1;
