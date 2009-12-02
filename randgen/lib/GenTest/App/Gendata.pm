@@ -357,14 +357,7 @@ sub run {
     
     foreach my $schema (@schema_perms) {
         $executor->execute("CREATE SCHEMA /*!IF NOT EXISTS*/ $schema");
-        if ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE) {
-            $executor->execute("USE $schema");
-        } elsif ($executor->type == DB_POSTGRES) {
-            $executor->execute("SET search_path TO $schema");
-        } else {
-            ## Ansi
-            $executor->execute("SET SCHEMA = $schema");
-        }
+        $executor->currentSchema($schema);
 
     foreach my $table_id (0..$#tables) {
         my $table = $tables[$table_id];
@@ -547,6 +540,7 @@ sub run {
         }
     }
 
+    $executor->currentSchema(@schema_perms[0]);
     return STATUS_OK;
 }
 
