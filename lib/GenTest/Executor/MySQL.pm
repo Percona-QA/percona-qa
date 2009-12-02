@@ -30,6 +30,7 @@ my @errors = (
 	"Unknown database '.*?'",
 	"Unknown table '.*?'",
 	"Unknown column '.*?'",
+	"Unknown event '.*?'",
 	"Column '.*?' specified twice",
 	"Column '.*?' cannot be null",
 	"Column '.*?' in .*? clause is ambiguous",
@@ -62,7 +63,14 @@ my @errors = (
 	"Duplicate condition information item '.*?'",
 	"Undefined CONDITION: .*?",
 	"Incorrect .*? value '.*?'",
-	"Recursive limit \d+ (as set by the max_sp_recursion_depth variable) was exceeded for routine .*?"
+	"Recursive limit \d+ (as set by the max_sp_recursion_depth variable) was exceeded for routine .*?",
+        "There is no such grant defined for user '.*?' on host '.*?' on table '.*?'",
+	"There is no such grant defined for user '.*?' on host '.*?'",
+	"'.*?' is not a .*?",
+	"Incorrect usage of .*? and .*?",
+	"Can't reopen table: '.*?'",
+	"Trigger's '.*?' is view or temporary table",
+	"Column '.*?' is not updatable"
 );
 
 my @patterns = map { qr{$_}i } @errors;
@@ -142,6 +150,19 @@ use constant	ER_TRG_ALREADY_EXISTS		=> 1359;
 use constant	ER_WRONG_FIELD_WITH_GROUP	=> 1055;
 use constant	ER_NON_GROUPING_FIELD_USED	=> 1463;
 use constant	ER_NON_UNIQ_ERROR		=> 1052;
+use constant	ER_EVENT_DOES_NOT_EXIST		=> 1539;
+use constant 	ER_NONEXISTING_GRANT		=> 1141;
+use constant	ER_NONEXISTING_TABLE_GRANT	=> 1147;
+use constant	ER_WRONG_AUTO_KEY		=> 1075;
+use constant	ER_SP_DUP_PARAM			=> 1330;
+use constant	ER_WRONG_OBJECT			=> 1347;
+use constant	ER_WRONG_USAGE			=> 1221;
+use constant	ER_VIEW_SELECT_DERIVED		=> 1349;
+use constant	ER_DB_CREATE_EXISTS		=> 1007;
+use constant	ER_CANT_REOPEN_TABLE		=> 1137;
+use constant	ER_TRG_ON_VIEW_OR_TEMP_TABLE	=> 1361;
+use constant	ER_VIEW_SELECT_TMPTABLE		=> 1352;
+use constant	ER_NONUPDATEABLE_COLUMN		=> 1348;
 
 use constant	ER_PARTITION_MGMT_ON_NONPARTITIONED	=> 1505;
 use constant	ER_DROP_PARTITION_NON_EXISTENT		=> 1507;
@@ -153,6 +174,7 @@ use constant	ER_ONLY_ON_RANGE_LIST_PARTITION		=> 1512;
 use constant	ER_NO_PARTITION_FOR_GIVEN_VALUE		=> 1526;
 use constant	ER_PARTITION_MAXVALUE_ERROR		=> 1481;
 use constant	ER_WRONG_PARTITION_NAME			=> 1567;
+use constant	ER_NO_PARTS_ERROR			=> 1504;
 
 use constant	ER_NON_INSERTABLE_TABLE			=> 1471;
 use constant	ER_NON_UPDATABLE_TABLE			=> 1288;
@@ -205,7 +227,8 @@ use constant  	ER_CANT_UPDATE_WITH_READLOCK => 1223 ;
 
 # Storage engine failures
 
-use constant	ER_GET_ERRNO		=> 1030;
+use constant	ER_GET_ERRNO			=> 1030;
+use constant	ER_UNKNOWN_STORAGE_ENGINE 	=> 1286;
 
 # Database corruption
 
@@ -217,7 +240,9 @@ use constant	ER_UNEXPECTED_EOF	=> 1039;
 use constant	ER_SP_PROC_TABLE_CORRUPT=> 1457;
 # Backup
 
-use constant	ER_BACKUP_SEND_DATA	=> 1670;
+use constant	ER_BACKUP_NOT_ENABLED	=> 1789;
+use constant	ER_BACKUP_SEND_DATA1	=> 1670;
+use constant	ER_BACKUP_SEND_DATA2	=> 1687;
 
 # Out of disk space, quotas, etc.
 
@@ -229,9 +254,13 @@ use constant	ER_OUT_OF_RESOURCES	=> 1041;
 use constant	ER_CANT_CREATE_THREAD	=> 1135;
 use constant	ER_STACK_OVERRUN	=> 1119;
 
-use constant   ER_SERVER_SHUTDOWN      => 1053;
+use constant	ER_SERVER_SHUTDOWN      => 1053;
+
+use constant	ER_FEATURE_DISABLED	=> 1289;
+use constant	ER_OPTION_PREVENTS_STATEMENT	=> 1290;
 
 my %err2type = (
+
 	ER_GET_ERRNO()		=> STATUS_SEMANTIC_ERROR,
 
 	ER_CONNECTION_ERROR()	=> STATUS_SERVER_CRASHED,
@@ -290,6 +319,19 @@ my %err2type = (
 	ER_WRONG_FIELD_WITH_GROUP()	=> STATUS_SEMANTIC_ERROR,
 	ER_NON_GROUPING_FIELD_USED()	=> STATUS_SEMANTIC_ERROR,
 	ER_NON_UNIQ_ERROR()		=> STATUS_SEMANTIC_ERROR,
+	ER_EVENT_DOES_NOT_EXIST()	=> STATUS_SEMANTIC_ERROR,
+	ER_NONEXISTING_GRANT()		=> STATUS_SEMANTIC_ERROR,
+	ER_NONEXISTING_TABLE_GRANT()	=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_AUTO_KEY()		=> STATUS_SEMANTIC_ERROR,
+	ER_SP_DUP_PARAM()		=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_OBJECT()		=> STATUS_SEMANTIC_ERROR,
+	ER_WRONG_USAGE()		=> STATUS_SEMANTIC_ERROR,
+	ER_VIEW_SELECT_DERIVED()	=> STATUS_SEMANTIC_ERROR,
+	ER_DB_CREATE_EXISTS()		=> STATUS_SEMANTIC_ERROR,
+	ER_CANT_REOPEN_TABLE()		=> STATUS_SEMANTIC_ERROR,
+	ER_TRG_ON_VIEW_OR_TEMP_TABLE()	=> STATUS_SEMANTIC_ERROR,
+	ER_VIEW_SELECT_TMPTABLE()	=> STATUS_SEMANTIC_ERROR,
+	ER_NONUPDATEABLE_COLUMN()	=> STATUS_SEMANTIC_ERROR,
 
 	ER_PARTITION_MGMT_ON_NONPARTITIONED()	=> STATUS_SEMANTIC_ERROR,
 	ER_DROP_LAST_PARTITION()		=> STATUS_SEMANTIC_ERROR,
@@ -301,6 +343,7 @@ my %err2type = (
 	ER_DROP_PARTITION_NON_EXISTENT()	=> STATUS_SEMANTIC_ERROR,
 	ER_PARTITION_MAXVALUE_ERROR()		=> STATUS_SEMANTIC_ERROR,
 	ER_WRONG_PARTITION_NAME()		=> STATUS_SEMANTIC_ERROR,
+	ER_NO_PARTS_ERROR()			=> STATUS_SEMANTIC_ERROR,
 
 	ER_NON_INSERTABLE_TABLE()		=> STATUS_SEMANTIC_ERROR,
 	ER_NON_UPDATABLE_TABLE()		=> STATUS_SEMANTIC_ERROR,
@@ -350,9 +393,10 @@ my %err2type = (
 	ER_CRASHED1()		=> STATUS_DATABASE_CORRUPTION,
 	ER_CRASHED2()		=> STATUS_DATABASE_CORRUPTION,
 	ER_UNEXPECTED_EOF()	=> STATUS_DATABASE_CORRUPTION,
-	ER_SP_PROC_TABLE_CORRUPT() => STATUS_DATABASE_CORRUPTION,
+#	ER_SP_PROC_TABLE_CORRUPT() => STATUS_DATABASE_CORRUPTION,	# this error is bogus due to bug # 47870
 
-	ER_BACKUP_SEND_DATA()	=> STATUS_BACKUP_FAILURE,
+	ER_BACKUP_SEND_DATA1()	=> STATUS_BACKUP_FAILURE,
+	ER_BACKUP_SEND_DATA2()	=> STATUS_BACKUP_FAILURE,
 
 	ER_CANT_CREATE_THREAD()	=> STATUS_ENVIRONMENT_FAILURE,
 	ER_OUT_OF_RESOURCES()	=> STATUS_ENVIRONMENT_FAILURE,
@@ -361,6 +405,10 @@ my %err2type = (
 	ER_DISK_FULL()          => STATUS_ENVIRONMENT_FAILURE,
 	ER_OUTOFMEMORY()	=> STATUS_ENVIRONMENT_FAILURE,
 	ER_STACK_OVERRUN()	=> STATUS_ENVIRONMENT_FAILURE,
+	ER_UNKNOWN_STORAGE_ENGINE() => STATUS_ENVIRONMENT_FAILURE,
+	ER_BACKUP_NOT_ENABLED()	=> STATUS_ENVIRONMENT_FAILURE,
+	ER_FEATURE_DISABLED()	=> STATUS_ENVIRONMENT_FAILURE,
+	ER_OPTION_PREVENTS_STATEMENT() => STATUS_ENVIRONMENT_FAILURE,
 
 	ER_SERVER_SHUTDOWN()    => STATUS_SERVER_KILLED
 );
@@ -397,6 +445,9 @@ sub init {
 	");
 
 #	say("Executor initialized, id ".$executor->id());
+
+    $executor->defaultSchema($executor->currentSchema());
+    say "Default schema: ".$executor->defaultSchema();
 
 	return STATUS_OK;
 }
@@ -737,13 +788,18 @@ sub charsets {
 	");
 }
 
-sub database {
-	my $executor = shift;
+sub currentSchema {
+	my ($executor,$schema) = @_;
 
 	return undef if not defined $executor->dbh();
 
+    if (defined $schema) {
+        $executor->execute("USE $schema");
+    }
+    
 	return $executor->dbh()->selectrow_array("SELECT DATABASE()");
 }
+
 
 sub errorType {
 	return undef if not defined $_[0];

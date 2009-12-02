@@ -46,10 +46,10 @@ int_update:
  int_update_query ; int_select_count ;
 
 int_update_query:
-  UPDATE _table[invariant] SET `int_signed` = _digit[invariant] WHERE special_where_list ; 
+  UPDATE _table[invariant] SET `col_int_signed` = _digit[invariant] WHERE special_where_list ; 
 
 int_select_count:
-  SELECT COUNT(*) FROM _table[invariant] WHERE `int_signed` = _digit[invariant];
+  SELECT COUNT(*) FROM _table[invariant] WHERE `col_int_signed` = _digit[invariant];
 
 char_update:
   utf8_char_update | utf8_char_update2 | utf8_char_update3 ;
@@ -58,28 +58,28 @@ utf8_char_update:
   utf8_char_update_query ; utf8_char_select_count ;
 
 utf8_char_update_query:
-  UPDATE _table[invariant] SET `varchar_256_utf8` = _char[invariant] WHERE special_where_list;
+  UPDATE _table[invariant] SET `col_varchar_256_utf8` = _char[invariant] WHERE special_where_list;
 
 utf8_char_select_count:
-  SELECT COUNT(*) FROM _table[invariant] WHERE `varchar_256_utf8` = _char[invariant];
+  SELECT COUNT(*) FROM _table[invariant] WHERE `col_varchar_256_utf8` = _char[invariant];
 
 utf8_char_update2:
   utf8_char_update_query2 ; utf8_char_select_count2 ;
 
 utf8_char_update_query2:
-  UPDATE _table[invariant] SET `varchar_512_utf8` = _char[invariant] WHERE special_where_list;
+  UPDATE _table[invariant] SET `col_varchar_512_utf8` = _char[invariant] WHERE special_where_list;
 
 utf8_char_select_count2:
-  SELECT COUNT(*) FROM _table[invariant] WHERE `varchar_512_utf8` = _char[invariant];
+  SELECT COUNT(*) FROM _table[invariant] WHERE `col_varchar_512_utf8` = _char[invariant];
 
 utf8_char_update3:
   utf8_char_update_query3 ; utf8_char_select_count3 ;
 
 utf8_char_update_query3:
-  UPDATE _table[invariant] SET `varchar_5_utf8` = _char[invariant] WHERE special_where_list;
+  UPDATE _table[invariant] SET `col_varchar_5_utf8` = _char[invariant] WHERE special_where_list;
 
 utf8_char_select_count3:
-  SELECT COUNT(*) FROM _table[invariant] WHERE `varchar_5_utf8` = _char[invariant];
+  SELECT COUNT(*) FROM _table[invariant] WHERE `col_varchar_5_utf8` = _char[invariant];
 
 
 delete:
@@ -89,7 +89,7 @@ int_delete:
   int_delete_query ; int_select_count ;
 
 int_delete_query:
-  DELETE FROM _table[invariant] WHERE `int_signed` = _digit[invariant] AND special_where_list ;
+  DELETE FROM _table[invariant] WHERE `col_int_signed` = _digit[invariant] AND special_where_list ;
 
 special_where_list:
   not ( special_where_item ) | not ( special_where_item ) |
@@ -154,37 +154,37 @@ where_item:
   table1 . utf8_char_field comparison_operator existing_table_item . utf8_char_field  |
   table1 . latin1_char_field comparison_operator existing_table_item . latin1_char_field  |
   table1 . cp932_char_field comparison_operator existing_table_item . cp932_char_field  | 
-  table1 . `date` comparison_operator _date  |
-  table1 . `datetime` comparison_operator _datetime  |
+  table1 . `col_date` comparison_operator _date  |
+  table1 . `col_datetime` comparison_operator _datetime  |
   table1 . date_field comparison_operator _date  |
   table1 . char_field comparison_operator _char  |
   table1 . int_field  comparison_operator _digit  ;
 
 partitioned_int_field:
-    `int_signed` ;
+    `col_int_signed` ;
 
 partitioned_char_field:
-    `varchar_5_utf8`    | `varchar_5_cp932`    | `varchar_5_latin1`    |
-    `varchar_256_utf8` | `varchar_256_cp932` | `varchar_256_latin1` |
-    `varchar_512_utf8` | `varchar_512_cp932` | `varchar_512_latin1` ;
+    `col_varchar_5_utf8`    | `col_varchar_5_cp932`    | `col_varchar_5_latin1`    |
+    `col_varchar_256_utf8` | `col_varchar_256_cp932` | `col_varchar_256_latin1` |
+    `col_varchar_512_utf8` | `col_varchar_512_cp932` | `col_varchar_512_latin1` ;
 
 int_field:
-    `int_signed` | `int_signed_key` ;
+    `col_int_signed` | `col_int_signed_key` ;
 
 utf8_char_field:
-  `varchar_5_utf8` | `varchar_5_utf8_key` | `varchar_256_utf8` | `varchar_256_utf8_key` | `varchar_512_utf8` | `varchar_512_utf8_key` ;
+  `col_varchar_5_utf8` | `col_varchar_5_utf8_key` | `col_varchar_256_utf8` | `col_varchar_256_utf8_key` | `col_varchar_512_utf8` | `col_varchar_512_utf8_key` ;
 
 latin1_char_field:
-  `varchar_5_latin1`  | `varchar_5_latin1_key` | `varchar_256_latin1` | `varchar_256_latin1_key` | `varchar_512_latin1` | `varchar_512_latin1_key`;
+  `col_varchar_5_latin1`  | `col_varchar_5_latin1_key` | `col_varchar_256_latin1` | `col_varchar_256_latin1_key` | `col_varchar_512_latin1` | `col_varchar_512_latin1_key`;
 
 cp932_char_field:
-  `varchar_5_cp932` | `varchar_5_cp932_key` | `varchar_256_cp932` | `varchar_256_cp932_key` | `varchar_512_cp932` | `varchar_512_cp932_key` ; 
+  `col_varchar_5_cp932` | `col_varchar_5_cp932_key` | `col_varchar_256_cp932` | `col_varchar_256_cp932_key` | `col_varchar_512_cp932` | `col_varchar_512_cp932_key` ; 
 
 char_field:
   utf8_char_field | latin1_char_field | cp932_char_field ;
 
 date_field:
-  `datetime` | `date_key` | `datetime_key` | `date` ; 
+  `col_datetime` | `col_date_key` | `col_datetime_key` | `col_date` ; 
 
 non_int_field:
   char_field | date_field ;
@@ -290,12 +290,12 @@ existing_select_item:
 	{ "field".$prng->int(1,$fields) };
 
 int_indexed:
-    `int_signed_key` ;
+    `col_int_signed_key` ;
 
 char_indexed:
-    `varchar_256_utf8_key` | `varchar_512_utf8_key` |
-    `varchar_256_latin1_key` | `varchar_512_latin1_key` |
-    `varchar_256_cp932_key` | `varchar_512_cp932_key` ;
+    `col_varchar_256_utf8_key` | `col_varchar_512_utf8_key` |
+    `col_varchar_256_latin1_key` | `col_varchar_512_latin1_key` |
+    `col_varchar_256_cp932_key` | `col_varchar_512_cp932_key` ;
 
 comparison_operator:
 	= | > | < | != | <> | <= | >= ;

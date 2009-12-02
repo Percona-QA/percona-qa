@@ -11,6 +11,7 @@ require Exporter;
 );
 
 use strict;
+use Carp;
 use GenTest;
 use GenTest::Constants;
 
@@ -21,6 +22,7 @@ use constant EXECUTOR_ROW_COUNTS	=> 3;
 use constant EXECUTOR_EXPLAIN_COUNTS	=> 4;
 use constant EXECUTOR_EXPLAIN_QUERIES	=> 5;
 use constant EXECUTOR_ERROR_COUNTS	=> 6;
+use constant EXECUTOR_DEFAULT_SCHEMA => 7;
 
 1;
 
@@ -50,7 +52,7 @@ sub newFromDSN {
 	} elsif ($dsn =~ m/^dbi:Pg:/i) {
 		require GenTest::Executor::Postgres;
 		return GenTest::Executor::Postgres->new(dsn => $dsn);
-    } elsif ($dsn eq "dummy") {
+    } elsif ($dsn =~ m/^dummy/) {
 		require GenTest::Executor::Dummy;
 		return GenTest::Executor::Dummy->new(dsn => $dsn);
 	} else {
@@ -95,7 +97,15 @@ sub type {
 	} elsif (ref($self) eq "GenTest::Executor::Postgres") {
 		return DB_POSTGRES;
     } elsif (ref($self) eq "GenTest::Executor::Dummy") {
-        return DB_DUMMY;
+        if ($self->dsn =~ m/mysql/) {
+            return DB_MYSQL;
+        } elsif ($self->dsn =~ m/postgres/) {
+            return DB_POSTGRES;
+        } if ($self->dsn =~ m/javadb/) {
+            return DB_JAVADB;
+        } else {
+            return DB_DUMMY;
+        }
 	} else {
 		return DB_UNKNOWN;
 	}
@@ -112,7 +122,6 @@ sub preprocess {
     my ($self, $query) = @_;
 
     my $id = $dbid[$self->type()];
-
     
     # Keep if match (+)
 
@@ -147,6 +156,18 @@ sub findStatus {
     } else {
         return STATUS_UNKNOWN_ERROR;
     }
+}
+
+sub defaultSchema {
+    my ($self, $schema) = @_;
+    if (defined $schema) {
+        $self->[EXECUTOR_DEFAULT_SCHEMA] = $schema;
+    }
+    return $self->[EXECUTOR_DEFAULT_SCHEMA];
+}
+
+sub currentSchema {
+    croak "currentSchema not defined for ". (ref $_[0]);
 }
 
 1;

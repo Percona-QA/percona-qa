@@ -12,8 +12,8 @@ query_item:
 	select | dml ;
 
 select:
-        SELECT DISTINCT /* RESULTSET_ZERO_OR_ONE_ROWS _quid */ `int_key` FROM _table ;
+        SELECT DISTINCT /* RESULTSET_ZERO_OR_ONE_ROWS _quid */ `col_int_key` FROM _table ;
 
 dml:
-	UPDATE _table SET `int_key` = _int_unsigned |
+	UPDATE _table SET `col_int_key` = _int_unsigned |
 	DELETE FROM _table LIMIT 1 ;

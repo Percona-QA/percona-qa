@@ -54,11 +54,11 @@ serial_log_event:
 ;
 
 blob_delete:
-	DELETE FROM _table WHERE `int` = CONNECTION_ID() LIMIT 1 ;
+	DELETE FROM _table WHERE `col_int` = CONNECTION_ID() LIMIT 1 ;
 
 blob_update:
-	INSERT INTO _table ( `int` , `blob` ) VALUES ( CONNECTION_ID() , _data ) |
-	UPDATE _table SET `blob` = _data WHERE `int` = CONNECTION_ID() LIMIT _digit ;
+	INSERT INTO _table ( `col_int` , `blob` ) VALUES ( CONNECTION_ID() , _data ) |
+	UPDATE _table SET `blob` = _data WHERE `col_int` = CONNECTION_ID() LIMIT _digit ;
 
 checkpoint: ;
 
@@ -66,10 +66,10 @@ commit:
 	START TRANSACTION | COMMIT | COMMIT | COMMIT | COMMIT ;
 
 create_index:
-	ALTER TABLE _table ADD key_type _letter ( `int` ) |
-	ALTER TABLE _table ADD key_type _letter ( `int` ) |
-	ALTER TABLE _table ADD key_type _letter ( `char_255` ) |
-	ALTER TABLE _table ADD key_type _letter ( `char_255` ) ;
+	ALTER TABLE _table ADD key_type _letter ( `col_int` ) |
+	ALTER TABLE _table ADD key_type _letter ( `col_int` ) |
+	ALTER TABLE _table ADD key_type _letter ( `col_char_255` ) |
+	ALTER TABLE _table ADD key_type _letter ( `col_char_255` ) ;
 
 key_type:
 	INDEX | UNIQUE | PRIMARY KEY ;
@@ -104,14 +104,14 @@ free_page:
 	TRUNCATE TABLE _letter ;
 
 index_add:
-	INSERT INTO _table ( `int` ) VALUES ( _digit ) |
-	INSERT INTO _table ( `char_255` ) VALUES ( _english ) ;
+	INSERT INTO _table ( `col_int` ) VALUES ( _digit ) |
+	INSERT INTO _table ( `col_char_255` ) VALUES ( _english ) ;
 
 index_delete:
 	DELETE FROM _table LIMIT 1;
 
 index_page:
-	INSERT INTO _table ( `int` ) SELECT `int` FROM _table LIMIT _tinyint_unsigned ;
+	INSERT INTO _table ( `col_int` ) SELECT `col_int` FROM _table LIMIT _tinyint_unsigned ;
 
 index_update: ;
 
@@ -149,21 +149,21 @@ session: ;
 switch_log: ;
 
 update_blob:
-	UPDATE _table SET `blob` = _data WHERE `int` = CONNECTION_ID() LIMIT _digit |
-	INSERT INTO _table (`int`, `blob`) VALUES ( CONNECTION_ID(), _data ) ;
+	UPDATE _table SET `blob` = _data WHERE `col_int` = CONNECTION_ID() LIMIT _digit |
+	INSERT INTO _table (`col_int`, `blob`) VALUES ( CONNECTION_ID(), _data ) ;
 
 update_index:
-	INSERT INTO _table (`int`) VALUES ( _digit ) ;
+	INSERT INTO _table (`col_int`) VALUES ( _digit ) ;
 
 update_records:
-	UPDATE _table SET `int` = `int` + 1 LIMIT 1 ;
+	UPDATE _table SET `col_int` = `col_int` + 1 LIMIT 1 ;
 
 version: ;
 
 word_update: ;
 
 insert_big_record:
-	INSERT INTO _table ( `char_255` ) VALUES ( REPEAT('x', 255) ) ;
+	INSERT INTO _table ( `col_char_255` ) VALUES ( REPEAT('x', 255) ) ;
 
 file_name:
 	''f1'' | ''f2'' | ''f3'' | ''f4'' | ''f5'' | ''f6'' | ''f7'' | ''f8'' | ''f9'' | ''f10'' |

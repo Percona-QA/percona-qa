@@ -142,7 +142,7 @@ field_name:
         int_field_name ;
 
 int_field_name:
-        `pk` | `int_key` | `int_nokey` ;
+        `pk` | `col_int_key` | `col_int_nokey` ;
 
 value:
         _digit ; 

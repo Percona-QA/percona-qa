@@ -3,8 +3,10 @@ use lib "$ENV{RQG_HOME}/lib";
 use lib 'randgen/lib';
 
 use strict;
+use Carp;
 use Cwd;
 use DBI;
+use File::Find;
 use GenTest::Random;
 use POSIX;
 use Sys::Hostname;
@@ -120,6 +122,38 @@ sub pick_random_port_range_id {
 }
 
 #
+# Searches recursively for a given file name under the given directory.
+# Default top search directory is $basedir.
+#
+# Arg1 (mandatory): file name (excluding path)
+# Arg2 (optional) : directory where search will start
+#
+# Returns full path to the directory where the file resides, if found.
+# If more than one matching file is found, the directory of the first one found
+# in a depth-first search will be returned.
+# Returns undef if none is found.
+#
+sub findDirectory {
+	my ($plugin_name, $dir) = @_;
+	if (not defined $plugin_name) {
+		carp("File name required as argument to subroutine findDirectory()");
+	}
+	if (not defined $dir) {
+		$dir = $basedir;
+	}
+	my $fullPath;	# the result
+	find(sub {
+			# This subroutine is called for each file and dir it finds.
+			# According to docs it does depth-first search.
+			if ($_ eq $plugin_name) {
+				$fullPath = $File::Find::dir if not defined $fullPath;
+			}
+			# any return value is ignored
+		}, $dir);
+	return $fullPath;
+}
+
+#
 # Get the bzr branch ID from the pushbuild2 database (internal), based on the
 # branch name ($tree variable).
 #
@@ -177,6 +211,7 @@ print(" - Local time  : ".localtime()."\n");
 print(" - Hostname    : ".hostname()."\n");
 print(" - PID         : $$\n");
 print(" - Working dir : ".cwd()."\n");
+print(" - PATH        : ".$ENV{'PATH'}."\n");
 print(" - Script arguments:\n");
 print("       basedir = $basedir\n");
 print("       vardir  = $vardir\n");
@@ -426,17 +461,25 @@ if ($test =~ m{falcon_.*transactions}io ) {
 # Keep the following tests in alphabetical order (based on letters in regex)
 # for easy lookup.
 #
-} elsif ($test =~ m{^backup_.*?_simple$}io) {
+} elsif ($test =~ m{innodb_limit}io ) {
+	# TEMP test for testing this script (innodb defaults, plugin, etc.)
+	$command = '
+	        --grammar='.$conf.'/falcon_limit.yy
+		--duration=100
+	';
+} elsif ($test =~ m{^backup_.*?_simple}io) {
 	$command = '
 		--grammar='.$conf.'/backup_simple.yy
 		--reporters=Deadlock,ErrorLog,Backtrace
+		--mysqld=--mysql-backup
 	';
-} elsif ($test =~ m{^backup_.*?_consistency$}io) {
+} elsif ($test =~ m{^backup_.*?_consistency}io) {
 	$command = '
 		--gendata='.$conf.'/invariant.zz
 		--grammar='.$conf.'/invariant.yy
 		--validator=Invariant
 		--reporters=Deadlock,ErrorLog,Backtrace,BackupAndRestoreInvariant,Shutdown
+		--mysqld=--mysql-backup
 		--duration=600
 		--threads=25
 	';
@@ -449,33 +492,65 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/maria.zz
 		--grammar='.$conf.'/maria_dml_alter.yy
 	';
-} elsif ($test =~ m{^info_schema$}io ) {
+} elsif ($test =~ m{^info_schema}io ) {
 	$command = '
 		--grammar='.$conf.'/information_schema.yy
 		--threads=10
 		--duration=300
+		--mysqld=--log-output=file
 	';
 } elsif ($test =~ m{mostly_selects}io ) {
 	$command = '
 		--gendata='.$conf.'/maria.zz
 		--grammar='.$conf.'/maria_mostly_selects.yy
 	';
-} elsif ($test =~ m{^partition_ddl$}io ) {
+} elsif ($test =~ m{^mdl_stability}io ) {
+	$command = '
+		--grammar='.$conf.'/metadata_stability.yy
+		--gendata='.$conf.'/metadata_stability.zz
+		--validator=SelectStability,QueryProperties
+		--engine=Innodb
+		--mysqld=--innodb
+		--mysqld=--default-storage-engine=Innodb
+		--mysqld=--transaction-isolation=SERIALIZABLE
+		--mysqld=--innodb-flush-log-at-trx-commit=2
+		--mysqld=--table-lock-wait-timeout=1
+		--mysqld=--innodb-lock-wait-timeout=1
+		--mysqld=--log-output=file
+		--queries=1M
+		--duration=600
+	';
+} elsif ($test =~ m{^mdl_stress}io ) {
+	# Seems like --gendata=conf/WL5004_data.zz unexplicably causes more test
+	# failures, so let's leave this out of PB2 for the time being (pstoev).
+	#
+	# InnoDB should be loaded but the test is not per se for InnoDB, hence
+	# no "innodb" in test name.
+	$command = '
+		--grammar=conf/WL5004_sql.yy
+		--threads=10
+		--queries=1M
+		--duration=1800
+		--mysqld=--innodb
+	';
+} elsif ($test =~ m{^partition_ddl}io ) {
 	$command = '
 		--grammar='.$conf.'/partitions-ddl.yy
+		--mysqld=--innodb
 		--threads=1
 		--queries=100K
 	';
-} elsif ($test =~ m{partn_pruning$}io ) {
+} elsif ($test =~ m{partn_pruning(|.valgrind)$}io ) {
 	# reduced duration to half since gendata phase takes longer in this case
 	$command = '
 		--gendata='.$conf.'/partition_pruning.zz
 		--grammar='.$conf.'/partition_pruning.yy
+		--mysqld=--innodb
 		--threads=1
 		--queries=100000
 		--duration=300
 	';
-} elsif ($test =~ m{^partn_pruning_compare_50$}io) {
+} elsif ($test =~ m{^partn_pruning_compare_50}io) {
 	$command = '
 	--gendata='.$conf.'/partition_pruning.zz
 	--grammar='.$conf.'/partition_pruning.yy
@@ -483,13 +558,14 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	--basedir2='.$basedirRelease50.'
 	--vardir1='.$vardir.'/vardir-bzr
 	--vardir2='.$vardir.'/vardir-5.0
+	--mysqld=--innodb
 	--validators=ResultsetComparator
 	--reporters=Deadlock,ErrorLog,Backtrace
 	--threads=1
 	--queries=10000
 	--duration=300
 	';
-} elsif ($test =~ m{^rpl_.*?_simple$}io) {
+} elsif ($test =~ m{^rpl_.*?_simple}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
 	# produces are known replication issues documented in the manual).
 	$command = '
@@ -504,8 +580,9 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--gendata='.$conf.'/replication_single_engine_pk.zz
 		--grammar='.$conf.'/replication.yy
 		--mysqld=--log-output=table,file
+		--mysqld=--innodb
 	';
-} elsif ($test =~ m{^rpl_semisync$}io) {
+} elsif ($test =~ m{^rpl_semisync}io) {
 	# --rpl_mode=default is used because the .YY file changes the binary log format dynamically.
 	# --threads=1 is used to avoid any replication failures due to concurrent DDL.
 	# --validator= line will remove the default replication Validator, which would otherwise
@@ -513,17 +590,37 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	#   of this particular test.
 
 	# Plugin file names and location vary between platforms.
-	# TODO: Also support simple build from source (current paths are
-	#       adjusted for PB2 builds and 'make install' locations).
+	# See http://bugs.mysql.com/bug.php?id=49170 for details.
+	# We search for the respective file names under basedir (recursively).
+	# The first matching file that is found is used.
+	# We assume that both master and slave plugins are in the same dir.
+	# Unix file name extenstions other than .so may exist, but support for this
+	# is not yet implemented here.
 	my $plugin_dir;
 	my $plugins;
 	if ($windowsOS) {
-		$plugin_dir="$basedir\\plugin\\semisync\\RelWithDebInfo";
-		$plugins = 'rpl_semi_sync_master=semisync_master.dll;rpl_semi_sync_slave=semisync_slave.dll';
+		my $master_plugin_name = "semisync_master.dll";
+		$plugin_dir=findDirectory($master_plugin_name);
+		if (not defined $plugin_dir) {
+			carp "Unable to find semisync plugin $master_plugin_name!";
+		}
+		$plugins = 'rpl_semi_sync_master='.$master_plugin_name.';rpl_semi_sync_slave=semisync_slave.dll';
 	} else {
 		# tested on Linux and Solaris
-		$plugin_dir="$basedir/lib/mysql/plugin";
-		$plugins = 'rpl_semi_sync_master=libsemisync_master.so:rpl_semi_sync_slave=libsemisync_slave.so';
+		my $prefix;	# for Bug#48351
+		my $master_plugin_name = "semisync_master.so";
+		$plugin_dir=findDirectory($master_plugin_name);
+		if (not defined $plugin_dir) {
+			# Until fix for Bug#48351 is widespread it may happen
+			# that the Unix plugin names are prefixed with "lib".
+			# Remove this when no longer needed.
+			$prefix = 'lib';
+			$plugin_dir=findDirectory($prefix.$master_plugin_name);
+			if (not defined $plugin_dir) {
+				carp "Unable to find semisync plugin! ($master_plugin_name or $prefix$master_plugin_name)";
+			}
+		}
+		$plugins = 'rpl_semi_sync_master='.$prefix.$master_plugin_name.':rpl_semi_sync_slave='.$prefix.'semisync_slave.so';
 	}
 	$command = '
 		--gendata='.$conf.'/replication_single_engine.zz
@@ -534,8 +631,9 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--mysqld=--plugin-load='.$plugins.'
 		--mysqld=--rpl_semi_sync_master_enabled=1
 		--mysqld=--rpl_semi_sync_slave_enabled=1
+		--mysqld=--innodb
 		--reporters=ReplicationSemiSync,Deadlock,Backtrace,ErrorLog
-		--validator=
+		--validators=None
 		--threads=1
 		--duration=300
 		--queries=1M
@@ -580,6 +678,10 @@ if ($command =~ m{--reporters}io) {
 	$command = $command.' --reporters=Deadlock,ErrorLog,Backtrace,Shutdown';
 }
 
+#
+# Other defaults...
+#
+
 if ($command !~ m{--duration}io ) {
 	# Set default duration for tests where duration is not specified.
 	# In PB2 we cannot run tests for too long since there are many branches
@@ -608,8 +710,29 @@ if (($command !~ m{--(engine|default-storage-engine)}io) && (defined $engine)) {
 	$command = $command." --engine=$engine";
 }
 
+# if test name contains "innodb", add the --mysqld=--innodb and --engine=innodb 
+# options if they are not there already.
+if ( ($test =~ m{innodb}io) ){
+	if ($command !~ m{mysqld=--innodb}io){
+		$command = $command.' --mysqld=--innodb';
+	}
+	if ($command !~ m{engine=innodb}io){
+		$command = $command.' --engine=innodb';
+	}
+}
+
 if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
 	$command = $command." --rpl_mode=$rpl_mode";
+}
+
+# if test name contains (usually ends with) "valgrind", add the valgrind option to runall.pl
+if ($test =~ m{valgrind}io){
+	print("Detected that this test should enable valgrind instrumentation.\n");
+	if (system("valgrind --version")) {
+		print("  *** valgrind executable not found! Not setting --valgrind flag.\n");
+	} else {
+		$command = $command.' --valgrind';
+	}
 }
 	
 $command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;

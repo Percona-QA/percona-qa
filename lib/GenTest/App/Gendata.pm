@@ -4,6 +4,7 @@ package GenTest::App::Gendata;
 
 use strict;
 use DBI;
+use Carp;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Random;
@@ -42,7 +43,7 @@ use constant DATA_TEMPORAL	=> 3;
 use constant DATA_ENUM		=> 4;
 
 
-use constant GD_CONFIG => 0;
+use constant GD_SPEC => 0;
 use constant GD_DEBUG => 1;
 use constant GD_DSN => 2;
 use constant GD_SEED => 3;
@@ -56,7 +57,7 @@ sub new {
     my $class = shift;
     
     my $self = $class->SUPER::new({
-        'config_file' => GD_CONFIG,
+        'spec_file' => GD_SPEC,
         'debug' => GD_DEBUG,
         'dsn' => GD_DSN,
         'seed' => GD_SEED,
@@ -74,8 +75,8 @@ sub new {
 }
 
 
-sub config_file {
-return $_[0]->[GD_CONFIG];
+sub spec_file {
+return $_[0]->[GD_SPEC];
 }
 
 
@@ -123,7 +124,7 @@ sub server_id {
 sub run {
     my ($self) = @_;
 
-    my $config_file = $self->config_file();
+    my $spec_file = $self->spec_file();
     
     my $prng = GenTest::Random->new(
         seed => $self->seed() eq 'time' ? time() : $self->seed(),
@@ -134,22 +135,36 @@ sub run {
     $executor->init();
 
 #  
-# The configuration file is actually a perl script, so we read it by eval()-ing it
+# The specification file is actually a perl script, so we read it by
+# eval()-ing it
 #  
     
-    my ($tables, $fields, $data); 			# Configuration as read from the config file.
-    my (@table_perms, @field_perms, @data_perms);	# Configuration after defaults have been substituted
+    my ($tables, $fields, $data, $schemas);  # Specification as read
+                                             # from the spec file.
+    my (@table_perms, @field_perms, @data_perms, @schema_perms);	# Specification
+                                                                    # after
+                                                                    # defaults
+                                                                    # have
+                                                                    # been
+                                                                    # substituted
 
-    if ($config_file ne '') {
-        open(CONF , $config_file) or die "unable to open config file '$config_file': $!";
-        read(CONF, my $config_text, -s $config_file);
-        eval ($config_text);
-        die "Unable to load $config_file: $@" if $@;
+    if ($spec_file ne '') {
+        open(CONF , $spec_file) or croak "unable to open specification file '$spec_file': $!";
+        read(CONF, my $spec_text, -s $spec_file);
+        eval ($spec_text);
+        croak "Unable to load $spec_file: $@" if $@;
     }
 
     $executor->execute("SET SQL_MODE= 'NO_ENGINE_SUBSTITUTION'") if $executor->type == DB_MYSQL;
-    $executor->execute("SET STORAGE_ENGINE='".$self->engine()."'") if $self->engine() ne '';
-    
+    $executor->execute("SET STORAGE_ENGINE='".$self->engine()."'") 
+        if $self->engine() ne '' and ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE);
+
+    if (defined $schemas) {
+        push(@schema_perms, @$schemas);
+    } else {
+        push(@schema_perms, $executor->defaultSchema());
+    }
+
     $table_perms[TABLE_ROW] = $tables->{rows} || (defined $self->rows() ? [ $self->rows() ] : undef ) || [0, 1, 2, 10, 100];
     $table_perms[TABLE_ENGINE] = $tables->{engines} || [ $self->engine() ];
     $table_perms[TABLE_CHARSET] = $tables->{charsets} || [ undef ];
@@ -164,6 +179,12 @@ sub run {
     $table_perms[TABLE_NAMES] = $tables->{names} || [ ];
     
     $field_perms[FIELD_TYPE] = $fields->{types} || [ 'int', 'varchar', 'date', 'time', 'datetime' ];
+    if (not ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE or $executor->type==DB_DUMMY)) {
+        my @datetimestuff = grep(/date|time/,@{$fields->{types}});
+        if ($#datetimestuff > -1) {
+            croak "Dates and times are severly broken. Cannot be used for other than MySQL/Drizzle";
+        }
+    }
     $field_perms[FIELD_NULLABILITY] = $fields->{null} || $fields->{nullability} || [ undef ];
     $field_perms[FIELD_SIGN] = $fields->{sign} || [ undef ];
     $field_perms[FIELD_INDEX] = $fields->{indexes} || $fields->{keys} || [ undef, 'KEY' ];
@@ -241,9 +262,9 @@ sub run {
         my @field_copy = @$field;
         
 #	$field_copy[FIELD_INDEX] = 'nokey' if $field_copy[FIELD_INDEX] eq '';
-
+        
         my $field_name;
-        $field_name = join('_', grep { $_ ne '' } @field_copy);
+        $field_name = "col_".join('_', grep { $_ ne '' } @field_copy);
         $field_name =~ s{[^A-Za-z0-9]}{_}sgio;
         $field_name =~ s{ }{_}sgio;
         $field_name =~ s{_+}{_}sgio;
@@ -265,8 +286,8 @@ sub run {
             $field_copy[FIELD_TYPE] .= ' (1)';
         }
         
-        $field_copy[FIELD_CHARSET] = "CHARACTER SET ".$field_copy[FIELD_CHARSET] if $field_copy[FIELD_CHARSET] ne '';
-        $field_copy[FIELD_COLLATION] = "COLLATE ".$field_copy[FIELD_COLLATION] if $field_copy[FIELD_COLLATION] ne '';
+        $field_copy[FIELD_CHARSET] = "/*+mysql: CHARACTER SET ".$field_copy[FIELD_CHARSET]."*/" if $field_copy[FIELD_CHARSET] ne '';
+        $field_copy[FIELD_COLLATION] = "/*mysql: COLLATE ".$field_copy[FIELD_COLLATION]."*/" if $field_copy[FIELD_COLLATION] ne '';
         
         my $key_len;
         
@@ -292,7 +313,7 @@ sub run {
             $field->[FIELD_SQL] .= ' NULL DEFAULT 0';
         }
     }
-    
+
     foreach my $table_id (0..$#tables) {
         my $table = $tables[$table_id];
         my @table_copy = @$table;
@@ -334,6 +355,10 @@ sub run {
         $table->[TABLE_SQL] = join(' ' , grep { $_ ne '' } @table_copy);
     }	
     
+    foreach my $schema (@schema_perms) {
+        $executor->execute("CREATE SCHEMA /*!IF NOT EXISTS*/ $schema");
+        $executor->currentSchema($schema);
+
     foreach my $table_id (0..$#tables) {
         my $table = $tables[$table_id];
         my @table_copy = @$table;
@@ -345,7 +370,8 @@ sub run {
             } @fields ;
         }
         
-        say("# Creating table $table_copy[TABLE_NAME] .");
+        say("# Creating ".$executor->getName().
+            " table $schema.$table_copy[TABLE_NAME] .");
         
         if ($table_copy[TABLE_PK] ne '') {
             my $pk_field;
@@ -367,7 +393,7 @@ sub run {
         # Compose the CREATE TABLE statement by joining all fields and indexes and appending the table options
         
         my @field_sqls = join(",\n", map { $_->[FIELD_SQL] } @fields_copy);
-
+        
         my @index_fields;
         if ($executor->type() == DB_MYSQL || $executor->type() == DB_DRIZZLE) {
             @index_fields = grep { $_->[FIELD_INDEX_SQL] ne '' } @fields_copy;
@@ -378,9 +404,21 @@ sub run {
         
         my $index_sqls = $#index_fields > -1 ? join(",\n", map { $_->[FIELD_INDEX_SQL] } @index_fields) : undef;
         
-        $executor->execute("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n\t", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
-
-
+        $executor->execute("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n/*Indices*/\n", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
+        
+        if (not ($executor->type() == DB_MYSQL || 
+                 $executor->type() == DB_DRIZZLE)) {
+            @index_fields = grep { $_->[FIELD_INDEX_SQL] ne '' } @fields_copy;
+            foreach my $idx (@index_fields) {
+                my $key_sql = $idx->[FIELD_INDEX_SQL];
+                if ($key_sql =~ m/^key \((`[a-z0-9_]*)/) {
+                    $executor->execute("CREATE INDEX idx_".
+                                       $table->[TABLE_NAME]."_$1".
+                                       " ON ".$table->[TABLE_NAME]."($1)");
+                }
+            }
+        }
+        
         
         
         if (defined $table_perms[TABLE_VIEWS]) {
@@ -390,9 +428,13 @@ sub run {
             }
         }
         
-        if ($table->[TABLE_ROW] > 1000) {
-            $executor->execute("SET AUTOCOMMIT=OFF");
-            $executor->execute("START TRANSACTION");
+        if ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE) {
+            $executor->execute("ALTER TABLE `$table->[TABLE_NAME]` DISABLE KEYS");
+            
+            if ($table->[TABLE_ROW] > 100) {
+                $executor->execute("SET AUTOCOMMIT=OFF");
+                $executor->execute("START TRANSACTION");
+            }
         }
         
         my @row_buffer;
@@ -400,10 +442,14 @@ sub run {
             my @data;
             foreach my $field (@fields_copy) {
                 my $value;
-                
+                my $quote = 0;
                 if ($field->[FIELD_INDEX] eq 'primary key') {
                     if ($field->[FIELD_TYPE] =~ m{auto_increment}sio) {
-                        $value = undef;		# Trigger auto-increment by inserting NULLS for PK
+                        if ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE) {
+                            $value = undef;		# Trigger auto-increment by inserting NULLS for PK
+                        } else {
+                            $value = 'DEFAULT';
+                        }
                     } else {	
                         $value = $row_id;	# Otherwise, insert sequential numbers
                     }
@@ -412,14 +458,18 @@ sub run {
                     
                     if ($field->[FIELD_TYPE] =~ m{date|time|year}sio) {
                         $value_type = DATA_TEMPORAL;
+                        $quote = 1;
                     } elsif ($field->[FIELD_TYPE] =~ m{blob|text|binary}sio) {
                         $value_type = DATA_BLOB;
+                        $quote = 1;
                     } elsif ($field->[FIELD_TYPE] =~ m{int|float|double|dec|numeric|fixed|bool|bit}sio) {
                         $value_type = DATA_NUMBER;
                     } elsif ($field->[FIELD_TYPE] eq 'enum') {
                         $value_type = DATA_ENUM;
+                        $quote = 1;
                     } else {
                         $value_type = DATA_STRING;
+                        $quote = 1;
                     }
                     
                     if ($field->[FIELD_NULLABILITY] eq 'not null') {
@@ -429,7 +479,7 @@ sub run {
                         @possible_values = @{$data_perms[$value_type]};
                     }
                     
-                    die("# Unable to generate data for field '$field->[FIELD_TYPE] $field->[FIELD_NULLABILITY]'") if $#possible_values == -1;
+                    croak("# Unable to generate data for field '$field->[FIELD_TYPE] $field->[FIELD_NULLABILITY]'") if $#possible_values == -1;
                     
                     my $possible_value = $prng->arrayElement(\@possible_values);
                     $possible_value = $field->[FIELD_TYPE] if not defined $possible_value;
@@ -441,19 +491,21 @@ sub run {
                     }
                 }
                 
-                # Blob values are generated as LOAD_FILE , so do not quote them.
+                ## Quote if necessary
                 if ($value =~ m{load_file}sio) {
                     push @data, defined $value ? $value : "NULL";
-                } else {
+                } elsif ($quote) {
                     $value =~ s{'}{\\'}sgio;
                     push @data, defined $value ? "'$value'" : "NULL";
+                } else {
+                    push @data, defined $value ? $value : "NULL";
                 }	
             }
             
             push @row_buffer, " (".join(', ', @data).") ";
             
             if (
-                (($row_id % 10) == 0) ||
+                (($row_id % 50) == 0) ||
                 ($row_id == $table->[TABLE_ROW])
                 ) {
                 $executor->execute("INSERT /*! IGNORE */ INTO $table->[TABLE_NAME] VALUES ".join(', ', @row_buffer));
@@ -465,10 +517,17 @@ sub run {
                 say("# Progress: loaded $row_id out of $table->[TABLE_ROW] rows");
             }
         }
-        $executor->execute("COMMIT");
+        if ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE) {
+            $executor->execute("COMMIT");
+            
+            $executor->execute("ALTER TABLE `$table->[TABLE_NAME]` ENABLE KEYS");
+        }
+    }
     }
     
-    $executor->execute("COMMIT");
+    if ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE) {
+        $executor->execute("COMMIT");
+    }
     
     if (
         (defined $table_perms[TABLE_MERGES]) && 
@@ -481,6 +540,7 @@ sub run {
         }
     }
 
+    $executor->currentSchema(@schema_perms[0]);
     return STATUS_OK;
 }
 

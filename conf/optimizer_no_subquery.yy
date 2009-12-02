@@ -139,12 +139,12 @@ join_condition_list:
 join_condition_item:
      current_table_item . int_indexed = previous_table_item . int_field_name  |
      current_table_item . int_field_name = previous_table_item . int_indexed  |
-     current_table_item . `varchar_key` = previous_table_item . char_field_name |
-     current_table_item . char_field_name = previous_table_item . `varchar_key` |
+     current_table_item . `col_varchar_key` = previous_table_item . char_field_name |
+     current_table_item . char_field_name = previous_table_item . `col_varchar_key` |
      current_table_item . int_indexed arithmetic_operator previous_table_item . int_field_name  |
      current_table_item . int_field_name arithmetic_operator previous_table_item . int_indexed  |
-     current_table_item . `varchar_key` arithmetic_operator previous_table_item . char_field_name |
-     current_table_item . char_field_name arithmetic_operator previous_table_item . `varchar_key`;
+     current_table_item . `col_varchar_key` arithmetic_operator previous_table_item . char_field_name |
+     current_table_item . char_field_name arithmetic_operator previous_table_item . `col_varchar_key`;
 
 
 left_right:
@@ -200,11 +200,11 @@ range_predicate1_list:
 
 range_predicate1_item:
          table1 . int_indexed not BETWEEN _tinyint_unsigned[invariant] AND ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
-         table1 . `varchar_key` arithmetic_operator _char[invariant]  |
+         table1 . `col_varchar_key` arithmetic_operator _char[invariant]  |
          table1 . int_indexed not IN (number_list) |
-         table1 . `varchar_key` not IN (char_list) |
+         table1 . `col_varchar_key` not IN (char_list) |
          table1 . `pk` > _tinyint_unsigned[invariant] AND table1 . `pk` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
-         table1 . `int_key` > _tinyint_unsigned[invariant] AND table1 . `int_key` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) ;
+         table1 . `col_int_key` > _tinyint_unsigned[invariant] AND table1 . `col_int_key` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) ;
 
 ################################################################################
 # The range_predicate_2* rules below are in place to ensure we hit the         #
@@ -219,12 +219,12 @@ range_predicate2_list:
 
 range_predicate2_item:
         table1 . `pk` = _tinyint_unsigned |
-        table1 . `int_key` = _tinyint_unsigned |
-        table1 . `varchar_key` = _char |
+        table1 . `col_int_key` = _tinyint_unsigned |
+        table1 . `col_varchar_key` = _char |
         table1 . int_indexed = _tinyint_unsigned |
-        table1 . `varchar_key` = _char |
+        table1 . `col_varchar_key` = _char |
         table1 . int_indexed = existing_table_item . int_indexed |
-        table1 . `varchar_key` = existing_table_item . `varchar_key` ;
+        table1 . `col_varchar_key` = existing_table_item . `col_varchar_key` ;
 
 ################################################################################
 # The number and char_list rules are for creating WHERE conditions that test   #
@@ -408,14 +408,14 @@ _digit:
 
 
 int_field_name:
-    `pk` | `int_key` | `int_nokey` ;
+    `pk` | `col_int_key` | `col_int_nokey` ;
 
 int_indexed:
-    `pk` | `int_key` ;
+    `pk` | `col_int_key` ;
 
 
 char_field_name:
-    `varchar_key` | `varchar_nokey` ;
+    `col_varchar_key` | `col_varchar_nokey` ;
 
 ################################################################################
 # We define LIMIT_rows in this fashion as LIMIT values can differ depending on      #

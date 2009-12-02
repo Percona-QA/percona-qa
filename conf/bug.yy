@@ -12,9 +12,9 @@ query_item:
         select | dml ;
 
 select:
-        SELECT /* RESULTSET_SAME_DATA_IN_EVERY_ROW _quid */ `int_key` FROM _table ;
+        SELECT /* RESULTSET_SAME_DATA_IN_EVERY_ROW _quid */ `col_int_key` FROM _table ;
 
 dml:
-        UPDATE _table SET `int_key` = _int_unsigned |
+        UPDATE _table SET `col_int_key` = _int_unsigned |
         DELETE FROM _table LIMIT 1 ;
 

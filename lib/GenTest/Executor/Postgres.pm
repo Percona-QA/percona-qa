@@ -34,14 +34,18 @@ sub init {
     
 	$self->setDbh($dbh);	
 
+    $self->defaultSchema($self->currentSchema());
+    say "Default schema: ".$self->defaultSchema();
+
     return STATUS_OK;
 }
 
 my %caches;
 
 my %acceptedErrors = (
-    "42P01" => 1 # DROP TABLE on non-existing table is accepted since
+    "42P01" => 1,# DROP TABLE on non-existing table is accepted since
                  # tests rely on non-standard MySQL DROP IF EXISTS;
+    "42P06" => 1 # Schema already exists
     );
 
 sub execute {
@@ -172,7 +176,7 @@ sub findStatus {
     if ($state eq "22000") {
 	return STATUS_SERVER_CRASHED;
     } else {
-	return $self->SUPER::find_status(@_);
+	return $self->SUPER::findStatus(@_);
     }
 }
 
@@ -248,6 +252,18 @@ sub fieldsNoPk {
     
     return $caches{$cache_key};
     
+}
+
+sub currentSchema {
+	my ($self,$schema) = @_;
+
+	return undef if not defined $self->dbh();
+    
+    if (defined $schema) {
+        $self->execute("SET search_path TO $schema");
+    }
+    
+	return $self->dbh()->selectrow_array("SELECT current_schema()");
 }
 
 1;

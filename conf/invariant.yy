@@ -115,7 +115,7 @@ body:
 # therefore same table) as @val is selected from. Hence the use of
 # $tbl_cnst for this part of the script.
 delete_update:
-  prepare_delete ; UPDATE $tbl_cnst SET `int_not_null`=`int_not_null`+1 WHERE pk=@delpk ; SELECT @val:=`int_not_null` FROM $tbl_cnst WHERE pk=@delpk ; SET @val=@val-1 ; update_low_randtbl ; DELETE from $tbl_cnst WHERE pk=@delpk ; check_val_not_null ;
+  prepare_delete ; UPDATE $tbl_cnst SET `col_int_not_null`=`col_int_not_null`+1 WHERE pk=@delpk ; SELECT @val:=`col_int_not_null` FROM $tbl_cnst WHERE pk=@delpk ; SET @val=@val-1 ; update_low_randtbl ; DELETE from $tbl_cnst WHERE pk=@delpk ; check_val_not_null ;
 
 # Insert a record with int_not_null=@val and delete it. This will make
 # the transaction abort if @val=null
@@ -143,7 +143,7 @@ check_val_not_null:
 # therefore same table) as @val is selected from. Hence the use of
 # $tbl_cnst for this part of the script.
 delete_insert_two:
-  prepare_delete ; UPDATE $tbl_cnst SET `int_not_null`=`int_not_null`+1 WHERE pk=@delpk ; SELECT @val:=`int_not_null`-1 FROM $tbl_cnst WHERE pk=@delpk ; insert_two_valsum ; DELETE from $tbl_cnst WHERE pk=@delpk ; 
+  prepare_delete ; UPDATE $tbl_cnst SET `col_int_not_null`=`col_int_not_null`+1 WHERE pk=@delpk ; SELECT @val:=`col_int_not_null`-1 FROM $tbl_cnst WHERE pk=@delpk ; insert_two_valsum ; DELETE from $tbl_cnst WHERE pk=@delpk ; 
 
 # Perform neccessary steps before a record is deleted. 
 # RETURN $tbl_cnst
@@ -171,7 +171,7 @@ insert_one_randtbl:
 
 # Add one record with account balance defined by @val into $tbl
 insert_one:
-  INSERT INTO $tbl(`int_not_null`) VALUES (@val) ;
+  INSERT INTO $tbl(`col_int_not_null`) VALUES (@val) ;
 
 # Update two records by withdrawing from one account and depositing
 # into the other. The amount moved between accounts is chosen
@@ -197,12 +197,12 @@ update_sixteen_sleep:
 # Update one of the records with lowest account balance by adding @val to it
 # Requirement for use: @val must have an integer value
 update_low_randtbl:
-  pick_tbl ; set_updpk_low ; UPDATE $tbl SET `int_not_null`=`int_not_null`+(@val) WHERE pk=@updpk ;
+  pick_tbl ; set_updpk_low ; UPDATE $tbl SET `col_int_not_null`=`col_int_not_null`+(@val) WHERE pk=@updpk ;
   
 # Update one of the records with highest account balance by adding @val to it
 # Requirement for use: @val must have an integer value
 update_high_randtbl:
-  pick_tbl ; set_updpk_high ; UPDATE $tbl SET `int_not_null`=`int_not_null`+(@val) WHERE pk=@updpk ;
+  pick_tbl ; set_updpk_high ; UPDATE $tbl SET `col_int_not_null`=`col_int_not_null`+(@val) WHERE pk=@updpk ;
 
 update_two_scan:
   SET @val=prime ; update_low_randtbl_scan ; SET @val=-@val ; update_high_randtbl_scan ;
@@ -211,15 +211,15 @@ update_two_scan:
 # @val to it. The update has to perform a table scan to find the
 # record to update.
 update_low_randtbl_scan:
-  pick_tbl ; UPDATE $tbl SET `int_not_null`=`int_not_null`+@val WHERE pk IN (SELECT pk FROM (SELECT pk FROM $tbl WHERE `int_not_null` IN (SELECT MIN(`int_not_null`) FROM $tbl WHERE pk<=upd_range)) AS tmp1) ORDER BY rand() LIMIT 1;
+  pick_tbl ; UPDATE $tbl SET `col_int_not_null`=`col_int_not_null`+@val WHERE pk IN (SELECT pk FROM (SELECT pk FROM $tbl WHERE `col_int_not_null` IN (SELECT MIN(`col_int_not_null`) FROM $tbl WHERE pk<=upd_range)) AS tmp1) ORDER BY rand() LIMIT 1;
 
 # Update one for the records with highest account balance by adding
 # @val to it. The update has to perform a table scan to find the
 # record to update.
 update_high_randtbl_scan:
-  pick_tbl ; UPDATE $tbl SET `int_not_null`=`int_not_null`+@val WHERE pk IN (SELECT pk FROM (SELECT pk FROM $tbl WHERE `int_not_null` IN (SELECT MAX(`int_not_null`) FROM $tbl WHERE pk<=upd_range)) AS tmp1) ORDER BY rand() LIMIT 1;
+  pick_tbl ; UPDATE $tbl SET `col_int_not_null`=`col_int_not_null`+@val WHERE pk IN (SELECT pk FROM (SELECT pk FROM $tbl WHERE `col_int_not_null` IN (SELECT MAX(`col_int_not_null`) FROM $tbl WHERE pk<=upd_range)) AS tmp1) ORDER BY rand() LIMIT 1;
 # Before "where pk<=" was moved inside innermost select, the subselect would sometimes return an empty set
-#  pick_tbl ; UPDATE $tbl SET `int_not_null`=`int_not_null`+@val WHERE pk IN (SELECT pk FROM (SELECT pk FROM $tbl WHERE pk<=upd_range AND `int_not_null` IN (SELECT MAX(`int_not_null`) FROM $tbl)) AS tmp1) ORDER BY rand() LIMIT 1;
+#  pick_tbl ; UPDATE $tbl SET `col_int_not_null`=`col_int_not_null`+@val WHERE pk IN (SELECT pk FROM (SELECT pk FROM $tbl WHERE pk<=upd_range AND `col_int_not_null` IN (SELECT MAX(`col_int_not_null`) FROM $tbl)) AS tmp1) ORDER BY rand() LIMIT 1;
 
 # Get one primary key of an existing record in the update range of the records
 # RETURN @updpk
@@ -230,15 +230,15 @@ set_updpk_high:
   SELECT @updpk:=`pk` FROM (pk_upd_high) AS tbl ;
 
 pk_upd_low:
-  SELECT `pk` FROM $tbl WHERE `pk` <= upd_range ORDER BY `int_not_null` ASC LIMIT prime ;
+  SELECT `pk` FROM $tbl WHERE `pk` <= upd_range ORDER BY `col_int_not_null` ASC LIMIT prime ;
 
 pk_upd_high:
-  SELECT `pk` FROM $tbl WHERE `pk` <= upd_range ORDER BY `int_not_null` DESC LIMIT prime ;
+  SELECT `pk` FROM $tbl WHERE `pk` <= upd_range ORDER BY `col_int_not_null` DESC LIMIT prime ;
 
 # Get one primary key of an existing record in the insert/delete range of the records
 # RETURN @delpk
 set_delpk:
-  SELECT @delpk:=`pk` FROM $tbl_cnst WHERE `pk` > upd_range ORDER BY `int_not_null` DESC LIMIT prime ;
+  SELECT @delpk:=`pk` FROM $tbl_cnst WHERE `pk` > upd_range ORDER BY `col_int_not_null` DESC LIMIT prime ;
 
 # Pick a random table to operate on
 # RETURN $tbl
