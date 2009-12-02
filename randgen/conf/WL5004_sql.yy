@@ -1345,6 +1345,7 @@ lock_share:
 
 
 ########## INSERT ####################
+# FIXME: INSERT IGNORE is missing
 insert:
 	insert_normal | insert_normal | insert_normal | insert_normal | insert_with_sleep ;
 insert_normal:
@@ -1410,6 +1411,7 @@ traditional_mode:
 
 
 ########## DELETE ####################
+# FIXME: DELETE IGNORE is missing
 delete:
 	delete_normal | delete_normal | delete_normal | delete_normal | delete_with_sleep ;
 delete_normal:
