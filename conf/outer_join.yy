@@ -1,3 +1,24 @@
+################################################################################
+# outer_join.yy
+# Purpose:  Random Query Generator grammar for testing larger (6 - 10 tables) JOINs
+# Tuning:   Please tweak the rule table_or_joins ratio of table:join for larger joins
+#           NOTE:  be aware that larger (15-20 tables) queries can take far too 
+#                  long to run to be of much interest for fast, automated testing
+#
+# Notes:    This grammar is designed to be used with gendata=conf/outer_join.zz
+#           It can be altered, but one will likely need field names
+#           Additionally, it is not recommended to use the standard RQG-produced
+#           tables as they way we pick tables can result in the use of
+#           several large tables that will bog down a generated query
+#           
+#           Please rely largely on the _portable variant of this grammar if
+#           doing 3-way comparisons as it has altered code that will produce
+#           more standards-compliant queries for use with other DBMS's
+#  
+#           We keep the grammar here as it is in order to also test certain
+#           MySQL-specific syntax variants.
+################################################################################
+
 
 query:
   { @nonaggregates = () ; $tables = 0 ; $fields = 0 ;  "" } query_type ;
