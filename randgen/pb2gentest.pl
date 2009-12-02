@@ -590,9 +590,12 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	#   of this particular test.
 
 	# Plugin file names and location vary between platforms.
+	# See http://bugs.mysql.com/bug.php?id=49170 for details.
 	# We search for the respective file names under basedir (recursively).
 	# The first matching file that is found is used.
 	# We assume that both master and slave plugins are in the same dir.
+	# Unix file name extenstions other than .so may exist, but support for this
+	# is not yet implemented here.
 	my $plugin_dir;
 	my $plugins;
 	if ($windowsOS) {
