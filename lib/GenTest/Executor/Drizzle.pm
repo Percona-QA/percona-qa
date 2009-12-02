@@ -249,6 +249,9 @@ sub init {
 
 	$executor->setDbh($dbh);
 
+    $executor->defaultSchema($executor->dbh()->selectrow_array("SELECT DATABASE()"));
+    say "Default schema: ".$executor->defaultSchema();
+
 	say("Executor initialized, id ".$executor->id());
 
 	return STATUS_OK;
@@ -586,7 +589,7 @@ sub charsets {
 	");
 }
 
-sub database {
+sub currentSchema {
 	my $executor = shift;
 
 	return undef if not defined $executor->dbh();

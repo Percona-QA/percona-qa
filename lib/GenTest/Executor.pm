@@ -21,6 +21,7 @@ use constant EXECUTOR_ROW_COUNTS	=> 3;
 use constant EXECUTOR_EXPLAIN_COUNTS	=> 4;
 use constant EXECUTOR_EXPLAIN_QUERIES	=> 5;
 use constant EXECUTOR_ERROR_COUNTS	=> 6;
+use constant EXECUTOR_DEFAULT_SCHEMA => 7;
 
 1;
 
@@ -154,6 +155,18 @@ sub findStatus {
     } else {
         return STATUS_UNKNOWN_ERROR;
     }
+}
+
+sub defaultSchema {
+    my ($self, $schema) = @_;
+    if (defined $schema) {
+        $self->[EXECUTOR_DEFAULT_SCHEMA] = $schema;
+    }
+    return $self->[EXECUTOR_DEFAULT_SCHEMA];
+}
+
+sub currentSchema {
+    return undef;
 }
 
 1;
