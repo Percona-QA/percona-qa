@@ -1,6 +1,35 @@
+################################################################################
+# partition_pruning.yy
+#
+# Purpose:  RQG grammar for testing partitioning by COLUMN_LIST
+#           , introduced in WL#3352
+#
+# NOTES:    * Must be used with conf/partition_pruning.zz as the gendata
+#             configuration file
+#           * Designed for:
+#             ** server-server comparisons, particularly
+#                comparing a version of MySQL without partitioning
+#                (like 5.0) to one that has partition_pruning
+#             ** valgrind runs
+#             ** Single-server stress / endurance testing
+#            
+#           * Will NOT work if the server has partitioning, but
+#             not partitioning by COLUMN_LIST and
+#           * Basically, the grammar was designed to ensure
+#             that no result-set differences occur via the 
+#             server-server compare and to look for crashes
+#             and memory leaks
+#           * the gendata file, conf/partition_pruning.zz
+#             contains the table setups / partitioning schemes
+################################################################################
+
+
 query:
   { @nonaggregates = () ; $tables = 0 ; $fields = 0 ; "" } query_type ;
 
+################################################################################
+# We use a mix of SELECT, UPDATE, INSERT, and DELETE to ensure data consistency
+################################################################################
 
 query_type:
   select | select | select | select | select |
@@ -38,6 +67,12 @@ mixed_select:
   group_by_clause
   having_clause
   order_by_clause ;
+
+################################################################################
+# For every UPDATE, INSERT and DELETE, we first do the action (UPDATE, etc)
+# *then* we do a SELECT COUNT(*), looking for those rows that should have been
+# touched by the previous query - most useful in server-server comparisons
+################################################################################
 
 update:
   int_update | char_update ;
