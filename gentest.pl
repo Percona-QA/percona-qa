@@ -74,7 +74,7 @@ my $opt_result = GetOptions($options,
                             'mask-level=i',
                             'rows=i',
                             'varchar-length=i',
-                            'xml_output=s',
+                            'xml-output=s',
                             'views',
                             'start-dirty',
                             'filter=s',
@@ -397,7 +397,7 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 		open (XML , ">$config->property('xml-output')") or say("Unable to open $config->property('xml-output'): $!");
 		print XML $report->xml();
 		close XML;
-		say("XML report written to ".$xml_output);
+		say("XML report written to ". $config->property('xml-output'));
 	}
 
 	if ($total_status == STATUS_OK) {
@@ -490,7 +490,7 @@ $0 - Testing via random query generation. Options:
         --views     : Pass --views to gendata-old.pl or gendata.pl
         --filter    : ......
         --start-dirty: Do not generate data (use existing database(s))
-        --xml-output: ......
+        --xml-output: Name of a file to which an XML report will be written if this option is set.
         --valgrind  : ......
         --filter    : ......
         --help      : This help message
