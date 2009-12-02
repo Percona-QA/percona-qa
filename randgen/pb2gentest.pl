@@ -630,7 +630,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--mysqld=--rpl_semi_sync_slave_enabled=1
 		--mysqld=--innodb
 		--reporters=ReplicationSemiSync,Deadlock,Backtrace,ErrorLog
-		--validator=
+		--validators=None
 		--threads=1
 		--duration=300
 		--queries=1M
