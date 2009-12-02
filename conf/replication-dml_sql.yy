@@ -8,7 +8,7 @@
 # When 2 or more tables with AUTO_INCREMENT columns are updated.
 #   --> "update","delete"
 # When any INSERT DELAYED is executed.
-#   --> "insert"
+#   --> "low_priority_delayed_high_priority" but this had to be disabled.
 # When the body of a view requires row-based replication, the statement creating the view also uses it — for example, this occurs when the statement creating a view uses the UUID() function.
 # When a call to a UDF is involved.
 # If a statement is logged by row and the client that executed the statement has any temporary tables, then logging by row is used for all subsequent statements
@@ -27,7 +27,7 @@
 # When a statement refers to one or more system variables. (Bug#31168)
 #     --> "shake_clock" affects timestamp
 #
-# Exception.  The following system variables, when used with session scope (only), do not cause the logging format to switch:
+# Exception. The following system variables, when used with session scope (only), do not cause the logging format to switch:
 #   * auto_increment_increment * auto_increment_offset
 #   * character_set_client * character_set_connection * character_set_database * character_set_server * collation_connection * collation_database * collation_server
 #   * foreign_key_checks
@@ -68,7 +68,7 @@
 #-----------------------------------
 # http://dev.mysql.com/doc/refman/5.4/en/replication-features-flush.html
 #-----------------------------------
-# USE LIMIT WITH ORDER BY    $safety_check needs to be switched off otherwise we get a false alarm
+# USE LIMIT WITH ORDER BY    safety_check needs to be switched off otherwise we get a false alarm
 #-----------------------------------
 # http://dev.mysql.com/doc/refman/5.4/en/replication-features-slaveerrors.html
 # FOREIGN KEY, master InnoDB and slave MyISAM
@@ -174,72 +174,92 @@
 # - In statement based replication, any non-transactional statement should be either placed outside the boundaries of a transaction or before any transactional statement.
 #   note(mleich): transactional/non-transactional statement refers to the table/tables where something is modified
 #------------------------------------------------
-# "DELAYED" is declared to be unsafe whenever the GLOBAL binlog_format is 'statement'.
-# --> Either
-#     - set GLOBAL binlog_format during query_init, don't switch it later and adjust usage of delayed ?
-#     or
-#     - do not use DELAYED (my choice, mleich)
+#################################################
+# Experience with mysql-5.1-rep+3 with BINLOG_FORMAT = STATEMENT
+# 1. SAVEPOINT A followed by some UPDATE on a myisam table
+# 2. Mixup of transactional and nontransactional table in any table modifying statement
+#    (independend of the use - modify or just query - of the table)
+# 3. Statement with nontransactional table occurs after statement with transactional table
+# end up with
+# Note 1592	Unsafe statement binlogged in statement format since BINLOG_FORMAT = STATEMENT.
+#           Reason for unsafeness: Non-transactional reads or writes are unsafe if they occur
+#           after transactional reads or writes inside a transaction.
+#
+
+safety_check:
+	# For debugging the grammar use
+	{ return '/*' . $pick_mode . '*/' } /* QUERY_IS_REPLICATION_SAFE */ ;
+	# For faster execution set this grammar element to "empty".
+	# ;
 
 query:
 	binlog_event ;
 
 query_init:
-	# 1. The early metadata query SELECT ' _table ', ' _field ' should help to avoid the RQG RC = 255 problem later.
-	# 2. "query_init1" is needed because we want run statements which involve tables in different databases.
-	# 3. The final SELECT SLEEP(10); is needed, because parallel CREATE
-	#    <OBJECTS> and SELECT ' _table ', ' _field ' would cause the RQG RC = 255 problem.
-	# 4. For debugging the grammar :   $safety_check = "/* QUERY_IS_REPLICATION_SAFE */"
-	#    For faster execution      :   $safety_check = ""
-	{ $safety_check = "/* QUERY_IS_REPLICATION_SAFE */" ; return undef } SELECT ' _table ', ' _field ' ; query_init1 ; SELECT SLEEP(10);
-	# { $safety_check = "" ; return undef } SELECT ' _table ', ' _field ' ; query_init1 ; SELECT SLEEP(10);
-query_init1:
-	CREATE DATABASE IF NOT EXISTS test1; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ; copy_table ;
-copy_table:
-	CREATE TABLE IF NOT EXISTS test1. _table[invariant] LIKE test. _table[invariant] ;
+	# 1. We need to set "$pick_mode = 3" because of the following possible scenario
+	#    Current GLOBAL BINLOG_FORMAT is STATEMENT
+	#    --> connect and initial SESSION BINLOG_FORMAT equals GLOBAL BINLOG_FORMAT (STATEMENT)
+	#    --> query -> binlog_event -> dml_event -> binlog_format_set ->
+	#    --> rand_global_binlog_format (this does not set $pick_mode and has no impact
+	#        on our SESSION BINLOG_FORMAT) --> dml_list --> dml
+	#    $pick_mode cannot "help" during statement generation in "dml". So it could happen 
+	#    that we get a statement using a transactional and a non transactional table.
+	#    And this is UNSAFE if our current SESSION BINLOG_FORMAT is STATEMENT.
+	#    $pick_mode = 3 brings us to the safe side.
+	# 2. The early metadata query SELECT ' _table ', ' _field ' should help to avoid the RQG RC = 255 problem later.
+	{ $pick_mode = 3 ; return undef } preload_md ; USE test1 ; preload_md ; USE test ; # SELECT SLEEP(10);
+preload_md:
+	SELECT ' _table ', ' _field ', ' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ';
 
 binlog_event:
-	/* BEGIN 1 */ single_dml_event    /* 1 END */  |
-	/* BEGIN 2 */ single_dml_event    /* 2 END */  |
-	/* BEGIN 3 */ sequence_dml_event  /* 3 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
 	set_iso_level      |
-	shake_clock        |
-	rotate_event       ;
+	rotate_event       |
+	shake_clock        ;
 
 set_iso_level:
-	{ return $safety_check } SET global_or_session TRANSACTION ISOLATION LEVEL iso_level ;
+	safety_check SET global_or_session TRANSACTION ISOLATION LEVEL iso_level ;
 iso_level:
-	{ if ( $unsafe_b == '/*' ) { return $prng->arrayElement(['REPEATABLE READ','SERIALIZABLE']) } else { return $prng->arrayElement(['READ UNCOMMITTED','READ COMMITTED','REPEATABLE READ','SERIALIZABLE']) } } ;
+	{ if ( $format == 'STATEMENT' ) { return $prng->arrayElement(['REPEATABLE READ','SERIALIZABLE']) } else { return $prng->arrayElement(['READ UNCOMMITTED','READ COMMITTED','REPEATABLE READ','SERIALIZABLE']) } } ;
 
 global_or_session:
 	SESSION | GLOBAL ;
 
 shake_clock:
-	{ return $safety_check } SET SESSION TIMESTAMP = UNIX_TIMESTAMP() plus_minus _digit ;
-plus_minus:
-	+ | - ;
+	safety_check SET SESSION TIMESTAMP = UNIX_TIMESTAMP() plus_minus _digit ;
 
 rotate_event:
 	# Cause that the master switches to a new binary log file 
 	# RESET MASTER is not useful here because it causes
 	# - master.err: [ERROR] Failed to open log (file '/dev/shm/var_290/log/master-bin.000002', errno 2)
 	# - the RQG test does not terminate in usual way (RQG assumes deadlock)
-	{ return $safety_check } FLUSH LOGS ;
-	
+	safety_check FLUSH LOGS ;
+
 xid_event:
 	# Omit BEGIN because it is only an alias for START TRANSACTION
-	START TRANSACTION | COMMIT | ROLLBACK |
-	SAVEPOINT A | ROLLBACK TO SAVEPOINT A | RELEASE SAVEPOINT A |
-	implicit_commit ;
+	START TRANSACTION                     |
+	COMMIT                                |
+	ROLLBACK                              |
+	# In SBR after a "SAVEPOINT A" any statement which modifies a nontransactional table is unsafe.
+	# Therefore we enforce here that future statements within the current transaction use
+	# a transactional table.
+	SAVEPOINT A { $pick_mode=3; return undef} |
+	ROLLBACK TO SAVEPOINT A               |
+	RELEASE SAVEPOINT A                   |
+	implicit_commit                       ;
 
 implicit_commit:
 	# mleich: A CREATE/ALTER TABLE which fails because the object already exists/does not exist causes an
 	#         implicite COMMIT before the "core" of the statement is executed.
 	#         RPL has problems with concurrent DDL but is this also valid for such cases?
-   CREATE TABLE mysql.user ( f1 BIGINT )    |
-   ALTER TABLE does_not_exist CHANGE COLUMN f1 f2 BIGINT |
+	CREATE TABLE mysql.user ( f1 BIGINT )    |
+	ALTER TABLE does_not_exist CHANGE COLUMN f1 f2 BIGINT |
 	# CREATE DATABASE ic ; CREATE TABLE ic . _letter SELECT * FROM _table LIMIT digit ; DROP DATABASE ic |
 	# CREATE USER _letter | DROP USER _letter | RENAME USER _letter TO _letter |
-	SET AUTOCOMMIT = ON | SET AUTOCOMMIT = OFF |
+	SET AUTOCOMMIT = ON |
+	SET AUTOCOMMIT = OFF |
 	# CREATE TABLE IF NOT EXISTS _letter ENGINE = engine SELECT * FROM _table LIMIT digit |
 	# RENAME TABLE _letter TO _letter |
 	# TRUNCATE TABLE _letter |
@@ -247,40 +267,56 @@ implicit_commit:
 	# Grant/Revoke
 	# FLUSH
 	# LOAD DATA INFILE causes an implicit commit only for tables using the NDB storage engine
-	{ return $safety_check } LOCK TABLE _table WRITE ; { return $safety_check } UNLOCK TABLES ;
+	LOCK TABLE _table WRITE ; safety_check UNLOCK TABLES ;
 
 # Guarantee that the transaction has ended before we switch the binlog format
-single_dml_event:
-	COMMIT ; binlog_format_set ; dml ; xid_event ;
-sequence_dml_event:
-	COMMIT ; binlog_format_set ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; dml ; xid_event ;
+dml_event:
+	COMMIT ; safety_check binlog_format_set ; dml_list ; safety_check xid_event ;
+dml_list:
+	safety_check dml |
+	safety_check dml ; dml_list |
+	safety_check dml ; dml_list | dml_list |
+	safety_check dml ; dml_list | dml_list | dml_list ;
+	safety_check dml ; dml_list | dml_list | dml_list | dml_list ;
 
 binlog_format_set:
-	{ return $safety_check } SET BINLOG_FORMAT = rand_binlog_format ;
-rand_binlog_format:
-	STATEMENT { $unsafe_b = '/*' ; $unsafe_e = '*/' ; $safe_b = ''   ; $safe_e = ''   ; return undef } |
-	MIXED     { $unsafe_b = ''   ; $unsafe_e = ''   ; $safe_b = '/*' ; $safe_e = '*/' ; return undef } |
-	ROW       { $unsafe_b = ''   ; $unsafe_e = ''   ; $safe_b = '/*' ; $safe_e = '*/' ; return undef } ;
+	# 1. SESSION BINLOG_FORMAT --> How the actions of our current session will be bin logged
+	# 2. GLOBAL BINLOG_FORMAT  --> How actions with DELAYED will be bin logged
+	#                          --> Initial SESSION BINLOG_FORMAT of session started in future
+	# This means any SET GLOBAL BINLOG_FORMAT ... executed by any session has no impact on any
+	# laready existing session (except 2.).
+	rand_global_binlog_format  |
+	rand_session_binlog_format |
+	rand_session_binlog_format |
+	rand_session_binlog_format ;
+rand_global_binlog_format:
+	SET GLOBAL BINLOG_FORMAT = STATEMENT |
+	SET GLOBAL BINLOG_FORMAT = MIXED     |
+	SET GLOBAL BINLOG_FORMAT = ROW       ;
+rand_session_binlog_format:
+	SET SESSION BINLOG_FORMAT = { $format = 'STATEMENT' ; $pick_mode = $prng->int(1,3) ; return $format } |
+	SET SESSION BINLOG_FORMAT = { $format = 'MIXED'     ; $pick_mode = 0               ; return $format } |
+	SET SESSION BINLOG_FORMAT = { $format = 'ROW'       ; $pick_mode = 0               ; return $format } ;
 
 dml:
 	# LOAD DATA is temporary disabled
-	# generate_outfile ; { return $safety_check } LOAD DATA concurrent_or_empty INFILE tmpnam REPLACE INTO TABLE pick_schema _table |
-	{ return $safety_check } update |
-	{ return $safety_check } delete |
-	{ return $safety_check } insert |
-	# generate_outfile ; { return $safety_check } PREPARE st1 FROM "LOAD DATA INFILE tmpnam REPLACE INTO TABLE pick_schema _table" ; { return $safety_check } EXECUTE st1 ; DEALLOCATE PREPARE st1 |
-	{ return $safety_check } PREPARE st1 FROM " update " ; { return $safety_check } EXECUTE st1 ; DEALLOCATE PREPARE st1 |
-	{ return $safety_check } PREPARE st1 FROM " delete " ; { return $safety_check } EXECUTE st1 ; DEALLOCATE PREPARE st1 |
-	{ return $safety_check } PREPARE st1 FROM " insert " ; { return $safety_check } EXECUTE st1 ; DEALLOCATE PREPARE st1 |
+	# generate_outfile ; safety_check LOAD DATA concurrent_or_empty INFILE tmpnam REPLACE INTO TABLE pick_schema _table |
+	update |
+	delete |
+	insert |
+	# generate_outfile ; safety_check PREPARE st1 FROM "LOAD DATA INFILE tmpnam REPLACE INTO TABLE pick_schema _table" ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
+	PREPARE st1 FROM " update " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
+	PREPARE st1 FROM " delete " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
+	PREPARE st1 FROM " insert " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	# We need the next statement for other statements which should use a user variable.
-	{ return $safety_check } SET @aux = value |
+	SET @aux = value  |
 	# We need the next statements for other statements which should be affected by switching the database.
-   # The "USE `mysql`" is disabled because a get a strange PERL error message.
-	USE `test` | USE `test` | USE `test` | USE `test1` | USE `test1` | # USE `mysql` |
-	xid_event       ;
+	USE `test` | USE `test` | USE `test` | USE `test1` | USE `test1` |
+	select_for_update |
+	xid_event         ;
 
 generate_outfile:
-	SELECT * FROM pick_schema _table ORDER BY _field INTO OUTFILE tmpnam ;
+	SELECT * FROM pick_schema pick_safe_table ORDER BY _field INTO OUTFILE tmpnam ;
 concurrent_or_empty:
 	| CONCURRENT ;
 
@@ -293,40 +329,47 @@ delete:
 	# Delete in one table, search in one table
 	# Unsafe in statement based replication except we add ORDER BY
 	# DELETE       FROM pick_schema _table            LIMIT 1   |
-	DELETE       FROM pick_schema _table               where    |
+	DELETE low_priority quick ignore       FROM pick_schema pick_safe_table               where    |
 	# Delete in two tables, search in two tables
-	DELETE A , B FROM pick_schema _table AS A join     where    |
+	DELETE low_priority quick ignore A , B FROM pick_schema pick_safe_table AS A join     where    |
 	# Delete in one table, search in two tables
-	DELETE A     FROM pick_schema _table AS A where subquery    ;
+	DELETE low_priority quick ignore A     FROM pick_schema pick_safe_table AS A where subquery    ;
 
 join:
-	# Do not place a where condition here.
-	NATURAL JOIN pick_schema _table B ;
+	# 1. Do not place a where condition here.
+	# 2. join is also use when modifying two tables in one statement.
+	#    Therefore we must use "pick_safe_table" here.
+	NATURAL JOIN pick_schema pick_safe_table B ;
 subquery:
 	correlated | non_correlated ;
 subquery_part1:
-	AND A.`pk` IN ( SELECT `pk` FROM pick_schema _table AS B  ;
+	AND A. _field[invariant]  IN ( SELECT _field[invariant] FROM pick_schema pick_safe_table AS B  ;
 correlated:
-	subquery_part1 WHERE B.`pk` = A.`pk` ) ;
+	subquery_part1 WHERE B.col_int = A.col_int ) ;
 non_correlated:
 	subquery_part1 ) ;
 where:
-	WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 ;
+	WHERE col_int BETWEEN _int[invariant] AND _int[invariant] + 2 ;
 
 insert:
 	# mleich: Does an additional "on_duplicate_key_update" give an advantage?
 	# Insert into one table, search in no other table
-	INSERT delayed_or_empty INTO pick_schema _table ( _field ) VALUES ( value ) |
+	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field , col_int ) VALUES values_list on_duplicate_key_update |
 	# Insert into one table, search in >= 1 tables
-	INSERT delayed_or_empty INTO pick_schema _table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
-delayed_or_empty:
-	;
-	# DELAYED is unsafe if binlog format = STATEMENT
-	# See comment on top of file{ return $unsafe_b } DELAYED { return $unsafe_e } ;
+	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
+
+values_list:
+	( value , _int ) |
+	( value , _int ) , ( value , _int ) ;
+
+on_duplicate_key_update:
+	# Only 10 %
+	| | | | | | | | |
+	ON DUPLICATE KEY UPDATE _field = value ;
 
 table_in_select:
-	pick_schema _table                                        |
-	( SELECT _field_list[invariant] FROM pick_schema _table ) ;
+	pick_schema pick_safe_table                                        |
+	( SELECT _field_list[invariant] FROM pick_schema pick_safe_table ) ;
 
 addition:
 	where | where subquery | join where | where union where ;
@@ -334,12 +377,24 @@ addition:
 union:
 	UNION SELECT _field_list[invariant] FROM table_in_select AS B ;
 
+replace:
+	# HIGH_PRIORITY is not allowed
+	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field , col_int ) VALUES values_list on_duplicate_key_update ;
+	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
+
 update:
 	# mleich: Search within another table etc. should be already sufficient covered by "delete" and "insert".
 	# Update one table
-	UPDATE pick_schema _table SET _field = value where |
+	UPDATE ignore pick_schema pick_safe_table SET _field = value where |
 	# Update two tables
-	UPDATE pick_schema _table AS A join SET A. _field = value , B. _field = _digit where ;
+	UPDATE ignore pick_schema pick_safe_table AS A join SET A. _field = value , B. _field = value where ;
+
+select_for_update:
+	# SELECT does not get replicated, but we want its sideeffects on the transaction.
+	# FIXME (mleich): 1. If _field picks the blob, do we have a bad impact on throughput?
+	#                 2. Has a column list sideeffects on the transaction at all
+	#                    compared to SELECT 1 FROM ....?
+	SELECT col_int, _field FROM pick_safe_table where FOR UPDATE;
 
 value:
 	value_numeric          |
@@ -349,7 +404,7 @@ value:
 	value_temporal         |
 	@aux                   |
 	NULL                   |
-	{ return $unsafe_b } value_unsafe_for_sbr { return $unsafe_e } { return $safe_b } 13 { return $safe_e } ;
+	{ if ($format=='STATEMENT') {return '/*'} } value_unsafe_for_sbr { if ($format=='STATEMENT') {return '*/ 17 '} };
 
 value_unsafe_for_sbr:
 # Functions which are unsafe when bin log format = 'STATEMENT'
@@ -427,3 +482,99 @@ value_temporal:
 	SYSDATE() |
 	NOW()     ;
 
+any_table:
+	undef_table    |
+	nontrans_table |
+	trans_table    ;
+
+undef_table:
+	table0_int_autoinc  |
+	table0_int          |
+	table0              |
+	table1_int_autoinc  |
+	table1_int          |
+	table1              |
+	table10_int_autoinc |
+	table10_int         |
+	table10             ;
+
+nontrans_table:
+	table0_myisam_int_autoinc  |
+	table0_myisam_int          |
+	table0_myisam              |
+	table1_myisam_int_autoinc  |
+	table1_myisam_int          |
+	table1_myisam              |
+	table10_myisam_int_autoinc |
+	table10_myisam_int         |
+	table10_myisam             ;
+
+trans_table:
+	table0_innodb_int_autoinc  |
+	table0_innodb_int          |
+	table0_innodb              |
+	table1_innodb_int_autoinc  |
+	table1_innodb_int          |
+	table1_innodb              |
+	table10_innodb_int_autoinc |
+	table10_innodb_int         |
+	table10_innodb             ;
+
+pick_safe_table:
+	# pick_mode | table type to choose | setting
+	# 0         | any                                  any_table    /*          undef_table                nontrans_table                trans_table    */
+	# 1         | undef                    /*          any_table    */          undef_table    /*          nontrans_table                trans_table    */         
+	# 2         | nontrans                 /*          any_table                undef_table    */          nontrans_table    /*          trans_table    */
+	# 3         | trans                    /*          any_table                undef_table                nontrans_table    */          trans_table
+	tmarker_init tmarker_set            { return $m0 } any_table { return $m1 } undef_table { return $m2 } nontrans_table { return $m3 } trans_table { return $m4 } ;
+
+tmarker_init:
+	{ $m0 = ''; $m1 = ''; $m2 = ''; $m3 = ''; $m4 = ''; return undef } ;
+
+tmarker_set:
+	{if ($pick_mode==0) {$m1='/*';$m4='*/'} elsif ($pick_mode==1) {$m0='/*';$m1='*/';$m2='/*';$m4='*/'} elsif ($pick_mode==2) {$m0='/*';$m2='*/';$m3='/*';$m4='*/'} elsif ($pick_mode==3) {$m0='/*';$m3='*/'} ; return undef};
+
+
+#### Basic constructs which are used at various places
+
+delayed:
+	# "DELAYED" is declared to be unsafe whenever the GLOBAL binlog_format is 'statement'.
+	# --> Either
+	#     - set GLOBAL binlog_format during query_init, don't switch it later and adjust usage of delayed ?
+	#     or
+	#     - do not use DELAYED (my choice, mleich)
+	# DELAYED       |
+	;
+
+high_priority:
+	|
+	HIGH_PRIORITY ;
+
+ignore:
+	# Only 10 %
+	| | | | | | | | |
+	IGNORE ;
+
+low_priority:
+	| | |
+	LOW_PRIORITY ;
+
+low_priority_delayed_high_priority:
+# All MyISAM only features.
+	| |
+	low_priority  |
+	delayed       |
+	high_priority ;
+
+low_priority_delayed:
+	| |
+	low_priority |
+	delayed      ;
+
+plus_minus:
+	+ | - ;
+
+quick:
+	# Only 10 %
+	| | | | | | | | |
+	QUICK ;
