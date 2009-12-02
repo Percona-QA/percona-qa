@@ -22,8 +22,9 @@ my %caches;
 my %reported_errors;
 
 my %acceptedErrors = (
-    "42Y55" => 1 # DROP TABLE on non-existing table is accepted since
+    "42Y55" => 1,# DROP TABLE on non-existing table is accepted since
                  # tests rely on non-standard MySQL DROP IF EXISTS;
+    "X0Y68" => 1 # Schema alread exists
     );
 
 sub init {
@@ -53,6 +54,10 @@ sub init {
     
     $self->setDbh($dbh);
     
+    $self->defaultSchema($self->dbh()->selectrow_array("VALUES CURRENT SCHEMA"));
+
+    say "Default schema: ".$self->defaultSchema();
+
     return STATUS_OK;
 }
 
@@ -134,19 +139,30 @@ sub execute {
     my $result;
 
     if (defined $err) {         
-        ## Error on EXECUTE
-        my $errstr = $db.":".$dbh->state().":".$dbh->errstr();
-        say($errstr . "($query)") if !$silent;
-        $self->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
-        return GenTest::Result->new(
-            query       => $query,
-            status      => $self->findStatus($dbh->state()),
-            err         => $dbh->err(),
-            errstr      => $dbh->errstr(),
-            sqlstate    => $dbh->state(),
-            start_time  => $start_time,
-            end_time    => $end_time
-            );
+        if (not defined $acceptedErrors{$dbh->state()}) {
+            ## Error on EXECUTE
+            my $errstr = $db.":".$dbh->state().":".$dbh->errstr();
+            say($errstr . "($query)") if !$silent;
+            $self->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
+            return GenTest::Result->new(
+                query       => $query,
+                status      => $self->findStatus($dbh->state()),
+                err         => $dbh->err(),
+                errstr      => $dbh->errstr(),
+                sqlstate    => $dbh->state(),
+                start_time  => $start_time,
+                end_time    => $end_time
+                );
+        } else {
+            ## E.g. DROP on non-existing table
+            return GenTest::Result->new(
+                query       => $query,
+                status      => STATUS_OK,
+                affected_rows => 0,
+                start_time  => $start_time,
+                end_time    => Time::HiRes::time()
+                );
+        }
     } elsif ((not defined $sth->{NUM_OF_FIELDS}) || ($sth->{NUM_OF_FIELDS} == 0)) {
         ## DDL/UPDATE/INSERT/DROP/DELETE
         $result = GenTest::Result->new(
@@ -293,6 +309,15 @@ sub fieldsNoPK {
     ## FIXME dont know how yet
     my ($executor, $table, $database) = @_;
     return $executor->fields($table, $database);
+}
+
+
+sub currentSchema {
+	my $executor = shift;
+
+	return undef if not defined $executor->dbh();
+
+	return $executor->dbh()->selectrow_array("VALUES CURRENT SCHEMA");
 }
 
 

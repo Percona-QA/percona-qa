@@ -20,7 +20,7 @@ sub validate {
 	my @files;
 	my @ports = ('19306', '19308');
 
-	my $database = $executors->[0]->database();
+	my $database = $executors->[0]->currentSchema();
 
 	foreach my $port_id (0..1) {
 		$files[$port_id] = tmpdir()."/dump_".$$."_".$ports[$port_id].".sql";

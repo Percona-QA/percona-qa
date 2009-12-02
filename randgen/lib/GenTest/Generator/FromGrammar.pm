@@ -281,7 +281,7 @@ sub next {
 			$_ = $$;
 		} elsif ($_ eq '_thread_count') {
 			$_ = $ENV{RQG_THREADS};
-		} elsif (($_ eq '_database') || ($_ eq '_db')) {
+		} elsif (($_ eq '_database') || ($_ eq '_db') || ($_ eq '_schema')) {
 			my $databases = $executors->[0]->databases();
 			$last_database = $_ = $prng->arrayElement($databases);
 			$_ = '`'.$last_database.'`';

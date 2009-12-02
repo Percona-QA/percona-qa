@@ -139,12 +139,14 @@ sub run {
 # eval()-ing it
 #  
     
-    my ($tables, $fields, $data);  # Specification as read from the
-                                   # spec file.
-    my (@table_perms, @field_perms, @data_perms);	# Specification
-                                                    # after defaults
-                                                    # have been
-                                                    # substituted
+    my ($tables, $fields, $data, $schemas);  # Specification as read
+                                             # from the spec file.
+    my (@table_perms, @field_perms, @data_perms, @schema_perms);	# Specification
+                                                                    # after
+                                                                    # defaults
+                                                                    # have
+                                                                    # been
+                                                                    # substituted
 
     if ($spec_file ne '') {
         open(CONF , $spec_file) or croak "unable to open specification file '$spec_file': $!";
@@ -156,7 +158,13 @@ sub run {
     $executor->execute("SET SQL_MODE= 'NO_ENGINE_SUBSTITUTION'") if $executor->type == DB_MYSQL;
     $executor->execute("SET STORAGE_ENGINE='".$self->engine()."'") 
         if $self->engine() ne '' and ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE);
-    
+
+    if (defined $schemas) {
+        push(@schema_perms, @$schemas);
+    } else {
+        push(@schema_perms, $executor->defaultSchema());
+    }
+
     $table_perms[TABLE_ROW] = $tables->{rows} || (defined $self->rows() ? [ $self->rows() ] : undef ) || [0, 1, 2, 10, 100];
     $table_perms[TABLE_ENGINE] = $tables->{engines} || [ $self->engine() ];
     $table_perms[TABLE_CHARSET] = $tables->{charsets} || [ undef ];
@@ -305,7 +313,7 @@ sub run {
             $field->[FIELD_SQL] .= ' NULL DEFAULT 0';
         }
     }
-    
+
     foreach my $table_id (0..$#tables) {
         my $table = $tables[$table_id];
         my @table_copy = @$table;
@@ -347,6 +355,17 @@ sub run {
         $table->[TABLE_SQL] = join(' ' , grep { $_ ne '' } @table_copy);
     }	
     
+    foreach my $schema (@schema_perms) {
+        $executor->execute("CREATE SCHEMA /*!IF NOT EXISTS*/ $schema");
+        if ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE) {
+            $executor->execute("USE $schema");
+        } elsif ($executor->type == DB_POSTGRES) {
+            $executor->execute("SET search_path TO $schema");
+        } else {
+            ## Ansi
+            $executor->execute("SET SCHEMA = $schema");
+        }
+
     foreach my $table_id (0..$#tables) {
         my $table = $tables[$table_id];
         my @table_copy = @$table;
@@ -359,7 +378,7 @@ sub run {
         }
         
         say("# Creating ".$executor->getName().
-            " table $table_copy[TABLE_NAME] .");
+            " table $schema.$table_copy[TABLE_NAME] .");
         
         if ($table_copy[TABLE_PK] ne '') {
             my $pk_field;
@@ -381,7 +400,7 @@ sub run {
         # Compose the CREATE TABLE statement by joining all fields and indexes and appending the table options
         
         my @field_sqls = join(",\n", map { $_->[FIELD_SQL] } @fields_copy);
-
+        
         my @index_fields;
         if ($executor->type() == DB_MYSQL || $executor->type() == DB_DRIZZLE) {
             @index_fields = grep { $_->[FIELD_INDEX_SQL] ne '' } @fields_copy;
@@ -391,9 +410,9 @@ sub run {
         }
         
         my $index_sqls = $#index_fields > -1 ? join(",\n", map { $_->[FIELD_INDEX_SQL] } @index_fields) : undef;
-
+        
         $executor->execute("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n/*Indices*/\n", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
-
+        
         if (not ($executor->type() == DB_MYSQL || 
                  $executor->type() == DB_DRIZZLE)) {
             @index_fields = grep { $_->[FIELD_INDEX_SQL] ne '' } @fields_copy;
@@ -510,6 +529,7 @@ sub run {
             
             $executor->execute("ALTER TABLE `$table->[TABLE_NAME]` ENABLE KEYS");
         }
+    }
     }
     
     if ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE) {

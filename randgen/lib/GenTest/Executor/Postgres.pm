@@ -34,14 +34,18 @@ sub init {
     
 	$self->setDbh($dbh);	
 
+    $self->defaultSchema($self->dbh()->selectrow_array("SELECT current_schema()"));
+    say "Default schema: ".$self->defaultSchema();
+
     return STATUS_OK;
 }
 
 my %caches;
 
 my %acceptedErrors = (
-    "42P01" => 1 # DROP TABLE on non-existing table is accepted since
+    "42P01" => 1,# DROP TABLE on non-existing table is accepted since
                  # tests rely on non-standard MySQL DROP IF EXISTS;
+    "42P06" => 1 # Schema already exists
     );
 
 sub execute {
@@ -248,6 +252,14 @@ sub fieldsNoPk {
     
     return $caches{$cache_key};
     
+}
+
+sub currentSchema {
+	my $executor = shift;
+
+	return undef if not defined $executor->dbh();
+
+	return $executor->dbh()->selectrow_array("SELECT current_schema");
 }
 
 1;
