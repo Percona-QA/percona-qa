@@ -46,7 +46,7 @@ select_explain:
 	EXPLAIN /*!50100 PARTITIONS */ SELECT _field FROM table_name where ;
 
 select:
-	SELECT `int_nokey` % 10 AS `int_nokey` , `int_key` % 10 AS `int_key` FROM table_name where ;
+	SELECT `col_int_nokey` % 10 AS `col_int_nokey` , `col_int_key` % 10 AS `col_int_key` FROM table_name where ;
 
 # WHERE clauses suitable for partition pruning
 where:
@@ -58,8 +58,8 @@ comparison_operator:
 	> | < | = | <> | != | >= | <= ;
 
 insert:
-	insert_replace INTO table_name ( `int_nokey`, `int_key` ) VALUES ( value , value ) , ( value , value ) |
-	insert_replace INTO table_name ( `int_nokey`, `int_key` ) select ORDER BY `int_key` , `int_nokey` LIMIT limit_rows ;
+	insert_replace INTO table_name ( `col_int_nokey`, `col_int_key` ) VALUES ( value , value ) , ( value , value ) |
+	insert_replace INTO table_name ( `col_int_nokey`, `col_int_key` ) select ORDER BY `col_int_key` , `col_int_nokey` LIMIT limit_rows ;
 
 insert_replace:
 	INSERT | REPLACE ;
@@ -68,10 +68,10 @@ update:
 	UPDATE table_name SET _field = value WHERE _field = value ;
 
 delete:
-	DELETE FROM table_name WHERE _field = value ORDER BY `int_key` , `int_nokey` LIMIT limit_rows ;
+	DELETE FROM table_name WHERE _field = value ORDER BY `col_int_key` , `col_int_nokey` LIMIT limit_rows ;
 
 _field:
-	`int_nokey` | `int_nokey` ;
+	`col_int_nokey` | `col_int_nokey` ;
 
 table_name:
 	_letter | _table ;
@@ -85,9 +85,9 @@ value:
 
 create:
 	CREATE TABLE _letter (
-		`int_nokey` INTEGER,
-		`int_key` INTEGER NOT NULL,
-		KEY (`int_key`)
+		`col_int_nokey` INTEGER,
+		`col_int_key` INTEGER NOT NULL,
+		KEY (`col_int_key`)
 	) ENGINE = engine /*!50100 partition */ select ;
 
 drop:
@@ -183,7 +183,7 @@ linear:
 	| LINEAR;
 
 partition_by_key:
-	PARTITION BY KEY(`int_key`) PARTITIONS partition_count ;
+	PARTITION BY KEY(`col_int_key`) PARTITIONS partition_count ;
 
 partition_item:
 	PARTITION partition_name VALUES 

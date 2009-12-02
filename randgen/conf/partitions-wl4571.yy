@@ -37,7 +37,7 @@ cache_name:
 	c1 | c2 | c3 | c4;
 
 select:
-	SELECT `int_nokey` % 10 AS `int_nokey` , `int_key` % 10 AS `int_key` FROM _table where ;
+	SELECT `col_int_nokey` % 10 AS `col_int_nokey` , `col_int_key` % 10 AS `col_int_key` FROM _table where ;
 
 where:
 	| | WHERE _field sign value ;
@@ -46,8 +46,8 @@ sign:
 	> | < | = | <> | != | >= | <= ;
 
 insert:
-	insert_replace INTO table_name ( `int_nokey`, `int_key` ) VALUES ( value , value ) , ( value , value ) |
-	insert_replace INTO table_name ( `int_nokey`, `int_key` ) select LIMIT _digit ;
+	insert_replace INTO table_name ( `col_int_nokey`, `col_int_key` ) VALUES ( value , value ) , ( value , value ) |
+	insert_replace INTO table_name ( `col_int_nokey`, `col_int_key` ) select LIMIT _digit ;
 
 insert_replace:
 	INSERT | REPLACE ;
@@ -59,7 +59,7 @@ delete:
 	DELETE FROM table_name WHERE _field = value LIMIT _digit ;
 
 _field:
-	`int_nokey` | `int_nokey` ;
+	`col_int_nokey` | `col_int_nokey` ;
 
 table_name:
 	_letter | _table ;
@@ -69,9 +69,9 @@ value:
 
 create:
 	CREATE TABLE _letter (
-		`int_nokey` INTEGER,
-		`int_key` INTEGER NOT NULL,
-		KEY (`int_key`)
+		`col_int_nokey` INTEGER,
+		`col_int_key` INTEGER NOT NULL,
+		KEY (`col_int_key`)
 	) ENGINE = engine /*!50100 partition */ select ;
 
 drop:
@@ -165,7 +165,7 @@ linear:
 	| LINEAR;
 
 partition_by_key:
-	PARTITION BY KEY(`int_key`) PARTITIONS _digit ;
+	PARTITION BY KEY(`col_int_key`) PARTITIONS _digit ;
 
 partition_item:
 	PARTITION partition_name VALUES 

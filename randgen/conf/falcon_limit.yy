@@ -74,5 +74,5 @@ _small_table:
 # Use only indexed fields:
 
 _field:
-	`int_key` | `date_key` | `datetime_key` | `varchar_key` ;
+	`col_int_key` | `col_date_key` | `col_datetime_key` | `col_varchar_key` ;
 

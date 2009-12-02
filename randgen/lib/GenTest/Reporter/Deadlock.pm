@@ -26,8 +26,19 @@ use constant QUERY_LIFETIME_THRESHOLD		=> 600;	# Seconds
 # Number of suspicious queries required before a deadlock is declared
 use constant STALLED_QUERY_COUNT_THRESHOLD	=> 5;
 
+# Number of times the actual test duration is allowed to exceed the desired one
+use constant ACTUAL_TEST_DURATION_MULTIPLIER	=> 2;
+
 sub monitor {
 	my $reporter = shift;
+
+	my $actual_test_duration = time() - $reporter->testStart();
+
+	if ($actual_test_duration > ACTUAL_TEST_DURATION_MULTIPLIER * $reporter->testDuration()) {
+		say("Actual test duration ($actual_test_duration seconds) is more than ".(ACTUAL_TEST_DURATION_MULTIPLIER)." times the desired duration (".$reporter->testDuration()." seconds)");
+		return STATUS_SERVER_DEADLOCKED;
+	}
+
 	if (windows()) {
 		return $reporter->monitor_threaded();
 	} else {

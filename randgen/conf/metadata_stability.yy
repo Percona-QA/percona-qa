@@ -1,3 +1,6 @@
+query_init:
+	START TRANSACTION ;
+
 query:
 	transaction |
 	select | select | call |
@@ -8,7 +11,7 @@ transaction:
 	START TRANSACTION | COMMIT | ROLLBACK ;
 
 select:
-	SELECT /* RESULTSET_SAME_DATA_IN_EVERY_ROW */ select_item AS f1
+	SELECT /* RESULTSET_SAME_DATA_IN_EVERY_ROW */ select_item AS `col_int_key`
 	FROM join_list
 	where;
 
@@ -22,7 +25,7 @@ dml:
 	insert_select ;
 
 update:
-	pick_table_name UPDATE $table_name SET _field = _digit ;
+	pick_table_name UPDATE $table_name SET `col_int_key` = _digit ;
 
 insert_select:
 	pick_table_name INSERT INTO $table_name SELECT * FROM $table_name LIMIT 0 ;
@@ -33,7 +36,7 @@ delete:
 select_item:
 	_digit |
 	function_name ( _digit ) |
-	function_name ( _field ) ;
+	function_name ( `col_int_key` ) ;
 
 join_list:
 	selectable_object;
@@ -48,7 +51,7 @@ where:
 	WHERE argument operator argument;
 
 argument:
-	_field |
+	`col_int_key` |
 	_digit |
 	function_name ( argument ) ;
 
@@ -57,11 +60,11 @@ operator:
 
 ddl:
 	table_ddl |
-	function_ddl |
+#	function_ddl |	# bug48246
 	table_ddl |
 	view_ddl |
-	procedure_ddl;
-# |	trigger_ddl ;	# bug46748
+	procedure_ddl |
+	trigger_ddl;
 
 table_ddl:
 	pick_table_name create_table | pick_table_name create_table | pick_table_name create_table |
@@ -91,7 +94,7 @@ pick_procedure_name:
 	{ $procedure_name = 'proc_'.$prng->int(1,3) ; return undef } ;
 
 pick_table_name:
-#	{ $table_name = $prng->arrayElement($executors->[0]->tables()) ; return undef } |
+	{ $table_name = $prng->arrayElement($executors->[0]->tables()) ; return undef } |
 	{ $table_name = 'table_'.$prng->int(1,3) ; return undef } ;
 
 pick_trigger_name:
@@ -113,7 +116,7 @@ create_procedure:
 	CREATE PROCEDURE $procedure_name (INOUT inout1 INT) procedure_body ;
 
 create_table:
-	CREATE temporary TABLE $table_name ( `int` INTEGER, `int_key` INTEGER, KEY (`int_key`) ) select ;
+	CREATE temporary TABLE $table_name ( `col_int_key` INTEGER, KEY (`col_int_key`) ) select ;
 
 create_view:
 	CREATE OR REPLACE ALGORITHM = view_algorithm VIEW $view_name AS select ;
@@ -128,8 +131,7 @@ view_algorithm:
 	UNDEFINED | MERGE | TEMPTABLE ;
 
 temporary:
-	;
-#	| TEMPORARY ;	# bug46747
+	| TEMPORARY;
 
 create_trigger:
 	pick_table_name CREATE TRIGGER $trigger_name trigger_time trigger_event ON $table_name FOR EACH ROW update ;

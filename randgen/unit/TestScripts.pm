@@ -34,7 +34,7 @@ sub test_gensql {
 sub test_gendata {
     my $self = shift;
 
-    my $status = system("perl gendata.pl --config=conf/example.zz --dsn=dummy");
+    my $status = system("perl gendata.pl --spec=conf/example.zz --dsn=dummy");
 
     $self->assert_equals(0, $status);
 }

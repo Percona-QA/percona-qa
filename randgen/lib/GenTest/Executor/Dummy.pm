@@ -10,6 +10,14 @@ use GenTest;
 use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Executor;
+use GenTest::Translator;
+use GenTest::Translator::MysqlDML2ANSI;
+use GenTest::Translator::Mysqldump2ANSI;
+use GenTest::Translator::MysqlDML2javadb;
+use GenTest::Translator::Mysqldump2javadb;
+use GenTest::Translator::MysqlDML2pgsql;
+use GenTest::Translator::Mysqldump2pgsql;
+
 
 use Data::Dumper;
 
@@ -20,16 +28,41 @@ sub init {
     ## Just to have somthing that is not undefined
 	$executor->setDbh($executor); 
 
+    $executor->defaultSchema("default");
+
 	return STATUS_OK;
 }
 
 sub execute {
-	my ($executor, $query, $silent) = @_;
+	my ($self, $query, $silent) = @_;
 
-    if ($ENV{RQG_DEBUG}) {
-        print "Executing $query\n";
+    $query = $self->preprocess($query);
+
+    ## This may be generalized into a translator which is a pipe
+
+    my @pipe;
+    if ($self->dsn() =~ m/javadb/) {
+        @pipe = (GenTest::Translator::Mysqldump2javadb->new(),
+                 GenTest::Translator::MysqlDML2javadb->new());
+
+    } elsif ($self->dsn() =~ m/postgres/) {
+
+        @pipe = (GenTest::Translator::Mysqldump2pgsql->new(),
+                 GenTest::Translator::MysqlDML2pgsql->new());
+
+    }
+    foreach my $p (@pipe) {
+        $query = $p->translate($query);
+        return GenTest::Result->new( 
+            query => $query, 
+            status => STATUS_WONT_HANDLE ) 
+            if not $query;
+        
     }
 
+    if ($ENV{RQG_DEBUG} or $self->dsn() =~ m/print/) {
+        print "Executing $query\n";
+    }
 
 	return new GenTest::Result(query => $query,
                                status => STATUS_OK);
@@ -55,6 +88,11 @@ sub fields {
     my @f = ("MYFIELD");
 
     return \@f;
+}
+
+sub currentSchema {
+    my ($self,$schema) = @_;
+    return $self->defaultSchema();
 }
 
 1;
