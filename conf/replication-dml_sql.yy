@@ -331,9 +331,13 @@ delete:
 	# DELETE       FROM pick_schema _table            LIMIT 1   |
 	DELETE low_priority quick ignore       FROM pick_schema pick_safe_table               where    |
 	# Delete in two tables, search in two tables
-	DELETE low_priority quick ignore A , B FROM pick_schema pick_safe_table AS A join     where    |
-	# Delete in one table, search in two tables
-	DELETE low_priority quick ignore A     FROM pick_schema pick_safe_table AS A where subquery    ;
+	# Note: Unfortunately next grammar line leads to frequent failing statements (Unknown table A or B)
+	#       The reason is that in case both tables are located in different SCHEMA's than the
+	#       the schema_name must be written before the table alias.
+	#       Example: DELETE test.A, test1.B FROM test.t1 AS A NATURAL JOIN test1.t7 AS B ....
+	#  DELETE low_priority quick ignore A , B FROM pick_schema pick_safe_table AS A join     where    |
+	DELETE low_priority quick ignore A , B FROM pick_safe_table AS A NATURAL JOIN pick_safe_table B where |
+	DELETE low_priority quick ignore test1.A , test.B FROM test1 . pick_safe_table AS A NATURAL JOIN test . pick_safe_table B where ;
 
 join:
 	# 1. Do not place a where condition here.
@@ -345,22 +349,22 @@ subquery:
 subquery_part1:
 	AND A. _field[invariant]  IN ( SELECT _field[invariant] FROM pick_schema pick_safe_table AS B  ;
 correlated:
-	subquery_part1 WHERE B.col_int = A.col_int ) ;
+	subquery_part1 WHERE B.col_tinyint = A.col_tinyint ) ;
 non_correlated:
 	subquery_part1 ) ;
 where:
-	WHERE col_int BETWEEN _int[invariant] AND _int[invariant] + 2 ;
+	WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + 2 ;
 
 insert:
 	# mleich: Does an additional "on_duplicate_key_update" give an advantage?
 	# Insert into one table, search in no other table
-	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field , col_int ) VALUES values_list on_duplicate_key_update |
+	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field , col_tinyint ) VALUES values_list on_duplicate_key_update |
 	# Insert into one table, search in >= 1 tables
 	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 
 values_list:
-	( value , _int ) |
-	( value , _int ) , ( value , _int ) ;
+	( value , _tinyint ) |
+	( value , _tinyint ) , ( value , _tinyint ) ;
 
 on_duplicate_key_update:
 	# Only 10 %
@@ -379,7 +383,7 @@ union:
 
 replace:
 	# HIGH_PRIORITY is not allowed
-	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field , col_int ) VALUES values_list on_duplicate_key_update ;
+	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field , col_tinyint ) VALUES values_list on_duplicate_key_update ;
 	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 
 update:
@@ -394,7 +398,7 @@ select_for_update:
 	# FIXME (mleich): 1. If _field picks the blob, do we have a bad impact on throughput?
 	#                 2. Has a column list sideeffects on the transaction at all
 	#                    compared to SELECT 1 FROM ....?
-	SELECT col_int, _field FROM pick_safe_table where FOR UPDATE;
+	SELECT col_tinyint, _field FROM pick_safe_table where FOR UPDATE;
 
 value:
 	value_numeric          |
