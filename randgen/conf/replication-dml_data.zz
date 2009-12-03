@@ -1,6 +1,9 @@
 # Attention: If you modify something under $tables than the amount and the names of
 #            the tables will change and this requires adjustments in
 #            conf/replication-dml_sql.yy   *_table
+#
+$schemas = ['test','test1'];
+
 $tables = {
         # rows => [0, 1, 10, 100],
         rows => [0, 1, 10],
