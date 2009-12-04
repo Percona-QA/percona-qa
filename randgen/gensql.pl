@@ -58,9 +58,8 @@ if (defined $config->dsn) {
 if (defined $executor) {
     my $init_result = $executor->init();
     exit ($init_result) if $init_result > STATUS_OK;
+    $executor->cacheMetaData();
 }
-
-$executor->cacheMetaData();
 
 foreach my $i (1..$config->queries) {
     my $queries = $generator->next([$executor]);
