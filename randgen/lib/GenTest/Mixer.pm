@@ -29,6 +29,7 @@ sub new {
 	foreach my $executor (@{$mixer->executors()}) {
 		my $init_result = $executor->init();
 		return undef if $init_result > STATUS_OK;
+        $executor->cacheMetaData();
 	}
 
 	my @validators = @{$mixer->validators()};

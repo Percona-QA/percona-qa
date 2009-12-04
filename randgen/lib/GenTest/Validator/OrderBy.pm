@@ -20,7 +20,7 @@ sub validate {
 
 	return STATUS_OK if $orig_query !~ m{^\s*select}io;
 
-	my $fields = $executor->fields();
+	my $fields = $executor->metaColumns();
 	my @field_orders = map { 'ORDER BY OUTR . `'.$_.'` , OUTR . `pk`' } @$fields;
 
 	my $new_query = $orig_query;

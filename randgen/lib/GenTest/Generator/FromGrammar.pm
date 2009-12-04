@@ -134,7 +134,7 @@ sub globalFrame {
 
 sub next {
 	my ($generator, $executors) = @_;
-
+    
 	my $grammar = $generator->grammar();
 	my $prng = $generator->prng();
 	my $mask = $generator->mask();
@@ -282,37 +282,37 @@ sub next {
 		} elsif ($_ eq '_thread_count') {
 			$_ = $ENV{RQG_THREADS};
 		} elsif (($_ eq '_database') || ($_ eq '_db') || ($_ eq '_schema')) {
-			my $databases = $executors->[0]->databases();
-			$last_database = $_ = $prng->arrayElement($databases);
+			my $databases = $executors->[0]->metaSchemas();
+			$last_database = $prng->arrayElement($databases);
 			$_ = '`'.$last_database.'`';
 		} elsif ($_ eq '_table') {
-			my $tables = $executors->[0]->tables($last_database);
+			my $tables = $executors->[0]->metaTables($last_database);
 			$last_table = $prng->arrayElement($tables);
 			$_ = '`'.$last_table.'`';
 		} elsif ($_ eq '_field') {
-			my $fields = $executors->[0]->fields($last_table, $last_database);
+			my $fields = $executors->[0]->metaColumns($last_table, $last_database);
 			$_ = '`'.$prng->arrayElement($fields).'`';
 		} elsif ($_ eq '_field_list') {
-			my $fields = $executors->[0]->fields($last_table, $last_database);
+			my $fields = $executors->[0]->metaColumns($last_table, $last_database);
 			$_ = '`'.join('`,`', @$fields).'`';
 		} elsif ($_ eq '_field_count') {
-			my $fields = $executors->[0]->fields($last_table, $last_database);
+			my $fields = $executors->[0]->metaColumns($last_table, $last_database);
 			$_ = $#$fields + 1;
 		} elsif ($_ eq '_field_next') {
 			# Pick the next field that has not been picked recently and increment the $field_pos counter
-			my $fields = $executors->[0]->fields($last_table, $last_database);
+			my $fields = $executors->[0]->metaColumns($last_table, $last_database);
 			$_ = '`'.$fields->[$field_pos++ % $#$fields].'`';
 		} elsif ($_ eq '_field_no_pk') {
-			my $fields = $executors->[0]->fieldsNoPK($last_table, $last_database);
+			my $fields = $executors->[0]->metaColumnsTypeNot('primary',$last_table, $last_database);
 			$_ = '`'.$prng->arrayElement($fields).'`';
 		} elsif (($_ eq '_field_indexed') || ($_ eq '_field_key')) {
-			my $fields_indexed = $executors->[0]->fieldsIndexed($last_table, $last_database);
+			my $fields_indexed = $executors->[0]->metaColumnsType('indexed',$last_table, $last_database);
 			$_ = '`'.$prng->arrayElement($fields_indexed).'`';
 		} elsif ($_ eq '_collation') {
-			my $collations = $executors->[0]->collations();
+			my $collations = $executors->[0]->metaCollations();
 			$_ = '_'.$prng->arrayElement($collations);
 		} elsif ($_ eq '_charset') {
-			my $charsets = $executors->[0]->charsets();
+			my $charsets = $executors->[0]->metaCharactersets();
 			$_ = '_'.$prng->arrayElement($charsets);
 		} elsif ($_ eq '_data') {
 			$_ = $prng->file(cwd()."/data");

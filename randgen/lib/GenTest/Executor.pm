@@ -12,6 +12,7 @@ require Exporter;
 
 use strict;
 use Carp;
+use Data::Dumper;
 use GenTest;
 use GenTest::Constants;
 
@@ -23,6 +24,9 @@ use constant EXECUTOR_EXPLAIN_COUNTS	=> 4;
 use constant EXECUTOR_EXPLAIN_QUERIES	=> 5;
 use constant EXECUTOR_ERROR_COUNTS	=> 6;
 use constant EXECUTOR_DEFAULT_SCHEMA => 7;
+use constant EXECUTOR_SCHEMA_METADATA => 8;
+use constant EXECUTOR_COLLATION_METADATA => 9;
+use constant EXECUTOR_META_CACHE => 10;
 
 1;
 
@@ -168,6 +172,141 @@ sub defaultSchema {
 
 sub currentSchema {
     croak "currentSchema not defined for ". (ref $_[0]);
+}
+
+
+sub getSchemaMetaData {
+    croak "getSchemaMetaData not defined for ". (ref $_[0]);
+}
+
+sub getCollationMetaData {
+    carp "getCollationMetaData not defined for ". (ref $_[0]);
+    return [[undef,undef]];
+}
+
+
+########### Metadata routines
+
+sub cacheMetaData {
+    my ($self) = @_;
+    
+    say ("Caching metadata for ".$self->dsn());
+
+    my $meta = {};
+    foreach my $row (@{$self->getSchemaMetaData()}) {
+        my ($schema, $table, $type, $col, $key) = @$row;
+        $meta->{$schema}={} if not exists $meta->{$schema};
+        $meta->{$schema}->{$table}={} if not exists $meta->{$schema}->{$table};
+        $meta->{$schema}->{$table}->{$col}=$key;
+    }
+
+    $self->[EXECUTOR_SCHEMA_METADATA] = $meta;
+
+    my $coll = {};
+    foreach my $row (@{$self->getCollationMetaData()}) {
+        my ($collation, $charset) = @$row;
+        $coll->{$collation} = $charset;
+    }
+    $self->[EXECUTOR_COLLATION_METADATA] = $coll;
+
+    $self->[EXECUTOR_META_CACHE] = {};
+}
+
+sub metaSchemas {
+    my ($self) = @_;
+    if (not defined $self->[EXECUTOR_META_CACHE]->{SCHEMAS}) {
+        $self->[EXECUTOR_META_CACHE]->{SCHEMAS} =[sort keys %{$self->[EXECUTOR_SCHEMA_METADATA]}];
+    }
+    return $self->[EXECUTOR_META_CACHE]->{SCHEMAS};
+}
+
+sub metaTables {
+    my ($self, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+
+    $schema = $self->defaultSchema if not defined $schema;
+
+    my $cachekey = "TAB-$schema";
+
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $tables = [sort keys %{$meta->{$schema}}];
+        croak "Schema '$schema' has no tables"  if $#$tables < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $tables;
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+    
+}
+
+sub metaColumns {
+    my ($self, $table, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+    
+    $schema = $self->defaultSchema if not defined $schema;
+    $table = $self->metaTables($schema)->[0] if not defined $table;
+    
+    my $cachekey="COL-$schema-$table";
+    
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort keys %{$meta->{$schema}->{$table}}];
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+}
+
+sub metaColumnsType {
+    my ($self, $type, $table, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+    
+    $schema = $self->defaultSchema if not defined $schema;
+    $table = $self->metaTables($schema)->[0] if not defined $table;
+    
+    my $cachekey="COL-$type-$schema-$table";
+
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $cols = $meta->{$schema}->{$table};
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort grep {$cols->{$_} eq $type} keys %$cols];
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+    
+}
+
+sub metaColumnsTypeNot {
+    my ($self, $type, $table, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+    
+    $schema = $self->defaultSchema if not defined $schema;
+    $table = $self->metaTables($schema)->[0] if not defined $table;
+    
+    my $cachekey="COLNOT-$type-$schema-$table";
+
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $cols = $meta->{$schema}->{$table};
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort grep {$cols->{$_} ne $type} keys %$cols];
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+}
+
+sub metaCollations {
+    my ($self) = @_;
+    
+    my $cachekey="COLLATIONS";
+
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort keys %{$self->[EXECUTOR_COLLATION_METADATA]}];
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+}
+
+sub metaCharactersets {
+    my ($self) = @_;
+    
+    my $cachekey="CHARSETS";
+    
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $charsets = [values %{$self->[EXECUTOR_COLLATION_METADATA]}];
+        my %seen = ();
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort grep { ! $seen{$_} ++ } @$charsets];
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
 }
 
 1;
