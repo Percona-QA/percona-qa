@@ -28,7 +28,7 @@ sub init {
     ## Just to have somthing that is not undefined
 	$executor->setDbh($executor); 
 
-    $executor->defaultSchema("default");
+    $executor->defaultSchema("schema");
 
 	return STATUS_OK;
 }
@@ -74,25 +74,20 @@ sub version {
 	return "Version N/A"; # Not implemented in DBD::JDBC
 }
 
-sub tables {
-	my ($self, $database) = @_;
-    
-    my @t = ("MYTABLE");
-
-    return \@t;
-}
-
-sub fields {
-	my ($self, $database) = @_;
-    
-    my @f = ("MYFIELD");
-
-    return \@f;
-}
-
 sub currentSchema {
     my ($self,$schema) = @_;
     return $self->defaultSchema();
+}
+
+sub getSchemaMetaData {
+    return [['schema','tab','table','col1','ordinary'],
+            ['schema','tab','table','col2','primary'],
+            ['schema','tab','table','col3','indexed']];
+            
+}
+
+sub getCollationMetaData {
+    return [['collation','charset']];
 }
 
 1;
