@@ -144,6 +144,7 @@ if ($command_result_shifted > 0) {
 	# test failed
 	print("------------------------------------------------------------------------\n");
 	print($full_test_name." [ fail ]\n");
+	print("----->  See below for failure details...\n");
 } else {
 	print($full_test_name." [ pass ]\n");
 }
@@ -158,7 +159,6 @@ if ($command_result_shifted > 0) {
 my $log_lines = `wc -l < $log_file`;	# number of lines in the log file
 if ($log_lines <= 200) {
 	# log has 200 lines or less. Display the entire log.
-	print("----->  See below for failure details...\n");
 	print("----->  Test log will now be displayed...\n\n");
 	open LOGFILE, $log_file or warn "***Failed to open log file [$log_file]";
 	print while(<LOGFILE>);
@@ -166,8 +166,7 @@ if ($log_lines <= 200) {
 } elsif ($log_lines > 200) {
 	# the log has more than 200 lines. Display the first and last 100 lines.
 	my $lines = 100;
-	print("----->  See below for failure details...\n");
-	print("----->  Printing first $lines and last $lines lines from test output...\n");
+	print("----->  Printing first $lines and last $lines lines from test output of $log_lines lines...\n");
 	print('----->  See log file '.basename($log_file)." for full output.\n\n");
 	system("head -$lines $log_file");
 	print("\n.\n.\n.\n.\n.\n(...)\n.\n.\n.\n.\n.\n\n"); # something to visually separate the head and the tail
