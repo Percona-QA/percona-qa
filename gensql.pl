@@ -60,6 +60,8 @@ if (defined $executor) {
     exit ($init_result) if $init_result > STATUS_OK;
 }
 
+$executor->cacheMetaData();
+
 foreach my $i (1..$config->queries) {
     my $queries = $generator->next([$executor]);
     if (

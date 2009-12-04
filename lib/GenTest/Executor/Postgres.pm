@@ -186,74 +186,6 @@ sub version {
     return $dbh->get_info(18);
 }
 
-sub tables {
-    my ($executor, $database) = @_;
-
-    return [] if not defined $executor->dbh();
-    
-    my $cache_key = join('-', ('tables', $database));
-    my $dbname = defined $database ? "$database" : "public";
-    my $query = 
-	"SELECT table_name FROM information_schema.tables ". 
-	"WHERE table_schema = '$dbname' " .
-	"AND table_name != 'dummy'";
-    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-    return $caches{$cache_key};
-}
-
-sub fields {
-    my ($executor, $table, $database) = @_;
-	
-    return [] if not defined $executor->dbh();
-
-    my $cache_key = join('-', ('fields', $table, $database));
-    my $dbname = defined $database ? "$database" : "public";
-    $table = $executor->tables($database)->[0] if not defined $table;
-    
-    my $query = 
-        "SELECT column_name FROM information_schema.columns ".
-        " WHERE table_schema = '$dbname' AND table_name = '$table'";
-
-    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-
-    return $caches{$cache_key};
-}
-
-
-sub fieldsIndexed {
-    ## FIXME, don't know how yet
-    my ($executor, $table, $database) = @_;
-    return $executor->fields($table, $database);
-}
-
-
-sub fieldsNoPk {
-    my ($executor, $table, $database) = @_;
-	
-    return [] if not defined $executor->dbh();
-
-    my $cache_key = join('-', ('fields_no_pk', $table, $database));
-    my $dbname = defined $database ? "$database" : "public";
-    $table = $executor->tables($database)->[0] if not defined $table;
-    
-    my $query = 
-	"select column_name from information_schema.columns ".
-	"where table_schema = 'public' and ".
-	"table_name = '$table' and ".
-	"table_schema = '$dbname' and ".
-	"column_name not in ".
-	    "(select k.column_name from ".
-	     "information_schema.key_column_usage as k ".
-	     "inner join information_schema.columns ".
-	     "using(table_name, table_schema, column_name) ".
-	     "where table_name='$table' and table_schema='$dbname')";
-    
-    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-    
-    return $caches{$cache_key};
-    
-}
-
 sub currentSchema {
 	my ($self,$schema) = @_;
 
@@ -265,5 +197,41 @@ sub currentSchema {
     
 	return $self->dbh()->selectrow_array("SELECT current_schema()");
 }
+
+sub getSchemaMetaData {
+    ## Return the result from a query with the following columns:
+    ## 1. Schema (aka database) name
+    ## 2. Table name
+    ## 3. TABLE for tables VIEW for views and MISC for other stuff
+    ## 4. Column name
+    ## 5. PRIMARY for primary key, INDEXED for indexed column and "ORDINARY" for all other columns
+    my ($self) = @_;
+    my $query = 
+        "SELECT table_schema, ".
+               "table_name, ".
+               "CASE WHEN table_type = 'BASE TABLE' THEN 'table' ".
+                    "WHEN table_type = 'VIEW' THEN 'view' ".
+                    "WHEN table_type = 'SYSTEM VIEW' then 'view' ".
+                    "ELSE 'misc' END, ".
+               "column_name, ".
+               "'ordinary'". ## Need to figure out how to find indexes and primary keys
+         "FROM information_schema.tables INNER JOIN ".
+              "information_schema.columns USING(table_schema, table_name)"; 
+
+    return $self->dbh()->selectall_arrayref($query);
+}
+
+#### This query gives columns with keys (PK and unique constraint, but not indices)
+
+#	"select column_name from information_schema.columns ".
+#	"where table_schema = 'public' and ".
+#	"table_name = '$table' and ".
+#	"table_schema = '$dbname' and ".
+#	"column_name not in ".
+#	    "(select k.column_name from ".
+#	     "information_schema.key_column_usage as k ".
+#	     "inner join information_schema.columns ".
+#	     "using(table_name, table_schema, column_name) ".
+#	     "where table_name='$table' and table_schema='$dbname')";
 
 1;

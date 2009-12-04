@@ -239,78 +239,6 @@ sub version {
 }
 
 
-sub tables {
-	my ($executor, $database) = @_;
-
-	return [] if not defined $executor->dbh();
-
-	my $cache_key = join('-', ('tables', $database));
-	my $dbname = defined $database ? "$database" : "APP";
-	my $query = 
-        "SELECT t.tablename FROM ". 
-        " sys.systables AS t INNER JOIN sys.sysschemas AS s ".
-        " ON t.schemaid = s.schemaid ".
-        " WHERE s.schemaname = '$dbname' ".
-        " AND t.tablename != 'DUMMY'";
-	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-	return $caches{$cache_key};
-}
-
-sub fields {
-    my ($executor, $table, $database) = @_;
-	
-    return [] if not defined $executor->dbh();
-    
-    my $cache_key = join('-', ('fields', $table, $database));
-    my $dbname = defined $database ? "$database" : "APP";
-    $table = $executor->tables($database)->[0] if not defined $table;
-    
-    my $query = 
-        "SELECT c.columnname FROM ".
-        "sys.systables AS t INNER JOIN sys.sysschemas AS s ".
-        "ON t.schemaid = s.schemaid INNER JOIN sys.syscolumns as c ".
-        "ON t.tableid = c.referenceid ".
-        " where s.schemaname='$dbname' and t.tablename = '$table'";
-    
-    
-    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-    
-    return $caches{$cache_key};
-}
-
-sub fieldsIndexed {
-    my ($executor, $table, $database) = @_;
-
-    return [] if not defined $executor->dbh();
-
-    my $cache_key = join('-', ('fields_indexed', $table, $database));
-    my $dbname = defined $database ? "$database" : "APP";
-    $table = $executor->tables($database)->[0] if not defined $table;
-	
-    my $query = 
-	"SELECT columnname FROM ".
-	"sys.syskeys AS keys ".
-	"INNER JOIN sys.sysconglomerates AS cong ON keys.conglomerateid = cong.conglomerateid ".
-	"INNER JOIN sys.systables AS tab ON cong.tableid = tab.tableid ".
-	"INNER JOIN sys.sysschemas AS sch ON tab.schemaid = sch.schemaid ".
-	"INNER JOIN sys.syscolumns AS col ON col.referenceid = tab.tableid ".
-	"WHERE cong.isindex AND tablename = '$table' ".
-	"AND schemaname = '$dbname'";
-    
-    
-    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) 
-	if not exists $caches{$cache_key};
-    
-    return $caches{$cache_key};
-}
-
-sub fieldsNoPK {
-    ## FIXME dont know how yet
-    my ($executor, $table, $database) = @_;
-    return $executor->fields($table, $database);
-}
-
-
 sub currentSchema {
 	my ($self,$schema) = @_;
 
@@ -321,6 +249,30 @@ sub currentSchema {
     }
     
 	return $self->dbh()->selectrow_array("VALUES CURRENT SCHEMA");
+}
+
+
+
+sub getSchemaMetaData {
+    ## Return the result from a query with the following columns:
+    ## 1. Schema (aka database) name
+    ## 2. Table name
+    ## 3. TABLE for tables VIEW for views and MISC for other stuff
+    ## 4. Column name
+    ## 5. PRIMARY for primary key, INDEXED for indexed column and "ORDINARY" for all other columns
+    my ($self) = @_;
+    my $query = 
+        "select schemaname, ". 
+               "tablename, ".
+               "case when tabletype='V' then 'view' ".
+                    "when tabletype='T' then 'table' ".
+                    "else 'misc' end, ".
+                    "columnname, ".
+                    "'ordinary' ". ## Need to figure out how to find indexes and primary keys
+        "from ".
+            "sys.systables as tab join sys.sysschemas as sch on tab.schemaid=sch.schemaid ".
+            "join sys.syscolumns as col on tab.tableid = col.referenceid";
+    return $self->dbh()->selectall_arrayref($query);
 }
 
 

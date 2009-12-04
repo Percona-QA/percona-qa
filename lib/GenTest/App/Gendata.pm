@@ -161,6 +161,7 @@ sub run {
 
     if (defined $schemas) {
         push(@schema_perms, @$schemas);
+        $executor->defaultSchema(@schema_perms[0]);
     } else {
         push(@schema_perms, $executor->defaultSchema());
     }

@@ -21,7 +21,7 @@ sub validate {
 	return STATUS_OK if $orig_query !~ m{^\s*select}io;
 	return STATUS_OK if $orig_query =~ m{limit}io;
 
-	my $fields = $executor->fields();
+	my $fields = $executor->metaColumns();
 	my @field_orders = map { 'ORDER BY `'.$_.'` LIMIT 1073741824' } @$fields;
 
 	my $new_query = $orig_query;
