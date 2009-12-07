@@ -262,16 +262,18 @@ sub getSchemaMetaData {
     ## 5. PRIMARY for primary key, INDEXED for indexed column and "ORDINARY" for all other columns
     my ($self) = @_;
     my $query = 
-        "select schemaname, ". 
+        "select ".
+               "schemaname, ". 
                "tablename, ".
                "case when tabletype='V' then 'view' ".
                     "when tabletype='T' then 'table' ".
                     "else 'misc' end, ".
-                    "columnname, ".
-                    "'ordinary' ". ## Need to figure out how to find indexes and primary keys
+                "columnname, ".
+                "case when cons.type = 'P' then 'primary' else 'ordinary' end ". ## Need to figure out how to find indexes
         "from ".
             "sys.systables as tab join sys.sysschemas as sch on tab.schemaid=sch.schemaid ".
-            "join sys.syscolumns as col on tab.tableid = col.referenceid";
+            "join sys.syscolumns as col on tab.tableid = col.referenceid ".
+            "left join sys.sysconstraints as cons on tab.tableid = cons.tableid";
     return $self->dbh()->selectall_arrayref($query);
 }
 
