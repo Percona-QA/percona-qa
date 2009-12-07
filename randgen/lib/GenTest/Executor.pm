@@ -237,6 +237,11 @@ sub metaTables {
     
 }
 
+sub tables {
+    my ($self, @args) = @_;
+    $self->metaTables(@args);
+}
+
 sub metaColumns {
     my ($self, $table, $schema) = @_;
     my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
