@@ -77,7 +77,7 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
         my $mysqldopt = $config->genOpt('--mysqld=--', 'mysqld');
 
 		my $mysqltest_cmd = 
-            "perl mysql-test-run.pl $mysqldopt". $config->genOpt('--', 'mtr_options').
+            "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options').
             " t/$tmpfile 2>&1";
 
 		my $mysqltest_output = `$mysqltest_cmd`;
