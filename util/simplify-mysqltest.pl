@@ -17,7 +17,7 @@ my $o = GetOptions($options,
            'basedir=s',
            'expected_mtr_output=s',
            'verbose!',
-           'mtr_options=s',
+           'mtr_options=s%',
            'replication!');
 my $config = GenTest::Properties->new(
     options => $options,
