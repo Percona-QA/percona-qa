@@ -237,11 +237,6 @@ sub metaTables {
     
 }
 
-sub tables {
-    my ($self, @args) = @_;
-    $self->metaTables(@args);
-}
-
 sub metaColumns {
     my ($self, $table, $schema) = @_;
     my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
@@ -312,6 +307,14 @@ sub metaCharactersets {
         $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort grep { ! $seen{$_} ++ } @$charsets];
     }
     return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+}
+
+################### Public interface to be used from grammars
+##
+
+sub tables {
+    my ($self, @args) = @_;
+    return $self->metaTables(@args);
 }
 
 1;
