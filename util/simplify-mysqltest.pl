@@ -74,7 +74,7 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
 		print ORACLE_MYSQLTEST $oracle_mysqltest;
 		close ORACLE_MYSQLTEST;
 
-        my $mysqldopt = $config->genOpt('--mysqld=', 'mysqld');
+        my $mysqldopt = $config->genOpt('--mysqld=--', 'mysqld');
 
 		my $mysqltest_cmd = 
             "perl mysql-test-run.pl $mysqldopt". $config->genOpt('--', 'mtr_options').
