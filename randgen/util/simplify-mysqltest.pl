@@ -18,6 +18,7 @@ my $o = GetOptions($options,
            'expected_mtr_output=s',
            'verbose!',
            'mtr_options=s%',
+           'mysqld=s%',
            'replication!');
 my $config = GenTest::Properties->new(
     options => $options,
@@ -28,7 +29,8 @@ my $config = GenTest::Properties->new(
         'expected_mtr_output',
         'mtr_options',
         'vebose',
-        'replication'
+        'replication',
+        'mysqld'
     ],
     required => [
         'basedir',
@@ -72,8 +74,10 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
 		print ORACLE_MYSQLTEST $oracle_mysqltest;
 		close ORACLE_MYSQLTEST;
 
+        my $mysqldopt = $config->genOpt('--mysqld=', 'mysqld');
+
 		my $mysqltest_cmd = 
-            "perl mysql-test-run.pl ". $config->genOpt('--', 'mtr_options').
+            "perl mysql-test-run.pl $mysqldopt". $config->genOpt('--', 'mtr_options').
             " t/$tmpfile 2>&1";
 
 		my $mysqltest_output = `$mysqltest_cmd`;
