@@ -34,13 +34,9 @@ my $config = GenTest::Properties->new(
     ],
     required => [
         'basedir',
-        'input_file'],
+        'input_file',
+        'mtr_options'],
     defaults => {
-        mtr_options => {
-            'skip-ndbcluster' => undef,
-            'record' => undef,
-            'mem' => undef,
-            'no-check-testcases' => undef},
         replication => 0, # Set to 1 to turn on --source
                           # include/master-slave.inc and
                           # --sync_slave_with_master
