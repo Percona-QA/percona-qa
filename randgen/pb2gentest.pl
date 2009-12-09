@@ -236,14 +236,15 @@ $test =~ s/^rqg_//;	# test_name without prefix
 
 # Server port numbers:
 #
-# Use a port range ID (integer) that is unique for this host at this time.
+# If several instances of this script may run at the same time on the same
+# host, port number conflicts may occur.
+#
+# If needed, use use a port range ID (integer) that is unique for this host at
+# this time.
 # This ID is used by the RQG framework to designate a port range to use for the
 # test run. Passed to RQG using the MTR_BUILD_THREAD environment variable
 # (this naming is a legacy from MTR, which is used by RQG to start the MySQL
 # server).
-#
-# In PB2, several instances of this script may run at the same time on the same
-# host (but usually for different branches) causing port number conflicts.
 #
 # Solution: Use unique port range id per branch. Use "branch_id" as recorded
 #           in PB2 database (guaranteed unique per branch).
@@ -252,24 +253,27 @@ $test =~ s/^rqg_//;	# test_name without prefix
 # Potential issue 2: Clashing resources when running multiple pushes in same branch?
 # Potential solution 2: Keep track of used ids in local file(s). Pick unused id.
 #                       (not implemented yet)
-print("===== Determining port base id: =====\n");
+#
+# Currently (December 2009) PB2 RQG host should be running only one test at a
+# time, so this should not be an issue, hence no need to set MTR_BUILD_THREAD.
+
+#print("===== Determining port base id: =====\n");
 my $port_range_id; # Corresponding to MTR_BUILD_THREAD in the MySQL MTR world.
-# First, see if use has supplied us with a value for MTR_BUILD_THREAD:
+# First, see if user has supplied us with a value for MTR_BUILD_THREAD:
 $port_range_id = $ENV{MTR_BUILD_THREAD};
 if (defined $port_range_id) {
 	print("Environment variable MTR_BUILD_THREAD was already set.\n");
-} else {
-	# try to obtain branch id, somehow
-	$port_range_id = get_pb2_branch_id();
-	if (not defined $port_range_id) {
-		print("Unable to get branch id. Picking a 'random' port base id...\n");
-		$port_range_id = pick_random_port_range_id();
-	} else {
-		print("Using pb2 branch ID as port base ID.\n");
-	}
 }
-print("MTR_BUILD_THREAD=$port_range_id\n");
-print("\n");
+#else {
+#	# try to obtain branch id, somehow
+#	$port_range_id = get_pb2_branch_id();
+#	if (not defined $port_range_id) {
+#		print("Unable to get branch id. Picking a 'random' port base id...\n");
+#		$port_range_id = pick_random_port_range_id();
+#	} else {
+#		print("Using pb2 branch ID as port base ID.\n");
+#	}
+#}
 
 print("Configuring test...\n");
 
@@ -738,10 +742,14 @@ if ($test =~ m{valgrind}io){
 $command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
 
 # Add env variable to specify unique port range to use to avoid conflicts.
-if ($windowsOS) {
-	$command = "set MTR_BUILD_THREAD=$port_range_id && ".$command;
-} else {
-	$command = "MTR_BUILD_THREAD=$port_range_id ".$command;
+# Trying not to do this unless actually needed.
+if (defined $port_range_id) {
+	print("MTR_BUILD_THREAD=$port_range_id\n");
+	if ($windowsOS) {
+		$command = "set MTR_BUILD_THREAD=$port_range_id && ".$command;
+	} else {
+		$command = "MTR_BUILD_THREAD=$port_range_id ".$command;
+	}
 }
 
 $command =~ s{[\r\n\t]}{ }sgio;
