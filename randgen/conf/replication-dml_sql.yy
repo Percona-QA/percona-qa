@@ -215,6 +215,10 @@ binlog_event:
 	/* BEGIN 1 */ dml_event    /* 1 END */  |
 	/* BEGIN 1 */ dml_event    /* 1 END */  |
 	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	set_iso_level      |
 	set_iso_level      |
 	rotate_event       |
 	shake_clock        ;
@@ -301,6 +305,9 @@ rand_session_binlog_format:
 dml:
 	# LOAD DATA is temporary disabled
 	# generate_outfile ; safety_check LOAD DATA concurrent_or_empty INFILE tmpnam REPLACE INTO TABLE pick_schema _table |
+   # We MUST reduce the huge amount of NULL's
+	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit  AND _field[invariant] IS NULL |
+	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit  AND _field[invariant] IS NULL |
 	update |
 	delete |
 	insert |
