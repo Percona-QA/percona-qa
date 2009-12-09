@@ -272,7 +272,7 @@ my $test = GenTest::XML::Test->new(
 		queries => $config->queries,
 		validators => join (',', @{$config->validators}),
 		reporters => join (',', @{$config->reporters}),
-		seed => $config->seed,
+		seed => $seed,
 		mask => $config->mask,
 		mask_level => $config->property('mask-level'),
 		rows => $config->rows,
@@ -417,7 +417,7 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 	my $generator = GenTest::Generator::FromGrammar->new(
 		grammar => $grammar,
 		varchar_length => $config->property('varchar-length'),
-		seed => $config->seed + $id,
+		seed => $seed + $id,
 		thread_id => $id,
 		mask => $config->mask,
 	        mask_level => $config->property('mask-level')
