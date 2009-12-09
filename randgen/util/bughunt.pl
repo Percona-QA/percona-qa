@@ -48,7 +48,8 @@ my $config = GenTest::Properties->new(
               'rqg_options',
               'vardir_prefix',
               'storage_prefix',
-              'stop_on_match'],
+              'stop_on_match',
+              'mysqld'],
     required=>['rqg_option',
                'grammar',
                'vardir_prefix',
@@ -106,7 +107,7 @@ foreach my $trial (1..$config->trials) {
     my $start_time = Time::HiRes::time();
     
     my $runall =
-        "perl runall.pl --basedir=".$config->basedir. 
+        "perl runall.pl ". 
         " $rqgoptions $mysqlopt ".
         "--grammar=".$config->grammar." ".
         "--vardir=$vardir ".
