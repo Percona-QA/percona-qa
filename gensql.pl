@@ -39,9 +39,15 @@ my $config = GenTest::Properties->new(options => $options,
 				      required => ['grammar'],
 				      help => \&help);
 
+my $seed = $config->seed;
+if ($seed eq 'time') {
+    $seed = time();
+    say("Converting --seed=time to --seed=$seed");
+}
+
 my $generator = GenTest::Generator::FromGrammar->new(
     grammar_file => $config->grammar,
-    seed => ($config->seed eq 'time') ? time() : $config->seed,
+    seed => $seed,
     mask => $config->mask,
     mask_level => $config->property('mask-level')
     );

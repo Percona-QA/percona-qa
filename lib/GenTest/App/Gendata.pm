@@ -69,6 +69,9 @@ sub new {
 
     if (not defined $self->[GD_SEED]) {
         $self->[GD_SEED] = 1;
+    } elsif ($self->[GD_SEED] eq 'time') {
+        $self->[GD_SEED] = time();
+        say("Converting --seed=time to --seed=".$self->[GD_SEED]);
     }
     
     return $self;
