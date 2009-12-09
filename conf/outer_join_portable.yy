@@ -201,6 +201,10 @@ desc:
 limit:
 	| | LIMIT limit_size | LIMIT limit_size OFFSET _digit;
 
+################################################################################
+# Recommend 8 table : 2 join for smaller queries, 6 : 2 for larger ones
+################################################################################
+
 table_or_join:
            table | table | table | table | table | 
            table | table | table | join | join ;
