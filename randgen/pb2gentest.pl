@@ -206,7 +206,7 @@ sub get_pb2_branch_id {
 
 chdir('randgen');
 
-print("***** Information on the host system: *****\n");
+print("===== Information on the host system: =====\n");
 print(" - Local time  : ".localtime()."\n");
 print(" - Hostname    : ".hostname()."\n");
 print(" - PID         : $$\n");
@@ -218,7 +218,7 @@ print("       vardir  = $vardir\n");
 print("       tree    = $tree\n");
 print("       test    = $test\n");
 print("\n");
-print("***** Information on Random Query Generator version (bzr): *****\n");
+print("===== Information on Random Query Generator version (bzr): =====\n");
 system("bzr info");
 system("bzr version-info");
 print("\n");
@@ -252,7 +252,7 @@ $test =~ s/^rqg_//;	# test_name without prefix
 # Potential issue 2: Clashing resources when running multiple pushes in same branch?
 # Potential solution 2: Keep track of used ids in local file(s). Pick unused id.
 #                       (not implemented yet)
-print("***** Determining port base id: *****\n");
+print("===== Determining port base id: =====\n");
 my $port_range_id; # Corresponding to MTR_BUILD_THREAD in the MySQL MTR world.
 # First, see if use has supplied us with a value for MTR_BUILD_THREAD:
 $port_range_id = $ENV{MTR_BUILD_THREAD};

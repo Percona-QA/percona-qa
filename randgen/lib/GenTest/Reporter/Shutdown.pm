@@ -31,7 +31,7 @@ sub report {
 				last;
 			}
 			sleep(1);
-			print "*";
+			print "+";
 		}
 		say("... waiting complete.");
 	}
