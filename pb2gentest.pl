@@ -61,8 +61,8 @@ if ($windowsOS) {
 	# For vlad
 	#ENV{MYSQL_FULL_MINIDUMP} = 1;
 
-	system("date /T");
-	system("time /T");
+	#system("date /T");
+	#system("time /T");
 
 	# Path to MySQL releases used for comparison runs.
 	$basedirRelease50 = 'G:\mysql-releases\mysql-5.0.87-win32'; # loki06
@@ -76,8 +76,8 @@ if ($windowsOS) {
 	# For c++filt
 	$ENV{PATH} = $ENV{PATH}.':/opt/studio12/SUNWspro/bin';
 
-	system("uname -a");
-	system("date");
+	#system("uname -a");
+	#system("date");
 
 }
 
