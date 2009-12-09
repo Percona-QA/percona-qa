@@ -130,7 +130,7 @@ sub run {
     my $spec_file = $self->spec_file();
     
     my $prng = GenTest::Random->new(
-        seed => $self->seed() eq 'time' ? time() : $self->seed(),
+        seed => $self->seed(),
         varchar_length => $self->varchar_length()
         );
 
