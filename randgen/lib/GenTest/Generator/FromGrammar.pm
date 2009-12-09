@@ -30,7 +30,7 @@ use constant GENERATOR_MASKED_GRAMMAR => 11;
 use constant GENERATOR_GLOBAL_FRAME => 12;
 
 use constant GENERATOR_MAX_OCCURRENCES	=> 500;
-use constant GENERATOR_MAX_LENGTH	=> 2048;
+use constant GENERATOR_MAX_LENGTH	=> 3072;
 
 my $field_pos;
 
