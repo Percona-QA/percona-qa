@@ -650,7 +650,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--grammar='.$conf.'/signal_resignal.yy
 		--mysqld=--max-sp-recursion-depth=10
 	';
-} elsif ($test =~ m{stress}io ) {
+} elsif ($test =~ m{(innodb|maria|myisam)_stress}io ) {
 	$command = '
 		--grammar='.$conf.'/maria_stress.yy
 	';
