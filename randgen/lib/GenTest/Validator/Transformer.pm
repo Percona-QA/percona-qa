@@ -28,7 +28,8 @@ sub BEGIN {
 		'StraightJoin',
 		'InlineSubqueries',
 		'Count',
-		'ExecuteAsView'
+		'ExecuteAsView',
+		'DisableIndexes'
 	);
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
