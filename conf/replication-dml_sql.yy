@@ -196,20 +196,17 @@ query:
 	binlog_event ;
 
 query_init:
-	# 1. We need to set "$pick_mode = 3" because of the following possible scenario
-	#    Current GLOBAL BINLOG_FORMAT is STATEMENT
-	#    --> connect and initial SESSION BINLOG_FORMAT equals GLOBAL BINLOG_FORMAT (STATEMENT)
-	#    --> query -> binlog_event -> dml_event -> binlog_format_set ->
-	#    --> rand_global_binlog_format (this does not set $pick_mode and has no impact
-	#        on our SESSION BINLOG_FORMAT) --> dml_list --> dml
-	#    $pick_mode cannot "help" during statement generation in "dml". So it could happen 
-	#    that we get a statement using a transactional and a non transactional table.
-	#    And this is UNSAFE if our current SESSION BINLOG_FORMAT is STATEMENT.
-	#    $pick_mode = 3 brings us to the safe side.
-	# 2. The early metadata query SELECT ' _table ', ' _field ' should help to avoid the RQG RC = 255 problem later.
-	{ $pick_mode = 3 ; return undef } preload_md ; USE test1 ; preload_md ; USE test ; # SELECT SLEEP(10);
-preload_md:
-	SELECT ' _table ', ' _field ', ' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ',' _table ', ' _field ';
+	# We need to set "$pick_mode = 3" because of the following possible scenario
+	# Current GLOBAL BINLOG_FORMAT is probably STATEMENT.
+	# --> connect and initial SESSION BINLOG_FORMAT equals GLOBAL BINLOG_FORMAT (STATEMENT)
+	# --> query -> binlog_event -> dml_event -> binlog_format_set ->
+	# --> rand_global_binlog_format (this does not set $pick_mode and has no impact
+	#     on our SESSION BINLOG_FORMAT) --> dml_list --> dml
+	# $pick_mode cannot "help" during statement generation in "dml". So it could happen 
+	# that we get a statement using a transactional and a non transactional table.
+	# And this is UNSAFE if our current SESSION BINLOG_FORMAT is STATEMENT.
+	# $pick_mode = 3 brings us to the safe side.
+	{ $pick_mode = 3 ; return undef } ;
 
 binlog_event:
 	/* BEGIN 1 */ dml_event    /* 1 END */  |
@@ -303,27 +300,26 @@ rand_session_binlog_format:
 	SET SESSION BINLOG_FORMAT = { $format = 'ROW'       ; $pick_mode = 0               ; return $format } ;
 
 dml:
-	# LOAD DATA is temporary disabled
-	# generate_outfile ; safety_check LOAD DATA concurrent_or_empty INFILE tmpnam REPLACE INTO TABLE pick_schema _table |
+	generate_outfile ; safety_check LOAD DATA concurrent_or_empty INFILE _tmpnam REPLACE INTO TABLE pick_schema pick_safe_table |
    # We MUST reduce the huge amount of NULL's
-	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit  AND _field[invariant] IS NULL |
-	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit  AND _field[invariant] IS NULL |
+	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL |
+	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL |
 	update |
 	delete |
 	insert |
-	# generate_outfile ; safety_check PREPARE st1 FROM "LOAD DATA INFILE tmpnam REPLACE INTO TABLE pick_schema _table" ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
+	generate_outfile ; safety_check PREPARE st1 FROM "LOAD DATA INFILE _tmpnam REPLACE INTO TABLE pick_schema pick_safe_table" ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	PREPARE st1 FROM " update " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	PREPARE st1 FROM " delete " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	PREPARE st1 FROM " insert " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	# We need the next statement for other statements which should use a user variable.
 	SET @aux = value  |
 	# We need the next statements for other statements which should be affected by switching the database.
-	USE `test` | USE `test` | USE `test` | USE `test1` | USE `test1` |
+	USE `test` | USE `test1` |
 	select_for_update |
 	xid_event         ;
 
 generate_outfile:
-	SELECT * FROM pick_schema pick_safe_table ORDER BY _field INTO OUTFILE tmpnam ;
+	SELECT * FROM pick_schema pick_safe_table ORDER BY _field INTO OUTFILE _tmpnam ;
 concurrent_or_empty:
 	| CONCURRENT ;
 
@@ -354,7 +350,7 @@ join:
 subquery:
 	correlated | non_correlated ;
 subquery_part1:
-	AND A. _field[invariant]  IN ( SELECT _field[invariant] FROM pick_schema pick_safe_table AS B  ;
+	AND A. _field[invariant] IN ( SELECT _field[invariant] FROM pick_schema pick_safe_table AS B ;
 correlated:
 	subquery_part1 WHERE B.col_tinyint = A.col_tinyint ) ;
 non_correlated:
@@ -457,9 +453,11 @@ value_numeric:
 	CONNECTION_ID()   |
 	# Value of the AUTOINCREMENT (per manual only applicable to integer and floating-point types)
 	# column for the last INSERT.
-	LAST_INSERT_ID()       ;
+	LAST_INSERT_ID() ;
+
 value_rand:
-	RAND() * value_numeric ;
+	# The ( _digit ) makes thread = 1 tests deterministic.
+	RAND( _digit )   ;
 
 value_string:
 	# We have 'char' -> char(1),'char(10)',
@@ -564,7 +562,8 @@ high_priority:
 ignore:
 	# Only 10 %
 	| | | | | | | | |
-	IGNORE ;
+	# mleich temporary disabled IGNORE ;
+	;
 
 low_priority:
 	| | |
