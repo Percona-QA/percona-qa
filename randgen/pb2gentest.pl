@@ -452,15 +452,14 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--grammar='.$conf.'/many_indexes.yy
 		--gendata='.$conf.'/many_indexes.zz
 	';
-} elsif ($test =~ m{tiny_inserts}io) {
-	# used for both falcon and myisam
+} elsif ($test =~ m{(falcon|innodb|myisam)_tiny_inserts}io) {
 	$command = '
 		--gendata='.$conf.'/falcon_tiny_inserts.zz
 		--grammar='.$conf.'/falcon_tiny_inserts.yy
 		--queries=10000000
 	';
 #
-# END OF TESTS USED FOR FALCON (and possibly other engines as well)
+# END OF STORAGE ENGINE TESTS
 #
 # Keep the following tests in alphabetical order (based on letters in regex)
 # for easy lookup.
