@@ -1,3 +1,6 @@
+## TODO: Re-enable UTF16 in 'charset' and _UTF16 in 'charset_underscore' once WL#1213 is pushed.
+##       (Implementation not present in current 6.0 or 5.x codebases).
+
 query:
  	update | insert | delete | select ;
 
@@ -25,10 +28,10 @@ string:
 	_english | _varchar(255);
 
 charset:
-	UTF8 | UTF16 | LATIN1 | ASCII | UCS2 ;
+	UTF8 | LATIN1 | ASCII | UCS2 ;
 
 charset_underscore:
-	_UTF8 | _UTF16 | _LATIN1 | _ASCII | _UCS2 ;
+	_UTF8 | _LATIN1 | _ASCII | _UCS2 ;
 
 condition:
 	_field operator value |

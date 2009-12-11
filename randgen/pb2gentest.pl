@@ -453,8 +453,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 			--mysqld=--falcon-page-cache-size=128M
 		';
 	}
-} elsif ($test =~ m{many_indexes}io ) {
-	# used for both falcon and myisam
+} elsif ($test =~ m{(falcon|innodb|myisam)_many_indexes}io ) {
 	$command = '
 		--grammar='.$conf.'/many_indexes.yy
 		--gendata='.$conf.'/many_indexes.zz
