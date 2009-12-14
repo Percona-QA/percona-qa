@@ -12,6 +12,7 @@ ParseAllGrammars
 GendataTest
 ExecutorTest
 TestScripts
+Metadata
 ) }
 
 1;
