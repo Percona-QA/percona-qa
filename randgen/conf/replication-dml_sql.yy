@@ -154,7 +154,7 @@
 # The GET_LOCK(), RELEASE_LOCK(), IS_FREE_LOCK(), and IS_USED_LOCK() functions that handle user-level locks are replicated
 # without the slave knowing the concurrency context on master. Therefore, these functions should not be used to insert
 # into a master's table because the content on the slave would differ.
-# (For example, do not issue a statement such as INSERT INTO mytable VALUES(GET_LOCK(...)).) 
+# (For example, do not issue a statement such as INSERT INTO mytable VALUES(GET_LOCK(...)).)
 #------------------------------------------------
 # http://dev.mysql.com/doc/refman/5.4/en/replication-features-functions.html
 # The USER(), CURRENT_USER(), UUID(), VERSION(), and LOAD_FILE() functions are replicated without change and thus do not
@@ -202,7 +202,7 @@ query_init:
 	# --> query -> binlog_event -> dml_event -> binlog_format_set ->
 	# --> rand_global_binlog_format (this does not set $pick_mode and has no impact
 	#     on our SESSION BINLOG_FORMAT) --> dml_list --> dml
-	# $pick_mode cannot "help" during statement generation in "dml". So it could happen 
+	# $pick_mode cannot "help" during statement generation in "dml". So it could happen
 	# that we get a statement using a transactional and a non transactional table.
 	# And this is UNSAFE if our current SESSION BINLOG_FORMAT is STATEMENT.
 	# $pick_mode = 3 brings us to the safe side.
@@ -217,8 +217,8 @@ binlog_event:
 	/* BEGIN 1 */ dml_event    /* 1 END */  |
 	set_iso_level      |
 	set_iso_level      |
-	rotate_event       |
-	shake_clock        ;
+	rotate_event       ;
+	# This fools the RQG deadlock detection shake_clock        ;
 
 set_iso_level:
 	safety_check SET global_or_session TRANSACTION ISOLATION LEVEL iso_level ;
@@ -232,7 +232,7 @@ shake_clock:
 	safety_check SET SESSION TIMESTAMP = UNIX_TIMESTAMP() plus_minus _digit ;
 
 rotate_event:
-	# Cause that the master switches to a new binary log file 
+	# Cause that the master switches to a new binary log file
 	# RESET MASTER is not useful here because it causes
 	# - master.err: [ERROR] Failed to open log (file '/dev/shm/var_290/log/master-bin.000002', errno 2)
 	# - the RQG test does not terminate in usual way (RQG assumes deadlock)
@@ -275,10 +275,13 @@ dml_event:
 	COMMIT ; safety_check binlog_format_set ; dml_list ; safety_check xid_event ;
 dml_list:
 	safety_check dml |
-	safety_check dml ; dml_list |
-	safety_check dml ; dml_list | dml_list |
-	safety_check dml ; dml_list | dml_list | dml_list ;
-	safety_check dml ; dml_list | dml_list | dml_list | dml_list ;
+	safety_check dml nontrans_trans ; dml_list ;
+
+nontrans_trans:
+	# This is needed for the generation of the following scenario.
+	# m statements of an transaction use non transactional tables followed by
+	# n statements which use transactional tables.
+	{ if ( ($prng->int(1,4) == 4) && ($pick_mode == 3) ) { $pickmode = 3 } ; return undef } ;
 
 binlog_format_set:
 	# 1. SESSION BINLOG_FORMAT --> How the actions of our current session will be bin logged
@@ -295,19 +298,19 @@ rand_global_binlog_format:
 	SET GLOBAL BINLOG_FORMAT = MIXED     |
 	SET GLOBAL BINLOG_FORMAT = ROW       ;
 rand_session_binlog_format:
-	SET SESSION BINLOG_FORMAT = { $format = 'STATEMENT' ; $pick_mode = $prng->int(1,3) ; return $format } |
+	SET SESSION BINLOG_FORMAT = { $format = 'STATEMENT' ; $pick_mode = $prng->int(1,4) ; return $format } |
 	SET SESSION BINLOG_FORMAT = { $format = 'MIXED'     ; $pick_mode = 0               ; return $format } |
 	SET SESSION BINLOG_FORMAT = { $format = 'ROW'       ; $pick_mode = 0               ; return $format } ;
 
 dml:
 	generate_outfile ; safety_check LOAD DATA concurrent_or_empty INFILE _tmpnam REPLACE INTO TABLE pick_schema pick_safe_table |
-   # We MUST reduce the huge amount of NULL's
+	# We MUST reduce the huge amount of NULL's
 	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL |
 	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL |
 	update |
 	delete |
 	insert |
-	generate_outfile ; safety_check PREPARE st1 FROM "LOAD DATA INFILE _tmpnam REPLACE INTO TABLE pick_schema pick_safe_table" ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
+	# LOAD DATA INFILE ... is not supported in prepared statement mode.
 	PREPARE st1 FROM " update " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	PREPARE st1 FROM " delete " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	PREPARE st1 FROM " insert " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
@@ -359,7 +362,6 @@ where:
 	WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + 2 ;
 
 insert:
-	# mleich: Does an additional "on_duplicate_key_update" give an advantage?
 	# Insert into one table, search in no other table
 	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field , col_tinyint ) VALUES values_list on_duplicate_key_update |
 	# Insert into one table, search in >= 1 tables
@@ -429,7 +431,7 @@ value_unsafe_for_sbr:
 	# _data gets replace by LOAD_FILE( <some path> ) which is unsafe for SBR.
 	# mleich: I assume this refers to the risk that an input file
 	#         might exist on the master but probably not on the slave.
-	#         This is irrelevant for the usual RQG test configuration. 
+	#         This is irrelevant for the usual RQG test configuration.
 	_data             ;
 
 value_numeric:
@@ -532,16 +534,17 @@ trans_table:
 pick_safe_table:
 	# pick_mode | table type to choose | setting
 	# 0         | any                                  any_table    /*          undef_table                nontrans_table                trans_table    */
-	# 1         | undef                    /*          any_table    */          undef_table    /*          nontrans_table                trans_table    */         
+	# 1         | undef                    /*          any_table    */          undef_table    /*          nontrans_table                trans_table    */
 	# 2         | nontrans                 /*          any_table                undef_table    */          nontrans_table    /*          trans_table    */
 	# 3         | trans                    /*          any_table                undef_table                nontrans_table    */          trans_table
+	# 4         | nontrans                 /*          any_table                undef_table    */          nontrans_table    /*          trans_table    */
 	tmarker_init tmarker_set            { return $m0 } any_table { return $m1 } undef_table { return $m2 } nontrans_table { return $m3 } trans_table { return $m4 } ;
 
 tmarker_init:
 	{ $m0 = ''; $m1 = ''; $m2 = ''; $m3 = ''; $m4 = ''; return undef } ;
 
 tmarker_set:
-	{if ($pick_mode==0) {$m1='/*';$m4='*/'} elsif ($pick_mode==1) {$m0='/*';$m1='*/';$m2='/*';$m4='*/'} elsif ($pick_mode==2) {$m0='/*';$m2='*/';$m3='/*';$m4='*/'} elsif ($pick_mode==3) {$m0='/*';$m3='*/'} ; return undef};
+	{ if ($pick_mode==0) {$m1='/*';$m4='*/'} elsif ($pick_mode==1) {$m0='/*';$m1='*/';$m2='/*';$m4='*/'} elsif ($pick_mode==2) {$m0='/*';$m2='*/';$m3='/*';$m4='*/'} elsif ($pick_mode==3) {$m0='/*';$m3='*/'} elsif ($pick_mode==4) {$m0='/*';$m2='*/';$m3='/*';$m4='*/'} ; return undef };
 
 
 #### Basic constructs which are used at various places
