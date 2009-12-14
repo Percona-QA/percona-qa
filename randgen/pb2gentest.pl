@@ -469,6 +469,13 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--grammar='.$conf.'/falcon_tiny_inserts.yy
 		--queries=10000000
 	';
+} elsif ($test =~ m{innodb_transactions}io) {
+	$command = '
+		--grammar='.$conf.'/transactions.yy
+		--gendata='.$conf.'/transactions.zz
+		--mysqld=--transaction-isolation=REPEATABLE-READ
+		--validator=DatabaseConsistency
+	';
 #
 # END OF STORAGE ENGINE TESTS
 #
