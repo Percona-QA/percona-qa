@@ -4,7 +4,7 @@ require Exporter;
 @ISA = qw(GenTest Exporter);
 
 @EXPORT = qw(
-        EXECUTOR_ROW_COUNTS
+    EXECUTOR_ROW_COUNTS
 	EXECUTOR_EXPLAIN_COUNTS
 	EXECUTOR_EXPLAIN_QUERIES
 	EXECUTOR_ERROR_COUNTS
@@ -131,7 +131,7 @@ sub preprocess {
 
     # print "... $id before: $query \n";
     
-    $query =~ s/\/\*\+[a-z:]*$id[a-z:]*:([^*]*)\*\//\1/gi;
+    $query =~ s/\/\*\+[a-z:]*$id[a-z:]*:([^*]*)\*\//$1/gi;
 
     # print "... after: $query \n";
 
@@ -215,7 +215,10 @@ sub cacheMetaData {
 sub metaSchemas {
     my ($self) = @_;
     if (not defined $self->[EXECUTOR_META_CACHE]->{SCHEMAS}) {
-        $self->[EXECUTOR_META_CACHE]->{SCHEMAS} =[sort keys %{$self->[EXECUTOR_SCHEMA_METADATA]}];
+        my $schemas = [sort keys %{$self->[EXECUTOR_SCHEMA_METADATA]}];
+        croak "No schemas found" 
+            if not defined $schemas or $#$schemas < 0;
+        $self->[EXECUTOR_META_CACHE]->{SCHEMAS} = $schemas;
     }
     return $self->[EXECUTOR_META_CACHE]->{SCHEMAS};
 }
@@ -230,7 +233,8 @@ sub metaTables {
 
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
         my $tables = [sort keys %{$meta->{$schema}}];
-        croak "Schema '$schema' has no tables"  if $#$tables < 0;
+        croak "Schema '$schema' has no tables"  
+            if not defined $tables or $#$tables < 0;
         $self->[EXECUTOR_META_CACHE]->{$cachekey} = $tables;
     }
     return $self->[EXECUTOR_META_CACHE]->{$cachekey};
@@ -247,7 +251,10 @@ sub metaColumns {
     my $cachekey="COL-$schema-$table";
     
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
-        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort keys %{$meta->{$schema}->{$table}}];
+        my $cols = [sort keys %{$meta->{$schema}->{$table}}];
+        croak "Table '$table' in schema '$schema' has no columns"  
+            if not defined $cols or $#$cols < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $cols;
     }
     return $self->[EXECUTOR_META_CACHE]->{$cachekey};
 }
@@ -260,10 +267,13 @@ sub metaColumnsType {
     $table = $self->metaTables($schema)->[0] if not defined $table;
     
     my $cachekey="COL-$type-$schema-$table";
-
+    
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
-        my $cols = $meta->{$schema}->{$table};
-        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort grep {$cols->{$_} eq $type} keys %$cols];
+        my $colref = $meta->{$schema}->{$table};
+        my $cols = [sort grep {$colref->{$_} eq $type} keys %$colref];
+        croak "Table '$table' in schema '$schema' has no '$type' columns"  
+            if not defined $cols or $#$cols < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $cols;
     }
     return $self->[EXECUTOR_META_CACHE]->{$cachekey};
     
@@ -279,8 +289,11 @@ sub metaColumnsTypeNot {
     my $cachekey="COLNOT-$type-$schema-$table";
 
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
-        my $cols = $meta->{$schema}->{$table};
-        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort grep {$cols->{$_} ne $type} keys %$cols];
+        my $colref = $meta->{$schema}->{$table};
+        my $cols = [sort grep {$colref->{$_} ne $type} keys %$colref];
+        croak "Table '$table' in schema '$schema' has no columns which are not '$type'"  
+            if not defined $cols or $#$cols < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $cols;
     }
     return $self->[EXECUTOR_META_CACHE]->{$cachekey};
 }
@@ -291,7 +304,9 @@ sub metaCollations {
     my $cachekey="COLLATIONS";
 
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
-        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort keys %{$self->[EXECUTOR_COLLATION_METADATA]}];
+        my $coll = [sort keys %{$self->[EXECUTOR_COLLATION_METADATA]}];
+        croak "No Collations defined" if not defined $coll or $#$coll < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $coll;
     }
     return $self->[EXECUTOR_META_CACHE]->{$cachekey};
 }
@@ -303,6 +318,7 @@ sub metaCharactersets {
     
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
         my $charsets = [values %{$self->[EXECUTOR_COLLATION_METADATA]}];
+        croak "No character sets defined" if not defined $charsets or $#$charsets < 0;
         my %seen = ();
         $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort grep { ! $seen{$_} ++ } @$charsets];
     }
