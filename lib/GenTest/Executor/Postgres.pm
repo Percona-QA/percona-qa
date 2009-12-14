@@ -216,7 +216,8 @@ sub getSchemaMetaData {
                "column_name, ".
                "'ordinary'". ## Need to figure out how to find indexes and primary keys
          "FROM information_schema.tables INNER JOIN ".
-              "information_schema.columns USING(table_schema, table_name)"; 
+              "information_schema.columns USING(table_schema, table_name) ".
+         "WHERE table_name <> 'dummy'"; 
 
     return $self->dbh()->selectall_arrayref($query);
 }

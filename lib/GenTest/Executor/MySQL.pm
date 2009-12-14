@@ -750,7 +750,8 @@ sub getSchemaMetaData {
                     "WHEN column_key = 'UNI' THEN 'indexed' ".
                     "ELSE 'ordinary' END ".
          "FROM information_schema.tables INNER JOIN ".
-              "information_schema.columns USING(table_schema, table_name)"; 
+              "information_schema.columns USING(table_schema, table_name) ".
+          "WHERE table_name <> 'DUMMY'"; 
 
     return $self->dbh()->selectall_arrayref($query);
 }
