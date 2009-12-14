@@ -273,7 +273,8 @@ sub getSchemaMetaData {
         "from ".
             "sys.systables as tab join sys.sysschemas as sch on tab.schemaid=sch.schemaid ".
             "join sys.syscolumns as col on tab.tableid = col.referenceid ".
-            "left join sys.sysconstraints as cons on tab.tableid = cons.tableid";
+            "left join sys.sysconstraints as cons on tab.tableid = cons.tableid ".
+         "where tablename <> 'DUMMY'";
     return $self->dbh()->selectall_arrayref($query);
 }
 
