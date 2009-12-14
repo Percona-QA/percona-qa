@@ -29,7 +29,8 @@ sub BEGIN {
 		'InlineSubqueries',
 		'Count',
 		'ExecuteAsView',
-		'DisableIndexes'
+		'DisableIndexes',
+                'ExecuteAsSPTwice'
 	);
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
