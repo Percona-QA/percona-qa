@@ -31,8 +31,8 @@ sub validate {
 	foreach my $table (@$tables) {
 		my ($average1, $average2, $count) = $dbh->selectrow_array("
 			SELECT
-			AVG(`int_key`) + AVG(`int`) AS average1,
-			(SUM(`int_key`) + SUM(`int`)) / COUNT(*) AS average2,
+			AVG(`col_int_key`) + AVG(`col_int`) AS average1,
+			(SUM(`col_int_key`) + SUM(`col_int`)) / COUNT(*) AS average2,
 			COUNT(*) AS count
 			FROM `$table`
 		");
