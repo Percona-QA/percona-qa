@@ -432,6 +432,14 @@ if ($test =~ m{falcon_.*transactions}io ) {
 #
 # END OF FALCON-ONLY TESTS
 #
+} elsif ($test =~ m{innodb_repeatable_read}io ) {
+	# Transactional test. See also falcon_repeatable_read.
+	$command = '
+		--grammar='.$conf.'/repeatable_read.yy
+		--gendata='.$conf.'/transactions.zz
+		--mysqld=--transaction-isolation=REPEATABLE-READ
+		--validator=RepeatableRead
+	';
 } elsif ($test =~ m{innodb_single-upd}io ) {
 	# Transactional test. See also falcon_backlog.
 	$command = '
