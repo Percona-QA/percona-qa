@@ -738,7 +738,13 @@ sub getSchemaMetaData {
     ## 5. PRIMARY for primary key, INDEXED for indexed column and "ORDINARY" for all other columns
     my ($self) = @_;
     my $query = 
-        "SELECT table_schema, ".
+        "SELECT CASE WHEN table_schema = 'information_schema' ".
+                     "THEN 'INFORMATION_SCHEMA' ".  ## Hack due to
+                                                    ## weird MySQL
+                                                    ## behaviour on
+                                                    ## schema names
+                                                    ## (See Bug#49708)
+                     "ELSE table_schema END, ".
                "table_name, ".
                "CASE WHEN table_type = 'BASE TABLE' THEN 'table' ".
                     "WHEN table_type = 'VIEW' THEN 'view' ".
