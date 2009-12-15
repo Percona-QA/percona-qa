@@ -407,15 +407,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--mysqld=--falcon-record-chill-threshold=1K
 		--mysqld=--falcon-page-cache-size=128M
 	';
-} elsif ($test =~ m{falcon_compare_self}io ) {
-	$command = '
-		--grammar='.$conf.'/falcon_data_types.yy
-		--gendata='.$conf.'/falcon_data_types.zz
-		--vardir1='.$vardir.'/falcon-vardir1
-		--vardir2='.$vardir.'/falcon-vardir2
-		--threads=1
-		--reporters=
-	';
 } elsif ($test =~ m{falcon_compare_innodb}io ) {
         # Datatypes YEAR and TIME disabled in grammars due to Bug#45499 (InnoDB). 
         # Revert to falcon_data_types.{yy|zz} when that bug is resolved in relevant branches.
@@ -432,6 +423,15 @@ if ($test =~ m{falcon_.*transactions}io ) {
 #
 # END OF FALCON-ONLY TESTS
 #
+} elsif ($test =~ m{(falcon|innodb|myisam)_compare_self}io ) {
+	$command = '
+		--grammar='.$conf.'/falcon_data_types.yy
+		--gendata='.$conf.'/falcon_data_types.zz
+		--vardir1='.$vardir.'/'.$engine.'-vardir1
+		--vardir2='.$vardir.'/'.$engine.'-vardir2
+		--threads=1
+		--reporters=
+	';
 } elsif ($test =~ m{innodb_repeatable_read}io ) {
 	# Transactional test. See also falcon_repeatable_read.
 	$command = '
