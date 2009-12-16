@@ -161,9 +161,7 @@
 # work reliably on the slave unless row-based replication is enabled. This is also true for CURRENT_USER. (See Section 16.1.2, “Replication Formats”.)
 #
 # USER(), CURRENT_USER(), and CURRENT_USER are automatically replicated using row-based replication when using MIXED mode, and generate a warning in STATEMENT mode. (Bug#28086)
-# mleich: VERSION() does not generate a warning.
 # the SYSDATE() function is not replication-safe
-# mleich: SYSDATE() does not generate a warning.
 # FOUND_ROWS() and ROW_COUNT() functions are not replicated reliably using statement-based + generate a warning in STATEMENT mode
 # --> "values"
 
@@ -303,7 +301,10 @@ rand_session_binlog_format:
 	SET SESSION BINLOG_FORMAT = { $format = 'ROW'       ; $pick_mode = 0               ; return $format } ;
 
 dml:
-	generate_outfile ; safety_check LOAD DATA concurrent_or_empty INFILE _tmpnam REPLACE INTO TABLE pick_schema pick_safe_table |
+	# Enable the next line if
+	#    Bug#49628 corrupt table after legal SQL, LONGTEXT column
+	# is fixed.
+	# generate_outfile ; safety_check LOAD DATA concurrent_or_empty INFILE _tmpnam REPLACE INTO TABLE pick_schema pick_safe_table |
 	# We MUST reduce the huge amount of NULL's
 	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL |
 	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL |
@@ -315,7 +316,12 @@ dml:
 	PREPARE st1 FROM " delete " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	PREPARE st1 FROM " insert " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	# We need the next statement for other statements which should use a user variable.
-	SET @aux = value  |
+	# As long as
+	#    Bug#49562 SBR out of sync when using numeric data types + user variable
+	# is bot fixed we must prevent that a value assigned to @aux does not exceed
+	# the value range of the column where it is applied (INSERT/UPDATE) later.
+	# SET @aux = value  |
+	SET @aux = 13  |
 	# We need the next statements for other statements which should be affected by switching the database.
 	USE `test` | USE `test1` |
 	select_for_update |
@@ -428,10 +434,13 @@ value_unsafe_for_sbr:
 	# varchar(77) CHARACTER SET utf8
 	CURRENT_USER()    |
 	USER()            |
+	VERSION()         |
+	SYSDATE()         |
 	# _data gets replace by LOAD_FILE( <some path> ) which is unsafe for SBR.
 	# mleich: I assume this refers to the risk that an input file
 	#         might exist on the master but probably not on the slave.
-	#         This is irrelevant for the usual RQG test configuration.
+	#         This is irrelevant for the usual RQG test configuration
+	#         where master and slave run on the same box.
 	_data             ;
 
 value_numeric:
@@ -470,8 +479,6 @@ value_string:
 	_char(1)    | _char(10)    |
 	_varchar(1) | _varchar(10) | _varchar(257)   |
 	_text(255)  | _text(65535) | _text(16777215) |
-	# The manual says VERSION() is unsafe in SBR. mleich : It does not generate a warning.
-	VERSION()   |
 	DATABASE()  |
 	_set        ;
 
@@ -489,8 +496,6 @@ value_temporal:
 	#    _time - a time in the range from 00:00:00 to 29:59:59
 	#    _year - a year in the range 2000 to 2010
 	_datetime | _date | _time | _datetime | _timestamp | _year |
-	# The manual says SYSDATE() is unsafe in SBR. mleich : It does not generate a warning.
-	SYSDATE() |
 	NOW()     ;
 
 any_table:
