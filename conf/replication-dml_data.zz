@@ -9,9 +9,10 @@ $tables = {
         rows => [ 0 , 1 , 10] ,
         # partitions => [ undef , 'KEY (pk) PARTITIONS 2' ] ,
         # Example: table<rows> , table<rows>_<engine>
-        engines => [ undef , 'MyISAM' , 'InnoDB' ] ,
+        # engines => [ undef , 'MyISAM' , 'InnoDB' ] ,
+        engines => [ undef , 'MyISAM' ] ,
         # Example: table<rows>_<engine>_<pk> like table0_myisam_int_autoinc
-        # If Bug#47927 is fixed switch to
+        # Enable the next line when the RPL team says it is time to do this.
         #    pk => [ 'int auto_increment' , 'int' , undef ]
         pk   => [ 'int auto_increment' , 'int' ]
 };
@@ -22,9 +23,7 @@ $fields = {
            'bit' , 'bit(4)' , 'bit(64)' ,
            'tinyint' , 'smallint' , 'mediumint' , 'int' ,
            'bigint' ,
-           # float and double have to be disabled because of
-           # Bug#49562 SBR out of sync when using floating point data type + user variable
-           # 'float' , 'double' ,
+           'float' , 'double' ,
            # decimal(M,N) is not supported by RQG. I would have taken decimal(65,30),decimal(10,0).
            # decimal had to be disabled because of
            # Bug#49533: Overflow in DECIMAL, SBR out of sync
