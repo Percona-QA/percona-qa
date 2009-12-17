@@ -30,7 +30,8 @@ sub BEGIN {
 		'Count',
 		'ExecuteAsView',
 		'DisableIndexes',
-                'ExecuteAsSPTwice'
+                'ExecuteAsSPTwice',
+                'ExecuteAsPreparedTwice'
 	);
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
