@@ -1,79 +1,78 @@
 query:
-  { $idx_table = '' ; $tables = 0 ; $fields = 0 ; @idx_fields = () ; @idx_select_fields = () ; "" } 
-  { @int_idx_fields = ("`pk`" , "`col_int_nokey`" , "`col_int_key`") ; "" } query_type ;
+  { $idx_table = '' ; @idx_fields = () ;  "" } query_type ;
 
 query_type:
-   int_query_set ;
+  single_idx_query_set | dual_int_idx_query_set ;
 
-int_query_set:
-   add_int_index ; tame_int_select ; wild_select ; drop_index ;
+single_idx_query_set:
+  single_idx_query ; single_idx_query ; single_idx_query ; single_idx_query ; single_idx_query ;
+
+dual_int_idx_query_set:
+  new_dual_int_index ; dual_int_idx_query ; dual_int_idx_query ; dual_int_idx_query ; dual_int_idx_query ; dual_int_idx_query ; drop_index ;
+
+################################################################################
+# index-specific rules
+################################################################################
 
 drop_index:
-  DROP INDEX `test_idx` ON { $idx_table } ; 
+ DROP INDEX `test_idx` ON { $idx_table } ;
 
+new_dual_int_index:
+ ALTER TABLE index_table ADD INDEX `test_idx` USING index_type (dual_int_idx_field_list) ;
 
-################################################################################
-# int-specific index rules
-################################################################################
-add_int_index:
- ALTER TABLE index_table ADD INDEX `test_idx` USING index_type (int_idx_field_list) ;
-
-int_idx_field_list:
-  int_idx_field | int_idx_field | int_idx_field , int_idx_field_list ;
-
-int_idx_field:
-  {  my $idx_field = $prng->arrayElement(\@int_idx_fields) ; push @idx_fields , $idx_field ; my $idx_select_field = 'table1 . '.$idx_field.' AS field'.++$fields ; push @idx_select_fields , $idx_select_field ; $idx_field } ;
-
-
-################################################################################
-# int-specific query rules
-################################################################################
-
-tame_int_select:
-  SELECT idx_field_list FROM join_clause WHERE int_idx_where_list opt_where_list order_by_clause ;
-
-int_idx_where_list:
-   int_idx_where_item | int_idx_where_list and_or int_idx_where_item ;
-
-int_idx_where_item:
-   { "table1 . ".$prng->arrayElement(\@idx_fields) } comparison_operator int_value |
-   { "table1 . ".$prng->arrayElement(\@idx_fields) } comparison_operator existing_table_item . int_indexed | 
-   { "table1 . ".$prng->arrayElement(\@idx_fields) } not BETWEEN _tinyint_unsigned[invariant] AND (_tinyint_unsigned[invariant] + int_value ) |
-   { "table1 . ".$prng->arrayElement(\@idx_fields) } not IN (number_list) |
-   { "table1 . ".$prng->arrayElement(\@idx_fields) } not BETWEEN _digit[invariant] AND (_digit[invariant] + int_value ) |
-   { "table1 . ".$prng->arrayElement(\@idx_fields) } IS not NULL ;
-   
+dual_int_idx_field_list:
+  `pk`, `col_int_key`  { @idx_fields =("`pk`", "`col_int_key`") ; "" } |
+  `col_int_key` , `pk` { @idx_fields =("`col_int_key`", "`pk`") ; "" } | 
+  `col_int_key` , `col_int_nokey` { @idx_fields =("`col_int_key`", "`col_int_nokey`") ;  "" }  ;  
+  
 
 
 ################################################################################
 # general-purpose rules
 ################################################################################
 
-wild_select:
-  SELECT select_list FROM join_clause WHERE where_list ; 
+single_idx_query:
+  { $tables=0 ; $fields = 0 ; "" }  SELECT select_list FROM join WHERE single_idx_where_list opt_where_list order_by_clause ;
 
-opt_select_list:
-  | | , select_list ;
+dual_int_idx_query:
+  { $tables=0 ; $fields = 0 ; "" }  SELECT select_list FROM idx_join WHERE dual_idx_where_list opt_where_list order_by_clause ;
 
 select_list:
-  select_item | select_item | select_item , select_list ;
+  select_item | select_item , select_list ;
 
 select_item:
   table_one_two . _field AS { my $f = "field".++$fields ; $f } ; 
 
-join_clause:
-  	( { $idx_table.' AS  table'.++$tables } join_type new_table_item ON (join_condition_list ) ) |
-        ( { $idx_table.' AS  table'.++$tables } join_type ( ( new_table_item join_type new_table_item ON (join_condition_list ) ) ) ON (join_condition_list ) ) ;
+join:
+   { $stack->push() }      
+   table_or_join 
+   { $stack->set("left",$stack->get("result")); }
+   left_right outer JOIN table_or_join 
+   ON 
+   { my $left = $stack->get("left"); my %s=map{$_=>1} @$left; my @r=(keys %s); my $table_string = $prng->arrayElement(\@r); my @table_array = split(/AS/, $table_string); $table_array[1] } . int_indexed = 
+   { my $right = $stack->get("result"); my %s=map{$_=>1} @$right; my @r=(keys %s); my $table_string = $prng->arrayElement(\@r); my @table_array = split(/AS/, $table_string); $table_array[1] } . int_indexed
+   { my $left = $stack->get("left");  my $right = $stack->get("result"); my @n = (); push(@n,@$right); push(@n,@$left); $stack->pop(\@n); return undef } ;
 
-join_condition_list:
-  join_condition_item | join_condition_item | join_condition_item | 
-  ( join_condition_item ) and_or (join_condition_item ) ;
+idx_join:
+   { $stack->push() }      
+   idx_table_for_join 
+   { $stack->set("left",$stack->get("result")); }
+   left_right outer JOIN table_or_join 
+   ON 
+   { my $left = $stack->get("left"); my %s=map{$_=>1} @$left; my @r=(keys %s); my $table_string = $prng->arrayElement(\@r); my @table_array = split(/AS/, $table_string); $table_array[1] } . int_indexed = 
+   { my $right = $stack->get("result"); my %s=map{$_=>1} @$right; my @r=(keys %s); my $table_string = $prng->arrayElement(\@r); my @table_array = split(/AS/, $table_string); $table_array[1] } . int_indexed
+   { my $left = $stack->get("left");  my $right = $stack->get("result"); my @n = (); push(@n,@$right); push(@n,@$left); $stack->pop(\@n); return undef } ;
 
-join_condition_item:
-  current_table_item . int_indexed = previous_table_item . int_indexed |
-  current_table_item . char_indexed = previous_table_item . char_indexed |
-  current_table_item . int_indexed join_condition_operator previous_table_item . int_indexed |
-  current_table_item . char_indexed join_condition_operator previous_table_item . char_indexed ;
+table_or_join:
+           table | table | table | table | table | 
+           table | table | join | join ;
+
+table:
+# We use the "AS table" bit here so we can have unique aliases if we use the same table many times
+       { my @table_set = ("A","C","C","C","C","CC","CC","CC","CC","B","BB","B","BB","D") ; $stack->push(); my $x = $prng->arrayElement(\@table_set)." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
+
+idx_table_for_join:
+       { $stack->push() ; my $x = $idx_table." AS table".++$tables; my @s=($x); $stack->pop(\@s); $x } ;
 
 join_type:
 	INNER JOIN | left_right outer JOIN | STRAIGHT_JOIN ; 
@@ -88,13 +87,13 @@ index_type:
   BTREE | HASH ;
 
 index_table:
-  { $idx_table = $prng->arrayElement($executors->[0]->tables()) ; $idx_table } ;
+  { my $idx_table_candidate = $prng->arrayElement($executors->[0]->tables()) ; $idx_table = $idx_table_candidate ; $idx_table } ;
 
 idx_field_list:
-  { scalar(@idx_fields) > 0 ? join(', ' , @idx_select_fields) : "" }  opt_select_list ;
+  { scalar(@idx_fields) > 0 ? join(', ' , @idx_select_fields) : "" }  , select_list  ;
 
 opt_where_list:
-  | | | | | and_or where_list ;
+  | | | | and_or where_list ;
 
 where_list:
   where_item | where_item | where_item | ( where_list and_or where_item ) ;
@@ -104,8 +103,13 @@ where_item:
   existing_table_item . int_field_name comparison_operator existing_table_item . int_field_name |
   existing_table_item . char_field_name comparison_operator _char |
   existing_table_item . char_field_name comparison_operator existing_table_item . char_field_name |
+  existing_table_item . int_field_name comparison_operator _digit |
+  existing_table_item . int_field_name comparison_operator existing_table_item . int_field_name |
+  existing_table_item . char_field_name comparison_operator _char |
+  existing_table_item . char_field_name comparison_operator existing_table_item . char_field_name |
   existing_table_item . _field IS not NULL |
-  existing_table_item . `pk` IS not NULL ;
+  existing_table_item . `pk` IS not NULL |
+  single_idx_where_list ;
 
 order_by_clause:
 	| | |
@@ -131,6 +135,74 @@ limit:
 limit_size:
     1 | 2 | 10 | 100 | 1000;
 
+
+################################################################################
+# single index rules
+################################################################################
+
+single_idx_where_list:
+    single_int_idx_where_clause | single_char_idx_where_clause |
+    single_idx_where_list and_or single_int_idx_where_clause |
+    single_idx_where_list and_or single_char_idx_where_clause ;
+
+
+single_int_idx_where_clause:
+   { my @int_idx_fields = ("`pk`" , "`col_int_key`") ; $int_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@int_idx_fields) ; "" } single_int_idx_where_list ;
+
+
+single_int_idx_where_list:
+   single_int_idx_where_list or_and single_int_idx_where_item |
+   single_int_idx_where_item | single_int_idx_where_item ;
+
+single_int_idx_where_item:
+   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
+   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
+   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
+   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
+   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
+   { $int_idx_field } greater_than _digit AND { $int_idx_field } less_than ( _digit + increment ) |
+   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } greater_than ( _digit[invariant] + increment ) |
+   { $int_idx_field } comparison_operator int_value |
+   { $int_idx_field } not_equal int_value |
+   { $int_idx_field } not IN (number_list) |
+   { $int_idx_field } not BETWEEN _digit[invariant] AND (_digit[invariant] + int_value ) |
+   { $int_idx_field } IS not NULL ;
+
+
+single_char_idx_where_clause:
+  { my @char_idx_fields = ("`col_varchar_key`") ; $char_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@char_idx_fields) ; "" } single_char_idx_where_list ;
+
+single_char_idx_where_list:
+  single_char_idx_where_list and_or single_char_idx_where_item |
+  single_char_idx_where_item | single_char_idx_where_item ;
+
+single_char_idx_where_item:
+  { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
+  { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
+  { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
+  { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
+  { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
+  { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
+  { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
+  { $char_idx_field } IS not NULL |
+  { $char_idx_field } not IN (char_list) |
+  { $char_idx_field } not LIKE ( char_pattern ) |
+  { $char_idx_field } not BETWEEN _char AND 'z' ;
+
+################################################################################
+# dual index rules
+################################################################################
+
+dual_idx_where_list:
+    dual_int_idx_where_clause | 
+    dual_idx_where_list and_or dual_int_idx_where_clause | dual_idx_where_list and_or dual_int_idx_where_clause ;
+
+
+dual_int_idx_where_clause:
+   {  $int_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@idx_fields) ; "" } single_int_idx_where_list ;
+
+
+
 ################################################################################
 # utility / helper rules
 ################################################################################
@@ -147,6 +219,9 @@ previous_table_item:
 existing_table_item:
 	{ "table".$prng->int(1,$tables) };
 
+indexed_table_item:
+        { $idx_table.' AS  table'.++$tables } ;
+
 existing_select_item:
 	{ "field".$prng->int(1,$fields) };
 
@@ -155,34 +230,52 @@ existing_select_item:
 ################################################################################
 
 comparison_operator:
-	= | > | < | != | <> | <= | >= ;
+  = | > | < | != | <> | <= | >= ;
+
+greater_than:
+  > | >= ;
+
+less_than:
+  < | <= ;
+
+not_equal:
+  <> | != ;
 
 int_value:
-     _digit | _digit | _digit | _digit | _digit | digit | other_int ;
+   _digit | _digit | _digit | _digit | _digit | digit | other_int ;
 
 other_int:
-    _tinyint_unsigned | 20 | 25 | 30 | 35 | 50 | 65 | 75 | 100 ;
+   _tinyint_unsigned | 20 | 25 | 30 | 35 | 50 | 65 | 75 | 100 ;
+
+char_value:
+  _char | _char | _char | _quid | _english ; 
+
+char_pattern:
+ char_value | char_value | CONCAT( _char, '%') | 'a%'| _quid | '_' | '_%' ;
+
+increment:
+   0 | 1 | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 5 ; 
 
 int_indexed:
-    `pk` | `col_int_key` ;
+   `pk` | `col_int_key` ;
 
 int_field_name: 
-    int_indexed | `col_int_nokey` ;
+   `pk` | `col_int_key` | `col_int_nokey` ;
 
 char_indexed:  
-    `col_varchar_key` ;
+   `col_varchar_key` ;
 
 char_field_name:
-    char_indexed | `col_varchar_nokey` ; 
+   `col_varchar_key` | `col_varchar_nokey` ; 
 
 number_list:
-        int_value | number_list, int_value ;
+   int_value | number_list, int_value ;
 
 char_list: 
-        _char | char_list, _char ;
+   _char | char_list, _char ;
 
 table_one_two:
-   table1 | table2 | table2 | table2 ;
+   table1 | table1 | table1 | table2 | table2 ;
 
 ################################################################################
 # We are trying to skew the ON condition for JOINs to be largely based on      #
@@ -192,9 +285,11 @@ join_condition_operator:
     comparison_operator | = | = | = ;
 
 and_or:
-   AND | AND | AND | AND | OR ;
+   AND | AND | OR ;
+
+or_and:
+  OR | OR | OR | AND ;
 
 not:
-   | | | | NOT ;
-
+    | | NOT ;
 
