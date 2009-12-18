@@ -279,7 +279,7 @@ nontrans_trans:
 	# This is needed for the generation of the following scenario.
 	# m statements of an transaction use non transactional tables followed by
 	# n statements which use transactional tables.
-	{ if ( ($prng->int(1,4) == 4) && ($pick_mode == 3) ) { $pickmode = 3 } ; return undef } ;
+	{ if ( ($prng->int(1,4) == 4) && ($pick_mode == 4) ) { $pickmode = 3 } ; return undef } ;
 
 binlog_format_set:
 	# 1. SESSION BINLOG_FORMAT --> How the actions of our current session will be bin logged
@@ -369,7 +369,7 @@ where:
 
 insert:
 	# Insert into one table, search in no other table
-	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field , col_tinyint ) VALUES values_list on_duplicate_key_update |
+	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field , col_tinyint )   VALUES values_list on_duplicate_key_update |
 	# Insert into one table, search in >= 1 tables
 	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 
@@ -394,7 +394,7 @@ union:
 
 replace:
 	# HIGH_PRIORITY is not allowed
-	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field , col_tinyint ) VALUES values_list on_duplicate_key_update ;
+	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field , col_tinyint )   VALUES values_list on_duplicate_key_update |
 	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 
 update:
