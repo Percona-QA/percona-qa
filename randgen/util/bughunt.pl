@@ -66,7 +66,7 @@ $config->printProps;
 my $mysqlopt = $config->genOpt("--mysqld=--",$config->mysqld) 
     if defined $config->mysqld;
 
-my $rqgoptions = $config->genOpt('--', 'rqg_option');
+my $rqgoptions = $config->genOpt('--', 'rqg_options');
 
 # Determine some runtime parameter, check parameters, ....
 
