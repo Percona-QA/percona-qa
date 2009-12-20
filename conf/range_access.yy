@@ -23,7 +23,7 @@ new_dual_int_index:
 dual_int_idx_field_list:
   `pk`, `col_int_key`  { @idx_fields =("`pk`", "`col_int_key`") ; "" } |
   `col_int_key` , `pk` { @idx_fields =("`col_int_key`", "`pk`") ; "" } | 
-  `col_int_key` , `col_int_nokey` { @idx_fields =("`col_int_key`", "`col_int_nokey`") ;  "" }  ;  
+  `col_int_key` , `col_int` { @idx_fields =("`col_int_key`", "`col_int`") ;  "" }  ;  
   
 
 
@@ -69,7 +69,7 @@ table_or_join:
 
 table:
 # We use the "AS table" bit here so we can have unique aliases if we use the same table many times
-       { my @table_set = ("A","C","C","C","C","CC","CC","CC","CC","B","BB","B","BB","D") ; $stack->push(); my $x = $prng->arrayElement(\@table_set)." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
+       { $stack->push(); my $x = $prng->arrayElement($executors->[0]->tables())." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
 
 idx_table_for_join:
        { $stack->push() ; my $x = $idx_table." AS table".++$tables; my @s=($x); $stack->pop(\@s); $x } ;
@@ -158,8 +158,8 @@ single_int_idx_where_item:
    { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
    { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
    { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
-   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
-   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
+   { $int_idx_field } greater_than _digit AND { $int_idx_field } less_than ( _digit[invariant] + int_value ) |
+   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit + int_value ) |
    { $int_idx_field } greater_than _digit AND { $int_idx_field } less_than ( _digit + increment ) |
    { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } greater_than ( _digit[invariant] + increment ) |
    { $int_idx_field } comparison_operator int_value |
@@ -170,7 +170,7 @@ single_int_idx_where_item:
 
 
 single_char_idx_where_clause:
-  { my @char_idx_fields = ("`col_varchar_key`") ; $char_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@char_idx_fields) ; "" } single_char_idx_where_list ;
+  { my @char_idx_fields = ("`col_varchar_10_latin1_key`", "`col_varchar_10_utf8_key`", "`col_varchar_1024_latin1_key`", "`col_varchar_1024_utf8_key`") ; $char_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@char_idx_fields) ; "" } single_char_idx_where_list ;
 
 single_char_idx_where_list:
   single_char_idx_where_list and_or single_char_idx_where_item |
@@ -254,19 +254,23 @@ char_pattern:
  char_value | char_value | CONCAT( _char, '%') | 'a%'| _quid | '_' | '_%' ;
 
 increment:
-   0 | 1 | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 5 ; 
+   1 |  1 | 2 | 2 | 5 | 5 | 6 | 10 ; 
 
 int_indexed:
    `pk` | `col_int_key` ;
 
 int_field_name: 
-   `pk` | `col_int_key` | `col_int_nokey` ;
+   `pk` | `col_int_key` | `col_int` ;
 
 char_indexed:  
-   `col_varchar_key` ;
-
+   `col_varchar_10_latin1_key` | `col_varchar_10_utf8_key` | 
+   `col_varchar_1024_latin1_key` | `col_varchar_1024_utf8_key`;
+ 
 char_field_name:
-   `col_varchar_key` | `col_varchar_nokey` ; 
+   `col_varchar_10_latin1_key` | `col_varchar_10_utf8_key` | 
+   `col_varchar_1024_latin1_key` | `col_varchar_1024_utf8_key` |
+   `col_varchar_10_latin1` | `col_varchar_10_utf8` | 
+   `col_varchar_1024_latin1` | `col_varchar_1024_utf8` ; 
 
 number_list:
    int_value | number_list, int_value ;

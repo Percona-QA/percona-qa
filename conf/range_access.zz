@@ -1,0 +1,17 @@
+$tables = {
+        names => ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z', 'AA', 'BB', 'CC', 'DD', 'EE', 'FF', 'GG', 'HH', 'II', 'JJ', 'KK', 'LL', 'MM', 'NN', 'OO', 'PP'],
+        rows => [0, 1, 10, 20, 25, 50, 100],
+        engines => ['MyISAM', 'Innodb' ]
+};
+
+$fields = {
+        types => [ 'int', 'varchar(10)', 'varchar(1024)' , 'date' , 'datetime'],
+        indexes => [undef, 'key' ],
+        null => [undef ],
+        charsets => ['utf8', 'latin1']
+};
+
+$data => {
+        numbers => [ 'digit', 'null', undef ],
+        strings => [ 'letter', 'english' , 'string(1024)']
+};
