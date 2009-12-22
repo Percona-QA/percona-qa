@@ -24,6 +24,10 @@ dual_int_idx_field_list:
   `pk`, `col_int_key`  { @idx_fields =("`pk`", "`col_int_key`") ; "" } |
   `col_int_key` , `pk` { @idx_fields =("`col_int_key`", "`pk`") ; "" } | 
   `col_int_key` , `col_int` { @idx_fields =("`col_int_key`", "`col_int`") ;  "" }  ;  
+
+dual_char_idx_field_list:
+   `col_varchar_10_utf8` (small_length) , `col_varchar_1024_utf8` (large_length) {@idx_fields = "`col_varchar_10_utf8`", "`col_varchar_1024_utf8`" ; "" } |
+   `col_varchar_1024_latin1` (large_length) , `col_varchar_1024_utf8` (large_length) {@idx_fields = "`col_varchar_1024_latin1`", "`col_varchar_1024_utf8`" ; "" } ;
   
 
 
@@ -35,7 +39,10 @@ single_idx_query:
   { $tables=0 ; $fields = 0 ; "" }  SELECT select_list FROM join WHERE single_idx_where_list opt_where_list order_by_clause ;
 
 dual_int_idx_query:
-  { $tables=0 ; $fields = 0 ; "" }  SELECT select_list FROM idx_join WHERE dual_idx_where_list opt_where_list order_by_clause ;
+  { $tables=0 ; $fields = 0 ; "" }  SELECT select_list FROM idx_join WHERE dual_int_idx_where_list opt_where_list order_by_clause ;
+
+dual_char_idx_query:
+  { $tables=0 ; $fields = 0 ; "" }  SELECT select_list FROM idx_join WHERE dual_char_idx_where_list opt_where_list order_by_clause ;
 
 select_list:
   select_item | select_item , select_list ;
@@ -64,7 +71,7 @@ idx_join:
    { my $left = $stack->get("left");  my $right = $stack->get("result"); my @n = (); push(@n,@$right); push(@n,@$left); $stack->pop(\@n); return undef } ;
 
 table_or_join:
-           table | table | table | table | table | 
+           table | table | table | table | table | table | 
            table | table | join | join ;
 
 table:
@@ -162,6 +169,7 @@ single_int_idx_where_item:
    { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit + int_value ) |
    { $int_idx_field } greater_than _digit AND { $int_idx_field } less_than ( _digit + increment ) |
    { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } greater_than ( _digit[invariant] + increment ) |
+   _digit less_than { $int_idx_field }  greater_than ( _digit + increment ) |
    { $int_idx_field } comparison_operator int_value |
    { $int_idx_field } not_equal int_value |
    { $int_idx_field } not IN (number_list) |
@@ -184,6 +192,7 @@ single_char_idx_where_item:
   { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
   { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
   { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
+  _char less_than { $char_idx_field } greater_than 'z' | 
   { $char_idx_field } IS not NULL |
   { $char_idx_field } not IN (char_list) |
   { $char_idx_field } not LIKE ( char_pattern ) |
@@ -193,15 +202,22 @@ single_char_idx_where_item:
 # dual index rules
 ################################################################################
 
-dual_idx_where_list:
+dual_int_idx_where_list:
     dual_int_idx_where_clause | 
-    dual_idx_where_list and_or dual_int_idx_where_clause | dual_idx_where_list and_or dual_int_idx_where_clause ;
+    dual_int_idx_where_list and_or dual_int_idx_where_clause | dual_int_idx_where_list and_or dual_int_idx_where_clause ;
 
 
 dual_int_idx_where_clause:
    {  $int_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@idx_fields) ; "" } single_int_idx_where_list ;
 
+# char rules
+dual_char_idx_where_list:
+    dual_char_idx_where_clause |
+    dual_char_idx_where_list and_or dual_char_idx_where_clause | dual_char_idx_where_list and_or dual_char_idx_where_clause ;
 
+
+dual_char_idx_where_clause:
+   {  $char_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@idx_fields) ; "" } single_char_idx_where_list ;
 
 ################################################################################
 # utility / helper rules
@@ -256,6 +272,12 @@ char_pattern:
 increment:
    1 |  1 | 2 | 2 | 5 | 5 | 6 | 10 ; 
 
+large_length:
+   1024 | 1024 | 1024 | 1024 | 1024 | 100 | 200 | 250 | 37 | short_length ;
+
+short_length:
+   1 | 2 | 5 | 7 | 10 | 10 | 10 | 10 | 10 | 10 ; 
+
 int_indexed:
    `pk` | `col_int_key` ;
 
@@ -280,13 +302,6 @@ char_list:
 
 table_one_two:
    table1 | table1 | table1 | table2 | table2 ;
-
-################################################################################
-# We are trying to skew the ON condition for JOINs to be largely based on      #
-# equalities, but to still allow other arithmetic operators                    #
-################################################################################
-join_condition_operator:
-    comparison_operator | = | = | = ;
 
 and_or:
    AND | AND | OR ;
