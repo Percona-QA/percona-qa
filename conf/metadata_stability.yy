@@ -11,7 +11,7 @@ transaction:
 	START TRANSACTION | COMMIT | ROLLBACK ;
 
 select:
-	SELECT /* RESULTSET_SAME_DATA_IN_EVERY_ROW */ select_item AS `col_int_key`
+	SELECT /* QUERY_ID: _mediumint_unsigned */ /* RESULTSET_SAME_DATA_IN_EVERY_ROW */ select_item AS `col_int_key`
 	FROM join_list
 	where;
 
@@ -84,8 +84,8 @@ trigger_ddl:
 	pick_trigger_name drop_trigger ; create_trigger ;
 
 view_ddl:
-	pick_view_name create_view | pick_view_name create_view | pick_view_name create_view |
-	pick_view_name alter_view | pick_view_name drop_view ; create_view ;
+	pick_view_name create_view | pick_view_name create_view | pick_view_name create_view ;
+	# pick_view_name alter_view | pick_view_name drop_view ; create_view ;	# bug 49891 
 
 pick_function_name:
 	{ $function_name = 'func_'.$prng->int(1,3) ; return undef } ;
@@ -119,7 +119,8 @@ create_table:
 	CREATE temporary TABLE $table_name ( `col_int_key` INTEGER, KEY (`col_int_key`) ) select ;
 
 create_view:
-	CREATE OR REPLACE ALGORITHM = view_algorithm VIEW $view_name AS select ;
+	CREATE ALGORITHM = view_algorithm VIEW $view_name AS select ;
+	# OR REPLACE 	# bug 49891
 
 alter_view:
 	ALTER ALGORITHM = view_algorithm VIEW $view_name AS select ;
