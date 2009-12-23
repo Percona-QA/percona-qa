@@ -75,7 +75,7 @@ my @errors = (
 
 my @patterns = map { qr{$_}i } @errors;
 
-use constant EXECUTOR_MYSQL_AUTOCOMMIT => 10;
+use constant EXECUTOR_MYSQL_AUTOCOMMIT => 20;
 
 #
 # Column positions for SHOW SLAVES
@@ -466,7 +466,7 @@ sub execute {
 	if (
 		(not defined $executor->[EXECUTOR_MYSQL_AUTOCOMMIT]) &&
 		(
-			($query =~ m{^\s*start transaction}io) ||
+			($query =~ m{^\s*start\s+transaction}io) ||
 			($query =~ m{^\s*begin}io) 
 		)
 	) {	
