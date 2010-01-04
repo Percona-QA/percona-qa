@@ -238,25 +238,27 @@ rotate_event:
 
 xid_event:
 	# Omit BEGIN because it is only an alias for START TRANSACTION
-	START TRANSACTION                     |
-	COMMIT                                |
-	ROLLBACK                              |
+	START TRANSACTION                         |
+	COMMIT                                    |
+	ROLLBACK                                  |
 	# In SBR after a "SAVEPOINT A" any statement which modifies a nontransactional table is unsafe.
 	# Therefore we enforce here that future statements within the current transaction use
 	# a transactional table.
 	SAVEPOINT A { $pick_mode=3; return undef} |
-	ROLLBACK TO SAVEPOINT A               |
-	RELEASE SAVEPOINT A                   |
-	implicit_commit                       ;
+	ROLLBACK TO SAVEPOINT A                   |
+	RELEASE SAVEPOINT A                       |
+	implicit_commit                           ;
 
 implicit_commit:
-	create_table |
-	drop_table   |
+	create_procedure     |
+	drop_procedure       |
+	create_table         |
+	drop_table           |
 	# This will fail because the table does_not_exist.
 	ALTER TABLE does_not_exist CHANGE COLUMN f1 f2 BIGINT |
 	# CREATE DATABASE ic ; CREATE TABLE ic . _letter SELECT * FROM _table LIMIT digit ; DROP DATABASE ic |
 	# CREATE USER _letter | DROP USER _letter | RENAME USER _letter TO _letter |
-	SET AUTOCOMMIT = ON |
+	SET AUTOCOMMIT = ON  |
 	SET AUTOCOMMIT = OFF |
 	# CREATE TABLE IF NOT EXISTS _letter ENGINE = engine SELECT * FROM _table LIMIT digit |
 	# RENAME TABLE _letter TO _letter |
@@ -268,25 +270,64 @@ implicit_commit:
 	LOCK TABLE _table WRITE ; safety_check UNLOCK TABLES ;
 
 create_table:
-	CREATE TABLE IF NOT EXISTS pick_schema { 't1_myisam_'.$$ } LIKE nontrans_table ENGINE = MyISAM |
-	CREATE TABLE IF NOT EXISTS pick_schema { 't1_innodb_'.$$ } LIKE trans_table    ENGINE = InnoDB |
+	# Attention: Be very careful here with INSERT ... SELECT or CREATE TABLE ... AS SELECT ...
+	#            In the moment, don't use it at all.
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table ENGINE = MyISAM |
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    ENGINE = InnoDB |
+   # FIXME Move this out of xid.....
+   # FIXME Add later the case that base and temporary table have the same names
+	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_myisam_'.$$ } LIKE nontrans_table ENGINE = MyISAM |
+	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.$$ } LIKE trans_table    ENGINE = InnoDB |
 	# This will fail because mysql.user already exists.
 	CREATE TABLE mysql.user ( f1 BIGINT ) ;
-
 drop_table:
-	DROP TABLE IF EXISTS pick_schema { 't1_myisam_'.$$ } |
-	DROP TABLE IF EXISTS pick_schema { 't1_innodb_'.$$ } |
+	DROP           TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
+	DROP           TABLE IF EXISTS pick_schema { 't1_base_innodb_'.$$ } |
+   # FIXME Move this out of xid.....
+   # FIXME Add later the case that base and temporary table have the same names
+	DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_myisam_'.$$ } |
+	DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_innodb_'.$$ } |
 	# This will fail because already exist_not_exist.
 	DROP TABLE does_not_exist                            ;
+
+# This procedure handling is a bit tricky and I am till now not 100% convinced that the solution is very good.
+# The base:
+# 1. CREATE AND DROP PROCEDURE should be replication safe independend of the current session binlog format and
+#    the tables used within preceding statements of the current transaction.
+#    BTW: CREATE/DROP cause an implicite COMMIT before the inner part of the statement itself gets processed.
+# 2. In case we call a procedure we must ensure that the activity (DML) of the procedure is replication safe.
+#    In short: There is a dependency on the current session binlog format and
+#    the tables used within preceding statements of the current transaction.
+# Solution:
+# 1. Procedure names contain depending on their DML activity a part (-> $pick_mode) which tells in which
+#    pick_mode of the current session they can be used.
+#    Of course the DML activity of the procedure has to fit to the pick_mode part of its name.
+# 2. "The base 1." says that we can create any procedure within the current session.
+#    This would require that we store the current pick_mode, switch to the pick_mode to be used for the DML within
+#    the procedure, create the procedure and restore the old session pick_mode.
+#    But in fact we have only to ensure that
+#    - our procedures are proper defined (pick_mode part of name fits to its DML activity)
+#    - most probably the corresponding procedure exists when we call the procedure
+# Therefore we only try to create a procedure which fits to the current session pick_mode.
+# The frequent dynamic switching of the session binlog format causes a calculation of pick_mode.
+create_procedure:
+   CREATE PROCEDURE IF NOT EXISTS pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN proc_stmt ; proc_stmt ; END ;
+proc_stmt:
+   replace | update | replace | delete ;
+drop_procedure:
+	DROP PROCEDURE IF EXISTS pick_schema { 'p1_'.$pick_mode.'_'.$$ } ;
+call_procedure:
+	CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
+	
 
 # Guarantee that the transaction has ended before we switch the binlog format
 dml_event:
 	COMMIT ; safety_check binlog_format_set ; dml_list ; safety_check xid_event ;
 dml_list:
 	safety_check dml |
-	safety_check dml nontrans_trans ; dml_list ;
+	safety_check dml nontrans_trans_shift ; dml_list ;
 
-nontrans_trans:
+nontrans_trans_shift:
 	# This is needed for the generation of the following scenario.
 	# m statements of an transaction use non transactional tables followed by
 	# n statements which use transactional tables.
@@ -297,7 +338,7 @@ binlog_format_set:
 	# 2. GLOBAL BINLOG_FORMAT  --> How actions with DELAYED will be bin logged
 	#                          --> Initial SESSION BINLOG_FORMAT of session started in future
 	# This means any SET GLOBAL BINLOG_FORMAT ... executed by any session has no impact on any
-	# laready existing session (except 2.).
+	# already existing session (except 2.).
 	rand_global_binlog_format  |
 	rand_session_binlog_format |
 	rand_session_binlog_format |
@@ -322,6 +363,7 @@ dml:
 	update |
 	delete |
 	insert |
+	call_procedure |
 	# LOAD DATA INFILE ... is not supported in prepared statement mode.
 	PREPARE st1 FROM " update " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	PREPARE st1 FROM " delete " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
@@ -332,11 +374,11 @@ dml:
 	# is bot fixed we must prevent that a value assigned to @aux does not exceed
 	# the value range of the column where it is applied (INSERT/UPDATE) later.
 	# SET @aux = value  |
-	SET @aux = 13  |
+	SET @aux = 13            |
 	# We need the next statements for other statements which should be affected by switching the database.
 	USE `test` | USE `test1` |
-	select_for_update |
-	xid_event         ;
+	select_for_update        |
+	xid_event                ;
 
 generate_outfile:
 	SELECT * FROM pick_schema pick_safe_table ORDER BY _field INTO OUTFILE _tmpnam ;
@@ -352,9 +394,9 @@ delete:
 	# Delete in one table, search in one table
 	# Unsafe in statement based replication except we add ORDER BY
 	# DELETE       FROM pick_schema _table            LIMIT 1   |
-	DELETE low_priority quick ignore       FROM pick_schema pick_safe_table               where    |
+	DELETE low_priority quick ignore       FROM pick_schema pick_safe_table               where           |
 	# Delete in two tables, search in two tables
-	# Note: Unfortunately next grammar line leads to frequent failing statements (Unknown table A or B)
+	# Note: The next grammar line leads unfortunately to frequent failing statements (Unknown table A or B).
 	#       The reason is that in case both tables are located in different SCHEMA's than the
 	#       the schema_name must be written before the table alias.
 	#       Example: DELETE test.A, test1.B FROM test.t1 AS A NATURAL JOIN test1.t7 AS B ....
@@ -372,20 +414,20 @@ subquery:
 subquery_part1:
 	AND A. _field[invariant] IN ( SELECT _field[invariant] FROM pick_schema pick_safe_table AS B ;
 correlated:
-	subquery_part1 WHERE B.col_tinyint = A.col_tinyint ) ;
+	subquery_part1 WHERE B.col_tinyint = A.col_tinyint )                                         ;
 non_correlated:
-	subquery_part1 ) ;
+	subquery_part1 )                                                                             ;
 where:
-	WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + 2 ;
+	WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + 2                    ;
 
 insert:
 	# Insert into one table, search in no other table
-	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field , col_tinyint )   VALUES values_list on_duplicate_key_update |
+	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field , col_tinyint )   VALUES values_list on_duplicate_key_update                       |
 	# Insert into one table, search in >= 1 tables
 	INSERT low_priority_delayed_high_priority ignore INTO pick_schema pick_safe_table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 
 values_list:
-	( value , _tinyint ) |
+	( value , _tinyint )                        |
 	( value , _tinyint ) , ( value , _tinyint ) ;
 
 on_duplicate_key_update:
@@ -405,7 +447,7 @@ union:
 
 replace:
 	# HIGH_PRIORITY is not allowed
-	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field , col_tinyint )   VALUES values_list on_duplicate_key_update |
+	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field , col_tinyint )   VALUES values_list on_duplicate_key_update                       |
 	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 
 update:
@@ -461,18 +503,22 @@ value_numeric:
 	# mleich: FIXME 1. We do not need all of these values.
 	#               2. But a smart distribution of values is required so that we do not hit all time
 	#                  outside of the allowed value ranges
-	- _digit   | _digit              |
-	_bit(1)    | _bit(4)             |
-	_tinyint   | _tinyint_unsigned   |
-	_smallint  | _smallint_unsigned  |
-	_mediumint | _mediumint_unsigned |
-	_int       | _int_unsigned       |
-	_bigint    | _bigint_unsigned    |
-	_bigint    | _bigint_unsigned    |
-	-2.0E+10   | -2.0E+10            |
-	-2.0E+100  | -2.0E+100           |
+	- _digit         | _digit              |
+	_bit(1)          | _bit(4)             |
+	_tinyint         | _tinyint_unsigned   |
+	_smallint        | _smallint_unsigned  |
+	_mediumint       | _mediumint_unsigned |
+	_int             | _int_unsigned       |
+	_bigint          | _bigint_unsigned    |
+	_bigint          | _bigint_unsigned    |
+	-2.0E-1          | +2.0E-1             |
+	-2.0E+1          | +2.0E+1             |
+	-2.0E-10         | +2.0E-10            |
+	-2.0E+10         | +2.0E+10            |
+	-2.0E-100        | +2.0E-100           |
+	-2.0E+100        | +2.0E+100           |
 	# int(10)
-	CONNECTION_ID()   |
+	CONNECTION_ID()  |
 	# Value of the AUTOINCREMENT (per manual only applicable to integer and floating-point types)
 	# column for the last INSERT.
 	LAST_INSERT_ID() ;
@@ -526,7 +572,8 @@ undef_table:
 	table10             ;
 
 nontrans_table:
-	{ 't1_myisam_'.$$ }        |
+	{ 't1_base_myisam_'.$$ }   |
+	{ 't1_temp_myisam_'.$$ }   |
 	table0_myisam_int_autoinc  |
 	table0_myisam_int          |
 	table0_myisam              |
@@ -538,7 +585,8 @@ nontrans_table:
 	table10_myisam             ;
 
 trans_table:
-	{ 't1_innodb_'.$$ }        |
+	{ 't1_base_innodb_'.$$ }   |
+	{ 't1_temp_innodb_'.$$ }   |
 	table0_innodb_int_autoinc  |
 	table0_innodb_int          |
 	table0_innodb              |
