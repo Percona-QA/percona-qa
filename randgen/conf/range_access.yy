@@ -2,13 +2,19 @@ query:
   { $idx_table = '' ; @idx_fields = () ;  "" } query_type ;
 
 query_type:
-  single_idx_query_set | dual_int_idx_query_set ;
+  single_idx_query_set | dual_int_idx_query_set | single_idx_query_set | dual_int_idx_query_set | dual_char_idx_query_set ;
 
 single_idx_query_set:
-  single_idx_query ; single_idx_query ; single_idx_query ; single_idx_query ; single_idx_query ;
+  single_idx_query ; single_idx_query ; single_idx_query ; single_idx_query ; single_idx_query ; 
 
 dual_int_idx_query_set:
-  new_dual_int_index ; dual_int_idx_query ; dual_int_idx_query ; dual_int_idx_query ; dual_int_idx_query ; dual_int_idx_query ; drop_index ;
+  new_dual_int_index ; dual_int_idx_query ; dual_int_idx_query ; dual_int_idx_query ; dual_int_idx_query ; dual_int_idx_query ; wild_query ; drop_index ;
+
+dual_char_idx_query_set:
+  new_dual_char_index ; dual_char_idx_query ; dual_char_idx_query ; dual_char_idx_query ; dual_char_idx_query ; dual_char_idx_query ; wild_query ; drop_index ;
+
+wild_query:
+  single_idx_query | dual_int_idx_query | dual_char_idx_query ;
 
 ################################################################################
 # index-specific rules
@@ -20,14 +26,17 @@ drop_index:
 new_dual_int_index:
  ALTER TABLE index_table ADD INDEX `test_idx` USING index_type (dual_int_idx_field_list) ;
 
+new_dual_char_index:
+ ALTER TABLE index_table ADD INDEX `test_idx` USING index_type (dual_char_idx_field_list) ;
+
 dual_int_idx_field_list:
   `pk`, `col_int_key`  { @idx_fields =("`pk`", "`col_int_key`") ; "" } |
   `col_int_key` , `pk` { @idx_fields =("`col_int_key`", "`pk`") ; "" } | 
   `col_int_key` , `col_int` { @idx_fields =("`col_int_key`", "`col_int`") ;  "" }  ;  
 
 dual_char_idx_field_list:
-   `col_varchar_10_utf8` (small_length) , `col_varchar_1024_utf8` (large_length) {@idx_fields = "`col_varchar_10_utf8`", "`col_varchar_1024_utf8`" ; "" } |
-   `col_varchar_1024_latin1` (large_length) , `col_varchar_1024_utf8` (large_length) {@idx_fields = "`col_varchar_1024_latin1`", "`col_varchar_1024_utf8`" ; "" } ;
+   `col_varchar_10_utf8`(small_length) , `col_varchar_1024_utf8`(large_length) {@idx_fields = "`col_varchar_10_utf8`", "`col_varchar_1024_utf8`" ; "" } |
+   `col_varchar_1024_latin1`(large_length) , `col_varchar_1024_utf8`(large_length) {@idx_fields = "`col_varchar_1024_latin1`", "`col_varchar_1024_utf8`" ; "" } ;
   
 
 
@@ -164,12 +173,9 @@ single_int_idx_where_list:
 single_int_idx_where_item:
    { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
    { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
-   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit[invariant] + increment ) |
    { $int_idx_field } greater_than _digit AND { $int_idx_field } less_than ( _digit[invariant] + int_value ) |
    { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } less_than ( _digit + int_value ) |
    { $int_idx_field } greater_than _digit AND { $int_idx_field } less_than ( _digit + increment ) |
-   { $int_idx_field } greater_than _digit[invariant] AND { $int_idx_field } greater_than ( _digit[invariant] + increment ) |
-   _digit less_than { $int_idx_field }  greater_than ( _digit + increment ) |
    { $int_idx_field } comparison_operator int_value |
    { $int_idx_field } not_equal int_value |
    { $int_idx_field } not IN (number_list) |
@@ -192,7 +198,6 @@ single_char_idx_where_item:
   { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
   { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
   { $char_idx_field } greater_than _char AND { $char_idx_field } less_than 'z' |
-  _char less_than { $char_idx_field } greater_than 'z' | 
   { $char_idx_field } IS not NULL |
   { $char_idx_field } not IN (char_list) |
   { $char_idx_field } not LIKE ( char_pattern ) |
@@ -273,9 +278,9 @@ increment:
    1 |  1 | 2 | 2 | 5 | 5 | 6 | 10 ; 
 
 large_length:
-   1024 | 1024 | 1024 | 1024 | 1024 | 100 | 200 | 250 | 37 | short_length ;
+   200 | 200 | 200 | 200 | 200 | 100 | 200 | 250 | 37 | small_length ;
 
-short_length:
+small_length:
    1 | 2 | 5 | 7 | 10 | 10 | 10 | 10 | 10 | 10 ; 
 
 int_indexed:
