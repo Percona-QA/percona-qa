@@ -758,7 +758,7 @@ if ($test =~ m{valgrind}io){
 	}
 }
 	
-$command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
+$command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--loose-skip-safemalloc ".$command;
 
 # Add env variable to specify unique port range to use to avoid conflicts.
 # Trying not to do this unless actually needed.
