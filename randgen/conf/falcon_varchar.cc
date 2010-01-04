@@ -5,7 +5,7 @@ $combinations = [
 		--mysqld=--loose-falcon-lock-wait-timeout=1
 		--mysqld=--loose-innodb-lock-wait-timeout=1
 		--mysqld=--log-output=none
-		--mysqld=--skip-safemalloc
+		--mysqld=--loose-skip-safemalloc
 	'],
 	[
 		'--mysqld=--falcon-page-size=2K',
