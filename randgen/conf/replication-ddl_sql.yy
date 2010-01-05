@@ -213,6 +213,14 @@ binlog_event:
 	/* BEGIN 1 */ dml_event    /* 1 END */  |
 	/* BEGIN 1 */ dml_event    /* 1 END */  |
 	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	/* BEGIN 1 */ dml_event    /* 1 END */  |
+	set_iso_level      |
+	set_iso_level      |
 	set_iso_level      |
 	set_iso_level      |
 	rotate_event       ;
@@ -238,22 +246,34 @@ rotate_event:
 
 xid_event:
 	# Omit BEGIN because it is only an alias for START TRANSACTION
-	START TRANSACTION                         |
-	COMMIT                                    |
-	ROLLBACK                                  |
+	START TRANSACTION |
+	COMMIT            |
+	ROLLBACK          |
+	savepoint_event   |
+	implicit_commit   ;
+
+savepoint_event:
 	# In SBR after a "SAVEPOINT A" any statement which modifies a nontransactional table is unsafe.
 	# Therefore we enforce here that future statements within the current transaction use
 	# a transactional table.
 	SAVEPOINT A { $pick_mode=3; return undef} |
+	SAVEPOINT A { $pick_mode=3; return undef} |
 	ROLLBACK TO SAVEPOINT A                   |
-	RELEASE SAVEPOINT A                       |
-	implicit_commit                           ;
+	RELEASE SAVEPOINT A                       ;
 
 implicit_commit:
 	create_procedure     |
+	create_procedure     |
 	drop_procedure       |
+	create_function      |
+	create_function      |
+	drop_function        |
+	create_table         |
 	create_table         |
 	drop_table           |
+	create_view          |
+	create_view          |
+	drop_view            |
 	# This will fail because the table does_not_exist.
 	ALTER TABLE does_not_exist CHANGE COLUMN f1 f2 BIGINT |
 	# CREATE DATABASE ic ; CREATE TABLE ic . _letter SELECT * FROM _table LIMIT digit ; DROP DATABASE ic |
@@ -274,8 +294,8 @@ create_table:
 	#            In the moment, don't use it at all.
 	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table ENGINE = MyISAM |
 	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    ENGINE = InnoDB |
-   # FIXME Move this out of xid.....
-   # FIXME Add later the case that base and temporary table have the same names
+	# FIXME Move this out of xid.....
+	# FIXME Add later the case that base and temporary table have the same names
 	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_myisam_'.$$ } LIKE nontrans_table ENGINE = MyISAM |
 	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.$$ } LIKE trans_table    ENGINE = InnoDB |
 	# This will fail because mysql.user already exists.
@@ -283,14 +303,22 @@ create_table:
 drop_table:
 	DROP           TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
 	DROP           TABLE IF EXISTS pick_schema { 't1_base_innodb_'.$$ } |
-   # FIXME Move this out of xid.....
-   # FIXME Add later the case that base and temporary table have the same names
+	# FIXME Move this out of xid.....
+	# FIXME Add later the case that base and temporary table have the same names
 	DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_myisam_'.$$ } |
 	DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_innodb_'.$$ } |
 	# This will fail because already exist_not_exist.
-	DROP TABLE does_not_exist                            ;
+	DROP TABLE does_not_exist                                           ;
 
-# This procedure handling is a bit tricky and I am till now not 100% convinced that the solution is very good.
+create_view:
+	CREATE VIEW IF NOT EXISTS pick_schema { 'v1_trans_'.$$ }    SELECT _field_list FROM trans_table    where |
+	CREATE VIEW IF NOT EXISTS pick_schema { 'v1_nontrans_'.$$ } SELECT _field_list FROM nontrans_table where ;
+drop_view:
+	DROP VIEW IF EXISTS pick_schema { 'v1_trans_'.$$ }    |
+	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_'.$$ } ;
+
+
+# This procedure and function handling is a bit tricky and I am till now not 100% convinced that the solution is very good.
 # The base:
 # 1. CREATE AND DROP PROCEDURE should be replication safe independend of the current session binlog format and
 #    the tables used within preceding statements of the current transaction.
@@ -311,14 +339,20 @@ drop_table:
 # Therefore we only try to create a procedure which fits to the current session pick_mode.
 # The frequent dynamic switching of the session binlog format causes a calculation of pick_mode.
 create_procedure:
-   CREATE PROCEDURE IF NOT EXISTS pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN proc_stmt ; proc_stmt ; END ;
+	# CREATE PROCEDURE IF NOT EXISTS pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN proc_stmt ; proc_stmt ; END ;
+	CREATE PROCEDURE IF NOT EXISTS pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN dml_list ; END ;
 proc_stmt:
-   replace | update | replace | delete ;
+	replace | update | delete ;
 drop_procedure:
 	DROP PROCEDURE IF EXISTS pick_schema { 'p1_'.$pick_mode.'_'.$$ } ;
 call_procedure:
 	CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
-	
+
+create_function:
+	CREATE FUNCTION IF NOT EXISTS pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table ) ;
+drop_function:
+	DROP FUNCTION IF EXISTS pick_schema { 'f1_'.$pick_mode.'_'.$$ } ;
+# Note: We use the function within the grammar item "value".
 
 # Guarantee that the transaction has ended before we switch the binlog format
 dml_event:
@@ -472,6 +506,7 @@ value:
 	value_temporal         |
 	@aux                   |
 	NULL                   |
+	pick_schema { 'f1_'.$pick_mode.'_'.$$ } () |
 	{ if ($format=='STATEMENT') {return '/*'} } value_unsafe_for_sbr { if ($format=='STATEMENT') {return '*/ 17 '} };
 
 value_unsafe_for_sbr:
@@ -574,6 +609,7 @@ undef_table:
 nontrans_table:
 	{ 't1_base_myisam_'.$$ }   |
 	{ 't1_temp_myisam_'.$$ }   |
+	{ 'v1_nontrans_'.$$ }      |
 	table0_myisam_int_autoinc  |
 	table0_myisam_int          |
 	table0_myisam              |
@@ -587,6 +623,7 @@ nontrans_table:
 trans_table:
 	{ 't1_base_innodb_'.$$ }   |
 	{ 't1_temp_innodb_'.$$ }   |
+	{ 'v1_trans_'.$$ }         |
 	table0_innodb_int_autoinc  |
 	table0_innodb_int          |
 	table0_innodb              |
