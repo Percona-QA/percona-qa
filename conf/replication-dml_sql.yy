@@ -286,7 +286,7 @@ binlog_format_set:
 	# 2. GLOBAL BINLOG_FORMAT  --> How actions with DELAYED will be bin logged
 	#                          --> Initial SESSION BINLOG_FORMAT of session started in future
 	# This means any SET GLOBAL BINLOG_FORMAT ... executed by any session has no impact on any
-	# laready existing session (except 2.).
+	# already existing session (except 2.).
 	rand_global_binlog_format  |
 	rand_session_binlog_format |
 	rand_session_binlog_format |
@@ -450,18 +450,22 @@ value_numeric:
 	# mleich: FIXME 1. We do not need all of these values.
 	#               2. But a smart distribution of values is required so that we do not hit all time
 	#                  outside of the allowed value ranges
-	- _digit   | _digit              |
-	_bit(1)    | _bit(4)             |
-	_tinyint   | _tinyint_unsigned   |
-	_smallint  | _smallint_unsigned  |
-	_mediumint | _mediumint_unsigned |
-	_int       | _int_unsigned       |
-	_bigint    | _bigint_unsigned    |
-	_bigint    | _bigint_unsigned    |
-	-2.0E+10   | -2.0E+10            |
-	-2.0E+100  | -2.0E+100           |
+	- _digit         | _digit              |
+	_bit(1)          | _bit(4)             |
+	_tinyint         | _tinyint_unsigned   |
+	_smallint        | _smallint_unsigned  |
+	_mediumint       | _mediumint_unsigned |
+	_int             | _int_unsigned       |
+	_bigint          | _bigint_unsigned    |
+	_bigint          | _bigint_unsigned    |
+	-2.0E-1          | +2.0E-1             |
+	-2.0E+1          | +2.0E+1             |
+	-2.0E-10         | +2.0E-10            |
+	-2.0E+10         | +2.0E+10            |
+	-2.0E-100        | +2.0E-100           |
+	-2.0E+100        | +2.0E+100           |
 	# int(10)
-	CONNECTION_ID()   |
+	CONNECTION_ID()  |
 	# Value of the AUTOINCREMENT (per manual only applicable to integer and floating-point types)
 	# column for the last INSERT.
 	LAST_INSERT_ID() ;
