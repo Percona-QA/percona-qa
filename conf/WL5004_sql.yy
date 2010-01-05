@@ -20,6 +20,18 @@
 # .. there are a lot more please search for open bugs reported by Matthias Leich
 #
 # TODO:
+#   - Correct spelling is "namespace" and not "name space"
+#   - Add TRUNCATE PARTITION and check if we are missing any other related DDL.
+#     (Bug #49907 ALTER TABLE ... TRUNCATE PARTITION does not wait for locks on the table)
+#   - Observation of Philip when using greater values for name_space_width
+#     - the database never actually gets the expected number of objects.
+#       Even if the DROPs are removed ,then still the database grows very slowly towards the name_space size.
+#     - There are a lot of CREATE TABLE table2 SELECT * FROM table1 and similar constructs in order to clone database objects.
+#       Unfortunately, at higher name_space values, table1 is not very likely to exist, and therefore table2 is also unlikely to be created.
+#     Conclusion(mleich):
+#       - reduce the likelihood of DROP TABLE <table with short lifetime>
+#         --> such tables get an a bit longer lifetime
+#       - reduce the likelihood that CREATE TABLE <table with short lifetime> uses "used_select"
 #   - Add subtest for
 #     Bug #48315 Metadata lock is not taken for merged views that use an INFORMATION_SCHEMA table
 #     Simple:
@@ -29,7 +41,7 @@
 #        mleich:
 #           But IS tables used in VIEWs, SELECT, DELETE/UPDATE subqueries/join,
 #           PROCEDURES etc. are complete missing.
-#           Could Inject this in subquery?
+#           Could I inject this in a subquery?
 #   - Simplify grammar:
 #           Name space concept is good for grammar development, avoiding failing statements,
 #           understanding statement logs but bad for grammar simplification speed.
@@ -147,7 +159,7 @@
 
 # Section of easy changeable items with high impact on the test =============================================#
 query_init:
-	# Variant 1: 
+	# Variant 1:
 	#    Advantage: Less failing (table does not exist ...) statements within the first phase of the test.
 	# init_basics : init_name_spaces ; event_scheduler_on ; have_some_initial_objects ;
 	# Variant 2:
@@ -162,8 +174,8 @@ init_basics:
 	#
 	#    There are till now not sufficient experiences about the impact of different values on the outcome of the test.
 	#
-	#    sequence object | lifetime 
-	#    --------------------------------------------
+	#    sequence object | lifetime
+	#    ------------------------------------------------
 	#    database        | 2   * RAND() * $life_time_unit
 	#    table (no view) | 1   * RAND() * $life_time_unit
 	#    view            | 0.5 * RAND() * $life_time_unit
@@ -187,7 +199,7 @@ init_basics:
 	{ $life_time_unit = 1 ; $name_space_width = 2 ; if ( $ENV{RQG_THREADS} == 1 ) { $life_time_unit = 0 } ; return undef } avoid_bugs ; nothing_disabled ; system_table_stuff ;
 
 init_name_spaces:
-	# Please choose between the following alternatives 
+	# Please choose between the following alternatives
 	# separate_objects         -- no_separate_objects
 	# separate_normal_sequence -- no_separate_normal_sequence
 	# separate_table_types     -- no_separate_table_types
@@ -619,7 +631,7 @@ kill_query_or_session:
 #     based on CONNECTION_ID(), MIN and MAX leads to more stable results.
 # 2.2 There is the risk that we compute the id iand KILL an auxiliary RQG session (reporter,validator).
 # 2.2.1 The impact of such an operation on RQG (automatic judgement about test result, deadlock detection
-#       etc. is currently unknown. 
+#       etc. is currently unknown.
 # 2.2.2 Effects caused by killing of such an auxiliary RQG session are out of testing scope.
 #     Therefore we avoid this by the grammar item "pick_executors_only"
 #       etc. is currently unknown.
@@ -637,8 +649,8 @@ query_or_session:
 pick_executors_only:
 	AND (INFO LIKE CONCAT('%',TRIM(' database_name_s '),'%') OR INFO LIKE CONCAT('%',TRIM(' database_name_n '),'%')) ;
 ensure_all_up:
-	# In case of MAX(id) > _thread_count it is very likely that the majority of executor sessions are started. 
-	# In case of 'Uptime' it is likely that 
+	# In case of MAX(id) > _thread_count it is very likely that the majority of executor sessions are started.
+	# In case of 'Uptime' it is likely that
 	AND _thread_count + 3 < (SELECT MAX(id) FROM information_schema.processlist)
 	AND 10 > (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME='Uptime') ;
 
@@ -989,7 +1001,7 @@ rename_item:
 	part_table_item_n  TO part_table_item_n  ;
 
 rename_column:
-	ALTER TABLE table_no_view_item_s CHANGE COLUMN column_to_change my_column INT | 
+	ALTER TABLE table_no_view_item_s CHANGE COLUMN column_to_change my_column INT |
 	ALTER TABLE table_no_view_item_s CHANGE COLUMN my_column column_to_change INT ;
 
 column_to_change:
@@ -1478,9 +1490,9 @@ flush:
 	# - be rare
 	# - last only very short time
 	# So I put it into a sequence with FLUSH ... ; wait a bit ; UNLOCK TABLES
-	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | 
-	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | 
-	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | 
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list ;
 	# temporary disabled FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
 
