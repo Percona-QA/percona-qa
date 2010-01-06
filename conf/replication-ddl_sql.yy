@@ -268,6 +268,15 @@ implicit_commit:
 	create_function      |
 	create_function      |
 	drop_function        |
+	create_trigger       |
+	create_trigger       |
+	drop_trigger         |
+	# If
+	#    Bug#50095 Multi statement including CREATE EVENT causes rotten binlog entry
+   # is fixed please enable the following three lines.
+	# create_event         |
+	# create_event         |
+	# drop_event           |
 	create_table         |
 	create_table         |
 	drop_table           |
@@ -353,6 +362,33 @@ create_function:
 drop_function:
 	DROP FUNCTION IF EXISTS pick_schema { 'f1_'.$pick_mode.'_'.$$ } ;
 # Note: We use the function within the grammar item "value".
+
+# I am unsure if "$pick_mode" makes here sense. Therefore this might be removed in future.
+# FIXME:
+# 1. pick_safe_table must point to a base table
+# 2. trigger and basetable must reside within the same schema
+create_trigger:
+	CREATE TRIGGER IF NOT EXISTS pick_schema { 'tr1_'.$pick_mode.'_'.$$ } trigger_time trigger_event ON pick_schema pick_safe_table FOR EACH ROW BEGIN trigger_action ; END ;
+trigger_time:
+   BEFORE | AFTER ;
+trigger_event:
+   INSERT | DELETE ;
+trigger_action:
+   insert | replace | delete | update | CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
+drop_trigger:
+   DROP TRIGGER IF EXISTS pick_schema { 'tr1_'.$pick_mode.'_'.$$ };
+
+# I am unsure if "$pick_mode" makes here sense. Therefore this might be removed in future.
+create_event:
+   CREATE EVENT IF NOT EXISTS pick_schema { 'e1_'.$pick_mode.'_'.$$ } ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO insert ;
+completion_handling:
+   ON COMPLETION not_or_empty PRESERVE ;
+drop_event:
+   DROP EVENT IF EXISTS pick_schema { 'e1_'.$pick_mode.'_'.$$ } ;
+not_or_empty:
+	NOT
+   | ;
+
 
 # Guarantee that the transaction has ended before we switch the binlog format
 dml_event:
