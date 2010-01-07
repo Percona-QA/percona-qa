@@ -168,7 +168,7 @@
 #################################################
 # From the discussion:
 # - If you want to change the replication format, do so outside the boundaries of a transaction. (SBR?)
-#   --> "*_dml_event"
+#   --> "*_binlog_format_sequence"
 # - In statement based replication, any non-transactional statement should be either placed outside the boundaries of a transaction or before any transactional statement.
 #   note(mleich): transactional/non-transactional statement refers to the table/tables where something is modified
 #------------------------------------------------
@@ -191,13 +191,30 @@ safety_check:
 	# ;
 
 query:
-	binlog_event ;
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
+	set_iso_level      |
+	set_iso_level      |
+	set_iso_level      |
+	set_iso_level      |
+	rotate_event       ;
+	# This fools the RQG deadlock detection shake_clock        ;
 
 query_init:
 	# We need to set "$pick_mode = 3" because of the following possible scenario
 	# Current GLOBAL BINLOG_FORMAT is probably STATEMENT.
 	# --> connect and initial SESSION BINLOG_FORMAT equals GLOBAL BINLOG_FORMAT (STATEMENT)
-	# --> query -> binlog_event -> dml_event -> binlog_format_set ->
+	# --> query -> binlog_format_sequence -> binlog_format_set ->
 	# --> rand_global_binlog_format (this does not set $pick_mode and has no impact
 	#     on our SESSION BINLOG_FORMAT) --> dml_list --> dml
 	# $pick_mode cannot "help" during statement generation in "dml". So it could happen
@@ -205,26 +222,6 @@ query_init:
 	# And this is UNSAFE if our current SESSION BINLOG_FORMAT is STATEMENT.
 	# $pick_mode = 3 brings us to the safe side.
 	{ $pick_mode = 3 ; return undef } ;
-
-binlog_event:
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	/* BEGIN 1 */ dml_event    /* 1 END */  |
-	set_iso_level      |
-	set_iso_level      |
-	set_iso_level      |
-	set_iso_level      |
-	rotate_event       ;
-	# This fools the RQG deadlock detection shake_clock        ;
 
 set_iso_level:
 	safety_check SET global_or_session TRANSACTION ISOLATION LEVEL iso_level ;
@@ -265,21 +262,22 @@ implicit_commit:
 	create_procedure     |
 	create_procedure     |
 	drop_procedure       |
-	create_function      |
-	create_function      |
-	drop_function        |
-	create_trigger       |
-	create_trigger       |
-	drop_trigger         |
+	## create_function      |
+	## create_function      |
+	## drop_function        |
+	## create_trigger       |
+	## create_trigger       |
+	## drop_trigger         |
 	# If
 	#    Bug#50095 Multi statement including CREATE EVENT causes rotten binlog entry
    # is fixed please enable the following three lines.
 	# create_event         |
 	# create_event         |
 	# drop_event           |
-	create_table         |
-	create_table         |
-	drop_table           |
+	# create_table         |
+	# create_table         |
+	# alter_table          |
+	# drop_table           |
 	create_view          |
 	create_view          |
 	drop_view            |
@@ -301,12 +299,12 @@ implicit_commit:
 create_table:
 	# Attention: Be very careful here with INSERT ... SELECT or CREATE TABLE ... AS SELECT ...
 	#            In the moment, don't use it at all.
-	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table ENGINE = MyISAM |
-	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    ENGINE = InnoDB |
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table |
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    |
 	# FIXME Move this out of xid.....
 	# FIXME Add later the case that base and temporary table have the same names
-	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_myisam_'.$$ } LIKE nontrans_table ENGINE = MyISAM |
-	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.$$ } LIKE trans_table    ENGINE = InnoDB |
+	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_myisam_'.$$ } LIKE nontrans_table |
+	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.$$ } LIKE trans_table    |
 	# This will fail because mysql.user already exists.
 	CREATE TABLE mysql.user ( f1 BIGINT ) ;
 drop_table:
@@ -318,10 +316,12 @@ drop_table:
 	DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_innodb_'.$$ } |
 	# This will fail because already exist_not_exist.
 	DROP TABLE does_not_exist                                           ;
+alter_table:
+	ALTER TABLE pick_schema { 't1_base_myisam_'.$$ } COMMENT ' _letter ';
 
 create_view:
-	CREATE VIEW IF NOT EXISTS pick_schema { 'v1_trans_'.$$ }    SELECT _field_list FROM trans_table    where |
-	CREATE VIEW IF NOT EXISTS pick_schema { 'v1_nontrans_'.$$ } SELECT _field_list FROM nontrans_table where ;
+	CREATE VIEW pick_schema { 'v1_trans_'.$$ }    AS SELECT _field_list FROM trans_table    where |
+	CREATE VIEW pick_schema { 'v1_nontrans_'.$$ } AS SELECT _field_list FROM nontrans_table where ;
 drop_view:
 	DROP VIEW IF EXISTS pick_schema { 'v1_trans_'.$$ }    |
 	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_'.$$ } ;
@@ -348,19 +348,19 @@ drop_view:
 # Therefore we only try to create a procedure which fits to the current session pick_mode.
 # The frequent dynamic switching of the session binlog format causes a calculation of pick_mode.
 create_procedure:
-	# CREATE PROCEDURE IF NOT EXISTS pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN proc_stmt ; proc_stmt ; END ;
-	CREATE PROCEDURE IF NOT EXISTS pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN dml_list ; END ;
+	# CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN proc_stmt ; proc_stmt ; END ;
+	CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN dml_list ; END ;
 proc_stmt:
 	replace | update | delete ;
 drop_procedure:
-	DROP PROCEDURE IF EXISTS pick_schema { 'p1_'.$pick_mode.'_'.$$ } ;
+	DROP PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } ;
 call_procedure:
 	CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
 
 create_function:
-	CREATE FUNCTION IF NOT EXISTS pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table ) ;
+	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table ) ;
 drop_function:
-	DROP FUNCTION IF EXISTS pick_schema { 'f1_'.$pick_mode.'_'.$$ } ;
+	DROP FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } ;
 # Note: We use the function within the grammar item "value".
 
 # I am unsure if "$pick_mode" makes here sense. Therefore this might be removed in future.
@@ -368,7 +368,7 @@ drop_function:
 # 1. pick_safe_table must point to a base table
 # 2. trigger and basetable must reside within the same schema
 create_trigger:
-	CREATE TRIGGER IF NOT EXISTS pick_schema { 'tr1_'.$pick_mode.'_'.$$ } trigger_time trigger_event ON pick_schema pick_safe_table FOR EACH ROW BEGIN trigger_action ; END ;
+	CREATE TRIGGER pick_schema { 'tr1_'.$pick_mode.'_'.$$ } trigger_time trigger_event ON pick_schema pick_safe_table FOR EACH ROW BEGIN trigger_action ; END ;
 trigger_time:
    BEFORE | AFTER ;
 trigger_event:
@@ -391,7 +391,7 @@ not_or_empty:
 
 
 # Guarantee that the transaction has ended before we switch the binlog format
-dml_event:
+binlog_format_sequence:
 	COMMIT ; safety_check binlog_format_set ; dml_list ; safety_check xid_event ;
 dml_list:
 	safety_check dml |
