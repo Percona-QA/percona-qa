@@ -207,8 +207,13 @@ query:
 	set_iso_level      |
 	set_iso_level      |
 	set_iso_level      |
-	rotate_event       ;
-	# This fools the RQG deadlock detection shake_clock        ;
+	rotate_event       |
+	# This fools the RQG deadlock detection
+	# shake_clock        |
+	#
+	# We MUST reduce the huge amount of NULL's
+	safety_check UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL ; COMMIT |
+	safety_check UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL ; COMMIT ;
 
 query_init:
 	# We need to set "$pick_mode = 3" because of the following possible scenario
@@ -262,22 +267,22 @@ implicit_commit:
 	create_procedure     |
 	create_procedure     |
 	drop_procedure       |
-	## create_function      |
-	## create_function      |
-	## drop_function        |
-	## create_trigger       |
-	## create_trigger       |
-	## drop_trigger         |
+	create_function      |
+	create_function      |
+	drop_function        |
+	create_trigger       |
+	create_trigger       |
+	drop_trigger         |
 	# If
 	#    Bug#50095 Multi statement including CREATE EVENT causes rotten binlog entry
-   # is fixed please enable the following three lines.
+	# is fixed please enable the following three lines.
 	# create_event         |
 	# create_event         |
 	# drop_event           |
-	# create_table         |
-	# create_table         |
-	# alter_table          |
-	# drop_table           |
+	create_table         |
+	create_table         |
+	alter_table          |
+	drop_table           |
 	create_view          |
 	create_view          |
 	drop_view            |
@@ -296,28 +301,39 @@ implicit_commit:
 	# LOAD DATA INFILE causes an implicit commit only for tables using the NDB storage engine
 	LOCK TABLE _table WRITE ; safety_check UNLOCK TABLES ;
 
+# Attention: An open (existing?) temporary table causes that an in case of current
+#            SESSION BINLOG_FORMAT = ROW any SET ... BINLOG_FORMAT fails.
 create_table:
+	# FIXME Move this out of xid.....
 	# Attention: Be very careful here with INSERT ... SELECT or CREATE TABLE ... AS SELECT ...
 	#            In the moment, don't use it at all.
 	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table |
 	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    |
-	# FIXME Move this out of xid.....
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table |
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    |
 	# FIXME Add later the case that base and temporary table have the same names
-	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_myisam_'.$$ } LIKE nontrans_table |
-	CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.$$ } LIKE trans_table    |
+	# Please enable the next two lines if
+	#    Bug #49132  	Replication failure on temporary table + DDL
+	# is fixed.
+	# CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_myisam_'.$$ } LIKE nontrans_table |
+	# CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.$$ } LIKE trans_table    |
 	# This will fail because mysql.user already exists.
 	CREATE TABLE mysql.user ( f1 BIGINT ) ;
 drop_table:
-	DROP           TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
-	DROP           TABLE IF EXISTS pick_schema { 't1_base_innodb_'.$$ } |
 	# FIXME Move this out of xid.....
+	DROP             TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
+	DROP             TABLE IF EXISTS pick_schema { 't1_base_innodb_'.$$ } |
 	# FIXME Add later the case that base and temporary table have the same names
-	DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_myisam_'.$$ } |
-	DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_innodb_'.$$ } |
+	# Please enable the next two lines if
+	#    Bug #49132  	Replication failure on temporary table + DDL
+	# is fixed.
+	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_myisam_'.$$ } |
+	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_innodb_'.$$ } |
 	# This will fail because already exist_not_exist.
-	DROP TABLE does_not_exist                                           ;
+	DROP TABLE does_not_exist                                             ;
 alter_table:
-	ALTER TABLE pick_schema { 't1_base_myisam_'.$$ } COMMENT ' _letter ';
+	ALTER TABLE pick_schema { 't1_base_myisam_'.$$ } COMMENT ' _letter '  |
+	ALTER TABLE pick_schema { 't1_base_innodb_'.$$ } COMMENT ' _letter '  ;
 
 create_view:
 	CREATE VIEW pick_schema { 'v1_trans_'.$$ }    AS SELECT _field_list FROM trans_table    where |
@@ -367,27 +383,44 @@ drop_function:
 # FIXME:
 # 1. pick_safe_table must point to a base table
 # 2. trigger and basetable must reside within the same schema
+# I got
+#    Note 1592 Unsafe statement binlogged in statement format since BINLOG_FORMAT = STATEMENT.
+#    Reason for unsafeness: Statement updates two AUTO_INCREMENT columns. This is unsafe because the generated value cannot be predicted by slave.
+# in the following situation:
+# - SBR
+# - DELETE causes the execution of a trigger which inserts per one statement two rows into a table.
+#   The table where the insert should happen contains an autoincrement primary key but there is no
+#   explicite value for this column within the insert.
+# Solutions: Either define
+#   a) Define a simple trigger which does not suffer from this problem.
+#   b) Define a sophisticated trigger which fits to the situation when the trigger gets used.  
+#   Ignoring this problem does not work because
+#   - safety_check will cause that the test aborts
+#   - we get annoying message in master.err ....
+#   Let's try a) first.
+# 
 create_trigger:
 	CREATE TRIGGER pick_schema { 'tr1_'.$pick_mode.'_'.$$ } trigger_time trigger_event ON pick_schema pick_safe_table FOR EACH ROW BEGIN trigger_action ; END ;
 trigger_time:
-   BEFORE | AFTER ;
+	BEFORE | AFTER ;
 trigger_event:
-   INSERT | DELETE ;
+	INSERT | DELETE ;
 trigger_action:
-   insert | replace | delete | update | CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
+	# insert | replace | delete | update | CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
+	SET @aux = 1;
 drop_trigger:
-   DROP TRIGGER IF EXISTS pick_schema { 'tr1_'.$pick_mode.'_'.$$ };
+	DROP TRIGGER IF EXISTS pick_schema { 'tr1_'.$pick_mode.'_'.$$ };
 
 # I am unsure if "$pick_mode" makes here sense. Therefore this might be removed in future.
 create_event:
-   CREATE EVENT IF NOT EXISTS pick_schema { 'e1_'.$pick_mode.'_'.$$ } ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO insert ;
+	CREATE EVENT IF NOT EXISTS pick_schema { 'e1_'.$pick_mode.'_'.$$ } ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO insert ;
 completion_handling:
-   ON COMPLETION not_or_empty PRESERVE ;
+	ON COMPLETION not_or_empty PRESERVE ;
 drop_event:
-   DROP EVENT IF EXISTS pick_schema { 'e1_'.$pick_mode.'_'.$$ } ;
+	DROP EVENT IF EXISTS pick_schema { 'e1_'.$pick_mode.'_'.$$ } ;
 not_or_empty:
 	NOT
-   | ;
+	| ;
 
 
 # Guarantee that the transaction has ended before we switch the binlog format
@@ -404,11 +437,21 @@ nontrans_trans_shift:
 	{ if ( ($prng->int(1,4) == 4) && ($pick_mode == 4) ) { $pickmode = 3 } ; return undef } ;
 
 binlog_format_set:
-	# 1. SESSION BINLOG_FORMAT --> How the actions of our current session will be bin logged
-	# 2. GLOBAL BINLOG_FORMAT  --> How actions with DELAYED will be bin logged
-	#                          --> Initial SESSION BINLOG_FORMAT of session started in future
+	# 1. SESSION BINLOG_FORMAT --> How the actions of our current session will be bin logged.
+	# 2. GLOBAL BINLOG_FORMAT  --> How actions with DELAYED will be bin logged.
+	#                          --> Initial SESSION BINLOG_FORMAT of session started in future.
 	# This means any SET GLOBAL BINLOG_FORMAT ... executed by any session has no impact on any
 	# already existing session (except 2.).
+	#
+	# In case we
+	# - are running in the moment with BINLOG_FORMAT = ROW and
+	# - have an open (existing?) tenporary table
+	# any SET SESSION/GLOBAL gets
+	#    Query:  ... SET SESSION BINLOG_FORMAT = ROW  failed:
+	#    1559 Cannot switch out of the row-based binary log format when the session has open temporary tables
+	# Although this means we do not get the intended BINLOG_FORMAT there will be no additional
+	# problems like we run unsafe statements etc. Our fortune is that we are already running
+	# with binary log format row which is "compatible" with any pickmode.
 	rand_global_binlog_format  |
 	rand_session_binlog_format |
 	rand_session_binlog_format |
@@ -427,9 +470,6 @@ dml:
 	#    Bug#49628 corrupt table after legal SQL, LONGTEXT column
 	# is fixed.
 	# generate_outfile ; safety_check LOAD DATA concurrent_or_empty INFILE _tmpnam REPLACE INTO TABLE pick_schema pick_safe_table |
-	# We MUST reduce the huge amount of NULL's
-	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL |
-	UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL |
 	update |
 	delete |
 	insert |
