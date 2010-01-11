@@ -264,15 +264,21 @@ savepoint_event:
 	RELEASE SAVEPOINT A                       ;
 
 implicit_commit:
+	create_is_copy       |
+	fill_is_copy         |
+	#
 	create_procedure     |
 	create_procedure     |
 	drop_procedure       |
+	#
 	create_function      |
 	create_function      |
 	drop_function        |
+	#
 	create_trigger       |
 	create_trigger       |
 	drop_trigger         |
+	#
 	# If
 	#    Bug#50095 Multi statement including CREATE EVENT causes rotten binlog entry
 	# is fixed please enable the following three lines.
@@ -283,8 +289,10 @@ implicit_commit:
 	create_table         |
 	alter_table          |
 	drop_table           |
+	#
 	create_view          |
 	create_view          |
+	alter_view           |
 	drop_view            |
 	# This will fail because the table does_not_exist.
 	ALTER TABLE does_not_exist CHANGE COLUMN f1 f2 BIGINT |
@@ -333,7 +341,13 @@ drop_table:
 	DROP TABLE does_not_exist                                             ;
 alter_table:
 	ALTER TABLE pick_schema { 't1_base_myisam_'.$$ } COMMENT ' _letter '  |
-	ALTER TABLE pick_schema { 't1_base_innodb_'.$$ } COMMENT ' _letter '  ;
+	ALTER TABLE pick_schema { 't1_base_innodb_'.$$ } COMMENT ' _letter '  |
+	# Please enable the next two lines if
+   #    Bug #49132   Replication failure on temporary table + DDL
+   # is fixed.
+	# ALTER TABLE pick_schema { 't1_temp_myisam_'.$$ } COMMENT ' _letter '  |
+	# ALTER TABLE pick_schema { 't1_temp_innodb_'.$$ } COMMENT ' _letter '  |
+	ALTER TABLE does_not_exist COMMENT ' _letter '  ;
 
 create_view:
 	CREATE VIEW pick_schema { 'v1_trans_'.$$ }    AS SELECT _field_list FROM trans_table    where |
@@ -341,6 +355,9 @@ create_view:
 drop_view:
 	DROP VIEW IF EXISTS pick_schema { 'v1_trans_'.$$ }    |
 	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_'.$$ } ;
+alter_view:
+	ALTER VIEW pick_schema { 'v1_trans_'.$$ }    AS SELECT _field_list FROM trans_table    where |
+	ALTER VIEW pick_schema { 'v1_nontrans_'.$$ } AS SELECT _field_list FROM nontrans_table where ;
 
 
 # This procedure and function handling is a bit tricky and I am till now not 100% convinced that the solution is very good.
@@ -383,6 +400,8 @@ drop_function:
 # FIXME:
 # 1. pick_safe_table must point to a base table
 # 2. trigger and basetable must reside within the same schema
+#    If not we get "ERROR HY000: Trigger in wrong schema".
+#
 # I got
 #    Note 1592 Unsafe statement binlogged in statement format since BINLOG_FORMAT = STATEMENT.
 #    Reason for unsafeness: Statement updates two AUTO_INCREMENT columns. This is unsafe because the generated value cannot be predicted by slave.
@@ -402,12 +421,12 @@ drop_function:
 create_trigger:
 	CREATE TRIGGER pick_schema { 'tr1_'.$pick_mode.'_'.$$ } trigger_time trigger_event ON pick_schema pick_safe_table FOR EACH ROW BEGIN trigger_action ; END ;
 trigger_time:
-	BEFORE | AFTER ;
+	BEFORE | AFTER  ;
 trigger_event:
 	INSERT | DELETE ;
 trigger_action:
 	# insert | replace | delete | update | CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
-	SET @aux = 1;
+	SET @aux = 1    ;
 drop_trigger:
 	DROP TRIGGER IF EXISTS pick_schema { 'tr1_'.$pick_mode.'_'.$$ };
 
@@ -422,6 +441,24 @@ not_or_empty:
 	NOT
 	| ;
 
+# Some INFORMATION_SCHEMA related tests
+#--------------------------------------
+# Please the following
+# - There is no drop table grammar item
+# - The copies of the current information_schema tables do contain only a subset of columns.
+#   All columns where I guessed that they are probably unsafe in replication are omitted.
+# - The tests around information_schema are intentionally simpler than other tests.
+# - Bug#29790 information schema returns non-atomic content => replication (binlog) fails
+create_is_copy:
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_schemata_'.$$ } AS SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME                              FROM information_schema.schemata WHERE 1 = 0 |
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_tables_'.$$ }   AS SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,TABLE_ROWS,AUTO_INCREMENT,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.tables   WHERE 1 = 0 |
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_columns_'.$$ }  AS SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,CHARACTER_SET_NAME,COLLATION_NAME,PRIVILEGES,COLUMN_COMMENT FROM information_schema.columns  WHERE 1 = 0 |
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_routines_'.$$ } AS SELECT ROUTINE_SCHEMA,ROUTINE_NAME,ROUTINE_TYPE,IS_DETERMINISTIC,SECURITY_TYPE,SQL_MODE,DEFINER,CHARACTER_SET_CLIENT,COLLATION_CONNECTION,DATABASE_COLLATION      FROM information_schema.routines WHERE 1 = 0 ;
+fill_is_copy:
+	TRUNCATE test . { 't1_is_schemata_'.$$ } ; safety_check INSERT INTO test . { 't1_is_schemata_'.$$ } SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.schemata WHERE SCHEMA_NAME    LIKE 'test%' ORDER BY 1     ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_tables_'.$$ }   ; safety_check INSERT INTO test . { 't1_is_tables_'.$$ }   SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,TABLE_ROWS,AUTO_INCREMENT,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.tables   WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2   ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_columns_'.$$ }  ; safety_check INSERT INTO test . { 't1_is_columns_'.$$ }  SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,CHARACTER_SET_NAME,COLLATION_NAME,PRIVILEGES,COLUMN_COMMENT FROM information_schema.columns  WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2,3 ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_routines_'.$$ } ; safety_check INSERT INTO test . { 't1_is_routines_'.$$ } SELECT ROUTINE_SCHEMA,ROUTINE_NAME,ROUTINE_TYPE,IS_DETERMINISTIC,SECURITY_TYPE,SQL_MODE,DEFINER,CHARACTER_SET_CLIENT,COLLATION_CONNECTION,DATABASE_COLLATION FROM information_schema.routines WHERE ROUTINE_SCHEMA LIKE 'test%' ORDER BY 1,2   ; safety_check COMMIT ;
 
 # Guarantee that the transaction has ended before we switch the binlog format
 binlog_format_sequence:
@@ -445,7 +482,7 @@ binlog_format_set:
 	#
 	# In case we
 	# - are running in the moment with BINLOG_FORMAT = ROW and
-	# - have an open (existing?) tenporary table
+	# - have an open (existing?) temporary table
 	# any SET SESSION/GLOBAL gets
 	#    Query:  ... SET SESSION BINLOG_FORMAT = ROW  failed:
 	#    1559 Cannot switch out of the row-based binary log format when the session has open temporary tables
