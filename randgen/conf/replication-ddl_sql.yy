@@ -264,8 +264,22 @@ savepoint_event:
 	RELEASE SAVEPOINT A                       ;
 
 implicit_commit:
+	create_schema        |
+	create_schema        |
+	alter_schema         |
+	drop_schema          |
+	#
 	create_is_copy       |
-	fill_is_copy         |
+	# Experience with several sessions:
+	#    The content of t1_is_columns_<pid> differs between master and slave.
+	#    Bug#29790 information schema returns non-atomic content => replication (binlog) fails
+	# IMHO it is to be expected that INSERT INTO ... SELECT ... FROM information_schema... could lead in SBR mode to
+	# differences between master and slave content because
+	# 1. The current content of the master and the slave rules compared to RBR where only the content of the master rules.
+	# 2. There is some delay till some data modifying activity of a session gets pushed to the slave.
+	# 3. Caused by optimization of binlogging etc. the delay might differ per session.
+	# At least the deactivation of fill_is_copy via $m10,$m11 n case of SBR helped to avoid the content difference.
+	{ if ($format=='STATEMENT') { $m10 = '/*' ; $m11 = '*/'} else { $m10 = '' ; $m11 = '' } ; return undef } fill_is_copy |
 	#
 	create_procedure     |
 	create_procedure     |
@@ -288,19 +302,22 @@ implicit_commit:
 	create_table         |
 	create_table         |
 	alter_table          |
+	truncate_table       |
+	rename_table         |
 	drop_table           |
+	#
+	create_index         |
+	drop_index           |
 	#
 	create_view          |
 	create_view          |
 	alter_view           |
+	rename_view          |
 	drop_view            |
-	# This will fail because the table does_not_exist.
-	ALTER TABLE does_not_exist CHANGE COLUMN f1 f2 BIGINT |
 	# CREATE DATABASE ic ; CREATE TABLE ic . _letter SELECT * FROM _table LIMIT digit ; DROP DATABASE ic |
 	# CREATE USER _letter | DROP USER _letter | RENAME USER _letter TO _letter |
 	SET AUTOCOMMIT = ON  |
 	SET AUTOCOMMIT = OFF |
-	# CREATE TABLE IF NOT EXISTS _letter ENGINE = engine SELECT * FROM _table LIMIT digit |
 	# RENAME TABLE _letter TO _letter |
 	# TRUNCATE TABLE _letter |
 	# DROP TABLE IF EXISTS _letter |
@@ -308,6 +325,15 @@ implicit_commit:
 	# FLUSH
 	# LOAD DATA INFILE causes an implicit commit only for tables using the NDB storage engine
 	LOCK TABLE _table WRITE ; safety_check UNLOCK TABLES ;
+
+create_schema:
+	CREATE SCHEMA IF NOT EXISTS { 'test_'.$$ } CHARACTER SET character_set ;
+drop_schema:
+	DROP SCHEMA IF EXISTS { 'test_'.$$ }                                   ;
+alter_schema:
+	ALTER SCHEMA                { 'test_'.$$ } CHARACTER SET character_set ;
+
+
 
 # Attention: An open (existing?) temporary table causes that an in case of current
 #            SESSION BINLOG_FORMAT = ROW any SET ... BINLOG_FORMAT fails.
@@ -332,22 +358,77 @@ drop_table:
 	DROP             TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
 	DROP             TABLE IF EXISTS pick_schema { 't1_base_innodb_'.$$ } |
 	# FIXME Add later the case that base and temporary table have the same names
-	# Please enable the next two lines if
-	#    Bug #49132  	Replication failure on temporary table + DDL
-	# is fixed.
 	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_myisam_'.$$ } |
 	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_innodb_'.$$ } |
 	# This will fail because already exist_not_exist.
 	DROP TABLE does_not_exist                                             ;
 alter_table:
-	ALTER TABLE pick_schema { 't1_base_myisam_'.$$ } COMMENT ' _letter '  |
-	ALTER TABLE pick_schema { 't1_base_innodb_'.$$ } COMMENT ' _letter '  |
-	# Please enable the next two lines if
-   #    Bug #49132   Replication failure on temporary table + DDL
-   # is fixed.
-	# ALTER TABLE pick_schema { 't1_temp_myisam_'.$$ } COMMENT ' _letter '  |
-	# ALTER TABLE pick_schema { 't1_temp_innodb_'.$$ } COMMENT ' _letter '  |
-	ALTER TABLE does_not_exist COMMENT ' _letter '  ;
+	ALTER TABLE pick_schema table_name COMMENT ' _letter ' ;
+truncate_table:
+	TRUNCATE TABLE pick_schema table_name ;
+table_name:
+	{ 't1_base_myisam_'.$$ } |
+	{ 't1_base_innodb_'.$$ } |
+	{ 't1_base_myisam_'.$$ } |
+	{ 't1_base_innodb_'.$$ } |
+	# Please enable the next four lines if
+	#    Bug #49132  	Replication failure on temporary table + DDL
+	# is fixed.
+	# { 't1_temp_myisam_'.$$ } |
+	# { 't1_temp_innodb_'.$$ } |
+	# { 't1_temp_myisam_'.$$ } |
+	# { 't1_temp_innodb_'.$$ } |
+	does_not_exist           ;
+
+create_index:
+	CREATE INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } (col_tinyint) |
+	CREATE INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } (col_tinyint) |
+	CREATE INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } (col_tinyint) |
+	CREATE INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } (col_tinyint) |
+	# Please enable the next four lines if
+	#    Bug #49132  	Replication failure on temporary table + DDL
+	# is fixed.
+	# CREATE INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } (col_tinyint) |
+	# CREATE INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } (col_tinyint) |
+	# CREATE INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } (col_tinyint) |
+	# CREATE INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } (col_tinyint) |
+	CREATE INDEX idx_will_fail ON does_not_exist (f1)                                  ;
+drop_index:
+	DROP INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } |
+	DROP INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } |
+	DROP INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } |
+	DROP INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } |
+	# Please enable the next four lines if
+	#    Bug #49132  	Replication failure on temporary table + DDL
+	# is fixed.
+	# DROP INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } |
+	# DROP INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } |
+	# DROP INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } |
+	# DROP INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } |
+	DROP INDEX idx_will_fail ON does_not_exist                       ;
+
+rename_table:
+	RENAME TABLE test . { 't1_base_myisam_'.$$ } TO test . { 't2_base_myisam_'.$$ } |
+	RENAME TABLE test . { 't2_base_myisam_'.$$ } TO test . { 't1_base_myisam_'.$$ } |
+	RENAME TABLE test . { 't1_base_innodb_'.$$ } TO test . { 't2_base_innodb_'.$$ } |
+	RENAME TABLE test . { 't2_base_innodb_'.$$ } TO test . { 't1_base_innodb_'.$$ } |
+	#
+	RENAME TABLE test  . { 't1_base_myisam_'.$$ } TO test  . { 't2_base_myisam_'.$$ } , test1 . { 't1_base_myisam_'.$$ } TO test1 . { 't2_base_myisam_'.$$ } |
+	RENAME TABLE test1 . { 't2_base_myisam_'.$$ } TO test1 . { 't1_base_myisam_'.$$ } , test  . { 't2_base_myisam_'.$$ } TO test  . { 't1_base_myisam_'.$$ } |
+	#
+	# This will fail in case we "move" the table between different schemas and there is a trigger on the table.
+	RENAME TABLE pick_schema { 't1_base_myisam_'.$$ } TO pick_schema { 't1_base_myisam_'.$$ } |
+	#
+	# Please enable the next four lines if
+	#    Bug #49132  	Replication failure on temporary table + DDL
+	# is fixed.
+	# RENAME TABLE test . { 't1_temp_myisam_'.$$ } TO test . { 't2_temp_myisam_'.$$ } |
+	# RENAME TABLE test . { 't2_temp_myisam_'.$$ } TO test . { 't1_temp_myisam_'.$$ } |
+	# RENAME TABLE test . { 't1_temp_innodb_'.$$ } TO test . { 't2_temp_innodb_'.$$ } |
+	# RENAME TABLE test . { 't2_temp_innodb_'.$$ } TO test . { 't1_temp_innodb_'.$$ } |
+	#
+	# This must fail.
+	RENAME TABLE does_not_exist TO pick_schema { 't1_base_myisam_'.$$ } ;
 
 create_view:
 	CREATE VIEW pick_schema { 'v1_trans_'.$$ }    AS SELECT _field_list FROM trans_table    where |
@@ -358,7 +439,14 @@ drop_view:
 alter_view:
 	ALTER VIEW pick_schema { 'v1_trans_'.$$ }    AS SELECT _field_list FROM trans_table    where |
 	ALTER VIEW pick_schema { 'v1_nontrans_'.$$ } AS SELECT _field_list FROM nontrans_table where ;
-
+rename_view:
+	RENAME TABLE test . { 'v1_trans_'.$$ }    TO test . { 'v2_trans_'.$$ }    |
+	RENAME TABLE test . { 'v2_trans_'.$$ }    TO test . { 'v1_trans_'.$$ }    |
+	RENAME TABLE test . { 'v1_nontrans_'.$$ } TO test . { 'v2_nontrans_'.$$ } |
+	RENAME TABLE test . { 'v2_nontrans_'.$$ } TO test . { 'v1_nontrans_'.$$ } |
+	#
+	# This will fail. Moving a VIEW from one SCHEMA to another is not supported.
+	RENAME TABLE pick_schema { 'v1_nontrans_'.$$ } TO pick_schema { 'v1_nontrans_'.$$ } ;
 
 # This procedure and function handling is a bit tricky and I am till now not 100% convinced that the solution is very good.
 # The base:
@@ -381,7 +469,6 @@ alter_view:
 # Therefore we only try to create a procedure which fits to the current session pick_mode.
 # The frequent dynamic switching of the session binlog format causes a calculation of pick_mode.
 create_procedure:
-	# CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN proc_stmt ; proc_stmt ; END ;
 	CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN dml_list ; END ;
 proc_stmt:
 	replace | update | delete ;
@@ -389,12 +476,16 @@ drop_procedure:
 	DROP PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } ;
 call_procedure:
 	CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
+alter_procedure:
+	ALTER PROCEDURE { 'p1_'.$pick_mode.'_'.$$ } COMMENT ' _letter ' ;
 
 create_function:
 	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table ) ;
 drop_function:
 	DROP FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } ;
 # Note: We use the function within the grammar item "value".
+alter_function:
+	ALTER FUNCTION { 'f1_'.$pick_mode.'_'.$$ } COMMENT ' _letter ' ;
 
 # I am unsure if "$pick_mode" makes here sense. Therefore this might be removed in future.
 # FIXME:
@@ -412,12 +503,12 @@ drop_function:
 #   explicite value for this column within the insert.
 # Solutions: Either define
 #   a) Define a simple trigger which does not suffer from this problem.
-#   b) Define a sophisticated trigger which fits to the situation when the trigger gets used.  
+#   b) Define a sophisticated trigger which fits to the situation when the trigger gets used.
 #   Ignoring this problem does not work because
 #   - safety_check will cause that the test aborts
 #   - we get annoying message in master.err ....
 #   Let's try a) first.
-# 
+#
 create_trigger:
 	CREATE TRIGGER pick_schema { 'tr1_'.$pick_mode.'_'.$$ } trigger_time trigger_event ON pick_schema pick_safe_table FOR EACH ROW BEGIN trigger_action ; END ;
 trigger_time:
@@ -451,14 +542,15 @@ not_or_empty:
 # - Bug#29790 information schema returns non-atomic content => replication (binlog) fails
 create_is_copy:
 	CREATE TABLE IF NOT EXISTS test . { 't1_is_schemata_'.$$ } AS SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME                              FROM information_schema.schemata WHERE 1 = 0 |
-	CREATE TABLE IF NOT EXISTS test . { 't1_is_tables_'.$$ }   AS SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,TABLE_ROWS,AUTO_INCREMENT,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.tables   WHERE 1 = 0 |
+	# Experience: The column AUTO_INCREMENT can differe between master and slave.
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_tables_'.$$ }   AS SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,TABLE_ROWS,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.tables   WHERE 1 = 0 |
 	CREATE TABLE IF NOT EXISTS test . { 't1_is_columns_'.$$ }  AS SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,CHARACTER_SET_NAME,COLLATION_NAME,PRIVILEGES,COLUMN_COMMENT FROM information_schema.columns  WHERE 1 = 0 |
 	CREATE TABLE IF NOT EXISTS test . { 't1_is_routines_'.$$ } AS SELECT ROUTINE_SCHEMA,ROUTINE_NAME,ROUTINE_TYPE,IS_DETERMINISTIC,SECURITY_TYPE,SQL_MODE,DEFINER,CHARACTER_SET_CLIENT,COLLATION_CONNECTION,DATABASE_COLLATION      FROM information_schema.routines WHERE 1 = 0 ;
 fill_is_copy:
-	TRUNCATE test . { 't1_is_schemata_'.$$ } ; safety_check INSERT INTO test . { 't1_is_schemata_'.$$ } SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.schemata WHERE SCHEMA_NAME    LIKE 'test%' ORDER BY 1     ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_tables_'.$$ }   ; safety_check INSERT INTO test . { 't1_is_tables_'.$$ }   SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,TABLE_ROWS,AUTO_INCREMENT,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.tables   WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2   ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_columns_'.$$ }  ; safety_check INSERT INTO test . { 't1_is_columns_'.$$ }  SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,CHARACTER_SET_NAME,COLLATION_NAME,PRIVILEGES,COLUMN_COMMENT FROM information_schema.columns  WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2,3 ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_routines_'.$$ } ; safety_check INSERT INTO test . { 't1_is_routines_'.$$ } SELECT ROUTINE_SCHEMA,ROUTINE_NAME,ROUTINE_TYPE,IS_DETERMINISTIC,SECURITY_TYPE,SQL_MODE,DEFINER,CHARACTER_SET_CLIENT,COLLATION_CONNECTION,DATABASE_COLLATION FROM information_schema.routines WHERE ROUTINE_SCHEMA LIKE 'test%' ORDER BY 1,2   ; safety_check COMMIT ;
+	TRUNCATE test . { 't1_is_schemata_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_schemata_'.$$ } SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.schemata WHERE SCHEMA_NAME    LIKE 'test%' ORDER BY 1 { return $m11 }    ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_tables_'.$$ }   ; safety_check { return $m10 } INSERT INTO test . { 't1_is_tables_'.$$ }   SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,TABLE_ROWS,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.tables   WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2 { return $m11 }  ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_columns_'.$$ }  ; safety_check { return $m10 } INSERT INTO test . { 't1_is_columns_'.$$ }  SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,CHARACTER_SET_NAME,COLLATION_NAME,PRIVILEGES,COLUMN_COMMENT FROM information_schema.columns  WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2,3 { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_routines_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_routines_'.$$ } SELECT ROUTINE_SCHEMA,ROUTINE_NAME,ROUTINE_TYPE,IS_DETERMINISTIC,SECURITY_TYPE,SQL_MODE,DEFINER,CHARACTER_SET_CLIENT,COLLATION_CONNECTION,DATABASE_COLLATION FROM information_schema.routines WHERE ROUTINE_SCHEMA LIKE 'test%' ORDER BY 1,2 { return $m11 } ; safety_check COMMIT ;
 
 # Guarantee that the transaction has ended before we switch the binlog format
 binlog_format_sequence:
@@ -723,6 +815,9 @@ nontrans_table:
 	{ 't1_base_myisam_'.$$ }   |
 	{ 't1_temp_myisam_'.$$ }   |
 	{ 'v1_nontrans_'.$$ }      |
+	{ 't2_base_myisam_'.$$ }   |
+	{ 't2_temp_myisam_'.$$ }   |
+	{ 'v2_nontrans_'.$$ }      |
 	table0_myisam_int_autoinc  |
 	table0_myisam_int          |
 	table0_myisam              |
@@ -737,6 +832,9 @@ trans_table:
 	{ 't1_base_innodb_'.$$ }   |
 	{ 't1_temp_innodb_'.$$ }   |
 	{ 'v1_trans_'.$$ }         |
+	{ 't2_base_innodb_'.$$ }   |
+	{ 't2_temp_innodb_'.$$ }   |
+	{ 'v2_trans_'.$$ }         |
 	table0_innodb_int_autoinc  |
 	table0_innodb_int          |
 	table0_innodb              |
@@ -762,6 +860,10 @@ tmarker_init:
 tmarker_set:
 	{ if ($pick_mode==0) {$m1='/*';$m4='*/'} elsif ($pick_mode==1) {$m0='/*';$m1='*/';$m2='/*';$m4='*/'} elsif ($pick_mode==2) {$m0='/*';$m2='*/';$m3='/*';$m4='*/'} elsif ($pick_mode==3) {$m0='/*';$m3='*/'} elsif ($pick_mode==4) {$m0='/*';$m2='*/';$m3='/*';$m4='*/'} ; return undef };
 
+m10_init:
+	{ $m10 = '' ; return undef } ;
+m10_set:
+	{ if ( $format == 'STATEMENT' ) { $m10 = '/*' } ; return undef } ;
 
 #### Basic constructs which are used at various places
 
