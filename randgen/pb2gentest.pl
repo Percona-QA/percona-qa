@@ -792,7 +792,13 @@ while (length $full_test_name < 40)
 
 if ($command_result_shifted > 0) {
 	# test failed
-	print($full_test_name." [ fail ]\n");
+	# Trying out marking a test as "experimental" by reporting exp-fail:
+	# Mark all failures in next-mr-johnemb as experimental (temporary).
+	if ($ENV{BRANCH_NAME} =~ m{mysql-next-mr-johnemb}) {
+		print($full_test_name." [ exp-fail ]\n");
+	} else {
+		print($full_test_name." [ fail ]\n");
+	}
 	print('runall.pl failed with exit code '.$command_result_shifted."\n");
 	print("Look above this message in the test log for failure details.\n");
 } else {
