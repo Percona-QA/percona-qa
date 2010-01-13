@@ -283,10 +283,12 @@ implicit_commit:
 	#
 	create_procedure     |
 	create_procedure     |
+	alter_procedure      |
 	drop_procedure       |
 	#
 	create_function      |
 	create_function      |
+	alter_function       |
 	drop_function        |
 	#
 	create_trigger       |
@@ -295,10 +297,12 @@ implicit_commit:
 	#
 	# If
 	#    Bug#50095 Multi statement including CREATE EVENT causes rotten binlog entry
-	# is fixed please enable the following three lines.
+	# is fixed please enable the following four lines.
 	# create_event         |
 	# create_event         |
+	# alter_event          |
 	# drop_event           |
+	#
 	create_table         |
 	create_table         |
 	alter_table          |
@@ -314,26 +318,57 @@ implicit_commit:
 	alter_view           |
 	rename_view          |
 	drop_view            |
-	# CREATE DATABASE ic ; CREATE TABLE ic . _letter SELECT * FROM _table LIMIT digit ; DROP DATABASE ic |
-	# CREATE USER _letter | DROP USER _letter | RENAME USER _letter TO _letter |
+	#
 	SET AUTOCOMMIT = ON  |
 	SET AUTOCOMMIT = OFF |
-	# RENAME TABLE _letter TO _letter |
-	# TRUNCATE TABLE _letter |
-	# DROP TABLE IF EXISTS _letter |
-	# Grant/Revoke
+	#
+	# Statements that implicitly use or modify tables in the mysql database cause an implicit COMMIT.
+	create_user          |
+	create_user          |
+	drop_user            |
+	rename_user          |
+	set_password         |
+	#
+	grant                |
+	grant                |
+	revoke               |
 	# FLUSH
 	# LOAD DATA INFILE causes an implicit commit only for tables using the NDB storage engine
 	LOCK TABLE _table WRITE ; safety_check UNLOCK TABLES ;
 
+create_user:
+	CREATE USER user_name |
+	CREATE USER user_name |
+	CREATE USER user_name , user_name ;
+drop_user:
+	DROP USER   user_name |
+	DROP USER   user_name |
+	DROP USER   user_name , user_name ;
+rename_user:
+	RENAME USER user_name TO user_name |
+	RENAME USER user_name TO user_name |
+	RENAME USER user_name TO user_name , user_name TO user_name ;
+set_password:
+	SET PASSWORD FOR user_name = PASSWORD(' _letter ');
+user_name:
+	{ 'Luigi_'.$$.'@localhost' } |
+	{ 'Emilio_'.$$.'@localhost' } ;
+
+grant:
+	GRANT ALL ON test.* TO user_name |
+	GRANT ALL ON test.* TO user_name |
+	GRANT ALL ON test.* TO user_name , user_name ;
+revoke:
+	REVOKE ALL ON test.* FROM user_name |
+	REVOKE ALL ON test.* FROM user_name |
+	REVOKE ALL ON test.* FROM user_name , user_name ;
+
 create_schema:
 	CREATE SCHEMA IF NOT EXISTS { 'test_'.$$ } CHARACTER SET character_set ;
 drop_schema:
-	DROP SCHEMA IF EXISTS { 'test_'.$$ }                                   ;
+	DROP   SCHEMA IF EXISTS     { 'test_'.$$ }                             ;
 alter_schema:
 	ALTER SCHEMA                { 'test_'.$$ } CHARACTER SET character_set ;
-
-
 
 # Attention: An open (existing?) temporary table causes that an in case of current
 #            SESSION BINLOG_FORMAT = ROW any SET ... BINLOG_FORMAT fails.
@@ -487,7 +522,9 @@ drop_function:
 alter_function:
 	ALTER FUNCTION { 'f1_'.$pick_mode.'_'.$$ } COMMENT ' _letter ' ;
 
-# I am unsure if "$pick_mode" makes here sense. Therefore this might be removed in future.
+# I am unsure if "$pick_mode" makes here sense. It could be used to tell us what the TRIGGER might be doing but it cannot
+# be used for deciding if we want to execute the trigger or not.
+# Therefore "$pick_mode" might be removed in future.
 # FIXME:
 # 1. pick_safe_table must point to a base table
 # 2. trigger and basetable must reside within the same schema
@@ -531,6 +568,8 @@ drop_event:
 not_or_empty:
 	NOT
 	| ;
+alter_event:
+	ALTER EVENT pick_schema { 'e1_'.$pick_mode.'_'.$$ } ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO insert ;
 
 # Some INFORMATION_SCHEMA related tests
 #--------------------------------------
