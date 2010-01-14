@@ -170,7 +170,7 @@
 # - If you want to change the replication format, do so outside the boundaries of a transaction. (SBR?)
 #   --> "*_binlog_format_sequence"
 # - In statement based replication, any non-transactional statement should be either placed outside the boundaries of a transaction or before any transactional statement.
-#   note(mleich): transactional/non-transactional statement refers to the table/tables where something is modified
+#   Transactional/non-transactional statement refers to the table/tables where something is modified
 #------------------------------------------------
 #################################################
 # Experience with mysql-5.1-rep+3 with BINLOG_FORMAT = STATEMENT
@@ -208,7 +208,8 @@ query:
 	set_iso_level      |
 	set_iso_level      |
 	rotate_event       |
-	# This fools the RQG deadlock detection
+	# This runs into a server weakness which finally fools the RQG deadlock detection.
+	# So it must be disabled.
 	# shake_clock        |
 	#
 	# We MUST reduce the huge amount of NULL's
@@ -260,17 +261,26 @@ savepoint_event:
 	# a transactional table.
 	SAVEPOINT A { $pick_mode=3; return undef} |
 	SAVEPOINT A { $pick_mode=3; return undef} |
+	SAVEPOINT A { $pick_mode=3; return undef} |
 	ROLLBACK TO SAVEPOINT A                   |
 	RELEASE SAVEPOINT A                       ;
 
 implicit_commit:
+	# Attention: Although the name of the grammar item is "implicit_commit", most but not all of the following
+	#            statements will do an implicit COMMIT.
+	#            Reasons:
+	#            1. Some statements do not COMMIT before execution and only COMMIT after a successful execution.
+	#               Due to the randomness of RQG I cannot predict all time if a execution will be successful.
+	#            2. There are some statements which neither COMMIT before or after execution.
+	#               But I need a grammar item where I call them. They are partially called here because of
+	#               such *technical* reasons.
 	create_schema        |
 	create_schema        |
 	alter_schema         |
 	drop_schema          |
 	#
 	create_is_copy       |
-	# Experience with several sessions:
+	# Experience when running the current test with several sessions:
 	#    The content of t1_is_columns_<pid> differs between master and slave.
 	#    Bug#29790 information schema returns non-atomic content => replication (binlog) fails
 	# IMHO it is to be expected that INSERT INTO ... SELECT ... FROM information_schema... could lead in SBR mode to
@@ -283,9 +293,11 @@ implicit_commit:
 	#
 	create_procedure     |
 	create_procedure     |
+	create_procedure     |
 	alter_procedure      |
 	drop_procedure       |
 	#
+	create_function      |
 	create_function      |
 	create_function      |
 	alter_function       |
@@ -303,8 +315,10 @@ implicit_commit:
 	# alter_event          |
 	# drop_event           |
 	#
+	create_table1        |
 	create_table         |
 	create_table         |
+	# FIXME MLML ... TEMPORARY ...
 	alter_table          |
 	truncate_table       |
 	rename_table         |
@@ -320,6 +334,7 @@ implicit_commit:
 	drop_view            |
 	#
 	SET AUTOCOMMIT = ON  |
+	# OFF -> OFF or wrong value , no implicit COMMIT
 	SET AUTOCOMMIT = OFF |
 	#
 	# Statements that implicitly use or modify tables in the mysql database cause an implicit COMMIT.
@@ -332,9 +347,72 @@ implicit_commit:
 	grant                |
 	grant                |
 	revoke               |
-	# FLUSH
+	#
+	table_administration |
+	#
+	create_keycache      |
+	cache_index          |
+	load_index_to_cache  |
+	#
+	flush                |
+	#
+	reset                |
+	#
 	# LOAD DATA INFILE causes an implicit commit only for tables using the NDB storage engine
-	LOCK TABLE _table WRITE ; safety_check UNLOCK TABLES ;
+	#
+	# This causes an implicit COMMIT before execution.
+	LOCK TABLE _table WRITE |
+	# This causes an implicit COMMIT.
+	UNLOCK TABLES ;
+
+flush:
+	# No implicit COMMIT.
+	FLUSH local_non_local TABLES      |
+	FLUSH local_non_local PRIVILEGES  |
+	FLUSH local_non_local QUERY CACHE ;
+
+reset:
+	# No implicit COMMIT.
+	RESET QUERY CACHE ;
+
+# KEY CACHE is a MyISAM only feature.
+create_keycache:
+	# 0. There is no SESSION specific KEY CACHE.
+	# 1. This statement does not COMMIT.
+	# 2. 'key_cache_'.$$ gets created if not already known
+	# 3. A KEY CACHE with size = 0 causes that the KEY CACHE is destroyed but.
+	#    Nevertheless the name of this KEY CACHE can be used within the corresponding statements and
+	#    we do not get error messages.
+	SET GLOBAL { 'key_cache_'.$$ } .key_buffer_size = 128 * 1024 |
+	SET GLOBAL { 'key_cache_'.$$ } .key_buffer_size = 0          ;
+cache_index:
+	# COMMIT only *after* successful execution.
+	CACHE INDEX pick_schema table_name                          IN { 'key_cache_'.$$ } |
+	CACHE INDEX pick_schema table_name , pick_schema table_name IN { 'key_cache_'.$$ } |
+	# The next statement will fail.
+	CACHE INDEX pick_schema table_name                          IN cache_not_exists    ;
+load_index_to_cache:
+	# COMMIT before execution.
+	LOAD INDEX INTO CACHE pick_schema table_name                          |
+	LOAD INDEX INTO CACHE pick_schema table_name , pick_schema table_name |
+	# The next statement will fail.
+	LOAD INDEX INTO CACHE not_exists                                      ;
+
+table_administration:
+	# COMMIT before execution.
+	ANALYZE  local_non_local TABLE table_items |
+	OPTIMIZE local_non_local TABLE table_items |
+	REPAIR   local_non_local TABLE table_items |
+	CHECK                    TABLE table_items ;
+	maintenance_command local_non_local TABLE pick_schema table_name |
+	maintenance_command local_non_local TABLE pick_schema table_name , pick_schema table_name ;
+local_non_local:
+	# LOCAL is an alias for NO_WRITE_TO_BINLOG. Therfore we check LOCAL only.
+	| LOCAL ;
+table_items:
+	pick_schema table_name |
+	pick_schema table_name |
+	pick_schema table_name , pick_schema table_name ;
 
 create_user:
 	CREATE USER user_name |
@@ -349,9 +427,10 @@ rename_user:
 	RENAME USER user_name TO user_name |
 	RENAME USER user_name TO user_name , user_name TO user_name ;
 set_password:
+	# COMMIT before execution.
 	SET PASSWORD FOR user_name = PASSWORD(' _letter ');
 user_name:
-	{ 'Luigi_'.$$.'@localhost' } |
+	{ 'Luigi_'.$$.'@localhost' }  |
 	{ 'Emilio_'.$$.'@localhost' } ;
 
 grant:
@@ -368,6 +447,8 @@ create_schema:
 drop_schema:
 	DROP   SCHEMA IF EXISTS     { 'test_'.$$ }                             ;
 alter_schema:
+	# This fails if we have active locked tables or an open transaction which
+	# already modified a table.
 	ALTER SCHEMA                { 'test_'.$$ } CHARACTER SET character_set ;
 
 # Attention: An open (existing?) temporary table causes that an in case of current
@@ -388,6 +469,9 @@ create_table:
 	# CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.$$ } LIKE trans_table    |
 	# This will fail because mysql.user already exists.
 	CREATE TABLE mysql.user ( f1 BIGINT ) ;
+create_table1:
+	CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } ENGINE = MyISAM AS SELECT _field_list[invariant] FROM table_in_select AS A addition |
+	CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } ENGINE = InnoDB AS SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 drop_table:
 	# FIXME Move this out of xid.....
 	DROP             TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
@@ -573,23 +657,31 @@ alter_event:
 
 # Some INFORMATION_SCHEMA related tests
 #--------------------------------------
-# Please the following
-# - There is no drop table grammar item
+# Please note the following:
+# - There is no drop table grammar item.
 # - The copies of the current information_schema tables do contain only a subset of columns.
 #   All columns where I guessed that they are probably unsafe in replication are omitted.
 # - The tests around information_schema are intentionally simpler than other tests.
 # - Bug#29790 information schema returns non-atomic content => replication (binlog) fails
 create_is_copy:
-	CREATE TABLE IF NOT EXISTS test . { 't1_is_schemata_'.$$ } AS SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME                              FROM information_schema.schemata WHERE 1 = 0 |
-	# Experience: The column AUTO_INCREMENT can differe between master and slave.
-	CREATE TABLE IF NOT EXISTS test . { 't1_is_tables_'.$$ }   AS SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,TABLE_ROWS,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.tables   WHERE 1 = 0 |
-	CREATE TABLE IF NOT EXISTS test . { 't1_is_columns_'.$$ }  AS SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,CHARACTER_SET_NAME,COLLATION_NAME,PRIVILEGES,COLUMN_COMMENT FROM information_schema.columns  WHERE 1 = 0 |
-	CREATE TABLE IF NOT EXISTS test . { 't1_is_routines_'.$$ } AS SELECT ROUTINE_SCHEMA,ROUTINE_NAME,ROUTINE_TYPE,IS_DETERMINISTIC,SECURITY_TYPE,SQL_MODE,DEFINER,CHARACTER_SET_CLIENT,COLLATION_CONNECTION,DATABASE_COLLATION      FROM information_schema.routines WHERE 1 = 0 ;
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_schemata_'.$$ } AS schemata_part WHERE 1 = 0 |
+	# Experience: The value of tables.AUTO_INCREMENT can differ between master and slave.
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_tables_'.$$ }   AS tables_part   WHERE 1 = 0 |
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_columns_'.$$ }  AS columns_part  WHERE 1 = 0 |
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_routines_'.$$ } AS routines_part WHERE 1 = 0 ;
 fill_is_copy:
-	TRUNCATE test . { 't1_is_schemata_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_schemata_'.$$ } SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.schemata WHERE SCHEMA_NAME    LIKE 'test%' ORDER BY 1 { return $m11 }    ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_tables_'.$$ }   ; safety_check { return $m10 } INSERT INTO test . { 't1_is_tables_'.$$ }   SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,TABLE_ROWS,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.tables   WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2 { return $m11 }  ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_columns_'.$$ }  ; safety_check { return $m10 } INSERT INTO test . { 't1_is_columns_'.$$ }  SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,CHARACTER_SET_NAME,COLLATION_NAME,PRIVILEGES,COLUMN_COMMENT FROM information_schema.columns  WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2,3 { return $m11 } ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_routines_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_routines_'.$$ } SELECT ROUTINE_SCHEMA,ROUTINE_NAME,ROUTINE_TYPE,IS_DETERMINISTIC,SECURITY_TYPE,SQL_MODE,DEFINER,CHARACTER_SET_CLIENT,COLLATION_CONNECTION,DATABASE_COLLATION FROM information_schema.routines WHERE ROUTINE_SCHEMA LIKE 'test%' ORDER BY 1,2 { return $m11 } ; safety_check COMMIT ;
+	TRUNCATE test . { 't1_is_schemata_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_schemata_'.$$ } schemata_part WHERE SCHEMA_NAME  LIKE 'test%' ORDER BY 1     { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_tables_'.$$ }   ; safety_check { return $m10 } INSERT INTO test . { 't1_is_tables_'.$$ }   tables_part   WHERE TABLE_SCHEMA LIKE 'test%' ORDER BY 1,2   { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_columns_'.$$ }  ; safety_check { return $m10 } INSERT INTO test . { 't1_is_columns_'.$$ }  columns_part  WHERE TABLE_SCHEMA LIKE 'test%' ORDER BY 1,2,3 { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_routines_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_routines_'.$$ } routines_part WHERE ROUTINE_SCHEMA LIKE 'test%' ORDER BY 1,2 { return $m11 } ; safety_check COMMIT ;
+schemata_part:
+	SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.schemata ;
+tables_part:
+	SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,TABLE_ROWS,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.tables ;
+columns_part:
+	SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,CHARACTER_SET_NAME,COLLATION_NAME,PRIVILEGES,COLUMN_COMMENT FROM information_schema.columns ;
+routines_part:
+	SELECT ROUTINE_SCHEMA,ROUTINE_NAME,ROUTINE_TYPE,IS_DETERMINISTIC,SECURITY_TYPE,SQL_MODE,DEFINER,CHARACTER_SET_CLIENT,COLLATION_CONNECTION,DATABASE_COLLATION FROM information_schema.routines ;
 
 # Guarantee that the transaction has ended before we switch the binlog format
 binlog_format_sequence:
@@ -899,10 +991,7 @@ tmarker_init:
 tmarker_set:
 	{ if ($pick_mode==0) {$m1='/*';$m4='*/'} elsif ($pick_mode==1) {$m0='/*';$m1='*/';$m2='/*';$m4='*/'} elsif ($pick_mode==2) {$m0='/*';$m2='*/';$m3='/*';$m4='*/'} elsif ($pick_mode==3) {$m0='/*';$m3='*/'} elsif ($pick_mode==4) {$m0='/*';$m2='*/';$m3='/*';$m4='*/'} ; return undef };
 
-m10_init:
-	{ $m10 = '' ; return undef } ;
-m10_set:
-	{ if ( $format == 'STATEMENT' ) { $m10 = '/*' } ; return undef } ;
+
 
 #### Basic constructs which are used at various places
 
