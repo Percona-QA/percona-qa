@@ -10,6 +10,7 @@
 # When any INSERT DELAYED is executed.
 #   --> "low_priority_delayed_high_priority" but this had to be disabled.
 # When the body of a view requires row-based replication, the statement creating the view also uses it — for example, this occurs when the statement creating a view uses the UUID() function.
+#   --> create_view -> where -> optional use of value_unsafe_for_sbr
 # When a call to a UDF is involved.
 # If a statement is logged by row and the client that executed the statement has any temporary tables, then logging by row is used for all subsequent statements
 #    (except for those accessing temporary tables) until all temporary tables in use by that client are dropped.  This is true whether or not any temporary tables are actually logged.
@@ -217,17 +218,8 @@ query:
 	safety_check UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL ; COMMIT ;
 
 query_init:
-	# We need to set "$pick_mode = 3" because of the following possible scenario
-	# Current GLOBAL BINLOG_FORMAT is probably STATEMENT.
-	# --> connect and initial SESSION BINLOG_FORMAT equals GLOBAL BINLOG_FORMAT (STATEMENT)
-	# --> query -> binlog_format_sequence -> binlog_format_set ->
-	# --> rand_global_binlog_format (this does not set $pick_mode and has no impact
-	#     on our SESSION BINLOG_FORMAT) --> dml_list --> dml
-	# $pick_mode cannot "help" during statement generation in "dml". So it could happen
-	# that we get a statement using a transactional and a non transactional table.
-	# And this is UNSAFE if our current SESSION BINLOG_FORMAT is STATEMENT.
-	# $pick_mode = 3 brings us to the safe side.
-	{ $pick_mode = 3 ; return undef } ;
+	# We need to know our current SESSION BINLOG_FORMAT. We do this by simply setting the BINLOG_FORMAT.
+   rand_session_binlog_format ;
 
 set_iso_level:
 	safety_check SET global_or_session TRANSACTION ISOLATION LEVEL iso_level ;
@@ -549,23 +541,35 @@ rename_table:
 	# This must fail.
 	RENAME TABLE does_not_exist TO pick_schema { 't1_base_myisam_'.$$ } ;
 
+# The server gives a warning in case the current binlog format is STATEMENT and the SELECT
+# used within the VIEW definition is unsafe in SBR mode. This is IMHO a valueless but
+# unimportant limitation.
 create_view:
-	CREATE VIEW pick_schema { 'v1_trans_'.$$ }    AS SELECT _field_list FROM trans_table    where |
-	CREATE VIEW pick_schema { 'v1_nontrans_'.$$ } AS SELECT _field_list FROM nontrans_table where ;
+	CREATE VIEW trans_view    |
+	CREATE VIEW nontrans_view ;
+trans_view:
+	pick_schema { if ($format=='STATEMENT') {return 'v1_trans_safe_for_sbr_'.$$ }    else { return 'v1_trans_unsafe_for_sbr_'.$$ } }    AS SELECT _field_list FROM trans_table    where ;
+nontrans_view:
+	pick_schema { if ($format=='STATEMENT') {return 'v1_nontrans_safe_for_sbr_'.$$ } else { return 'v1_nontrans_unsafe_for_sbr_'.$$ } } AS SELECT _field_list FROM nontrans_table where ;
 drop_view:
-	DROP VIEW IF EXISTS pick_schema { 'v1_trans_'.$$ }    |
-	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_'.$$ } ;
+	DROP VIEW IF EXISTS pick_schema { 'v1_trans_safe_for_sbr_'.$$ }      |
+	DROP VIEW IF EXISTS pick_schema { 'v1_trans_unsafe_for_sbr_'.$$ }    |
+	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_safe_for_sbr_'.$$ }   |
+	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_unsafe_for_sbr_'.$$ } ;
 alter_view:
-	ALTER VIEW pick_schema { 'v1_trans_'.$$ }    AS SELECT _field_list FROM trans_table    where |
-	ALTER VIEW pick_schema { 'v1_nontrans_'.$$ } AS SELECT _field_list FROM nontrans_table where ;
+	ALTER VIEW trans_view    |
+	ALTER VIEW nontrans_view ;
 rename_view:
 	RENAME TABLE test . { 'v1_trans_'.$$ }    TO test . { 'v2_trans_'.$$ }    |
 	RENAME TABLE test . { 'v2_trans_'.$$ }    TO test . { 'v1_trans_'.$$ }    |
 	RENAME TABLE test . { 'v1_nontrans_'.$$ } TO test . { 'v2_nontrans_'.$$ } |
 	RENAME TABLE test . { 'v2_nontrans_'.$$ } TO test . { 'v1_nontrans_'.$$ } |
 	#
-	# This will fail. Moving a VIEW from one SCHEMA to another is not supported.
-	RENAME TABLE pick_schema { 'v1_nontrans_'.$$ } TO pick_schema { 'v1_nontrans_'.$$ } ;
+	# This will fail in case the schemas picked differ. Moving a VIEW from one SCHEMA to another is not supported.
+	RENAME TABLE pick_schema { 'v1_nontrans_safe_for_sbr_'.$$ } TO pick_schema { 'v1_nontrans_safe_for_sbr_'.$$ } ;
+
+vmarker_set:
+	{ if ($format=='STATEMENT') { $f0 = ''; $f1 = '/*'; $f2 = '*/' } else { $f0 = '/*'; $f1 = '*/'; $f2 = '' } ; return undef } ;
 
 # This procedure and function handling is a bit tricky and I am till now not 100% convinced that the solution is very good.
 # The base:
@@ -599,7 +603,7 @@ alter_procedure:
 	ALTER PROCEDURE { 'p1_'.$pick_mode.'_'.$$ } COMMENT ' _letter ' ;
 
 create_function:
-	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table ) ;
+	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table where ;
 drop_function:
 	DROP FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } ;
 # Note: We use the function within the grammar item "value".
@@ -670,10 +674,10 @@ create_is_copy:
 	CREATE TABLE IF NOT EXISTS test . { 't1_is_columns_'.$$ }  AS columns_part  WHERE 1 = 0 |
 	CREATE TABLE IF NOT EXISTS test . { 't1_is_routines_'.$$ } AS routines_part WHERE 1 = 0 ;
 fill_is_copy:
-	TRUNCATE test . { 't1_is_schemata_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_schemata_'.$$ } schemata_part WHERE SCHEMA_NAME  LIKE 'test%' ORDER BY 1     { return $m11 } ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_tables_'.$$ }   ; safety_check { return $m10 } INSERT INTO test . { 't1_is_tables_'.$$ }   tables_part   WHERE TABLE_SCHEMA LIKE 'test%' ORDER BY 1,2   { return $m11 } ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_columns_'.$$ }  ; safety_check { return $m10 } INSERT INTO test . { 't1_is_columns_'.$$ }  columns_part  WHERE TABLE_SCHEMA LIKE 'test%' ORDER BY 1,2,3 { return $m11 } ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_routines_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_routines_'.$$ } routines_part WHERE ROUTINE_SCHEMA LIKE 'test%' ORDER BY 1,2 { return $m11 } ; safety_check COMMIT ;
+	TRUNCATE test . { 't1_is_schemata_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_schemata_'.$$ } schemata_part WHERE SCHEMA_NAME    LIKE 'test%' ORDER BY 1     { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_tables_'.$$ }   ; safety_check { return $m10 } INSERT INTO test . { 't1_is_tables_'.$$ }   tables_part   WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2   { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_columns_'.$$ }  ; safety_check { return $m10 } INSERT INTO test . { 't1_is_columns_'.$$ }  columns_part  WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2,3 { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_routines_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_routines_'.$$ } routines_part WHERE ROUTINE_SCHEMA LIKE 'test%' ORDER BY 1,2   { return $m11 } ; safety_check COMMIT ;
 schemata_part:
 	SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.schemata ;
 tables_part:
@@ -721,9 +725,9 @@ rand_global_binlog_format:
 	SET GLOBAL BINLOG_FORMAT = MIXED     |
 	SET GLOBAL BINLOG_FORMAT = ROW       ;
 rand_session_binlog_format:
-	SET SESSION BINLOG_FORMAT = { $format = 'STATEMENT' ; $pick_mode = $prng->int(1,4) ; return $format } |
-	SET SESSION BINLOG_FORMAT = { $format = 'MIXED'     ; $pick_mode = 0               ; return $format } |
-	SET SESSION BINLOG_FORMAT = { $format = 'ROW'       ; $pick_mode = 0               ; return $format } ;
+	SET SESSION BINLOG_FORMAT = { $format = 'STATEMENT' ; $pick_mode = $prng->int(1,4) ; return $format } vmarker_set |
+	SET SESSION BINLOG_FORMAT = { $format = 'MIXED'     ; $pick_mode = 0               ; return $format } vmarker_set |
+	SET SESSION BINLOG_FORMAT = { $format = 'ROW'       ; $pick_mode = 0               ; return $format } vmarker_set ;
 
 dml:
 	# Enable the next line if
@@ -788,7 +792,10 @@ correlated:
 non_correlated:
 	subquery_part1 )                                                                             ;
 where:
-	WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + 2                    ;
+	# It should be very unlikely that
+	#    "AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr )" 
+	# gives FALSE.
+	WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + 2 { return $f0 . $f1 } AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr ) { return $f2 } ;
 
 insert:
 	# Insert into one table, search in no other table
@@ -944,11 +951,12 @@ undef_table:
 
 nontrans_table:
 	{ 't1_base_myisam_'.$$ }   |
-	{ 't1_temp_myisam_'.$$ }   |
-	{ 'v1_nontrans_'.$$ }      |
 	{ 't2_base_myisam_'.$$ }   |
+	{ 't1_temp_myisam_'.$$ }   |
 	{ 't2_temp_myisam_'.$$ }   |
-	{ 'v2_nontrans_'.$$ }      |
+	# A VIEW used in SBR mode must not be based on a SELECT which is unsafe in SBR mode.
+	{ if ($format=='STATEMENT') { return 'v1_nontrans_safe_for_sbr_'.$$ } else { return 'v1_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
+	{ if ($format=='STATEMENT') { return 'v2_nontrans_safe_for_sbr_'.$$ } else { return 'v2_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
 	table0_myisam_int_autoinc  |
 	table0_myisam_int          |
 	table0_myisam              |
@@ -961,11 +969,12 @@ nontrans_table:
 
 trans_table:
 	{ 't1_base_innodb_'.$$ }   |
-	{ 't1_temp_innodb_'.$$ }   |
-	{ 'v1_trans_'.$$ }         |
 	{ 't2_base_innodb_'.$$ }   |
+	{ 't1_temp_innodb_'.$$ }   |
 	{ 't2_temp_innodb_'.$$ }   |
-	{ 'v2_trans_'.$$ }         |
+	# A VIEW used in SBR mode must not be based on a SELECT which is unsafe in SBR mode.
+	{ if ($format=='STATEMENT') { return 'v1_trans_safe_for_sbr_'.$$ } else { return 'v1_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
+	{ if ($format=='STATEMENT') { return 'v2_trans_safe_for_sbr_'.$$ } else { return 'v2_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
 	table0_innodb_int_autoinc  |
 	table0_innodb_int          |
 	table0_innodb              |
