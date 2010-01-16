@@ -65,12 +65,11 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
         
 		open (ORACLE_MYSQLTEST, ">t/$tmpfile") or croak "Unable to open $tmpfile: $!";
 		print ORACLE_MYSQLTEST "--source include/master-slave.inc\n" if $config->replication;
-        print ORACLE_MYSQLTEST $oracle_mysqltest;
+        	print ORACLE_MYSQLTEST $oracle_mysqltest;
 		print ORACLE_MYSQLTEST "--sync_slave_with_master\n" if $config->replication;
-		print ORACLE_MYSQLTEST $oracle_mysqltest;
 		close ORACLE_MYSQLTEST;
 
-        my $mysqldopt = $config->genOpt('--mysqld=--', 'mysqld');
+	        my $mysqldopt = $config->genOpt('--mysqld=--', 'mysqld');
 
 		my $mysqltest_cmd = 
             "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options').
