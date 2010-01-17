@@ -73,7 +73,7 @@ insert_select:
 	INSERT INTO _table ( `col_int_key` , `col_int` ) SELECT `col_int` , `col_int_key` FROM _table WHERE `pk` > 10 LIMIT _digit ;
 
 insert_delete:
-	INSERT INTO _table ( `pk` , `col_int_key` , `col_int` ) VALUES ( NULL , 50 , 60 ) ; DELETE FROM _table WHERE `pk` = @@LAST_INSERT_ID ;
+	INSERT INTO _table[invariant] ( `pk` , `col_int_key` , `col_int` ) VALUES ( NULL , 50 , 60 ) ; DELETE FROM _table[invariant] WHERE `pk` = @@LAST_INSERT_ID ;
 
 insert_update:
 	INSERT INTO _table ( `pk` , `col_int_key` , `col_int` ) VALUES ( NULL, 170 , 180 ) ; UPDATE _table SET `col_int_key` = `col_int_key` - 80 , `col_int` = `col_int` - 70 WHERE `pk` = _digit ;
