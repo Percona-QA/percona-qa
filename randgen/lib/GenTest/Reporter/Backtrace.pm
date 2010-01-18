@@ -14,7 +14,9 @@ sub report {
 	my $datadir = $reporter->serverVariable('datadir');
 	say("datadir is $datadir");
 	my $binary = $reporter->serverInfo('binary');
+	say("binary is $binary");
 	my $bindir = $reporter->serverInfo('bindir');
+	say("bindir is $bindir");
 
 	my $pid = $reporter->serverInfo('pid');
 	my $core = <$datadir/core*>;
