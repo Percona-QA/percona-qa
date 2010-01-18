@@ -31,7 +31,7 @@ sub start {
     if ($pid == 0 ) {
         ## Forked process
         $self->{OBJECT}->run(@args);
-        say "".(ref $self->{OBJECT})." terminated normally\n";
+        say "".(ref $self->{OBJECT})."($$) terminated normally\n";
         exit 0;
     } else {
         say "".(ref $self->{OBJECT})."($pid) started\n";
