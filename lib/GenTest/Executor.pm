@@ -27,6 +27,7 @@ use constant EXECUTOR_DEFAULT_SCHEMA => 7;
 use constant EXECUTOR_SCHEMA_METADATA => 8;
 use constant EXECUTOR_COLLATION_METADATA => 9;
 use constant EXECUTOR_META_CACHE => 10;
+use constant EXECUTOR_CHANNEL => 11;
 
 1;
 
@@ -36,17 +37,18 @@ sub new {
 	my $executor = $class->SUPER::new({
 		'dsn'	=> EXECUTOR_DSN,
 		'dbh'	=> EXECUTOR_DBH,
+        'channel' => EXECUTOR_CHANNEL,
 	}, @_);
     
     return $executor;
 }
 
 sub newFromDSN {
-	my ($self,$dsn) = @_;
+	my ($self,$dsn,$channel) = @_;
 	
 	if ($dsn =~ m/^dbi:mysql:/i) {
 		require GenTest::Executor::MySQL;
-		return GenTest::Executor::MySQL->new(dsn => $dsn);
+		return GenTest::Executor::MySQL->new(dsn => $dsn, channel => $channel);
 	} elsif ($dsn =~ m/^dbi:drizzle:/i) {
 		require GenTest::Executor::Drizzle;
 		return GenTest::Executor::Drizzle->new(dsn => $dsn);
@@ -64,6 +66,16 @@ sub newFromDSN {
 		exit(STATUS_ENVIRONMENT_FAILURE);
 	}
 }
+
+sub channel {
+    return $_[0]->[EXECUTOR_CHANNEL];
+}
+
+sub sendError {
+    my ($self, $msg) = @_;
+    $self->channel->send($msg);
+}
+
 
 sub dbh {
 	return $_[0]->[EXECUTOR_DBH];
