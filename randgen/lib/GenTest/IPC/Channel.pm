@@ -10,15 +10,16 @@ sub new {
     my $class = shift;
     my $self = {};
 
-    my $pipe = $|;
-    $|=0;
+    ## open  bi-directional pipe
     pipe IN,OUT;
-    $| = $pipe;
 
     $self->{IN}=*IN;
     $self->{OUT}=*OUT;
     $self->{EOF}= 0;
     $self->{READER} = undef;
+    
+    ## Turn off buffering of output. Each object is sent as one
+    ## print-statement
     $self->{OUT}->autoflush(1);
     bless($self,$class);
     return $self;
@@ -26,19 +27,24 @@ sub new {
 
 sub send {
     my ($self,$obj) = @_;
-    ## Preliminary set Datadumper indent=0 in case datadumper is used
-    ## for debggugging etc.
+
+    ## Preliminary save Data::Dumper settings since this is a global setting
     my $oldindent = $Data::Dumper::Indent;
     my $oldpurity = $Data::Dumper::Purity;
+
+    ## Make output with no newlines and suitable for eval
     $Data::Dumper::Indent = 0;
     $Data::Dumper::Purity = 1;
+
     my $msg = Dumper($obj);
+
     ## Encode newline because that is used as message separator
     ## (readline on the other end)
     $msg =~ s/\n/&NEWLINE;/g;
+
     my $chn = $self->{OUT};
     print $chn $msg,"\n";
-    #say "Sendt $msg";
+
     ## Reset indent to old value
     $Data::Dumper::Indent = $oldindent;
     $Data::Dumper::Purity = $oldpurity;
@@ -47,12 +53,19 @@ sub send {
 sub recv {
     my ($self) = @_;
     my $obj;
+
+    ## Read until eof or an object that may be evaluated is recieved
     while (!(defined $obj) and !(eof $self->{IN})) {
         my $line = readline $self->{IN};
+
         ## Decode eol
         $line =~ s/&NEWLINE;/\n/g;
-        #say "Recieved $line";
+
+        ## Turn off strict vars since received message uses variables
+        ## without "my"
         no strict "vars";
+
+        ## Evaluate object
         $obj = eval $line;
         use strict "vars";
     };
@@ -62,12 +75,16 @@ sub recv {
 
 sub reader{
     my ($self) = @_;
+    
+    ## Readers don't need the output part
     close $self->{OUT};
     $self->{READER} = 1;
 }
 
 sub writer {
     my ($self) = @_;
+
+    ## Writers don't need the input part
     close $self->{IN};
     $self->{READER} = 0;
 }
