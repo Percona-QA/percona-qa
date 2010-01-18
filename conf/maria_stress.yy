@@ -11,6 +11,9 @@ join:
 	_table AS X | 
 	_table AS X LEFT JOIN _table AS Y ON ( X . _field = Y . _field ) ;
 
+_table:
+	A | B | C | D ;	# Avoid using overly large tables, such as table E
+
 where:
 	|
 	WHERE X . _field < value |
