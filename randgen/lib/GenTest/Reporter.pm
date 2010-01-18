@@ -83,9 +83,13 @@ sub new {
 
 	$reporter->[REPORTER_SERVER_INFO]->{pid} = $pid;
 
-	foreach my $path ('bin', 'sql', 'libexec', '../bin', '../sql', '../libexec', '../sql/RelWithDebInfo', '../sql/Debug') {
-		my $binary_unix = $reporter->serverVariable('basedir').$path."/mysqld";
-		my $binary_windows = $reporter->serverVariable('basedir').$path."/mysqld.exe";
+	foreach my $path (
+			'bin', 'sql', 'libexec',
+			'../bin', '../sql', '../libexec',
+			'../sql/RelWithDebInfo', '../sql/Debug',
+		) {
+		my $binary_unix = $reporter->serverVariable('basedir').'/'.$path."/mysqld";
+		my $binary_windows = $reporter->serverVariable('basedir').'/'.$path."/mysqld.exe";
 
 		if (
 			(-e $binary_unix) ||
@@ -96,7 +100,6 @@ sub new {
 			$reporter->[REPORTER_SERVER_INFO]->{binary} = $binary_windows if -e $binary_windows;
 		}
 	}
-
 
 	my $prng = GenTest::Random->new( seed => 1 );
 	$reporter->[REPORTER_PRNG] = $prng;
