@@ -30,6 +30,7 @@ sub validate {
 	my $orig_query = $orig_result->query();
 
 	return STATUS_OK if $orig_query !~ m{^\s*select}io;
+	return STATUS_OK if $orig_result->err() > 0;
 
 	foreach my $predicate (@predicates) {
 		my $new_query = $orig_query." ".$predicate;
