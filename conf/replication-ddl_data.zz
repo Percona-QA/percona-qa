@@ -12,7 +12,13 @@ $tables = {
         engines => [ undef , 'MyISAM' , 'InnoDB' ] ,
         # engines => [ undef , 'MyISAM' ] ,
         # Example: table<rows>_<engine>_<pk> like table0_myisam_int_autoinc
-        # Enable the next line when the RPL team says it is time to do this.
+        # Enable the next line when the RPL team says it is time to do this
+        # + modify conf/replication-ddl_sql.yy so that tables with names like
+        #   table<number> and table<number>_<engine> are used
+        #    In the moment we can suffer from
+        #    Bug #49481  	RBR: MyISAM and bit fields may cause slave to stop on delete: cant find record
+        #    Bug #49482  	RBR: Replication may break on deletes when MyISAM tables + char field are used
+        #    
         #    pk => [ 'int auto_increment' , 'int' , undef ]
         pk   => [ 'int auto_increment' , 'int' ]
 };
