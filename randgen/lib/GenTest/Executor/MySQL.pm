@@ -462,7 +462,7 @@ sub reportError {
     if (defined $self->channel) {
         $self->sendError($msg) if !$silent;
     } elsif (not defined $reported_errors{$errstr}) {
-        say($msg) if !$silent;
+        say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
         $reported_errors{$errstr}++;
     }
 }
