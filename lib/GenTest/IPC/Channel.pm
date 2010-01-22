@@ -2,6 +2,8 @@ package GenTest::IPC::Channel;
 
 use strict;
 
+use Carp;
+
 use IO::Handle;
 use Data::Dumper;
 use GenTest;
@@ -28,6 +30,8 @@ sub new {
 sub send {
     my ($self,$obj) = @_;
 
+    croak "OUT pipe closed" if defined $self->{READER} and $self->{READER};
+
     ## Preliminary save Data::Dumper settings since this is a global setting
     my $oldindent = $Data::Dumper::Indent;
     my $oldpurity = $Data::Dumper::Purity;
@@ -42,6 +46,8 @@ sub send {
     ## (readline on the other end)
     $msg =~ s/\n/&NEWLINE;/g;
 
+    say("sending <$msg>");
+
     my $chn = $self->{OUT};
     print $chn $msg,"\n";
 
@@ -54,9 +60,12 @@ sub recv {
     my ($self) = @_;
     my $obj;
 
+    croak "IN pipe closed" if defined $self->{READER} and !$self->{READER};
     ## Read until eof or an object that may be evaluated is recieved
-    while (!(defined $obj) and !(eof $self->{IN})) {
+    while (!(defined $obj) and (!$self->{EOF})) {
         my $line = readline $self->{IN};
+
+        say ("received <$line>");
 
         ## Decode eol
         $line =~ s/&NEWLINE;/\n/g;
@@ -68,8 +77,8 @@ sub recv {
         ## Evaluate object
         $obj = eval $line;
         use strict "vars";
+        $self->{EOF} = eof $self->{IN};
     };
-    $self->{EOF} = eof $self->{IN};
     return $obj;
 }
 
