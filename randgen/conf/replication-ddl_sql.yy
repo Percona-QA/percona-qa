@@ -194,26 +194,26 @@ safety_check:
 	# ;
 
 query:
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	set_iso_level      |
-	set_iso_level      |
-	set_iso_level      |
-	set_iso_level      |
-	rotate_event       |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	set_iso_level          |
+	set_iso_level          |
+	set_iso_level          |
+	set_iso_level          |
+	rotate_event           |
 	# This runs into a server weakness which finally fools the RQG deadlock detection.
 	# So it must be disabled.
-	# shake_clock        |
+	# shake_clock          |
 	#
 	# We MUST reduce the huge amount of NULL's
 	safety_check UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL ; COMMIT |
@@ -221,7 +221,7 @@ query:
 
 query_init:
 	# We need to know our current SESSION BINLOG_FORMAT. We do this by simply setting the BINLOG_FORMAT.
-   rand_session_binlog_format ;
+	rand_session_binlog_format ;
 
 set_iso_level:
 	safety_check SET global_or_session TRANSACTION ISOLATION LEVEL iso_level ;
@@ -459,8 +459,18 @@ create_table:
 	# This will fail because mysql.user already exists.
 	CREATE TABLE mysql.user ( f1 BIGINT ) ;
 create_table1:
-	CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } ENGINE = MyISAM AS SELECT _field_list[invariant] FROM table_in_select AS A addition |
-	CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } ENGINE = InnoDB AS SELECT _field_list[invariant] FROM table_in_select AS A addition ;
+	# We must avoid the generation of statements which are unsafe in SBR.
+	#    1. We get an implicite COMMIT before execution of CREATE ...
+	#    2. In case the table already exists we will get an ugly INSERT ... SELECT .
+	#    3. We pick_mode 1 til 4.
+	# pick_mode | Storage engine type to choose | 
+	# 0         | any                           |  
+	# 1         | undef                         | Set pick_mode = 3 (-> t1_*_innodb_*)
+	# 2         | nontrans                      | t1_*_myisam_*
+	# 3         | trans                         | t1_*_innodb_*
+	# 4         | nontrans and later trans      | SET pick_mode = 2 (-> t1_*_myisam_*)
+	{if ($format=='STATEMENT') {$pick_mode=2}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } ENGINE = MyISAM AS SELECT _field_list[invariant] FROM table_in_select AS A addition |
+	{if ($format=='STATEMENT') {$pick_mode=3}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } ENGINE = InnoDB AS SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 drop_table:
 	# FIXME Move this out of xid.....
 	DROP             TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
@@ -595,7 +605,7 @@ vmarker_set:
 # Therefore we only try to create a procedure which fits to the current session pick_mode.
 # The frequent dynamic switching of the session binlog format causes a calculation of pick_mode.
 create_procedure:
-   # Activate the next line if
+	# Activate the next line if
 	#    Bug#50423 Crash on second call of a procedure dropping a trigger
 	# is fixed. Not: This crash seems to be fixed in mysql-next-mr and mysql-6.0-codebase-bugfixing.
 	# CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN dml_list ; END ;
@@ -610,7 +620,7 @@ alter_procedure:
 	ALTER PROCEDURE { 'p1_'.$pick_mode.'_'.$$ } COMMENT ' _letter ' ;
 
 create_function:
-	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table where ;
+	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table where ) ;
 drop_function:
 	DROP FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } ;
 # Note: We use the function within the grammar item "value".
@@ -756,12 +766,7 @@ dml:
 	PREPARE st1 FROM " delete " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	PREPARE st1 FROM " insert " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	# We need the next statement for other statements which should use a user variable.
-	# As long as
-	#    Bug#49562 SBR out of sync when using numeric data types + user variable
-	# is bot fixed we must prevent that a value assigned to @aux does not exceed
-	# the value range of the column where it is applied (INSERT/UPDATE) later.
-	# SET @aux = value  |
-	SET @aux = 13            |
+	SET @aux = value         |
 	# We need the next statements for other statements which should be affected by switching the database.
 	USE `test` | USE `test1` |
 	select_for_update        |
@@ -856,7 +861,10 @@ select_for_update:
 
 value:
 	value_numeric          |
-	value_rand             |
+	# Enable the next line in case
+	#    Bug#50511 Sometimes wrong handling of user variables containing NULL
+	# is fixed.
+	# value_rand             |
 	value_string_converted |
 	value_string           |
 	value_temporal         |
@@ -894,6 +902,13 @@ value_numeric:
 	# FIXME 1. We do not need all of these values.
 	#       2. But a smart distribution of values is required so that we do not hit all time
 	#                  outside of the allowed value ranges
+	value_numeric_int    |
+	# Enable the next line in case
+	#    Bug#50511 Sometimes wrong handling of user variables containing NULL
+	# is fixed.
+	# value_numeric_double |
+	-1.1                 | +1.1 ;
+value_numeric_int:
 	- _digit         | _digit              |
 	_bit(1)          | _bit(4)             |
 	_tinyint         | _tinyint_unsigned   |
@@ -902,17 +917,18 @@ value_numeric:
 	_int             | _int_unsigned       |
 	_bigint          | _bigint_unsigned    |
 	_bigint          | _bigint_unsigned    |
-	-2.0E-1          | +2.0E-1             |
-	-2.0E+1          | +2.0E+1             |
-	-2.0E-10         | +2.0E-10            |
-	-2.0E+10         | +2.0E+10            |
-	-2.0E-100        | +2.0E-100           |
-	-2.0E+100        | +2.0E+100           |
 	# int(10)
 	CONNECTION_ID()  |
 	# Value of the AUTOINCREMENT (per manual only applicable to integer and floating-point types)
 	# column for the last INSERT.
 	LAST_INSERT_ID() ;
+value_numeric_double:
+	-2.0E-1          | +2.0E-1             |
+	-2.0E+1          | +2.0E+1             |
+	-2.0E-10         | +2.0E-10            |
+	-2.0E+10         | +2.0E+10            |
+	-2.0E-100        | +2.0E-100           |
+	-2.0E+100        | +2.0E+100           ;
 
 value_rand:
 	# The ( _digit ) makes thread = 1 tests deterministic.
