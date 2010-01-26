@@ -11,17 +11,20 @@ use GenTest::Incident;
 
 sub report {
 	my $reporter = shift;
+
 	my $datadir = $reporter->serverVariable('datadir');
 	say("datadir is $datadir");
+
 	my $binary = $reporter->serverInfo('binary');
 	say("binary is $binary");
+	
 	my $bindir = $reporter->serverInfo('bindir');
 	say("bindir is $bindir");
 
 	my $pid = $reporter->serverInfo('pid');
 	my $core = <$datadir/core*>;
 	$core = </cores/core.$pid> if $^O eq 'darwin';
-	say("Core file appears to be $core");
+	say("core is $core");
 
 	my @commands;
 
