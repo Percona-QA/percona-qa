@@ -13,6 +13,7 @@ GendataTest
 ExecutorTest
 TestScripts
 Metadata
+IPC
 ) }
 
 1;
