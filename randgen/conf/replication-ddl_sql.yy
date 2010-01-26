@@ -831,7 +831,11 @@ values_list:
 on_duplicate_key_update:
 	# Only 10 %
 	| | | | | | | | |
-	ON DUPLICATE KEY UPDATE _field = value ;
+   # Enable the next line in case
+	#    Bug#50619 assert in handler::update_auto_increment
+	# is fixed.
+	# ON DUPLICATE KEY UPDATE _field = value ;
+	ON DUPLICATE KEY UPDATE _field = ABS( value ) ;
 
 table_in_select:
 	pick_schema pick_safe_table                                        |
