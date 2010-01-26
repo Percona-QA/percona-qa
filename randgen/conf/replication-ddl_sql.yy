@@ -70,6 +70,7 @@
 # http://dev.mysql.com/doc/refman/5.4/en/replication-features-flush.html
 #-----------------------------------
 # USE LIMIT WITH ORDER BY    safety_check needs to be switched off otherwise we get a false alarm
+#    --> Use of LIMIT in general: where -> unsafe_condition
 #-----------------------------------
 # http://dev.mysql.com/doc/refman/5.4/en/replication-features-slaveerrors.html
 # FOREIGN KEY, master InnoDB and slave MyISAM
@@ -105,7 +106,7 @@
 # http://dev.mysql.com/doc/refman/5.4/en/replication-features-triggers.html !!!!
 #-----------------------------------
 # TRUNCATE is treated for purposes of logging and replication as DDL rather than DML ...
-# --> later
+# --> implemented
 #-----------------------------------
 # http://dev.mysql.com/doc/refman/5.4/en/mysqlbinlog-hexdump.html
 #    Type 	Name 	Meaning
@@ -172,6 +173,7 @@
 #   --> "*_binlog_format_sequence"
 # - In statement based replication, any non-transactional statement should be either placed outside the boundaries of a transaction or before any transactional statement.
 #   Transactional/non-transactional statement refers to the table/tables where something is modified
+#   --> "binlog_format_sequence" and "pick_mode"
 #------------------------------------------------
 #################################################
 # Experience with mysql-5.1-rep+3 with BINLOG_FORMAT = STATEMENT
@@ -192,26 +194,26 @@ safety_check:
 	# ;
 
 query:
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	/* BEGIN 1 */ binlog_format_sequence    /* 1 END */  |
-	set_iso_level      |
-	set_iso_level      |
-	set_iso_level      |
-	set_iso_level      |
-	rotate_event       |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	binlog_format_sequence |
+	set_iso_level          |
+	set_iso_level          |
+	set_iso_level          |
+	set_iso_level          |
+	rotate_event           |
 	# This runs into a server weakness which finally fools the RQG deadlock detection.
 	# So it must be disabled.
-	# shake_clock        |
+	# shake_clock          |
 	#
 	# We MUST reduce the huge amount of NULL's
 	safety_check UPDATE ignore pick_schema pick_safe_table SET _field[invariant] = col_tinyint WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + _digit AND _field[invariant] IS NULL ; COMMIT |
@@ -219,7 +221,7 @@ query:
 
 query_init:
 	# We need to know our current SESSION BINLOG_FORMAT. We do this by simply setting the BINLOG_FORMAT.
-   rand_session_binlog_format ;
+	rand_session_binlog_format ;
 
 set_iso_level:
 	safety_check SET global_or_session TRANSACTION ISOLATION LEVEL iso_level ;
@@ -310,7 +312,6 @@ implicit_commit:
 	create_table1        |
 	create_table         |
 	create_table         |
-	# FIXME MLML ... TEMPORARY ...
 	alter_table          |
 	truncate_table       |
 	rename_table         |
@@ -396,8 +397,6 @@ table_administration:
 	OPTIMIZE local_non_local TABLE table_items |
 	REPAIR   local_non_local TABLE table_items |
 	CHECK                    TABLE table_items ;
-	maintenance_command local_non_local TABLE pick_schema table_name |
-	maintenance_command local_non_local TABLE pick_schema table_name , pick_schema table_name ;
 local_non_local:
 	# LOCAL is an alias for NO_WRITE_TO_BINLOG. Therfore we check LOCAL only.
 	| LOCAL ;
@@ -447,30 +446,40 @@ alter_schema:
 #            SESSION BINLOG_FORMAT = ROW any SET ... BINLOG_FORMAT fails.
 create_table:
 	# FIXME Move this out of xid.....
-	# Attention: Be very careful here with INSERT ... SELECT or CREATE TABLE ... AS SELECT ...
-	#            In the moment, don't use it at all.
 	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table |
 	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    |
 	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table |
 	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    |
 	# FIXME Add later the case that base and temporary table have the same names
 	# Please enable the next two lines if
-	#    Bug #49132  	Replication failure on temporary table + DDL
+	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
 	# CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_myisam_'.$$ } LIKE nontrans_table |
 	# CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.$$ } LIKE trans_table    |
 	# This will fail because mysql.user already exists.
 	CREATE TABLE mysql.user ( f1 BIGINT ) ;
 create_table1:
-	CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } ENGINE = MyISAM AS SELECT _field_list[invariant] FROM table_in_select AS A addition |
-	CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } ENGINE = InnoDB AS SELECT _field_list[invariant] FROM table_in_select AS A addition ;
+	# We must avoid the generation of statements which are unsafe in SBR.
+	#    1. We get an implicite COMMIT before execution of CREATE ...
+	#    2. In case the table already exists we will get an ugly INSERT ... SELECT .
+	#    3. We pick_mode 1 til 4.
+	# pick_mode | Storage engine type to choose | 
+	# 0         | any                           |  
+	# 1         | undef                         | Set pick_mode = 3 (-> t1_*_innodb_*)
+	# 2         | nontrans                      | t1_*_myisam_*
+	# 3         | trans                         | t1_*_innodb_*
+	# 4         | nontrans and later trans      | SET pick_mode = 2 (-> t1_*_myisam_*)
+	{if ($format=='STATEMENT') {$pick_mode=2}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } ENGINE = MyISAM AS SELECT _field_list[invariant] FROM table_in_select AS A addition |
+	{if ($format=='STATEMENT') {$pick_mode=3}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } ENGINE = InnoDB AS SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 drop_table:
 	# FIXME Move this out of xid.....
 	DROP             TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
 	DROP             TABLE IF EXISTS pick_schema { 't1_base_innodb_'.$$ } |
 	# FIXME Add later the case that base and temporary table have the same names
+	#
 	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_myisam_'.$$ } |
 	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_innodb_'.$$ } |
+	#
 	# This will fail because already exist_not_exist.
 	DROP TABLE does_not_exist                                             ;
 alter_table:
@@ -483,7 +492,7 @@ table_name:
 	{ 't1_base_myisam_'.$$ } |
 	{ 't1_base_innodb_'.$$ } |
 	# Please enable the next four lines if
-	#    Bug #49132  	Replication failure on temporary table + DDL
+	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
 	# { 't1_temp_myisam_'.$$ } |
 	# { 't1_temp_innodb_'.$$ } |
@@ -496,26 +505,30 @@ create_index:
 	CREATE INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } (col_tinyint) |
 	CREATE INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } (col_tinyint) |
 	CREATE INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } (col_tinyint) |
+	#
 	# Please enable the next four lines if
-	#    Bug #49132  	Replication failure on temporary table + DDL
+	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
 	# CREATE INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } (col_tinyint) |
 	# CREATE INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } (col_tinyint) |
 	# CREATE INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } (col_tinyint) |
 	# CREATE INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } (col_tinyint) |
+	#
 	CREATE INDEX idx_will_fail ON does_not_exist (f1)                                  ;
 drop_index:
 	DROP INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } |
 	DROP INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } |
 	DROP INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } |
 	DROP INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } |
+	#
 	# Please enable the next four lines if
-	#    Bug #49132  	Replication failure on temporary table + DDL
+	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
 	# DROP INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } |
 	# DROP INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } |
 	# DROP INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } |
 	# DROP INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } |
+	#
 	DROP INDEX idx_will_fail ON does_not_exist                       ;
 
 rename_table:
@@ -531,7 +544,7 @@ rename_table:
 	RENAME TABLE pick_schema { 't1_base_myisam_'.$$ } TO pick_schema { 't1_base_myisam_'.$$ } |
 	#
 	# Please enable the next four lines if
-	#    Bug #49132  	Replication failure on temporary table + DDL
+	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
 	# RENAME TABLE test . { 't1_temp_myisam_'.$$ } TO test . { 't2_temp_myisam_'.$$ } |
 	# RENAME TABLE test . { 't2_temp_myisam_'.$$ } TO test . { 't1_temp_myisam_'.$$ } |
@@ -592,7 +605,11 @@ vmarker_set:
 # Therefore we only try to create a procedure which fits to the current session pick_mode.
 # The frequent dynamic switching of the session binlog format causes a calculation of pick_mode.
 create_procedure:
-	CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN dml_list ; END ;
+	# Activate the next line if
+	#    Bug#50423 Crash on second call of a procedure dropping a trigger
+	# is fixed. Not: This crash seems to be fixed in mysql-next-mr and mysql-6.0-codebase-bugfixing.
+	# CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN dml_list ; END ;
+	CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN proc_stmt ; END ;
 proc_stmt:
 	replace | update | delete ;
 drop_procedure:
@@ -603,7 +620,7 @@ alter_procedure:
 	ALTER PROCEDURE { 'p1_'.$pick_mode.'_'.$$ } COMMENT ' _letter ' ;
 
 create_function:
-	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table where ;
+	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table where ) ;
 drop_function:
 	DROP FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } ;
 # Note: We use the function within the grammar item "value".
@@ -626,12 +643,18 @@ alter_function:
 # - DELETE causes the execution of a trigger which inserts per one statement two rows into a table.
 #   The table where the insert should happen contains an autoincrement primary key but there is no
 #   explicite value for this column within the insert.
-# Solutions: Either define
-#   a) Define a simple trigger which does not suffer from this problem.
+# Thinkable solutions:
+#   a) Define a stupid trigger which does not modify tables which contain an AUTOINCREMENT column.
 #   b) Define a sophisticated trigger which fits to the situation when the trigger gets used.
-#   Ignoring this problem does not work because
-#   - safety_check will cause that the test aborts
-#   - we get annoying message in master.err ....
+#      This is not so easy.
+#      For example in case:
+#      - the TRIGGER contains a "if @@session.binlog_format = 'ROW' ..." and
+#      - current SESSION BINLOG_FORMAT is 'STATEMENT'
+#      than we get the warning
+#         Note 1592 Unsafe statement binlogged in statement format since BINLOG_FORMAT = STATEMENT.
+#         Reason for unsafeness: Statement uses a system variable whose value may differ on slave.
+#   c) Ignoring this problem does not work because in most cases the warning about unsafe statement
+#      is right.
 #   Let's try a) first.
 #
 create_trigger:
@@ -743,12 +766,7 @@ dml:
 	PREPARE st1 FROM " delete " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	PREPARE st1 FROM " insert " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
 	# We need the next statement for other statements which should use a user variable.
-	# As long as
-	#    Bug#49562 SBR out of sync when using numeric data types + user variable
-	# is bot fixed we must prevent that a value assigned to @aux does not exceed
-	# the value range of the column where it is applied (INSERT/UPDATE) later.
-	# SET @aux = value  |
-	SET @aux = 13            |
+	SET @aux = value         |
 	# We need the next statements for other statements which should be affected by switching the database.
 	USE `test` | USE `test1` |
 	select_for_update        |
@@ -767,7 +785,6 @@ pick_schema:
 delete:
 	# Delete in one table, search in one table
 	# Unsafe in statement based replication except we add ORDER BY
-	# DELETE       FROM pick_schema _table            LIMIT 1   |
 	DELETE low_priority quick ignore       FROM pick_schema pick_safe_table               where           |
 	# Delete in two tables, search in two tables
 	# Note: The next grammar line leads unfortunately to frequent failing statements (Unknown table A or B).
@@ -792,10 +809,14 @@ correlated:
 non_correlated:
 	subquery_part1 )                                                                             ;
 where:
-	# It should be very unlikely that
-	#    "AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr )" 
-	# gives FALSE.
-	WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + 2 { return $f0 . $f1 } AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr ) { return $f2 } ;
+	# Note abaout "AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr )"
+	# 1. This statement piece is unsafe (we also get a warning) when using SESSION BINLOG_FORMAT = STATEMENT.
+	# 2. We add this piece whenever SESSION BINLOG_FORMAT <> STATEMENT.
+	# 3. It should be very unlikely that it gives FALSE.
+	WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + 2 { return $f0 . $f1 } unsafe_condition { return $f2 } ;
+unsafe_condition:
+	AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr ) |
+	LIMIT 2 ;
 
 insert:
 	# Insert into one table, search in no other table
@@ -836,14 +857,14 @@ update:
 
 select_for_update:
 	# SELECT does not get replicated, but we want its sideeffects on the transaction.
-	# FIXME (mleich): 1. If _field picks the blob, do we have a bad impact on throughput?
-	#                 2. Has a column list sideeffects on the transaction at all
-	#                    compared to SELECT 1 FROM ....?
 	SELECT col_tinyint, _field FROM pick_safe_table where FOR UPDATE;
 
 value:
 	value_numeric          |
-	value_rand             |
+	# Enable the next line in case
+	#    Bug#50511 Sometimes wrong handling of user variables containing NULL
+	# is fixed.
+	# value_rand             |
 	value_string_converted |
 	value_string           |
 	value_temporal         |
@@ -878,9 +899,16 @@ value_numeric:
 	# We have 'bit' -> bit(1),'bit(4)','bit(64)','tinyint','smallint','mediumint','int','bigint',
 	# 'float','double',
 	# 'decimal' -> decimal(10,0),'decimal(35)'
-	# mleich: FIXME 1. We do not need all of these values.
-	#               2. But a smart distribution of values is required so that we do not hit all time
+	# FIXME 1. We do not need all of these values.
+	#       2. But a smart distribution of values is required so that we do not hit all time
 	#                  outside of the allowed value ranges
+	value_numeric_int    |
+	# Enable the next line in case
+	#    Bug#50511 Sometimes wrong handling of user variables containing NULL
+	# is fixed.
+	# value_numeric_double |
+	-1.1                 | +1.1 ;
+value_numeric_int:
 	- _digit         | _digit              |
 	_bit(1)          | _bit(4)             |
 	_tinyint         | _tinyint_unsigned   |
@@ -889,17 +917,18 @@ value_numeric:
 	_int             | _int_unsigned       |
 	_bigint          | _bigint_unsigned    |
 	_bigint          | _bigint_unsigned    |
-	-2.0E-1          | +2.0E-1             |
-	-2.0E+1          | +2.0E+1             |
-	-2.0E-10         | +2.0E-10            |
-	-2.0E+10         | +2.0E+10            |
-	-2.0E-100        | +2.0E-100           |
-	-2.0E+100        | +2.0E+100           |
 	# int(10)
 	CONNECTION_ID()  |
 	# Value of the AUTOINCREMENT (per manual only applicable to integer and floating-point types)
 	# column for the last INSERT.
 	LAST_INSERT_ID() ;
+value_numeric_double:
+	-2.0E-1          | +2.0E-1             |
+	-2.0E+1          | +2.0E+1             |
+	-2.0E-10         | +2.0E-10            |
+	-2.0E+10         | +2.0E+10            |
+	-2.0E-100        | +2.0E-100           |
+	-2.0E+100        | +2.0E+100           ;
 
 value_rand:
 	# The ( _digit ) makes thread = 1 tests deterministic.
@@ -939,15 +968,15 @@ any_table:
 	trans_table    ;
 
 undef_table:
-	table0_int_autoinc  |
+	# table0              |
 	table0_int          |
-	table0              |
-	table1_int_autoinc  |
+	table0_int_autoinc  |
+	# table1              |
 	table1_int          |
-	table1              |
-	table10_int_autoinc |
+	table1_int_autoinc  |
+	# table10             |
 	table10_int         |
-	table10             ;
+	table10_int_autoinc ;
 
 nontrans_table:
 	{ 't1_base_myisam_'.$$ }   |
@@ -957,15 +986,15 @@ nontrans_table:
 	# A VIEW used in SBR mode must not be based on a SELECT which is unsafe in SBR mode.
 	{ if ($format=='STATEMENT') { return 'v1_nontrans_safe_for_sbr_'.$$ } else { return 'v1_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
 	{ if ($format=='STATEMENT') { return 'v2_nontrans_safe_for_sbr_'.$$ } else { return 'v2_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
-	table0_myisam_int_autoinc  |
+	# table0_myisam              |
 	table0_myisam_int          |
-	table0_myisam              |
-	table1_myisam_int_autoinc  |
+	table0_myisam_int_autoinc  |
+	# table1_myisam              |
 	table1_myisam_int          |
-	table1_myisam              |
-	table10_myisam_int_autoinc |
+	table1_myisam_int_autoinc  |
+	# table10_myisam             |
 	table10_myisam_int         |
-	table10_myisam             ;
+	table10_myisam_int_autoinc ;
 
 trans_table:
 	{ 't1_base_innodb_'.$$ }   |
@@ -975,15 +1004,15 @@ trans_table:
 	# A VIEW used in SBR mode must not be based on a SELECT which is unsafe in SBR mode.
 	{ if ($format=='STATEMENT') { return 'v1_trans_safe_for_sbr_'.$$ } else { return 'v1_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
 	{ if ($format=='STATEMENT') { return 'v2_trans_safe_for_sbr_'.$$ } else { return 'v2_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
-	table0_innodb_int_autoinc  |
+	# table0_innodb              |
 	table0_innodb_int          |
-	table0_innodb              |
-	table1_innodb_int_autoinc  |
+	table0_innodb_int_autoinc  |
+	# table1_innodb              |
 	table1_innodb_int          |
-	table1_innodb              |
-	table10_innodb_int_autoinc |
+	table1_innodb_int_autoinc  |
+	# table10_innodb             |
 	table10_innodb_int         |
-	table10_innodb             ;
+	table10_innodb_int_autoinc ;
 
 pick_safe_table:
 	# pick_mode | table type to choose | setting

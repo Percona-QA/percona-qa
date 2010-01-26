@@ -10,6 +10,9 @@ use GenTest::Properties;
 use GenTest::Constants;
 use GenTest::App::Gendata;
 use GenTest::App::GendataSimple;
+#use GenTest::IPC::Channel;
+#use GenTest::IPC::Process;
+#use GenTest::ErrorFilter;
 
 $| = 1;
 my $ctrl_c = 0;
@@ -174,9 +177,13 @@ if (defined $config->redefine) {
 
 exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
 
+#my $channel = GenTest::IPC::Channel->new();
+
 my @executors;
 foreach my $i (0..2) {
 	next if $config->dsn->[$i] eq '';
+#	push @executors, GenTest::Executor->newFromDSN($config->dsn->[$i],
+#                                                   $channel);
 	push @executors, GenTest::Executor->newFromDSN($config->dsn->[$i]);
 }
 
@@ -285,6 +292,10 @@ my $report = GenTest::XML::Report->new(
 	tests => [ $test ]
 );
 
+#my $errorfilter = GenTest::ErrorFilter->new($channel);
+#my $errorfilter_p = GenTest::IPC::Process->new($errorfilter);
+#$errorfilter_p->start();
+
 my $process_type;
 my %child_pids;
 my $id = 1;
@@ -298,6 +309,7 @@ if ($periodic_pid == 0) {
 } else {
 	foreach my $i (1..$config->threads) {
 		my $child_pid = fork();
+        #$channel->writer;
 		if ($child_pid == 0) { # This is a child 
 			$process_type = PROCESS_TYPE_CHILD;
 			last;
@@ -317,6 +329,10 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 	my $children_died = 0;
 	my $total_status = STATUS_OK;
 	my $periodic_died = 0;
+
+    ## Parent thread does not use channel
+    #$channel->close;
+
 	while (1) {
 		my $child_pid = wait();
 		my $exit_status = $? > 0 ? ($? >> 8) : 0;
@@ -406,6 +422,8 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 		safe_exit($total_status);
 	}
 } elsif ($process_type == PROCESS_TYPE_PERIODIC) {
+    ## Periodic does not use channel
+    #$channel->close();
 	while (1) {
 		my $reporter_status = $reporter_manager->monitor(REPORTER_TYPE_PERIODIC);
 		exit($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;

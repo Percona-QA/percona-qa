@@ -454,6 +454,19 @@ sub init {
 	return STATUS_OK;
 }
 
+sub reportError {
+    my ($self, $query, $err, $errstr, $silent) = @_;
+    
+    my $msg = [$query,$err,$errstr];
+    
+    if (defined $self->channel) {
+        $self->sendError($msg) if !$silent;
+    } elsif (not defined $reported_errors{$errstr}) {
+        say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
+        $reported_errors{$errstr}++;
+    }
+}
+
 sub execute {
 	my ($executor, $query, $silent) = @_;
 
@@ -508,10 +521,7 @@ sub execute {
 		) {
 			my $errstr = $executor->normalizeError($sth->errstr());
 			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
-			if (not defined $reported_errors{$errstr}) {
-				say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
-				$reported_errors{$errstr}++;
-			}
+            $executor->reportError($query, $err, $errstr, $silent);
 		} elsif (
 			($err_type == STATUS_SERVER_CRASHED) ||
 			($err_type == STATUS_SERVER_KILLED)

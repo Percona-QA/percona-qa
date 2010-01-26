@@ -7,15 +7,24 @@ $schemas = [ 'test' , 'test1' ];
 $tables = {
         # Example: table<rows>
         rows => [ 0 , 1 , 10] ,
+        #
         # partitions => [ undef , 'KEY (pk) PARTITIONS 2' ] ,
+        #    Currently not tested
+        #
         # Example: table<rows> , table<rows>_<engine>
         engines => [ undef , 'MyISAM' , 'InnoDB' ] ,
-        # engines => [ undef , 'MyISAM' ] ,
-        # Example: table<rows>_<engine>_<pk> like table0_myisam_int_autoinc
-        # Enable the next line when the RPL team says it is time to do this.
+        #    
+        # Example: table<rows>_<engine>_<pk column data type> like table0_myisam_int_autoinc
+        # Enable the next line when the RPL team says it is time to do this
+        # + modify conf/replication-ddl_sql.yy so that tables with names like
+        #   table<number> and table<number>_<engine> are used
         #    pk => [ 'int auto_increment' , 'int' , undef ]
         pk   => [ 'int auto_increment' , 'int' ]
 };
+
+        #    In the moment we can suffer from
+        #    Bug #49481  	RBR: MyISAM and bit fields may cause slave to stop on delete: cant find record
+        #    Bug #49482  	RBR: Replication may break on deletes when MyISAM tables + char field are used
 
 $fields = {
         types => [
@@ -24,10 +33,15 @@ $fields = {
            'tinyint' ,
            # 'smallint' , 'mediumint' , 'int' ,
            'bigint' ,
+           # Enable the next line in case
+           #    Bug#50511 Sometimes wrong handling of user variables containing NULL
+           # is fixed.
            # 'float' , 'double' ,
+           #
            # decimal(M,N) is not supported by RQG. I would have taken decimal(65,30),decimal(10,0).
-           # decimal had to be disabled because of
-           # Bug#49533: Overflow in DECIMAL, SBR out of sync
+           # Enable the next line in case
+           #    Bug#49533: Overflow in DECIMAL, SBR out of sync
+           # is fixed.
            # 'decimal' , 'decimal(35)' ,
         # String
         # Manual: Specifying the CHARACTER SET binary attribute for a character data type causes
