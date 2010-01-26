@@ -1,5 +1,9 @@
 package GenTest::IPC::Process;
 
+if (windows()) {
+    use threads;
+}
+
 ## A Process is a placeholder for an object run in a separate process.
 ## The contract assumes that the objects constructor is run in the
 ## parent process and the fork is done in Process->start and then
@@ -27,18 +31,26 @@ sub new {
 sub start {
     my ($self, @args) = @_;
 
-    my $pid = fork();
-    if ($pid == 0 ) {
-        ## Forked process
-        $self->{PID}=$$;
-        $self->{OBJECT}->run(@args);
-        say "".(ref $self->{OBJECT})."($$) terminated normally\n";
-        exit 0;
+    if (windows()) {
+	my $thr = threads->create(sub{$self->{OBJECT}->run(@args)});
+	$thr->detach();
+	$self->{PID}=$thr->tid();
+	$processes{$thr->tid()} = $self->{OBJECT};
+	say "".(ref $self->{OBJECT})."(".$thr->tid().") started\n";
     } else {
-        say "".(ref $self->{OBJECT})."($pid) started\n";
-        $self->{PID} = $pid;
-        $processes{$pid} = $self->{OBJECT};
-        return $pid;
+	my $pid = fork();
+	if ($pid == 0 ) {
+	    ## Forked process
+	    $self->{PID}=$$;
+	    $self->{OBJECT}->run(@args);
+	    say "".(ref $self->{OBJECT})."($$) terminated normally\n";
+	    exit 0;
+	} else {
+	    say "".(ref $self->{OBJECT})."($pid) started\n";
+	    $self->{PID} = $pid;
+	    $processes{$pid} = $self->{OBJECT};
+	    return $pid;
+	}
     }
 }
 
