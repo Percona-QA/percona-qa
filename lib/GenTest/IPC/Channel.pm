@@ -5,6 +5,7 @@ use strict;
 use Carp;
 
 use IO::Handle;
+use IO::Pipe;
 use Data::Dumper;
 use GenTest;
 
@@ -13,10 +14,11 @@ sub new {
     my $self = {};
 
     ## open  bi-directional pipe
-    pipe IN,OUT;
 
-    $self->{IN}=*IN;
-    $self->{OUT}=*OUT;
+    $self->{IN} = IO::Handle->new();
+    $self->{OUT} = IO::Handle->new();
+    $self->{PIPE} = IO::Pipe->new($self->{IN},$self->{OUT});
+    
     $self->{EOF}= 0;
     $self->{READER} = undef;
     
@@ -46,8 +48,6 @@ sub send {
     ## (readline on the other end)
     $msg =~ s/\n/&NEWLINE;/g;
 
-    say("sending <$msg>");
-
     my $chn = $self->{OUT};
     print $chn $msg,"\n";
 
@@ -64,8 +64,6 @@ sub recv {
     ## Read until eof or an object that may be evaluated is recieved
     while (!(defined $obj) and (!$self->{EOF})) {
         my $line = readline $self->{IN};
-
-        say ("received <$line>");
 
         ## Decode eol
         $line =~ s/&NEWLINE;/\n/g;
@@ -107,7 +105,6 @@ sub close {
         close $self->{IN};
     } else {
         close $self->{OUT};
-        sleep 10;
     }
 }
 
