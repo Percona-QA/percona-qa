@@ -10,9 +10,9 @@ use GenTest::Properties;
 use GenTest::Constants;
 use GenTest::App::Gendata;
 use GenTest::App::GendataSimple;
-#use GenTest::IPC::Channel;
-#use GenTest::IPC::Process;
-#use GenTest::ErrorFilter;
+use GenTest::IPC::Channel;
+use GenTest::IPC::Process;
+use GenTest::ErrorFilter;
 
 $| = 1;
 my $ctrl_c = 0;
@@ -177,14 +177,13 @@ if (defined $config->redefine) {
 
 exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
 
-#my $channel = GenTest::IPC::Channel->new();
+my $channel = GenTest::IPC::Channel->new();
 
 my @executors;
 foreach my $i (0..2) {
 	next if $config->dsn->[$i] eq '';
-#	push @executors, GenTest::Executor->newFromDSN($config->dsn->[$i],
-#                                                   $channel);
-	push @executors, GenTest::Executor->newFromDSN($config->dsn->[$i]);
+	push @executors, GenTest::Executor->newFromDSN($config->dsn->[$i],
+                                                   $channel);
 }
 
 my $drizzle_only = $executors[0]->type == DB_DRIZZLE;
@@ -292,9 +291,8 @@ my $report = GenTest::XML::Report->new(
 	tests => [ $test ]
 );
 
-#my $errorfilter = GenTest::ErrorFilter->new($channel);
-#my $errorfilter_p = GenTest::IPC::Process->new($errorfilter);
-#$errorfilter_p->start();
+my $errorfilter = GenTest::ErrorFilter->new($channel);
+my $errorfilter_p = GenTest::IPC::Process->new($errorfilter);
 
 my $process_type;
 my %child_pids;
@@ -309,7 +307,7 @@ if ($periodic_pid == 0) {
 } else {
 	foreach my $i (1..$config->threads) {
 		my $child_pid = fork();
-        #$channel->writer;
+        $channel->writer;
 		if ($child_pid == 0) { # This is a child 
 			$process_type = PROCESS_TYPE_CHILD;
 			last;
@@ -325,13 +323,16 @@ if ($periodic_pid == 0) {
 }
 
 if ($process_type == PROCESS_TYPE_PARENT) {
+    ## Important that this is done here in the parent after the alst
+    ## fork since on wondows Process.pm uses threads
+    $errorfilter_p->start();
 	# We are the parent process, wait for for all spawned processes to terminate
 	my $children_died = 0;
 	my $total_status = STATUS_OK;
 	my $periodic_died = 0;
 
     ## Parent thread does not use channel
-    #$channel->close;
+    $channel->close;
 
 	while (1) {
 		my $child_pid = wait();
@@ -423,7 +424,7 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 	}
 } elsif ($process_type == PROCESS_TYPE_PERIODIC) {
     ## Periodic does not use channel
-    #$channel->close();
+    $channel->close();
 	while (1) {
 		my $reporter_status = $reporter_manager->monitor(REPORTER_TYPE_PERIODIC);
 		exit($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
