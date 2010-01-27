@@ -41,7 +41,15 @@ sub testChannel {
     my $relay_p = GenTest::IPC::Process->new($relay);
     $self->assert_not_null($relay_p);
 
-    $relay_p->start();
+    if (fork()) {
+	$relay_p->start();
+    } else {
+	$incoming->close();
+	$outgoing->writer();
+	$outgoing->send(["foo","bar"]);
+	$outgoing->close();
+	exit 0;
+    }
 
     $outgoing->writer;
     $incoming->reader;
@@ -53,13 +61,17 @@ sub testChannel {
 
     $outgoing->close;
     
+    my $n=0;
     while ($incoming->more) {
         my $in_message = $incoming->recv;
         $self->assert_not_null($in_message);
         $self->assert_num_equals(1,$#{$in_message});
         $self->assert_str_equals($message->[0],$in_message->[0]);
         $self->assert_str_equals($message->[1],$in_message->[1]);
+	$n++;
     }
+
+    $self->assert_num_equals(3,$n);
 
     $incoming->close;
 }
