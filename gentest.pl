@@ -183,7 +183,7 @@ my @executors;
 foreach my $i (0..2) {
 	next if $config->dsn->[$i] eq '';
 	push @executors, GenTest::Executor->newFromDSN($config->dsn->[$i],
-                                                   $channel);
+                                                   windows()?undef:$channel);
 }
 
 my $drizzle_only = $executors[0]->type == DB_DRIZZLE;
