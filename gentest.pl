@@ -293,6 +293,9 @@ my $report = GenTest::XML::Report->new(
 
 my $errorfilter = GenTest::ErrorFilter->new($channel);
 my $errorfilter_p = GenTest::IPC::Process->new($errorfilter);
+if (!windows()) {
+    $errorfilter_p->start();
+}
 
 my $process_type;
 my %child_pids;
@@ -323,9 +326,11 @@ if ($periodic_pid == 0) {
 }
 
 if ($process_type == PROCESS_TYPE_PARENT) {
-    ## Important that this is done here in the parent after the alst
-    ## fork since on wondows Process.pm uses threads
-    $errorfilter_p->start();
+    if (windows()) {
+        ## Important that this is done here in the parent after the last
+        ## fork since on windows Process.pm uses threads
+        $errorfilter_p->start();
+    }
 	# We are the parent process, wait for for all spawned processes to terminate
 	my $children_died = 0;
 	my $total_status = STATUS_OK;
@@ -377,6 +382,8 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 			$total_status = $periodic_status if $periodic_status > $total_status;
 		}
 	}
+
+    $errorfilter_p->kill();
 
 	my @report_results;
 

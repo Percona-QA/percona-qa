@@ -103,8 +103,13 @@ sub childWaitStatus {
 sub kill {
     my ($self) = @_;
     
-    say "Kill ".(ref $processes{$self->{PID}})."(".$self->{PID}.")\n";
-    kill(15, $self->{PID});
+    if (windows()) {
+        ## Not sure yet, but the thread will enevtually die dtogether
+        ## with the main program
+    } else {
+        say "Kill ".(ref $processes{$self->{PID}})."(".$self->{PID}.")\n";
+        kill(15, $self->{PID});
+    }
 }
 
 1;

@@ -29,7 +29,7 @@ sub run {
             }
             $self->{CACHE}->{$errstr}++;
         }
-        last if !$self->{CHANNEL}->more;
+        sleep 1 if !$self->{CHANNEL}->more;
     }
     $self->{CHANNEL}->close;
 }
