@@ -38,7 +38,7 @@ sub testChannel {
     my $relay = IPC_P1->new($outgoing,$incoming);
     $self->assert_not_null($relay);
 
-    my $relay_p = GenTest::IPC::Process->new($relay);
+    my $relay_p = GenTest::IPC::Process->new(object=>$relay);
     $self->assert_not_null($relay_p);
 
     if (fork()) {
