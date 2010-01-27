@@ -291,8 +291,8 @@ my $report = GenTest::XML::Report->new(
 	tests => [ $test ]
 );
 
-my $errorfilter = GenTest::ErrorFilter->new($channel);
-my $errorfilter_p = GenTest::IPC::Process->new($errorfilter);
+my $errorfilter = GenTest::ErrorFilter->new(channel=>$channel);
+my $errorfilter_p = GenTest::IPC::Process->new(object=>$errorfilter);
 if (!windows()) {
     $errorfilter_p->start();
 }

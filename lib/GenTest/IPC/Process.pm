@@ -1,5 +1,7 @@
 package GenTest::IPC::Process;
 
+@ISA = qw(GenTest);
+
 if (windows()) {
     use threads;
 }
@@ -16,15 +18,14 @@ use strict;
 
 my %processes;
 
+use constant PROCESS_OBJECT => 0;
+use constant PROCESS_PID => 1;
+
 sub new {
     my $class = shift;
-    my $self = {};
-    
-    $self->{OBJECT} = shift;
 
-    bless($self, $class);
-    
-    return $self;
+    return $class->SUPER::new({
+        'object' => PROCESS_OBJECT},@_);
 }
 
 
@@ -32,23 +33,23 @@ sub start {
     my ($self, @args) = @_;
 
     if (windows()) {
-	my $thr = threads->create(sub{$self->{OBJECT}->run(@args)});
+	my $thr = threads->create(sub{$self->[PROCESS_OBJECT]->run(@args)});
 	$thr->detach();
-	$self->{PID}=$thr->tid();
-	$processes{$thr->tid()} = $self->{OBJECT};
-	say "".(ref $self->{OBJECT})."(".$thr->tid().") started\n";
+	$self->[PROCESS_PID]=$thr->tid();
+	$processes{$thr->tid()} = $self->[PROCESS_OBJECT];
+	say "".(ref $self->[PROCESS_OBJECT])."(".$thr->tid().") started\n";
     } else {
 	my $pid = fork();
 	if ($pid == 0 ) {
 	    ## Forked process
-	    $self->{PID}=$$;
-	    $self->{OBJECT}->run(@args);
-	    say "".(ref $self->{OBJECT})."($$) terminated normally\n";
+	    $self->[PROCESS_PID]=$$;
+	    $self->[PROCESS_OBJECT]->run(@args);
+	    say "".(ref $self->[PROCESS_OBJECT])."($$) terminated normally\n";
 	    exit 0;
 	} else {
-	    say "".(ref $self->{OBJECT})."($pid) started\n";
-	    $self->{PID} = $pid;
-	    $processes{$pid} = $self->{OBJECT};
+	    say "".(ref $self->[PROCESS_OBJECT])."($pid) started\n";
+	    $self->[PROCESS_PID] = $pid;
+	    $processes{$pid} = $self->[PROCESS_OBJECT];
 	    return $pid;
 	}
     }
@@ -107,8 +108,8 @@ sub kill {
         ## Not sure yet, but the thread will enevtually die dtogether
         ## with the main program
     } else {
-        say "Kill ".(ref $processes{$self->{PID}})."(".$self->{PID}.")\n";
-        kill(15, $self->{PID});
+        say "Kill ".(ref $processes{$self->[PROCESS_PID]})."(".$self->[PROCESS_PID].")\n";
+        kill(15, $self->[PROCESS_PID]);
     }
 }
 
