@@ -63,132 +63,132 @@ my $run_id = time();
 say("run_id = $run_id");
 
 my $simplifier = GenTest::Simplifier::Mysqltest->new(
-	oracle => sub {
-		my $oracle_mysqltest = shift;
-		$iteration++;
+    oracle => sub {
+        my $oracle_mysqltest = shift;
+        $iteration++;
         
-		chdir($config->basedir.'/mysql-test'); # assume forward slash works
+        chdir($config->basedir.'/mysql-test'); # assume forward slash works
 
-		my $tmpfile_base_name = $run_id.'-'.$iteration; # we need this for both test- and result file name
-		my $tmpfile = $tmpfile_base_name.'.test';      # test file of this iteration
+        my $tmpfile_base_name = $run_id.'-'.$iteration; # we need this for both test- and result file name
+        my $tmpfile = $tmpfile_base_name.'.test';      # test file of this iteration
         
-		open (ORACLE_MYSQLTEST, ">t/$tmpfile") or croak "Unable to open $tmpfile: $!";
-		print ORACLE_MYSQLTEST "--source include/master-slave.inc\n" if $config->replication;
-		print ORACLE_MYSQLTEST $oracle_mysqltest;
-		print ORACLE_MYSQLTEST "--sync_slave_with_master\n" if $config->replication;
-		close ORACLE_MYSQLTEST;
+        open (ORACLE_MYSQLTEST, ">t/$tmpfile") or croak "Unable to open $tmpfile: $!";
+        print ORACLE_MYSQLTEST "--source include/master-slave.inc\n" if $config->replication;
+        print ORACLE_MYSQLTEST $oracle_mysqltest;
+        print ORACLE_MYSQLTEST "--sync_slave_with_master\n" if $config->replication;
+        close ORACLE_MYSQLTEST;
 
-		my $mysqldopt = $config->genOpt('--mysqld=--', 'mysqld');
+        my $mysqldopt = $config->genOpt('--mysqld=--', 'mysqld');
 
-		my $mysqltest_cmd = 
+        my $mysqltest_cmd = 
             "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options').
             " t/$tmpfile 2>&1";
 
-		my $mysqltest_output = `$mysqltest_cmd`;
-		say $mysqltest_output if $iteration == 1;
-		
-		########################################################################
-		# Start of comparison mode (two basedirs)
-		########################################################################
-		
-		if (defined $config->basedir2) {
-			if ($iteration == 1) {
-				say ('Two basedirs specified. Will compare outputs instead of looking for expected output.');
-				say ('Server A: '.$config->basedir);
-				say ('Server B: '.$config->basedir2);
-				# NOTE: --record MTR option is required. TODO: Check for this?
-			}
-			
-			#
-			# Run the test against basedir2 and compare results against the previous run.
-			#
-			
-			chdir($config->basedir2.'/mysql-test');
-			
-			# working dir is now for Server B, so we need full path to Server A's files for later
-			my $tmpfile_full_path = $config->basedir.'/mysql-test/t/'.$tmpfile;
-			my $resultfile_full_path = $config->basedir.'/mysql-test/r/'.$tmpfile_base_name.'.result';
-				
-			# tests/results for Server B include "-b" in the filename
-			my $tmpfile2_base_name = $run_id.'-'.$iteration.'-b';
-			my $tmpfile2 = $tmpfile2_base_name.'.test';
-			my $tmpfile2_full_path = $config->basedir2.'/mysql-test/t/'.$tmpfile2;
-			my $resultfile2_full_path = $config->basedir2.'/mysql-test/r/'.$tmpfile2_base_name.'.result';
-			
-			# Copy test file to server B
-			copy($tmpfile_full_path, $tmpfile2_full_path) or croak("Unable to copy test file $tmpfile to $tmpfile2");
-			
-			my $mysqltest_cmd2 = 
-            	"perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options').
-				" $tmpfile2 2>&1";
+        my $mysqltest_output = `$mysqltest_cmd`;
+        say $mysqltest_output if $iteration == 1;
+        
+        ########################################################################
+        # Start of comparison mode (two basedirs)
+        ########################################################################
+        
+        if (defined $config->basedir2) {
+            if ($iteration == 1) {
+                say ('Two basedirs specified. Will compare outputs instead of looking for expected output.');
+                say ('Server A: '.$config->basedir);
+                say ('Server B: '.$config->basedir2);
+                # NOTE: --record MTR option is required. TODO: Check for this?
+            }
+            
+            #
+            # Run the test against basedir2 and compare results against the previous run.
+            #
+            
+            chdir($config->basedir2.'/mysql-test');
+            
+            # working dir is now for Server B, so we need full path to Server A's files for later
+            my $tmpfile_full_path = $config->basedir.'/mysql-test/t/'.$tmpfile;
+            my $resultfile_full_path = $config->basedir.'/mysql-test/r/'.$tmpfile_base_name.'.result';
+                
+            # tests/results for Server B include "-b" in the filename
+            my $tmpfile2_base_name = $run_id.'-'.$iteration.'-b';
+            my $tmpfile2 = $tmpfile2_base_name.'.test';
+            my $tmpfile2_full_path = $config->basedir2.'/mysql-test/t/'.$tmpfile2;
+            my $resultfile2_full_path = $config->basedir2.'/mysql-test/r/'.$tmpfile2_base_name.'.result';
+            
+            # Copy test file to server B
+            copy($tmpfile_full_path, $tmpfile2_full_path) or croak("Unable to copy test file $tmpfile to $tmpfile2");
+            
+            my $mysqltest_cmd2 = 
+                "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options').
+                " $tmpfile2 2>&1";
 
-			# Run the test against server B
-			# we don't really use this output for anything right now
-			my $mysqltest_output2 = `$mysqltest_cmd2`;
-			#say $mysqltest_output2 if $iteration == 1;
-			
-			
-			# Compare the two results
-			# We declare the tests to have failed properly only if the results
-			# from the two test runs differ.
-			# (We ignore expected_mtr_output in this mode)
-			my $compare_result = compare($resultfile_full_path, $resultfile2_full_path);
-			if ( $compare_result == 0) {
-				# no diff
-				say('Issue not repeatable (results were equal) with test '.$tmpfile_base_name);
-				unlink($tmpfile_full_path) if $iteration > 1; # deletes test for Server A
-				unlink($tmpfile2_full_path) if $iteration > 1; # deletes test for Server B
-				unlink($resultfile_full_path) if $iteration > 1; # deletes result for Server A
-				unlink($resultfile2_full_path) if $iteration > 1; # deletes result for Server B
-				return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
-			} elsif ($compare_result > 0) {
-				# diff
-				say("Issue is repeatable (results differ) with test $tmpfile_base_name");
-				return ORACLE_ISSUE_STILL_REPEATABLE;
-			} else {
-				# error ($compare_result < 0)
-				say("\nError ($compare_result) comparing result files for test $tmpfile_base_name");
-				if (! -e $resultfile_full_path) {
-					say("Test output was:");
-					say $mysqltest_output;
-					# TODO: No result file may mean that we tried an invalid query
-					#       Try comparing .reject files in this case?
-					croak("Resultfile  $resultfile_full_path not found");
-				} elsif (! -e $resultfile_full_path) {
-					say("Test output was:");
-					say $mysqltest_output2;
-					croak("Resultfile2 $resultfile2_full_path not found");
-				}
-			}
+            # Run the test against server B
+            # we don't really use this output for anything right now
+            my $mysqltest_output2 = `$mysqltest_cmd2`;
+            #say $mysqltest_output2 if $iteration == 1;
+            
+            
+            # Compare the two results
+            # We declare the tests to have failed properly only if the results
+            # from the two test runs differ.
+            # (We ignore expected_mtr_output in this mode)
+            my $compare_result = compare($resultfile_full_path, $resultfile2_full_path);
+            if ( $compare_result == 0) {
+                # no diff
+                say('Issue not repeatable (results were equal) with test '.$tmpfile_base_name);
+                unlink($tmpfile_full_path) if $iteration > 1; # deletes test for Server A
+                unlink($tmpfile2_full_path) if $iteration > 1; # deletes test for Server B
+                unlink($resultfile_full_path) if $iteration > 1; # deletes result for Server A
+                unlink($resultfile2_full_path) if $iteration > 1; # deletes result for Server B
+                return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
+            } elsif ($compare_result > 0) {
+                # diff
+                say("Issue is repeatable (results differ) with test $tmpfile_base_name");
+                return ORACLE_ISSUE_STILL_REPEATABLE;
+            } else {
+                # error ($compare_result < 0)
+                say("\nError ($compare_result) comparing result files for test $tmpfile_base_name");
+                if (! -e $resultfile_full_path) {
+                    say("Test output was:");
+                    say $mysqltest_output;
+                    # TODO: No result file may mean that we tried an invalid query
+                    #       Try comparing .reject files in this case?
+                    croak("Resultfile  $resultfile_full_path not found");
+                } elsif (! -e $resultfile_full_path) {
+                    say("Test output was:");
+                    say $mysqltest_output2;
+                    croak("Resultfile2 $resultfile2_full_path not found");
+                }
+            }
 
-		########################################################################
-		# End of comparison mode (two basedirs)
-		########################################################################
-			
-		} else {
-			# Only one basedir specified - retain old behavior (look for expected output).
+        ########################################################################
+        # End of comparison mode (two basedirs)
+        ########################################################################
+            
+        } else {
+            # Only one basedir specified - retain old behavior (look for expected output).
 
-			#
-			# We declare the test to have failed properly only if the
-			# desired message is present in the output and it is not a
-			# result of an error that caused part of the test, including
-			# the --croak construct, to be printed to stdout.
-			#
-	
-			my $expected_mtr_output = $config->expected_mtr_output;
-			if (
-				($mysqltest_output =~ m{$expected_mtr_output}sio) &&
-				($mysqltest_output !~ m{--die}sio)
-			) {
-				say("Issue repeatable with $tmpfile");
-				return ORACLE_ISSUE_STILL_REPEATABLE;
-			} else {
-				say("Issue not repeatable with $tmpfile.");
-				unlink('t/'.$tmpfile) if $iteration > 1;
-				return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
-			}
-		}
-	}
+            #
+            # We declare the test to have failed properly only if the
+            # desired message is present in the output and it is not a
+            # result of an error that caused part of the test, including
+            # the --croak construct, to be printed to stdout.
+            #
+    
+            my $expected_mtr_output = $config->expected_mtr_output;
+            if (
+                ($mysqltest_output =~ m{$expected_mtr_output}sio) &&
+                ($mysqltest_output !~ m{--die}sio)
+            ) {
+                say("Issue repeatable with $tmpfile");
+                return ORACLE_ISSUE_STILL_REPEATABLE;
+            } else {
+                say("Issue not repeatable with $tmpfile.");
+                unlink('t/'.$tmpfile) if $iteration > 1;
+                return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
+            }
+        }
+    }
 );
 
 my $simplified_mysqltest;
