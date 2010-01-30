@@ -1,3 +1,10 @@
+# **NOTE** Joins for this grammar are currently not working as intended.
+# For example, if we have tables 1, 2, and 3, we end up with ON conditions that 
+# only involve tables 2 and 3.
+# This will be fixed, but initial attempts at altering this had a negative 
+# impact on the coverage the test was providing.  To be fixed when scheduling 
+# permits.  We are still seeing significant coverage with the grammar as-is.
+
 ################################################################################
 # optimizer_subquery.yy:  Random Query Generator grammar for testing subquery  #
 #                    optimizations.  This grammar *should* hit the             # 
