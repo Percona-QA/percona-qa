@@ -420,10 +420,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--threads=1
 		--reporters=
 	';
-#
-# END OF FALCON-ONLY TESTS
-#
-} elsif ($test =~ m{(falcon|innodb|myisam)_compare_self}io ) {
+} elsif ($test =~ m{falcon_compare_self}io ) {
 	$command = '
 		--grammar='.$conf.'/falcon_data_types.yy
 		--gendata='.$conf.'/falcon_data_types.zz
@@ -432,6 +429,9 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--threads=1
 		--reporters=
 	';
+#
+# END OF FALCON-ONLY TESTS
+#
 } elsif ($test =~ m{innodb_repeatable_read}io ) {
 	# Transactional test. See also falcon_repeatable_read.
 	$command = '
