@@ -473,8 +473,8 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	';
 } elsif ($test =~ m{(falcon|innodb|myisam)_tiny_inserts}io) {
 	$command = '
-		--gendata='.$conf.'/falcon_tiny_inserts.zz
-		--grammar='.$conf.'/falcon_tiny_inserts.yy
+		--gendata='.$conf.'/tiny_inserts.zz
+		--grammar='.$conf.'/tiny_inserts.yy
 		--queries=10000000
 	';
 } elsif ($test =~ m{innodb_transactions}io) {
