@@ -459,11 +459,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--grammar='.$conf.'/many_indexes.yy
 		--gendata='.$conf.'/many_indexes.zz
 	';
-} elsif ($test =~ m{(myisam|innodb)_limit}io ) {
-	$command = '
-	        --grammar='.$conf.'/falcon_limit.yy
-		--duration=100
-	';
 } elsif ($test =~ m{(falcon|innodb|myisam)_tiny_inserts}io) {
 	$command = '
 		--gendata='.$conf.'/tiny_inserts.zz
