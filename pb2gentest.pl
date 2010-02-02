@@ -494,10 +494,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--duration=600
 		--threads=25
 	';
-} elsif ($test =~ m{(innodb|myisam|maria)_bulk_insert}io ) {
-	$command = '
-		--grammar='.$conf.'/maria_bulk_insert.yy
-	';
 } elsif ($test =~ m{dml_alter}io ) {
 	$command = '
 		--gendata='.$conf.'/maria.zz
