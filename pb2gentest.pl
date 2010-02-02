@@ -510,11 +510,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--duration=300
 		--mysqld=--log-output=file
 	';
-} elsif ($test =~ m{mostly_selects}io ) {
-	$command = '
-		--gendata='.$conf.'/maria.zz
-		--grammar='.$conf.'/maria_mostly_selects.yy
-	';
 } elsif ($test =~ m{^mdl_stability}io ) {
 	$command = '
 		--grammar='.$conf.'/metadata_stability.yy
