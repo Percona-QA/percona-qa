@@ -2,9 +2,8 @@ package GenTest::IPC::Process;
 
 @ISA = qw(GenTest);
 
-if (windows()) {
-    use threads;
-}
+use GenTest;
+use if windows(), threads;
 
 ## A Process is a placeholder for an object run in a separate process.
 ## The contract assumes that the objects constructor is run in the
@@ -12,7 +11,6 @@ if (windows()) {
 ## obect->run() is invoked.
 
 use Data::Dumper;
-use GenTest;
 
 use strict;
 
