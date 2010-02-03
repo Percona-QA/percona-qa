@@ -1,6 +1,6 @@
 package GenTest;
 use base 'Exporter';
-@EXPORT = ('say', 'tmpdir', 'safe_exit', 'windows', 'xml_timestamp', 'rqg_debug');
+@EXPORT = ('say', 'tmpdir', 'safe_exit', 'windows', 'solaris', 'xml_timestamp', 'rqg_debug');
 
 use strict;
 
@@ -87,6 +87,14 @@ sub windows {
 		($^O eq 'MSWin32') ||
 	        ($^O eq 'MSWin64')
 	) {
+		return 1;
+	} else {
+		return 0;
+	}	
+}
+
+sub solaris {
+	if ($^O eq 'solaris') {
 		return 1;
 	} else {
 		return 0;
