@@ -56,7 +56,6 @@ sub report {
             my $traces = join("; ",map{"where ".$_} @threads);
 
             push @commands, "echo \"$traces\" | dbx $binary $core";
-            say ("Commands : $commands[0]");
         } elsif ($core) {
             ## We'll attempt pstack and c++filt which should allways
             ## work and show all threads. c++filt from SunStudio
