@@ -6,6 +6,7 @@ use Carp;
 use File::Compare;
 use File::Copy;
 use Getopt::Long;
+use Time::HiRes;
 
 use GenTest;
 use GenTest::Properties;
@@ -39,7 +40,11 @@ my $config = GenTest::Properties->new(
         'mtr_options',
         'vebose',
         'replication',
-        'mysqld'
+	'header',
+	'footer',
+	'filter',
+        'mysqld',
+	'use_connections'
     ],
     required => [
         'basedir',
@@ -55,6 +60,14 @@ my $config = GenTest::Properties->new(
 $config->printHelp if not $o;
 $config->printProps;
 
+my $header = $config->header() || [];
+my $footer = $config->footer() || [];
+
+if ($config->replication()) {
+	push @$header , '--source include/master-slave.inc';
+	push @$footer , '--sync_slave_with_master';
+}
+
 # End of user-configurable section
 
 my $iteration = 0;
@@ -63,6 +76,8 @@ my $run_id = time();
 say("run_id = $run_id");
 
 my $simplifier = GenTest::Simplifier::Mysqltest->new(
+    filter => $config->filter(),
+    use_connections => $config->use_connections(),
     oracle => sub {
         my $oracle_mysqltest = shift;
         $iteration++;
@@ -73,20 +88,36 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
         my $tmpfile = $tmpfile_base_name.'.test';      # test file of this iteration
         
         open (ORACLE_MYSQLTEST, ">t/$tmpfile") or croak "Unable to open $tmpfile: $!";
-        print ORACLE_MYSQLTEST "--source include/master-slave.inc\n" if $config->replication;
-        print ORACLE_MYSQLTEST $oracle_mysqltest;
-        print ORACLE_MYSQLTEST "--sync_slave_with_master\n" if $config->replication;
+
+	print ORACLE_MYSQLTEST join("\n",@{$header})."\n\n";
+        print ORACLE_MYSQLTEST $oracle_mysqltest."\n";
+	print ORACLE_MYSQLTEST "\n".join("\n",@{$footer})."\n";
         close ORACLE_MYSQLTEST;
 
         my $mysqldopt = $config->genOpt('--mysqld=--', 'mysqld');
 
-        my $mysqltest_cmd = 
-            "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options').
-            " t/$tmpfile 2>&1";
+	my $mtr_start_time = Time::HiRes::time();
+
+        my $mysqltest_cmd = "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options')." t/$tmpfile 2>&1";
 
         my $mysqltest_output = `$mysqltest_cmd`;
-        say $mysqltest_output if $iteration == 1;
-        
+	my $mtr_exit_code = $? >> 8;
+	my $mtr_duration = Time::HiRes::time() - $mtr_start_time;
+	if ($iteration == 1) {
+		say ($mysqltest_output);
+	} else {
+		say ("MTR test duration: $mtr_duration; exit_code: $mtr_exit_code");
+	}
+
+	system("grep -i safe ".$config->basedir()."/mysql-test/var/log/mysqld.1.err");
+	my $grep_exit_code = $? >> 8;
+	if ($grep_exit_code == 0) {
+		say("Messages about unsafe replication found in master error log.");
+		return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
+	} elsif ($grep_exit_code > 1) {
+		die("grep on the mysqld.1.err error log failed");
+	}
+
         ########################################################################
         # Start of comparison mode (two basedirs)
         ########################################################################
@@ -184,7 +215,9 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
                 return ORACLE_ISSUE_STILL_REPEATABLE;
             } else {
                 say("Issue not repeatable with $tmpfile.");
-                unlink('t/'.$tmpfile) if $iteration > 1;
+                unlink('t/'.$tmpfile) if $mtr_exit_code == 0;
+		say $mysqltest_output if $iteration > 1 && $mtr_exit_code != 0;
+		
                 return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
             }
         }
@@ -214,7 +247,8 @@ if (-f $config->input_file){
     }
 
     if (defined $simplified_mysqltest) {
-        say "Simplified mysqltest:\n\n$simplified_mysqltest.\n";
+        say "Simplified mysqltest:";
+	print "\n\n".join("\n",@{$header})."\n\n\n".$simplified_mysqltest.join("\n",@{$footer})."\n\n";
         exit (STATUS_OK);
     } else {
         say "Unable to simplify ". $config->input_file.".\n";

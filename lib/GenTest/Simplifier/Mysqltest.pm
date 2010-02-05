@@ -16,6 +16,8 @@ my @csv_modules = (
 );
 
 use constant SIMPLIFIER_ORACLE          => 0;
+use constant SIMPLIFIER_FILTER		=> 1;
+use constant SIMPLIFIER_USE_CONNECTIONS	=> 2;
 
 1;
 
@@ -23,7 +25,9 @@ sub new {
         my $class = shift;
 
 	my $simplifier = $class->SUPER::new({
-		oracle	=> SIMPLIFIER_ORACLE
+		oracle		=> SIMPLIFIER_ORACLE,
+		filter		=> SIMPLIFIER_FILTER,
+		use_connections => SIMPLIFIER_USE_CONNECTIONS
 	}, @_);
 
 	return $simplifier;
@@ -32,14 +36,23 @@ sub new {
 sub simplify {
 	my ($simplifier, $initial_mysqltest) = @_;
 
-	if (!$simplifier->oracle($initial_mysqltest)) {
+	my @queries = split("\n", $initial_mysqltest);
+
+	my $filtered_out = 0;
+
+	foreach my $i (0..$#queries) {
+		if ($queries[$i] =~ m{$simplifier->[SIMPLIFIER_FILTER]}sio) {
+			$filtered_out++;
+			splice @queries, $i, 1;
+		}
+	}
+
+	say("Filtered $filtered_out queries out of ".($#queries+1));
+
+	if (!$simplifier->oracle(join("\n", @queries)."\n")) {
 		warn("Initial mysqltest failed oracle check.");
 		return undef;
 	}
-
-	my @query_status;
-
-	my @queries = split("\n", $initial_mysqltest);
 
 	my $ddmin_outcome = $simplifier->ddmin(\@queries);
 	my $final_mysqltest = join("\n", @$ddmin_outcome)."\n";
@@ -81,16 +94,15 @@ sub simplifyFromCSV {
 			my $command = $columns[4];
 			my $query = $columns[5];
 
-			if ($command eq 'Connect') {
+			if (($command eq 'Connect') && ($simplifier->[SIMPLIFIER_USE_CONNECTIONS])) {
 				my ($username, $host, $database) = $query =~ m{(.*?)\@(.*?) on (.*)}sio;
 				push @mysqltest, "--connect ($connection_name, localhost, $username, , $database)";
 				$connections{$connection_name}++;
-			} elsif ($command eq 'Quit') {
+			} elsif (($command eq 'Quit') && ($simplifier->[SIMPLIFIER_USE_CONNECTIONS])) {
 				push @mysqltest, "--disconnect $connection_name";
 			} elsif ($command eq 'Query') {
-				next if $query =~ m{EXPLAIN}sio;
 
-				if ($last_connection ne $connection_name) {
+				if (($last_connection ne $connection_name) && ($simplifier->[SIMPLIFIER_USE_CONNECTIONS])) {
 					if (not exists $connections{$connection_name}) {
 						push @mysqltest, "--connect ($connection_name, localhost, root, , test)";
 		                                $connections{$connection_name}++;
@@ -126,7 +138,7 @@ sub oracle {
 
         my $oracle = $simplifier->[SIMPLIFIER_ORACLE];
 
-	return $oracle->("--disable_abort_on_error\n".$mysqltest); 
+	return $oracle->($mysqltest); 
 }
 
 #
@@ -137,18 +149,23 @@ sub ddmin {
 	my ($simplifier, $inputs) = @_;
 	say("input_size: ".($#$inputs + 1));
 	my $splits = 2;
+
+	# We start from 1, as to preserve the top-most queries since they are usually vital
+	my $starting_subset = 1;
+
 	outer: while (2 <= @$inputs) {
 		my @subsets = subsets($inputs, $splits);
 		say("inputs: ".($#$inputs + 1)."; splits: $splits; subsets: ".($#subsets + 1));
 
 		my $some_complement_is_failing = 0;
-		foreach my $subset_id (0..$#subsets) {
+		foreach my $subset_id ($starting_subset..$#subsets) {
 			my $subset = $subsets[$subset_id];
 			my $complement = listMinus($inputs, $subset);
 			say("subset_id: $subset_id; subset_size: ".($#$subset + 1)."; complement_size: ".($#$complement + 1));
 #			say("subset: ".join('|',@$subset));
 #			say("complement: ".join('|',@$complement));
 			if ($simplifier->oracle(join("\n", @$complement)) == ORACLE_ISSUE_STILL_REPEATABLE) {
+				$starting_subset = $subset_id; 	# At next iteration, continue from where we left off 
 				$inputs = $complement;
 				$splits-- if $splits > 2;
 				$some_complement_is_failing = 1;
@@ -160,6 +177,8 @@ sub ddmin {
 			last if $splits == ($#$inputs + 1);
 			$splits = $splits * 2 > $#$inputs + 1 ? $#$inputs + 1 : $splits * 2;
 		}
+
+		$starting_subset = 1;	# Reached EOF, start again from the top
 
 	}
 
