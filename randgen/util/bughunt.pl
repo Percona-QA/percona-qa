@@ -1,11 +1,11 @@
 ## Hunting for bugs.
 ## 
-## Repeated runs of runall with different seeds.
+## Repeated runs of runall with different seed and mask values.
 ## Will run repeatedly trial times.
 ## If expected_outputs (of which there may be several) is specified it
-## will report if is found 
+## will report if is found.
 ## If desired_status_codes it will report if one is found.
-## if stop_on_match it will stop if there is a match (one of the
+## If stop_on_match it will stop if there is a match (one of the
 ## status codes, all of the exepcted outputs).
 
 use strict;
@@ -44,6 +44,8 @@ my $config = GenTest::Properties->new(
               'grammar',
               'trials',
               'initial_seed',
+              'mask_level',
+              'initial_mask',
               'search_var_size',
               'rqg_options',
               'vardir_prefix',
@@ -95,14 +97,18 @@ mkdir ($storage);
 
 
 my $good_seed = $config->initial_seed;
+my $mask_level = $config->mask_level;
+my $good_mask = $config->initial_mask;
 my $current_seed;
+my $current_mask;
 my $current_rqg_log;
+my $errfile = $vardir . '/log/master.err';
 foreach my $trial (1..$config->trials) {
     say("###### run_id = $run_id; trial = $trial ######");
     
     $current_seed = $good_seed - 1 + $trial;
+    $current_mask = $good_mask - 1 + $trial;
     $current_rqg_log = $storage . '/' . $trial . '.log';
-    my $errfile = $vardir . '/log/master.err';
     
     my $start_time = Time::HiRes::time();
     
@@ -111,7 +117,9 @@ foreach my $trial (1..$config->trials) {
         " $rqgoptions $mysqlopt ".
         "--grammar=".$config->grammar." ".
         "--vardir=$vardir ".
-        "--seed=$current_seed 2>&1 >$current_rqg_log";
+        "--mask-level=$mask_level ".
+        "--mask=$current_mask ".
+        "--seed=$current_seed >$current_rqg_log 2>&1";
     
     say($runall);
     my $runall_status = system($runall);
