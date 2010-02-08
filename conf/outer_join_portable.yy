@@ -302,7 +302,7 @@ comparison_operator:
 	= | > | < | != | <> | <= | >= ;
 
 aggregate:
-	COUNT( | SUM( | MIN( | MAX( ;
+	COUNT( distinct | SUM( distinct | MIN( distinct | MAX( distinct ;
 
 not:
 	| | | NOT;

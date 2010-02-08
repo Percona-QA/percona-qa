@@ -343,7 +343,7 @@ comparison_operator:
 	= | > | < | != | <> | <= | >= ;
 
 aggregate:
-        COUNT( | MIN( | MAX( ;
+        COUNT( distinct | MIN( distinct | MAX( distinct ;
 
 int_aggregate:
         SUM( | aggregate ;

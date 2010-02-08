@@ -337,7 +337,7 @@ table_one_two:
 	table1 | table2 ;
 
 aggregate:
-	COUNT( | SUM( | MIN( | MAX( ;
+	COUNT( distinct | SUM( distinct | MIN( distinct | MAX( distinct ;
 
 ################################################################################
 # The following rules are for writing more sensible queries - that we don't    #
