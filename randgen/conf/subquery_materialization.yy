@@ -1,3 +1,11 @@
+################################################################################
+# NOTE:  This is an older grammar and should not be prioritized over other 
+#        grammars (such as optimizer*subquery, outer_join, range_access)
+#        While this is still an effective testing tool, the grammars listed
+#        above should be run first
+################################################################################
+
+
 query:
 	SELECT select_option outer_select_item
 	FROM outer_from
