@@ -1,6 +1,6 @@
 # From the manual:
 ##################
-# Parts of statements which make them unsafe when using statement based replication
+# Statements which are unsafe when using statement based replication
 #    In case of binlog format
 #    - MIXED we get an automatic switching from statement-based to row-based replication.
 #      Attention: This test does not contain an explicit check if this switching happens.
@@ -11,7 +11,7 @@
 # - DML updates an NDBCLUSTER table
 #   FIXME: NOT TESTED
 # - FOUND_ROWS(), ROW_COUNT(), UUID(), USER(), CURRENT_USER(), LOAD_FILE(), CURRENT_USER, VERSION() ,
-#   SYSDATE() are used
+#   SYSDATE(), RAND() are used
 #   --> "value_unsafe_for_sbr"
 # - LIMIT even if we have a preceding ORDER BY which makes the statement safe
 #   --> "where" --> "unsafe_condition" (no use of ORDER BY)
@@ -136,8 +136,8 @@
 # 3. SAVEPOINT A followed by some UPDATE on a non transactional table is unsafe
 #
 # FROM THE DISCUSSION:
-# - If you want to change the replication format, do so outside the boundaries of a transaction. (SBR?)
-#   --> "*_binlog_format_sequence"
+# If you want to change the replication format, do so outside the boundaries of a transaction. (SBR?)
+# --> "*_binlog_format_sequence"
 #-----------------------------------
 # http://dev.mysql.com/doc/refman/5.4/en/replication-features-triggers.html !!!!
 #-----------------------------------
@@ -164,7 +164,7 @@
 #        --> "dml" contains LOAD DATA
 #    0c 	NEW_LOAD_EVENT 	Used for LOAD DATA INFILE in MySQL 4 and earlier.
 # X  0d 	RAND_EVENT 	Used to send information about random values if the RAND() function is used in the statement.
-#        --> "value_rand"
+#        --> "value_unsafe_for_sbr"
 # X  0e 	USER_VAR_EVENT 	Used to replicate user variables.
 #        --> "dml" containing SET @aux + "values" containg @aux
 # X  0f 	FORMAT_DESCRIPTION_EVENT 	This indicates the start of a log file written by MySQL 5 or later.
@@ -195,7 +195,6 @@
 # (For example, do not issue a statement such as INSERT INTO mytable VALUES(GET_LOCK(...)).)
 #------------------------------------------------
 
-#################################################
 #################################################
 
 safety_check:
@@ -240,7 +239,8 @@ iso_level:
 	{ if ( $format == 'STATEMENT' ) { return $prng->arrayElement(['REPEATABLE READ','SERIALIZABLE']) } else { return $prng->arrayElement(['READ UNCOMMITTED','READ COMMITTED','REPEATABLE READ','SERIALIZABLE']) } } ;
 
 global_or_session:
-	SESSION | GLOBAL ;
+	# There seems to be only a minor impact of GLOBAL on the test. Therefore it should be less likely.
+	SESSION | SESSION | GLOBAL ;
 
 shake_clock:
 	safety_check SET SESSION TIMESTAMP = UNIX_TIMESTAMP() plus_minus _digit ;
@@ -780,6 +780,7 @@ dml:
 	update |
 	delete |
 	insert |
+	replace |
 	call_procedure |
 	# LOAD DATA INFILE ... is not supported in prepared statement mode.
 	PREPARE st1 FROM " update " ; safety_check EXECUTE st1 ; DEALLOCATE PREPARE st1 |
@@ -868,8 +869,8 @@ union:
 	UNION SELECT _field_list[invariant] FROM table_in_select AS B ;
 
 replace:
-	# HIGH_PRIORITY is not allowed
-	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field , col_tinyint )   VALUES values_list on_duplicate_key_update                       |
+	# HIGH_PRIORITY and on_duplicate_key_update are not allowed
+	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field , col_tinyint )   VALUES values_list                                               |
 	REPLACE low_priority_delayed INTO pick_schema pick_safe_table ( _field_list[invariant] ) SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 
 update:
@@ -885,15 +886,14 @@ select_for_update:
 
 value:
 	value_numeric          |
-	# Enable the next line in case
-	#    Bug#50511 Sometimes wrong handling of user variables containing NULL
-	# is fixed.
-	# value_rand             |
 	value_string_converted |
 	value_string           |
 	value_temporal         |
 	@aux                   |
-	NULL                   |
+	# Enable the next line in case
+	#    Bug#50511 Sometimes wrong handling of user variables containing NULL
+	# is fixed.
+	# NULL                   |
 	pick_schema { 'f1_'.$pick_mode.'_'.$$ } () |
 	{ if ($format=='STATEMENT') {return '/*'} } value_unsafe_for_sbr { if ($format=='STATEMENT') {return '*/ 17 '} };
 
@@ -913,6 +913,8 @@ value_unsafe_for_sbr:
 	USER()            |
 	VERSION()         |
 	SYSDATE()         |
+	# The ( _digit ) makes thread = 1 tests deterministic.
+	RAND( _digit )   ;
 	# _data gets replace by LOAD_FILE( <some path> ) which is unsafe for SBR.
 	# mleich: I assume this refers to the risk that an input file
 	#         might exist on the master but probably not on the slave.
@@ -928,10 +930,7 @@ value_numeric:
 	#       2. But a smart distribution of values is required so that we do not hit all time
 	#                  outside of the allowed value ranges
 	value_numeric_int    |
-	# Enable the next line in case
-	#    Bug#50511 Sometimes wrong handling of user variables containing NULL
-	# is fixed.
-	# value_numeric_double |
+	value_numeric_double |
 	-1.1                 | +1.1 ;
 value_numeric_int:
 	- _digit         | _digit              |
@@ -954,10 +953,6 @@ value_numeric_double:
 	-2.0E+10         | +2.0E+10            |
 	-2.0E-100        | +2.0E-100           |
 	-2.0E+100        | +2.0E+100           ;
-
-value_rand:
-	# The ( _digit ) makes thread = 1 tests deterministic.
-	RAND( _digit )   ;
 
 value_string:
 	# We have 'char' -> char(1),'char(10)',
