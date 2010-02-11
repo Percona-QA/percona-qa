@@ -26,7 +26,6 @@ use strict;
 
 use Carp;
 use Data::Dumper;
-use File::Path qw(make_path remove_tree);
 
 use constant MYSQLD_BASEDIR => 0;
 use constant MYSQLD_DATADIR => 1;
@@ -129,7 +128,15 @@ sub createMysqlBase  {
     my ($self) = @_;
 
     ## 1. Clean old db if any
-    remove_tree($self->datadir);
+    if (-d $self->datadir) {
+	if (windows()) {
+	    my $datadir = $self->datadir;
+	    $datadir =~ s/\//\\/g;
+	    system("rmdir /s /q $datadir");
+	} else {
+	    system("rm -rf ".$self->datadir);
+	}
+    }
 
     ## 2. Create database directory structure
     mkdir $self->datadir;

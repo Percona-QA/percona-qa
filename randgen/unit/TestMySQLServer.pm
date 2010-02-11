@@ -21,7 +21,6 @@ use base qw(Test::Unit::TestCase);
 use lib 'lib';
 use GenTest;
 use GenTest::Server::MySQL;
-use File::Path qw(make_path remove_tree);
 
 use Data::Dumper;
 
@@ -36,7 +35,11 @@ sub set_up {
 
 sub tear_down {
     # clean up after test
-    # remove_tree("./unit/tmp");
+    if (windows) {
+	system("rmdir /s /q unit\\tmp");
+    } else {
+	system("rm -rf unit/tmp");
+    }
 }
 
 sub test_create_server {
