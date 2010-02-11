@@ -19,9 +19,11 @@ package GenTest::Server::MySQL;
 
 @ISA = qw(GenTest);
 
+use GenTest;
+use if windows(), Win32::Process;
+
 use strict;
 
-use GenTest;
 use Carp;
 use Data::Dumper;
 
@@ -49,7 +51,15 @@ sub new {
                                    'portbase' => MYSQLD_PORTBASE,
                                    'server_options' => MYSQLD_SERVER_OPTIONS},@_);
 
-    $self->[MYSQLD_MYSQLD] = $self->_find($self->basedir,["sql","libexec"],"mysqld");
+    if (windows()) {
+	## Use unix-style path's since that's what Perl expects...
+	$self->[MYSQLD_BASEDIR] =~ s/\\/\//g;
+	$self->[MYSQLD_DATADIR] =~ s/\\/\//g;
+    }
+    
+    $self->[MYSQLD_MYSQLD] = $self->_find($self->basedir,
+					  windows()?["sql/Debug"]:["sql","libexec"],
+					  windows()?"mysqld.exe":"mysqld");
     $self->[MYSQLD_BOOT_SQL] = [
         $self->_find($self->basedir,["scripts","share/mysql"],"mysql_system_tables.sql"),
         $self->_find($self->basedir,["scripts","share/mysql"],"mysql_system_tables_data.sql"),
@@ -58,7 +68,9 @@ sub new {
 
     $self->[MYSQLD_MESSAGES] = $self->_findDir($self->basedir, ["sql/share","share/mysql"], "errmsg-utf8.txt");
     
-    $self->[MYSQLD_LIBMYSQL] = $self->_findDir($self->basedir, ["libmysql/.libs","lib/mysql"], "libmysqlclient.so");
+    $self->[MYSQLD_LIBMYSQL] = $self->_findDir($self->basedir, 
+					       windows()?["libmysql/Debug"]:["libmysql/.libs","lib/mysql"], 
+					       windows()?"libmysql.dll":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = [join(" ",
                                     "--basedir=".$self->basedir,
@@ -115,39 +127,43 @@ sub logfile {
 sub createMysqlBase  {
     my ($self) = @_;
 
-    ## 1. Clean old db if any
-    ## This is hairy but works on Unix
-    system("rm -rf ".$self->datadir);
-
-    ## 2. Create database directory structure
-    mkdir $self->datadir;
-    mkdir $self->datadir."/mysql";
-    mkdir $self->datadir."/test";
-
-    ## 3. Create boot file
-    my $boot = $self->datadir."/boot.sql";
-    open BOOT,">$boot";
-
-    ## Set curren database
-    print BOOT  "use mysql;\n";
-    foreach my $b (@{$self->[MYSQLD_BOOT_SQL]}) {
-        open B,$b;
-        while (<B>) { print BOOT $_;}
-        close B;
+    if (windows()) {
+	say("NOT YET");
+    } else {
+	## 1. Clean old db if any
+	## This is hairy but works on Unix
+	system("rm -rf ".$self->datadir);
+	
+	## 2. Create database directory structure
+	mkdir $self->datadir;
+	mkdir $self->datadir."/mysql";
+	mkdir $self->datadir."/test";
+	
+	## 3. Create boot file
+	my $boot = $self->datadir."/boot.sql";
+	open BOOT,">$boot";
+	
+	## Set curren database
+	print BOOT  "use mysql;\n";
+	foreach my $b (@{$self->[MYSQLD_BOOT_SQL]}) {
+	    open B,$b;
+	    while (<B>) { print BOOT $_;}
+	    close B;
+	}
+	## Don't want empty users
+	print BOOT "DELETE FROM user WHERE `User` = '';\n";
+	close BOOT;
+	
+	## 4. Boot database
+	my $command = join(' ',$self->[MYSQLD_MYSQLD],
+			   "--no-defaults",
+			   "--bootstrap",
+			   @{$self->[MYSQLD_STDOPTS]});
+	
+	my $bootlog = $self->datadir."/boot.log";
+	
+	system("cat $boot | $command > $bootlog  2>&1 ");
     }
-    ## Don't want empty users
-    print BOOT "DELETE FROM user WHERE `User` = '';\n";
-    close BOOT;
-    
-    ## 4. Boot database
-    my $command = join(' ',$self->[MYSQLD_MYSQLD],
-                       "--no-defaults",
-                       "--bootstrap",
-                       @{$self->[MYSQLD_STDOPTS]});
-
-    my $bootlog = $self->datadir."/boot.log";
-    
-    system("cat $boot | $command > $bootlog  2>&1 ");
 }
 
 sub startServer {
