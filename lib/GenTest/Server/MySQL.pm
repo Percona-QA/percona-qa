@@ -157,6 +157,7 @@ sub startServer {
                        "--no-defaults",
                        @{$self->[MYSQLD_STDOPTS]},
                        "--skip-grant",
+                       "--port=".$self->portbase,
                        "--socket=".MYSQLD_SOCKET_FILE,
                        "--pid-file=".MYSQLD_PID_FILE);
 
