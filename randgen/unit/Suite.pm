@@ -31,6 +31,7 @@ ExecutorTest
 TestScripts
 Metadata
 IPC
+TestMySQLServer
 ) }
 
 1;
