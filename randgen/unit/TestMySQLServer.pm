@@ -35,13 +35,30 @@ sub set_up {
 
 sub tear_down {
     # clean up after test
-    system("rm -rf ./unit/tmp");
+    if (windows()) {
+    } else {
+	system("rm -rf ./unit/tmp");
+    }
 }
 
 sub test_create_server {
     my $self = shift;
     if ($ENV{RQG_MYSQL_BASE}) {
-        if (!windows()) {
+	if (windows()){
+            my $server = GenTest::Server::MySQL->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                                     datadir => "unit\\tmp",
+                                                     portbase => 22120);
+            
+            #$self->assert(-f "unit\\tmp\\mysql\\db.MYD");
+            
+            #$server->startServer;
+            
+            ## Do some database commands
+            
+            #$server->stopServer;
+            
+            #system("cat ".$server->logfile);
+        } else {
             my $server = GenTest::Server::MySQL->new(basedir => $ENV{RQG_MYSQL_BASE},
                                                      datadir => "./unit/tmp",
                                                      portbase => 22120);
