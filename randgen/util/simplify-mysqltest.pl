@@ -44,8 +44,7 @@ my $o = GetOptions($options,
            'expected_mtr_output=s',
            'verbose!',
            'mtr_options=s%',
-           'mysqld=s%',
-           'replication!');
+           'mysqld=s%');
 my $config = GenTest::Properties->new(
     options => $options,
     legal => [
@@ -56,7 +55,6 @@ my $config = GenTest::Properties->new(
         'expected_mtr_output',
         'mtr_options',
         'vebose',
-        'replication',
 	'header',
 	'footer',
 	'filter',
@@ -66,12 +64,7 @@ my $config = GenTest::Properties->new(
     required => [
         'basedir',
         'input_file',
-        'mtr_options'],
-    defaults => {
-        replication => 0, # Set to 1 to turn on --source
-                          # include/master-slave.inc and
-                          # --sync_slave_with_master
-    }
+        'mtr_options']
     );
 
 $config->printHelp if not $o;
@@ -79,11 +72,6 @@ $config->printProps;
 
 my $header = $config->header() || [];
 my $footer = $config->footer() || [];
-
-if ($config->replication()) {
-	push @$header , '--source include/master-slave.inc';
-	push @$footer , '--sync_slave_with_master';
-}
 
 # End of user-configurable section
 
@@ -101,10 +89,11 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
         
         chdir($config->basedir.'/mysql-test'); # assume forward slash works
 
-        my $tmpfile_base_name = $run_id.'-'.$iteration; # we need this for both test- and result file name
-        my $tmpfile = $tmpfile_base_name.'.test';      # test file of this iteration
+        my $testfile_base_name = $run_id.'-'.$iteration; # we need this for both test- and result file name
+        my $testfile = $testfile_base_name.'.test';      # test file of this iteration
+        my $resultfile = $testfile_base_name.'.result';      # test file of this iteration
         
-        open (ORACLE_MYSQLTEST, ">t/$tmpfile") or croak "Unable to open $tmpfile: $!";
+        open (ORACLE_MYSQLTEST, ">t/$testfile") or croak "Unable to open $testfile: $!";
 
 	print ORACLE_MYSQLTEST join("\n",@{$header})."\n\n";
         print ORACLE_MYSQLTEST $oracle_mysqltest."\n";
@@ -115,7 +104,7 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
 
 	my $mtr_start_time = Time::HiRes::time();
 
-        my $mysqltest_cmd = "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options')." t/$tmpfile 2>&1";
+        my $mysqltest_cmd = "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options')." t/$testfile 2>&1";
 
         my $mysqltest_output = `$mysqltest_cmd`;
 	my $mtr_exit_code = $? >> 8;
@@ -154,21 +143,21 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
             chdir($config->basedir2.'/mysql-test');
             
             # working dir is now for Server B, so we need full path to Server A's files for later
-            my $tmpfile_full_path = $config->basedir.'/mysql-test/t/'.$tmpfile;
-            my $resultfile_full_path = $config->basedir.'/mysql-test/r/'.$tmpfile_base_name.'.result';
+            my $testfile_full_path = $config->basedir.'/mysql-test/t/'.$testfile;
+            my $resultfile_full_path = $config->basedir.'/mysql-test/r/'.$testfile_base_name.'.result';
                 
             # tests/results for Server B include "-b" in the filename
-            my $tmpfile2_base_name = $run_id.'-'.$iteration.'-b';
-            my $tmpfile2 = $tmpfile2_base_name.'.test';
-            my $tmpfile2_full_path = $config->basedir2.'/mysql-test/t/'.$tmpfile2;
-            my $resultfile2_full_path = $config->basedir2.'/mysql-test/r/'.$tmpfile2_base_name.'.result';
+            my $testfile2_base_name = $run_id.'-'.$iteration.'-b';
+            my $testfile2 = $testfile2_base_name.'.test';
+            my $testfile2_full_path = $config->basedir2.'/mysql-test/t/'.$testfile2;
+            my $resultfile2_full_path = $config->basedir2.'/mysql-test/r/'.$testfile2_base_name.'.result';
             
             # Copy test file to server B
-            copy($tmpfile_full_path, $tmpfile2_full_path) or croak("Unable to copy test file $tmpfile to $tmpfile2");
+            copy($testfile_full_path, $testfile2_full_path) or croak("Unable to copy test file $testfile to $testfile2");
             
             my $mysqltest_cmd2 = 
                 "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options').
-                " $tmpfile2 2>&1";
+                " $testfile2 2>&1";
 
             # Run the test against server B
             # we don't really use this output for anything right now
@@ -183,19 +172,23 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
             my $compare_result = compare($resultfile_full_path, $resultfile2_full_path);
             if ( $compare_result == 0) {
                 # no diff
-                say('Issue not repeatable (results were equal) with test '.$tmpfile_base_name);
-                unlink($tmpfile_full_path) if $iteration > 1; # deletes test for Server A
-                unlink($tmpfile2_full_path) if $iteration > 1; # deletes test for Server B
-                unlink($resultfile_full_path) if $iteration > 1; # deletes result for Server A
-                unlink($resultfile2_full_path) if $iteration > 1; # deletes result for Server B
+                say('Issue not repeatable (results were equal) with test '.$testfile_base_name);
+
+		if ($iteration > 1) {
+	                unlink($testfile_full_path); # deletes test for Server A
+	                unlink($testfile2_full_path); # deletes test for Server B
+	                unlink($resultfile_full_path); # deletes result for Server A
+        	        unlink($resultfile2_full_path); # deletes result for Server B
+		}
+
                 return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
             } elsif ($compare_result > 0) {
                 # diff
-                say("Issue is repeatable (results differ) with test $tmpfile_base_name");
+                say("Issue is repeatable (results differ) with test $testfile_base_name");
                 return ORACLE_ISSUE_STILL_REPEATABLE;
             } else {
                 # error ($compare_result < 0)
-                say("\nError ($compare_result) comparing result files for test $tmpfile_base_name");
+                say("\nError ($compare_result) comparing result files for test $testfile_base_name");
                 if (! -e $resultfile_full_path) {
                     say("Test output was:");
                     say $mysqltest_output;
@@ -228,11 +221,19 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
                 ($mysqltest_output =~ m{$expected_mtr_output}sio) &&
                 ($mysqltest_output !~ m{--die}sio)
             ) {
-                say("Issue repeatable with $tmpfile");
+                say("Issue repeatable with $testfile");
                 return ORACLE_ISSUE_STILL_REPEATABLE;
             } else {
-                say("Issue not repeatable with $tmpfile.");
-                unlink('t/'.$tmpfile) if $mtr_exit_code == 0;
+                say("Issue not repeatable with $testfile.");
+
+		if (
+			($mtr_exit_code == 0) &&
+			($iteration > 1)
+		) {
+	                unlink('t/'.$testfile);
+	                unlink('r/'.$resultfile);
+		}
+
 		say $mysqltest_output if $iteration > 1 && $mtr_exit_code != 0;
 		
                 return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
