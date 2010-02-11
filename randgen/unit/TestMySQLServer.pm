@@ -33,11 +33,17 @@ sub new {
 sub set_up {
 }
 
+@pids;
+
 sub tear_down {
-    # clean up after test
     if (windows) {
+	## Need to ,kill leftover processes if there are some. Change
+	## this to pid later.
+	system("taskkill /f /im mysqld.exe");
 	system("rmdir /s /q unit\\tmp");
     } else {
+	## Need to ,kill leftover processes if there are some
+	kill 9 => @pids;
 	system("rm -rf unit/tmp");
     }
 }
@@ -55,9 +61,13 @@ sub test_create_server {
 	    say("Not finished");
         } else {
             $server->startServer;
+	    push @pids,$server->serverpid;
+
+	    $self->assert(-f "./unit/tmp/mysql.pid");
+	    $self->assert(-f "./unit/tmp/mysql.log");
+
             ## Do some database commands
             $server->stopServer;
-            system("cat ".$server->logfile);
         }
     }
 }

@@ -42,6 +42,7 @@ use constant MYSQLD_PID2 => 10;
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_SOCKET_FILE => "mysql.sock";
 use constant MYSQLD_LOG_FILE => "mysql.log";
+use constant MYSQLD_DEFAULT_PORTBASE =>  19300;
 
 sub new {
     my $class = shift;
@@ -50,7 +51,7 @@ sub new {
                                    'datadir' => MYSQLD_DATADIR,
                                    'portbase' => MYSQLD_PORTBASE,
                                    'server_options' => MYSQLD_SERVER_OPTIONS},@_);
-
+    
     if (windows()) {
 	## Use unix-style path's since that's what Perl expects...
 	$self->[MYSQLD_BASEDIR] =~ s/\\/\//g;
@@ -60,12 +61,15 @@ sub new {
     $self->[MYSQLD_MYSQLD] = $self->_find($self->basedir,
 					  windows()?["sql/Debug"]:["sql","libexec"],
 					  windows()?"mysqld.exe":"mysqld");
-    $self->[MYSQLD_BOOT_SQL] = [
-        $self->_find($self->basedir,["scripts","share/mysql"],"mysql_system_tables.sql"),
-        $self->_find($self->basedir,["scripts","share/mysql"],"mysql_system_tables_data.sql"),
-        $self->_find($self->basedir,["scripts","share/mysql"],"mysql_test_data_timezone.sql"),
-        $self->_find($self->basedir,["scripts","share/mysql"],"fill_help_tables.sql")];
-
+    $self->[MYSQLD_BOOT_SQL] = [];
+    foreach my $file ("mysql_system_tables.sql", 
+		      "mysql_system_tables_data.sql", 
+		      "mysql_test_data_timezone.sql",
+		      "fill_help_tables.sql") {
+	push(@{$self->[MYSQLD_BOOT_SQL]}, 
+	     $self->_find($self->basedir,["scripts","share/mysql"], $file));
+    }
+    
     $self->[MYSQLD_MESSAGES] = $self->_findDir($self->basedir, ["sql/share","share/mysql"], "errmsg-utf8.txt");
     
     $self->[MYSQLD_LIBMYSQL] = $self->_findDir($self->basedir, 
@@ -100,7 +104,7 @@ sub portbase {
     if (defined $self->[MYSQLD_PORTBASE]) {
         return $self->[MYSQLD_PORTBASE];
     } else {
-        return 3306;
+        return MYSQLD_DEFAULT_PORTBASE;
     }
 }
 
@@ -191,6 +195,9 @@ sub startServer {
                        "--port=".$self->portbase,
                        "--socket=".MYSQLD_SOCKET_FILE,
                        "--pid-file=".MYSQLD_PID_FILE);
+    if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
+	$command = $command." ".$self->[MYSQLD_SERVER_OPTIONS]->genOpt();
+    }
 
     my $serverlog = $self->datadir."/".MYSQLD_LOG_FILE;
     
