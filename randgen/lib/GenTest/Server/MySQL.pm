@@ -26,6 +26,7 @@ use strict;
 
 use Carp;
 use Data::Dumper;
+use File::Path qw(make_path remove_tree);
 
 use constant MYSQLD_BASEDIR => 0;
 use constant MYSQLD_DATADIR => 1;
@@ -127,34 +128,41 @@ sub logfile {
 sub createMysqlBase  {
     my ($self) = @_;
 
+    ## 1. Clean old db if any
+    remove_tree($self->datadir);
+
+    ## 2. Create database directory structure
+    mkdir $self->datadir;
+    mkdir $self->datadir."/mysql";
+    mkdir $self->datadir."/test";
+    
+    ## 3. Create boot file
+    my $boot = $self->datadir."/boot.sql";
+    open BOOT,">$boot";
+    
+    ## Set curren database
+    print BOOT  "use mysql;\n";
+    foreach my $b (@{$self->[MYSQLD_BOOT_SQL]}) {
+	open B,$b;
+	while (<B>) { print BOOT $_;}
+	close B;
+    }
+    ## Don't want empty users
+    print BOOT "DELETE FROM user WHERE `User` = '';\n";
+    close BOOT;
+    
+    ## 4. Boot database
     if (windows()) {
-	say("NOT YET");
+	my $command = join(' ',$self->[MYSQLD_MYSQLD],
+			   "--no-defaults",
+			   "--bootstrap",
+			   @{$self->[MYSQLD_STDOPTS]});
+	$command =~ s/\//\\/g;
+	$boot =~ s/\//\\/g;
+	my $bootlog = $self->datadir."/boot.log";
+	
+	system("$command < $boot");
     } else {
-	## 1. Clean old db if any
-	## This is hairy but works on Unix
-	system("rm -rf ".$self->datadir);
-	
-	## 2. Create database directory structure
-	mkdir $self->datadir;
-	mkdir $self->datadir."/mysql";
-	mkdir $self->datadir."/test";
-	
-	## 3. Create boot file
-	my $boot = $self->datadir."/boot.sql";
-	open BOOT,">$boot";
-	
-	## Set curren database
-	print BOOT  "use mysql;\n";
-	foreach my $b (@{$self->[MYSQLD_BOOT_SQL]}) {
-	    open B,$b;
-	    while (<B>) { print BOOT $_;}
-	    close B;
-	}
-	## Don't want empty users
-	print BOOT "DELETE FROM user WHERE `User` = '';\n";
-	close BOOT;
-	
-	## 4. Boot database
 	my $command = join(' ',$self->[MYSQLD_MYSQLD],
 			   "--no-defaults",
 			   "--bootstrap",

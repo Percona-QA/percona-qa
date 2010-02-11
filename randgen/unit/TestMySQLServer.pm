@@ -21,6 +21,7 @@ use base qw(Test::Unit::TestCase);
 use lib 'lib';
 use GenTest;
 use GenTest::Server::MySQL;
+use File::Path qw(make_path remove_tree);
 
 use Data::Dumper;
 
@@ -35,42 +36,24 @@ sub set_up {
 
 sub tear_down {
     # clean up after test
-    if (windows()) {
-    } else {
-	system("rm -rf ./unit/tmp");
-    }
+    # remove_tree("./unit/tmp");
 }
 
 sub test_create_server {
     my $self = shift;
     if ($ENV{RQG_MYSQL_BASE}) {
+	my $server = GenTest::Server::MySQL->new(basedir => $ENV{RQG_MYSQL_BASE},
+						 datadir => "./unit/tmp",
+						 portbase => 22120);
+            
+	$self->assert(-f "./unit/tmp/mysql/db.MYD");
+
 	if (windows()){
-            my $server = GenTest::Server::MySQL->new(basedir => $ENV{RQG_MYSQL_BASE},
-                                                     datadir => "unit\\tmp",
-                                                     portbase => 22120);
-            
-            #$self->assert(-f "unit\\tmp\\mysql\\db.MYD");
-            
-            #$server->startServer;
-            
-            ## Do some database commands
-            
-            #$server->stopServer;
-            
-            #system("cat ".$server->logfile);
+	    say("Not finished");
         } else {
-            my $server = GenTest::Server::MySQL->new(basedir => $ENV{RQG_MYSQL_BASE},
-                                                     datadir => "./unit/tmp",
-                                                     portbase => 22120);
-            
-            $self->assert(-f "./unit/tmp/mysql/db.MYD");
-            
             $server->startServer;
-            
             ## Do some database commands
-            
             $server->stopServer;
-            
             system("cat ".$server->logfile);
         }
     }
