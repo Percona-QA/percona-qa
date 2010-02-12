@@ -266,7 +266,6 @@ sub _purgeProps {
 ## Generate a option list from a hash. The hash may be tha name of a
 ## property. The prefix may typically be '--' or '--mysqld=--' for
 ## Mysql and friends use.
-
 sub genOpt {
     my ($self, $prefix, $options) = @_;
 
@@ -280,6 +279,52 @@ sub genOpt {
     return join(' ', map {$prefix.$_.(defined $hash->{$_}?
                                       ($hash->{$_} eq ''?
                                        '':'='.$hash->{$_}):'')} keys %$hash);
+}
+
+## Collect all or specified non-hash/array options into new option string where
+## options are separated by a single space.
+## If an array of strings is passed as second argument, only options specified
+## in the array will be included.
+## If such an array is omitted, all top-level options will be included.
+## A prefix is added to each option, similar to sub genOpt.
+sub collectOpt {
+    # @include is an array specifying property keys to include.
+    # If such a list is not provided, all non-complex properties are included.
+    my ($self, $prefix, @include) = @_;
+    my $props = $self->[PROPS_PROPS];       # all properties (options)
+    my @opts;                               # properties (options) to collect
+
+    if (@include) {
+        foreach my $key (@include) {
+            if (exists $props->{$key}) {
+                if (UNIVERSAL::isa($props->{$key}, "HASH")) {
+                } elsif (UNIVERSAL::isa($props->{$key}, "ARRAY")) {
+                } else {
+                    if (defined $props->{$key} and $props->{$key} ne '') {
+                        push(@opts, $prefix.$key.'='.$props->{$key});
+                    } else {
+                        push(@opts, $prefix.$key);
+                    }
+                }
+            }
+        }
+    } else {
+        # No list of options to include was specified.
+        # Inlcude all top-level options.
+        foreach my $key (keys %$props) {
+            if (UNIVERSAL::isa($props->{$key},"HASH")) {
+            } elsif  (UNIVERSAL::isa($props->{$key},"ARRAY")) {
+            } else {
+            if (defined $props->{$key} and $props->{$key} ne '') {
+                    push(@opts, $prefix.$key.'='.$props->{$key});
+                } else {
+                    push(@opts, $prefix.$key);
+                }
+            }
+        }
+    }
+    
+    return join(' ',@opts);
 }
 
 ## Help routine!
