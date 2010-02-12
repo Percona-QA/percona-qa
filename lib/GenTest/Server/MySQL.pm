@@ -219,7 +219,7 @@ sub startServer {
 			       $exe,
 			       $command,
 			       0,
-			       NORMAL_PRIORITY_CLASS,
+			       NORMAL_PRIORITY_CLASS(),
 			       ".") || die _reportError();	
 	$self->[MYSQLD_WINDOWS_PROCESS]=$proc;
 	$self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
