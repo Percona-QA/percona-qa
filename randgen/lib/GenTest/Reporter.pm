@@ -112,7 +112,7 @@ sub new {
 			(-e $binary_unix) ||
 			(-e $binary_windows)
 		) {
-			$reporter->[REPORTER_SERVER_INFO]->{bindir} = $reporter->serverVariable('basedir').$path;
+			$reporter->[REPORTER_SERVER_INFO]->{bindir} = $reporter->serverVariable('basedir').'/'.$path;
 			$reporter->[REPORTER_SERVER_INFO]->{binary} = $binary_unix if -e $binary_unix;
 			$reporter->[REPORTER_SERVER_INFO]->{binary} = $binary_windows if -e $binary_windows;
 		}
