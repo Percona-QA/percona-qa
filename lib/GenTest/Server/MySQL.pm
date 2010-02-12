@@ -36,12 +36,13 @@ use constant MYSQLD_BOOT_SQL => 5;
 use constant MYSQLD_STDOPTS => 6;
 use constant MYSQLD_MESSAGES => 7;
 use constant MYSQLD_SERVER_OPTIONS => 8;
-use constant MYSQLD_PID1 => 9;
-use constant MYSQLD_PID2 => 10;
+use constant MYSQLD_AUXPID => 9;
+use constant MYSQLD_SERVERPID => 10;
+use constant MYSQLD_WINDOWS_PROCESS => 11;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_SOCKET_FILE => "mysql.sock";
-use constant MYSQLD_LOG_FILE => "mysql.log";
+use constant MYSQLD_LOG_FILE => "mysql.err";
 use constant MYSQLD_DEFAULT_PORTBASE =>  19300;
 
 sub new {
@@ -109,11 +110,11 @@ sub portbase {
 }
 
 sub serverpid {
-    return $_[0]->[MYSQLD_PID2];
+    return $_[0]->[MYSQLD_SERVERPID];
 }
 
 sub forkpid {
-    return $_[0]->[MYSQLD_PID1];
+    return $_[0]->[MYSQLD_AUXPID];
 }
 
 sub socketfile {
@@ -172,7 +173,7 @@ sub createMysqlBase  {
 	$boot =~ s/\//\\/g;
 	my $bootlog = $self->datadir."/boot.log";
 	
-	system("$command < $boot");
+	system("$command < $boot > $bootlog");
     } else {
 	my $command = join(' ',$self->[MYSQLD_MYSQLD],
 			   "--no-defaults",
@@ -185,40 +186,68 @@ sub createMysqlBase  {
     }
 }
 
+sub _reportError {
+    print Win32::FormatMessage(Win32::GetLastError());
+}
+
 sub startServer {
     my ($self) = @_;
 
-    my $command = join(' ',$self->[MYSQLD_MYSQLD],
-                       "--no-defaults",
-                       @{$self->[MYSQLD_STDOPTS]},
-                       "--skip-grant",
-                       "--port=".$self->portbase,
-                       "--socket=".MYSQLD_SOCKET_FILE,
-                       "--pid-file=".MYSQLD_PID_FILE);
+    my $opts = join(' ',
+		    "--no-defaults",
+		    @{$self->[MYSQLD_STDOPTS]},
+		    "--skip-grant",
+		    "--port=".$self->portbase,
+		    "--socket=".MYSQLD_SOCKET_FILE,
+		    "--pid-file=".MYSQLD_PID_FILE);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
-	$command = $command." ".$self->[MYSQLD_SERVER_OPTIONS]->genOpt();
+	$opts = $opts." ".$self->[MYSQLD_SERVER_OPTIONS]->genOpt();
     }
 
     my $serverlog = $self->datadir."/".MYSQLD_LOG_FILE;
-    
-    say("Starting: $command");
-    $self->[MYSQLD_PID1] = fork();
-    if ($self->[MYSQLD_PID1]) {
-        sleep(1); ## Wait to be sure that the PID file is there
-        my $pidfile = $self->pidfile;
-        my $pid = `cat $pidfile`;
-        $pid =~ m/([0-9]+)/;
-        $self->[MYSQLD_PID2] = int($1);
-        
+
+    if (windows) {
+	my $proc;
+	my $command = "mysqld.exe"." ".$opts;
+	my $exe = $self->[MYSQLD_MYSQLD];
+	my $datadir = $self->[MYSQLD_DATADIR];
+	$command =~ s/\//\\/g;
+	$exe =~ s/\//\\/g;
+	$datadir =~ s/\//\\/g;
+	say("Starting: $exe as $command on $datadir");
+	Win32::Process::Create($proc,
+			       $exe,
+			       $command,
+			       0,
+			       NORMAL_PRIORITY_CLASS,
+			       ".") || die _reportError();	
+	$self->[MYSQLD_WINDOWS_PROCESS]=$proc;
+	$self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
     } else {
-        exec("$command > $serverlog  2>&1") || croak("Could not start mysql server");
+	my $command = $self->[MYSQLD_MYSQLD]." ".$opts;
+	say("Starting: $command");
+	$self->[MYSQLD_AUXPID] = fork();
+	if ($self->[MYSQLD_AUXPID]) {
+	    sleep(1); ## Wait to be sure that the PID file is there
+	    my $pidfile = $self->pidfile;
+	    my $pid = `cat $pidfile`;
+	    $pid =~ m/([0-9]+)/;
+	    $self->[MYSQLD_SERVERPID] = int($1);
+	    
+	} else {
+	    exec("$command > $serverlog  2>&1") || croak("Could not start mysql server");
+	}
     }
 }
 
 sub stopServer {
     my ($self) = @_;
 
-    kill TERM => $self->serverpid;
+    if (windows()) {
+#	$self->[MYSQLD_WINDOWS_PROCESS]->Kill(0);
+    } else {
+	kill TERM => $self->serverpid;
+    }
 }
 
 sub _find {
