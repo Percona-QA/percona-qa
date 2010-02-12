@@ -37,9 +37,10 @@ sub set_up {
 
 sub tear_down {
     if (windows) {
-	## Need to ,kill leftover processes if there are some. Change
-	## this to pid later.
-	system("taskkill /f /im mysqld.exe");
+	## Need to ,kill leftover processes if there are some
+	foreach my $p (@pids) {
+	    Win32::Process::KillProcess($p,-1);
+	}
 	system("rmdir /s /q unit\\tmp");
     } else {
 	## Need to ,kill leftover processes if there are some
@@ -57,18 +58,17 @@ sub test_create_server {
             
 	$self->assert(-f "./unit/tmp/mysql/db.MYD");
 
-	if (windows()){
-	    say("Not finished");
-        } else {
-            $server->startServer;
-	    push @pids,$server->serverpid;
+	$server->startServer;
+	push @pids,$server->serverpid;
 
-	    $self->assert(-f "./unit/tmp/mysql.pid");
-	    $self->assert(-f "./unit/tmp/mysql.log");
+	print Dumper($server);
 
-            ## Do some database commands
-            $server->stopServer;
-        }
+	#$self->assert(-f "./unit/tmp/mysql.pid") if not windows();
+	#$self->assert(-f "./unit/tmp/mysql.err");
+
+	## Do some database commands
+	#$server->stopServer;
+
     }
 }
 
