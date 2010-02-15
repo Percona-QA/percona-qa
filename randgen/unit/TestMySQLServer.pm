@@ -83,7 +83,7 @@ sub test_create_server {
     
     $server->stopServer;
 
-    say("Log file");
+    say("Contents of '".$server->logfile."':");
     open LOG,$server->logfile;
     while (<LOG>) {
 	say($_);
