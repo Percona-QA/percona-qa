@@ -21,6 +21,7 @@ use base qw(Test::Unit::TestCase);
 use lib 'lib';
 use GenTest;
 use GenTest::Server::MySQL;
+use GenTest::Executor;
 
 use Data::Dumper;
 
@@ -55,19 +56,30 @@ sub test_create_server {
 	my $server = GenTest::Server::MySQL->new(basedir => $ENV{RQG_MYSQL_BASE},
 						 datadir => "./unit/tmp",
 						 portbase => 22120);
+    $self->assert_not_null($server);
             
 	$self->assert(-f "./unit/tmp/mysql/db.MYD");
 
 	$server->startServer;
 	push @pids,$server->serverpid;
 
-	print Dumper($server);
+    my $dsn = $server->dsn("mysql");
+    $self->assert_not_null($dsn);
+
+    my $executor = GenTest::Executor->newFromDSN($dsn);
+    $self->assert_not_null($executor);
+    $executor->init();
+
+    my $result = $executor->execute("show tables");
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+
+    print join(',',map{$_->[0]} @{$result->data}),"\n";
 
 	#$self->assert(-f "./unit/tmp/mysql.pid") if not windows();
 	#$self->assert(-f "./unit/tmp/mysql.err");
 
-	## Do some database commands
-	#$server->stopServer;
+	$server->stopServer;
 
     }
 }
