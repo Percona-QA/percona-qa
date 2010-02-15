@@ -19,6 +19,7 @@ package GenTest::Server::MySQL;
 
 @ISA = qw(GenTest);
 
+use DBI;
 use GenTest;
 use if windows(), Win32::Process;
 
@@ -39,12 +40,16 @@ use constant MYSQLD_SERVER_OPTIONS => 8;
 use constant MYSQLD_AUXPID => 9;
 use constant MYSQLD_SERVERPID => 10;
 use constant MYSQLD_WINDOWS_PROCESS => 11;
+use constant MYSQLD_DBH => 12;
+use constant MYSQLD_DRH => 12;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_SOCKET_FILE => "mysql.sock";
 use constant MYSQLD_LOG_FILE => "mysql.err";
 use constant MYSQLD_DEFAULT_PORTBASE =>  19300;
 use constant MYSQLD_DEFAULT_DATABASE => "test";
+
+
 
 sub new {
     my $class = shift;
@@ -86,9 +91,11 @@ sub new {
                                     "--loose-skip-ndbcluster",
                                     "--default-storage-engine=myisam",
                                     "--log-warnings=0")];
+
+    $self->[MYSQLD_DRH] = DBI->install_driver('mysql');
     
     $self->createMysqlBase;
-    
+
     return $self;
 }
 
@@ -130,20 +137,24 @@ sub logfile {
     return $_[0]->datadir."/".MYSQLD_LOG_FILE;
 }
 
+sub libmysqldir {
+    return $_[0]->[MYSQLD_LIBMYSQL];
+}
+
 sub createMysqlBase  {
     my ($self) = @_;
-
+    
     ## 1. Clean old db if any
     if (-d $self->datadir) {
-	if (windows()) {
-	    my $datadir = $self->datadir;
-	    $datadir =~ s/\//\\/g;
-	    system("rmdir /s /q $datadir");
-	} else {
-	    system("rm -rf ".$self->datadir);
-	}
+        if (windows()) {
+            my $datadir = $self->datadir;
+            $datadir =~ s/\//\\/g;
+            system("rmdir /s /q $datadir");
+        } else {
+            system("rm -rf ".$self->datadir);
+        }
     }
-
+    
     ## 2. Create database directory structure
     mkdir $self->datadir;
     mkdir $self->datadir."/mysql";
@@ -156,9 +167,9 @@ sub createMysqlBase  {
     ## Set curren database
     print BOOT  "use mysql;\n";
     foreach my $b (@{$self->[MYSQLD_BOOT_SQL]}) {
-	open B,$b;
-	while (<B>) { print BOOT $_;}
-	close B;
+        open B,$b;
+        while (<B>) { print BOOT $_;}
+        close B;
     }
     ## Don't want empty users
     print BOOT "DELETE FROM user WHERE `User` = '';\n";
@@ -166,24 +177,24 @@ sub createMysqlBase  {
     
     ## 4. Boot database
     if (windows()) {
-	my $command = join(' ',$self->[MYSQLD_MYSQLD],
-			   "--no-defaults",
-			   "--bootstrap",
-			   @{$self->[MYSQLD_STDOPTS]});
-	$command =~ s/\//\\/g;
-	$boot =~ s/\//\\/g;
-	my $bootlog = $self->datadir."/boot.log";
-	
-	system("$command < $boot > $bootlog");
+        my $command = join(' ',$self->[MYSQLD_MYSQLD],
+                           "--no-defaults",
+                           "--bootstrap",
+                           @{$self->[MYSQLD_STDOPTS]});
+        $command =~ s/\//\\/g;
+        $boot =~ s/\//\\/g;
+        my $bootlog = $self->datadir."/boot.log";
+        
+        system("$command < $boot > $bootlog");
     } else {
-	my $command = join(' ',$self->[MYSQLD_MYSQLD],
-			   "--no-defaults",
-			   "--bootstrap",
-			   @{$self->[MYSQLD_STDOPTS]});
-	
-	my $bootlog = $self->datadir."/boot.log";
-	
-	system("cat $boot | $command > $bootlog  2>&1 ");
+        my $command = join(' ',$self->[MYSQLD_MYSQLD],
+                           "--no-defaults",
+                           "--bootstrap",
+                           @{$self->[MYSQLD_STDOPTS]});
+        
+        my $bootlog = $self->datadir."/boot.log";
+        
+        system("cat $boot | $command > $bootlog  2>&1 ");
     }
 }
 
@@ -193,61 +204,82 @@ sub _reportError {
 
 sub startServer {
     my ($self) = @_;
-
+    
     my $opts = join(' ',
-		    "--no-defaults",
-		    @{$self->[MYSQLD_STDOPTS]},
-		    "--skip-grant",
-		    "--port=".$self->portbase,
-		    "--socket=".MYSQLD_SOCKET_FILE,
-		    "--pid-file=".MYSQLD_PID_FILE);
+                    "--no-defaults",
+                    @{$self->[MYSQLD_STDOPTS]},
+                    "--skip-grant",
+                    "--port=".$self->portbase,
+                    "--socket=".MYSQLD_SOCKET_FILE,
+                    "--pid-file=".MYSQLD_PID_FILE);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
-	$opts = $opts." ".$self->[MYSQLD_SERVER_OPTIONS]->genOpt();
+        $opts = $opts." ".$self->[MYSQLD_SERVER_OPTIONS]->genOpt();
     }
-
+    
     my $serverlog = $self->datadir."/".MYSQLD_LOG_FILE;
-
+    
     if (windows) {
-	my $proc;
-	my $command = "mysqld.exe"." ".$opts;
-	my $exe = $self->[MYSQLD_MYSQLD];
-	my $datadir = $self->[MYSQLD_DATADIR];
-	$command =~ s/\//\\/g;
-	$exe =~ s/\//\\/g;
-	$datadir =~ s/\//\\/g;
-	say("Starting: $exe as $command on $datadir");
-	Win32::Process::Create($proc,
-			       $exe,
-			       $command,
-			       0,
-			       NORMAL_PRIORITY_CLASS(),
-			       ".") || die _reportError();	
-	$self->[MYSQLD_WINDOWS_PROCESS]=$proc;
-	$self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
+        my $proc;
+        my $command = "mysqld.exe"." ".$opts;
+        my $exe = $self->[MYSQLD_MYSQLD];
+        my $datadir = $self->[MYSQLD_DATADIR];
+        $command =~ s/\//\\/g;
+        $exe =~ s/\//\\/g;
+        $datadir =~ s/\//\\/g;
+        say("Starting: $exe as $command on $datadir");
+        Win32::Process::Create($proc,
+                               $exe,
+                               $command,
+                               0,
+                               NORMAL_PRIORITY_CLASS(),
+                               ".") || die _reportError();	
+        $self->[MYSQLD_WINDOWS_PROCESS]=$proc;
+        $self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
     } else {
-	my $command = $self->[MYSQLD_MYSQLD]." ".$opts;
-	say("Starting: $command");
-	$self->[MYSQLD_AUXPID] = fork();
-	if ($self->[MYSQLD_AUXPID]) {
-	    sleep(1); ## Wait to be sure that the PID file is there
-	    my $pidfile = $self->pidfile;
-	    my $pid = `cat $pidfile`;
-	    $pid =~ m/([0-9]+)/;
-	    $self->[MYSQLD_SERVERPID] = int($1);
-	    
-	} else {
-	    exec("$command > $serverlog  2>&1") || croak("Could not start mysql server");
-	}
+        my $command = $self->[MYSQLD_MYSQLD]." ".$opts;
+        say("Starting: $command");
+        $self->[MYSQLD_AUXPID] = fork();
+        if ($self->[MYSQLD_AUXPID]) {
+            sleep(1); ## Wait to be sure that the PID file is there
+            my $pidfile = $self->pidfile;
+            my $pid = `cat $pidfile`;
+            $pid =~ m/([0-9]+)/;
+            $self->[MYSQLD_SERVERPID] = int($1);
+            
+        } else {
+            exec("$command > $serverlog  2>&1") || croak("Could not start mysql server");
+        }
+    }
+    
+    my $dbh = DBI->connect($self->dsn("mysql"),
+                           undef,
+                           undef,
+                           {PrintError => 1,
+                            RaiseError => 1,
+                            AutoCommit => 1});
+
+    print Dumper($dbh);
+
+    $self->[MYSQLD_DBH] = $dbh;
+}
+
+sub kill {
+    my ($self) = @_;
+
+    if (windows()) {
+        $self->[MYSQLD_WINDOWS_PROCESS]->Kill(0);
+    } else {
+        kill KILL => $self->serverpid;
     }
 }
 
 sub stopServer {
     my ($self) = @_;
 
-    if (windows()) {
-#	$self->[MYSQLD_WINDOWS_PROCESS]->Kill(0);
-    } else {
-	kill TERM => $self->serverpid;
+    my $r = $self->[MYSQLD_DRH]->func('shutdown','127.0.0.1','root',undef,'admin');
+    if (!$r) {
+        say("Server would not shut down properly");
+        $self->kill;
     }
 }
 
