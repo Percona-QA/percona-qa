@@ -721,6 +721,16 @@ if ($command !~ m{--log-output}io) {
 	$command = $command.' --mysqld=--log-output=file';
 }
 
+# To enable increased concurrency. NOTE: Removed in MySQL 5.5, Feb 2010.
+if ($command !~ m{table-lock-wait-timeout}io) {
+    $command = $command.' --mysqld=--loose-table-lock-wait-timeout=5';
+}
+
+# Decrease from default (50s) to 5s to enable increased concurrency.
+if ($command !~ m{innodb-lock-wait-timeout}io) {
+    $command = $command.' --mysqld=--loose-innodb-lock-wait-timeout=5';
+}
+
 if ($command !~ m{--queries}io) {
 	$command = $command.' --queries=100000';
 }
@@ -754,7 +764,7 @@ if ($test =~ m{valgrind}io){
 	}
 }
 	
-$command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--loose-table-lock-wait-timeout=5 --mysqld=--loose-skip-safemalloc ".$command;
+$command = "perl runall.pl --mysqld=--loose-skip-safemalloc ".$command;
 
 # Add env variable to specify unique port range to use to avoid conflicts.
 # Trying not to do this unless actually needed.
