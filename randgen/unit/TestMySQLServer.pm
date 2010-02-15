@@ -57,7 +57,9 @@ sub test_create_server {
 						 datadir => "./unit/tmp",
 						 portbase => 22120);
     $self->assert_not_null($server);
-            
+
+    $ENV{LD_LIBRARY_PATH}=$server->libmysqldir;
+
 	$self->assert(-f "./unit/tmp/mysql/db.MYD");
 
 	$server->startServer;
