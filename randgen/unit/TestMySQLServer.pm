@@ -38,51 +38,51 @@ sub set_up {
 
 sub tear_down {
     if (windows) {
-	## Need to ,kill leftover processes if there are some
-	foreach my $p (@pids) {
-	    Win32::Process::KillProcess($p,-1);
-	}
-	system("rmdir /s /q unit\\tmp");
+        ## Need to ,kill leftover processes if there are some
+        foreach my $p (@pids) {
+            Win32::Process::KillProcess($p,-1);
+        }
+        system("rmdir /s /q unit\\tmp");
     } else {
-	## Need to ,kill leftover processes if there are some
-	kill 9 => @pids;
-	system("rm -rf unit/tmp");
+        ## Need to ,kill leftover processes if there are some
+        kill 9 => @pids;
+        system("rm -rf unit/tmp");
     }
 }
 
 sub test_create_server {
     my $self = shift;
     if ($ENV{RQG_MYSQL_BASE}) {
-	my $server = GenTest::Server::MySQL->new(basedir => $ENV{RQG_MYSQL_BASE},
-						 datadir => "./unit/tmp",
-						 portbase => 22120);
-    $self->assert_not_null($server);
+        my $server = GenTest::Server::MySQL->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                                 datadir => "./unit/tmp",
+                                                 portbase => 22120);
+        $self->assert_not_null($server);
+        
+        $ENV{LD_LIBRARY_PATH}=$server->libmysqldir;
 
-    $ENV{LD_LIBRARY_PATH}=$server->libmysqldir;
-
-	$self->assert(-f "./unit/tmp/mysql/db.MYD");
-
-	$server->startServer;
-	push @pids,$server->serverpid;
-
-    my $dsn = $server->dsn("mysql");
-    $self->assert_not_null($dsn);
-
-    my $executor = GenTest::Executor->newFromDSN($dsn);
-    $self->assert_not_null($executor);
-    $executor->init();
-
-    my $result = $executor->execute("show tables");
-    $self->assert_not_null($result);
-    $self->assert_equals($result->status, 0);
-
-    print join(',',map{$_->[0]} @{$result->data}),"\n";
-
-	#$self->assert(-f "./unit/tmp/mysql.pid") if not windows();
-	#$self->assert(-f "./unit/tmp/mysql.err");
-
-	$server->stopServer;
-
+        $self->assert(-f "./unit/tmp/mysql/db.MYD");
+        
+        $server->startServer;
+        push @pids,$server->serverpid;
+        
+        my $dsn = $server->dsn("mysql");
+        $self->assert_not_null($dsn);
+        
+        my $executor = GenTest::Executor->newFromDSN($dsn);
+        $self->assert_not_null($executor);
+        $executor->init();
+        
+        my $result = $executor->execute("show tables");
+        $self->assert_not_null($result);
+        $self->assert_equals($result->status, 0);
+        
+        print join(',',map{$_->[0]} @{$result->data}),"\n";
+        
+        #$self->assert(-f "./unit/tmp/mysql.pid") if not windows();
+        #$self->assert(-f "./unit/tmp/mysql.err");
+        
+        $server->stopServer;
+        
     }
 }
 
