@@ -533,7 +533,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--mysqld=--default-storage-engine=Innodb
 		--mysqld=--transaction-isolation=SERIALIZABLE
 		--mysqld=--innodb-flush-log-at-trx-commit=2
-		--mysqld=--table-lock-wait-timeout=1
+		--mysqld=--loose-table-lock-wait-timeout=1
 		--mysqld=--innodb-lock-wait-timeout=1
 		--mysqld=--log-output=file
 		--queries=1M
@@ -754,7 +754,7 @@ if ($test =~ m{valgrind}io){
 	}
 }
 	
-$command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--loose-skip-safemalloc ".$command;
+$command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--loose-table-lock-wait-timeout=5 --mysqld=--loose-skip-safemalloc ".$command;
 
 # Add env variable to specify unique port range to use to avoid conflicts.
 # Trying not to do this unless actually needed.
