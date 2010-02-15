@@ -44,6 +44,7 @@ use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_SOCKET_FILE => "mysql.sock";
 use constant MYSQLD_LOG_FILE => "mysql.err";
 use constant MYSQLD_DEFAULT_PORTBASE =>  19300;
+use constant MYSQLD_DEFAULT_DATABASE => "test";
 
 sub new {
     my $class = shift;
@@ -258,6 +259,14 @@ sub _find {
         return $path if -f $path;
     }
     croak "Cannot find '$name' in ".join(",",map {"'".$base."/".$_."'"} @$subdir);
+}
+
+sub dsn {
+    my ($self,$database) = @_;
+    $database = "test" if not defined MYSQLD_DEFAULT_DATABASE;
+    return "dbi:mysql:host=127.0.0.1:port=".
+        $self->[MYSQLD_PORTBASE].
+        ":user=root:database=".$database;
 }
 
 sub _findDir {
