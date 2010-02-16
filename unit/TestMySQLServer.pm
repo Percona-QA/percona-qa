@@ -19,8 +19,9 @@ package TestMySQLServer;
 
 use base qw(Test::Unit::TestCase);
 use lib 'lib';
+use Cwd;
 use GenTest;
-use GenTest::Server::MySQL;
+use GenTest::Server::MySQLd;
 use GenTest::Executor;
 
 use Data::Dumper;
@@ -53,14 +54,16 @@ sub tear_down {
 sub test_create_server {
     my $self = shift;
 
+    my $vardir= cwd()."/unit/tmp";
+
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
 
-    my $server = GenTest::Server::MySQL->new(basedir => $ENV{RQG_MYSQL_BASE},
-					     datadir => "./unit/tmp",
-					     portbase => 22120);
+    my $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                              vardir => $vardir,
+                                              port => 22120);
     $self->assert_not_null($server);
     
-    $self->assert(-f "./unit/tmp/mysql/db.MYD");
+    $self->assert(-f $vardir."/data/mysql/db.MYD");
     
     $server->startServer;
     push @pids,$server->serverpid;
@@ -78,15 +81,15 @@ sub test_create_server {
     
     say(join(',',map{$_->[0]} @{$result->data}));
 
-    $self->assert(-f "./unit/tmp/mysql.pid") if not windows();
-    $self->assert(-f "./unit/tmp/mysql.err");
+    $self->assert(-f $vardir."/mysql.pid") if not windows();
+    $self->assert(-f $vardir."/mysql.err");
     
     $server->stopServer;
 
     say("Contents of '".$server->logfile."':");
     open LOG,$server->logfile;
     while (<LOG>) {
-	say($_);
+        say($_);
     }
     close LOG;
 }
