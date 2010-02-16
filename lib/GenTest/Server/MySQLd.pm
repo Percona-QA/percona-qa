@@ -211,7 +211,7 @@ sub createMysqlBase  {
         
         my $bootlog = $self->vardir."/boot.log";
         
-        system("cat $boot | $command > $bootlog  2>&1 ");
+        system("cat \"$boot\" | $command > $bootlog  2>&1 ");
     }
 }
 

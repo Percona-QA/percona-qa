@@ -218,10 +218,7 @@ foreach my $server_id (0..1) {
     my $status = $server[$server_id]->startServer;
 
     if ($status > STATUS_OK) {
-        open LOG,$server[$server_id]->logfile;
-        while(<LOG>) {
-            say($_);
-        }
+	sayFile($server[$server_id]->logfile);
         stopServers();
         say(system("ls -l ".$server[$server_id]->datadir));
         croak("Could not start all servers");

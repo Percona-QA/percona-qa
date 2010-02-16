@@ -17,7 +17,7 @@
 
 package GenTest;
 use base 'Exporter';
-@EXPORT = ('say', 'tmpdir', 'safe_exit', 'windows', 'solaris', 'xml_timestamp', 'rqg_debug');
+@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'windows', 'solaris', 'xml_timestamp', 'rqg_debug');
 
 use strict;
 
@@ -88,6 +88,16 @@ sub say {
 	} else {
 		print "# ".sprintf("%02d:%02d:%02d", $t[2], $t[1], $t[0])." $text\n";
 	}
+}
+
+sub sayFile {
+    my ($file) = @_;
+
+    open FILE,$file;
+    while (<FILE>) {
+	say($_);
+    }
+    close FILE;
 }
 
 sub tmpdir {
