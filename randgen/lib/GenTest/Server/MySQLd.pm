@@ -15,13 +15,15 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Server::MySQL;
+package GenTest::Server::MySQLd;
 
 @ISA = qw(GenTest);
 
 use DBI;
 use GenTest;
+use GenTest::Constants;
 use if windows(), Win32::Process;
+use Time::HiRes;
 
 use strict;
 
@@ -29,24 +31,24 @@ use Carp;
 use Data::Dumper;
 
 use constant MYSQLD_BASEDIR => 0;
-use constant MYSQLD_DATADIR => 1;
-use constant MYSQLD_PORTBASE => 2;
-use constant MYSQLD_MYSQLD => 3;
-use constant MYSQLD_LIBMYSQL => 4;
-use constant MYSQLD_BOOT_SQL => 5;
-use constant MYSQLD_STDOPTS => 6;
-use constant MYSQLD_MESSAGES => 7;
-use constant MYSQLD_SERVER_OPTIONS => 8;
-use constant MYSQLD_AUXPID => 9;
-use constant MYSQLD_SERVERPID => 10;
-use constant MYSQLD_WINDOWS_PROCESS => 11;
-use constant MYSQLD_DBH => 12;
-use constant MYSQLD_DRH => 12;
+use constant MYSQLD_VARDIR => 1;
+use constant MYSQLD_DATADIR => 2;
+use constant MYSQLD_PORT => 3;
+use constant MYSQLD_MYSQLD => 4;
+use constant MYSQLD_LIBMYSQL => 5;
+use constant MYSQLD_BOOT_SQL => 6;
+use constant MYSQLD_STDOPTS => 7;
+use constant MYSQLD_MESSAGES => 8;
+use constant MYSQLD_SERVER_OPTIONS => 9;
+use constant MYSQLD_AUXPID => 10;
+use constant MYSQLD_SERVERPID => 11;
+use constant MYSQLD_WINDOWS_PROCESS => 12;
+use constant MYSQLD_DBH => 13;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_SOCKET_FILE => "mysql.sock";
 use constant MYSQLD_LOG_FILE => "mysql.err";
-use constant MYSQLD_DEFAULT_PORTBASE =>  19300;
+use constant MYSQLD_DEFAULT_PORT =>  19300;
 use constant MYSQLD_DEFAULT_DATABASE => "test";
 
 
@@ -55,24 +57,37 @@ sub new {
     my $class = shift;
 
     my $self = $class->SUPER::new({'basedir' => MYSQLD_BASEDIR,
-                                   'datadir' => MYSQLD_DATADIR,
-                                   'portbase' => MYSQLD_PORTBASE,
+                                   'vardir' => MYSQLD_VARDIR,
+                                   'port' => MYSQLD_PORT,
                                    'server_options' => MYSQLD_SERVER_OPTIONS},@_);
+
+
+    if (not defined $self->[MYSQLD_VARDIR]) {
+        $self->[MYSQLD_VARDIR] = "mysql-test/var";
+    }
+
+    if ($self->vardir =~ m/^\//) {
+    } else {
+        $self->[MYSQLD_VARDIR] = $self->basedir."/".$self->vardir;
+    }
+
+    $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
     if (windows()) {
-	## Use unix-style path's since that's what Perl expects...
-	$self->[MYSQLD_BASEDIR] =~ s/\\/\//g;
-	$self->[MYSQLD_DATADIR] =~ s/\\/\//g;
+        ## Use unix-style path's since that's what Perl expects...
+        $self->[MYSQLD_BASEDIR] =~ s/\\/\//g;
+        $self->[MYSQLD_VARDIR] =~ s/\\/\//g;
+        $self->[MYSQLD_DATADIR] =~ s/\\/\//g;
     }
     
     $self->[MYSQLD_MYSQLD] = $self->_find($self->basedir,
-					  windows()?["sql/Debug"]:["sql","libexec"],
-					  windows()?"mysqld.exe":"mysqld");
+                                          windows()?["sql/Debug"]:["sql","libexec"],
+                                          windows()?"mysqld.exe":"mysqld");
     $self->[MYSQLD_BOOT_SQL] = [];
     foreach my $file ("mysql_system_tables.sql", 
-		      "mysql_system_tables_data.sql", 
-		      "mysql_test_data_timezone.sql",
-		      "fill_help_tables.sql") {
+                      "mysql_system_tables_data.sql", 
+                      "mysql_test_data_timezone.sql",
+                      "fill_help_tables.sql") {
 	push(@{$self->[MYSQLD_BOOT_SQL]}, 
 	     $self->_find($self->basedir,["scripts","share/mysql"], $file));
     }
@@ -80,20 +95,17 @@ sub new {
     $self->[MYSQLD_MESSAGES] = $self->_findDir($self->basedir, ["sql/share","share/mysql"], "errmsg-utf8.txt");
     
     $self->[MYSQLD_LIBMYSQL] = $self->_findDir($self->basedir, 
-					       windows()?["libmysql/Debug"]:["libmysql/.libs","lib/mysql"], 
-					       windows()?"libmysql.dll":"libmysqlclient.so");
+                                               windows()?["libmysql/Debug"]:["libmysql/.libs","lib/mysql"], 
+                                               windows()?"libmysql.dll":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = [join(" ",
                                     "--basedir=".$self->basedir,
                                     "--datadir=".$self->datadir,
                                     "--lc-messages-dir=".$self->[MYSQLD_MESSAGES],
                                     windows()?"":"--loose-skip-innodb",
-                                    windows()?"":"--loose-skip-ndbcluster",
                                     "--default-storage-engine=myisam",
                                     "--log-warnings=0")];
 
-    $self->[MYSQLD_DRH] = DBI->install_driver('mysql');
-    
     $self->createMysqlBase;
 
     return $self;
@@ -107,13 +119,17 @@ sub datadir {
     return $_[0]->[MYSQLD_DATADIR];
 }
 
-sub portbase {
+sub vardir {
+    return $_[0]->[MYSQLD_VARDIR];
+}
+
+sub port {
     my ($self) = @_;
     
-    if (defined $self->[MYSQLD_PORTBASE]) {
-        return $self->[MYSQLD_PORTBASE];
+    if (defined $self->[MYSQLD_PORT]) {
+        return $self->[MYSQLD_PORT];
     } else {
-        return MYSQLD_DEFAULT_PORTBASE;
+        return MYSQLD_DEFAULT_PORT;
     }
 }
 
@@ -126,15 +142,15 @@ sub forkpid {
 }
 
 sub socketfile {
-    return $_[0]->datadir."/".MYSQLD_SOCKET_FILE;
+    return $_[0]->vardir."/".MYSQLD_SOCKET_FILE;
 }
 
 sub pidfile {
-    return $_[0]->datadir."/".MYSQLD_PID_FILE;
+    return $_[0]->vardir."/".MYSQLD_PID_FILE;
 }
 
 sub logfile {
-    return $_[0]->datadir."/".MYSQLD_LOG_FILE;
+    return $_[0]->vardir."/".MYSQLD_LOG_FILE;
 }
 
 sub libmysqldir {
@@ -145,23 +161,24 @@ sub createMysqlBase  {
     my ($self) = @_;
     
     ## 1. Clean old db if any
-    if (-d $self->datadir) {
+    if (-d $self->vardir) {
         if (windows()) {
-            my $datadir = $self->datadir;
-            $datadir =~ s/\//\\/g;
-            system("rmdir /s /q $datadir");
+            my $vardir = $self->vardir;
+            $vardir =~ s/\//\\/g;
+            system("rmdir /s /q $vardir");
         } else {
-            system("rm -rf ".$self->datadir);
+            system("rm -rf ".$self->vardir);
         }
     }
     
     ## 2. Create database directory structure
+    mkdir $self->vardir;
     mkdir $self->datadir;
     mkdir $self->datadir."/mysql";
     mkdir $self->datadir."/test";
     
     ## 3. Create boot file
-    my $boot = $self->datadir."/boot.sql";
+    my $boot = $self->vardir."/boot.sql";
     open BOOT,">$boot";
     
     ## Set curren database
@@ -183,7 +200,7 @@ sub createMysqlBase  {
                            @{$self->[MYSQLD_STDOPTS]});
         $command =~ s/\//\\/g;
         $boot =~ s/\//\\/g;
-        my $bootlog = $self->datadir."/boot.log";
+        my $bootlog = $self->vardir."/boot.log";
         
         system("$command < $boot > $bootlog");
     } else {
@@ -192,7 +209,7 @@ sub createMysqlBase  {
                            "--bootstrap",
                            @{$self->[MYSQLD_STDOPTS]});
         
-        my $bootlog = $self->datadir."/boot.log";
+        my $bootlog = $self->vardir."/boot.log";
         
         system("cat $boot | $command > $bootlog  2>&1 ");
     }
@@ -208,25 +225,34 @@ sub startServer {
     my $opts = join(' ',
                     "--no-defaults",
                     @{$self->[MYSQLD_STDOPTS]},
+                    "--core-file",
+                    "--skip-ndbcluster",
                     "--skip-grant",
-                    "--port=".$self->portbase,
-                    "--socket=".MYSQLD_SOCKET_FILE,
-                    "--pid-file=".MYSQLD_PID_FILE);
+                    "--loose-new",
+                    "--relay-log=slave-relay-bin",
+                    "--loose-innodb",
+                    "--max-allowed-packet=16Mb",	# Allow loading bigger blobs
+                    "--loose-innodb-status-file=1",
+                    "--master-retry-count=65535",
+                    "--port=".$self->port,
+                    "--socket=".$self->socketfile,
+                    "--pid-file=".$self->pidfile,
+                    "--general-log-file=".$self->logfile);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $opts = $opts." ".$self->[MYSQLD_SERVER_OPTIONS]->genOpt();
     }
     
-    my $serverlog = $self->datadir."/".MYSQLD_LOG_FILE;
+    my $serverlog = $self->vardir."/".MYSQLD_LOG_FILE;
     
     if (windows) {
         my $proc;
         my $command = "mysqld.exe"." ".$opts;
         my $exe = $self->[MYSQLD_MYSQLD];
-        my $datadir = $self->[MYSQLD_DATADIR];
+        my $vardir = $self->[MYSQLD_VARDIR];
         $command =~ s/\//\\/g;
         $exe =~ s/\//\\/g;
-        $datadir =~ s/\//\\/g;
-        say("Starting: $exe as $command on $datadir");
+        $vardir =~ s/\//\\/g;
+        say("Starting: $exe as $command on $vardir");
         Win32::Process::Create($proc,
                                $exe,
                                $command,
@@ -240,7 +266,12 @@ sub startServer {
         say("Starting: $command");
         $self->[MYSQLD_AUXPID] = fork();
         if ($self->[MYSQLD_AUXPID]) {
-            sleep(1); ## Wait to be sure that the PID file is there
+            ## Waht for the pid file to have been created
+            my $waits = 0;
+            while (!-f $self->pidfile && $waits < 100) {
+                Time::HiRes::sleep(0.2);
+                $waits++;
+            }
             my $pidfile = $self->pidfile;
             my $pid = `cat $pidfile`;
             $pid =~ m/([0-9]+)/;
@@ -255,30 +286,41 @@ sub startServer {
                            undef,
                            undef,
                            {PrintError => 1,
-                            RaiseError => 1,
+                            RaiseError => 0,
                             AutoCommit => 1});
-
-    print Dumper($dbh);
-
+    
     $self->[MYSQLD_DBH] = $dbh;
+
+    return $dbh ? STATUS_OK : STATUS_ENVIRONMENT_FAILURE;
 }
 
 sub kill {
     my ($self) = @_;
 
     if (windows()) {
-        $self->[MYSQLD_WINDOWS_PROCESS]->Kill(0);
+        if (defined $self->[MYSQLD_WINDOWS_PROCESS]) {
+            $self->[MYSQLD_WINDOWS_PROCESS]->Kill(0);
+            say("Killed process ".$self->[MYSQLD_WINDOWS_PROCESS]->GetProcessId());
+        }
     } else {
-        kill KILL => $self->serverpid;
+        if (defined $self->serverpid) {
+            kill KILL => $self->serverpid;
+            say("Killed process ".$self->serverpid);
+        }
     }
 }
 
 sub stopServer {
     my ($self) = @_;
 
-    my $r = $self->[MYSQLD_DRH]->func('shutdown','127.0.0.1','root',undef,'admin');
-    if (!$r) {
-        say("Server would not shut down properly");
+    if (defined $self->[MYSQLD_DBH]) {
+        say("Stopping server on port ".$self->port);
+        my $r = $self->[MYSQLD_DBH]->func('shutdown','127.0.0.1','root','admin');
+        if (!$r) {
+            say("Server would not shut down properly");
+            $self->kill;
+        }
+    } else {
         $self->kill;
     }
 }
@@ -297,7 +339,7 @@ sub dsn {
     my ($self,$database) = @_;
     $database = "test" if not defined MYSQLD_DEFAULT_DATABASE;
     return "dbi:mysql:host=127.0.0.1:port=".
-        $self->[MYSQLD_PORTBASE].
+        $self->[MYSQLD_PORT].
         ":user=root:database=".$database;
 }
 
