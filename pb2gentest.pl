@@ -721,14 +721,20 @@ if ($command !~ m{--log-output}io) {
 	$command = $command.' --mysqld=--log-output=file';
 }
 
-# To enable increased concurrency. NOTE: Removed in MySQL 5.5, Feb 2010.
+# 1s to enable increased concurrency. NOTE: Removed in MySQL 5.5, Feb 2010.
 if ($command !~ m{table-lock-wait-timeout}io) {
-    $command = $command.' --mysqld=--loose-table-lock-wait-timeout=5';
+    $command = $command.' --mysqld=--loose-table-lock-wait-timeout=1';
 }
 
-# Decrease from default (50s) to 5s to enable increased concurrency.
+# 1s to enable increased concurrency. NOTE: Added in MySQL 5.5, Feb 2010 (bug#45225).
+# Default value in the server is 1 year.
+if ($command !~ m{(--|--loose-)lock-wait-timeout}io) {
+    $command = $command.' --mysqld=--loose-lock-wait-timeout=1';
+}
+
+# Decrease from default (50s) to 1s to enable increased concurrency.
 if ($command !~ m{innodb-lock-wait-timeout}io) {
-    $command = $command.' --mysqld=--loose-innodb-lock-wait-timeout=5';
+    $command = $command.' --mysqld=--loose-innodb-lock-wait-timeout=1';
 }
 
 if ($command !~ m{--queries}io) {
