@@ -87,8 +87,8 @@ sub new {
                                     "--basedir=".$self->basedir,
                                     "--datadir=".$self->datadir,
                                     "--lc-messages-dir=".$self->[MYSQLD_MESSAGES],
-                                    "--loose-skip-innodb",
-                                    "--loose-skip-ndbcluster",
+                                    windows()?"":"--loose-skip-innodb",
+                                    windows()?"":"--loose-skip-ndbcluster",
                                     "--default-storage-engine=myisam",
                                     "--log-warnings=0")];
 
