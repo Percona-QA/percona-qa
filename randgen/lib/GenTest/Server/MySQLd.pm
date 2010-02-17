@@ -235,7 +235,7 @@ sub startServer {
                                           "--loose-innodb-status-file=1",
                                           "--master-retry-count=65535",
                                           "--port=".$self->port,
-                                          "--socket=".$self->socketfile,
+                                          #"--socket=".$self->socketfile,
                                           "--pid-file=".$self->pidfile,
                                           "--general-log-file=".$self->logfile]);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
