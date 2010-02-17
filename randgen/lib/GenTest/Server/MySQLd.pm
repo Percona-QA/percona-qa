@@ -66,19 +66,18 @@ sub new {
         $self->[MYSQLD_VARDIR] = "mysql-test/var";
     }
 
-    if ($self->vardir =~ m/^\//) {
-    } else {
-        $self->[MYSQLD_VARDIR] = $self->basedir."/".$self->vardir;
-    }
-
-    $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
-    
     if (windows()) {
         ## Use unix-style path's since that's what Perl expects...
         $self->[MYSQLD_BASEDIR] =~ s/\\/\//g;
         $self->[MYSQLD_VARDIR] =~ s/\\/\//g;
         $self->[MYSQLD_DATADIR] =~ s/\\/\//g;
     }
+    
+    if (not $self->_absPath($self->vardir)) {
+	$self->[MYSQLD_VARDIR] = $self->basedir."/".$self->vardir;
+    }
+
+    $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
     $self->[MYSQLD_MYSQLD] = $self->_find($self->basedir,
                                           windows()?["sql/Debug"]:["sql","libexec"],
@@ -181,13 +180,13 @@ sub createMysqlBase  {
             system('rm -rf "'.$self->vardir.'"');
         }
     }
-    
+
     ## 2. Create database directory structure
     mkdir $self->vardir;
     mkdir $self->datadir;
     mkdir $self->datadir."/mysql";
     mkdir $self->datadir."/test";
-    
+
     ## 3. Create boot file
     my $boot = $self->vardir."/boot.sql";
     open BOOT,">$boot";
@@ -217,7 +216,7 @@ sub createMysqlBase  {
 }
 
 sub _reportError {
-    print Win32::FormatMessage(Win32::GetLastError());
+    say(Win32::FormatMessage(Win32::GetLastError()));
 }
 
 sub startServer {
@@ -350,3 +349,13 @@ sub _findDir {
     croak "Cannot find '$name' in ".join(",",map {"'".$base."/".$_."'"} @$subdir);
 }
 
+sub _absPath {
+    my ($self, $path) = @_;
+
+    if (windows()) {
+	return 
+	    $path =~ m/^[A-Z]:[\/\\]/i;
+    } else {
+	return $path =~ m/^\//;
+    }
+}
