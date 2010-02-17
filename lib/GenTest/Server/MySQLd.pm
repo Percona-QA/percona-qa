@@ -226,7 +226,7 @@ sub startServer {
     my $command = $self->generateCommand(["--no-defaults"],
                                          $self->[MYSQLD_STDOPTS],
                                          ["--core-file",
-                                          "--skip-ndbcluster",
+                                          #"--skip-ndbcluster",
                                           "--skip-grant",
                                           "--loose-new",
                                           "--relay-log=slave-relay-bin",
