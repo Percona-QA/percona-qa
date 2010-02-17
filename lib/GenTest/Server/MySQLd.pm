@@ -74,9 +74,9 @@ sub new {
     }
     
     if (not $self->_absPath($self->vardir)) {
-	$self->[MYSQLD_VARDIR] = $self->basedir."/".$self->vardir;
+        $self->[MYSQLD_VARDIR] = $self->basedir."/".$self->vardir;
     }
-
+    
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
     $self->[MYSQLD_MYSQLD] = $self->_find($self->basedir,
@@ -87,8 +87,8 @@ sub new {
                       "mysql_system_tables_data.sql", 
                       "mysql_test_data_timezone.sql",
                       "fill_help_tables.sql") {
-	push(@{$self->[MYSQLD_BOOT_SQL]}, 
-	     $self->_find($self->basedir,["scripts","share/mysql"], $file));
+        push(@{$self->[MYSQLD_BOOT_SQL]}, 
+             $self->_find($self->basedir,["scripts","share/mysql"], $file));
     }
     
     $self->[MYSQLD_MESSAGES] = $self->_findDir($self->basedir, ["sql/share","share/mysql"], "errmsg-utf8.txt");
@@ -102,7 +102,7 @@ sub new {
                                "--lc-messages-dir=".$self->[MYSQLD_MESSAGES],
                                "--default-storage-engine=myisam",
                                "--log-warnings=0"];
-
+    
     push(@{$self->[MYSQLD_STDOPTS]},"--loose-skip-innodb") if not windows;
     $self->createMysqlBase;
 
@@ -140,7 +140,7 @@ sub forkpid {
 }
 
 sub socketfile {
-    return $_[0]->vardir."/".MYSQLD_SOCKET_FILE;
+    return MYSQLD_SOCKET_FILE;
 }
 
 sub pidfile {
@@ -186,7 +186,7 @@ sub createMysqlBase  {
     mkdir $self->datadir;
     mkdir $self->datadir."/mysql";
     mkdir $self->datadir."/test";
-
+    
     ## 3. Create boot file
     my $boot = $self->vardir."/boot.sql";
     open BOOT,">$boot";
@@ -221,7 +221,7 @@ sub _reportError {
 
 sub startServer {
     my ($self) = @_;
-
+    
     my $command = $self->generateCommand(["--no-defaults"],
                                          $self->[MYSQLD_STDOPTS],
                                          ["--core-file",
@@ -234,7 +234,7 @@ sub startServer {
                                           "--loose-innodb-status-file=1",
                                           "--master-retry-count=65535",
                                           "--port=".$self->port,
-                                          #"--socket=".$self->socketfile,
+                                          "--socket=".$self->socketfile,
                                           "--pid-file=".$self->pidfile,
                                           "--general-log-file=".$self->logfile]);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
@@ -351,11 +351,11 @@ sub _findDir {
 
 sub _absPath {
     my ($self, $path) = @_;
-
+    
     if (windows()) {
-	return 
-	    $path =~ m/^[A-Z]:[\/\\]/i;
+        return 
+            $path =~ m/^[A-Z]:[\/\\]/i;
     } else {
-	return $path =~ m/^\//;
+        return $path =~ m/^\//;
     }
 }
