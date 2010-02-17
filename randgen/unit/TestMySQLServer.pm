@@ -80,7 +80,7 @@ sub test_create_server {
     $self->assert_equals($result->status, 0);
     
     say(join(',',map{$_->[0]} @{$result->data}));
-
+    
     $self->assert(-f $vardir."/mysql.pid") if not windows();
     $self->assert(-f $vardir."/mysql.err");
     
