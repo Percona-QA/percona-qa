@@ -63,7 +63,7 @@ sub test_create_server {
                                               port => 22120);
     $self->assert_not_null($server);
     
-    $self->assert(-f $vardir."/data/mysql/db.MYD");
+    $self->assert(-f $vardir."/data/mysql/db.MYD","No ".$vardir."/data/mysql/db.MYD");
     
     $server->startServer;
     push @pids,$server->serverpid;
