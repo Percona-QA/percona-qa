@@ -98,14 +98,13 @@ sub new {
                                                windows()?["libmysql/Debug"]:["libmysql/.libs","lib/mysql"], 
                                                windows()?"libmysql.dll":"libmysqlclient.so");
     
-    $self->[MYSQLD_STDOPTS] = [join(" ",
-                                    "--basedir=".$self->basedir,
-                                    "--datadir=".$self->datadir,
-                                    "--lc-messages-dir=".$self->[MYSQLD_MESSAGES],
-                                    windows()?"":"--loose-skip-innodb",
-                                    "--default-storage-engine=myisam",
-                                    "--log-warnings=0")];
+    $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
+                               "--datadir=".$self->datadir,
+                               "--lc-messages-dir=".$self->[MYSQLD_MESSAGES],
+                               "--default-storage-engine=myisam",
+                               "--log-warnings=0"];
 
+    push(@{$self->[MYSQLD_STDOPTS]},"--loose-skip-innodb") if not windows;
     $self->createMysqlBase;
 
     return $self;
@@ -157,6 +156,18 @@ sub libmysqldir {
     return $_[0]->[MYSQLD_LIBMYSQL];
 }
 
+
+sub generateCommand {
+    my ($self, @opts) = @_;
+
+    my $command = '"'.$self->[MYSQLD_MYSQLD].'"';
+    foreach my $opt (@opts) {
+        $command .= ' '.join(' ',map{'"'.$_.'"'} @$opt);
+    }
+    $command =~ s/\//\\/g if windows();
+    return $command;
+}
+
 sub createMysqlBase  {
     my ($self) = @_;
     
@@ -165,9 +176,9 @@ sub createMysqlBase  {
         if (windows()) {
             my $vardir = $self->vardir;
             $vardir =~ s/\//\\/g;
-            system("rmdir /s /q $vardir");
+            system('rmdir /s /q "'.$vardir.'"');
         } else {
-            system("rm -rf ".$self->vardir);
+            system('rm -rf "'.$self->vardir.'"');
         }
     }
     
@@ -192,26 +203,16 @@ sub createMysqlBase  {
     print BOOT "DELETE FROM user WHERE `User` = '';\n";
     close BOOT;
     
+    my $command = $self->generateCommand(["--no-defaults","--bootstrap"],
+                                         $self->[MYSQLD_STDOPTS]);
+    
     ## 4. Boot database
     if (windows()) {
-        my $command = join(' ',$self->[MYSQLD_MYSQLD],
-                           "--no-defaults",
-                           "--bootstrap",
-                           @{$self->[MYSQLD_STDOPTS]});
-        $command =~ s/\//\\/g;
-        $boot =~ s/\//\\/g;
         my $bootlog = $self->vardir."/boot.log";
-        
-        system("$command < $boot > $bootlog");
+        system("$command < \"$boot\" > \"$bootlog\"");
     } else {
-        my $command = join(' ',$self->[MYSQLD_MYSQLD],
-                           "--no-defaults",
-                           "--bootstrap",
-                           @{$self->[MYSQLD_STDOPTS]});
-        
         my $bootlog = $self->vardir."/boot.log";
-        
-        system("cat \"$boot\" | $command > $bootlog  2>&1 ");
+        system("cat \"$boot\" | $command > \"$bootlog\"  2>&1 ");
     }
 }
 
@@ -221,35 +222,32 @@ sub _reportError {
 
 sub startServer {
     my ($self) = @_;
-    
-    my $opts = join(' ',
-                    "--no-defaults",
-                    @{$self->[MYSQLD_STDOPTS]},
-                    "--core-file",
-                    "--skip-ndbcluster",
-                    "--skip-grant",
-                    "--loose-new",
-                    "--relay-log=slave-relay-bin",
-                    "--loose-innodb",
-                    "--max-allowed-packet=16Mb",	# Allow loading bigger blobs
-                    "--loose-innodb-status-file=1",
-                    "--master-retry-count=65535",
-                    "--port=".$self->port,
-                    "--socket=".$self->socketfile,
-                    "--pid-file=".$self->pidfile,
-                    "--general-log-file=".$self->logfile);
+
+    my $command = $self->generateCommand(["--no-defaults"],
+                                         $self->[MYSQLD_STDOPTS],
+                                         ["--core-file",
+                                          "--skip-ndbcluster",
+                                          "--skip-grant",
+                                          "--loose-new",
+                                          "--relay-log=slave-relay-bin",
+                                          "--loose-innodb",
+                                          "--max-allowed-packet=16Mb",	# Allow loading bigger blobs
+                                          "--loose-innodb-status-file=1",
+                                          "--master-retry-count=65535",
+                                          "--port=".$self->port,
+                                          "--socket=".$self->socketfile,
+                                          "--pid-file=".$self->pidfile,
+                                          "--general-log-file=".$self->logfile]);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
-        $opts = $opts." ".$self->[MYSQLD_SERVER_OPTIONS]->genOpt();
+        $command = $command." ".$self->[MYSQLD_SERVER_OPTIONS]->genOpt();
     }
     
     my $serverlog = $self->vardir."/".MYSQLD_LOG_FILE;
     
     if (windows) {
         my $proc;
-        my $command = "mysqld.exe"." ".$opts;
         my $exe = $self->[MYSQLD_MYSQLD];
         my $vardir = $self->[MYSQLD_VARDIR];
-        $command =~ s/\//\\/g;
         $exe =~ s/\//\\/g;
         $vardir =~ s/\//\\/g;
         say("Starting: $exe as $command on $vardir");
@@ -262,23 +260,22 @@ sub startServer {
         $self->[MYSQLD_WINDOWS_PROCESS]=$proc;
         $self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
     } else {
-        my $command = $self->[MYSQLD_MYSQLD]." ".$opts;
         say("Starting: $command");
         $self->[MYSQLD_AUXPID] = fork();
         if ($self->[MYSQLD_AUXPID]) {
-            ## Waht for the pid file to have been created
+            ## Wait for the pid file to have been created
             my $waits = 0;
             while (!-f $self->pidfile && $waits < 100) {
                 Time::HiRes::sleep(0.2);
                 $waits++;
             }
             my $pidfile = $self->pidfile;
-            my $pid = `cat $pidfile`;
+            my $pid = `cat \"$pidfile\"`;
             $pid =~ m/([0-9]+)/;
             $self->[MYSQLD_SERVERPID] = int($1);
             
         } else {
-            exec("$command > $serverlog  2>&1") || croak("Could not start mysql server");
+            exec("$command > \"$serverlog\"  2>&1") || croak("Could not start mysql server");
         }
     }
     
@@ -296,7 +293,7 @@ sub startServer {
 
 sub kill {
     my ($self) = @_;
-
+    
     if (windows()) {
         if (defined $self->[MYSQLD_WINDOWS_PROCESS]) {
             $self->[MYSQLD_WINDOWS_PROCESS]->Kill(0);
@@ -312,7 +309,7 @@ sub kill {
 
 sub stopServer {
     my ($self) = @_;
-
+    
     if (defined $self->[MYSQLD_DBH]) {
         say("Stopping server on port ".$self->port);
         my $r = $self->[MYSQLD_DBH]->func('shutdown','127.0.0.1','root','admin');
