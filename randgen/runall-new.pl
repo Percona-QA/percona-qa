@@ -187,8 +187,6 @@ foreach my $server_id (0..1) {
     
 	push @options, "--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
 
-	push @options, "--start-dirty" if defined $start_dirty;
-    
 	if (($rpl_mode ne '') && ($server_id != 0)) {
 		# If we are running in replication, and we start the slave separately (because it is a different binary)
 		# add a few options that allow the slave and the master to be distinguished and SHOW SLAVE HOSTS to work
@@ -213,6 +211,7 @@ foreach my $server_id (0..1) {
     $server[$server_id] = GenTest::Server::MySQLd->new(basedir => $basedirs[$server_id],
                                                        vardir => $vardirs[$server_id],
                                                        port => $master_ports[$server_id],
+                                                       start_dirty => $start_dirty,
                                                        \@options);
     
     my $status = $server[$server_id]->startServer;

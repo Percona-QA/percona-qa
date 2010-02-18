@@ -44,6 +44,7 @@ use constant MYSQLD_AUXPID => 10;
 use constant MYSQLD_SERVERPID => 11;
 use constant MYSQLD_WINDOWS_PROCESS => 12;
 use constant MYSQLD_DBH => 13;
+use constant MYSQLD_START_DIRTY => 14;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_SOCKET_FILE => "mysql.sock";
@@ -59,7 +60,8 @@ sub new {
     my $self = $class->SUPER::new({'basedir' => MYSQLD_BASEDIR,
                                    'vardir' => MYSQLD_VARDIR,
                                    'port' => MYSQLD_PORT,
-                                   'server_options' => MYSQLD_SERVER_OPTIONS},@_);
+                                   'server_options' => MYSQLD_SERVER_OPTIONS,
+                                   'start_dirty' => MYSQLD_START_DIRTY},@_);
 
 
     if (not defined $self->[MYSQLD_VARDIR]) {
@@ -104,7 +106,11 @@ sub new {
                                "--log-warnings=0"];
     
     push(@{$self->[MYSQLD_STDOPTS]},"--loose-skip-innodb") if not windows;
-    $self->createMysqlBase;
+    if ($self->[MYSQLD_START_DIRTY]) {
+        say("Using existing data at ".$self->datadir)
+    } else {
+        $self->createMysqlBase;
+    }
 
     return $self;
 }
