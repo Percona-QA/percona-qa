@@ -83,7 +83,20 @@ sub test_create_server {
     
     $self->assert(-f $vardir."/mysql.pid") if not windows();
     $self->assert(-f $vardir."/mysql.err");
+
+    $server->stopServer;
+
+    say("Contents of '".$server->logfile."':");
+    sayFile($server->logfile);
+
+    $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                           vardir => $vardir,
+                                           port => 22120,
+                                           start_dirty => 1);
     
+    $self->assert_not_null($server);
+    $server->startServer;
+    push @pids,$server->serverpid;
     $server->stopServer;
 
     say("Contents of '".$server->logfile."':");

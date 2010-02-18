@@ -109,8 +109,9 @@ sub new {
     if ($self->[MYSQLD_START_DIRTY]) {
         say("Using existing data at ".$self->datadir)
     } else {
+        say("Creating database at ".$self->datadir);
         $self->createMysqlBase;
-    }
+}
 
     return $self;
 }
@@ -318,7 +319,14 @@ sub stopServer {
     if (defined $self->[MYSQLD_DBH]) {
         say("Stopping server on port ".$self->port);
         my $r = $self->[MYSQLD_DBH]->func('shutdown','127.0.0.1','root','admin');
-        if (!$r) {
+        my $waits = 0;
+        if ($r) {
+            while (-f $self->pidfile && $waits < 100) {
+                Time::HiRes::sleep(0.2);
+                $waits++;
+            }
+        }
+        if (!$r or $waits >= 100) {
             say("Server would not shut down properly");
             $self->kill;
         }
