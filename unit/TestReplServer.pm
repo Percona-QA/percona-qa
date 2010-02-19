@@ -80,13 +80,11 @@ sub test_create_server {
 
 	my ($file, $pos) = $server->master->dbh->selectrow_array("SHOW MASTER STATUS");
 
-    print Dumper($file);
-
     $self->assert(-f $master_vardir."/data/".$file);
 
 	my $wait_result = $server->slave->dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
 
-    $self->assert($wait_result);
+    $self->assert($wait_result,"Checking wait_result: $wait_result");
 
 	my $result = $server->slave->dbh->selectrow_array("SELECT * FROM test.t");
 
