@@ -63,12 +63,8 @@ my $opt_result = GetOptions(
 	'mysqld=s@' => \$mysqld_options[0],
 	'mysqld1=s@' => \$mysqld_options[0],
 	'mysqld2=s@' => \$mysqld_options[1],
-	'basedir=s' => \$basedirs[0],
-	'basedir1=s' => \$basedirs[0],
-	'basedir2=s' => \$basedirs[1],
-	'vardir=s' => \$vardirs[0],
-	'vardir1=s' => \$vardirs[0],
-	'vardir2=s' => \$vardirs[1],
+	'basedir=s@' => \$basedirs,
+	'vardir=s@' => \$vardirs,
 	'rpl_mode=s' => \$rpl_mode,
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
@@ -88,7 +84,7 @@ my $opt_result = GetOptions(
 	'rows=i' => \$rows,
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s'	=> \$xml_output,
-	'valgrind'	=> \$valgrind,
+	'valgrind!'	=> \$valgrind,
 	'views'		=> \$views,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
@@ -292,7 +288,7 @@ push @gentest_options, "--varchar-length=$varchar_len" if defined $varchar_len;
 push @gentest_options, "--xml-output=$xml_output" if defined $xml_output;
 push @gentest_options, "--debug" if defined $debug;
 push @gentest_options, "--filter=$filter" if defined $filter;
-push @gentest_options, "--valgrind" if defined $valgrind;
+push @gentest_options, "--valgrind" if $valgrind;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.

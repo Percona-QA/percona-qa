@@ -56,18 +56,18 @@ use constant MYSQLD_DEFAULT_DATABASE => "test";
 
 sub new {
     my $class = shift;
-
+    
     my $self = $class->SUPER::new({'basedir' => MYSQLD_BASEDIR,
                                    'vardir' => MYSQLD_VARDIR,
                                    'port' => MYSQLD_PORT,
                                    'server_options' => MYSQLD_SERVER_OPTIONS,
                                    'start_dirty' => MYSQLD_START_DIRTY},@_);
-
-
+    
+    
     if (not defined $self->[MYSQLD_VARDIR]) {
         $self->[MYSQLD_VARDIR] = "mysql-test/var";
     }
-
+    
     if (windows()) {
         ## Use unix-style path's since that's what Perl expects...
         $self->[MYSQLD_BASEDIR] =~ s/\\/\//g;
@@ -111,7 +111,7 @@ sub new {
     } else {
         say("Creating database at ".$self->datadir);
         $self->createMysqlBase;
-}
+    }
 
     return $self;
 }
@@ -245,7 +245,7 @@ sub startServer {
                                           "--pid-file=".$self->pidfile,
                                           "--general-log-file=".$self->logfile]);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
-        $command = $command." ".$self->[MYSQLD_SERVER_OPTIONS]->genOpt();
+        $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
     }
     
     my $serverlog = $self->vardir."/".MYSQLD_LOG_FILE;
@@ -351,6 +351,10 @@ sub dsn {
     return "dbi:mysql:host=127.0.0.1:port=".
         $self->[MYSQLD_PORT].
         ":user=root:database=".$database;
+}
+
+sub dbh {
+    return $_[0]->[MYSQLD_DBH];
 }
 
 sub _findDir {
