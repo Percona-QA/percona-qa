@@ -380,7 +380,10 @@ implicit_commit:
 	#
 	flush                |
 	#
-	reset                |
+	# If
+	#    Bug#51336 Assert in reload_acl_and_cache during RESET QUERY CACHE
+	# is fixed please enable the next line.
+	# reset                |
 	#
 	# LOAD DATA INFILE causes an implicit commit only for tables using the NDB storage engine
 	#
