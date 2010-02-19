@@ -78,18 +78,15 @@ sub test_create_server {
     $server->master->dbh->do("CREATE TABLE test.t (i integer)");
     $server->master->dbh->do("INSERT INTO test.t VALUES(42)");
 
-    my $wait_result = $server->waitForSlaveSync();
+    $server->waitForSlaveSync();
     
-    $self->assert($wait_result,"Checking wait_result: $wait_result");
-
-	my $result = $server->slave->dbh->selectrow_array("SELECT * FROM test.t");
-
+    my $result = $server->slave->dbh->selectrow_array("SELECT * FROM test.t");
+    
     $self->assert_num_equals(42, $result);
-
+    
     $server->stopServer;
-
+    
     sayFile($server->master->logfile);
-
     sayFile($server->slave->logfile);
 }
 
