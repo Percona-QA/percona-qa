@@ -159,6 +159,16 @@ sub startServer {
     
 }
 
+sub waitForSlaveSync {
+    my ($self) = @_;
+	my ($file, $pos) = $self->master->dbh->selectrow_array("SHOW MASTER STATUS");
+	my $wait_result = $self->slave->dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
+    if (!$wait_result) {
+        say("Master/Slave sync failed: $wait_result");
+    }
+    return $wait_result;
+}
+
 sub stopServer {
     my ($self) = @_;
     
