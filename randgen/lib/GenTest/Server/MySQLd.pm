@@ -47,7 +47,6 @@ use constant MYSQLD_DBH => 13;
 use constant MYSQLD_START_DIRTY => 14;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
-use constant MYSQLD_SOCKET_FILE => "mysql.sock";
 use constant MYSQLD_LOG_FILE => "mysql.err";
 use constant MYSQLD_DEFAULT_PORT =>  19300;
 use constant MYSQLD_DEFAULT_DATABASE => "test";
@@ -147,7 +146,9 @@ sub forkpid {
 }
 
 sub socketfile {
-    return MYSQLD_SOCKET_FILE;
+    my ($self) = @_;
+
+    return "/tmp/RQGmysql.".$self->port.".sock";
 }
 
 sub pidfile {

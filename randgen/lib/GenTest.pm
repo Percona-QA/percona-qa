@@ -93,11 +93,13 @@ sub say {
 sub sayFile {
     my ($file) = @_;
 
+    say("--------- Contents of $file -------------");
     open FILE,$file;
     while (<FILE>) {
-	say($_);
+	say("| ".$_);
     }
     close FILE;
+    say("----------------------------------");
 }
 
 sub tmpdir {
