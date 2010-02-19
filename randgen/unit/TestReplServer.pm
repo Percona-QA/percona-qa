@@ -78,12 +78,8 @@ sub test_create_server {
     $server->master->dbh->do("CREATE TABLE test.t (i integer)");
     $server->master->dbh->do("INSERT INTO test.t VALUES(42)");
 
-	my ($file, $pos) = $server->master->dbh->selectrow_array("SHOW MASTER STATUS");
-
-    $self->assert(-f $master_vardir."/data/".$file);
-
-	my $wait_result = $server->slave->dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
-
+    my $wait_result = $server->waitForSlaveSync();
+    
     $self->assert($wait_result,"Checking wait_result: $wait_result");
 
 	my $result = $server->slave->dbh->selectrow_array("SELECT * FROM test.t");
