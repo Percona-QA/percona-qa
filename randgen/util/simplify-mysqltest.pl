@@ -115,7 +115,7 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
 		say ("MTR test duration: $mtr_duration; exit_code: $mtr_exit_code");
 	}
 
-	system("grep -i safe ".$config->basedir()."/mysql-test/var/log/mysqld.1.err");
+	system("grep 'Unsafe statement binlogged' ".$config->basedir()."/mysql-test/var/log/mysqld.1.err");
 	my $grep_exit_code = $? >> 8;
 	if ($grep_exit_code == 0) {
 		say("Messages about unsafe replication found in master error log.");
