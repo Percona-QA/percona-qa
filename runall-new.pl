@@ -63,8 +63,8 @@ my $opt_result = GetOptions(
 	'mysqld=s@' => \$mysqld_options[0],
 	'mysqld1=s@' => \$mysqld_options[0],
 	'mysqld2=s@' => \$mysqld_options[1],
-	'basedir=s@' => \$basedirs,
-	'vardir=s@' => \$vardirs,
+	'basedir=s@' => \@basedirs,
+	'vardir=s@' => \@vardirs,
 	'rpl_mode=s' => \$rpl_mode,
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
@@ -213,7 +213,6 @@ foreach my $server_id (0..1) {
     my $status = $server[$server_id]->startServer;
 
     if ($status > STATUS_OK) {
-	sayFile($server[$server_id]->logfile);
         stopServers();
         say(system("ls -l ".$server[$server_id]->datadir));
         croak("Could not start all servers");

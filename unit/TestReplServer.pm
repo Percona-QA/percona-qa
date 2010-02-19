@@ -43,13 +43,13 @@ sub tear_down {
         foreach my $p (@pids) {
             Win32::Process::KillProcess($p,-1);
         }
-        #system("rmdir /s /q unit\\tmp1");
-        #system("rmdir /s /q unit\\tmp2");
+        system("rmdir /s /q unit\\tmp1");
+        system("rmdir /s /q unit\\tmp2");
     } else {
         ## Need to ,kill leftover processes if there are some
         kill 9 => @pids;
-        #system("rm -rf unit/tmp1");
-        #system("rm -rf unit/tmp2");
+        system("rm -rf unit/tmp1");
+        system("rm -rf unit/tmp2");
     }
 }
 
@@ -64,6 +64,7 @@ sub test_create_server {
     my $server = GenTest::Server::ReplMySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                                   master_vardir => $master_vardir,
                                                   slave_vardir => $slave_vardir,
+                                                  mode => 'statement',
                                                   master_port => 22120);
     $self->assert_not_null($server);
     
@@ -72,13 +73,29 @@ sub test_create_server {
     $server->startServer;
     push @pids,$server->master->serverpid;
     push @pids,$server->slave->serverpid;
-    
+
+
+    $server->master->dbh->do("CREATE TABLE test.t (i integer)");
+    $server->master->dbh->do("INSERT INTO test.t VALUES(42)");
+
+	my ($file, $pos) = $server->master->dbh->selectrow_array("SHOW MASTER STATUS");
+
+    print Dumper($file);
+
+    $self->assert(-f $master_vardir."/data/".$file);
+
+	my $wait_result = $server->slave->dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
+
+    $self->assert($wait_result);
+
+	my $result = $server->slave->dbh->selectrow_array("SELECT * FROM test.t");
+
+    $self->assert_num_equals(42, $result);
+
     $server->stopServer;
 
-    say("Contents of '".$server->master->logfile."':");
     sayFile($server->master->logfile);
 
-    say("Contents of '".$server->slave->logfile."':");
     sayFile($server->slave->logfile);
 }
 

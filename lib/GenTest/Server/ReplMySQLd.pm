@@ -68,7 +68,8 @@ sub new {
     
     my @master_options;
     push(@master_options, 
-         "--server_id=0",
+         "--server_id=1",
+         "--log-bin=mysql-bin",
          "--report-host=127.0.0.1",
          "--report_port=".$self->[REPLMYSQLD_MASTER_PORT]);
     if (defined $self->[REPLMYSQLD_SERVER_OPTIONS]) {
@@ -89,7 +90,7 @@ sub new {
     
     my @slave_options;
     push(@slave_options, 
-         "--server_id=1",
+         "--server_id=2",
          "--report-host=127.0.0.1",
          "--report_port=".$self->[REPLMYSQLD_SLAVE_PORT]);
     if (defined $self->[REPLMYSQLD_SERVER_OPTIONS]) {
@@ -146,12 +147,11 @@ sub startServer {
 
 #	$slave_dbh->do("SET GLOBAL storage_engine = '$engine'") if defined $engine;
     
-	$slave_dbh->do("CHANGE MASTER TO
-		MASTER_PORT = ".$self->master->port.",
-		MASTER_HOST = '127.0.0.1',
-               MASTER_USER = 'root',
-               MASTER_CONNECT_RETRY = 1
-	");
+	$slave_dbh->do("CHANGE MASTER TO ".
+                   " MASTER_PORT = ".$self->master->port.",".
+                   " MASTER_HOST = '127.0.0.1',".
+                   " MASTER_USER = 'root',".
+                   " MASTER_CONNECT_RETRY = 1");
     
 	$slave_dbh->do("START SLAVE");
     
@@ -162,8 +162,8 @@ sub startServer {
 sub stopServer {
     my ($self) = @_;
     
-    $self->master->stopServer;
     $self->slave->stopServer;
+    $self->master->stopServer;
 }
 
 1;

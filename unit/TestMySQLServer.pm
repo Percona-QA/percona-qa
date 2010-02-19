@@ -86,7 +86,6 @@ sub test_create_server {
 
     $server->stopServer;
 
-    say("Contents of '".$server->logfile."':");
     sayFile($server->logfile);
 
     $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
@@ -99,7 +98,6 @@ sub test_create_server {
     push @pids,$server->serverpid;
     $server->stopServer;
 
-    say("Contents of '".$server->logfile."':");
     sayFile($server->logfile);
 }
 
