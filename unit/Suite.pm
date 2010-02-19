@@ -32,6 +32,7 @@ TestScripts
 Metadata
 IPC
 TestMySQLServer
+TestReplServer
 ) }
 
 1;
