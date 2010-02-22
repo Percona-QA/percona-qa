@@ -37,18 +37,19 @@
 # .. there are a lot more please search for open bugs reported by Matthias Leich
 #
 # TODO:
-#   - Correct spelling is "namespace" and not "name space"
+#   - Adjust grammar to new open and old fixed bugs
+#   - Add INDEXES and HANDLER ... NEXT | PREV | LAST
+#     (Bug#51355 handler stmt cause assertion in bool MDL_context::try_acquire_lock(MDL_request*))
 #   - Add TRUNCATE PARTITION and check if we are missing any other related DDL.
 #     (Bug #49907 ALTER TABLE ... TRUNCATE PARTITION does not wait for locks on the table)
-#   - Observation of Philip when using greater values for name_space_width
-#     - the database never actually gets the expected number of objects.
-#       Even if the DROPs are removed ,then still the database grows very slowly towards the name_space size.
-#     - There are a lot of CREATE TABLE table2 SELECT * FROM table1 and similar constructs in order to clone database objects.
-#       Unfortunately, at higher name_space values, table1 is not very likely to exist, and therefore table2 is also unlikely to be created.
-#     Conclusion(mleich):
-#       - reduce the likelihood of DROP TABLE <table with short lifetime>
-#         --> such tables get an a bit longer lifetime
-#       - reduce the likelihood that CREATE TABLE <table with short lifetime> uses "used_select"
+#   - Check the impact of the latest modifications (use "used_select" less often) on the issues
+#     reported by Philip
+#        When using greater values for namespace_width
+#        - the database never actually gets the expected number of objects.
+#          Even if the DROPs are removed ,then still the database grows very slowly towards the namespace size.
+#        - There are a lot of CREATE TABLE table2 SELECT * FROM table1 and similar constructs in order to clone
+#          database objects. Unfortunately, at higher namespace values, table1 is not very likely to exist, and
+#          therefore table2 is also unlikely to be created.
 #   - Add subtest for
 #     Bug #48315 Metadata lock is not taken for merged views that use an INFORMATION_SCHEMA table
 #     Simple:
@@ -60,7 +61,7 @@
 #           PROCEDURES etc. are complete missing.
 #           Could I inject this in a subquery?
 #   - Simplify grammar:
-#           Name space concept is good for grammar development, avoiding failing statements,
+#           Namespace concept is good for grammar development, avoiding failing statements,
 #           understanding statement logs but bad for grammar simplification speed.
 #
 # Bug#45225 Locking: hang if drop table with no timeout
@@ -75,19 +76,19 @@
 #    - have tables of "special" types (partitioned, view, merge etc.)
 #    - variate the storage engine
 #    within your object creation grammar file.
-# 2. Have separated name spaces for objects (tables etc.) with configurable width.
+# 2. Have separated namespaces for objects (tables etc.) with configurable width.
 #    - This allows to reduce the likelihood of applying a statement in general or an option to
 #      an object which is not allowed. Example: TRUNCATE TABLE <view>
-#    - Debugging of grammar and understanding server logs becomes easier if the name space
+#    - Debugging of grammar and understanding server logs becomes easier if the namespace
 #      for an object of some type contains type related strings like "base","temp",.. etc.
 #      Example: If there is a
-#                  CREATE VIEW <name which does not belong into the VIEW name space>
+#                  CREATE VIEW <name which does not belong into the VIEW namespace>
 #               than something works not like intended.
-#    - The configurable name space width (-> $name_space_width) allows to influence the likelihood
+#    - The configurable namespace width (-> $namespace_width) allows to influence the likelihood
 #      that some statement hits an object. This gives some control over how much the system is stressed.
 #    - The non default option to put all table related objects (base tables, views, etc.) allows
 #      some additional increase of the stress though the likelihood of failing statement raises.
-# 3. Distinct between two kinds of object name spaces and treat the corresponding objects different.
+# 3. Distinct between two kinds of object namespaces and treat the corresponding objects different.
 #    This is experimental and might be removed in case it does not fulfill the expectations.
 #    "Sequence" ("_S"):
 #       - statement sequence: CREATE object, fill in content (if applicable), COMMIT, wait some
@@ -178,11 +179,11 @@
 query_init:
 	# Variant 1:
 	#    Advantage: Less failing (table does not exist ...) statements within the first phase of the test.
-	# init_basics : init_name_spaces ; event_scheduler_on ; have_some_initial_objects ;
+	# init_basics : init_namespaces ; event_scheduler_on ; have_some_initial_objects ;
 	# Variant 2:
 	#    Advantage: Better performance during bug hunt, test simplification etc. because objects are created at
 	#               on place (<object>_ddl) only and not also in "have_some_initial_objects".
-	init_basics ; init_name_spaces ;
+	init_basics ; init_namespaces ;
 
 init_basics:
 	# 1. $life_time_unit = maximum lifetime of a table created within a CREATE, wait, DROP sequence.
@@ -204,7 +205,7 @@ init_basics:
 	#
 	#    one_thread_correction will correct $life_time_unit to 0 if we have only one "worker" thread.
 	#
-	# 2. $name_space_width = Width of a name space
+	# 2. $namespace_width = Width of a namespace
 	#
 	#    Smaller numbers cause a
 	#    - lower fraction of statements failing because of missing object
@@ -213,9 +214,9 @@ init_basics:
 	# Some notes:
 	# - In case of one thread a $life_time_unit <> 0 does not make sense, because there is no parallel
 	#   "worker" thread which could do something with the object during the "wait" period.
-	{ $life_time_unit = 1 ; $name_space_width = 2 ; if ( $ENV{RQG_THREADS} == 1 ) { $life_time_unit = 0 } ; return undef } avoid_bugs ; nothing_disabled ; system_table_stuff ;
+	{ $life_time_unit = 1 ; $namespace_width = 2 ; if ( $ENV{RQG_THREADS} == 1 ) { $life_time_unit = 0 } ; return undef } avoid_bugs ; nothing_disabled ; system_table_stuff ;
 
-init_name_spaces:
+init_namespaces:
 	# Please choose between the following alternatives
 	# separate_objects         -- no_separate_objects
 	# separate_normal_sequence -- no_separate_normal_sequence
@@ -239,7 +240,7 @@ separate_table_types:
 	{ $base_piece="base" ; $temp_piece="temp" ; $merge_piece="merge" ; $part_piece="part" ; $view_piece="view" ; return undef } ;
 no_separate_table_types:
 	# Expected impact:
-	# - maybe higher load on tables of all types in general (depends on size of name space)
+	# - maybe higher load on tables of all types in general (depends on size of namespace)
 	# - a significant fraction of statements will fail with
 	#   1. 1064 "You have an error in your SQL syntax ..."
 	#      Example: TRUNCATE <view>
@@ -287,7 +288,7 @@ event_scheduler_off:
 
 have_some_initial_objects:
 	# It is assumed that this reduces the likelihood of "Table does not exist" significant when running with a small number of "worker" threads.
-	# The amount of create_..._table items within the some_..._tables should depend a bit on the value in $name_space_width but I currently
+	# The amount of create_..._table items within the some_..._tables should depend a bit on the value in $namespace_width but I currently
 	# do not know how to express this in the grammar.
 	# Use if
 	#   Bug#47633 assert in ha_myisammrg::info during OPTIMIZE
@@ -329,29 +330,29 @@ rand_val:
 	{ $rand_val = $prng->int(0,100) / 100 } ;
 
 
-# Name spaces of objects ==========================================================================#
-# An explanation of the name space concept is on top of this file.
+# Namespaces of objects ==========================================================================#
+# An explanation of the namespace concept is on top of this file.
 #
-# 1. The database name space ##########################################################################
+# 1. The database namespace ##########################################################################
 database_name_s:
 	{ $database_name_s = $database_prefix . $sequence_piece ; $database_name = $database_name_s } ;
 database_name_n:
 	{ $database_name_n = $database_prefix . $normal_piece   ; $database_name = $database_name_n } ;
 database_name:
-	# Get a random name from the "database" name space.
+	# Get a random name from the "database" namespace.
 	# $database_name gets automatically filled when database_name_s or database_name_n is executed.
 	database_name_s | database_name_n ;
 
 
-# 2. The base table name space ########################################################################
+# 2. The base table namespace ########################################################################
 base_table_name_s:
-	# Get a random name from the "base table long life" name space.
-	{ $base_table_name_s = $table_prefix . $base_piece   . $prng->int(1,$name_space_width) . $sequence_piece ; $base_table_name = $base_table_name_s ; $table_name = $base_table_name } ;
+	# Get a random name from the "base table long life" namespace.
+	{ $base_table_name_s = $table_prefix . $base_piece   . $prng->int(1,$namespace_width) . $sequence_piece ; $base_table_name = $base_table_name_s ; $table_name = $base_table_name } ;
 base_table_name_n:
-	# Get a random name from the "base table short life" name space.
-	{ $base_table_name_n = $table_prefix . $base_piece   . $prng->int(1,$name_space_width) . $normal_piece   ; $base_table_name = $base_table_name_n ; $table_name = $base_table_name } ;
+	# Get a random name from the "base table short life" namespace.
+	{ $base_table_name_n = $table_prefix . $base_piece   . $prng->int(1,$namespace_width) . $normal_piece   ; $base_table_name = $base_table_name_n ; $table_name = $base_table_name } ;
 base_table_name:
-	# Get a random name from the "base table" name space.
+	# Get a random name from the "base table" namespace.
 	base_table_name_s | base_table_name_n ;
 
 # Sometimes useful stuff:
@@ -369,16 +370,16 @@ base_table_item_list:
 	base_table_item   | base_table_item   , base_table_item   ;
 
 
-# 3. The temp table name space ########################################################################
+# 3. The temp table namespace ########################################################################
 # Please note that TEMPORARY merge tables will be not generated.
 temp_table_name_s:
-	# Get a random name from the "temp table long life" name space.
-	{ $temp_table_name_s = $table_prefix . $temp_piece   . $prng->int(1,$name_space_width) . $sequence_piece ; $temp_table_name = $temp_table_name_s ; $table_name = $temp_table_name } ;
+	# Get a random name from the "temp table long life" namespace.
+	{ $temp_table_name_s = $table_prefix . $temp_piece   . $prng->int(1,$namespace_width) . $sequence_piece ; $temp_table_name = $temp_table_name_s ; $table_name = $temp_table_name } ;
 temp_table_name_n:
-	# Get a random name from the "temp table short life" name space.
-	{ $temp_table_name_n = $table_prefix . $temp_piece   . $prng->int(1,$name_space_width) . $normal_piece   ; $temp_table_name = $temp_table_name_n ; $table_name = $temp_table_name } ;
+	# Get a random name from the "temp table short life" namespace.
+	{ $temp_table_name_n = $table_prefix . $temp_piece   . $prng->int(1,$namespace_width) . $normal_piece   ; $temp_table_name = $temp_table_name_n ; $table_name = $temp_table_name } ;
 temp_table_name:
-	# Get a random name from the "temp table" name space.
+	# Get a random name from the "temp table" namespace.
 	temp_table_name_s | temp_table_name_n ;
 
 # Sometimes useful stuff:
@@ -396,16 +397,16 @@ temp_table_item_list:
 	temp_table_item   | temp_table_item   , temp_table_item   ;
 
 
-# 4. The merge table name space #######################################################################
+# 4. The merge table namespace #######################################################################
 # Please note that TEMPORARY merge tables will be not generated.
 merge_table_name_s:
-	# Get a random name from the "merge table long life" name space.
-	{ $merge_table_name_s = $table_prefix . $merge_piece . $prng->int(1,$name_space_width) . $sequence_piece ; $merge_table_name = $merge_table_name_s ; $table_name = $merge_table_name } ;
+	# Get a random name from the "merge table long life" namespace.
+	{ $merge_table_name_s = $table_prefix . $merge_piece . $prng->int(1,$namespace_width) . $sequence_piece ; $merge_table_name = $merge_table_name_s ; $table_name = $merge_table_name } ;
 merge_table_name_n:
-	# Get a random name from the "merge table short life" name space.
-	{ $merge_table_name_n = $table_prefix . $merge_piece . $prng->int(1,$name_space_width) . $normal_piece   ; $merge_table_name = $merge_table_name_n ; $table_name = $merge_table_name } ;
+	# Get a random name from the "merge table short life" namespace.
+	{ $merge_table_name_n = $table_prefix . $merge_piece . $prng->int(1,$namespace_width) . $normal_piece   ; $merge_table_name = $merge_table_name_n ; $table_name = $merge_table_name } ;
 merge_table_name:
-	# Get a random name from the "merge table" name space.
+	# Get a random name from the "merge table" namespace.
 	merge_table_name_s | merge_table_name_n ;
 
 # Sometimes useful stuff:
@@ -423,15 +424,15 @@ merge_table_item_list:
 	merge_table_item   | merge_table_item   , merge_table_item   ;
 
 
-# 5. The view table name space ########################################################################
+# 5. The view table namespace ########################################################################
 view_table_name_s:
-	# Get a random name from the "view table long life" name space.
-	{ $view_table_name_s = $table_prefix . $view_piece   . $prng->int(1,$name_space_width) . $sequence_piece ; $view_table_name = $view_table_name_s ; $table_name = $view_table_name } ;
+	# Get a random name from the "view table long life" namespace.
+	{ $view_table_name_s = $table_prefix . $view_piece   . $prng->int(1,$namespace_width) . $sequence_piece ; $view_table_name = $view_table_name_s ; $table_name = $view_table_name } ;
 view_table_name_n:
-	# Get a random name from the "view table short life" name space.
-	{ $view_table_name_n = $table_prefix . $view_piece   . $prng->int(1,$name_space_width) . $normal_piece   ; $view_table_name = $view_table_name_n ; $table_name = $view_table_name } ;
+	# Get a random name from the "view table short life" namespace.
+	{ $view_table_name_n = $table_prefix . $view_piece   . $prng->int(1,$namespace_width) . $normal_piece   ; $view_table_name = $view_table_name_n ; $table_name = $view_table_name } ;
 view_table_name:
-	# Get a random name from the "view table" name space.
+	# Get a random name from the "view table" namespace.
 	view_table_name_s | view_table_name_n ;
 
 # Sometimes useful stuff:
@@ -449,15 +450,15 @@ view_table_item_list:
 	view_table_item   | view_table_item   , view_table_item   ;
 
 
-# 6. The partitioned table name space #################################################################
+# 6. The partitioned table namespace #################################################################
 part_table_name_s:
-	# Get a random name from the "part table long life" name space.
-	{ $part_table_name_s = $table_prefix . $part_piece   . $prng->int(1,$name_space_width) . $sequence_piece ; $part_table_name = $part_table_name_s ; $table_name = $part_table_name } ;
+	# Get a random name from the "part table long life" namespace.
+	{ $part_table_name_s = $table_prefix . $part_piece   . $prng->int(1,$namespace_width) . $sequence_piece ; $part_table_name = $part_table_name_s ; $table_name = $part_table_name } ;
 part_table_name_n:
-	# Get a random name from the "part table short life" name space.
-	{ $part_table_name_n = $table_prefix . $part_piece   . $prng->int(1,$name_space_width) . $normal_piece   ; $part_table_name = $part_table_name_n ; $table_name = $part_table_name } ;
+	# Get a random name from the "part table short life" namespace.
+	{ $part_table_name_n = $table_prefix . $part_piece   . $prng->int(1,$namespace_width) . $normal_piece   ; $part_table_name = $part_table_name_n ; $table_name = $part_table_name } ;
 part_table_name:
-	# Get a random name from the "part table" name space.
+	# Get a random name from the "part table" namespace.
 	part_table_name_s | part_table_name_n ;
 
 # Sometimes useful stuff:
@@ -475,7 +476,7 @@ part_table_item_list:
 	part_table_item   | part_table_item   , part_table_item   ;
 
 
-# 7. Mixed name spaces of tables ################################################################
+# 7. Mixed namespaces of tables ################################################################
 
 # 7.1 All tables ( base/temp/merge tables + views + ... #########################################
 table_item_s:
@@ -512,7 +513,7 @@ base_temp_view_table_item:
 	base_temp_view_table_item_s | base_temp_view_table_item ;
 
 
-# 8. Other name spaces ##############################################################a
+# 8. Other namespaces ##############################################################a
 template_table_item:
 	{ $template_table_item = "test.table0_int_autoinc" }  |
 	{ $template_table_item = "test.table1_int_autoinc" }  |
@@ -521,10 +522,10 @@ template_table_item:
 
 procedure_name_s:
 	# Get a random name from the "procedure long life" namespace.
-	{ $procedure_name_s = $procedure_prefix . $prng->int(1,$name_space_width) . $sequence_piece ; $procedure_name = $procedure_name_s } ;
+	{ $procedure_name_s = $procedure_prefix . $prng->int(1,$namespace_width) . $sequence_piece ; $procedure_name = $procedure_name_s } ;
 procedure_name_n:
 	# Get a random name from the "procedure short life" namespace.
-	{ $procedure_name_n = $procedure_prefix . $prng->int(1,$name_space_width) . $normal_piece   ; $procedure_name = $procedure_name_n } ;
+	{ $procedure_name_n = $procedure_prefix . $prng->int(1,$namespace_width) . $normal_piece   ; $procedure_name = $procedure_name_n } ;
 procedure_name:
 	# Get a random name from the "procedure" namespace.
 	procedure_name_s | procedure_name_n ;
@@ -539,10 +540,10 @@ procedure_item:
 
 function_name_s:
 	# Get a random name from the "function long life" namespace.
-	{ $function_name_s  = $function_prefix . $prng->int(1,$name_space_width) . $sequence_piece  ; $function_name = $function_name_s } ;
+	{ $function_name_s  = $function_prefix . $prng->int(1,$namespace_width) . $sequence_piece  ; $function_name = $function_name_s } ;
 function_name_n:
 	# Get a random name from the "function short life" namespace.
-	{ $function_name_n  = $function_prefix . $prng->int(1,$name_space_width) . $normal_piece    ; $function_name = $function_name_n } ;
+	{ $function_name_n  = $function_prefix . $prng->int(1,$namespace_width) . $normal_piece    ; $function_name = $function_name_n } ;
 function_name:
 	# Get a random name from the "function" namespace.
 	function_name_s | function_name_n ;
@@ -556,10 +557,10 @@ function_item:
 
 trigger_name_s:
 	# Get a random name from the "trigger long life" namespace.
-	{ $trigger_name_s   = $trigger_prefix . $prng->int(1,$name_space_width) . $sequence_piece ; $trigger_name = $trigger_name_s } ;
+	{ $trigger_name_s   = $trigger_prefix . $prng->int(1,$namespace_width) . $sequence_piece ; $trigger_name = $trigger_name_s } ;
 trigger_name_n:
 	# Get a random name from the "trigger short life" namespace.
-	{ $trigger_name_n   = $trigger_prefix . $prng->int(1,$name_space_width) . $normal_piece   ; $trigger_name = $trigger_name_n } ;
+	{ $trigger_name_n   = $trigger_prefix . $prng->int(1,$namespace_width) . $normal_piece   ; $trigger_name = $trigger_name_n } ;
 trigger_name:
 	# Get a random name from the "trigger" namespace.
 	trigger_name_s | trigger_name_n ;
@@ -573,10 +574,10 @@ trigger_item:
 
 event_name_s:
 	# Get a random name from the "event long life" namespace.
-	{ $event_name_s   = $event_prefix . $prng->int(1,$name_space_width) . $sequence_piece ; $event_name = $event_name_s } ;
+	{ $event_name_s   = $event_prefix . $prng->int(1,$namespace_width) . $sequence_piece ; $event_name = $event_name_s } ;
 event_name_n:
 	# Get a random name from the "event short life" namespace.
-	{ $event_name_n   = $event_prefix . $prng->int(1,$name_space_width) . $normal_piece   ; $event_name = $event_name_n } ;
+	{ $event_name_n   = $event_prefix . $prng->int(1,$namespace_width) . $normal_piece   ; $event_name = $event_name_n } ;
 event_name:
 	# Get a random name from the "event" namespace.
 	event_name_s | event_name_n ;
@@ -899,6 +900,7 @@ create_base_table:
 	CREATE           TABLE if_not_exists base_table_item_n create_table_part ;
 create_table_part:
 	LIKE template_table_item ; ALTER TABLE $base_table_item_n ENGINE = engine ; INSERT INTO $base_table_item_n SELECT * FROM $template_table_item |
+	LIKE template_table_item ; ALTER TABLE $base_table_item_n ENGINE = engine ; INSERT INTO $base_table_item_n SELECT * FROM $template_table_item |
 	AS used_select           ;
 
 drop_base_table:
@@ -906,7 +908,7 @@ drop_base_table:
 	DROP           TABLE if_exists base_table_item_n restrict_cascade ;
 
 alter_base_table:
-	ALTER online ignore TABLE base_table_item_n alter_base_temp_table_part ;
+	ALTER ignore TABLE base_table_item_n alter_base_temp_table_part ;
 
 alter_base_temp_table_part:
 	# Reasons why "ENGINE = engine" should be rather rare:
@@ -939,7 +941,7 @@ drop_temp_table:
 	DROP           TABLE if_exists temp_table_item_n ;
 
 alter_temp_table:
-	ALTER online ignore TABLE temp_table_item_n alter_base_temp_table_part ;
+	ALTER ignore TABLE temp_table_item_n alter_base_temp_table_part ;
 
 ########## MAINTENANCE FOR ANY TABLE ####################
 # The server accepts these statements for all table types (VIEWs, base tables, ...) though they
@@ -1070,7 +1072,7 @@ alter_merge_table:
 	# A simple change of the insert_method_value is also not doable because we
 	# would need to mention also the UNION.
 	# It is intentional that we use merge_table_name and not merge_table_name_n.
-	ALTER online ignore TABLE merge_table_item_n COMMENT = 'UPDATED NOW()' ;
+	ALTER ignore TABLE merge_table_item_n COMMENT = 'UPDATED NOW()' ;
 
 merge_init_s:
 	/* merge_table_item_s { $mt = $merge_table_item_s ; return undef } consists of ( base_table_item_s { $mp1 = $base_table_item_s ; return undef } , base_table_item_s { $mp2 = $base_table_item_s ; return undef } ) based on template_table_item */ ;
@@ -1094,22 +1096,28 @@ part_table_ddl:
 	part_table_sequence ;
 
 create_part_table:
+	CREATE TABLE if_not_exists part_table_item_n ENGINE = MyISAM partition_algorithm AS SELECT * FROM template_table_item |
+	CREATE TABLE if_not_exists part_table_item_n ENGINE = MyISAM partition_algorithm AS SELECT * FROM template_table_item |
+	CREATE TABLE if_not_exists part_table_item_n ENGINE = MyISAM partition_algorithm AS used_select                       ;
+
+partition_algorithm:
 	# We do not need sophisticated partitioning here.
-	CREATE TABLE if_not_exists part_table_item_n ENGINE = MyISAM PARTITION BY KEY (pk) PARTITIONS 2 AS used_select ;
+	PARTITION BY KEY (pk) PARTITIONS 2        |
+	PARTITION BY LINEAR HASH(pk) PARTITIONS 3 ;
 
 drop_part_table:
 	# DROP two tables is in "drop_table_list"
 	DROP TABLE if_exists part_table_item_n ;
 
 alter_part_table:
-	ALTER online ignore TABLE part_table_item_n alter_part_table_part ;
+	ALTER ignore TABLE part_table_item_n alter_part_table_part ;
 
 alter_part_table_part:
-	PARTITION BY LINEAR HASH(pk) PARTITIONS 3 |
-	COMMENT = 'UPDATED NOW()'                 ;
+	partition_algorithm       |
+	COMMENT = 'UPDATED NOW()' ;
 
 part_table_sequence:
-	$sequence_begin CREATE TABLE if_not_exists part_table_item_s AS SELECT * FROM template_table_item ; COMMIT ; wait_till_drop_table ; DROP TABLE $part_table_item_s $sequence_end ;
+	$sequence_begin CREATE TABLE if_not_exists part_table_item_s ENGINE = MyISAM partition_algorithm AS SELECT * FROM template_table_item ; COMMIT ; wait_till_drop_table ; DROP TABLE $part_table_item_s $sequence_end ;
 
 
 ########## VIEW DDL ####################
@@ -1588,10 +1596,6 @@ no_or_empty:
 
 not_or_empty:
 	| NOT ;
-
-online:
-	# Only 20 %
-	| | | | ONLINE ;
 
 quick:
 	# Only 10 %
