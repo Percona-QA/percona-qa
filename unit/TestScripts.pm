@@ -38,7 +38,7 @@ sub tear_down {
 sub test_gensql {
     my $self = shift;
 
-    my $status = system("perl gensql.pl --grammar=conf/example.yy --dsn=dummy --queries=1");
+    my $status = system("perl gensql.pl --grammar=conf/examples/example.yy --dsn=dummy --queries=1");
 
     $self->assert_equals(0, $status);
 
@@ -51,7 +51,7 @@ sub test_gensql {
 sub test_gendata {
     my $self = shift;
 
-    my $status = system("perl gendata.pl --spec=conf/example.zz --dsn=dummy");
+    my $status = system("perl gendata.pl --spec=conf/examples/example.zz --dsn=dummy");
 
     $self->assert_equals(0, $status);
 }
@@ -67,11 +67,11 @@ sub test_gendata_old {
 sub test_gentest {
     my $self = shift;
 
-    my $status = system("perl gentest.pl --dsn=dummy --grammar=conf/example.yy --threads=1 --queries=1");
+    my $status = system("perl gentest.pl --dsn=dummy --grammar=conf/examples/example.yy --threads=1 --queries=1");
 
     $self->assert_equals(0, $status);
 
-    $status = system("perl gentest.pl --dsn=dummy --grammar=conf/example.yy --threads=1 --queries=1 --mask=10 --mask-level=2");
+    $status = system("perl gentest.pl --dsn=dummy --grammar=conf/examples/example.yy --threads=1 --queries=1 --mask=10 --mask-level=2");
 
     $self->assert_equals(0, $status);
 }
@@ -82,7 +82,7 @@ sub test_gentest {
 #    ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
 #    if ($ENV{RQG_MYSQL_BASE}) {
 #        $ENV{LD_LIBRARY_PATH}=$ENV{RQG_MYSQL_BASE}."/libmysql/.libs";
-#        my $status = system("perl ./runall.pl --grammar=conf/example.yy --gendata=conf/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
+#        my $status = system("perl ./runall.pl --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
 #        $self->assert_equals(0, $status);
 #    }
 #}
@@ -92,7 +92,7 @@ sub test_runall_new {
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=$ENV{RQG_MYSQL_BASE}."/libmysql/.libs";
-        my $status = system("perl ./runall-new.pl --mtr-build-thread=1212 --grammar=conf/example.yy --gendata=conf/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl ./runall-new.pl --mtr-build-thread=1212 --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
     }
 }

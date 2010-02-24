@@ -18,8 +18,8 @@
 $combinations = [
 	[
 	'
-		--grammar=conf/engine_stress.yy
-		--gendata=conf/engine_stress.zz
+		--grammar=conf/engines/engine_stress.yy
+		--gendata=conf/engines/engine_stress.zz
 		--engine=Innodb
 		--reporters=Deadlock,ErrorLog,Backtrace,Recovery,Shutdown
 		--mysqld=--loose-falcon-lock-wait-timeout=1

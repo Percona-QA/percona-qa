@@ -80,27 +80,27 @@ my $command;
 
 if ($test =~ m{falcon_combinations_simple}io ) {
 	$command = '
-		--grammar='.$conf.'/combinations.yy
-		--gendata='.$conf.'/combinations.zz
-		--config='.$conf.'/falcon_simple.cc
+		--grammar='.$conf.'/transactions/combinations.yy
+		--gendata='.$conf.'/transactions/combinations.zz
+		--config='.$conf.'/engines/falcon/falcon_simple.cc
 		--duration=900
 		--trials=1
 		--seed=time
 	';
 } elsif ($test =~ m{falcon_combinations_transactions}io ) {
 	$command = '
-		--grammar='.$conf.'/transactions-flat.yy
-		--gendata='.$conf.'/transactions.zz
-		--config='.$conf.'/falcon_simple.cc
+		--grammar='.$conf.'/transactions/transactions-flat.yy
+		--gendata='.$conf.'/transactions/transactions.zz
+		--config='.$conf.'/engines/falcon/falcon_simple.cc
 		--duration=900
 		--trials=1
 		--seed=time
 	';
 } elsif ($test =~ m{innodb_combinations_simple}io ) {
 	$command = '
-		--grammar='.$conf.'/combinations.yy
-		--gendata='.$conf.'/combinations.zz
-		--config='.$conf.'/innodb_simple.cc
+		--grammar='.$conf.'/transactions/combinations.yy
+		--gendata='.$conf.'/transactions/combinations.zz
+		--config='.$conf.'/engines/innodb/innodb_simple.cc
 		--mysqld=--innodb
 		--duration=1800
 		--trials=1
@@ -108,9 +108,9 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 	';
 } elsif ($test =~ m{innodb_combinations_stress}io ) {
 	$command = '
-		--grammar='.$conf.'/engine_stress.yy
-		--gendata='.$conf.'/engine_stress.zz
-		--config='.$conf.'/innodb_simple.cc
+		--grammar='.$conf.'/engines/engine_stress.yy
+		--gendata='.$conf.'/engines/engine_stress.zz
+		--config='.$conf.'/engines/innodb/innodb_simple.cc
 		--mysqld=--innodb
 		--duration=600
 		--trials=1
@@ -118,9 +118,9 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 	';
 } elsif ($test =~ m{falcon_combinations_varchar}io ) {
 	$command = '
-		--grammar='.$conf.'/varchar.yy
-		--gendata='.$conf.'/varchar.zz
-		--config='.$conf.'/falcon_varchar.cc
+		--grammar='.$conf.'/engines/varchar.yy
+		--gendata='.$conf.'/engines/varchar.zz
+		--config='.$conf.'/engines/falcon/falcon_varchar.cc
 		--duration=900
 		--trials=1
 		--seed=time

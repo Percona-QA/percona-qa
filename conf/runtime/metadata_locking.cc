@@ -17,8 +17,8 @@
 
 $combinations = [
 	['
-		--grammar=conf/metadata_locking.yy
-		--gendata=conf/metadata_locking.zz
+		--grammar=conf/runtime/metadata_locking.yy
+		--gendata=conf/runtime/metadata_locking.zz
 		--queries=100K
 		--duration=600
 		--basedir=/build/bzr/azalea-bugfixing
