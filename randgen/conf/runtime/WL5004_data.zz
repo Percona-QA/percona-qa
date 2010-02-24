@@ -29,7 +29,7 @@
 # 2. Varaition of the storage engine
 # make no sense.
 #
-# Please read conf/WL5004_sql.yy for more information.
+# Please read conf/runtime/WL5004_sql.yy for more information.
 #
 
 $tables = {

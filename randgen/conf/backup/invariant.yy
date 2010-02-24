@@ -26,8 +26,8 @@
 # after restore.
 #
 # Associated files: 
-#   mysql-test/gentest/conf/invariant.yy
-#   mysql-test/gentest/conf/invariant.zz
+#   mysql-test/gentest/conf/backup/invariant.yy
+#   mysql-test/gentest/conf/backup/invariant.zz
 #   mysql-test/gentest/lib/GenTest/Validator/Invariant.pm
 #   mysql-test/gentest/lib/GenTest/Reporter/BackupAndRestoreInvariant.pm
 #
