@@ -95,7 +95,7 @@ sub new {
     $self->[MYSQLD_MESSAGES] = $self->_findDir($self->basedir, ["sql/share","share/mysql"], "errmsg-utf8.txt");
     
     $self->[MYSQLD_LIBMYSQL] = $self->_findDir($self->basedir, 
-                                               windows()?["libmysql/Debug"]:["libmysql/.libs","lib/mysql"], 
+                                               windows()?["libmysql/Debug"]:["libmysql","libmysql/.libs","lib/mysql"], 
                                                windows()?"libmysql.dll":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
