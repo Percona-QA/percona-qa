@@ -16,7 +16,7 @@
 # USA
 
 ## Hunting for bugs.
-## 
+##
 ## Repeated runs of runall with different seed and mask values.
 ## Will run repeatedly trial times.
 ## If expected_outputs (of which there may be several) is specified it
@@ -41,7 +41,7 @@ use GenTest::Simplifier::Grammar;
 use Time::HiRes;
 
 my $options = {};
-GetOptions($options, 
+GetOptions($options,
            'config=s',
            'grammar=s',
            'trials=i',
@@ -82,7 +82,7 @@ $config->printProps;
 
 ## Calculate mysqld and rqg options
 
-my $mysqlopt = $config->genOpt("--mysqld=--",$config->mysqld) 
+my $mysqlopt = $config->genOpt("--mysqld=--",$config->mysqld)
     if defined $config->mysqld;
 
 my $rqgoptions = $config->genOpt('--', 'rqg_options');
@@ -94,8 +94,8 @@ my $run_id = time();
 say("The ID of this run is $run_id.");
 
 if ( ! -d $config->vardir_prefix ) {
-    croak("vardir_prefix '" 
-          . $config->vardir_prefix . 
+    croak("vardir_prefix '"
+          . $config->vardir_prefix .
           "' is not an existing directory");
 }
 
@@ -104,8 +104,8 @@ mkdir ($vardir);
 push my @mtr_options, "--vardir=$vardir";
 
 if ( ! -d $config->storage_prefix) {
-    croak("storage_prefix '" 
-          . $config->storage_prefix . 
+    croak("storage_prefix '"
+          . $config->storage_prefix .
           "' is not an existing directory");
 }
 my $storage = $config->storage_prefix.'/'.$run_id;
@@ -122,53 +122,53 @@ my $current_rqg_log;
 my $errfile = $vardir . '/log/master.err';
 foreach my $trial (1..$config->trials) {
     say("###### run_id = $run_id; trial = $trial ######");
-    
+
     $current_seed = $good_seed - 1 + $trial;
     $current_mask = $good_mask - 1 + $trial;
     $current_rqg_log = $storage . '/' . $trial . '.log';
-    
+
     my $start_time = Time::HiRes::time();
-    
+
     my $runall =
-        "perl runall.pl ". 
+        "perl runall.pl ".
         " $rqgoptions $mysqlopt ".
         "--grammar=".$config->grammar." ".
         "--vardir=$vardir ".
         "--mask-level=$mask_level ".
         "--mask=$current_mask ".
         "--seed=$current_seed >$current_rqg_log 2>&1";
-    
+
     say($runall);
     my $runall_status = system($runall);
     $runall_status = $runall_status >> 8;
-    
+
     my $end_time = Time::HiRes::time();
     my $duration = $end_time - $start_time;
-    
+
     say("runall_status = $runall_status; duration = $duration");
-    
+
     if (defined $config->desired_status_codes) {
         foreach my $desired_status_code (@{$config->desired_status_codes}) {
             if (($runall_status == $desired_status_code) ||
-                (($runall_status != 0) && 
+                (($runall_status != 0) &&
                  ($desired_status_code == STATUS_ANY_ERROR))) {
                 say ("###### Found status $runall_status ######");
                 if (defined $config->expected_outputs) {
-                    checkLogForPattern();                
+                    checkLogForPattern();
                 } else {
                     exit STATUS_OK if $config->stop_on_match;
                 }
             }
         }
     } elsif (defined $config->expected_outputs) {
-        checkLogForPattern();                
+        checkLogForPattern();
     }
 }
 
 #############################
 
 sub checkLogForPattern {
-    open (my $my_logfile,'<'.$current_rqg_log) 
+    open (my $my_logfile,'<'.$current_rqg_log)
         or croak "unable to open $current_rqg_log : $!";
 
     my @filestats = stat($current_rqg_log);
@@ -176,12 +176,12 @@ sub checkLogForPattern {
     my $offset = $filesize - $config->search_var_size;
 
     ## Ensure the offset is not negative
-    $offset = 0 if $offset < 0;  
-    read($my_logfile, my $rqgtest_output, 
-         $config->search_var_size, 
+    $offset = 0 if $offset < 0;
+    read($my_logfile, my $rqgtest_output,
+         $config->search_var_size,
          $offset );
     close ($my_logfile);
-    
+
     my $match_on_all=1;
     foreach my $expected_output (@{$config->expected_outputs}) {
         if ($rqgtest_output =~ m{$expected_output}sio) {
