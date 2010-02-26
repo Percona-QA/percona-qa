@@ -539,6 +539,25 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--queries=1M
 		--duration=600
 	';
+} elsif ($test =~ m{^mdl_deadlock}io ) {
+    #
+    # Should be same as mdl_stress (or mdl_stability, whichever has produced
+    # the most deadlocks), except with higher (~default) lock_wait_timeouts.
+    # The other variants have very low wait timeouts, making it difficult to
+    # detect invalid deadlocks.
+    # As per Feb-26-2010 default innodb-lock-wait-timeout=50 and
+    # table-lock-wait-timeout=31536000 (bug#45225).
+    #
+    $command = '
+        --grammar=conf/runtime/WL5004_sql.yy
+        --threads=10
+        --queries=1M
+        --duration=1800
+        --mysqld=--innodb
+        --mysqld=--innodb-lock-wait-timeout=50
+        --mysqld=--loose-table-lock-wait-timeout=31536000
+        --mysqld=--log-output=file
+    ';
 } elsif ($test =~ m{^mdl_stress}io ) {
 	# Seems like --gendata=conf/WL5004_data.zz unexplicably causes more test
 	# failures, so let's leave this out of PB2 for the time being (pstoev).
