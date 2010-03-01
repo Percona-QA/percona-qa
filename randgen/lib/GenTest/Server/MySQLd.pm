@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Sun Microsystems, Inc. All rights reserved.
+# Copyright (C) 2010, Oracle and/or its affiliates. All rights reserved. 
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -80,22 +80,39 @@ sub new {
     
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
-    $self->[MYSQLD_MYSQLD] = $self->_find($self->basedir,
-                                          windows()?["sql/Debug"]:["sql","libexec"],
+    $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
+                                          windows()?["sql/Debug","sql/RelWithDebugInfo"]:["sql","libexec"],
                                           windows()?"mysqld.exe":"mysqld");
     $self->[MYSQLD_BOOT_SQL] = [];
+
+
+    ## Check for CMakestuff to get hold of source dir:
+
+    my $source;
+    if (-d $self->basedir."/CMakeCache.txt") {
+        open CACHE, $self->basedir."/CMakeCache.txt";
+        while (<CACHE>){
+            if (m/^MySQL_SOURCE_DIR:STATIC=(.*)$/) {
+                $source = $1;
+                say("Found source $source");
+                last;
+            }
+        }
+    }
+    
     foreach my $file ("mysql_system_tables.sql", 
                       "mysql_system_tables_data.sql", 
                       "mysql_test_data_timezone.sql",
                       "fill_help_tables.sql") {
         push(@{$self->[MYSQLD_BOOT_SQL]}, 
-             $self->_find($self->basedir,["scripts","share/mysql"], $file));
+             $self->_find(defined $source?[$self->basedir,$source]:[$self->basedir],
+                          ["scripts","share/mysql"], $file));
     }
     
-    $self->[MYSQLD_MESSAGES] = $self->_findDir($self->basedir, ["sql/share","share/mysql"], "errmsg-utf8.txt");
+    $self->[MYSQLD_MESSAGES] = $self->_findDir([$self->basedir], ["sql/share","share/mysql"], "errmsg-utf8.txt");
     
-    $self->[MYSQLD_LIBMYSQL] = $self->_findDir($self->basedir, 
-                                               windows()?["libmysql/Debug"]:["libmysql","libmysql/.libs","lib/mysql"], 
+    $self->[MYSQLD_LIBMYSQL] = $self->_findDir([$self->basedir], 
+                                               windows()?["libmysql/Debug","libmysql/RelWithDebugInfo"]:["libmysql","libmysql/.libs","lib/mysql"], 
                                                windows()?"libmysql.dll":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
@@ -337,13 +354,19 @@ sub stopServer {
 }
 
 sub _find {
-    my($self, $base,$subdir,$name) = @_;
+    my($self, $bases, $subdir, $name) = @_;
     
-    foreach my $s (@$subdir) {
-        my $path  = $base."/".$s."/".$name;
-        return $path if -f $path;
+    foreach my $base (@$bases) {
+        foreach my $s (@$subdir) {
+            my $path  = $base."/".$s."/".$name;
+            return $path if -f $path;
+        }
     }
-    croak "Cannot find '$name' in ".join(",",map {"'".$base."/".$_."'"} @$subdir);
+    my $paths = "";
+    foreach my $base (@$bases) {
+        $paths .= join(",",map {"'".$base."/".$_."'"} @$subdir).",";
+    }
+    croak "Cannot find '$name' in $paths"; 
 }
 
 sub dsn {
@@ -359,13 +382,19 @@ sub dbh {
 }
 
 sub _findDir {
-    my($self, $base,$subdir,$name) = @_;
+    my($self, $bases, $subdir, $name) = @_;
     
-    foreach my $s (@$subdir) {
-        my $path  = $base."/".$s."/".$name;
-        return $base."/".$s if -f $path;
+    foreach my $base (@$bases) {
+        foreach my $s (@$subdir) {
+            my $path  = $base."/".$s."/".$name;
+            return $base."/".$s if -f $path;
+        }
     }
-    croak "Cannot find '$name' in ".join(",",map {"'".$base."/".$_."'"} @$subdir);
+    my $paths = "";
+    foreach my $base (@$bases) {
+        $paths .= join(",",map {"'".$base."/".$_."'"} @$subdir).",";
+    }
+    croak "Cannot find '$name' in $paths";
 }
 
 sub _absPath {
