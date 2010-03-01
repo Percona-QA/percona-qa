@@ -546,7 +546,8 @@ if ($test =~ m{falcon_.*transactions}io ) {
     # The other variants have very low wait timeouts, making it difficult to
     # detect invalid deadlocks.
     # As per Feb-26-2010 default innodb-lock-wait-timeout=50 and
-    # table-lock-wait-timeout=31536000 (bug#45225).
+    # lock-wait-timeout=31536000 (bug#45225).
+    # We may want to switch to real (implicit) defaults later.
     #
     $command = '
         --grammar=conf/runtime/WL5004_sql.yy
@@ -555,7 +556,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --duration=1800
         --mysqld=--innodb
         --mysqld=--innodb-lock-wait-timeout=50
-        --mysqld=--loose-table-lock-wait-timeout=31536000
+        --mysqld=--lock-wait-timeout=31536000
         --mysqld=--log-output=file
     ';
 } elsif ($test =~ m{^mdl_stress}io ) {
