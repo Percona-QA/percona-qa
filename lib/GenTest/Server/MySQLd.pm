@@ -89,12 +89,12 @@ sub new {
     ## Check for CMakestuff to get hold of source dir:
 
     my $source;
-    if (-d $self->basedir."/CMakeCache.txt") {
+    if (-e $self->basedir."/CMakeCache.txt") {
         open CACHE, $self->basedir."/CMakeCache.txt";
         while (<CACHE>){
             if (m/^MySQL_SOURCE_DIR:STATIC=(.*)$/) {
                 $source = $1;
-                say("Found source $source");
+                say("Found source directory at $source");
                 last;
             }
         }
@@ -109,11 +109,14 @@ sub new {
                           ["scripts","share/mysql"], $file));
     }
     
-    $self->[MYSQLD_MESSAGES] = $self->_findDir([$self->basedir], ["sql/share","share/mysql"], "errmsg-utf8.txt");
+    $self->[MYSQLD_MESSAGES] = 
+       $self->_findDir(defined $source?[$self->basedir,$source]:[$self->basedir], 
+                       ["sql/share","share/mysql"], "english/errmsg.sys");
     
-    $self->[MYSQLD_LIBMYSQL] = $self->_findDir([$self->basedir], 
-                                               windows()?["libmysql/Debug","libmysql/RelWithDebugInfo"]:["libmysql","libmysql/.libs","lib/mysql"], 
-                                               windows()?"libmysql.dll":"libmysqlclient.so");
+    $self->[MYSQLD_LIBMYSQL] = 
+       $self->_findDir([$self->basedir], 
+                       windows()?["libmysql/Debug","libmysql/RelWithDebugInfo"]:["libmysql","libmysql/.libs","lib/mysql"], 
+                       windows()?"libmysql.dll":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
