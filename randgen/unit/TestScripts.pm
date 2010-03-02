@@ -77,21 +77,21 @@ sub test_gentest {
 }
 
 # Temporarily disabled
-#sub test_runall {
-#    my $self = shift;
-#    ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
-#    if ($ENV{RQG_MYSQL_BASE}) {
-#        $ENV{LD_LIBRARY_PATH}=$ENV{RQG_MYSQL_BASE}."/libmysql/.libs";
-#        my $status = system("perl ./runall.pl --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
-#        $self->assert_equals(0, $status);
-#    }
-#}
+sub test_runall {
+    my $self = shift;
+    ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
+    if ($ENV{RQG_MYSQL_BASE}) {
+        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
+        my $status = system("perl ./runall.pl --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
+        $self->assert_equals(0, $status);
+    }
+}
 
 sub test_runall_new {
     my $self = shift;
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
-        $ENV{LD_LIBRARY_PATH}=$ENV{RQG_MYSQL_BASE}."/libmysql/.libs";
+        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         my $status = system("perl ./runall-new.pl --mtr-build-thread=1212 --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
     }
