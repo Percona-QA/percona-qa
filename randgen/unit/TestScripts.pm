@@ -77,12 +77,17 @@ sub test_gentest {
 }
 
 sub test_runall {
-    return if $ENV{MYSQL_BUILD_OUT_OF_SOURCE}; ## runall does not work with out of source builds
+    if ($ENV{TEST_OUT_OF_SOURCE}) {
+        ## runall does not work with out of source builds
+        say("test_runall skipped for out-of-source build");
+    }
+    my $portbase = $ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120;
+    my $pb = int(($portbase - 10000) / 10);
     my $self = shift;
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl ./runall.pl --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
     }
 }
@@ -90,9 +95,13 @@ sub test_runall {
 sub test_runall_new {
     my $self = shift;
     ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
+    my $portbase = 10 + ($ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120);
+    my $pb = int(($portbase - 10000) / 10);
+
+    
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl ./runall-new.pl --mtr-build-thread=1212 --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
     }
 }
