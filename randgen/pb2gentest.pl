@@ -553,7 +553,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --grammar=conf/runtime/WL5004_sql.yy
         --threads=10
         --queries=1M
-        --duration=1800
+        --duration=1200
         --mysqld=--innodb
         --mysqld=--innodb-lock-wait-timeout=50
         --mysqld=--lock-wait-timeout=31536000
