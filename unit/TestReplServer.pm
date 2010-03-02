@@ -56,7 +56,7 @@ sub tear_down {
 sub test_create_server {
     my $self = shift;
     
-    my $portbase = $ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120;
+    my $portbase = 30 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
 
     my $master_vardir= cwd()."/unit/tmp1";
     my $slave_vardir= cwd()."/unit/tmp2";
