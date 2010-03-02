@@ -45,6 +45,8 @@ use constant MYSQLD_SERVERPID => 11;
 use constant MYSQLD_WINDOWS_PROCESS => 12;
 use constant MYSQLD_DBH => 13;
 use constant MYSQLD_START_DIRTY => 14;
+use constant MYSQLD_VALGRIND => 15;
+use constant MYSQLD_VALGRIND_OPTIONS => 16;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_LOG_FILE => "mysql.err";
@@ -60,8 +62,11 @@ sub new {
                                    'vardir' => MYSQLD_VARDIR,
                                    'port' => MYSQLD_PORT,
                                    'server_options' => MYSQLD_SERVER_OPTIONS,
-                                   'start_dirty' => MYSQLD_START_DIRTY},@_);
+                                   'start_dirty' => MYSQLD_START_DIRTY,
+                                   'valgrind' => MYSQLD_VALGRIND,
+                                   'valgrind_options' => MYSQLD_VALGRIND_OPTIONS},@_);
     
+    croak "No valgrind support on windows" if windows() and $self->[MYSQLD_VALGRIND];
     
     if (not defined $self->[MYSQLD_VARDIR]) {
         $self->[MYSQLD_VARDIR] = "mysql-test/var";
@@ -249,7 +254,7 @@ sub _reportError {
 
 sub startServer {
     my ($self) = @_;
-    
+
     my $command = $self->generateCommand(["--no-defaults"],
                                          $self->[MYSQLD_STDOPTS],
                                          ["--core-file",
@@ -287,6 +292,13 @@ sub startServer {
         $self->[MYSQLD_WINDOWS_PROCESS]=$proc;
         $self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
     } else {
+        if ($self->[MYSQLD_VALGRIND]) {
+            my $val_opt ="";
+            if (defined $self->[MYSQLD_VALGRIND_OPTIONS]) {
+                $val_opt = join(' ',@{$self->[MYSQLD_VALGRIND_OPTIONS]});
+            }
+            $command = "valgrind ".$val_opt." ".$command;
+        }
         say("Starting: $command");
         $self->[MYSQLD_AUXPID] = fork();
         if ($self->[MYSQLD_AUXPID]) {
@@ -296,11 +308,14 @@ sub startServer {
                 Time::HiRes::sleep(0.2);
                 $waits++;
             }
+            if (!-f $self->pidfile) {
+                sayFile($self->logfile);
+                croak("Could not start mysql server");
+            }
             my $pidfile = $self->pidfile;
             my $pid = `cat \"$pidfile\"`;
             $pid =~ m/([0-9]+)/;
             $self->[MYSQLD_SERVERPID] = int($1);
-            
         } else {
             exec("$command > \"$serverlog\"  2>&1") || croak("Could not start mysql server");
         }

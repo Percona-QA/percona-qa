@@ -50,8 +50,8 @@ my @master_dsns;
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
-    $varchar_len, $xml_output, $valgrind, $views, $start_dirty,
-    $filter, $build_thread);
+    $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
+    $start_dirty, $filter, $build_thread);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -85,6 +85,7 @@ my $opt_result = GetOptions(
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s'	=> \$xml_output,
 	'valgrind!'	=> \$valgrind,
+	'valgrind_options=s@'	=> \@valgrind_options,
 	'views'		=> \$views,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
@@ -175,6 +176,9 @@ foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client", "
 
 my @server;
 	
+if $repl_mode ne ' ' {
+    croak "replication to be implemented here";
+}
 foreach my $server_id (0..1) {
 	next if $basedirs[$server_id] eq '';
     
@@ -182,19 +186,11 @@ foreach my $server_id (0..1) {
 	push @options, lc("--$engine") if defined $engine && lc($engine) ne lc('myisam');
     
 	push @options, "--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
-
-	if (($rpl_mode ne '') && ($server_id != 0)) {
-		# If we are running in replication, and we start the slave separately (because it is a different binary)
-		# add a few options that allow the slave and the master to be distinguished and SHOW SLAVE HOSTS to work
-		push @options, "--server-id=".($server_id + 1);
-		push @options, "--report-host=127.0.0.1";
-		push @options, "--report-port=".$master_ports[$server_id];
-	}
-
+    
 	if (defined $mysqld_options[$server_id]) {
         push @options, @{$mysqld_options[$server_id]};
     }
-
+    
 	if (
 		($rpl_mode ne '') &&
 		($server_id == 0) &&
@@ -208,10 +204,12 @@ foreach my $server_id (0..1) {
                                                        vardir => $vardirs[$server_id],
                                                        port => $master_ports[$server_id],
                                                        start_dirty => $start_dirty,
+                                                       valgrind => $valgrind,
+                                                       valgrind_options => \@valgrind_options,
                                                        \@options);
     
     my $status = $server[$server_id]->startServer;
-
+    
     if ($status > STATUS_OK) {
         stopServers();
         say(system("ls -l ".$server[$server_id]->datadir));
@@ -234,29 +232,6 @@ foreach my $server_id (0..1) {
 my $master_dbh = DBI->connect($server[0]->dsn($database), undef, undef, { RaiseError => 1 } );
 
 if ($rpl_mode) {
-	my $slave_dbh = DBI->connect($server[1]->dsn($database), undef, undef, { RaiseError => 1 } );
-    
-	say("Establishing replication, mode $rpl_mode ...");
-    
-	my ($foo, $master_version) = $master_dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
-    
-	if (($master_version !~ m{^5\.0}sio) && ($rpl_mode ne 'default')) {
-		$master_dbh->do("SET GLOBAL BINLOG_FORMAT = '$rpl_mode'");
-		$slave_dbh->do("SET GLOBAL BINLOG_FORMAT = '$rpl_mode'");
-	}
-    
-	$slave_dbh->do("STOP SLAVE");
-
-	$slave_dbh->do("SET GLOBAL storage_engine = '$engine'") if defined $engine;
-    
-	$slave_dbh->do("CHANGE MASTER TO
-		MASTER_PORT = $master_ports[0],
-		MASTER_HOST = '127.0.0.1',
-               MASTER_USER = 'root',
-               MASTER_CONNECT_RETRY = 1
-	");
-
-	$slave_dbh->do("START SLAVE");
 }
 
 #
@@ -298,22 +273,6 @@ say("gentest.pl exited with exit status ".($gentest_result >> 8));
 exit_test($gentest_result >> 8) if $gentest_result > 0;
 
 if ($rpl_mode) {
-	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
-
-	say("Waiting for slave to catch up..., file $file, pos $pos .");
-	exit_test(STATUS_UNKNOWN_ERROR) if !defined $file;
-    
-	my $slave_dbh = DBI->connect($server[1]->dsn($database), undef, undef, { PrintError => 1 } );
-    
-	exit_test(STATUS_REPLICATION_FAILURE) if not defined $slave_dbh;
-
-	$slave_dbh->do("START SLAVE");
-	my $wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
-
-	if (not defined $wait_result) {
-		say("MASTER_POS_WAIT() failed. Slave thread not running.");
-		exit_test(STATUS_REPLICATION_FAILURE);
-	}
 }
 
 #
