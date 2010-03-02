@@ -176,7 +176,7 @@ foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client", "
 
 my @server;
 	
-if $repl_mode ne ' ' {
+if ($rpl_mode ne '') {
     croak "replication to be implemented here";
 }
 foreach my $server_id (0..1) {
@@ -232,6 +232,7 @@ foreach my $server_id (0..1) {
 my $master_dbh = DBI->connect($server[0]->dsn($database), undef, undef, { RaiseError => 1 } );
 
 if ($rpl_mode) {
+    croak "replication to be implemented here";
 }
 
 #
@@ -273,6 +274,7 @@ say("gentest.pl exited with exit status ".($gentest_result >> 8));
 exit_test($gentest_result >> 8) if $gentest_result > 0;
 
 if ($rpl_mode) {
+    croak "replication to be implemented here";
 }
 
 #
