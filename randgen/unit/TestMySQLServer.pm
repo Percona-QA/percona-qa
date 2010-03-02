@@ -56,6 +56,8 @@ sub test_create_server {
 
     my $vardir= cwd()."/unit/tmp";
 
+    my $portbase = $ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120;
+
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
 
     my $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
@@ -90,7 +92,7 @@ sub test_create_server {
 
     $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                            vardir => $vardir,
-                                           port => 22120,
+                                           port => $portbase,
                                            start_dirty => 1);
     
     $self->assert_not_null($server);

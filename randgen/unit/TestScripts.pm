@@ -76,8 +76,8 @@ sub test_gentest {
     $self->assert_equals(0, $status);
 }
 
-# Temporarily disabled
 sub test_runall {
+    return if $ENV{MYSQL_BUILD_OUT_OF_SOURCE}; ## runall does not work with out of source builds
     my $self = shift;
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
@@ -89,7 +89,7 @@ sub test_runall {
 
 sub test_runall_new {
     my $self = shift;
-    ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
+    ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         my $status = system("perl ./runall-new.pl --mtr-build-thread=1212 --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=1 --threads=1 --basedir=".$ENV{RQG_MYSQL_BASE});
