@@ -1,3 +1,20 @@
+# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Use is subject to license terms.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
+
 package GenTest::Validator::DatabaseConsistency;
 
 require Exporter;
@@ -31,8 +48,8 @@ sub validate {
 	foreach my $table (@$tables) {
 		my ($average1, $average2, $count) = $dbh->selectrow_array("
 			SELECT
-			AVG(`int_key`) + AVG(`int`) AS average1,
-			(SUM(`int_key`) + SUM(`int`)) / COUNT(*) AS average2,
+			AVG(`col_int_key`) + AVG(`col_int`) AS average1,
+			(SUM(`col_int_key`) + SUM(`col_int`)) / COUNT(*) AS average2,
 			COUNT(*) AS count
 			FROM `$table`
 		");

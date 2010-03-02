@@ -1,4 +1,22 @@
 #!/usr/bin/perl
+
+# Copyright (C) 2008-2010 Sun Microsystems, Inc. All rights reserved.
+# Use is subject to license terms.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
+
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use strict;
@@ -10,6 +28,9 @@ use GenTest::Properties;
 use GenTest::Constants;
 use GenTest::App::Gendata;
 use GenTest::App::GendataSimple;
+use GenTest::IPC::Channel;
+use GenTest::IPC::Process;
+use GenTest::ErrorFilter;
 
 $| = 1;
 my $ctrl_c = 0;
@@ -174,10 +195,13 @@ if (defined $config->redefine) {
 
 exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
 
+my $channel = GenTest::IPC::Channel->new();
+
 my @executors;
 foreach my $i (0..2) {
 	next if $config->dsn->[$i] eq '';
-	push @executors, GenTest::Executor->newFromDSN($config->dsn->[$i]);
+	push @executors, GenTest::Executor->newFromDSN($config->dsn->[$i],
+                                                   windows()?undef:$channel);
 }
 
 my $drizzle_only = $executors[0]->type == DB_DRIZZLE;
@@ -273,7 +297,7 @@ my $test = GenTest::XML::Test->new(
 		queries => $config->queries,
 		validators => join (',', @{$config->validators}),
 		reporters => join (',', @{$config->reporters}),
-		seed => $config->seed,
+		seed => $seed,
 		mask => $config->mask,
 		mask_level => $config->property('mask-level'),
 		rows => $config->rows,
@@ -285,6 +309,12 @@ my $report = GenTest::XML::Report->new(
 	buildinfo => $buildinfo,
 	tests => [ $test ]
 );
+
+my $errorfilter = GenTest::ErrorFilter->new(channel=>$channel);
+my $errorfilter_p = GenTest::IPC::Process->new(object=>$errorfilter);
+if (!windows()) {
+    $errorfilter_p->start();
+}
 
 my $process_type;
 my %child_pids;
@@ -299,6 +329,7 @@ if ($periodic_pid == 0) {
 } else {
 	foreach my $i (1..$config->threads) {
 		my $child_pid = fork();
+        $channel->writer;
 		if ($child_pid == 0) { # This is a child 
 			$process_type = PROCESS_TYPE_CHILD;
 			last;
@@ -314,10 +345,19 @@ if ($periodic_pid == 0) {
 }
 
 if ($process_type == PROCESS_TYPE_PARENT) {
+    if (windows()) {
+        ## Important that this is done here in the parent after the last
+        ## fork since on windows Process.pm uses threads
+        $errorfilter_p->start();
+    }
 	# We are the parent process, wait for for all spawned processes to terminate
 	my $children_died = 0;
 	my $total_status = STATUS_OK;
 	my $periodic_died = 0;
+
+    ## Parent thread does not use channel
+    $channel->close;
+
 	while (1) {
 		my $child_pid = wait();
 		my $exit_status = $? > 0 ? ($? >> 8) : 0;
@@ -361,6 +401,8 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 			$total_status = $periodic_status if $periodic_status > $total_status;
 		}
 	}
+
+    $errorfilter_p->kill();
 
 	my @report_results;
 
@@ -408,6 +450,8 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 		safe_exit($total_status);
 	}
 } elsif ($process_type == PROCESS_TYPE_PERIODIC) {
+    ## Periodic does not use channel
+    $channel->close();
 	while (1) {
 		my $reporter_status = $reporter_manager->monitor(REPORTER_TYPE_PERIODIC);
 		exit($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
@@ -419,7 +463,7 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 	my $generator = GenTest::Generator::FromGrammar->new(
 		grammar => $grammar,
 		varchar_length => $config->property('varchar-length'),
-		seed => $config->seed + $id,
+		seed => $seed + $id,
 		thread_id => $id,
 		mask => $config->mask,
 	        mask_level => $config->property('mask-level')

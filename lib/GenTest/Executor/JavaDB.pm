@@ -1,3 +1,20 @@
+# Copyright (C) 2009 Sun Microsystems, Inc. All rights reserved.
+# Use is subject to license terms.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
+
 package GenTest::Executor::JavaDB;
 
 require Exporter;
@@ -239,78 +256,6 @@ sub version {
 }
 
 
-sub tables {
-	my ($executor, $database) = @_;
-
-	return [] if not defined $executor->dbh();
-
-	my $cache_key = join('-', ('tables', $database));
-	my $dbname = defined $database ? "$database" : "APP";
-	my $query = 
-        "SELECT t.tablename FROM ". 
-        " sys.systables AS t INNER JOIN sys.sysschemas AS s ".
-        " ON t.schemaid = s.schemaid ".
-        " WHERE s.schemaname = '$dbname' ".
-        " AND t.tablename != 'DUMMY'";
-	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-	return $caches{$cache_key};
-}
-
-sub fields {
-    my ($executor, $table, $database) = @_;
-	
-    return [] if not defined $executor->dbh();
-    
-    my $cache_key = join('-', ('fields', $table, $database));
-    my $dbname = defined $database ? "$database" : "APP";
-    $table = $executor->tables($database)->[0] if not defined $table;
-    
-    my $query = 
-        "SELECT c.columnname FROM ".
-        "sys.systables AS t INNER JOIN sys.sysschemas AS s ".
-        "ON t.schemaid = s.schemaid INNER JOIN sys.syscolumns as c ".
-        "ON t.tableid = c.referenceid ".
-        " where s.schemaname='$dbname' and t.tablename = '$table'";
-    
-    
-    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-    
-    return $caches{$cache_key};
-}
-
-sub fieldsIndexed {
-    my ($executor, $table, $database) = @_;
-
-    return [] if not defined $executor->dbh();
-
-    my $cache_key = join('-', ('fields_indexed', $table, $database));
-    my $dbname = defined $database ? "$database" : "APP";
-    $table = $executor->tables($database)->[0] if not defined $table;
-	
-    my $query = 
-	"SELECT columnname FROM ".
-	"sys.syskeys AS keys ".
-	"INNER JOIN sys.sysconglomerates AS cong ON keys.conglomerateid = cong.conglomerateid ".
-	"INNER JOIN sys.systables AS tab ON cong.tableid = tab.tableid ".
-	"INNER JOIN sys.sysschemas AS sch ON tab.schemaid = sch.schemaid ".
-	"INNER JOIN sys.syscolumns AS col ON col.referenceid = tab.tableid ".
-	"WHERE cong.isindex AND tablename = '$table' ".
-	"AND schemaname = '$dbname'";
-    
-    
-    $caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) 
-	if not exists $caches{$cache_key};
-    
-    return $caches{$cache_key};
-}
-
-sub fieldsNoPK {
-    ## FIXME dont know how yet
-    my ($executor, $table, $database) = @_;
-    return $executor->fields($table, $database);
-}
-
-
 sub currentSchema {
 	my ($self,$schema) = @_;
 
@@ -321,6 +266,33 @@ sub currentSchema {
     }
     
 	return $self->dbh()->selectrow_array("VALUES CURRENT SCHEMA");
+}
+
+
+
+sub getSchemaMetaData {
+    ## Return the result from a query with the following columns:
+    ## 1. Schema (aka database) name
+    ## 2. Table name
+    ## 3. TABLE for tables VIEW for views and MISC for other stuff
+    ## 4. Column name
+    ## 5. PRIMARY for primary key, INDEXED for indexed column and "ORDINARY" for all other columns
+    my ($self) = @_;
+    my $query = 
+        "select ".
+               "schemaname, ". 
+               "tablename, ".
+               "case when tabletype='V' then 'view' ".
+                    "when tabletype='T' then 'table' ".
+                    "else 'misc' end, ".
+                "columnname, ".
+                "case when cons.type = 'P' then 'primary' else 'ordinary' end ". ## Need to figure out how to find indexes
+        "from ".
+            "sys.systables as tab join sys.sysschemas as sch on tab.schemaid=sch.schemaid ".
+            "join sys.syscolumns as col on tab.tableid = col.referenceid ".
+            "left join sys.sysconstraints as cons on tab.tableid = cons.tableid ".
+         "where tablename <> 'DUMMY'";
+    return $self->dbh()->selectall_arrayref($query);
 }
 
 

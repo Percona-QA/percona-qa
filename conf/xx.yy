@@ -1,2 +1,0 @@
-query:
-	SELECT * FROM BB;

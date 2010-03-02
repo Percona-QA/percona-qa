@@ -1,3 +1,20 @@
+# Copyright (C) 2008-2010 Sun Microsystems, Inc. All rights reserved.
+# Use is subject to license terms.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
+
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use lib 'randgen/lib';
@@ -61,8 +78,8 @@ if ($windowsOS) {
 	# For vlad
 	#ENV{MYSQL_FULL_MINIDUMP} = 1;
 
-	system("date /T");
-	system("time /T");
+	#system("date /T");
+	#system("time /T");
 
 	# Path to MySQL releases used for comparison runs.
 	$basedirRelease50 = 'G:\mysql-releases\mysql-5.0.87-win32'; # loki06
@@ -76,8 +93,8 @@ if ($windowsOS) {
 	# For c++filt
 	$ENV{PATH} = $ENV{PATH}.':/opt/studio12/SUNWspro/bin';
 
-	system("uname -a");
-	system("date");
+	#system("uname -a");
+	#system("date");
 
 }
 
@@ -206,7 +223,7 @@ sub get_pb2_branch_id {
 
 chdir('randgen');
 
-print("***** Information on the host system: *****\n");
+print("===== Information on the host system: =====\n");
 print(" - Local time  : ".localtime()."\n");
 print(" - Hostname    : ".hostname()."\n");
 print(" - PID         : $$\n");
@@ -218,7 +235,7 @@ print("       vardir  = $vardir\n");
 print("       tree    = $tree\n");
 print("       test    = $test\n");
 print("\n");
-print("***** Information on Random Query Generator version (bzr): *****\n");
+print("===== Information on Random Query Generator version (bzr): =====\n");
 system("bzr info");
 system("bzr version-info");
 print("\n");
@@ -236,14 +253,15 @@ $test =~ s/^rqg_//;	# test_name without prefix
 
 # Server port numbers:
 #
-# Use a port range ID (integer) that is unique for this host at this time.
+# If several instances of this script may run at the same time on the same
+# host, port number conflicts may occur.
+#
+# If needed, use use a port range ID (integer) that is unique for this host at
+# this time.
 # This ID is used by the RQG framework to designate a port range to use for the
 # test run. Passed to RQG using the MTR_BUILD_THREAD environment variable
 # (this naming is a legacy from MTR, which is used by RQG to start the MySQL
 # server).
-#
-# In PB2, several instances of this script may run at the same time on the same
-# host (but usually for different branches) causing port number conflicts.
 #
 # Solution: Use unique port range id per branch. Use "branch_id" as recorded
 #           in PB2 database (guaranteed unique per branch).
@@ -252,24 +270,27 @@ $test =~ s/^rqg_//;	# test_name without prefix
 # Potential issue 2: Clashing resources when running multiple pushes in same branch?
 # Potential solution 2: Keep track of used ids in local file(s). Pick unused id.
 #                       (not implemented yet)
-print("***** Determining port base id: *****\n");
+#
+# Currently (December 2009) PB2 RQG host should be running only one test at a
+# time, so this should not be an issue, hence no need to set MTR_BUILD_THREAD.
+
+#print("===== Determining port base id: =====\n");
 my $port_range_id; # Corresponding to MTR_BUILD_THREAD in the MySQL MTR world.
-# First, see if use has supplied us with a value for MTR_BUILD_THREAD:
+# First, see if user has supplied us with a value for MTR_BUILD_THREAD:
 $port_range_id = $ENV{MTR_BUILD_THREAD};
 if (defined $port_range_id) {
 	print("Environment variable MTR_BUILD_THREAD was already set.\n");
-} else {
-	# try to obtain branch id, somehow
-	$port_range_id = get_pb2_branch_id();
-	if (not defined $port_range_id) {
-		print("Unable to get branch id. Picking a 'random' port base id...\n");
-		$port_range_id = pick_random_port_range_id();
-	} else {
-		print("Using pb2 branch ID as port base ID.\n");
-	}
 }
-print("MTR_BUILD_THREAD=$port_range_id\n");
-print("\n");
+#else {
+#	# try to obtain branch id, somehow
+#	$port_range_id = get_pb2_branch_id();
+#	if (not defined $port_range_id) {
+#		print("Unable to get branch id. Picking a 'random' port base id...\n");
+#		$port_range_id = pick_random_port_range_id();
+#	} else {
+#		print("Using pb2 branch ID as port base ID.\n");
+#	}
+#}
 
 print("Configuring test...\n");
 
@@ -298,8 +319,8 @@ if (($rpl_mode) = $test =~ m{(rbr|sbr|mbr|statement|mixed|row)}io) {
 #
 if ($test =~ m{falcon_.*transactions}io ) {
 	$command = '
-		--grammar='.$conf.'/transactions.yy
-		--gendata='.$conf.'/transactions.zz
+		--grammar='.$conf.'/transactions/transactions.yy
+		--gendata='.$conf.'/transactions/transactions.zz
 		--mysqld=--falcon-consistent-read=1
 		--mysqld=--transaction-isolation=REPEATABLE-READ
 		--validator=DatabaseConsistency
@@ -307,7 +328,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	';
 } elsif ($test =~ m{falcon_.*durability}io ) {
 	$command = '
-		--grammar='.$conf.'/transaction_durability.yy
+		--grammar='.$conf.'/transactions/transaction_durability.yy
 		--vardir1='.$vardir.'/vardir-'.$engine.'
 		--vardir2='.$vardir.'/vardir-innodb
 		--mysqld=--default-storage-engine='.$engine.'
@@ -317,8 +338,8 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	';
 } elsif ($test =~ m{falcon_repeatable_read}io ) {
 	$command = '
-		--grammar='.$conf.'/repeatable_read.yy
-		--gendata='.$conf.'/transactions.zz
+		--grammar='.$conf.'/transactions/repeatable_read.yy
+		--gendata='.$conf.'/transactions/transactions.zz
 		--mysqld=--falcon-consistent-read=1
 		--mysqld=--transaction-isolation=REPEATABLE-READ
 		--validator=RepeatableRead
@@ -327,8 +348,8 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	';
 } elsif ($test =~ m{falcon_chill_thaw_compare}io) {
 	$command = '
-	        --grammar='.$conf.'/falcon_chill_thaw.yy
-		--gendata='.$conf.'/falcon_chill_thaw.zz
+	        --grammar='.$conf.'/engines/falcon/falcon_chill_thaw.yy
+		--gendata='.$conf.'/engines/falcon/falcon_chill_thaw.zz
 	        --mysqld=--falcon-record-chill-threshold=1K
 	        --mysqld=--falcon-index-chill-threshold=1K 
 		--threads=1
@@ -338,27 +359,27 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	';
 } elsif ($test =~ m{falcon_chill_thaw}io) {
 	$command = '
-	        --grammar='.$conf.'/falcon_chill_thaw.yy
+	        --grammar='.$conf.'/engines/falcon/falcon_chill_thaw.yy
 	        --mysqld=--falcon-index-chill-threshold=4K 
 	        --mysqld=--falcon-record-chill-threshold=4K
 	';
 } elsif ($test =~ m{falcon_online_alter}io) {
 	$command = '
-	        --grammar='.$conf.'/falcon_online_alter.yy
+	        --grammar='.$conf.'/engines/falcon/falcon_online_alter.yy
 	';
 } elsif ($test =~ m{falcon_ddl}io) {
 	$command = '
-	        --grammar='.$conf.'/falcon_ddl.yy
+	        --grammar='.$conf.'/engines/falcon/falcon_ddl.yy
 	';
 } elsif ($test =~ m{falcon_limit_compare_self}io ) {
 	$command = '
-		--grammar='.$conf.'/falcon_nolimit.yy
+		--grammar='.$conf.'/engines/falcon/falcon_nolimit.yy
 		--threads=1
 		--validator=Limit
 	';
 } elsif ($test =~ m{falcon_limit_compare_innodb}io ) {
 	$command = '
-		--grammar='.$conf.'/limit_compare.yy
+		--grammar='.$conf.'/engines/falcon/limit_compare.yy
 		--vardir1='.$vardir.'/vardir-falcon
 		--vardir2='.$vardir.'/vardir-innodb
 		--mysqld=--default-storage-engine=Falcon
@@ -368,56 +389,47 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	';
 } elsif ($test =~ m{falcon_limit}io ) {
 	$command = '
-	        --grammar='.$conf.'/falcon_limit.yy
+	        --grammar='.$conf.'/engines/falcon/falcon_limit.yy
 		--mysqld=--loose-maria-pagecache-buffer-size=64M
 	';
 } elsif ($test =~ m{falcon_recovery}io ) {
 	$command = '
-	        --grammar='.$conf.'/falcon_recovery.yy
-		--gendata='.$conf.'/falcon_recovery.zz
+	        --grammar='.$conf.'/engines/falcon/falcon_recovery.yy
+		--gendata='.$conf.'/engines/falcon/falcon_recovery.zz
 		--mysqld=--falcon-checkpoint-schedule="1 1 1 1 1"
 	';
 } elsif ($test =~ m{falcon_pagesize_32K}io ) {
 	$command = '
-		--grammar='.$conf.'/falcon_pagesize.yy
+		--grammar='.$conf.'/engines/falcon/falcon_pagesize.yy
 		--mysqld=--falcon-page-size=32K
-		--gendata='.$conf.'/falcon_pagesize32K.zz
+		--gendata='.$conf.'/engines/falcon/falcon_pagesize32K.zz
 	';
 } elsif ($test =~ m{falcon_pagesize_2K}io) {
 	$command = '
-		--grammar='.$conf.'/falcon_pagesize.yy
+		--grammar='.$conf.'/engines/falcon/falcon_pagesize.yy
 		--mysqld=--falcon-page-size=2K
-		--gendata='.$conf.'/falcon_pagesize2K.zz
+		--gendata='.$conf.'/engines/falcon/falcon_pagesize2K.zz
 	';
 } elsif ($test =~ m{falcon_select_autocommit}io) {
 	$command = '
-		--grammar='.$conf.'/falcon_select_autocommit.yy
+		--grammar='.$conf.'/engines/falcon/falcon_select_autocommit.yy
 		--queries=10000000
 	';
 } elsif ($test =~ m{falcon_backlog}io ) {
 	$command = '
-		--grammar='.$conf.'/falcon_backlog.yy
-		--gendata='.$conf.'/falcon_backlog.zz
+		--grammar='.$conf.'/engines/falcon/falcon_backlog.yy
+		--gendata='.$conf.'/engines/falcon/falcon_backlog.zz
 		--mysqld=--transaction-isolation=REPEATABLE-READ
 		--mysqld=--falcon-record-memory-max=10M
 		--mysqld=--falcon-record-chill-threshold=1K
 		--mysqld=--falcon-page-cache-size=128M
 	';
-} elsif ($test =~ m{falcon_compare_self}io ) {
-	$command = '
-		--grammar='.$conf.'/falcon_data_types.yy
-		--gendata='.$conf.'/falcon_data_types.zz
-		--vardir1='.$vardir.'/falcon-vardir1
-		--vardir2='.$vardir.'/falcon-vardir2
-		--threads=1
-		--reporters=
-	';
 } elsif ($test =~ m{falcon_compare_innodb}io ) {
         # Datatypes YEAR and TIME disabled in grammars due to Bug#45499 (InnoDB). 
         # Revert to falcon_data_types.{yy|zz} when that bug is resolved in relevant branches.
 	$command = '
-		--grammar='.$conf.'/falcon_data_types_no_year_time.yy
-		--gendata='.$conf.'/falcon_data_types_no_year_time.zz
+		--grammar='.$conf.'/engines/falcon/falcon_data_types_no_year_time.yy
+		--gendata='.$conf.'/engines/falcon/falcon_data_types_no_year_time.zz
 		--vardir1='.$vardir.'/vardir-falcon
 		--vardir2='.$vardir.'/vardir-innodb
 		--mysqld=--default-storage-engine=Falcon
@@ -425,13 +437,30 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--threads=1
 		--reporters=
 	';
+} elsif ($test =~ m{falcon_compare_self}io ) {
+	$command = '
+		--grammar='.$conf.'/engines/falcon/falcon_data_types.yy
+		--gendata='.$conf.'/engines/falcon/falcon_data_types.zz
+		--vardir1='.$vardir.'/'.$engine.'-vardir1
+		--vardir2='.$vardir.'/'.$engine.'-vardir2
+		--threads=1
+		--reporters=
+	';
 #
 # END OF FALCON-ONLY TESTS
 #
+} elsif ($test =~ m{innodb_repeatable_read}io ) {
+	# Transactional test. See also falcon_repeatable_read.
+	$command = '
+		--grammar='.$conf.'/transactions/repeatable_read.yy
+		--gendata='.$conf.'/transactions/transactions.zz
+		--mysqld=--transaction-isolation=REPEATABLE-READ
+		--validator=RepeatableRead
+	';
 } elsif ($test =~ m{(falcon|myisam)_blob_recovery}io ) {
 	$command = '
-		--grammar='.$conf.'/falcon_blobs.yy
-		--gendata='.$conf.'/falcon_blobs.zz
+		--grammar='.$conf.'/engines/falcon/falcon_blobs.yy
+		--gendata='.$conf.'/engines/falcon/falcon_blobs.zz
 		--duration=130
 		--threads=1
 		--reporters=Deadlock,ErrorLog,Backtrace,Recovery,Shutdown
@@ -442,84 +471,94 @@ if ($test =~ m{falcon_.*transactions}io ) {
 			--mysqld=--falcon-page-cache-size=128M
 		';
 	}
-} elsif ($test =~ m{many_indexes}io ) {
-	# used for both falcon and myisam
+} elsif ($test =~ m{(falcon|innodb|myisam)_many_indexes}io ) {
 	$command = '
-		--grammar='.$conf.'/many_indexes.yy
-		--gendata='.$conf.'/many_indexes.zz
+		--grammar='.$conf.'/engines/many_indexes.yy
+		--gendata='.$conf.'/engines/many_indexes.zz
 	';
-} elsif ($test =~ m{tiny_inserts}io) {
-	# used for both falcon and myisam
+} elsif ($test =~ m{(falcon|innodb|myisam)_tiny_inserts}io) {
 	$command = '
-		--gendata='.$conf.'/falcon_tiny_inserts.zz
-		--grammar='.$conf.'/falcon_tiny_inserts.yy
+		--gendata='.$conf.'/engines/tiny_inserts.zz
+		--grammar='.$conf.'/engines/tiny_inserts.yy
 		--queries=10000000
 	';
+} elsif ($test =~ m{innodb_transactions}io) {
+	$command = '
+		--grammar='.$conf.'/transactions/transactions.yy
+		--gendata='.$conf.'/transactions/transactions.zz
+		--mysqld=--transaction-isolation=REPEATABLE-READ
+		--validator=DatabaseConsistency
+	';
 #
-# END OF TESTS USED FOR FALCON (and possibly other engines as well)
+# END OF STORAGE ENGINE TESTS
 #
 # Keep the following tests in alphabetical order (based on letters in regex)
 # for easy lookup.
 #
-} elsif ($test =~ m{innodb_limit}io ) {
-	# TEMP test for testing this script (innodb defaults, plugin, etc.)
-	$command = '
-	        --grammar='.$conf.'/falcon_limit.yy
-		--duration=100
-	';
 } elsif ($test =~ m{^backup_.*?_simple}io) {
 	$command = '
-		--grammar='.$conf.'/backup_simple.yy
+		--grammar='.$conf.'/backup/backup_simple.yy
 		--reporters=Deadlock,ErrorLog,Backtrace
 		--mysqld=--mysql-backup
 	';
 } elsif ($test =~ m{^backup_.*?_consistency}io) {
 	$command = '
-		--gendata='.$conf.'/invariant.zz
-		--grammar='.$conf.'/invariant.yy
+		--gendata='.$conf.'/backup/invariant.zz
+		--grammar='.$conf.'/backup/invariant.yy
 		--validator=Invariant
 		--reporters=Deadlock,ErrorLog,Backtrace,BackupAndRestoreInvariant,Shutdown
 		--mysqld=--mysql-backup
 		--duration=600
 		--threads=25
 	';
-} elsif ($test =~ m{bulk_insert}io ) {
-	$command = '
-		--grammar='.$conf.'/maria_bulk_insert.yy
-	';
 } elsif ($test =~ m{dml_alter}io ) {
 	$command = '
-		--gendata='.$conf.'/maria.zz
-		--grammar='.$conf.'/maria_dml_alter.yy
+		--gendata='.$conf.'/engines/maria/maria.zz
+		--grammar='.$conf.'/engines/maria/maria_dml_alter.yy
 	';
 } elsif ($test =~ m{^info_schema}io ) {
 	$command = '
-		--grammar='.$conf.'/information_schema.yy
+		--grammar='.$conf.'/runtime/information_schema.yy
 		--threads=10
 		--duration=300
 		--mysqld=--log-output=file
 	';
-} elsif ($test =~ m{mostly_selects}io ) {
-	$command = '
-		--gendata='.$conf.'/maria.zz
-		--grammar='.$conf.'/maria_mostly_selects.yy
-	';
 } elsif ($test =~ m{^mdl_stability}io ) {
 	$command = '
-		--grammar='.$conf.'/metadata_stability.yy
-		--gendata='.$conf.'/metadata_stability.zz
+		--grammar='.$conf.'/runtime/metadata_stability.yy
+		--gendata='.$conf.'/runtime/metadata_stability.zz
 		--validator=SelectStability,QueryProperties
 		--engine=Innodb
 		--mysqld=--innodb
 		--mysqld=--default-storage-engine=Innodb
 		--mysqld=--transaction-isolation=SERIALIZABLE
 		--mysqld=--innodb-flush-log-at-trx-commit=2
-		--mysqld=--table-lock-wait-timeout=1
+		--mysqld=--loose-table-lock-wait-timeout=1
 		--mysqld=--innodb-lock-wait-timeout=1
 		--mysqld=--log-output=file
 		--queries=1M
 		--duration=600
 	';
+} elsif ($test =~ m{^mdl_deadlock}io ) {
+    #
+    # Should be same as mdl_stress (or mdl_stability, whichever has produced
+    # the most deadlocks), except with higher (~default) lock_wait_timeouts.
+    # The other variants have very low wait timeouts, making it difficult to
+    # detect invalid deadlocks.
+    # As per Feb-26-2010 default innodb-lock-wait-timeout=50 and
+    # lock-wait-timeout=31536000 (bug#45225).
+    # We may want to switch to real (implicit) defaults later.
+    #
+    $command = '
+        --grammar=conf/runtime/WL5004_sql.yy
+        --threads=10
+        --queries=1M
+        --duration=1200
+        --mysqld=--innodb
+        --mysqld=--innodb-lock-wait-timeout=50
+        --mysqld=--lock-wait-timeout=31536000
+        --mysqld=--log-output=file
+    ';
 } elsif ($test =~ m{^mdl_stress}io ) {
 	# Seems like --gendata=conf/WL5004_data.zz unexplicably causes more test
 	# failures, so let's leave this out of PB2 for the time being (pstoev).
@@ -527,7 +566,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	# InnoDB should be loaded but the test is not per se for InnoDB, hence
 	# no "innodb" in test name.
 	$command = '
-		--grammar=conf/WL5004_sql.yy
+		--grammar=conf/runtime/WL5004_sql.yy
 		--threads=10
 		--queries=1M
 		--duration=1800
@@ -535,7 +574,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	';
 } elsif ($test =~ m{^partition_ddl}io ) {
 	$command = '
-		--grammar='.$conf.'/partitions-ddl.yy
+		--grammar='.$conf.'/partitioning/partitions-ddl.yy
 		--mysqld=--innodb
 		--threads=1
 		--queries=100K
@@ -543,8 +582,8 @@ if ($test =~ m{falcon_.*transactions}io ) {
 } elsif ($test =~ m{partn_pruning(|.valgrind)$}io ) {
 	# reduced duration to half since gendata phase takes longer in this case
 	$command = '
-		--gendata='.$conf.'/partition_pruning.zz
-		--grammar='.$conf.'/partition_pruning.yy
+		--gendata='.$conf.'/partitioning/partition_pruning.zz
+		--grammar='.$conf.'/partitioning/partition_pruning.yy
 		--mysqld=--innodb
 		--threads=1
 		--queries=100000
@@ -552,8 +591,8 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	';
 } elsif ($test =~ m{^partn_pruning_compare_50}io) {
 	$command = '
-	--gendata='.$conf.'/partition_pruning.zz
-	--grammar='.$conf.'/partition_pruning.yy
+	--gendata='.$conf.'/partitioning/partition_pruning.zz
+	--grammar='.$conf.'/partitioning/partition_pruning.yy
 	--basedir1='.$basedir.'
 	--basedir2='.$basedirRelease50.'
 	--vardir1='.$vardir.'/vardir-bzr
@@ -569,16 +608,16 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	# Not used; rpl testing needs adjustments (some of the failures this
 	# produces are known replication issues documented in the manual).
 	$command = '
-		--gendata='.$conf.'/replication_single_engine.zz
-		--grammar='.$conf.'/replication_simple.yy
+		--gendata='.$conf.'/replication/replication_single_engine.zz
+		--grammar='.$conf.'/replication/replication_simple.yy
 		--mysqld=--log-output=table,file
 	';
 } elsif ($test =~ m{^rpl_.*?_complex}io) {
 	# Not used; rpl testing needs adjustments (some of the failures this
 	# produces are known replication issues documented in the manual).
 	$command = '
-		--gendata='.$conf.'/replication_single_engine_pk.zz
-		--grammar='.$conf.'/replication.yy
+		--gendata='.$conf.'/replication/replication_single_engine_pk.zz
+		--grammar='.$conf.'/replication/replication.yy
 		--mysqld=--log-output=table,file
 		--mysqld=--innodb
 	';
@@ -623,9 +662,9 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		$plugins = 'rpl_semi_sync_master='.$prefix.$master_plugin_name.':rpl_semi_sync_slave='.$prefix.'semisync_slave.so';
 	}
 	$command = '
-		--gendata='.$conf.'/replication_single_engine.zz
+		--gendata='.$conf.'/replication/replication_single_engine.zz
 		--engine=InnoDB
-		--grammar='.$conf.'/replication_simple.yy
+		--grammar='.$conf.'/replication/replication_simple.yy
 		--rpl_mode=default
 		--mysqld=--plugin-dir='.$plugin_dir.'
 		--mysqld=--plugin-load='.$plugins.'
@@ -643,12 +682,12 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--threads=10
 		--queries=1M
 		--duration=300
-		--grammar='.$conf.'/signal_resignal.yy
+		--grammar='.$conf.'/runtime/signal_resignal.yy
 		--mysqld=--max-sp-recursion-depth=10
 	';
-} elsif ($test =~ m{stress}io ) {
+} elsif ($test =~ m{(innodb|maria|myisam)_stress}io ) {
 	$command = '
-		--grammar='.$conf.'/maria_stress.yy
+		--grammar='.$conf.'/engines/maria/maria_stress.yy
 	';
 } else {
 	print("[ERROR]: Test configuration for test name '$test' is not ".
@@ -702,6 +741,22 @@ if ($command !~ m{--log-output}io) {
 	$command = $command.' --mysqld=--log-output=file';
 }
 
+# 1s to enable increased concurrency. NOTE: Removed in MySQL 5.5, Feb 2010.
+if ($command !~ m{table-lock-wait-timeout}io) {
+    $command = $command.' --mysqld=--loose-table-lock-wait-timeout=1';
+}
+
+# 1s to enable increased concurrency. NOTE: Added in MySQL 5.5, Feb 2010 (bug#45225).
+# Default value in the server is 1 year.
+if ($command !~ m{(--|--loose-)lock-wait-timeout}io) {
+    $command = $command.' --mysqld=--loose-lock-wait-timeout=1';
+}
+
+# Decrease from default (50s) to 1s to enable increased concurrency.
+if ($command !~ m{innodb-lock-wait-timeout}io) {
+    $command = $command.' --mysqld=--loose-innodb-lock-wait-timeout=1';
+}
+
 if ($command !~ m{--queries}io) {
 	$command = $command.' --queries=100000';
 }
@@ -735,13 +790,17 @@ if ($test =~ m{valgrind}io){
 	}
 }
 	
-$command = "perl runall.pl --mysqld=--loose-innodb-lock-wait-timeout=5 --mysqld=--table-lock-wait-timeout=5 --mysqld=--skip-safemalloc ".$command;
+$command = "perl runall.pl --mysqld=--loose-skip-safemalloc ".$command;
 
 # Add env variable to specify unique port range to use to avoid conflicts.
-if ($windowsOS) {
-	$command = "set MTR_BUILD_THREAD=$port_range_id && ".$command;
-} else {
-	$command = "MTR_BUILD_THREAD=$port_range_id ".$command;
+# Trying not to do this unless actually needed.
+if (defined $port_range_id) {
+	print("MTR_BUILD_THREAD=$port_range_id\n");
+	if ($windowsOS) {
+		$command = "set MTR_BUILD_THREAD=$port_range_id && ".$command;
+	} else {
+		$command = "MTR_BUILD_THREAD=$port_range_id ".$command;
+	}
 }
 
 $command =~ s{[\r\n\t]}{ }sgio;
@@ -765,7 +824,13 @@ while (length $full_test_name < 40)
 
 if ($command_result_shifted > 0) {
 	# test failed
-	print($full_test_name." [ fail ]\n");
+	# Trying out marking a test as "experimental" by reporting exp-fail:
+	# Mark all failures in next-mr-johnemb as experimental (temporary).
+	if ($ENV{BRANCH_NAME} =~ m{mysql-next-mr-johnemb}) {
+		print($full_test_name." [ exp-fail ]\n");
+	} else {
+		print($full_test_name." [ fail ]\n");
+	}
 	print('runall.pl failed with exit code '.$command_result_shifted."\n");
 	print("Look above this message in the test log for failure details.\n");
 } else {
