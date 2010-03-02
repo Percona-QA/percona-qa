@@ -1,10 +1,27 @@
+# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Use is subject to license terms.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
+
 package GenTest::Executor;
 
 require Exporter;
 @ISA = qw(GenTest Exporter);
 
 @EXPORT = qw(
-        EXECUTOR_ROW_COUNTS
+    EXECUTOR_ROW_COUNTS
 	EXECUTOR_EXPLAIN_COUNTS
 	EXECUTOR_EXPLAIN_QUERIES
 	EXECUTOR_ERROR_COUNTS
@@ -12,6 +29,7 @@ require Exporter;
 
 use strict;
 use Carp;
+use Data::Dumper;
 use GenTest;
 use GenTest::Constants;
 
@@ -23,6 +41,10 @@ use constant EXECUTOR_EXPLAIN_COUNTS	=> 4;
 use constant EXECUTOR_EXPLAIN_QUERIES	=> 5;
 use constant EXECUTOR_ERROR_COUNTS	=> 6;
 use constant EXECUTOR_DEFAULT_SCHEMA => 7;
+use constant EXECUTOR_SCHEMA_METADATA => 8;
+use constant EXECUTOR_COLLATION_METADATA => 9;
+use constant EXECUTOR_META_CACHE => 10;
+use constant EXECUTOR_CHANNEL => 11;
 
 1;
 
@@ -32,17 +54,18 @@ sub new {
 	my $executor = $class->SUPER::new({
 		'dsn'	=> EXECUTOR_DSN,
 		'dbh'	=> EXECUTOR_DBH,
+        'channel' => EXECUTOR_CHANNEL,
 	}, @_);
     
     return $executor;
 }
 
 sub newFromDSN {
-	my ($self,$dsn) = @_;
+	my ($self,$dsn,$channel) = @_;
 	
 	if ($dsn =~ m/^dbi:mysql:/i) {
 		require GenTest::Executor::MySQL;
-		return GenTest::Executor::MySQL->new(dsn => $dsn);
+		return GenTest::Executor::MySQL->new(dsn => $dsn, channel => $channel);
 	} elsif ($dsn =~ m/^dbi:drizzle:/i) {
 		require GenTest::Executor::Drizzle;
 		return GenTest::Executor::Drizzle->new(dsn => $dsn);
@@ -60,6 +83,16 @@ sub newFromDSN {
 		exit(STATUS_ENVIRONMENT_FAILURE);
 	}
 }
+
+sub channel {
+    return $_[0]->[EXECUTOR_CHANNEL];
+}
+
+sub sendError {
+    my ($self, $msg) = @_;
+    $self->channel->send($msg);
+}
+
 
 sub dbh {
 	return $_[0]->[EXECUTOR_DBH];
@@ -127,7 +160,7 @@ sub preprocess {
 
     # print "... $id before: $query \n";
     
-    $query =~ s/\/\*\+[a-z:]*$id[a-z:]*:([^*]*)\*\//\1/gi;
+    $query =~ s/\/\*\+[a-z:]*$id[a-z:]*:([^*]*)\*\//$1/gi;
 
     # print "... after: $query \n";
 
@@ -168,6 +201,165 @@ sub defaultSchema {
 
 sub currentSchema {
     croak "currentSchema not defined for ". (ref $_[0]);
+}
+
+
+sub getSchemaMetaData {
+    croak "getSchemaMetaData not defined for ". (ref $_[0]);
+}
+
+sub getCollationMetaData {
+    carp "getCollationMetaData not defined for ". (ref $_[0]);
+    return [[undef,undef]];
+}
+
+
+########### Metadata routines
+
+sub cacheMetaData {
+    my ($self) = @_;
+    
+    say ("Caching metadata for ".$self->dsn());
+
+    my $meta = {};
+    foreach my $row (@{$self->getSchemaMetaData()}) {
+        my ($schema, $table, $type, $col, $key) = @$row;
+        $meta->{$schema}={} if not exists $meta->{$schema};
+        $meta->{$schema}->{$table}={} if not exists $meta->{$schema}->{$table};
+        $meta->{$schema}->{$table}->{$col}=$key;
+    }
+
+    $self->[EXECUTOR_SCHEMA_METADATA] = $meta;
+
+    my $coll = {};
+    foreach my $row (@{$self->getCollationMetaData()}) {
+        my ($collation, $charset) = @$row;
+        $coll->{$collation} = $charset;
+    }
+    $self->[EXECUTOR_COLLATION_METADATA] = $coll;
+
+    $self->[EXECUTOR_META_CACHE] = {};
+}
+
+sub metaSchemas {
+    my ($self) = @_;
+    if (not defined $self->[EXECUTOR_META_CACHE]->{SCHEMAS}) {
+        my $schemas = [sort keys %{$self->[EXECUTOR_SCHEMA_METADATA]}];
+        croak "No schemas found" 
+            if not defined $schemas or $#$schemas < 0;
+        $self->[EXECUTOR_META_CACHE]->{SCHEMAS} = $schemas;
+    }
+    return $self->[EXECUTOR_META_CACHE]->{SCHEMAS};
+}
+
+sub metaTables {
+    my ($self, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+
+    $schema = $self->defaultSchema if not defined $schema;
+
+    my $cachekey = "TAB-$schema";
+
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $tables = [sort keys %{$meta->{$schema}}];
+        croak "Schema '$schema' has no tables"  
+            if not defined $tables or $#$tables < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $tables;
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+    
+}
+
+sub metaColumns {
+    my ($self, $table, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+    
+    $schema = $self->defaultSchema if not defined $schema;
+    $table = $self->metaTables($schema)->[0] if not defined $table;
+    
+    my $cachekey="COL-$schema-$table";
+    
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $cols = [sort keys %{$meta->{$schema}->{$table}}];
+        croak "Table '$table' in schema '$schema' has no columns"  
+            if not defined $cols or $#$cols < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $cols;
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+}
+
+sub metaColumnsType {
+    my ($self, $type, $table, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+    
+    $schema = $self->defaultSchema if not defined $schema;
+    $table = $self->metaTables($schema)->[0] if not defined $table;
+    
+    my $cachekey="COL-$type-$schema-$table";
+    
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $colref = $meta->{$schema}->{$table};
+        my $cols = [sort grep {$colref->{$_} eq $type} keys %$colref];
+        croak "Table '$table' in schema '$schema' has no '$type' columns"  
+            if not defined $cols or $#$cols < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $cols;
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+    
+}
+
+sub metaColumnsTypeNot {
+    my ($self, $type, $table, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+    
+    $schema = $self->defaultSchema if not defined $schema;
+    $table = $self->metaTables($schema)->[0] if not defined $table;
+    
+    my $cachekey="COLNOT-$type-$schema-$table";
+
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $colref = $meta->{$schema}->{$table};
+        my $cols = [sort grep {$colref->{$_} ne $type} keys %$colref];
+        croak "Table '$table' in schema '$schema' has no columns which are not '$type'"  
+            if not defined $cols or $#$cols < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $cols;
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+}
+
+sub metaCollations {
+    my ($self) = @_;
+    
+    my $cachekey="COLLATIONS";
+
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $coll = [sort keys %{$self->[EXECUTOR_COLLATION_METADATA]}];
+        croak "No Collations defined" if not defined $coll or $#$coll < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $coll;
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+}
+
+sub metaCharactersets {
+    my ($self) = @_;
+    
+    my $cachekey="CHARSETS";
+    
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $charsets = [values %{$self->[EXECUTOR_COLLATION_METADATA]}];
+        croak "No character sets defined" if not defined $charsets or $#$charsets < 0;
+        my %seen = ();
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = [sort grep { ! $seen{$_} ++ } @$charsets];
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+}
+
+################### Public interface to be used from grammars
+##
+
+sub tables {
+    my ($self, @args) = @_;
+    return $self->metaTables(@args);
 }
 
 1;

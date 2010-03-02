@@ -1,6 +1,23 @@
+# Copyright (C) 2008-2010 Sun Microsystems, Inc. All rights reserved.
+# Use is subject to license terms.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
+
 package GenTest;
 use base 'Exporter';
-@EXPORT = ('say', 'tmpdir', 'safe_exit', 'windows', 'xml_timestamp', 'rqg_debug');
+@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'windows', 'solaris', 'xml_timestamp', 'rqg_debug');
 
 use strict;
 
@@ -47,7 +64,11 @@ sub new {
 
         foreach my $i (0..$max_arg) {
                 if (exists $args->{$_[$i * 2]}) {
-                        $obj->[$args->{$_[$i * 2]}] = $_[$i * 2 + 1];
+			if (defined $obj->[$args->{$_[$i * 2]}]) {
+				carp("Argument '$_[$i * 2]' passed twice to ".$class.'->new()');
+			} else {
+	                        $obj->[$args->{$_[$i * 2]}] = $_[$i * 2 + 1];
+			}
                 } else {
                         carp("Unkown argument '$_[$i * 2]' to ".$class.'->new()');
                 }
@@ -69,6 +90,18 @@ sub say {
 	}
 }
 
+sub sayFile {
+    my ($file) = @_;
+
+    say("--------- Contents of $file -------------");
+    open FILE,$file;
+    while (<FILE>) {
+	say("| ".$_);
+    }
+    close FILE;
+    say("----------------------------------");
+}
+
 sub tmpdir {
 	return $tmpdir;
 }
@@ -83,6 +116,14 @@ sub windows {
 		($^O eq 'MSWin32') ||
 	        ($^O eq 'MSWin64')
 	) {
+		return 1;
+	} else {
+		return 0;
+	}	
+}
+
+sub solaris {
+	if ($^O eq 'solaris') {
 		return 1;
 	} else {
 		return 0;

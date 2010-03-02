@@ -1,3 +1,20 @@
+# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Use is subject to license terms.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
+
 package GenTest::Executor::MySQL;
 
 require Exporter;
@@ -75,7 +92,7 @@ my @errors = (
 
 my @patterns = map { qr{$_}i } @errors;
 
-use constant EXECUTOR_MYSQL_AUTOCOMMIT => 10;
+use constant EXECUTOR_MYSQL_AUTOCOMMIT => 20;
 
 #
 # Column positions for SHOW SLAVES
@@ -243,6 +260,8 @@ use constant	ER_SP_PROC_TABLE_CORRUPT=> 1457;
 use constant	ER_BACKUP_NOT_ENABLED	=> 1789;
 use constant	ER_BACKUP_SEND_DATA1	=> 1670;
 use constant	ER_BACKUP_SEND_DATA2	=> 1687;
+use constant	ER_BACKUP_PROGRESS_TABLES => 1691;
+use constant	ER_BACKUP_RUNNING	=> 1651;
 
 # Out of disk space, quotas, etc.
 
@@ -397,6 +416,8 @@ my %err2type = (
 
 	ER_BACKUP_SEND_DATA1()	=> STATUS_BACKUP_FAILURE,
 	ER_BACKUP_SEND_DATA2()	=> STATUS_BACKUP_FAILURE,
+	ER_BACKUP_PROGRESS_TABLES() => STATUS_BACKUP_FAILURE,
+	ER_BACKUP_RUNNING()	=> STATUS_SEMANTIC_ERROR,
 
 	ER_CANT_CREATE_THREAD()	=> STATUS_ENVIRONMENT_FAILURE,
 	ER_OUT_OF_RESOURCES()	=> STATUS_ENVIRONMENT_FAILURE,
@@ -413,8 +434,6 @@ my %err2type = (
 	ER_SERVER_SHUTDOWN()    => STATUS_SERVER_KILLED
 );
 
-my %caches;
-	
 sub init {
 	my $executor = shift;
 	my $dbh = DBI->connect($executor->dsn(), undef, undef, {
@@ -452,6 +471,19 @@ sub init {
 	return STATUS_OK;
 }
 
+sub reportError {
+    my ($self, $query, $err, $errstr, $silent) = @_;
+    
+    my $msg = [$query,$err,$errstr];
+    
+    if (defined $self->channel) {
+        $self->sendError($msg) if !$silent;
+    } elsif (not defined $reported_errors{$errstr}) {
+        say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
+        $reported_errors{$errstr}++;
+    }
+}
+
 sub execute {
 	my ($executor, $query, $silent) = @_;
 
@@ -464,7 +496,7 @@ sub execute {
 	if (
 		(not defined $executor->[EXECUTOR_MYSQL_AUTOCOMMIT]) &&
 		(
-			($query =~ m{^\s*start transaction}io) ||
+			($query =~ m{^\s*start\s+transaction}io) ||
 			($query =~ m{^\s*begin}io) 
 		)
 	) {	
@@ -506,10 +538,7 @@ sub execute {
 		) {
 			my $errstr = $executor->normalizeError($sth->errstr());
 			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
-			if (not defined $reported_errors{$errstr}) {
-				say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
-				$reported_errors{$errstr}++;
-			}
+            $executor->reportError($query, $err, $errstr, $silent);
 		} elsif (
 			($err_type == STATUS_SERVER_CRASHED) ||
 			($err_type == STATUS_SERVER_KILLED)
@@ -694,100 +723,6 @@ sub DESTROY {
 	$executor->dbh()->disconnect();
 }
 
-sub databases {
-	my $executor = shift;
-
-	return [] if not defined $executor->dbh();
-
-	$caches{databases} = $executor->dbh()->selectcol_arrayref("SHOW DATABASES") if not exists $caches{databases};
-	return $caches{databases};
-}
-
-sub tables {
-	my ($executor, $database) = @_;
-
-	return [] if not defined $executor->dbh();
-
-	my $cache_key = join('-', ('tables', $database));
-	my $dbname = defined $database ? "$database" : "test";
-	my $query = 
-		"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES ". 
-		"WHERE TABLE_SCHEMA = '$dbname' " .
-		" AND table_name != 'DUMMY'";
-	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-	return $caches{$cache_key};
-}
-
-sub fields {
-	my ($executor, $table, $database) = @_;
-	
-	return [] if not defined $executor->dbh();
-
-	my $cache_key = join('-', ('fields', $table, $database));
-	my $query = defined $table ? "SHOW FIELDS FROM $table" : "SHOW FIELDS FROM ".$executor->tables($database)->[0];
-	$query .= " FROM $database" if defined $database;
-
-	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref($query) if not exists $caches{$cache_key};
-
-	return $caches{$cache_key};
-}
-
-sub fieldsNoPK {
-	my ($executor, $table, $database) = @_;
-
-	return [] if not defined $executor->dbh();
-
-	my $cache_key = join('-', ('fields_no_pk', $table, $database));
-
-	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref("
-		SELECT COLUMN_NAME
-		FROM INFORMATION_SCHEMA.COLUMNS
-		WHERE TABLE_NAME = '".(defined $table ? $table : $executor->tables($database)->[0] )."'
-		AND TABLE_SCHEMA = ".(defined $database ? "'$database'" : 'DATABASE()' )."
-		AND COLUMN_KEY != 'PRI'
-	") if not exists $caches{$cache_key};
-
-	return $caches{$cache_key};
-}
-
-sub fieldsIndexed {
-	my ($executor, $table, $database) = @_;
-
-	return [] if not defined $executor->dbh();
-
-	my $cache_key = join('-', ('fields_indexed', $table, $database));
-
-	$caches{$cache_key} = $executor->dbh()->selectcol_arrayref("
-		SHOW INDEX
-		FROM ".(defined $table ? $table : $executor->tables($database)->[0]).
-		(defined $database ? " FROM $database " : "")
-	, { Columns=>[5] }) if not exists $caches{$cache_key};
-
-	return $caches{$cache_key};
-}
-
-sub collations {
-	my $executor = shift;
-
-	return [] if not defined $executor->dbh();
-
-	return $executor->dbh()->selectcol_arrayref("
-		SELECT COLLATION_NAME
-		FROM INFORMATION_SCHEMA.COLLATIONS
-	");
-}
-
-sub charsets {
-	my $executor = shift;
-
-	return [] if not defined $executor->dbh();
-
-	return $executor->dbh()->selectcol_arrayref("
-		SELECT DISTINCT CHARACTER_SET_NAME
-		FROM INFORMATION_SCHEMA.COLLATIONS
-	");
-}
-
 sub currentSchema {
 	my ($executor,$schema) = @_;
 
@@ -818,6 +753,51 @@ sub normalizeError {
 	$errstr =~ s{\.\*\?}{%s}sgio;
 
 	return $errstr;
+}
+
+
+sub getSchemaMetaData {
+    ## Return the result from a query with the following columns:
+    ## 1. Schema (aka database) name
+    ## 2. Table name
+    ## 3. TABLE for tables VIEW for views and MISC for other stuff
+    ## 4. Column name
+    ## 5. PRIMARY for primary key, INDEXED for indexed column and "ORDINARY" for all other columns
+    my ($self) = @_;
+    my $query = 
+        "SELECT CASE WHEN table_schema = 'information_schema' ".
+                     "THEN 'INFORMATION_SCHEMA' ".  ## Hack due to
+                                                    ## weird MySQL
+                                                    ## behaviour on
+                                                    ## schema names
+                                                    ## (See Bug#49708)
+                     "ELSE table_schema END, ".
+               "table_name, ".
+               "CASE WHEN table_type = 'BASE TABLE' THEN 'table' ".
+                    "WHEN table_type = 'VIEW' THEN 'view' ".
+                    "WHEN table_type = 'SYSTEM VIEW' then 'view' ".
+                    "ELSE 'misc' END, ".
+               "column_name, ".
+               "CASE WHEN column_key = 'PRI' THEN 'primary' ".
+                    "WHEN column_key = 'MUL' THEN 'indexed' ".
+                    "WHEN column_key = 'UNI' THEN 'indexed' ".
+                    "ELSE 'ordinary' END ".
+         "FROM information_schema.tables INNER JOIN ".
+              "information_schema.columns USING(table_schema, table_name) ".
+          "WHERE table_name <> 'DUMMY'"; 
+
+    return $self->dbh()->selectall_arrayref($query);
+}
+
+sub getCollationMetaData {
+    ## Return the result from a query with the following columns:
+    ## 1. Collation name
+    ## 2. Character set
+    my ($self) = @_;
+    my $query = 
+        "SELECT collation_name,character_set_name FROM information_schema.collations";
+
+    return $self->dbh()->selectall_arrayref($query);
 }
 
 1;
