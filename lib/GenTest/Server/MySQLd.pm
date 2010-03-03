@@ -86,7 +86,7 @@ sub new {
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
     $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
-                                          windows()?["sql/Debug","sql/RelWithDebugInfo"]:["sql","libexec"],
+                                          windows()?["sql/Debug","sql/RelWithDebugInfo","sql/Release"]:["sql","libexec","bin","sbin"],
                                           windows()?"mysqld.exe":"mysqld");
     $self->[MYSQLD_BOOT_SQL] = [];
 
@@ -120,7 +120,7 @@ sub new {
     
     $self->[MYSQLD_LIBMYSQL] = 
        $self->_findDir([$self->basedir], 
-                       windows()?["libmysql/Debug","libmysql/RelWithDebugInfo"]:["libmysql","libmysql/.libs","lib/mysql"], 
+                       windows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release"]:["libmysql","libmysql/.libs","lib/mysql"], 
                        windows()?"libmysql.dll":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
