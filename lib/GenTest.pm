@@ -134,7 +134,12 @@ sub xml_timestamp {
 	my $datetime = shift;
 
 	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = defined $datetime ? localtime($datetime) : localtime();
-	$mday++;
+	# $mday is the day of the month, and $mon is the month itself.
+	# $mon is in the range 0..11 with 0 indicating January and 11 indicating December.
+	# So, increment $mon to get the correct month number (1 indicating January).
+	$mon++;
+	# $year is the number of years since 1900, not just the last two digits of the year.
+	# So, add 1900 to the year to get correct calendar year.
 	$year += 1900;
 	
 	return sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $year, $mon ,$mday ,$hour, $min, $sec);
