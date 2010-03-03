@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -41,6 +41,8 @@ use constant REPLMYSQLD_START_DIRTY => 6;
 use constant REPLMYSQLD_SERVER_OPTIONS => 7;
 use constant REPLMYSQLD_MASTER => 8;
 use constant REPLMYSQLD_SLAVE => 9;
+use constant REPLMYSQLD_VALGRIND => 10;
+use constant REPLMYSQLD_VALGRIND_OPTIONS => 11;
 
 sub new {
     my $class = shift;
@@ -52,7 +54,9 @@ sub new {
                                    'slave_port' => REPLMYSQLD_SLAVE_PORT,
                                    'mode' => REPLMYSQLD_MODE,
                                    'server_options' => REPLMYSQLD_SERVER_OPTIONS,
-                                   'start_dirty' => REPLMYSQLD_START_DIRTY},@_);
+                                   'start_dirty' => REPLMYSQLD_START_DIRTY,
+                                   'valgrind' => REPLMYSQLD_VALGRIND,
+                                   'valgrind_options', REPLMYSQLD_VALGRIND_OPTIONS},@_);
     
     if (not defined $self->[REPLMYSQLD_MASTER_PORT]) {
         $self->[REPLMYSQLD_MASTER_PORT] = GenTest::Server::MySQLd::MYSQLD_DEFAULT_PORT;
@@ -64,6 +68,14 @@ sub new {
 
     if (not defined $self->[REPLMYSQLD_MODE]) {
         $self->[REPLMYSQLD_MODE] = 'default';
+    }
+    
+    if (not defined $self->[REPLMYSQLD_MASTER_VARDIR]) {
+        $self->[REPLMYSQLD_MASTER_VARDIR] = "mysql-test/var";
+    }
+    
+    if (not defined $self->[REPLMYSQLD_SLAVE_VARDIR]) {
+        $self->[REPLMYSQLD_SLAVE_VARDIR] = "mysql-test/var_slave";
     }
     
     my @master_options;
@@ -78,11 +90,14 @@ sub new {
     }
 
 
-    $self->[REPLMYSQLD_MASTER] = GenTest::Server::MySQLd->new(basedir => $self->basedir,
-                                                              vardir => $self->[REPLMYSQLD_MASTER_VARDIR],
-                                                              port => $self->[REPLMYSQLD_MASTER_PORT],
-                                                              server_options => \@master_options,
-                                                              start_dirty => $self->[REPLMYSQLD_START_DIRTY]);
+    $self->[REPLMYSQLD_MASTER] = 
+        GenTest::Server::MySQLd->new(basedir => $self->basedir,
+                                     vardir => $self->[REPLMYSQLD_MASTER_VARDIR],
+                                     port => $self->[REPLMYSQLD_MASTER_PORT],
+                                     server_options => \@master_options,
+                                     start_dirty => $self->[REPLMYSQLD_START_DIRTY],
+                                     valgrind => $self->[REPLMYSQLD_VALGRIND],
+                                     valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
     
     if (not defined $self->master) {
         croak("Could not create master");
@@ -99,13 +114,17 @@ sub new {
     }
     
     
-    $self->[REPLMYSQLD_SLAVE] = GenTest::Server::MySQLd->new(basedir => $self->basedir,
-                                                             vardir => $self->[REPLMYSQLD_SLAVE_VARDIR],
-                                                             port => $self->[REPLMYSQLD_SLAVE_PORT],
-                                                             server_options => \@slave_options,
-                                                             start_dirty => $self->[REPLMYSQLD_START_DIRTY]);
+    $self->[REPLMYSQLD_SLAVE] = 
+        GenTest::Server::MySQLd->new(basedir => $self->basedir,
+                                     vardir => $self->[REPLMYSQLD_SLAVE_VARDIR],
+                                     port => $self->[REPLMYSQLD_SLAVE_PORT],
+                                     server_options => \@slave_options,
+                                     start_dirty => $self->[REPLMYSQLD_START_DIRTY],
+                                     valgrind => $self->[REPLMYSQLD_VALGRIND],
+                                     valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
     
     if (not defined $self->slave) {
+        $self->master->stopServer;
         croak("Could not create slave");
     }
     
