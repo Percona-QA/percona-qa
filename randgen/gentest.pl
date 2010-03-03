@@ -436,7 +436,7 @@ if ($process_type == PROCESS_TYPE_PARENT) {
 	$test->end($total_status == STATUS_OK ? "pass" : "fail");
 
 	if (defined $config->property('xml-output')) {
-		open (XML , ">$config->property('xml-output')") or say("Unable to open $config->property('xml-output'): $!");
+		open (XML , '>'.$config->property('xml-output')) or carp("Unable to open $config->property('xml-output'): $!");
 		print XML $report->xml();
 		close XML;
 		say("XML report written to ". $config->property('xml-output'));
