@@ -51,14 +51,13 @@ sub test_simple {
     my $start = Time::HiRes::time();
     foreach my $i (1..10) {
         my $status = $gen->run();
+        $self->assert_equals(STATUS_OK, $status);
     }
     my $stop = Time::HiRes::time();
 
     open TM,">unit/gendata1.dat";
     print TM "YVALUE = ".($stop - $start)."\n";
     close TM;
-
-    $self->assert_equals(STATUS_OK, $status);
 }
 
 sub test_advanced {
@@ -71,16 +70,16 @@ sub test_advanced {
 
     
     my $start = Time::HiRes::time();
+    
     foreach my $i (1..5) {
         my $status = $gen->run();
+        $self->assert_equals(STATUS_OK, $status);
     }
     my $stop = Time::HiRes::time();
 
     open TM,">unit/gendata2.dat";
     print TM "YVALUE = ".($stop - $start)."\n";
     close TM;
-
-    $self->assert_equals(STATUS_OK, $status);
 }
 
 1;
