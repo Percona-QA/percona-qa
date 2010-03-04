@@ -99,10 +99,8 @@ sub test_grammar_speed {
     $executor->init();
     $executor->cacheMetaData();
 
-    print Dumper($executor);
-
     my $start = Time::HiRes::time();
-    foreach $i (0.. 1000) {
+    foreach $i (0.. 10000) {
         $generator->next([$executor,undef]);
     }
     my $stop = Time::HiRes::time();

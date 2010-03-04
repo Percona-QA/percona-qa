@@ -49,7 +49,9 @@ sub test_simple {
     my $gen = GenTest::App::GendataSimple->new(dsn => "dummy");
 
     my $start = Time::HiRes::time();
-    my $status = $gen->run();
+    foreach my $i (1..10) {
+        my $status = $gen->run();
+    }
     my $stop = Time::HiRes::time();
 
     open TM,">unit/gendata1.dat";
@@ -69,8 +71,10 @@ sub test_advanced {
 
     
     my $start = Time::HiRes::time();
-    my $status = $gen->run();
-     my $stop = Time::HiRes::time();
+    foreach my $i (1..5) {
+        my $status = $gen->run();
+    }
+    my $stop = Time::HiRes::time();
 
     open TM,">unit/gendata2.dat";
     print TM "YVALUE = ".($stop - $start)."\n";
