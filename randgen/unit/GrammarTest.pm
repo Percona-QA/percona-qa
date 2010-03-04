@@ -19,8 +19,12 @@ package GrammarTest;
 use base qw(Test::Unit::TestCase);
 use lib 'lib';
 use GenTest::Grammar;
+use GenTest::Executor;
+use GenTest::Executor::Dummy;
+use GenTest::Generator::FromGrammar;
 
 use Data::Dumper;
+use Time::HiRes;
 
 sub new {
     my $self = shift()->SUPER::new(@_);
@@ -81,6 +85,32 @@ sub test_mask_grammar {
     $self->assert_not_null($query);
     $self->assert_does_not_match(qr/item1/,$query->toString());
 
+}
+
+sub test_grammar_speed {
+    my $self = shift;
+
+    my $grammar = GenTest::Grammar->new(grammar_file => 'conf/examples/example.yy');
+
+    my $generator = GenTest::Generator::FromGrammar->new(grammar => $grammar,
+                                                         seed => 0);
+
+    my $executor = GenTest::Executor->newFromDSN("dummy");
+    $executor->init();
+    $executor->cacheMetaData();
+
+    print Dumper($executor);
+
+    my $start = Time::HiRes::time();
+    foreach $i (0.. 1000) {
+        $generator->next([$executor,undef]);
+    }
+    my $stop = Time::HiRes::time();
+    open TM,">unit/grammar.dat";
+    print TM "YVALUE = ".($stop - $start)."\n";
+    close TM;
+
+    
 }
 
 1;
