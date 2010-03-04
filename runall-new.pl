@@ -408,6 +408,6 @@ EOF
 sub exit_test {
 	my $status = shift;
     stopServers();
-	print localtime()." [$$] $0 will exit with exit status $status\n";
+	say("[$$] $0 will exit with exit status $status");
 	safe_exit($status);
 }

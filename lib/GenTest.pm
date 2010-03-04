@@ -17,7 +17,7 @@
 
 package GenTest;
 use base 'Exporter';
-@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'windows', 'solaris', 'xml_timestamp', 'rqg_debug');
+@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'windows', 'solaris', 'xml_timestamp', 'rqg_debug', 'isodate');
 
 use strict;
 
@@ -83,10 +83,10 @@ sub say {
 
 	if ($text =~ m{[\r\n]}sio) {
 	        foreach my $line (split (m{[\r\n]}, $text)) {
-			print "# ".sprintf("%02d:%02d:%02d", $t[2], $t[1], $t[0])." $line\n";
+			print "# ".sprintf("%04d-%02d-%02d %02d:%02d:%02d", $t[5]+1900, $t[4]+1, $t[3], $t[2], $t[1], $t[0])." $line\n";
 		}
 	} else {
-		print "# ".sprintf("%02d:%02d:%02d", $t[2], $t[1], $t[0])." $text\n";
+		print "# ".sprintf("%04d-%02d-%02d %02d:%02d:%02d", $t[5]+1900, $t[4]+1, $t[3], $t[2], $t[1], $t[0])." $text\n";
 	}
 }
 

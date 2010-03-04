@@ -1,5 +1,5 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
-# Use is subject to license terms.
+# Copyright (c) 2008, 2010 Oracle and/or its affiliates, Inc. All
+# rights reserved.  Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ use GenTest::Constants;
 my $error_log;
 
 sub validate {
-        my ($validator, $executors, $results) = @_;
+    my ($validator, $executors, $results) = @_;
 	my $dbh = $executors->[0]->dbh();
 
 	if (not defined $error_log) {
@@ -38,14 +38,23 @@ sub validate {
 			$error_log = $error_log_mysql;
 		} else {
 			my ($bar, $datadir_mysql) = $dbh->selectrow_array("SHOW VARIABLES LIKE 'datadir'");
-			$error_log = $datadir_mysql.'../log/master.err';
+            foreach my $errlog ('../log/master.err', '../mysql.err') {
+                if (-f $datadir_mysql.'/'.$errlog) {
+                    $error_log = $datadir_mysql.'/'.$errlog;
+                    last;
+                }
+            }
+            
 		}
+        say ("MarkErrorLog found errorlog at " . $error_log);
 	}
 	
+
+    
 	my $query = $results->[0]->query();
-	
+
 	open(LOG, ">>$error_log") or die "unable to open $error_log: $!";
-	print LOG localtime()." [$$] Query: $query\n";
+	print LOG xml_timestamp." [$$] Query: $query\n";
 	close LOG;
 
 	return STATUS_OK;

@@ -297,7 +297,7 @@ sub startServer {
             if (defined $self->[MYSQLD_VALGRIND_OPTIONS]) {
                 $val_opt = join(' ',@{$self->[MYSQLD_VALGRIND_OPTIONS]});
             }
-            $command = "valgrind ".$val_opt." ".$command;
+            $command = "valgrind --time-stamp=yes ".$val_opt." ".$command;
         }
         say("Starting: $command");
         $self->[MYSQLD_AUXPID] = fork();
