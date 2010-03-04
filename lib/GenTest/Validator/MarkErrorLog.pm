@@ -54,7 +54,7 @@ sub validate {
 	my $query = $results->[0]->query();
 
 	open(LOG, ">>$error_log") or die "unable to open $error_log: $!";
-	print LOG xml_timestamp." [$$] Query: $query\n";
+	print LOG isoTimestamp()." [$$] Query: $query\n";
 	close LOG;
 
 	return STATUS_OK;
