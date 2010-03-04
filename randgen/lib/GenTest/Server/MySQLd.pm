@@ -349,6 +349,27 @@ sub kill {
     }
 }
 
+sub crash {
+    my ($self) = @_;
+    
+    if (windows()) {
+        ## How do i do this?????
+        $self->kill; ## Temporary
+    } else {
+        if (defined $self->serverpid) {
+            kill SEGV => $self->serverpid;
+            say("Crashed process ".$self->serverpid);
+        }
+    }
+    
+}
+
+sub corefile {
+    my ($self) = @_;
+
+    return "foooooooooooooooooooooooooo";
+}
+
 sub stopServer {
     my ($self) = @_;
     
