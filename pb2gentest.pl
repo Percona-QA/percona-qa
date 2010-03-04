@@ -189,8 +189,8 @@ sub get_pb2_branch_id {
 	my $dsn_pb2 = 'dbi:mysql:host=trollheim.norway.sun.com:port=3306:user=readonly:database=pushbuild2';
 	my $SQL_getBranchId = "SELECT branch_id FROM branches WHERE branch_name = '$branch_name'";
 
-	print("Using branch name $branch_name\n");
-	print("Trying to connect to pushbuild2 database...\n");
+	say("Using branch name $branch_name\n");
+	say("Trying to connect to pushbuild2 database...\n");
 
 	my $dbh = DBI->connect($dsn_pb2, undef, undef, {
 		mysql_connect_timeout => 5,
@@ -200,7 +200,7 @@ sub get_pb2_branch_id {
 	} );
 
 	if (not defined $dbh) {
-		print("connect() to pushbuild2 database failed: ".$DBI::errstr."\n");
+		say("connect() to pushbuild2 database failed: ".$DBI::errstr."\n");
 		return;
 	}
 
@@ -213,22 +213,22 @@ sub get_pb2_branch_id {
 
 chdir('randgen');
 
-print("===== Information on the host system: =====\n");
-print(" - Local time  : ".localtime()."\n");
-print(" - Hostname    : ".hostname()."\n");
-print(" - PID         : $$\n");
-print(" - Working dir : ".cwd()."\n");
-print(" - PATH        : ".$ENV{'PATH'}."\n");
-print(" - Script arguments:\n");
-print("       basedir = $basedir\n");
-print("       vardir  = $vardir\n");
-print("       tree    = $tree\n");
-print("       test    = $test\n");
-print("\n");
-print("===== Information on Random Query Generator version (bzr): =====\n");
+say("===== Information on the host system: =====\n");
+say(" - Local time  : ".localtime()."\n");
+say(" - Hostname    : ".hostname()."\n");
+say(" - PID         : $$\n");
+say(" - Working dir : ".cwd()."\n");
+say(" - PATH        : ".$ENV{'PATH'}."\n");
+say(" - Script arguments:\n");
+say("       basedir = $basedir\n");
+say("       vardir  = $vardir\n");
+say("       tree    = $tree\n");
+say("       test    = $test\n");
+say("\n");
+say("===== Information on Random Query Generator version (bzr): =====\n");
 system("bzr info");
 system("bzr version-info");
-print("\n");
+say("\n");
 
 # Test name:
 #   In PB2, tests run via this script are prefixed with "rqg_" so that it is
@@ -269,7 +269,7 @@ my $port_range_id; # Corresponding to MTR_BUILD_THREAD in the MySQL MTR world.
 # First, see if user has supplied us with a value for MTR_BUILD_THREAD:
 $port_range_id = $ENV{MTR_BUILD_THREAD};
 if (defined $port_range_id) {
-	print("Environment variable MTR_BUILD_THREAD was already set.\n");
+	say("Environment variable MTR_BUILD_THREAD was already set.\n");
 }
 #else {
 #	# try to obtain branch id, somehow
@@ -282,7 +282,7 @@ if (defined $port_range_id) {
 #	}
 #}
 
-print("Configuring test...\n");
+say("Configuring test...\n");
 
 my $cwd = cwd();
 
@@ -680,10 +680,10 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--grammar='.$conf.'/engines/maria/maria_stress.yy
 	';
 } else {
-	print("[ERROR]: Test configuration for test name '$test' is not ".
+	say("[ERROR]: Test configuration for test name '$test' is not ".
 		"defined in this script.\n");
 	my $exitCode = 1;
-	print("Will exit $0 with exit code $exitCode.\n");
+	say("Will exit $0 with exit code $exitCode.\n");
 	POSIX::_exit ($exitCode);
 }
 
@@ -772,9 +772,9 @@ if (($command !~ m{--rpl_mode}io)  && ($rpl_mode ne '')) {
 
 # if test name contains (usually ends with) "valgrind", add the valgrind option to runall.pl
 if ($test =~ m{valgrind}io){
-	print("Detected that this test should enable valgrind instrumentation.\n");
+	say("Detected that this test should enable valgrind instrumentation.\n");
 	if (system("valgrind --version")) {
-		print("  *** valgrind executable not found! Not setting --valgrind flag.\n");
+		say("  *** valgrind executable not found! Not setting --valgrind flag.\n");
 	} else {
 		$command = $command.' --valgrind';
 	}
@@ -785,7 +785,7 @@ $command = "perl runall.pl --mysqld=--loose-skip-safemalloc ".$command;
 # Add env variable to specify unique port range to use to avoid conflicts.
 # Trying not to do this unless actually needed.
 if (defined $port_range_id) {
-	print("MTR_BUILD_THREAD=$port_range_id\n");
+	say("MTR_BUILD_THREAD=$port_range_id\n");
 	if (windows()) {
 		$command = "set MTR_BUILD_THREAD=$port_range_id && ".$command;
 	} else {
@@ -794,7 +794,7 @@ if (defined $port_range_id) {
 }
 
 $command =~ s{[\r\n\t]}{ }sgio;
-print("Running runall.pl...\n");
+say("Running runall.pl...\n");
 my $command_result = system($command);
 # shift result code to the right to obtain the code returned from the called script
 my $command_result_shifted = ($command_result >> 8);
@@ -821,8 +821,8 @@ if ($command_result_shifted > 0) {
 	} else {
 		print($full_test_name." [ fail ]\n");
 	}
-	print('runall.pl failed with exit code '.$command_result_shifted."\n");
-	print("Look above this message in the test log for failure details.\n");
+	say('runall.pl failed with exit code '.$command_result_shifted."\n");
+	say("Look above this message in the test log for failure details.\n");
 } else {
 	print($full_test_name." [ pass ]\n");
 }
@@ -832,31 +832,31 @@ if ($command_result_shifted > 0) {
 # Kill remaining mysqld processes.
 # Assuming only one test run going on at the same time, and that all mysqld
 # processes are ours.
-print("Checking for remaining mysqld processes...\n");
+say("Checking for remaining mysqld processes...\n");
 if (windows()) {
 	# assumes MS Sysinternals PsTools is installed in C:\bin
 	# If you need to run pslist or pskill as non-Admin user, some adjustments
 	# may be needed. See:
 	#   http://blogs.technet.com/markrussinovich/archive/2007/07/09/1449341.aspx
 	if (system('C:\bin\pslist mysqld') == 0) {
-		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
+		say(" ^--- Found running mysqld process(es), to be killed if possible.\n");
 		system('C:\bin\pskill mysqld > '.$vardir.'/pskill_mysqld.out 2>&1');
 		system('C:\bin\pskill mysqld-nt > '.$vardir.'/pskill_mysqld-nt.out 2>&1');
-	} else { print("  None found.\n"); }
+	} else { say("  None found.\n"); }
 	
 } else {
 	# Unix/Linux.
 	# Avoid "bad argument count" messages from kill by checking if process exists first.
 	if (system("pgrep mysqld") == 0) {
-		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
+		say(" ^--- Found running mysqld process(es), to be killed if possible.\n");
 		system("pgrep mysqld | xargs kill -15"); # "soft" kill
 		sleep(5);
 		if (system("pgrep mysqld > /dev/null") == 0) {
 			# process is still around...
 			system("pgrep mysqld | xargs kill -9"); # "hard" kill
 		}
-	} else { print("  None found.\n"); }
+	} else { say("  None found.\n"); }
 }
 
-print(" [$$] $0 will exit with exit status ".$command_result_shifted."\n");
+say(" [$$] $0 will exit with exit status ".$command_result_shifted."\n");
 POSIX::_exit ($command_result_shifted);
