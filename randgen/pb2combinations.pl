@@ -15,9 +15,14 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
+use lib 'lib';
+use lib "$ENV{RQG_HOME}/lib";
+use lib 'randgen/lib';
+
 use strict;
 use Cwd;
 use File::Basename;
+use GenTest;
 use POSIX;
 use Sys::Hostname;
 
@@ -36,17 +41,6 @@ $| = 1;
 # Working dir.
 chdir('randgen');
 my $cwd = cwd();
-
-#
-# Check OS, for later convenience. Windows and Unix/Linux are too different.
-#
-my $windowsOS;    # undefined if not Windows
-if (
-	($^O eq 'MSWin32') ||
-	($^O eq 'MSWin64')
-) {
-	$windowsOS = 'true';
-}
 
 # Location of grammars and other test configuration files.
 # Will use env variable RQG_CONF if set.
@@ -197,7 +191,7 @@ if ($log_lines <= 200) {
 # Assuming only one test run going on at the same time, and that all mysqld
 # processes are ours.
 print("Checking for remaining mysqld processes...\n");
-if ($windowsOS) {
+if (windows()) {
 	# assumes MS Sysinternals PsTools is installed in C:\bin
 	# If you need to run pslist or pskill as non-Admin user, some permission
 	# adjustments may be needed. See:

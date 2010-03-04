@@ -24,6 +24,7 @@ use Carp;
 use Cwd;
 use DBI;
 use File::Find;
+use GenTest;
 use GenTest::Random;
 use POSIX;
 use Sys::Hostname;
@@ -46,17 +47,6 @@ print("#########################################################################
 $| = 1;
 
 #
-# Check OS. Windows and Unix/Linux are too different.
-#
-my $windowsOS;
-if (
-	($^O eq 'MSWin32') ||
-	($^O eq 'MSWin64')
-) {
-	$windowsOS = 'true';
-}
-
-#
 # Prepare ENV variables and other settings.
 #
 
@@ -70,7 +60,7 @@ my $basedirRelease50 = '/export/home/mysql-releases/mysql-5.0';
 my $conf = $ENV{RQG_CONF};
 $conf = 'conf' if not defined $conf;
 
-if ($windowsOS) {
+if (windows()) {
 	# For tail and for cdb
 	$ENV{PATH} = 'G:\pb2\scripts\randgen\bin;G:\pb2\scripts\bin;C:\Program Files\Debugging Tools for Windows (x86);'.$ENV{PATH};
 	$ENV{_NT_SYMBOL_PATH} = 'srv*c:\\cdb_symbols*http://msdl.microsoft.com/download/symbols;cache*c:\\cdb_symbols';
@@ -83,7 +73,7 @@ if ($windowsOS) {
 
 	# Path to MySQL releases used for comparison runs.
 	$basedirRelease50 = 'G:\mysql-releases\mysql-5.0.87-win32'; # loki06
-} elsif ($^O eq 'solaris') {
+} elsif (solaris()) {
 	# For libmysqlclient
 	$ENV{LD_LIBRARY_PATH}=$ENV{LD_LIBRARY_PATH}.':/export/home/pb2/scripts/lib/';
 
@@ -637,7 +627,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	# is not yet implemented here.
 	my $plugin_dir;
 	my $plugins;
-	if ($windowsOS) {
+	if (windows()) {
 		my $master_plugin_name = "semisync_master.dll";
 		$plugin_dir=findDirectory($master_plugin_name);
 		if (not defined $plugin_dir) {
@@ -796,7 +786,7 @@ $command = "perl runall.pl --mysqld=--loose-skip-safemalloc ".$command;
 # Trying not to do this unless actually needed.
 if (defined $port_range_id) {
 	print("MTR_BUILD_THREAD=$port_range_id\n");
-	if ($windowsOS) {
+	if (windows()) {
 		$command = "set MTR_BUILD_THREAD=$port_range_id && ".$command;
 	} else {
 		$command = "MTR_BUILD_THREAD=$port_range_id ".$command;
@@ -843,7 +833,7 @@ if ($command_result_shifted > 0) {
 # Assuming only one test run going on at the same time, and that all mysqld
 # processes are ours.
 print("Checking for remaining mysqld processes...\n");
-if ($windowsOS) {
+if (windows()) {
 	# assumes MS Sysinternals PsTools is installed in C:\bin
 	# If you need to run pslist or pskill as non-Admin user, some adjustments
 	# may be needed. See:
