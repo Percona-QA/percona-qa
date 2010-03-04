@@ -53,7 +53,7 @@ sub tear_down {
     }
 }
 
-sub xtest_create_server {
+sub test_create_server {
     my $self = shift;
 
     my $vardir= cwd()."/unit/tmp";
