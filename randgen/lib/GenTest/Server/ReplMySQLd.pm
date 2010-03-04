@@ -183,7 +183,13 @@ sub waitForSlaveSync {
     my ($file, $pos) = $self->master->dbh->selectrow_array("SHOW MASTER STATUS");
     say("master status $file/$pos");
     my $wait_result = $self->slave->dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
-    return $wait_result;
+    if (not defined $wait_result) {
+        my @slave_status = $self->slave->dbh->selectrow_array("SHOW SLAVE STATUS");
+        say("Slave SQL thread has stopped with error: ".$slave_status[37]);
+		return STATUS_REPLICATION_FAILURE;
+    } else {
+        return STATUS_OK;
+    }
 }
 
 sub stopServer {
