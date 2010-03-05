@@ -259,7 +259,7 @@ sub startServer {
                                          $self->[MYSQLD_STDOPTS],
                                          ["--core-file",
                                           #"--skip-ndbcluster",
-                                          "--skip-grant",
+                                          #"--skip-grant",
                                           "--loose-new",
                                           "--relay-log=slave-relay-bin",
                                           "--loose-innodb",
