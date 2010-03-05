@@ -37,7 +37,7 @@ sub new {
 sub set_up {
 }
 
-@pids;
+my @pids;
 
 sub tear_down {
     if (windows) {
@@ -48,7 +48,7 @@ sub tear_down {
         system("rmdir /s /q unit\\tmp");
     } else {
         ## Need to ,kill leftover processes if there are some
-        # kill 9 => @pids;
+        kill 9 => @pids;
         # system("rm -rf unit/tmp");
     }
 }
