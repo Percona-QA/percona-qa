@@ -81,6 +81,7 @@ my $opt_result = GetOptions($options,
                             'engine=s',
                             'gendata:s',
                             'grammar=s',
+                            'testname:s',
                             'redefine=s',
                             'threads=i',
                             'queries=s',
@@ -288,7 +289,7 @@ if (defined $config->property('xml-output')) {
 
 my $test = GenTest::XML::Test->new(
 	id => time(),
-	name => 'NO_NAME',  # TODO: Get test name from somewhere (new option?)
+	name => $config->testname,  # TODO: Get test name from somewhere (new option?)
 	attributes => {
 		engine => $config->engine,
 		gendata => $config->gendata,

@@ -84,7 +84,7 @@ sub xml {
 
     $writer->startTag('test', id => $test->[TEST_ID]);
 
-    $writer->dataElement('name',            $test->[TEST_NAME]);
+    $writer->dataElement('name',            $test->[TEST_NAME] ? $test->[TEST_NAME] : "NO_NAME");
     $writer->dataElement('environment_id',  $test->[TEST_ENVIRONMENT_ID]);
     $writer->dataElement('starttime',       $test->[TEST_STARTTIME]);
     $writer->dataElement('endtime',         $test->[TEST_ENDTIME]);
