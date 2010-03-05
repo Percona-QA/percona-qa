@@ -101,8 +101,8 @@ sub new {
 	$reporter->[REPORTER_SERVER_INFO]->{pid} = $pid;
 
 	foreach my $path (
-			'bin', 'sql', 'libexec',
-			'../bin', '../sql', '../libexec',
+			'bin', 'sbin', 'sql', 'libexec',
+			'../bin', '../sbin', '../sql', '../libexec',
 			'../sql/RelWithDebInfo', '../sql/Debug',
 		) {
 		my $binary_unix = $reporter->serverVariable('basedir').'/'.$path."/mysqld";

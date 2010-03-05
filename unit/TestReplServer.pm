@@ -71,6 +71,7 @@ sub test_create_server {
     $self->assert_not_null($server);
     
     $self->assert(-f $master_vardir."/data/mysql/db.MYD","No ".$master_vardir."/data/mysql/db.MYD");
+    $self->assert(-f $slave_vardir."/data/mysql/db.MYD","No ".$slave_vardir."/data/mysql/db.MYD");
     
     $server->startServer;
     push @pids,$server->master->serverpid;

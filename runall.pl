@@ -466,6 +466,6 @@ EOF
 sub exit_test {
 	my $status = shift;
 
-	print localtime()." [$$] $0 will exit with exit status $status\n";
+	print isoTimestamp()." [$$] $0 will exit with exit status $status\n";
 	safe_exit($status);
 }

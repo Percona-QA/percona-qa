@@ -26,12 +26,20 @@ use GenTest::Reporter;
 use GenTest::Constants;
 
 sub report {
+
 	my $reporter = shift;
 
 	# master.err-old is created when logs are rotated due to SIGHUP
 
 	my $main_log = $reporter->serverVariable('log_error');
-	$main_log = $reporter->serverVariable('datadir')."../log/master.err" if $main_log eq '';
+    if ($main_log eq '') {
+        foreach my $errlog ('../log/master.err', '../mysql.err') {
+            if (-f $reporter->serverVariable('datadir').'/'.$errlog) {
+                $main_log = $reporter->serverVariable('datadir').'/'.$errlog;
+                last;
+            }
+        }
+    }
 
 	foreach my $log ( $main_log, $main_log.'-old' ) {
 		if ((-e $log) && (-s $log > 0)) {

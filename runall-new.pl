@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2010 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@ use Carp;
 use strict;
 use GenTest;
 use GenTest::Server::MySQLd;
+use GenTest::Server::ReplMySQLd;
 
 $| = 1;
 if (windows()) {
@@ -45,13 +46,13 @@ use DBI;
 use Cwd;
 
 my $database = 'test';
-my @master_dsns;
+my @dsns;
 
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
-    $varchar_len, $xml_output, $valgrind, $views, $start_dirty,
-    $filter, $build_thread);
+    $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
+    $start_dirty, $filter, $build_thread);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -85,6 +86,7 @@ my $opt_result = GetOptions(
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s'	=> \$xml_output,
 	'valgrind!'	=> \$valgrind,
+	'valgrind_options=s@'	=> \@valgrind_options,
 	'views'		=> \$views,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
@@ -96,7 +98,7 @@ if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 	exit($help ? 0 : 1);
 }
 
-say("Copyright (c) 2010 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.");
+say("Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
 say("Please see http://forge.mysql.com/wiki/Category:RandomQueryGenerator for more information on this test framework.");
 say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
 
@@ -118,13 +120,9 @@ if ( $build_thread eq 'auto' ) {
     exit (STATUS_ENVIRONMENT_FAILURE);
 }
 
-my $master_port = 10000 + 10 * $build_thread;
-my $slave_port = 10000 + 10 * $build_thread + 2;
-my @master_ports = ($master_port,$slave_port);
+my @ports = (10000 + 10 * $build_thread, 10000 + 10 * $build_thread + 2);
 
-say("master_port : $master_port slave_port : $slave_port master_ports : @master_ports MTR_BUILD_THREAD : $build_thread ");
-
-$ENV{MTR_BUILD_THREAD} = $build_thread;
+say("master_port : $ports[0] slave_port : $ports[1] ports : @ports MTR_BUILD_THREAD : $build_thread ");
 
 #
 # If the user has provided two vardirs and one basedir, start second
@@ -174,89 +172,84 @@ foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client", "
 #
 
 my @server;
+my $rplsrv;
 	
-foreach my $server_id (0..1) {
-	next if $basedirs[$server_id] eq '';
+if ($rpl_mode ne '') {
+    my @options;
+    push @options, lc("--$engine") if defined $engine && lc($engine) ne lc('myisam');
     
-	my @options;
-	push @options, lc("--$engine") if defined $engine && lc($engine) ne lc('myisam');
+    push @options, "--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
     
-	push @options, "--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
-
-	if (($rpl_mode ne '') && ($server_id != 0)) {
-		# If we are running in replication, and we start the slave separately (because it is a different binary)
-		# add a few options that allow the slave and the master to be distinguished and SHOW SLAVE HOSTS to work
-		push @options, "--server-id=".($server_id + 1);
-		push @options, "--report-host=127.0.0.1";
-		push @options, "--report-port=".$master_ports[$server_id];
-	}
-
-	if (defined $mysqld_options[$server_id]) {
-        push @options, @{$mysqld_options[$server_id]};
+    if (defined $mysqld_options[0]) {
+        push @options, @{$mysqld_options[0]};
     }
-
-	if (
-		($rpl_mode ne '') &&
-		($server_id == 0) &&
-		(not defined $vardirs[1]) &&
-		(not defined $mysqld_options[1])
-        ) {
-		push @options, "--slave_port=".$slave_port;
-	}
     
-    $server[$server_id] = GenTest::Server::MySQLd->new(basedir => $basedirs[$server_id],
-                                                       vardir => $vardirs[$server_id],
-                                                       port => $master_ports[$server_id],
-                                                       start_dirty => $start_dirty,
-                                                       \@options);
+    $rplsrv = GenTest::Server::ReplMySQLd->new(basedir => $basedirs[0],
+                                               master_vardir => $vardirs[0],
+                                               master_port => $ports[0],
+                                               slave_vardir => $vardirs[1],
+                                               slave_port => $ports[1],
+                                               mode => $rpl_mode,
+                                               server_options => \@options,
+                                               valgrind => $valgrind,
+                                               valgrind_options => \@valgrind_options,
+                                               start_dirty => $start_dirty);
     
-    my $status = $server[$server_id]->startServer;
-
+    my $status = $rplsrv->startServer();
+    
     if ($status > STATUS_OK) {
         stopServers();
-        say(system("ls -l ".$server[$server_id]->datadir));
-        croak("Could not start all servers");
+        say(system("ls -l ".$rplsrv->master->datadir));
+        say(system("ls -l ".$rplsrv->slave->datadir));
+        croak("Could not start replicating server pair");
     }
     
-	if (
-		($server_id == 0) ||
-		($rpl_mode eq '') 
-        ) {
-        $master_dsns[$server_id] = $server[$server_id]->dsn($database);
-	}
+    $dsns[0] = $rplsrv->master->dsn($database);
+    $dsns[1] = undef; ## passed to gentest. No dsn for slave!
+    $server[0] = $rplsrv->master;
+    $server[1] = $rplsrv->slave;
     
-	if ((defined $master_dsns[$server_id]) && (defined $engine)) {
-		my $dbh = DBI->connect($master_dsns[$server_id], undef, undef, { RaiseError => 1 } );
-		$dbh->do("SET GLOBAL storage_engine = '$engine'");
-	}
-}
-
-my $master_dbh = DBI->connect($server[0]->dsn($database), undef, undef, { RaiseError => 1 } );
-
-if ($rpl_mode) {
-	my $slave_dbh = DBI->connect($server[1]->dsn($database), undef, undef, { RaiseError => 1 } );
+} else {
+    foreach my $server_id (0..1) {
+        next if $basedirs[$server_id] eq '';
+        
+        my @options;
+        push @options, lc("--$engine") if defined $engine && lc($engine) ne lc('myisam');
+        
+        push @options, "--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
+        
+        if (defined $mysqld_options[$server_id]) {
+            push @options, @{$mysqld_options[$server_id]};
+        }
+        
+        $server[$server_id] = GenTest::Server::MySQLd->new(basedir => $basedirs[$server_id],
+                                                           vardir => $vardirs[$server_id],
+                                                           port => $ports[$server_id],
+                                                           start_dirty => $start_dirty,
+                                                           valgrind => $valgrind,
+                                                           valgrind_options => \@valgrind_options,
+                                                           server_options => \@options);
+        
+        my $status = $server[$server_id]->startServer;
+        
+        if ($status > STATUS_OK) {
+            stopServers();
+            say(system("ls -l ".$server[$server_id]->datadir));
+            croak("Could not start all servers");
+        }
+        
+        if (
+            ($server_id == 0) ||
+            ($rpl_mode eq '') 
+            ) {
+            $dsns[$server_id] = $server[$server_id]->dsn($database);
+        }
     
-	say("Establishing replication, mode $rpl_mode ...");
-    
-	my ($foo, $master_version) = $master_dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
-    
-	if (($master_version !~ m{^5\.0}sio) && ($rpl_mode ne 'default')) {
-		$master_dbh->do("SET GLOBAL BINLOG_FORMAT = '$rpl_mode'");
-		$slave_dbh->do("SET GLOBAL BINLOG_FORMAT = '$rpl_mode'");
-	}
-    
-	$slave_dbh->do("STOP SLAVE");
-
-	$slave_dbh->do("SET GLOBAL storage_engine = '$engine'") if defined $engine;
-    
-	$slave_dbh->do("CHANGE MASTER TO
-		MASTER_PORT = $master_ports[0],
-		MASTER_HOST = '127.0.0.1',
-               MASTER_USER = 'root',
-               MASTER_CONNECT_RETRY = 1
-	");
-
-	$slave_dbh->do("START SLAVE");
+        if ((defined $dsns[$server_id]) && (defined $engine)) {
+            my $dbh = DBI->connect($dsns[$server_id], undef, undef, { RaiseError => 1 } );
+            $dbh->do("SET GLOBAL storage_engine = '$engine'");
+        }
+    }
 }
 
 #
@@ -274,8 +267,8 @@ push @gentest_options, map {'--reporter='.$_} split(/,/,$reporters) if defined $
 push @gentest_options, "--threads=$threads" if defined $threads;
 push @gentest_options, "--queries=$queries" if defined $queries;
 push @gentest_options, "--duration=$duration" if defined $duration;
-push @gentest_options, "--dsn=$master_dsns[0]" if defined $master_dsns[0];
-push @gentest_options, "--dsn=$master_dsns[1]" if defined $master_dsns[1];
+push @gentest_options, "--dsn=$dsns[0]" if defined $dsns[0];
+push @gentest_options, "--dsn=$dsns[1]" if defined $dsns[1];
 push @gentest_options, "--grammar=$grammar_file";
 push @gentest_options, "--redefine=$redefine_file" if defined $redefine_file;
 push @gentest_options, "--seed=$seed" if defined $seed;
@@ -297,59 +290,43 @@ my $gentest_result = system("perl $ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_
 say("gentest.pl exited with exit status ".($gentest_result >> 8));
 exit_test($gentest_result >> 8) if $gentest_result > 0;
 
-if ($rpl_mode) {
-	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
-
-	say("Waiting for slave to catch up..., file $file, pos $pos .");
-	exit_test(STATUS_UNKNOWN_ERROR) if !defined $file;
-    
-	my $slave_dbh = DBI->connect($server[1]->dsn($database), undef, undef, { PrintError => 1 } );
-    
-	exit_test(STATUS_REPLICATION_FAILURE) if not defined $slave_dbh;
-
-	$slave_dbh->do("START SLAVE");
-	my $wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
-
-	if (not defined $wait_result) {
-		say("MASTER_POS_WAIT() failed. Slave thread not running.");
-		exit_test(STATUS_REPLICATION_FAILURE);
-	}
-}
-
 #
 # Compare master and slave, or two masters
 #
 
 if ($rpl_mode || (defined $basedirs[1])) {
-	my @dump_ports = ($master_ports[0]);
+    if ($rpl_mode ne '') {
+        $rplsrv->waitForSlaveSync;
+    }
+	my @dump_ports = ($ports[0]);
 	if ($rpl_mode) {
-		push @dump_ports, $slave_port;
+		push @dump_ports, $ports[1];
 	} elsif (defined $basedirs[1]) {
-		push @dump_ports, $master_ports[1];
+		push @dump_ports, $ports[1];
 	}
-
+    
 	my @dump_files;
-
+    
 	foreach my $i (0..$#dump_ports) {
 		say("Dumping server on port $dump_ports[$i]...");
 		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
-
+        
 		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root $database | sort > $dump_files[$i]");
 		exit_test($dump_result >> 8) if $dump_result > 0;
 	}
-
+    
 	say("Comparing SQL dumps...");
 	my $diff_result = system("diff -u $dump_files[0] $dump_files[1]");
 	$diff_result = $diff_result >> 8;
-
+    
 	if ($diff_result == 0) {
 		say("No differences were found between servers.");
 	}
-
+    
 	foreach my $dump_file (@dump_files) {
 		unlink($dump_file);
 	}
-
+    
 	exit_test($diff_result);
 }
 
@@ -357,18 +334,22 @@ if ($rpl_mode || (defined $basedirs[1])) {
 stopServers();
 
 sub stopServers {
-    foreach my $srv (@server) {
-        if ($srv) {
-            $srv->stopServer;
+    if ($rpl_mode ne '') {
+        $rplsrv->stopServer();
+    } else {
+        foreach my $srv (@server) {
+            if ($srv) {
+                $srv->stopServer;
+            }
         }
     }
 }
 
 
 sub help {
-
+    
 	print <<EOF
-Copyright (c) 2008-2009 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.
+Copyright (c) 2010 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.
 
 $0 - Run a complete random query generation test, including server start with replication and master/slave verification
     
@@ -426,7 +407,7 @@ EOF
 
 sub exit_test {
 	my $status = shift;
-
-	print localtime()." [$$] $0 will exit with exit status $status\n";
+    stopServers();
+	say("[$$] $0 will exit with exit status $status");
 	safe_exit($status);
 }

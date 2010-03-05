@@ -38,19 +38,19 @@ use constant XMLREPORT_ENVIRONMENT      => 3;
 1;
 
 sub new {
-    my $class = shift;
+	my $class = shift;
 
-    my $report = $class->SUPER::new({
-        environment => XMLREPORT_ENVIRONMENT,
-        date        => XMLREPORT_DATE,
-        buildinfo   => XMLREPORT_BUILDINFO,
-        tests       => XMLREPORT_TESTS
-    }, @_);
+	my $report = $class->SUPER::new({
+		environment	=> XMLREPORT_ENVIRONMENT,
+		date		=> XMLREPORT_DATE,
+		buildinfo	=> XMLREPORT_BUILDINFO,
+		tests		=> XMLREPORT_TESTS
+	}, @_);
 
-    $report->[XMLREPORT_DATE] = xml_timestamp() if not defined $report->[XMLREPORT_DATE];
-    $report->[XMLREPORT_ENVIRONMENT] = GenTest::XML::Environment->new() if not defined  $report->[XMLREPORT_ENVIRONMENT];
+	$report->[XMLREPORT_DATE] = isoUTCTimestamp() if not defined $report->[XMLREPORT_DATE];
+	$report->[XMLREPORT_ENVIRONMENT] = GenTest::XML::Environment->new() if not defined  $report->[XMLREPORT_ENVIRONMENT];
 
-    return $report;
+	return $report;
 }
 
 sub xml {
@@ -91,7 +91,7 @@ sub xml {
     $writer->dataElement('name', 'RQG_misc');
     $writer->dataElement('environment_id', 0);
     $writer->dataElement('starttime', $report->[XMLREPORT_DATE]);
-    $writer->dataElement('endtime', xml_timestamp());
+    $writer->dataElement('endtime', isoUTCTimestamp());
     $writer->dataElement('description', 'http://forge.mysql.com/wiki/RQG');
     # TODO (if applicable):
     # test-suite specific descriptions (once we have defined testsuites)?
