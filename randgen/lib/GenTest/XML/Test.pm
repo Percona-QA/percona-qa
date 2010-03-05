@@ -57,7 +57,7 @@ sub new {
         incidents       => TEST_INCIDENTS
     }, @_);
 
-    $test->[TEST_STARTTIME] = xml_timestamp() if not defined $test->[TEST_STARTTIME];
+    $test->[TEST_STARTTIME] = isoUTCTimestamp() if not defined $test->[TEST_STARTTIME];
     $test->[TEST_ENVIRONMENT_ID] = 0 if not defined $test->[TEST_ENVIRONMENT_ID];
 
     return $test;
@@ -65,7 +65,7 @@ sub new {
 
 sub end {
     my ($test, $result) = @_;
-    $test->[TEST_ENDTIME] = xml_timestamp();
+    $test->[TEST_ENDTIME] = isoUTCTimestamp();
     $test->[TEST_RESULT] = $result;
 }
 

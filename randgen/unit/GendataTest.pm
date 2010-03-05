@@ -25,6 +25,7 @@ use lib 'lib';
 use GenTest::Constants;
 use GenTest::App::Gendata;
 use GenTest::App::GendataSimple;
+use Time::HiRes;
 
 use Data::Dumper;
 
@@ -47,10 +48,16 @@ sub test_simple {
     
     my $gen = GenTest::App::GendataSimple->new(dsn => "dummy");
 
-    my $status = $gen->run();
+    my $start = Time::HiRes::time();
+    foreach my $i (1..10) {
+        my $status = $gen->run();
+        $self->assert_equals(STATUS_OK, $status);
+    }
+    my $stop = Time::HiRes::time();
 
-    $self->assert_equals(STATUS_OK, $status);
-
+    open TM,">unit/gendata1.dat";
+    print TM "YVALUE = ".($stop - $start)."\n";
+    close TM;
 }
 
 sub test_advanced {
@@ -60,9 +67,19 @@ sub test_advanced {
                                          spec_file => "conf/examples/example.zz",
                                          rows => 10000000,
                                          views => 1);
-    my $status = $gen->run();
 
-    $self->assert_equals(STATUS_OK, $status);
+    
+    my $start = Time::HiRes::time();
+    
+    foreach my $i (1..5) {
+        my $status = $gen->run();
+        $self->assert_equals(STATUS_OK, $status);
+    }
+    my $stop = Time::HiRes::time();
+
+    open TM,">unit/gendata2.dat";
+    print TM "YVALUE = ".($stop - $start)."\n";
+    close TM;
 }
 
 1;
