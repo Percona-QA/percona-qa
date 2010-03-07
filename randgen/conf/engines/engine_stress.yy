@@ -26,7 +26,7 @@
 # and run very quickly. 
 #
 # At the same time, please note that this grammar does not aim to cover all possible
-# table access methods. The grammars from conf/optimizer* are more suitable for that.
+# table access methods. The grammars from conf/optimizer/optimizer* are more suitable for that.
 #
 
 query:

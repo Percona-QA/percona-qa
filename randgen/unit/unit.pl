@@ -25,9 +25,20 @@ use Test::Unit::Debug qw(debug_pkgs);
 use Test::Unit::TestRunner;
 use RQGRunner;
 
+use Time::HiRes;
+
 # Uncomment and edit to debug individual packages.
 # debug_pkgs(qw/Test::Unit::TestCase/);
 
+my $start_time = Time::HiRes::time();
+
 my $testrunner = RQGRunner->new();
 my $result = $testrunner->start(@ARGV);
+
+my $stop_time = Time::HiRes::time();
+
+open TM,">unit/totaltime.dat";
+print TM "YVALUE = ".($stop_time - $start_time)."\n";
+close TM;
+
 exit $result;

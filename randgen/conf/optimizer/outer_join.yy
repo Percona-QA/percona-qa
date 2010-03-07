@@ -16,56 +16,29 @@
 # USA
 
 ################################################################################
-# outer_join_portable.yy
+# outer_join.yy
 # Purpose:  Random Query Generator grammar for testing larger (6 - 10 tables) JOINs
 # Tuning:   Please tweak the rule table_or_joins ratio of table:join for larger joins
-#           NOTE:  be aware that larger (15-20 tables) queries can take far too
+#           NOTE:  be aware that larger (15-20 tables) queries can take far too 
 #                  long to run to be of much interest for fast, automated testing
 #
-# Notes:    This grammar is designed to be used with gendata=conf/outer_join.zz
+# Notes:    This grammar is designed to be used with gendata=conf/optimizer/outer_join.zz
 #           It can be altered, but one will likely need field names
 #           Additionally, it is not recommended to use the standard RQG-produced
 #           tables as they way we pick tables can result in the use of
 #           several large tables that will bog down a generated query
-#
-#           Please rely this variant of this grammar if
+#           
+#           Please rely largely on the _portable variant of this grammar if
 #           doing 3-way comparisons as it has altered code that will produce
 #           more standards-compliant queries for use with other DBMS's
-#
-#           We keep the outer_join grammar as it is in order to also test 
-#           certain MySQL-specific syntax variants.
+#  
+#           We keep the grammar here as it is in order to also test certain
+#           MySQL-specific syntax variants.
 ################################################################################
 
-################################################################################
-# we have the perl code here as these variables are helpers for generating
-# queries
-# nonaggregates -  holds all nonaggregate fields used, stored as the alias used
-#               such as field1, field2...
-# tables - counter used to generate accurate table aliases - table1, table2..
-# fields - same as tables
-#
-# NOTE:  refer to rule nonaggregate_select_item to see the next two items
-#        in use.
-#
-# table_alias_set - we store aliases for creating standards-compliant
-#                   field references in GROUP BY and HAVING clauses
-# int_field_set - we only use integer fields in this grammar and we
-#                 create this helper array for the same purposes as
-#                 table_alias_set
-################################################################################
 
 query:
-  { @table_alias_set = ("table1", "table1", "table1", "table1", "table2", "table2", "table2", "table3", "table4", "table5", "table1", "table1", "table2") ; "" }
-  { @int_field_set = ("pk", "col_int", "col_int_key") ; "" } 
   { @nonaggregates = () ; $tables = 0 ; $fields = 0 ;  "" } query_type ;
-
-################################################################################
-# We have various query_type's so that we can ensure more syntactically correct
-# queries are generated.  Certain mixes have different requirements
-# mixed - regular fields + aggregates
-# simple - regular fields only
-# aggregate - aggregates only
-################################################################################
 
 query_type:
   simple_select | simple_select | mixed_select | mixed_select | mixed_select | aggregate_select ;
@@ -107,27 +80,11 @@ new_select_item:
         nonaggregate_select_item |
 	aggregate_select_item ;
 
-################################################################################
-# We differ from the main variant of the grammar here
-# We pop from the previously populated helper arrays table_alias_set and 
-# int_field_set so that we can generate and store fields in the form:
-# <table_alias> . <field_name> AS field<number>
-# <table_alias> . <field_name> is stored in the @nonaggregates array and
-# used in the GROUP BY statements - this is standards-compliant and won't
-# throw javadb or postgres for a loop
-################################################################################
-
 nonaggregate_select_item:
-        { my $x = $prng->arrayElement(\@table_alias_set)." . ".$prng->arrayElement(\@int_field_set); push @nonaggregates , $x ; $x } AS {my $f = "field".++$fields ; $f };
+        table_alias . int_field_name AS { my $f = "field".++$fields ; push @nonaggregates , $f ; $f } ;
 
 aggregate_select_item:
         aggregate table_alias . int_field_name ) AS {"field".++$fields } ; 
-
-################################################################################
-# We make use of the new RQG stack in order to generate more interesting
-# queries.  Please refer to the RQG documentation for a more in-depth discussion
-# of how the stack functions
-################################################################################
 	
 join:
        { $stack->push() }      
@@ -195,25 +152,15 @@ optional_group_by:
         | | | | | | | | group_by_clause ;
 
 having_clause:
-  | ;
-
-having_clause_disabled:
-	| | | | HAVING having_list;
+	| HAVING having_list;
 
 having_list:
         having_item |
         having_item |
 	(having_list and_or having_item)  ;
 
-################################################################################
-# NOTE:  It would be nice if we also had aggregates in the pool for HAVING 
-#        clause items, but the code overhead isn't necessarily worth it in the 
-#        portable grammar - we do test this more thoroughly in the regular 
-#        version of the grammar
-################################################################################
-
 having_item:
-	{ my $y = $prng->arrayElement(\@nonaggregates) ; $y  }  comparison_operator _digit ;
+	existing_select_item comparison_operator _digit ;
 
 ################################################################################
 # We use the total_order_by rule when using the LIMIT operator to ensure that  #
@@ -221,9 +168,9 @@ having_item:
 ################################################################################
 
 order_by_clause:
-	| | | 
-        ORDER BY total_order_by desc /*+javadb:postgres: NULLS FIRST*/ limit  |
-	ORDER BY order_by_list /*+javadb:postgres: NULLS FIRST*/ ;
+	|
+        ORDER BY total_order_by desc limit |
+	ORDER BY order_by_list ;
 
 total_order_by:
 	{ join(', ', map { "field".$_ } (1..$fields) ) };
@@ -247,27 +194,16 @@ limit:
 	| | LIMIT limit_size | LIMIT limit_size OFFSET _digit;
 
 ################################################################################
-# Recommend 8 table : 2 join for smaller queries, 6 : 2 for larger ones
+# recommend 8 tables : 2 joins for smaller queries, 6:2 for larger ones
 ################################################################################
 
 table_or_join:
            table | table | table | table | table | 
            table | table | table | join | join ;
 
-################################################################################
-# We stack the probabilities regarding table size via how we create tables
-# with the gendata config file (conf/outer_join.zz)
-# If for some reason, you ever decide to change this, it is also possible to
-# stack probabilities by creating a @table_set array and simply listing
-# certain tables more often.  It is less elegant and adaptable, but we document
-# it here just in case.
-# EX:  @table_set = ("A","A","A","A","B","C")
-#      replace the $executors->[0]->tables() in the rule below with
-#      \@table_set as well
-#
-#      see the nonaggregate_select_item rule
-#      plus the initial query rule for examples
-################################################################################
+table_disabled:
+# We use the "AS table" bit here so we can have unique aliases if we use the same table many times
+       { $stack->push(); my $x = $prng->arrayElement(\@table_set)." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
 
 
 table:
@@ -293,6 +229,7 @@ char_field_name:
 char_indexed:
   `col_varchar_10_latin1_key` | `col_varchar_10_utf8_key` |
   `col_varchar_1024_latin1_key` |`col_varchar_1024_utf8_key` ;
+
 
 table_alias:
   table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 |

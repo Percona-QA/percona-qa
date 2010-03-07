@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Sun Microsystems, Inc. All rights reserved.
+# Copyright (C) 2010, Oracle and/or its affiliates. All rights reserved. 
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -45,6 +45,8 @@ use constant MYSQLD_SERVERPID => 11;
 use constant MYSQLD_WINDOWS_PROCESS => 12;
 use constant MYSQLD_DBH => 13;
 use constant MYSQLD_START_DIRTY => 14;
+use constant MYSQLD_VALGRIND => 15;
+use constant MYSQLD_VALGRIND_OPTIONS => 16;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_LOG_FILE => "mysql.err";
@@ -60,8 +62,11 @@ sub new {
                                    'vardir' => MYSQLD_VARDIR,
                                    'port' => MYSQLD_PORT,
                                    'server_options' => MYSQLD_SERVER_OPTIONS,
-                                   'start_dirty' => MYSQLD_START_DIRTY},@_);
+                                   'start_dirty' => MYSQLD_START_DIRTY,
+                                   'valgrind' => MYSQLD_VALGRIND,
+                                   'valgrind_options' => MYSQLD_VALGRIND_OPTIONS},@_);
     
+    croak "No valgrind support on windows" if windows() and $self->[MYSQLD_VALGRIND];
     
     if (not defined $self->[MYSQLD_VARDIR]) {
         $self->[MYSQLD_VARDIR] = "mysql-test/var";
@@ -80,23 +85,43 @@ sub new {
     
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
-    $self->[MYSQLD_MYSQLD] = $self->_find($self->basedir,
-                                          windows()?["sql/Debug"]:["sql","libexec"],
+    $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
+                                          windows()?["sql/Debug","sql/RelWithDebugInfo","sql/Release"]:["sql","libexec","bin","sbin"],
                                           windows()?"mysqld.exe":"mysqld");
     $self->[MYSQLD_BOOT_SQL] = [];
+
+
+    ## Check for CMakestuff to get hold of source dir:
+
+    my $source;
+    if (-e $self->basedir."/CMakeCache.txt") {
+        open CACHE, $self->basedir."/CMakeCache.txt";
+        while (<CACHE>){
+            if (m/^MySQL_SOURCE_DIR:STATIC=(.*)$/) {
+                $source = $1;
+                say("Found source directory at $source");
+                last;
+            }
+        }
+    }
+    
     foreach my $file ("mysql_system_tables.sql", 
                       "mysql_system_tables_data.sql", 
                       "mysql_test_data_timezone.sql",
                       "fill_help_tables.sql") {
         push(@{$self->[MYSQLD_BOOT_SQL]}, 
-             $self->_find($self->basedir,["scripts","share/mysql"], $file));
+             $self->_find(defined $source?[$self->basedir,$source]:[$self->basedir],
+                          ["scripts","share/mysql"], $file));
     }
     
-    $self->[MYSQLD_MESSAGES] = $self->_findDir($self->basedir, ["sql/share","share/mysql"], "errmsg-utf8.txt");
+    $self->[MYSQLD_MESSAGES] = 
+       $self->_findDir(defined $source?[$self->basedir,$source]:[$self->basedir], 
+                       ["sql/share","share/mysql"], "english/errmsg.sys");
     
-    $self->[MYSQLD_LIBMYSQL] = $self->_findDir($self->basedir, 
-                                               windows()?["libmysql/Debug"]:["libmysql/.libs","lib/mysql"], 
-                                               windows()?"libmysql.dll":"libmysqlclient.so");
+    $self->[MYSQLD_LIBMYSQL] = 
+       $self->_findDir([$self->basedir], 
+                       windows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release"]:["libmysql","libmysql/.libs","lib/mysql"], 
+                       windows()?"libmysql.dll":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
@@ -229,12 +254,12 @@ sub _reportError {
 
 sub startServer {
     my ($self) = @_;
-    
+
     my $command = $self->generateCommand(["--no-defaults"],
                                          $self->[MYSQLD_STDOPTS],
                                          ["--core-file",
                                           #"--skip-ndbcluster",
-                                          "--skip-grant",
+                                          #"--skip-grant",
                                           "--loose-new",
                                           "--relay-log=slave-relay-bin",
                                           "--loose-innodb",
@@ -267,6 +292,13 @@ sub startServer {
         $self->[MYSQLD_WINDOWS_PROCESS]=$proc;
         $self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
     } else {
+        if ($self->[MYSQLD_VALGRIND]) {
+            my $val_opt ="";
+            if (defined $self->[MYSQLD_VALGRIND_OPTIONS]) {
+                $val_opt = join(' ',@{$self->[MYSQLD_VALGRIND_OPTIONS]});
+            }
+            $command = "valgrind --time-stamp=yes ".$val_opt." ".$command;
+        }
         say("Starting: $command");
         $self->[MYSQLD_AUXPID] = fork();
         if ($self->[MYSQLD_AUXPID]) {
@@ -276,11 +308,14 @@ sub startServer {
                 Time::HiRes::sleep(0.2);
                 $waits++;
             }
+            if (!-f $self->pidfile) {
+                sayFile($self->logfile);
+                croak("Could not start mysql server");
+            }
             my $pidfile = $self->pidfile;
             my $pid = `cat \"$pidfile\"`;
             $pid =~ m/([0-9]+)/;
             $self->[MYSQLD_SERVERPID] = int($1);
-            
         } else {
             exec("$command > \"$serverlog\"  2>&1") || croak("Could not start mysql server");
         }
@@ -314,6 +349,27 @@ sub kill {
     }
 }
 
+sub crash {
+    my ($self) = @_;
+    
+    if (windows()) {
+        ## How do i do this?????
+        $self->kill; ## Temporary
+    } else {
+        if (defined $self->serverpid) {
+            kill SEGV => $self->serverpid;
+            say("Crashed process ".$self->serverpid);
+        }
+    }
+    
+}
+
+sub corefile {
+    my ($self) = @_;
+
+    return "foooooooooooooooooooooooooo";
+}
+
 sub stopServer {
     my ($self) = @_;
     
@@ -337,13 +393,19 @@ sub stopServer {
 }
 
 sub _find {
-    my($self, $base,$subdir,$name) = @_;
+    my($self, $bases, $subdir, $name) = @_;
     
-    foreach my $s (@$subdir) {
-        my $path  = $base."/".$s."/".$name;
-        return $path if -f $path;
+    foreach my $base (@$bases) {
+        foreach my $s (@$subdir) {
+            my $path  = $base."/".$s."/".$name;
+            return $path if -f $path;
+        }
     }
-    croak "Cannot find '$name' in ".join(",",map {"'".$base."/".$_."'"} @$subdir);
+    my $paths = "";
+    foreach my $base (@$bases) {
+        $paths .= join(",",map {"'".$base."/".$_."'"} @$subdir).",";
+    }
+    croak "Cannot find '$name' in $paths"; 
 }
 
 sub dsn {
@@ -359,13 +421,19 @@ sub dbh {
 }
 
 sub _findDir {
-    my($self, $base,$subdir,$name) = @_;
+    my($self, $bases, $subdir, $name) = @_;
     
-    foreach my $s (@$subdir) {
-        my $path  = $base."/".$s."/".$name;
-        return $base."/".$s if -f $path;
+    foreach my $base (@$bases) {
+        foreach my $s (@$subdir) {
+            my $path  = $base."/".$s."/".$name;
+            return $base."/".$s if -f $path;
+        }
     }
-    croak "Cannot find '$name' in ".join(",",map {"'".$base."/".$_."'"} @$subdir);
+    my $paths = "";
+    foreach my $base (@$bases) {
+        $paths .= join(",",map {"'".$base."/".$_."'"} @$subdir).",";
+    }
+    croak "Cannot find '$name' in $paths";
 }
 
 sub _absPath {
