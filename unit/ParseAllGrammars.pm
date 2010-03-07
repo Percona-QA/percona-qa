@@ -42,7 +42,12 @@ sub tear_down {
 
 sub test_parse {
     my $self = shift;
-    @files = <conf/*.yy>;
+
+    @level1_files = <conf/*/*.yy>;      # ex: conf/examples/example.yy
+    @level2_files = <conf/*/*/*.yy>;    # ex: conf/engines/maria/maria_stress.yy
+    # Repeat for more levels (or do this in a better way)
+    @files = sort((@level1_files, @level2_files));
+
     foreach $f (@files) {
         print "... $f\n";
         my $grammar = new GenTest::Grammar(grammar_file => $f);

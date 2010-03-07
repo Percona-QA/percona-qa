@@ -27,8 +27,8 @@
 # while the test is running.
 #
 #  Associated files are:
-#  mysql-test/gentest/conf/backup_obj.yy
-#  mysql-test/gentest/conf/backup_interop.yy
+#  mysql-test/gentest/conf/backup/backup_obj.yy
+#  mysql-test/gentest/conf/backup/backup_interop.yy
 #  mysql-test/gentest/lib/Gentest/Reporter/BackupInterop.pm
 #
 #####################################################################

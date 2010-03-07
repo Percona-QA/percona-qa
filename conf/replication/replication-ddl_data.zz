@@ -17,7 +17,7 @@
 
 # Attention: If you modify something under $tables than the amount and the names of
 #            the tables will change and this requires adjustments in
-#            conf/replication-dml_sql.yy   *_table
+#            conf/replication/replication-dml_sql.yy   *_table
 #
 $schemas = [ 'test' , 'test1' ];
 
@@ -33,7 +33,7 @@ $tables = {
         #    
         # Example: table<rows>_<engine>_<pk column data type> like table0_myisam_int_autoinc
         # Enable the next line when the RPL team says it is time to do this
-        # + modify conf/replication-ddl_sql.yy so that tables with names like
+        # + modify conf/replication/replication-ddl_sql.yy so that tables with names like
         #   table<number> and table<number>_<engine> are used
         #    pk => [ 'int auto_increment' , 'int' , undef ]
         pk   => [ 'int auto_increment' , 'int' ]

@@ -23,6 +23,8 @@ use Cwd;
 use GenTest;
 use GenTest::Server::MySQLd;
 use GenTest::Executor;
+use GenTest::Reporter;
+use GenTest::Reporter::Backtrace;
 
 use Data::Dumper;
 
@@ -35,7 +37,7 @@ sub new {
 sub set_up {
 }
 
-@pids;
+my @pids;
 
 sub tear_down {
     if (windows) {
@@ -47,7 +49,7 @@ sub tear_down {
     } else {
         ## Need to ,kill leftover processes if there are some
         kill 9 => @pids;
-        system("rm -rf unit/tmp");
+        # system("rm -rf unit/tmp");
     }
 }
 
@@ -56,11 +58,13 @@ sub test_create_server {
 
     my $vardir= cwd()."/unit/tmp";
 
+    my $portbase = 20 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
+
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
 
     my $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                               vardir => $vardir,
-                                              port => 22120);
+                                              port => $portbase);
     $self->assert_not_null($server);
     
     $self->assert(-f $vardir."/data/mysql/db.MYD","No ".$vardir."/data/mysql/db.MYD");
@@ -90,7 +94,7 @@ sub test_create_server {
 
     $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                            vardir => $vardir,
-                                           port => 22120,
+                                           port => $portbase,
                                            start_dirty => 1);
     
     $self->assert_not_null($server);
@@ -99,6 +103,57 @@ sub test_create_server {
     $server->stopServer;
 
     sayFile($server->logfile);
+}
+
+sub test_crash_and_core {
+    if (not windows()) { ## crash is not yet implemented for windows
+        my $self = shift;
+
+        my $vardir= cwd()."/unit/tmp";
+        
+        my $portbase = 60 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
+        
+        $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
+        
+        my $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                                  vardir => $vardir,
+                                                  port => $portbase);
+        $self->assert_not_null($server);
+        
+        $self->assert(-f $vardir."/data/mysql/db.MYD","No ".$vardir."/data/mysql/db.MYD");
+        
+        $server->startServer;
+        push @pids,$server->serverpid;
+        
+        my $dsn = $server->dsn("mysql");
+        $self->assert_not_null($dsn);
+        
+        my $executor = GenTest::Executor->newFromDSN($dsn);
+        $self->assert_not_null($executor);
+        $executor->init();
+    
+        my $result = $executor->execute("show tables");
+        $self->assert_not_null($result);
+        $self->assert_equals($result->status, 0);
+        
+        say(join(',',map{$_->[0]} @{$result->data}));
+        
+        $self->assert(-f $vardir."/mysql.pid") if not windows();
+        $self->assert(-f $vardir."/mysql.err");
+        
+        my $backtrace = GenTest::Reporter::Backtrace->new(dsn => $server->dsn);
+        
+        sleep(1);
+        
+        $server->crash;
+        
+        sleep(1);
+
+        sayFile($server->logfile);
+
+        $backtrace->report();
+    }
+        
 }
 
 1;

@@ -17,7 +17,9 @@
 
 package GenTest;
 use base 'Exporter';
-@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'windows', 'solaris', 'xml_timestamp', 'rqg_debug');
+
+@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'windows',
+           'solaris', 'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug');
 
 use strict;
 
@@ -78,15 +80,14 @@ sub new {
 }
 
 sub say {
-	my @t = localtime();
 	my $text = shift;
 
 	if ($text =~ m{[\r\n]}sio) {
 	        foreach my $line (split (m{[\r\n]}, $text)) {
-			print "# ".sprintf("%02d:%02d:%02d", $t[2], $t[1], $t[0])." $line\n";
+			print "# ".isoTimestamp()." $line\n";
 		}
 	} else {
-		print "# ".sprintf("%02d:%02d:%02d", $t[2], $t[1], $t[0])." $text\n";
+		print "# ".isoTimestamp()." $text\n";
 	}
 }
 
@@ -130,14 +131,19 @@ sub solaris {
 	}	
 }
 
-sub xml_timestamp {
+sub isoTimestamp {
 	my $datetime = shift;
 
 	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = defined $datetime ? localtime($datetime) : localtime();
-	$mday++;
-	$year += 1900;
+	return sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
 	
-	return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year, $mon ,$mday ,$hour, $min, $sec);
+}
+
+sub isoUTCTimestamp {
+	my $datetime = shift;
+
+	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = defined $datetime ? gmtime($datetime) : gmtime();
+	return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
 	
 }
 

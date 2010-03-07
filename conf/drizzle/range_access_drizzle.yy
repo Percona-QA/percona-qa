@@ -18,7 +18,7 @@
 ################################################################################
 # range_access.yy
 # Purpose:  For testing the range optimization for MySQL
-# gendata:  Use with conf/range_access.zz as a gendata file
+# gendata:  Use with conf/drizzle/range_access.zz as a gendata file
 # parameters:
 #   queries = 10k+
 #   threads = 1

@@ -15,9 +15,14 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
+use lib 'lib';
+use lib "$ENV{RQG_HOME}/lib";
+use lib 'randgen/lib';
+
 use strict;
 use Cwd;
 use File::Basename;
+use GenTest;
 use POSIX;
 use Sys::Hostname;
 
@@ -37,17 +42,6 @@ $| = 1;
 chdir('randgen');
 my $cwd = cwd();
 
-#
-# Check OS, for later convenience. Windows and Unix/Linux are too different.
-#
-my $windowsOS;    # undefined if not Windows
-if (
-	($^O eq 'MSWin32') ||
-	($^O eq 'MSWin64')
-) {
-	$windowsOS = 'true';
-}
-
 # Location of grammars and other test configuration files.
 # Will use env variable RQG_CONF if set.
 # Default is currently "conf" while using legacy setup.
@@ -55,22 +49,22 @@ if (
 my $conf = $ENV{RQG_CONF};
 $conf = 'conf' if not defined $conf;
 
-print("***** Information on the host system: *****\n");
-print(" - Local time  : ".localtime()."\n");
-print(" - Hostname    : ".hostname()."\n");
-print(" - PID         : $$\n");
-print(" - Working dir : ".cwd()."\n");
-print(" - PATH        : ".$ENV{PATH}."\n");
-print(" - Script arguments:\n");
-print("       basedir = $basedir\n");
-print("       vardir  = $vardir\n");
-print("       tree    = $tree\n");
-print("       test    = $test\n");
-print("\n");
-print("***** Information on Random Query Generator version (bzr): *****\n");
+say("===== Information on the host system: =====\n");
+say(" - Local time  : ".localtime()."\n");
+say(" - Hostname    : ".hostname()."\n");
+say(" - PID         : $$\n");
+say(" - Working dir : ".cwd()."\n");
+say(" - PATH        : ".$ENV{PATH}."\n");
+say(" - Script arguments:\n");
+say("       basedir = $basedir\n");
+say("       vardir  = $vardir\n");
+say("       tree    = $tree\n");
+say("       test    = $test\n");
+say("\n");
+say("===== Information on Random Query Generator version (bzr): =====\n");
 system("bzr info");
 system("bzr version-info");
-print("\n");
+say("\n");
 
 mkdir($vardir);
 
@@ -80,27 +74,27 @@ my $command;
 
 if ($test =~ m{falcon_combinations_simple}io ) {
 	$command = '
-		--grammar='.$conf.'/combinations.yy
-		--gendata='.$conf.'/combinations.zz
-		--config='.$conf.'/falcon_simple.cc
+		--grammar='.$conf.'/transactions/combinations.yy
+		--gendata='.$conf.'/transactions/combinations.zz
+		--config='.$conf.'/engines/falcon/falcon_simple.cc
 		--duration=900
 		--trials=1
 		--seed=time
 	';
 } elsif ($test =~ m{falcon_combinations_transactions}io ) {
 	$command = '
-		--grammar='.$conf.'/transactions-flat.yy
-		--gendata='.$conf.'/transactions.zz
-		--config='.$conf.'/falcon_simple.cc
+		--grammar='.$conf.'/transactions/transactions-flat.yy
+		--gendata='.$conf.'/transactions/transactions.zz
+		--config='.$conf.'/engines/falcon/falcon_simple.cc
 		--duration=900
 		--trials=1
 		--seed=time
 	';
 } elsif ($test =~ m{innodb_combinations_simple}io ) {
 	$command = '
-		--grammar='.$conf.'/combinations.yy
-		--gendata='.$conf.'/combinations.zz
-		--config='.$conf.'/innodb_simple.cc
+		--grammar='.$conf.'/transactions/combinations.yy
+		--gendata='.$conf.'/transactions/combinations.zz
+		--config='.$conf.'/engines/innodb/innodb_simple.cc
 		--mysqld=--innodb
 		--duration=1800
 		--trials=1
@@ -108,9 +102,9 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 	';
 } elsif ($test =~ m{innodb_combinations_stress}io ) {
 	$command = '
-		--grammar='.$conf.'/engine_stress.yy
-		--gendata='.$conf.'/engine_stress.zz
-		--config='.$conf.'/innodb_simple.cc
+		--grammar='.$conf.'/engines/engine_stress.yy
+		--gendata='.$conf.'/engines/engine_stress.zz
+		--config='.$conf.'/engines/innodb/innodb_simple.cc
 		--mysqld=--innodb
 		--duration=600
 		--trials=1
@@ -118,9 +112,9 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 	';
 } elsif ($test =~ m{falcon_combinations_varchar}io ) {
 	$command = '
-		--grammar='.$conf.'/varchar.yy
-		--gendata='.$conf.'/varchar.zz
-		--config='.$conf.'/falcon_varchar.cc
+		--grammar='.$conf.'/engines/varchar.yy
+		--gendata='.$conf.'/engines/varchar.zz
+		--config='.$conf.'/engines/falcon/falcon_varchar.cc
 		--duration=900
 		--trials=1
 		--seed=time
@@ -159,9 +153,9 @@ while (length $full_test_name < 40)
 
 if ($command_result_shifted > 0) {
 	# test failed
-	print("------------------------------------------------------------------------\n");
+	say("------------------------------------------------------------------------\n");
 	print($full_test_name." [ fail ]\n");
-	print("----->  See below for failure details...\n");
+	say("----->  See below for failure details...\n");
 } else {
 	print($full_test_name." [ pass ]\n");
 }
@@ -176,15 +170,15 @@ if ($command_result_shifted > 0) {
 my $log_lines = `wc -l < $log_file`;	# number of lines in the log file
 if ($log_lines <= 200) {
 	# log has 200 lines or less. Display the entire log.
-	print("----->  Test log will now be displayed...\n\n");
+	say("----->  Test log will now be displayed...\n\n");
 	open LOGFILE, $log_file or warn "***Failed to open log file [$log_file]";
 	print while(<LOGFILE>);
 	close LOGFILE;
 } elsif ($log_lines > 200) {
 	# the log has more than 200 lines. Display the first and last 100 lines.
 	my $lines = 100;
-	print("----->  Printing first $lines and last $lines lines from test output of $log_lines lines...\n");
-	print('----->  See log file '.basename($log_file)." for full output.\n\n");
+	say("----->  Printing first $lines and last $lines lines from test output of $log_lines lines...\n");
+	say('----->  See log file '.basename($log_file)." for full output.\n\n");
 	system("head -$lines $log_file");
 	print("\n.\n.\n.\n.\n.\n(...)\n.\n.\n.\n.\n.\n\n"); # something to visually separate the head and the tail
 	system("tail -$lines $log_file");
@@ -196,30 +190,30 @@ if ($log_lines <= 200) {
 # Kill remaining mysqld processes.
 # Assuming only one test run going on at the same time, and that all mysqld
 # processes are ours.
-print("Checking for remaining mysqld processes...\n");
-if ($windowsOS) {
+say("Checking for remaining mysqld processes...\n");
+if (windows()) {
 	# assumes MS Sysinternals PsTools is installed in C:\bin
 	# If you need to run pslist or pskill as non-Admin user, some permission
 	# adjustments may be needed. See:
 	#   http://blogs.technet.com/markrussinovich/archive/2007/07/09/1449341.aspx
 	if (system('C:\bin\pslist mysqld') == 0) {
-		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
+		say(" ^--- Found running mysqld process(es), to be killed if possible.\n");
 		system('C:\bin\pskill mysqld > '.$vardir.'/pskill_mysqld.out 2>&1');
 		system('C:\bin\pskill mysqld-nt > '.$vardir.'/pskill_mysqld-nt.out 2>&1');
-	} else { print("  None found.\n"); }
+	} else { say("  None found.\n"); }
 
 } else {
 	# Unix/Linux.
 	# Avoid "bad argument count" messages from kill by checking if process exists first.
 	if (system("pgrep mysqld") == 0) {
-		print(" ^--- Found running mysqld process(es), to be killed if possible.\n");
+		say(" ^--- Found running mysqld process(es), to be killed if possible.\n");
 		system("pgrep mysqld | xargs kill -15"); # "soft" kill
 		sleep(5);
 		if (system("pgrep mysqld > /dev/null") == 0) {
 			# process is still around...
 			system("pgrep mysqld | xargs kill -9"); # "hard" kill
 		}
-	} else { print("  None found.\n"); }
+	} else { say("  None found.\n"); }
 }
 
 print localtime()." [$$] $0 will exit with exit status ".$command_result_shifted."\n";

@@ -28,7 +28,7 @@
 # Purpose:  RQG grammar for testing partitioning by COLUMN_LIST
 #           , introduced in WL#3352
 #
-# NOTES:    * Must be used with conf/partition_pruning.zz as the gendata
+# NOTES:    * Must be used with conf/partitioning/partition_pruning.zz as the gendata
 #             configuration file
 #           * Designed for:
 #             ** server-server comparisons, particularly
@@ -43,7 +43,7 @@
 #             that no result-set differences occur via the 
 #             server-server compare and to look for crashes
 #             and memory leaks
-#           * the gendata file, conf/partition_pruning.zz
+#           * the gendata file, conf/partitioning/partition_pruning.zz
 #             contains the table setups / partitioning schemes
 ################################################################################
 
