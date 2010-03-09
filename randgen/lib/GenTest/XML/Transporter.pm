@@ -20,30 +20,38 @@ package GenTest::XML::Transporter;
 require Exporter;
 @ISA = qw(GenTest);
 
+@EXPORT = ('XMLTRANSPORT_TYPE_SCP', 'XMLTRANSPORT_TYPE_MYSQL');
+#@EXPORT = ('type');
+
 use strict;
 use GenTest;
 use GenTest::Constants;
+use GenTest::Properties;
 
-use constant XMLTRANSPORT_MYSQL         => 0;
-use constant XMLTRANSPORT_SCP           => 1;
-use constant DEFAULT_TRANSPORT_TYPE     => XMLTRANSPORT_SCP;
-use constant MYSQL_DEFAULT_DSN          =>
+
+use constant XMLTRANSPORT_TYPE              => 0;  # which transport type to use
+use constant XMLTRANSPORT_TYPE_MYSQL        => 1;  # db connections
+use constant XMLTRANSPORT_TYPE_SCP          => 2;  # secure copy
+use constant XMLTRANSPORT_TYPES             => 3;  # collection of types
+
+# Defaults:
+use constant XML_DEFAULT_TRANSPORT_TYPE     => XMLTRANSPORT_TYPE_SCP;
+use constant XML_MYSQL_DEFAULT_DSN          => 
     'dbi:mysql:host=myhost:port=3306:user=xmldrop:password=test;database=test';
-use constant SCP_DEFAULT_USER           => 'qauser';
-use constant SCP_DEFAULT_HOST           => 'regin.norway.sun.com';
-use constant SCP_DEFAULT_DEST_LOCATION  => '/raid/xml_results/TestTool/xml/';
-use constant XMLTRANSPORT_TYPES         => {};
+use constant XML_SCP_DEFAULT_USER           => 'qauser';
+use constant XML_SCP_DEFAULT_HOST           => 'regin.norway.sun.com';
+use constant XML_SCP_DEFAULT_DEST_PATH      => '/raid/xml_results/TestTool/xml/';
 
-1;
+1;  # so the require or use succeeds
 
 #
 # Use this class for transporting XML reports to a given destination.
 #
-# Usage example:
+# Usage example (using default settings):
 #
 #   use GenTest::XML::Transporter;
 #   my $xml_transporter = GenTest::XML::Transporter->new();
-#   my $result = $xml_transporter->sendXML($xml, undef);
+#   my $result = $xml_transporter->sendXML($xmlFileName);
 #   if ($result != STATUS_OK) {
 #       croak("Error from XML Transporter: $result");
 #   }
@@ -52,45 +60,69 @@ use constant XMLTRANSPORT_TYPES         => {};
 sub new {
 	my $class = shift;
 
-	my $transporter = $class->SUPER::new({
-#		environment	=> XMLREPORT_ENVIRONMENT,
-#		date		=> XMLREPORT_DATE,
-#		buildinfo	=> XMLREPORT_BUILDINFO,
-#		tests		=> XMLREPORT_TESTS
+	my $self = $class->SUPER::new({
+        type        => XMLTRANSPORT_TYPE
 	}, @_);
 
-#	$transporter->[XMLREPORT_DATE] = isoUTCTimestamp() if not defined $transporter->[XMLREPORT_DATE];
-#	$transporter->[XMLREPORT_ENVIRONMENT] = GenTest::XML::Environment->new() if not defined  $transporter->[XMLREPORT_ENVIRONMENT];
-    $transporter->[XMLTRANSPORT_TYPES] = {
-        XMLTRANSPORT_MYSQL         => 0,
-        XMLTRANSPORT_SCP           => 1
-    };
+    if (not defined $self->[XMLTRANSPORT_TYPE]) {
+        $self->[XMLTRANSPORT_TYPE] = XML_DEFAULT_TRANSPORT_TYPE;
+        say('XML Transport: Using default settings');
+    }
 
+    #${$self}[XMLTRANSPORT_TYPES] = ();
 
-	return $transporter;
+    return $self;
 }
+
+
+#
+# Returns the type of transport mechanism this object represents.
+#
+sub type {
+    my $self = shift;
+    if (defined $self->[XMLTRANSPORT_TYPE]) {
+        return $self->[XMLTRANSPORT_TYPE];
+    } else {
+        return XML_DEFAULT_TRANSPORT_TYPE;
+    }
+}
+
+#
+# Constructs a default destination for the SCP transport type.
+# Suitable for use in an scp command-line such as:
+#    scp myfile <defaultScpDestination>
+# where <defaultScpDestination> is <user>@<host>:<path>.
+#
+sub defaultScpDestination {
+    my $self = shift;
+    return XML_SCP_DEFAULT_USER.'@'.XML_SCP_DEFAULT_HOST.
+            ':'.XML_SCP_DEFAULT_DEST_PATH;
+}
+
 
 #
 # Sends XML data to a destination.
 # The transport mechanism to use (e.g. file copy, database insert, ftp, etc.)
-# and destination is determined by an identifier passed as arg2.
-# Valid identifiers are defined as constants in this class.
-#
-# The default identifier is identified by DEFAULT_TRANSPORT_TYPE.
+# and destination is determined by the "type" argument to the object's
+# constructor.
 #
 # Arguments:
-#   arg1: The xml data (as string).
-#   arg2: Identifier of the destination and transport mechamism to be used.
+#   arg1: xml  - The xml data file name. TODO: Support XML as string?
+#   arg2: dest - Destination for xml report. Defaults are used if omitted.
 #
 sub sendXML {
-    my ($self, $xml, $destId) = @_;
+    my ($self, $xml, $dest) = @_;
 
-    $destId = DEFAULT_TRANSPORT_TYPE if not defined $destId;
-    # TODO: Check for valid destId here? ($self->[XMLTRANSPORT_TYPES])
-
-    if ($destId == XMLTRANSPORT_SCP) { return scp(); }
-    else {
-        say("[ERROR] XML transport id '".$destId."' not supported.");
+    if ($self->type == XMLTRANSPORT_TYPE_MYSQL) {
+        say("XML Transport type: MySQL database connection");
+        $dest = XML_MYSQL_DEFAULT_DSN if not defined $dest;
+        return $self->mysql($xml, $dest);
+    } elsif ($self->type == XMLTRANSPORT_TYPE_SCP) {
+        say("XML Transport type: SCP");
+        $dest = $self->defaultScpDestination if not defined $dest;
+        return $self->scp($xml, $dest);
+    } else {
+        say("[ERROR] XML transport type '".$self->type."' not supported.");
         return STATUS_ENVIRONMENT_FAILURE;
     }
 
@@ -98,38 +130,51 @@ sub sendXML {
     
 }
 
+#
+# Sends the XML contents of file $xml to $dest.
+# If $dest is not defined, a default MySQL dsn will be used.
+#
+# TODO: - Support argument as string (real XML contents) instead of file name.
+#       - Support non-default destination.
+#
+sub mysql() {
+    my ($self, $xml, $dest) = @_;
 
-sub scp()
-{
-    say("[ERROR] SCP functionality not implemented yet");
+    # TODO:
+    # 1. Establish dbh / connect
+    # 2. Execute query
+    # 3. Check for errors
+    # 4. Return appropriate status.
+    say("MySQL XML transport not implemented yet");
     return STATUS_WONT_HANDLE;
+}
 
-    ## From SysQA. TODO: Adjust to $self:
+#
+# Sends the file $xml by SCP (secure file copy) to $dest.
+#
+sub scp {
+    my ($self, $xml, $dest) = @_;
 
-#  if($^O ne 'cygwin' || $^O ne 'MSWin32' || $^O ne 'MSWin64')
-#  {
-#    if($scpTest)
-#    {
-#      system("scp $xml_output $atrUser\@$atrHost:$atrTestPath > /dev/null 2>&1");
-#      if ($? != 0){warn "scp to atr_test failed: $? ";}
-#    }
-#    if($scpPro)
-#    {
-#      system("scp $xml_output $atrUser\@$atrHost:$atrPath > /dev/null 2>&1");
-#      if ($? != 0){warn "scp to atr failed: $?";}
-#    }
-#  }
-#  elsif ($^O eq 'cygwin' || $^O eq 'MSWin32' || $^O eq 'MSWin64')
-#  {
-#    if($scpTest)
-#    {
-#      system("pscp.exe -q $xml_output $atrUser\@$atrHost:$atrTestPath");
-#      if ($? != 0){warn "pscp to atr_test failed: $? ";}
-#    }
-#    if($scpPro)
-#    {
-#      system("pscp.exe -q $xml_output $atrUser\@$atrHost:$atrPath");
-#      if ($? != 0){warn "pscp to atr failed: $?";}
-#    }
-#  }
+    # For now, we assume $xml is a file name
+    # TODO: Support XML as string as well? Create temporary file?
+    my $xmlfile = $xml;
+
+    my $cmd;
+    if (windows()) {
+        $cmd = 'pscp.exe -q '.$xmlfile.' '.$dest;
+    } else {
+        $cmd = 'scp '.$xmlfile.' '.$dest;
+    }
+
+    say("SCP command is: ".$cmd);
+
+    # TODO: The scp command is interactive if keys and hosts are not set up.
+    #       This may cause hangs in automated environments. Find a way to
+    #       always run non-interactively, or kill the command after a timeout.
+    my $result == system($cmd);
+    if ($result != STATUS_OK) {
+        warn('XML Transport: scp failed. Command was: '.$cmd);
+    }
+
+    return $result >> 8;
 }
