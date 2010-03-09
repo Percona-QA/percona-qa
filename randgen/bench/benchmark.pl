@@ -69,6 +69,7 @@ if ($arg eq 'grammar') {
     foreach my $b ('gendata','grammar') {
         say("----------------------------------------------");
         system("perl -d:DProf bench/benchmark.pl $b");
+        say("Collecting profiling information");
         system("dprofpp -u");
     }
 }
