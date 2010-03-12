@@ -467,7 +467,7 @@ sub version {
 				     'sbin'], 
 				    'mysql_config');
 
-	    my $ver = `$conf --version`;
+	    my $ver = `sh "$conf" --version`;
 	    
 	    chop($ver);
 
