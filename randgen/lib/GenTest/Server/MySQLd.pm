@@ -47,6 +47,7 @@ use constant MYSQLD_DBH => 13;
 use constant MYSQLD_START_DIRTY => 14;
 use constant MYSQLD_VALGRIND => 15;
 use constant MYSQLD_VALGRIND_OPTIONS => 16;
+use constant MYSQLD_VERSION => 17;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_LOG_FILE => "mysql.err";
@@ -131,9 +132,9 @@ sub new {
     
     push(@{$self->[MYSQLD_STDOPTS]},"--loose-skip-innodb") if not windows;
     if ($self->[MYSQLD_START_DIRTY]) {
-        say("Using existing data at ".$self->datadir)
+        say("Using existing data for Mysql " .$self->version ." at ".$self->datadir)
     } else {
-        say("Creating database at ".$self->datadir);
+        say("Creating Myql " . $self->version . " database at ".$self->datadir);
         $self->createMysqlBase;
     }
 
@@ -282,7 +283,7 @@ sub startServer {
         my $vardir = $self->[MYSQLD_VARDIR];
         $exe =~ s/\//\\/g;
         $vardir =~ s/\//\\/g;
-        say("Starting: $exe as $command on $vardir");
+        say("StartingMysql ".$self->version.": $exe as $command on $vardir");
         Win32::Process::Create($proc,
                                $exe,
                                $command,
@@ -299,7 +300,7 @@ sub startServer {
             }
             $command = "valgrind --time-stamp=yes ".$val_opt." ".$command;
         }
-        say("Starting: $command");
+        say("Starting Mysql ".$self->version.": $command");
         $self->[MYSQLD_AUXPID] = fork();
         if ($self->[MYSQLD_AUXPID]) {
             ## Wait for the pid file to have been created
@@ -445,4 +446,27 @@ sub _absPath {
     } else {
         return $path =~ m/^\//;
     }
+}
+
+sub version {
+    my($self) = @_;
+
+    if (not defined $self->[MYSQLD_VERSION]) {
+	if (windows) {
+	    $self->[MYSQLD_VERSION] = "UNDEFINED";
+	} else {
+	    my $conf = $self->_find([$self->basedir], 
+				    ['scripts',
+				     'bin',
+				     'sbin'], 
+				    'mysql_config');
+
+	    my $ver = `$conf --version`;
+	    
+	    chop($ver);
+
+	    $self->[MYSQLD_VERSION] = $ver;
+	}
+    }
+    return $self->[MYSQLD_VERSION];
 }
