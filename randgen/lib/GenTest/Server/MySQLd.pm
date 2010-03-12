@@ -124,9 +124,13 @@ sub new {
                        windows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release"]:["libmysql","libmysql/.libs","lib/mysql"], 
                        windows()?"libmysql.dll":"libmysqlclient.so");
     
+    my ($v1,$v2,@rest) = $self->versionNumbers;
+    my $v = $v1*1000+$v2;
+
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
-                               "--lc-messages-dir=".$self->[MYSQLD_MESSAGES],
+                               $v > 5001? "--lc-messages-dir=".$self->[MYSQLD_MESSAGES]:
+			       "--language=".$self->[MYSQLD_MESSAGES]."/english",
                                "--default-storage-engine=myisam",
                                "--log-warnings=0"];
     
@@ -256,6 +260,8 @@ sub _reportError {
 sub startServer {
     my ($self) = @_;
 
+    my ($v1,$v2,@rest) = $self->versionNumbers;
+    my $v = $v1*1000+$v2;
     my $command = $self->generateCommand(["--no-defaults"],
                                          $self->[MYSQLD_STDOPTS],
                                          ["--core-file",
@@ -270,7 +276,7 @@ sub startServer {
                                           "--port=".$self->port,
                                           "--socket=".$self->socketfile,
                                           "--pid-file=".$self->pidfile,
-                                          "--general-log-file=".$self->logfile]);
+                                          ($v>5000?"--general-log-file=":"--log=").$self->logfile]);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
     }
@@ -453,7 +459,7 @@ sub version {
 
     if (not defined $self->[MYSQLD_VERSION]) {
 	if (windows) {
-	    $self->[MYSQLD_VERSION] = "UNDEFINED";
+	    $self->[MYSQLD_VERSION] = "5.5.5"; ## FIXME
 	} else {
 	    my $conf = $self->_find([$self->basedir], 
 				    ['scripts',
