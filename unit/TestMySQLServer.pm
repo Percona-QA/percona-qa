@@ -98,6 +98,7 @@ sub test_create_server {
                                            start_dirty => 1);
     
     $self->assert_not_null($server);
+
     $server->startServer;
     push @pids,$server->serverpid;
     $server->stopServer;
