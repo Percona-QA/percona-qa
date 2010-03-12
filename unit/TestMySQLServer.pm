@@ -66,6 +66,10 @@ sub test_create_server {
                                               vardir => $vardir,
                                               port => $portbase);
     $self->assert_not_null($server);
+
+    my ($major, $minor, $build) = $server->versionNumbers;
+
+    say("Major: $major, Minor: $minor, Build: $build");
     
     $self->assert(-f $vardir."/data/mysql/db.MYD","No ".$vardir."/data/mysql/db.MYD");
     

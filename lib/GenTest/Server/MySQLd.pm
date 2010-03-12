@@ -470,3 +470,12 @@ sub version {
     }
     return $self->[MYSQLD_VERSION];
 }
+
+sub versionNumbers {
+    my($self) = @_;
+
+    $self->version =~ m/([0-9]+)\.([0-9]+)\.([0-9]+)/;
+
+    return (int($1),int($2),int($3));
+}
+
