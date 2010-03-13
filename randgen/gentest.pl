@@ -103,9 +103,9 @@ say("Starting \n $0 \\ \n ".join(" \\ \n ", @ARGV_saved));
 
 my $gentest = GenTest::App::GenTest->new(config => $config);
 
-$gentest->run();
+my $status = $gentest->run();
 
-exit STATUS_OK;
+safe_exit($status);
 
 sub help {
 

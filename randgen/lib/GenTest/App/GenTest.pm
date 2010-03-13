@@ -122,7 +122,7 @@ sub run {
             }
             $gendata_result = $datagen->run();
             
-            safe_exit ($gendata_result >> 8) if $gendata_result > STATUS_OK;
+            return ($gendata_result >> 8) if $gendata_result > STATUS_OK;
         }
     }
     
@@ -133,7 +133,7 @@ sub run {
         grammar_file => $self->config->grammar
         );
     
-    exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
+    return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
     
     if (defined $self->config->redefine) {
         my $patch_grammar = GenTest::Grammar->new(
@@ -141,7 +141,7 @@ sub run {
         $grammar = $grammar->patch($patch_grammar);
     }
     
-    exit(STATUS_ENVIRONMENT_FAILURE) if not defined $grammar;
+    return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
     
     my $channel = GenTest::IPC::Channel->new();
     
@@ -186,7 +186,7 @@ sub run {
                     test_end	=> $test_end,
                     test_duration	=> $self->config->duration
                                                                 } );
-                exit($add_result) if $add_result > STATUS_OK;
+                return $add_result if $add_result > STATUS_OK;
             }
         }
     }
@@ -390,17 +390,17 @@ sub run {
         
         if ($total_status == STATUS_OK) {
             say("Test completed successfully.");
-            safe_exit(0);
+            return STATUS_OK;
         } else {
             say("Test completed with failure status $total_status.");
-            safe_exit($total_status);
+            return $total_status;
         }
     } elsif ($process_type == PROCESS_TYPE_PERIODIC) {
         ## Periodic does not use channel
         $channel->close();
         while (1) {
             my $reporter_status = $reporter_manager->monitor(REPORTER_TYPE_PERIODIC);
-            exit($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
+            return $reporter_status if $reporter_status > STATUS_CRITICAL_FAILURE;
             sleep(10);
         }
     } elsif ($process_type == PROCESS_TYPE_CHILD) {
@@ -415,7 +415,7 @@ sub run {
 	        mask_level => $self->config->property('mask-level')
             );
         
-        exit (STATUS_ENVIRONMENT_FAILURE) if not defined $generator;
+        return STATUS_ENVIRONMENT_FAILURE if not defined $generator;
         
         my $mixer = GenTest::Mixer->new(
             generator => $generator,
@@ -424,13 +424,13 @@ sub run {
             filters => defined $filter_obj ? [ $filter_obj ] : undef
             );
         
-        exit (STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
+        return STATUS_ENVIRONMENT_FAILURE if not defined $mixer;
         
         my $max_result = 0;
         
         foreach my $i (1..$queries) {
             my $result = $mixer->next();
-            exit($result) if $result > STATUS_CRITICAL_FAILURE;
+            return $result if $result > STATUS_CRITICAL_FAILURE;
             $max_result = $result if $result > $max_result && $result > STATUS_TEST_FAILURE;
             last if $result == STATUS_EOF;
             last if $ctrl_c == 1;
@@ -439,14 +439,15 @@ sub run {
         
         if ($max_result > 0) {
             say("Child process completed with error code $max_result.");
-            exit($max_result);
+            return $max_result;
         } else {
             say("Child process completed successfully.");
-            exit(0);
+            return STATUS_OK;
         }
         
     } else {
         croak ("Unknown process type $process_type");
     }
 
+    return STATUS_OK;
 }
