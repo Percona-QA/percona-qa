@@ -243,7 +243,7 @@ foreach my $server_id (0..1) {
 	) {
 		push @mtr_options, 'rpl_alter';
 		push @mtr_options, "--slave_port=".$slave_port;
-	} elsif ($basedirs[$server_id] =~ m{(^|-)5\.0}sgio) {
+	} elsif ($basedirs[$server_id] =~ m{(^|[-/ ])5\.0}sgio) {
 		say("Basedir implies server version 5.0. Will not use --start-and-exit 1st");
 		# Do nothing, test name "1st" does not exist in 5.0
 	} else {
