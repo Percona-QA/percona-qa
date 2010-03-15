@@ -124,16 +124,11 @@ sub new {
                        windows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release"]:["libmysql","libmysql/.libs","lib/mysql"], 
                        windows()?"libmysql.dll":"libmysqlclient.so");
     
-    my ($v1,$v2,@rest) = $self->versionNumbers;
-    my $v = $v1*1000+$v2;
-
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
-                               $v > 5001? "--lc-messages-dir=".$self->[MYSQLD_MESSAGES]:
-			       "--language=".$self->[MYSQLD_MESSAGES]."/english",
+			       $self->_messages,
                                "--default-storage-engine=myisam",
-                               "--log-warnings=0"];
-    
+                               "--log-warnings=0"];    
     push(@{$self->[MYSQLD_STDOPTS]},"--loose-skip-innodb") if not windows;
     if ($self->[MYSQLD_START_DIRTY]) {
         say("Using existing data for Mysql " .$self->version ." at ".$self->datadir)
@@ -276,7 +271,7 @@ sub startServer {
                                           "--port=".$self->port,
                                           "--socket=".$self->socketfile,
                                           "--pid-file=".$self->pidfile,
-                                          ($v>5000?"--general-log-file=":"--log=").$self->logfile]);
+                                          $self->_logOption]);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
     }
@@ -485,3 +480,35 @@ sub versionNumbers {
     return (int($1),int($2),int($3));
 }
 
+#############  Version specific stuff
+
+sub _messages {
+    my ($self) = @_;
+
+    if ($self->_olderThan(5,5,0)) {
+	return "--language=".$self->[MYSQLD_MESSAGES]."/english";
+    } else {
+	return "--lc-messages-dir=".$self->[MYSQLD_MESSAGES];
+    }
+}
+
+sub _logOption {
+    my ($self) = @_;
+
+    if ($self->_olderThan(5,1,29)) {
+	return "--log=".$self->logfile; 
+    } else {
+	return "--general-log-file=".$self->logfile;
+    }
+}
+
+sub _olderThan {
+    my ($self,$b1,$b2,$b3) = @_;
+    
+    my ($v1, $v2, $v3) = $self->versionNumbers;
+
+    return 1 if $v1 < $b1;
+    return 1 if $v2 < $b2;
+    return 1 if $v3 < $b3;
+    return 0;
+}
