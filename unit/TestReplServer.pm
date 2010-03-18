@@ -58,14 +58,13 @@ sub test_create_server {
     
     my $portbase = 30 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
 
-    my $master_vardir= cwd()."/unit/tmp1";
-    my $slave_vardir= cwd()."/unit/tmp2";
+    my $master_vardir= cwd()."/unit/tmp1/";
+    my $slave_vardir= cwd()."/unit/tmp1_slave";
     
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
     
     my $server = GenTest::Server::ReplMySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                                   master_vardir => $master_vardir,
-                                                  slave_vardir => $slave_vardir,
                                                   mode => 'statement',
                                                   master_port => $portbase);
     $self->assert_not_null($server);
