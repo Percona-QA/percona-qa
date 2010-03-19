@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008, 2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -170,7 +170,7 @@ if (
 
 my $client_basedir;
 	
-foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client", "$basedirs[0]/bin") {
+foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client/Debug", "$basedirs[0]/client", "$basedirs[0]/bin") {
 	if (-e $path) {
 		$client_basedir = $path;
 		last;
