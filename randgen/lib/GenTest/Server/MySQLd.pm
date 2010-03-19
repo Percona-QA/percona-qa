@@ -129,7 +129,7 @@ sub new {
 			       $self->_messages,
                                "--default-storage-engine=myisam",
                                "--log-warnings=0"];    
-    push(@{$self->[MYSQLD_STDOPTS]},"--loose-skip-innodb") if not windows;
+
     if ($self->[MYSQLD_START_DIRTY]) {
         say("Using existing data for Mysql " .$self->version ." at ".$self->datadir)
     } else {
@@ -235,14 +235,16 @@ sub createMysqlBase  {
     print BOOT "DELETE FROM user WHERE `User` = '';\n";
     close BOOT;
     
-    my $command = $self->generateCommand(["--no-defaults","--bootstrap"],
-                                         $self->[MYSQLD_STDOPTS]);
-    
     ## 4. Boot database
     if (windows()) {
+        my $command = $self->generateCommand(["--no-defaults","--bootstrap"],
+                                             $self->[MYSQLD_STDOPTS]);
+    
         my $bootlog = $self->vardir."/boot.log";
         system("$command < \"$boot\" > \"$bootlog\"");
     } else {
+        my $command = $self->generateCommand(["--no-defaults","--bootstrap","--loose-skip-innodb"],
+                                             $self->[MYSQLD_STDOPTS]);
         my $bootlog = $self->vardir."/boot.log";
         system("cat \"$boot\" | $command > \"$bootlog\"  2>&1 ");
     }
