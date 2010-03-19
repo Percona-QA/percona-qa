@@ -24,6 +24,8 @@ use lib "$ENV{RQG_HOME}/lib";
 use Carp;
 use strict;
 use GenTest;
+use GenTest::Properties;
+use GenTest::App::GenTest;
 use GenTest::Server::MySQLd;
 use GenTest::Server::ReplMySQLd;
 
@@ -256,39 +258,65 @@ if ($rpl_mode ne '') {
 # Run actual queries
 #
 
+my $gentestProps = GenTest::Properties->new(
+    legal => ['grammar',
+              'dsn',
+              'engine',
+              'gendata',
+              'redefine',
+              'threads',
+              'queries',
+              'duration',
+              'help',
+              'debug',
+              'rpl_mode',
+              'validators',
+              'reporters',
+              'seed',
+              'mask',
+              'mask-level',
+              'rows',
+              'varchar-length',
+              'xml-output',
+              'views',
+              'start-dirty',
+              'filter',
+              'valgrind']
+    );
+
 my @gentest_options;
 
-push @gentest_options, "--start-dirty" if defined $start_dirty;
-push @gentest_options, "--gendata=$gendata";
-push @gentest_options, "--engine=$engine" if defined $engine;
-push @gentest_options, "--rpl_mode=$rpl_mode" if defined $rpl_mode;
-push @gentest_options, map {'--validator='.$_} split(/,/,$validators) if defined $validators;
-push @gentest_options, map {'--reporter='.$_} split(/,/,$reporters) if defined $reporters;
-push @gentest_options, "--threads=$threads" if defined $threads;
-push @gentest_options, "--queries=$queries" if defined $queries;
-push @gentest_options, "--duration=$duration" if defined $duration;
-push @gentest_options, "--dsn=$dsns[0]" if defined $dsns[0];
-push @gentest_options, "--dsn=$dsns[1]" if defined $dsns[1];
-push @gentest_options, "--grammar=$grammar_file";
-push @gentest_options, "--redefine=$redefine_file" if defined $redefine_file;
-push @gentest_options, "--seed=$seed" if defined $seed;
-push @gentest_options, "--mask=$mask" if defined $mask;
-push @gentest_options, "--mask-level=$mask_level" if defined $mask_level;
-push @gentest_options, "--rows=$rows" if defined $rows;
-push @gentest_options, "--views" if defined $views;
-push @gentest_options, "--varchar-length=$varchar_len" if defined $varchar_len;
-push @gentest_options, "--xml-output=$xml_output" if defined $xml_output;
-push @gentest_options, "--debug" if defined $debug;
-push @gentest_options, "--filter=$filter" if defined $filter;
-push @gentest_options, "--valgrind" if $valgrind;
+$gentestProps->start_dirty(1) if defined $start_dirty;
+$gentestProps->gendata($gendata);
+$gentestProps->engine($engine) if defined $engine;
+$gentestProps->rpl_mode($rpl_mode) if defined $rpl_mode;
+$gentestProps->validators($validators) if defined $validators;
+$gentestProps->reporters($reporters) if defined $reporters;
+$gentestProps->threads($threads) if defined $threads;
+$gentestProps->queries($queries) if defined $queries;
+$gentestProps->duration($duration) if defined $duration;
+$gentestProps->dsn(\@dsns) if defined @dsns;
+$gentestProps->grammar($grammar_file);
+$gentestProps->redefine_file($redefine_file) if defined $redefine_file;
+$gentestProps->seed($seed) if defined $seed;
+$gentestProps->mask($mask) if defined $mask;
+$gentestProps->property('mask-level',$mask_level) if defined $mask_level;
+$gentestProps->rows($rows) if defined $rows;
+$gentestProps->views(1) if defined $views;
+$gentestProps->property('varchar-length',$varchar_len) if defined $varchar_len;
+$gentestProps->property('xml-output',$xml_output) if defined $xml_output;
+$gentestProps->debug(1) if defined $debug;
+$gentestProps->filter($filter) if defined $filter;
+$gentestProps->valgrind(1) if $valgrind;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
 $ENV{RQG_THREADS}= $threads;
 
-my $gentest_result = system("perl $ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_options));
-say("gentest.pl exited with exit status ".($gentest_result >> 8));
-exit_test($gentest_result >> 8) if $gentest_result > 0;
+my $gentest = GenTest::App::GenTest->new(config => $gentestProps);
+my $gentest_result = $gentest->run();
+say("GenTest exited with exit status ".($gentest_result));
+exit_test($gentest_result) if $gentest_result > 0;
 
 #
 # Compare master and slave, or two masters
