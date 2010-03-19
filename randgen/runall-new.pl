@@ -162,7 +162,7 @@ if (
 
 my $client_basedir;
 
-foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client", "$basedirs[0]/bin") {
+foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client", "$basedirs[0]/bin") {
 	if (-e $path) {
 		$client_basedir = $path;
 		last;
