@@ -296,4 +296,15 @@ sub getSchemaMetaData {
 }
 
 
+sub getCollationMetaData {
+    ## Return the result from a query with the following columns:
+    ## 1. Collation name
+    ## 2. Character set
+    my ($self) = @_;
+    my $query = 
+        "SELECT collation_name,character_set_name FROM information_schema.collations";
+
+    return [];
+}
+
 1;
