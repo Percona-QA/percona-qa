@@ -402,11 +402,11 @@ sub arrayElement {
 sub fieldType {
 	my ($rand, $field_def) = @_;
 
-	$field_def =~ s{ }{_}sio;
-	$field_def =~ s{^_}{}sio;
-	my ($field_base_type) = $field_def =~ m{^([A-Za-z]*)}sio;
-	my ($field_full_type) = $field_def =~ m{^([A-Za-z_]*)}sio;
-	my ($field_length) = $field_def =~ m{\((.*?)\)}sio;
+	$field_def =~ s{ }{_}o;
+	$field_def =~ s{^_}{}o;
+	my ($field_base_type) = $field_def =~ m{^([A-Za-z]*)}o;
+	my ($field_full_type) = $field_def =~ m{^([A-Za-z_]*)}o;
+	my ($field_length) = $field_def =~ m{\((.*?)\)}o;
 	$field_length = 1 if not defined $field_length;
 	my $field_type = $name2type{$field_base_type};
 
@@ -468,8 +468,8 @@ sub isFieldType {
 	my ($rand, $field_def) = @_;
 	return undef if not defined $field_def;
 
-	$field_def =~ s{^_}{}sio;
-	my ($field_name) = $field_def =~ m{^([A-Za-z]*)}sio;
+	$field_def =~ s{^_}{}o;
+	my ($field_name) = $field_def =~ m{^([A-Za-z]*)}o;
 
 	if (exists $name2type{$field_name}) {
 		return $name2type{$field_name};
