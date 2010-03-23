@@ -403,6 +403,7 @@ sub run {
             return $reporter_status if $reporter_status > STATUS_CRITICAL_FAILURE;
             sleep(10);
         }
+        $self->stop_child(STATUS_OK);
     } elsif ($process_type == PROCESS_TYPE_CHILD) {
         # We are a child process, execute the desired queries and terminate
         
@@ -439,15 +440,25 @@ sub run {
         
         if ($max_result > 0) {
             say("Child process completed with error code $max_result.");
-            return $max_result;
+            $self->stop_child($max_result);
         } else {
             say("Child process completed successfully.");
-            return STATUS_OK;
+            $self->stop_child(STATUS_OK);
         }
-        
     } else {
         croak ("Unknown process type $process_type");
     }
 
-    return STATUS_OK;
 }
+
+sub stop_child {
+    my ($self, $status) = @_;
+
+    if (windows()) {
+        exit $status;
+    } else {
+        safe_exit($status);
+    }
+}
+
+1;
