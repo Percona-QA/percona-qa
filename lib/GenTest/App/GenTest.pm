@@ -256,6 +256,8 @@ sub run {
         buildinfo => $buildinfo,
         tests => [ $test ]
         );
+
+    ### Start central reporting thread ####
     
     my $errorfilter = GenTest::ErrorFilter->new(channel=>$channel);
     my $errorfilter_p = GenTest::IPC::Process->new(object=>$errorfilter);
@@ -263,6 +265,8 @@ sub run {
         $errorfilter_p->start();
     }
     
+    ### Start children ###
+
     my $process_type;
     my %child_pids;
     my $id = 1;
@@ -291,7 +295,13 @@ sub run {
         }
     }
 
+
+    ### Do the job
+
     if ($process_type == PROCESS_TYPE_PARENT) {
+        
+        ### Main process
+        
         if (windows()) {
             ## Important that this is done here in the parent after the last
             ## fork since on windows Process.pm uses threads
@@ -405,6 +415,7 @@ sub run {
         }
         $self->stop_child(STATUS_OK);
     } elsif ($process_type == PROCESS_TYPE_CHILD) {
+
         # We are a child process, execute the desired queries and terminate
         
         my $generator = GenTest::Generator::FromGrammar->new(
