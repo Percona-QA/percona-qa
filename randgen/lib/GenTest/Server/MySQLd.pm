@@ -509,9 +509,8 @@ sub _olderThan {
     
     my ($v1, $v2, $v3) = $self->versionNumbers;
 
-    return 0 if $v1 => $b1;
-    return 0 if $v2 => $b2;
-    return 0 if $v3 => $b3;
+    my $b = $b1*1000 + $b2 * 100 + $b3;
+    my $v = $v1*1000 + $v2 * 100 + $v3;
 
-    return 1;
+    return $v < $b;
 }
