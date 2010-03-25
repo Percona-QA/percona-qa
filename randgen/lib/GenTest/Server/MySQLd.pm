@@ -133,7 +133,7 @@ sub new {
     if ($self->[MYSQLD_START_DIRTY]) {
         say("Using existing data for Mysql " .$self->version ." at ".$self->datadir)
     } else {
-        say("Creating Myql " . $self->version . " database at ".$self->datadir);
+        say("Creating Mysql " . $self->version . " database at ".$self->datadir);
         $self->createMysqlBase;
     }
 
@@ -488,9 +488,9 @@ sub _messages {
     my ($self) = @_;
 
     if ($self->_olderThan(5,5,0)) {
-	return "--language=".$self->[MYSQLD_MESSAGES]."/english";
+        return "--language=".$self->[MYSQLD_MESSAGES]."/english";
     } else {
-	return "--lc-messages-dir=".$self->[MYSQLD_MESSAGES];
+        return "--lc-messages-dir=".$self->[MYSQLD_MESSAGES];
     }
 }
 
@@ -498,9 +498,9 @@ sub _logOption {
     my ($self) = @_;
 
     if ($self->_olderThan(5,1,29)) {
-	return "--log=".$self->logfile; 
+        return "--log=".$self->logfile; 
     } else {
-	return "--general-log-file=".$self->logfile;
+        return "--general-log-file=".$self->logfile;
     }
 }
 
@@ -509,8 +509,9 @@ sub _olderThan {
     
     my ($v1, $v2, $v3) = $self->versionNumbers;
 
-    return 1 if $v1 < $b1;
-    return 1 if $v2 < $b2;
-    return 1 if $v3 < $b3;
-    return 0;
+    return 0 if $v1 => $b1;
+    return 0 if $v2 => $b2;
+    return 0 if $v3 => $b3;
+
+    return 1;
 }
