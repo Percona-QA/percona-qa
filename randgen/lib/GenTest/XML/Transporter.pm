@@ -64,9 +64,17 @@ sub new {
         type        => XMLTRANSPORT_TYPE
 	}, @_);
 
+    # Figure out transport type, which may be set as string value on
+    # command-line, or elsewhere. Use default if not set.
     if (not defined $self->[XMLTRANSPORT_TYPE]) {
         $self->[XMLTRANSPORT_TYPE] = XML_DEFAULT_TRANSPORT_TYPE;
         say('XML Transport: Using default settings');
+    } elsif ($self->[XMLTRANSPORT_TYPE] =~ m{scp}io) {
+        # string match for "scp" (case insensitive)
+        $self->[XMLTRANSPORT_TYPE] = XMLTRANSPORT_TYPE_SCP;
+    } elsif ($self->[XMLTRANSPORT_TYPE] =~ m{mysql}io) {
+        # string match for "mysql" (case insensitive)
+        $self->[XMLTRANSPORT_TYPE] = XMLTRANSPORT_TYPE_MYSQL;
     }
 
     #${$self}[XMLTRANSPORT_TYPES] = ();
