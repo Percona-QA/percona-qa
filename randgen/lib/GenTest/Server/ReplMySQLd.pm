@@ -73,9 +73,10 @@ sub new {
     if (not defined $self->[REPLMYSQLD_MASTER_VARDIR]) {
         $self->[REPLMYSQLD_MASTER_VARDIR] = "mysql-test/var";
     }
-    
     if (not defined $self->[REPLMYSQLD_SLAVE_VARDIR]) {
-        $self->[REPLMYSQLD_SLAVE_VARDIR] = "mysql-test/var_slave";
+        my $varbase = $self->[REPLMYSQLD_MASTER_VARDIR];
+        $varbase =~ s/(.*)\/$/\1/;
+        $self->[REPLMYSQLD_SLAVE_VARDIR] = $varbase.'_slave';
     }
     
     my @master_options;

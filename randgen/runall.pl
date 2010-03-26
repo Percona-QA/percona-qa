@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008, 2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -171,7 +171,7 @@ if (
 
 my $client_basedir;
 	
-foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client", "$basedirs[0]/bin") {
+foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client/Debug", "$basedirs[0]/client", "$basedirs[0]/bin") {
 	if (-e $path) {
 		$client_basedir = $path;
 		last;
@@ -244,7 +244,7 @@ foreach my $server_id (0..1) {
 	) {
 		push @mtr_options, 'rpl_alter';
 		push @mtr_options, "--slave_port=".$slave_port;
-	} elsif ($basedirs[$server_id] =~ m{(^|-)5\.0}sgio) {
+	} elsif ($basedirs[$server_id] =~ m{(^|[-/ ])5\.0}sgio) {
 		say("Basedir implies server version 5.0. Will not use --start-and-exit 1st");
 		# Do nothing, test name "1st" does not exist in 5.0
 	} else {
