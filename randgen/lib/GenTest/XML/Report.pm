@@ -47,7 +47,7 @@ sub new {
 		tests		=> XMLREPORT_TESTS
 	}, @_);
 
-	$report->[XMLREPORT_DATE] = isoUTCTimestamp() if not defined $report->[XMLREPORT_DATE];
+	$report->[XMLREPORT_DATE] = isoTimestamp() if not defined $report->[XMLREPORT_DATE];
 	$report->[XMLREPORT_ENVIRONMENT] = GenTest::XML::Environment->new() if not defined  $report->[XMLREPORT_ENVIRONMENT];
 
 	return $report;
@@ -91,7 +91,7 @@ sub xml {
     $writer->dataElement('name', 'RQG_misc');
     $writer->dataElement('environment_id', 0);
     $writer->dataElement('starttime', $report->[XMLREPORT_DATE]);
-    $writer->dataElement('endtime', isoUTCTimestamp());
+    $writer->dataElement('endtime', isoTimestamp());
     $writer->dataElement('description', 'http://forge.mysql.com/wiki/RQG');
     # TODO (if applicable):
     # test-suite specific descriptions (once we have defined testsuites)?
