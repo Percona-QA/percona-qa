@@ -21,4 +21,4 @@ SET GLOBAL optimizer_use_mrr = 'disable';
 
 SET GLOBAL engine_condition_pushdown = 'off';
 
-SET GLOBAL join_cache_level = 0;
+SET GLOBAL optimizer_join_cache_level = 0;
