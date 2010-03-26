@@ -37,7 +37,7 @@ sub new {
 sub set_up {
 }
 
-@pids;
+my @pids;
 
 sub tear_down {
     if (windows) {
@@ -48,7 +48,7 @@ sub tear_down {
         system("rmdir /s /q unit\\tmp");
     } else {
         ## Need to ,kill leftover processes if there are some
-        # kill 9 => @pids;
+        kill 9 => @pids;
         # system("rm -rf unit/tmp");
     }
 }
@@ -66,6 +66,10 @@ sub test_create_server {
                                               vardir => $vardir,
                                               port => $portbase);
     $self->assert_not_null($server);
+
+    my ($major, $minor, $build) = $server->versionNumbers;
+
+    say("Major: $major, Minor: $minor, Build: $build");
     
     $self->assert(-f $vardir."/data/mysql/db.MYD","No ".$vardir."/data/mysql/db.MYD");
     
@@ -98,6 +102,7 @@ sub test_create_server {
                                            start_dirty => 1);
     
     $self->assert_not_null($server);
+
     $server->startServer;
     push @pids,$server->serverpid;
     $server->stopServer;

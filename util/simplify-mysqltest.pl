@@ -15,6 +15,8 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
+$| = 1;
+
 use strict;
 use lib 'lib';
 use lib '../lib';
@@ -96,8 +98,8 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
         open (ORACLE_MYSQLTEST, ">t/$testfile") or croak "Unable to open $testfile: $!";
 
 	print ORACLE_MYSQLTEST join("\n",@{$header})."\n\n";
-        print ORACLE_MYSQLTEST $oracle_mysqltest."\n";
-	print ORACLE_MYSQLTEST "\n".join("\n",@{$footer})."\n";
+        print ORACLE_MYSQLTEST $oracle_mysqltest;
+	print ORACLE_MYSQLTEST "\n\n".join("\n",@{$footer})."\n";
         close ORACLE_MYSQLTEST;
 
         my $mysqldopt = $config->genOpt('--mysqld=--', 'mysqld');
@@ -121,7 +123,7 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
 		say("Messages about unsafe replication found in master error log.");
 		return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
 	} elsif ($grep_exit_code > 1) {
-		die("grep on the mysqld.1.err error log failed");
+		say("grep on the mysqld.1.err error log failed");
 	}
 
         ########################################################################

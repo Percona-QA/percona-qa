@@ -47,6 +47,7 @@ use constant MYSQLD_DBH => 13;
 use constant MYSQLD_START_DIRTY => 14;
 use constant MYSQLD_VALGRIND => 15;
 use constant MYSQLD_VALGRIND_OPTIONS => 16;
+use constant MYSQLD_VERSION => 17;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_LOG_FILE => "mysql.err";
@@ -125,15 +126,14 @@ sub new {
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
-                               "--lc-messages-dir=".$self->[MYSQLD_MESSAGES],
+			       $self->_messages,
                                "--default-storage-engine=myisam",
-                               "--log-warnings=0"];
-    
-    push(@{$self->[MYSQLD_STDOPTS]},"--loose-skip-innodb") if not windows;
+                               "--log-warnings=0"];    
+
     if ($self->[MYSQLD_START_DIRTY]) {
-        say("Using existing data at ".$self->datadir)
+        say("Using existing data for Mysql " .$self->version ." at ".$self->datadir)
     } else {
-        say("Creating database at ".$self->datadir);
+        say("Creating Mysql " . $self->version . " database at ".$self->datadir);
         $self->createMysqlBase;
     }
 
@@ -235,14 +235,16 @@ sub createMysqlBase  {
     print BOOT "DELETE FROM user WHERE `User` = '';\n";
     close BOOT;
     
-    my $command = $self->generateCommand(["--no-defaults","--bootstrap"],
-                                         $self->[MYSQLD_STDOPTS]);
-    
     ## 4. Boot database
     if (windows()) {
+        my $command = $self->generateCommand(["--no-defaults","--bootstrap"],
+                                             $self->[MYSQLD_STDOPTS]);
+    
         my $bootlog = $self->vardir."/boot.log";
         system("$command < \"$boot\" > \"$bootlog\"");
     } else {
+        my $command = $self->generateCommand(["--no-defaults","--bootstrap","--loose-skip-innodb"],
+                                             $self->[MYSQLD_STDOPTS]);
         my $bootlog = $self->vardir."/boot.log";
         system("cat \"$boot\" | $command > \"$bootlog\"  2>&1 ");
     }
@@ -255,11 +257,13 @@ sub _reportError {
 sub startServer {
     my ($self) = @_;
 
+    my ($v1,$v2,@rest) = $self->versionNumbers;
+    my $v = $v1*1000+$v2;
     my $command = $self->generateCommand(["--no-defaults"],
                                          $self->[MYSQLD_STDOPTS],
                                          ["--core-file",
                                           #"--skip-ndbcluster",
-                                          "--skip-grant",
+                                          #"--skip-grant",
                                           "--loose-new",
                                           "--relay-log=slave-relay-bin",
                                           "--loose-innodb",
@@ -269,7 +273,7 @@ sub startServer {
                                           "--port=".$self->port,
                                           "--socket=".$self->socketfile,
                                           "--pid-file=".$self->pidfile,
-                                          "--general-log-file=".$self->logfile]);
+                                          $self->_logOption]);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
     }
@@ -282,7 +286,7 @@ sub startServer {
         my $vardir = $self->[MYSQLD_VARDIR];
         $exe =~ s/\//\\/g;
         $vardir =~ s/\//\\/g;
-        say("Starting: $exe as $command on $vardir");
+        say("StartingMysql ".$self->version.": $exe as $command on $vardir");
         Win32::Process::Create($proc,
                                $exe,
                                $command,
@@ -299,7 +303,7 @@ sub startServer {
             }
             $command = "valgrind --time-stamp=yes ".$val_opt." ".$command;
         }
-        say("Starting: $command");
+        say("Starting Mysql ".$self->version.": $command");
         $self->[MYSQLD_AUXPID] = fork();
         if ($self->[MYSQLD_AUXPID]) {
             ## Wait for the pid file to have been created
@@ -445,4 +449,68 @@ sub _absPath {
     } else {
         return $path =~ m/^\//;
     }
+}
+
+sub version {
+    my($self) = @_;
+
+    if (not defined $self->[MYSQLD_VERSION]) {
+	if (windows) {
+	    $self->[MYSQLD_VERSION] = "5.5.5"; ## FIXME
+	} else {
+	    my $conf = $self->_find([$self->basedir], 
+				    ['scripts',
+				     'bin',
+				     'sbin'], 
+				    'mysql_config');
+
+	    my $ver = `sh "$conf" --version`;
+	    
+	    chop($ver);
+
+	    $self->[MYSQLD_VERSION] = $ver;
+	}
+    }
+    return $self->[MYSQLD_VERSION];
+}
+
+sub versionNumbers {
+    my($self) = @_;
+
+    $self->version =~ m/([0-9]+)\.([0-9]+)\.([0-9]+)/;
+
+    return (int($1),int($2),int($3));
+}
+
+#############  Version specific stuff
+
+sub _messages {
+    my ($self) = @_;
+
+    if ($self->_olderThan(5,5,0)) {
+        return "--language=".$self->[MYSQLD_MESSAGES]."/english";
+    } else {
+        return "--lc-messages-dir=".$self->[MYSQLD_MESSAGES];
+    }
+}
+
+sub _logOption {
+    my ($self) = @_;
+
+    if ($self->_olderThan(5,1,29)) {
+        return "--log=".$self->logfile; 
+    } else {
+        return "--general-log-file=".$self->logfile;
+    }
+}
+
+sub _olderThan {
+    my ($self,$b1,$b2,$b3) = @_;
+    
+    my ($v1, $v2, $v3) = $self->versionNumbers;
+
+    my $b = $b1*1000 + $b2 * 100 + $b3;
+    my $v = $v1*1000 + $v2 * 100 + $v3;
+
+    return $v < $b;
 }
