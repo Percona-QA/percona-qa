@@ -40,6 +40,7 @@ use Time::HiRes;
 use GenTest::XML::Report;
 use GenTest::XML::Test;
 use GenTest::XML::BuildInfo;
+use GenTest::XML::Transporter;
 use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Validator;
@@ -398,6 +399,21 @@ sub run {
             print XML $report->xml();
             close XML;
             say("XML report written to ". $self->config->property('xml-output'));
+        }
+
+        # XML Result reporting to Test Tool (TT)
+        if (defined $self->config->property('report-xml-tt')) {
+            #my $xml_transporter = GenTest::XML::Transporter->new(type => XMLTRANSPORT_TYPE_MYSQL);
+            my $xml_transporter = GenTest::XML::Transporter->new(
+                type => $self->config->property('report-xml-tt-type')
+            );
+            my $result = $xml_transporter->sendXML(
+                $self->config->property('xml-output'),
+                $self->config->property('report-xml-tt-dest')
+            );
+            if ($result != STATUS_OK) {
+                croak("Error from XML Transporter: $result");
+            }
         }
         
         if ($total_status == STATUS_OK) {

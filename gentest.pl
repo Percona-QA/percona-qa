@@ -55,6 +55,9 @@ my $opt_result = GetOptions($options,
                             'rpl_mode=s',
                             'validators:s@',
                             'reporters:s@',
+                            'report-xml-tt',
+                            'report-xml-tt-type=s',
+                            'report-xml-tt-dest=s',
                             'seed=s',
                             'mask=i',
                             'mask-level=i',
@@ -87,6 +90,9 @@ my $config = GenTest::Properties->new(
               'rpl_mode',
               'validators',
               'reporters',
+              'report-xml-tt',
+              'report-xml-tt-type',
+              'report-xml-tt-dest',
               'seed',
               'mask',
               'mask-level',
@@ -141,6 +147,9 @@ $0 - Testing via random query generation. Options:
         --filter    : ......
         --start-dirty: Do not generate data (use existing database(s))
         --xml-output: Name of a file to which an XML report will be written if this option is set.
+        --report-xml-tt: Report test results in XML-format to the Test Tool (TT) reporting framework.
+        --report-xml-tt-type: Type of TT XML transport to use (e.g. scp)
+        --report-xml-tt-dest: Destination of TT XML report (e.g. user\@host:/path/to/location (for type scp))
         --valgrind  : ......
         --filter    : ......
         --help      : This help message
