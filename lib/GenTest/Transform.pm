@@ -71,7 +71,8 @@ sub transformExecuteValidate {
 		# and pick the first result set that was returned and use it during further processing.
 
 		foreach my $transformed_query_part (@$transformed_query) {
-			my $part_result = $executor->execute($transformed_query_part, 1);
+			my $part_result = $executor->execute($transformed_query_part);
+			return STATUS_ENVIRONMENT_FAILURE if $part_result->status() == STATUS_SYNTAX_ERROR;
 			$result_transformed = $part_result if defined $part_result->data();
 		}
 	

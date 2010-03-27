@@ -33,11 +33,10 @@ sub transform {
 	return STATUS_WONT_HANDLE if $original_query !~ m{SELECT}io;
 
 	return [
-		"CREATE DATABASE IF NOT EXISTS prepstmt_twice_db",
-		"PREPARE prepstmt_twice_db.prep_stmt_$$ FROM $original_query",
-		"EXECUTE prpstmt_twice_db.prep_stmt_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-                "EXECUTE prpstmt_twice_db.prep_stmt_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DROP PREPARE prpstmt_twice_db.prep_stmt_$$"
+		"PREPARE prep_stmt_$$ FROM ".$executor->dbh()->quote($original_query),
+		"EXECUTE prep_stmt_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"EXECUTE prep_stmt_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"DEALLOCATE PREPARE prep_stmt_$$"
 	];
 }
 
