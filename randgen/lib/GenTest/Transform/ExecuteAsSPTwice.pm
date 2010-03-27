@@ -34,7 +34,7 @@ sub transform {
 
 	return [
 		"CREATE DATABASE IF NOT EXISTS sptwice_db",
-		"CREATE PROCEDURE sptwice_db.stored_proc_$$ LANGUAGE SQL $original_query",
+		"CREATE PROCEDURE sptwice_db.stored_proc_$$ () LANGUAGE SQL $original_query",
 		"CALL sptwice_db.stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
                 "CALL sptwice_db.stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		"DROP PROCEDURE IF EXISTS sptwice_db.stored_proc_$$"
