@@ -72,8 +72,15 @@ sub transformExecuteValidate {
 
 		foreach my $transformed_query_part (@$transformed_query) {
 			my $part_result = $executor->execute($transformed_query_part);
-			return STATUS_ENVIRONMENT_FAILURE if $part_result->status() != STATUS_OK;
-			$result_transformed = $part_result if defined $part_result->data();
+			if (
+				($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
+			) {
+				return STATUS_ENVIRONMENT_FAILURE; # No Transform should ever produce a syntax or semantic error;
+			} elsif ($part_result->status() != STATUS_OK) {
+				return $part_result->status();
+			} else {
+				$result_transformed = $part_result if defined $part_result->data();
+			}
 		}
 	
 		# Join the separate queries together for further printing and analysis

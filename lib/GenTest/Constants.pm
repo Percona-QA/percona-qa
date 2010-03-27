@@ -100,11 +100,11 @@ use constant STATUS_CONTENT_MISMATCH		=> 33;	#
 
 # Higher-priority errors
 
-use constant STATUS_CRITICAL_FAILURE		=> 30;	# Boundary between critical and non-critical errors
+use constant STATUS_CRITICAL_FAILURE		=> 100;	# Boundary between critical and non-critical errors
 
-use constant STATUS_ENVIRONMENT_FAILURE		=> 34;	# A failure in the environment or the grammar file
+use constant STATUS_ENVIRONMENT_FAILURE		=> 110;	# A failure in the environment or the grammar file
 
-use constant STATUS_CUSTOM_OUTCOME		=> 35;	# Used for things such as signaling an EXPLAIN hit from the ExplainMatch Validator
+use constant STATUS_CUSTOM_OUTCOME		=> 36;	# Used for things such as signaling an EXPLAIN hit from the ExplainMatch Validator
 
 use constant STATUS_SERVER_CRASHED		=> 101;
 
