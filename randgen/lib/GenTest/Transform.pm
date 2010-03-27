@@ -72,7 +72,7 @@ sub transformExecuteValidate {
 
 		foreach my $transformed_query_part (@$transformed_query) {
 			my $part_result = $executor->execute($transformed_query_part);
-			return STATUS_ENVIRONMENT_FAILURE if $part_result->status() == STATUS_SYNTAX_ERROR;
+			return STATUS_ENVIRONMENT_FAILURE if $part_result->status() != STATUS_OK;
 			$result_transformed = $part_result if defined $part_result->data();
 		}
 	
