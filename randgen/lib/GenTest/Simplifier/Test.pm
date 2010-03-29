@@ -28,6 +28,8 @@ use GenTest::Simplifier::Tables;
 use GenTest::Comparator;
 use GenTest::Constants;
 
+use Data::Dumper;
+
 use constant SIMPLIFIER_EXECUTORS	=> 0;
 use constant SIMPLIFIER_QUERIES		=> 1;
 use constant SIMPLIFIER_RESULTS		=> 2;
@@ -50,7 +52,7 @@ my @optimizer_variables = (
 1;
 
 sub new {
-		my $class = shift;
+	my $class = shift;
 
 	my $simplifier = $class->SUPER::new({
 		executors	=> SIMPLIFIER_EXECUTORS,
@@ -164,6 +166,18 @@ sub simplify {
 
 		$query =~ s{(SELECT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)}{\n$1}sgio;
 		$test .= $query.";\n\n";
+
+		foreach my $ex (0..1) {
+			if (defined $executors->[$ex]) {
+				$test .= "/* Query plan Server $ex:\n";
+				my $plan =  $executors->[$ex]->dbh()->selectall_arrayref("EXPLAIN $query");
+				
+				foreach my $row (@$plan) {
+					$test .= "# |".join("|",@$row)."|\n";
+				}
+				$test .= "# */\n\n";
+			}
+		}
 
 		if (
 			(defined $results) &&
