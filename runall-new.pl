@@ -51,7 +51,7 @@ my $database = 'test';
 my @dsns;
 
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
-    $engine, $help, $debug, $validators, $reporters, $grammar_file,
+    $engine, $help, $debug, @validators, @reporters, $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread);
@@ -66,8 +66,14 @@ my $opt_result = GetOptions(
 	'mysqld=s@' => \$mysqld_options[0],
 	'mysqld1=s@' => \$mysqld_options[0],
 	'mysqld2=s@' => \$mysqld_options[1],
-	'basedir=s@' => \@basedirs,
-	'vardir=s@' => \@vardirs,
+    'basedir=s' => \$basedirs[0],
+    'basedir1=s' => \$basedirs[0],
+    'basedir2=s' => \$basedirs[1],
+	#'basedir=s@' => \@basedirs,
+	'vardir=s' => \$vardirs[0],
+	'vardir1=s' => \$vardirs[0],
+	'vardir2=s' => \$vardirs[1],
+	#'vardir=s@' => \@vardirs,
 	'rpl_mode=s' => \$rpl_mode,
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
@@ -77,8 +83,8 @@ my $opt_result = GetOptions(
 	'duration=i' => \$duration,
 	'help' => \$help,
 	'debug' => \$debug,
-	'validators:s' => \$validators,
-	'reporters:s' => \$reporters,
+	'validators=s@' => \@validators,
+	'reporters=s@' => \@reporters,
 	'gendata:s' => \$gendata,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
@@ -103,6 +109,7 @@ if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 say("Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
 say("Please see http://forge.mysql.com/wiki/Category:RandomQueryGenerator for more information on this test framework.");
 say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
+
 
 #
 # Calculate master and slave ports based on MTR_BUILD_THREAD (MTR
@@ -130,7 +137,6 @@ say("master_port : $ports[0] slave_port : $ports[1] ports : @ports MTR_BUILD_THR
 # If the user has provided two vardirs and one basedir, start second
 # server using the same basedir
 #
-
 
 if (
 	($vardirs[1] ne '') && 
@@ -175,7 +181,7 @@ foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client/Deb
 
 my @server;
 my $rplsrv;
-	
+
 if ($rpl_mode ne '') {
     my @options;
     push @options, lc("--$engine") if defined $engine && lc($engine) ne lc('myisam');
@@ -212,6 +218,9 @@ if ($rpl_mode ne '') {
     $server[1] = $rplsrv->slave;
     
 } else {
+    if ($#basedirs != $#vardirs) {
+        croak ("The number of basedirs and vardirs must match $#basedirs != $#vardirs")
+    }
     foreach my $server_id (0..1) {
         next if $basedirs[$server_id] eq '';
         
@@ -286,12 +295,22 @@ my $gentestProps = GenTest::Properties->new(
 
 my @gentest_options;
 
+## For backward compatability
+if ($#validators == 0 and $validators[0] =~ m/,/) {
+    @validators = split(/,/,$validators[0]);
+}
+
+## For backward compatability
+if ($#reporters == 0 and $reporters[0] =~ m/,/) {
+    @reporters = split(/,/,$reporters[0]);
+}
+
 $gentestProps->start_dirty(1) if defined $start_dirty;
 $gentestProps->gendata($gendata);
 $gentestProps->engine($engine) if defined $engine;
 $gentestProps->rpl_mode($rpl_mode) if defined $rpl_mode;
-$gentestProps->validators($validators) if defined $validators;
-$gentestProps->reporters($reporters) if defined $reporters;
+$gentestProps->validators(\@validators) if defined @validators;
+$gentestProps->reporters(\@reporters) if defined @reporters;
 $gentestProps->threads($threads) if defined $threads;
 $gentestProps->queries($queries) if defined $queries;
 $gentestProps->duration($duration) if defined $duration;

@@ -190,7 +190,7 @@ sub run {
             }
         }
     }
-    
+
     if (not defined $self->config->validators or $#{$self->config->validators} < 0) {
         $self->config->validators([]);
         push(@{$self->config->validators}, 'ErrorMessageCorruption') 
@@ -410,7 +410,7 @@ sub run {
         $channel->close();
         while (1) {
             my $reporter_status = $reporter_manager->monitor(REPORTER_TYPE_PERIODIC);
-            return $reporter_status if $reporter_status > STATUS_CRITICAL_FAILURE;
+            stop_child($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
             sleep(10);
         }
         $self->stop_child(STATUS_OK);
@@ -427,7 +427,7 @@ sub run {
 	        mask_level => $self->config->property('mask-level')
             );
         
-        return STATUS_ENVIRONMENT_FAILURE if not defined $generator;
+        stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $generator;
         
         my $mixer = GenTest::Mixer->new(
             generator => $generator,
@@ -436,13 +436,13 @@ sub run {
             filters => defined $filter_obj ? [ $filter_obj ] : undef
             );
         
-        return STATUS_ENVIRONMENT_FAILURE if not defined $mixer;
+        stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
         
         my $max_result = 0;
         
         foreach my $i (1..$queries) {
             my $result = $mixer->next();
-            return $result if $result > STATUS_CRITICAL_FAILURE;
+            stop_child($result) if $result > STATUS_CRITICAL_FAILURE;
             $max_result = $result if $result > $max_result && $result > STATUS_TEST_FAILURE;
             last if $result == STATUS_EOF;
             last if $ctrl_c == 1;
