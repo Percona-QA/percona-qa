@@ -450,6 +450,10 @@ sub run {
             last if time() > $test_end;
         }
         
+        for my $ex (@executors) {
+            $ex->disconnect;
+        }
+        
         if ($max_result > 0) {
             say("Child process completed with error code $max_result.");
             $self->stop_child($max_result);

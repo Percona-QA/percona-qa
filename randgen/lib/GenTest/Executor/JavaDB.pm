@@ -232,7 +232,7 @@ sub normalize {
 }
 
 
-sub DESTROY {
+sub disconnect {
 	my ($self) = @_;
 	if (rqg_debug()) {
 		say("Statistics for Executor ".$self->dsn()); 
@@ -248,6 +248,14 @@ sub DESTROY {
 		print Dumper $self->[EXECUTOR_EXPLAIN_QUERIES];
 	}
 	$self->dbh()->disconnect();
+    $self->setDbh(undef);
+}
+
+sub DESTROY {
+    my ($self) = @_;
+    if (defined $self->dbh) {
+        $self->disconnect;
+    }
 }
 
 sub version {
