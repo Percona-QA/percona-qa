@@ -401,7 +401,9 @@ sub run {
             say("XML report written to ". $self->config->property('xml-output'));
         }
 
-        # XML Result reporting to Test Tool (TT)
+        # XML Result reporting to Test Tool (TT).
+        # Currently both --xml-output=<filename> and --report-xml-tt must be
+        # set to trigger this.
         if (defined $self->config->property('report-xml-tt')) {
             #my $xml_transporter = GenTest::XML::Transporter->new(type => XMLTRANSPORT_TYPE_MYSQL);
             my $xml_transporter = GenTest::XML::Transporter->new(
