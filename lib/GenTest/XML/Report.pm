@@ -34,6 +34,7 @@ use constant XMLREPORT_DATE             => 0;
 use constant XMLREPORT_BUILDINFO        => 1;
 use constant XMLREPORT_TESTS            => 2;
 use constant XMLREPORT_ENVIRONMENT      => 3;
+use constant XMLREPORT_NAME             => 4;
 
 1;
 
@@ -44,7 +45,8 @@ sub new {
 		environment	=> XMLREPORT_ENVIRONMENT,
 		date		=> XMLREPORT_DATE,
 		buildinfo	=> XMLREPORT_BUILDINFO,
-		tests		=> XMLREPORT_TESTS
+		tests		=> XMLREPORT_TESTS,
+        name        => XMLREPORT_NAME
 	}, @_);
 
 	$report->[XMLREPORT_DATE] = isoTimestamp() if not defined $report->[XMLREPORT_DATE];
@@ -88,7 +90,7 @@ sub xml {
 
     $writer->startTag('testsuites');
     $writer->startTag('testsuite', id => 0);
-    $writer->dataElement('name', 'RQG_misc');
+    $writer->dataElement('name', $report->[XMLREPORT_NAME]);
     $writer->dataElement('environment_id', 0);
     $writer->dataElement('starttime', $report->[XMLREPORT_DATE]);
     $writer->dataElement('endtime', isoTimestamp());

@@ -235,9 +235,17 @@ sub run {
             );
     }
     
+    # XML: 
+    #  Define test suite name for reporting purposes.
+    #  Until we support test suites and/or reports with multiple suites/tests,
+    #  we use the test name as test suite name, from config option "testname".
+    #  Default testname is "rqg_no_name"
+    my $test_suite_name = $self->config->testname;
+    $test_suite_name = "rqg_no_name" if not defined $test_suite_name;
+    
     my $test = GenTest::XML::Test->new(
         id => time(),
-        name => $self->config->testname,  # TODO: Get test name from somewhere (new option?)
+        name => $test_suite_name,  # NOTE: Consider changing to test (or test case) name when suites are supported.
         attributes => {
             engine => $self->config->engine,
             gendata => $self->config->gendata,
@@ -256,6 +264,7 @@ sub run {
     
     my $report = GenTest::XML::Report->new(
         buildinfo => $buildinfo,
+        name => $test_suite_name,  # NOTE: name here refers to the name of the test suite or "test".
         tests => [ $test ]
         );
 
