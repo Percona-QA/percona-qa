@@ -380,6 +380,16 @@ sub stopServer {
     if (defined $self->[MYSQLD_DBH]) {
         say("Stopping server on port ".$self->port);
         my $r = $self->[MYSQLD_DBH]->func('shutdown','127.0.0.1','root','admin');
+        if (!$r) {
+            # Attemt with fresh dbh
+            my $dbh = DBI->connect($self->dsn("mysql"),
+                                   undef,
+                                   undef,
+                                   {PrintError => 1,
+                                    RaiseError => 0,
+                                    AutoCommit => 1});
+            $r = $dbh->func('shutdown','127.0.0.1','root','admin');
+        }
         my $waits = 0;
         if ($r) {
             while (-f $self->pidfile && $waits < 100) {

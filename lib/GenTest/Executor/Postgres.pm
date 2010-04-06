@@ -263,4 +263,12 @@ sub getCollationMetaData {
     return [];
 }
 
+sub disconnect {
+    my ($self) = @_;
+    $self->dbh->disconnect;
+    $self->setDbh(undef);
+}
+
+
+
 1;
