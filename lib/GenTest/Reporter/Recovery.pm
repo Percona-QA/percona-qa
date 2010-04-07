@@ -177,7 +177,7 @@ sub report {
 
 	my $databases = $dbh->selectcol_arrayref("SHOW DATABASES");
 	foreach my $database (@$databases) {
-		next if lc($database) eq 'mysql' || lc($database) eq 'information_schema' || lc($database) eq 'pbxt';
+		next if $database =~ m{^(mysql|information_schema|pbxt|performance_schema)$}sio;
 		$dbh->do("USE $database");
 		my $tables = $dbh->selectcol_arrayref("SHOW TABLES");
 		foreach my $table (@$tables) {
@@ -203,9 +203,9 @@ sub report {
 				} elsif ($column_name =~ m{char}sio) {
 					$main_predicate = "WHERE `$column_name` >= ''";
 				} elsif ($column_name =~ m{date}sio) {
-					$main_predicate = "WHERE `$column_name` >= '1900-01-01'";
+					$main_predicate = "WHERE (`$column_name` >= '1900-01-01' OR `$column_name` = '0000-00-00') ";
 				} elsif ($column_name =~ m{time}sio) {
-					$main_predicate = "WHERE `$column_name` >= '-838:59:59'";
+					$main_predicate = "WHERE (`$column_name` >= '-838:59:59' OR `$column_name` = '00:00:00') ";
 				} else {
 					next;
 				}

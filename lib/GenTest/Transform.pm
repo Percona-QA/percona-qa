@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -71,8 +71,16 @@ sub transformExecuteValidate {
 		# and pick the first result set that was returned and use it during further processing.
 
 		foreach my $transformed_query_part (@$transformed_query) {
-			my $part_result = $executor->execute($transformed_query_part, 1);
-			$result_transformed = $part_result if defined $part_result->data();
+			my $part_result = $executor->execute($transformed_query_part);
+			if (
+				($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
+			) {
+				return STATUS_ENVIRONMENT_FAILURE; # No Transform should ever produce a syntax or semantic error;
+			} elsif ($part_result->status() != STATUS_OK) {
+				return $part_result->status();
+			} else {
+				$result_transformed = $part_result if defined $part_result->data();
+			}
 		}
 	
 		# Join the separate queries together for further printing and analysis

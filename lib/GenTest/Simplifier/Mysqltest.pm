@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -53,25 +53,25 @@ sub new {
 sub simplify {
 	my ($simplifier, $initial_mysqltest) = @_;
 
-	my @queries = split("\n", $initial_mysqltest);
+        my @queries_filtered;
 
-	my $filtered_out = 0;
-
-	foreach my $i (0..$#queries) {
-		if ($queries[$i] =~ m{$simplifier->[SIMPLIFIER_FILTER]}sio) {
-			$filtered_out++;
-			splice @queries, $i, 1;
+	if (defined $simplifier->[SIMPLIFIER_FILTER]) {
+	        my $filter = $simplifier->[SIMPLIFIER_FILTER];
+		foreach (split("\n", $initial_mysqltest)) {
+			push @queries_filtered, $_ if $_ !~ m{$filter}sio;
 		}
+	} else {
+		@queries_filtered = split("\n", $initial_mysqltest);
 	}
 
-	say("Filtered $filtered_out queries out of ".($#queries+1));
+        say(($#queries_filtered + 1)." queries remain after filtering.");
 
-	if (!$simplifier->oracle(join("\n", @queries)."\n")) {
-		warn("Initial mysqltest failed oracle check.");
+	if (!$simplifier->oracle(join("\n", @queries_filtered)."\n")) {
+		warn("Initial mysqltest (after filtering) failed oracle check.");
 		return undef;
-	}
+        }
 
-	my $ddmin_outcome = $simplifier->ddmin(\@queries);
+	my $ddmin_outcome = $simplifier->ddmin(\@queries_filtered);
 	my $final_mysqltest = join("\n", @$ddmin_outcome)."\n";
 
 	if (!$simplifier->oracle($final_mysqltest)) {

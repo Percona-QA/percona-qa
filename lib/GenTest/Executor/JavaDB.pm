@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2009,2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -232,7 +232,7 @@ sub normalize {
 }
 
 
-sub DESTROY {
+sub disconnect {
 	my ($self) = @_;
 	if (rqg_debug()) {
 		say("Statistics for Executor ".$self->dsn()); 
@@ -248,6 +248,14 @@ sub DESTROY {
 		print Dumper $self->[EXECUTOR_EXPLAIN_QUERIES];
 	}
 	$self->dbh()->disconnect();
+    $self->setDbh(undef);
+}
+
+sub DESTROY {
+    my ($self) = @_;
+    if (defined $self->dbh) {
+        $self->disconnect;
+    }
 }
 
 sub version {

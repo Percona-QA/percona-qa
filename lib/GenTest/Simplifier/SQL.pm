@@ -162,11 +162,11 @@ sub DESTROY {
 	my $tmpfile = tmpdir().$$.'-'.time();
 
 	open (PASSING, ">$tmpfile-passing.txt");
-	print PASSING join (";\n", @{$simplifier->[SIMPLIFIER_PASSING_QUERIES]}).";\n";
+	print PASSING join (";\n", @{$simplifier->[SIMPLIFIER_PASSING_QUERIES]}).";\n" if defined $simplifier->[SIMPLIFIER_PASSING_QUERIES];
 	close PASSING;
 
 	open (FAILING, ">$tmpfile-failing.txt");
-	print FAILING join (";\n", @{$simplifier->[SIMPLIFIER_FAILING_QUERIES]}).";\n";
+	print FAILING join (";\n", @{$simplifier->[SIMPLIFIER_FAILING_QUERIES]}).";\n" if defined $simplifier->[SIMPLIFIER_FAILING_QUERIES];
 	close FAILING;
 
 	say("Passing queries: ".$tmpfile."-passing.txt; failing queries: ".$tmpfile."-failing.txt");

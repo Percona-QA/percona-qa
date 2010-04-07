@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2008-2010 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -192,7 +192,7 @@ sub run {
             }
         }
     }
-    
+
     if (not defined $self->config->validators or $#{$self->config->validators} < 0) {
         $self->config->validators([]);
         push(@{$self->config->validators}, 'ErrorMessageCorruption') 
@@ -337,7 +337,7 @@ sub run {
         while (1) {
             my $child_pid = wait();
             my $exit_status = $? > 0 ? ($? >> 8) : 0;
-            
+
             $total_status = $exit_status if $exit_status > $total_status;
             
             if ($child_pid == $periodic_pid) {
@@ -352,7 +352,7 @@ sub run {
             last if $children_died == $self->config->threads;
             last if $child_pid == -1;
         }
-        
+
         foreach my $child_pid (keys %child_pids) {
             say("Killing child process with pid $child_pid...");
             kill(15, $child_pid);
@@ -446,7 +446,7 @@ sub run {
         $channel->close();
         while (1) {
             my $reporter_status = $reporter_manager->monitor(REPORTER_TYPE_PERIODIC);
-            return $reporter_status if $reporter_status > STATUS_CRITICAL_FAILURE;
+            $self->stop_child($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
             sleep(10);
         }
         $self->stop_child(STATUS_OK);
@@ -463,7 +463,7 @@ sub run {
 	        mask_level => $self->config->property('mask-level')
             );
         
-        return STATUS_ENVIRONMENT_FAILURE if not defined $generator;
+        $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $generator;
         
         my $mixer = GenTest::Mixer->new(
             generator => $generator,
@@ -472,17 +472,22 @@ sub run {
             filters => defined $filter_obj ? [ $filter_obj ] : undef
             );
         
-        return STATUS_ENVIRONMENT_FAILURE if not defined $mixer;
+        $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
         
         my $max_result = 0;
         
         foreach my $i (1..$queries) {
             my $result = $mixer->next();
-            return $result if $result > STATUS_CRITICAL_FAILURE;
+            $self->stop_child($result) if $result > STATUS_CRITICAL_FAILURE;
+
             $max_result = $result if $result > $max_result && $result > STATUS_TEST_FAILURE;
             last if $result == STATUS_EOF;
             last if $ctrl_c == 1;
             last if time() > $test_end;
+        }
+        
+        for my $ex (@executors) {
+            $ex->disconnect;
         }
         
         if ($max_result > 0) {
@@ -500,6 +505,8 @@ sub run {
 
 sub stop_child {
     my ($self, $status) = @_;
+
+    die "calling stop_child() without a \$status" if not defined $status;
 
     if (windows()) {
         exit $status;

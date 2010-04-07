@@ -225,7 +225,10 @@ sub next {
 					$_;
 				}
 			} @{$prng->arrayElement($sentence[$pos]->[GenTest::Grammar::Rule::RULE_COMPONENTS])});
-			return undef if $@ ne '';
+			if ($@ ne '') {
+				say("Internal grammar problem: $@");
+				return undef;
+			}
 		} else {
 			$pos++;
 		}

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -33,11 +33,10 @@ sub transform {
 	return STATUS_WONT_HANDLE if $original_query !~ m{SELECT}io;
 
 	return [
-		"CREATE DATABASE IF NOT EXISTS sptwice_db",
-		"CREATE PROCEDURE sptwice_db.stored_proc_$$ LANGUAGE SQL $original_query",
-		"CALL sptwice_db.stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-                "CALL sptwice_db.stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DROP PROCEDURE IF EXISTS sptwice_db.stored_proc_$$"
+		"CREATE PROCEDURE stored_proc_$$ () LANGUAGE SQL $original_query",
+		"CALL stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+                "CALL stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"DROP PROCEDURE IF EXISTS stored_proc_$$"
 	];
 }
 
