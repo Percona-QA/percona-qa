@@ -24,6 +24,7 @@ package GenTest::App::GenTest;
 use strict;
 use Carp;
 use Data::Dumper;
+use File::Basename;
 
 use GenTest;
 use GenTest::Properties;
@@ -239,9 +240,16 @@ sub run {
     #  Define test suite name for reporting purposes.
     #  Until we support test suites and/or reports with multiple suites/tests,
     #  we use the test name as test suite name, from config option "testname".
-    #  Default testname is "rqg_no_name"
+    #  Default test name is the basename portion of the grammar file name.
+    #  If a grammar file is not given, the default is "rqg_no_name".
     my $test_suite_name = $self->config->testname;
-    $test_suite_name = "rqg_no_name" if not defined $test_suite_name;
+    if (not defined $test_suite_name) {
+        if (defined $self->config->grammar) {
+            $test_suite_name = basename($self->config->grammar, '.yy');
+        } else {
+            $test_suite_name = "rqg_no_name";
+        }
+    }
     
     my $test = GenTest::XML::Test->new(
         id => time(),
