@@ -164,7 +164,12 @@ sub getInfo()
         (my $trash, $osPatch) = split(/=/,$osPatch);
         $osType="Linux";
         $arch=trim(`uname -m`);
+        # We assume something like "x86_64" from 'uname -m'. Get bit info from that.
         ($trash, $bit) = split(/_/,$arch);
+        # If nothing after '_' (or no '_' at all), assume 32-bit.
+        $bit = "32" if length($bit) < 1;
+        #$bit = undef if length($bit) < 1;
+
         $kernel=trim(`uname -r`);
 
         #Memory
@@ -217,7 +222,7 @@ sub getInfo()
         ($osType,$osVer,$arch) = split (/ /, trim(`uname -srp`));
         # use of uname -m is discouraged (man pages), so use isainfo instead
         $kernel = `isainfo -k`;
-        $osBit = `isainfo -b`;
+        $osBit = `isainfo -b`;  # Note: Even 32-bit solaris says 64 here.
         my $trash; # variable functioning as /dev/null
         ($trash, $trash, my $osPatch1, my $osPatch2, $trash) = split(/ /, trim(`cat /etc/release | head -1`));
         my $osPatch3 = `uname -v`;
