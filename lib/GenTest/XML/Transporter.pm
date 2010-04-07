@@ -20,8 +20,7 @@ package GenTest::XML::Transporter;
 require Exporter;
 @ISA = qw(GenTest);
 
-@EXPORT = ('XMLTRANSPORT_TYPE_SCP', 'XMLTRANSPORT_TYPE_MYSQL');
-#@EXPORT = ('type');
+#@EXPORT = ('XMLTRANSPORT_TYPE_SCP', 'XMLTRANSPORT_TYPE_MYSQL');
 
 use strict;
 use GenTest;
@@ -50,7 +49,9 @@ use constant XML_SCP_DEFAULT_DEST_PATH      => '/raid/xml_results/TestTool/xml/'
 # Usage example (using default settings):
 #
 #   use GenTest::XML::Transporter;
-#   my $xml_transporter = GenTest::XML::Transporter->new();
+#   my $xml_transporter = GenTest::XML::Transporter->new(
+#       type => undef)
+#   );
 #   my $result = $xml_transporter->sendXML($xmlFileName);
 #   if ($result != STATUS_OK) {
 #       croak("Error from XML Transporter: $result");
