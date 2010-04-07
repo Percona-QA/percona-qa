@@ -102,7 +102,7 @@ my $opt_result = GetOptions(
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
-    'testname:s' => \$testname
+    'testname=s' => \$testname
 );
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
@@ -456,6 +456,7 @@ $0 - Run a complete random query generation test, including server start with re
     --report-xml-tt: Passed to gentest.pl
     --report-xml-tt-type: Passed to gentest.pl
     --report-xml-tt-dest: Passed to gentest.pl
+    --testname  : Name of test, used for reporting purposes.
     --views     : Generate views. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl

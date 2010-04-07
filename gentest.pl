@@ -46,7 +46,7 @@ my $opt_result = GetOptions($options,
                             'gendata:s',
                             'grammar=s',
                             'redefine=s',
-                            'testname:s',
+                            'testname=s',
                             'threads=i',
                             'queries=s',
                             'duration=s',
@@ -150,6 +150,7 @@ $0 - Testing via random query generation. Options:
         --report-xml-tt: Report test results in XML-format to the Test Tool (TT) reporting framework.
         --report-xml-tt-type: Type of TT XML transport to use (e.g. scp)
         --report-xml-tt-dest: Destination of TT XML report (e.g. user\@host:/path/to/location (for type scp))
+        --testname  : Name of test, used for reporting purposes.
         --valgrind  : ......
         --filter    : ......
         --help      : This help message
