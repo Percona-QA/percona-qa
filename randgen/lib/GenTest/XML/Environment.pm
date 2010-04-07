@@ -102,7 +102,7 @@ sub xml {
     $writer->dataElement('type', 'os');
     $writer->dataElement('version', $osVer);
     #$writer->dataElement('patch', $osPatch); # not in XML schema
-    $writer->dataElement('bit', $osBit);
+    $writer->dataElement('bit', $osBit) if defined $osBit;
     $writer->endTag('program');
 
     # <program> perl
@@ -169,6 +169,7 @@ sub getInfo()
         # If nothing after '_' (or no '_' at all), assume 32-bit.
         $bit = "32" if length($bit) < 1;
         #$bit = undef if length($bit) < 1;
+        $osBit = $bit;  # treat $osBit as $bit for now...
 
         $kernel=trim(`uname -r`);
 
@@ -222,7 +223,7 @@ sub getInfo()
         ($osType,$osVer,$arch) = split (/ /, trim(`uname -srp`));
         # use of uname -m is discouraged (man pages), so use isainfo instead
         $kernel = `isainfo -k`;
-        $osBit = `isainfo -b`;  # Note: Even 32-bit solaris says 64 here.
+        $osBit = `isainfo -b`;
         my $trash; # variable functioning as /dev/null
         ($trash, $trash, my $osPatch1, my $osPatch2, $trash) = split(/ /, trim(`cat /etc/release | head -1`));
         my $osPatch3 = `uname -v`;
