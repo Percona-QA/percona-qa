@@ -21,6 +21,7 @@ package TestScripts;
 use base qw(Test::Unit::TestCase);
 use lib 'lib';
 use GenTest;
+use Cwd;
 
 sub new {
     my $self = shift()->SUPER::new(@_);
@@ -103,7 +104,7 @@ sub test_runall_new {
     
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmp");
         $self->assert_equals(0, $status);
     }
 }
