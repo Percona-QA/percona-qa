@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -47,8 +47,8 @@ sub BEGIN {
 		'Count',
 		'ExecuteAsView',
 		'DisableIndexes',
-                'ExecuteAsSPTwice',
-                'ExecuteAsPreparedTwice'
+		'ExecuteAsSPTwice',
+		'ExecuteAsPreparedTwice'
 	);
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
@@ -74,6 +74,7 @@ sub validate {
 	my $max_transformer_status; 
 	foreach my $transformer (@transformers) {
 		my $transformer_status = $validator->transform($transformer, $executor, $results);
+		return $transformer_status if $transformer_status > STATUS_CRITICAL_FAILURE;
 		$max_transformer_status = $transformer_status if $transformer_status > $max_transformer_status;
 	}
 
@@ -87,8 +88,7 @@ sub transform {
 	my $original_query = $original_result->query();
 
 	my ($transform_outcome, $transformed_query, $transformed_result) = $transformer->transformExecuteValidate($original_query, $original_result, $executor);
-
-	return STATUS_OK if $transform_outcome == STATUS_OK;
+	return $transform_outcome if ($transform_outcome > STATUS_CRITICAL_FAILURE) || ($transform_outcome eq STATUS_OK);
 
 	say("Original query: $original_query failed transformation with Transformer ".$transformer->name());
 	say("Transformed query: $transformed_query");

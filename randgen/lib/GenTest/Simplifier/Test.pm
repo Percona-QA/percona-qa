@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -32,18 +32,25 @@ use constant SIMPLIFIER_EXECUTORS	=> 0;
 use constant SIMPLIFIER_QUERIES		=> 1;
 use constant SIMPLIFIER_RESULTS		=> 2;
 
+
+### Add options to this list to include them in the generated test
+### cases. It does not matter whether they only applies to certain
+### versions, since the non-existing options will be ignored for a
+### given server.
+
 my @optimizer_variables = (
 	'optimizer_switch',
-	'optimizer_use_mrr',
-	'engine_condition_pushdown',
+    'optimizer_use_mrr',
+    'optimizer_condition_pushdown',
 	'join_cache_level',
+	'optimizer_join_cache_level',
 	'debug'
 );
 
 1;
 
 sub new {
-		my $class = shift;
+	my $class = shift;
 
 	my $simplifier = $class->SUPER::new({
 		executors	=> SIMPLIFIER_EXECUTORS,
@@ -82,38 +89,33 @@ sub simplify {
 			my @optimizer_values;
 			foreach my $i (0..1) {
 				my $optimizer_value = $executors->[$i]->dbh()->selectrow_array('SELECT @@'.$optimizer_variable);
+                
 				$optimizer_value = 'ON' if $optimizer_value == 1 && $optimizer_variable eq 'engine_condition_pushdown';
 				$optimizer_values[$i] = $optimizer_value;
 			}
 
-			if ($optimizer_values[0] ne $optimizer_values[1]) {
-				$test .= "/* The value of $optimizer_variable is distinct between the two servers: */\n";
-				foreach my $i (0..1) {
-					if ($optimizer_values[$i] =~ m{^\d+$}) {
-						$test .= "/* Server $i : SET SESSION $optimizer_variable = $optimizer_values[$i]; */\n";
-					} else {
-						$test .= "/* Server $i : SET SESSION $optimizer_variable = '$optimizer_values[$i]' */;\n";
-					}
-				}
-			} else {
-				$test .= "/* The value of $optimizer_variable is common between the two servers: */\n";
-				$test .= "/*!50400 SET SESSION $optimizer_variable = $optimizer_values[0] */;\n";
-			}
-
-			$test .= "\n";
+            foreach my $i (0..1) {
+                if ($optimizer_values[$i] =~ m{^\d+$}) {
+                    $test .= "/* Server $i : SET SESSION $optimizer_variable = $optimizer_values[$i]; */\n";
+                } elsif (defined $optimizer_values[$i]) {
+                    $test .= "/* Server $i : SET SESSION $optimizer_variable = '$optimizer_values[$i]' */;\n";
+                }
+            }
 		}
 		$test .= "\n\n";
 	} elsif (defined $executors->[0]) {
+        $test .= "--disable_abort_on_error\n";
 		foreach my $optimizer_variable (@optimizer_variables) {
 			my $optimizer_value = $executors->[0]->dbh->selectrow_array('SELECT @@'.$optimizer_variable);
 			$optimizer_value = 'ON' if $optimizer_value == 1 && $optimizer_variable eq 'engine_condition_pushdown';
-
+            
 			if ($optimizer_value =~ m{^\d+$}) {
-				$test .= "/*!50400 SET SESSION $optimizer_variable = $optimizer_value */;\n";
-			} else {
-				$test .= "/*!50400 SET SESSION $optimizer_variable = '$optimizer_value' */;\n";
+				$test .= "SET SESSION $optimizer_variable = $optimizer_value;\n";
+			} elsif (defined $optimizer_value) {
+                $test .= "SET SESSION $optimizer_variable = '$optimizer_value';\n";
 			}
 		}
+        $test .= "--enable_abort_on_error\n";
 		$test .= "\n\n";
 	}
 
@@ -162,6 +164,20 @@ sub simplify {
 
 		$query =~ s{(SELECT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)}{\n$1}sgio;
 		$test .= $query.";\n\n";
+
+		if ($query =~ m/^\s*SELECT/) {
+			foreach my $ex (0..1) {
+				if (defined $executors->[$ex]) {
+					$test .= "/* Query plan Server $ex:\n";
+					my $plan =  $executors->[$ex]->dbh()->selectall_arrayref("EXPLAIN $query");
+					
+					foreach my $row (@$plan) {
+						$test .= "# |".join("|",@$row)."|\n";
+					}
+					$test .= "# */\n\n";
+				}
+			}
+		}
 
 		if (
 			(defined $results) &&

@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2009,2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -262,5 +262,13 @@ sub getCollationMetaData {
 
     return [];
 }
+
+sub disconnect {
+    my ($self) = @_;
+    $self->dbh->disconnect;
+    $self->setDbh(undef);
+}
+
+
 
 1;

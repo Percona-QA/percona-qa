@@ -107,4 +107,9 @@ sub getCollationMetaData {
     return [['collation','charset']];
 }
 
+sub disconnect {
+    my ($self) = @_;
+    $self->setDbh(undef);
+}
+
 1;
