@@ -24,6 +24,7 @@ package GenTest::App::GenTest;
 use strict;
 use Carp;
 use Data::Dumper;
+use File::Basename;
 
 use GenTest;
 use GenTest::Properties;
@@ -40,6 +41,7 @@ use Time::HiRes;
 use GenTest::XML::Report;
 use GenTest::XML::Test;
 use GenTest::XML::BuildInfo;
+use GenTest::XML::Transporter;
 use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Validator;
@@ -234,8 +236,24 @@ sub run {
             );
     }
     
+    # XML: 
+    #  Define test suite name for reporting purposes.
+    #  Until we support test suites and/or reports with multiple suites/tests,
+    #  we use the test name as test suite name, from config option "testname".
+    #  Default test name is the basename portion of the grammar file name.
+    #  If a grammar file is not given, the default is "rqg_no_name".
+    my $test_suite_name = $self->config->testname;
+    if (not defined $test_suite_name) {
+        if (defined $self->config->grammar) {
+            $test_suite_name = basename($self->config->grammar, '.yy');
+        } else {
+            $test_suite_name = "rqg_no_name";
+        }
+    }
+    
     my $test = GenTest::XML::Test->new(
-        id => Time::HiRes::time(),
+        id => time(),
+        name => $test_suite_name,  # NOTE: Consider changing to test (or test case) name when suites are supported.
         attributes => {
             engine => $self->config->engine,
             gendata => $self->config->gendata,
@@ -254,6 +272,7 @@ sub run {
     
     my $report = GenTest::XML::Report->new(
         buildinfo => $buildinfo,
+        name => $test_suite_name,  # NOTE: name here refers to the name of the test suite or "test".
         tests => [ $test ]
         );
 
@@ -393,9 +412,26 @@ sub run {
         $test->end($total_status == STATUS_OK ? "pass" : "fail");
         
         if (defined $self->config->property('xml-output')) {
-            open (XML , ">$self->config->property('xml-output')") or say("Unable to open $self->config->property('xml-output'): $!");
+            open (XML , '>'.$self->config->property('xml-output')) or carp("Unable to open ".$self->config->property('xml-output').": $!");
             print XML $report->xml();
             close XML;
+            say("XML report written to ". $self->config->property('xml-output'));
+        }
+
+        # XML Result reporting to Test Tool (TT).
+        # Currently both --xml-output=<filename> and --report-xml-tt must be
+        # set to trigger this.
+        if (defined $self->config->property('report-xml-tt')) {
+            my $xml_transporter = GenTest::XML::Transporter->new(
+                type => $self->config->property('report-xml-tt-type')
+            );
+            my $result = $xml_transporter->sendXML(
+                $self->config->property('xml-output'),
+                $self->config->property('report-xml-tt-dest')
+            );
+            if ($result != STATUS_OK) {
+                croak("Error from XML Transporter: $result");
+            }
         }
         
         if ($total_status == STATUS_OK) {
