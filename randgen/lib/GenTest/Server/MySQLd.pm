@@ -325,16 +325,7 @@ sub startServer {
         }
     }
     
-    my $dbh = DBI->connect($self->dsn("mysql"),
-                           undef,
-                           undef,
-                           {PrintError => 1,
-                            RaiseError => 0,
-                            AutoCommit => 1});
-    
-    $self->[MYSQLD_DBH] = $dbh;
-
-    return $dbh ? STATUS_OK : STATUS_ENVIRONMENT_FAILURE;
+    return $self->dbh ? STATUS_OK : STATUS_ENVIRONMENT_FAILURE;
 }
 
 sub kill {
@@ -379,17 +370,7 @@ sub stopServer {
     
     if (defined $self->[MYSQLD_DBH]) {
         say("Stopping server on port ".$self->port);
-        my $r = $self->[MYSQLD_DBH]->func('shutdown','127.0.0.1','root','admin');
-        if (!$r) {
-            # Attemt with fresh dbh
-            my $dbh = DBI->connect($self->dsn("mysql"),
-                                   undef,
-                                   undef,
-                                   {PrintError => 1,
-                                    RaiseError => 0,
-                                    AutoCommit => 1});
-            $r = $dbh->func('shutdown','127.0.0.1','root','admin');
-        }
+        my $r = $self->dbh->func('shutdown','127.0.0.1','root','admin');
         my $waits = 0;
         if ($r) {
             while (-f $self->pidfile && $waits < 100) {
@@ -431,7 +412,25 @@ sub dsn {
 }
 
 sub dbh {
-    return $_[0]->[MYSQLD_DBH];
+    my ($self) = @_;
+    if (defined $self->[MYSQLD_DBH]) {
+        if (!$self->[MYSQLD_DBH]->ping) {
+            $self->[MYSQLD_DBH] = DBI->connect($self->dsn("mysql"),
+                                               undef,
+                                               undef,
+                                               {PrintError => 1,
+                                                RaiseError => 0,
+                                                AutoCommit => 1});
+        }
+    } else {
+        $self->[MYSQLD_DBH] = DBI->connect($self->dsn("mysql"),
+                                           undef,
+                                           undef,
+                                           {PrintError => 1,
+                                            RaiseError => 0,
+                                            AutoCommit => 1});
+    }
+    return $self->[MYSQLD_DBH];
 }
 
 sub _findDir {
