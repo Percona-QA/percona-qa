@@ -143,7 +143,7 @@ sub getInfo()
 {
 
     # lets see what OS type we have
-    if (linux())
+    if (osLinux())
     {
         
         # Get the CPU info
@@ -195,7 +195,7 @@ sub getInfo()
         #TimeZone
         $timezone = trim(`date +%Z`);
     }
-    elsif(solaris())
+    elsif(osSolaris())
     {
         
         # Get the CPU info
@@ -253,7 +253,7 @@ sub getInfo()
         #TimeZone
         $timezone = trim(`date +%Z`);
     }
-    elsif(windows())
+    elsif(osWindows())
     {
         #$hostName = `hostname`;
         my @tmpData;

@@ -38,7 +38,7 @@ sub set_up {
 @pids;
 
 sub tear_down {
-    if (windows) {
+    if (osWindows) {
         ## Need to ,kill leftover processes if there are some
         foreach my $p (@pids) {
             Win32::Process::KillProcess($p,-1);

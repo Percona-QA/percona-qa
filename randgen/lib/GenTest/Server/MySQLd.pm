@@ -22,7 +22,7 @@ package GenTest::Server::MySQLd;
 use DBI;
 use GenTest;
 use GenTest::Constants;
-use if windows(), Win32::Process;
+use if osWindows(), Win32::Process;
 use Time::HiRes;
 
 use strict;
@@ -67,13 +67,13 @@ sub new {
                                    'valgrind' => MYSQLD_VALGRIND,
                                    'valgrind_options' => MYSQLD_VALGRIND_OPTIONS},@_);
     
-    croak "No valgrind support on windows" if windows() and $self->[MYSQLD_VALGRIND];
+    croak "No valgrind support on windows" if osWindows() and $self->[MYSQLD_VALGRIND];
     
     if (not defined $self->[MYSQLD_VARDIR]) {
         $self->[MYSQLD_VARDIR] = "mysql-test/var";
     }
     
-    if (windows()) {
+    if (osWindows()) {
         ## Use unix-style path's since that's what Perl expects...
         $self->[MYSQLD_BASEDIR] =~ s/\\/\//g;
         $self->[MYSQLD_VARDIR] =~ s/\\/\//g;
@@ -87,8 +87,8 @@ sub new {
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
     $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
-                                          windows()?["sql/Debug","sql/RelWithDebugInfo","sql/Release"]:["sql","libexec","bin","sbin"],
-                                          windows()?"mysqld.exe":"mysqld");
+                                          osWindows()?["sql/Debug","sql/RelWithDebugInfo","sql/Release"]:["sql","libexec","bin","sbin"],
+                                          osWindows()?"mysqld.exe":"mysqld");
     $self->[MYSQLD_BOOT_SQL] = [];
 
 
@@ -121,8 +121,8 @@ sub new {
     
     $self->[MYSQLD_LIBMYSQL] = 
        $self->_findDir([$self->basedir], 
-                       windows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release"]:["libmysql","libmysql/.libs","lib/mysql"], 
-                       windows()?"libmysql.dll":"libmysqlclient.so");
+                       osWindows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release"]:["libmysql","libmysql/.libs","lib/mysql"], 
+                       osWindows()?"libmysql.dll":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
@@ -196,7 +196,7 @@ sub generateCommand {
     foreach my $opt (@opts) {
         $command .= ' '.join(' ',map{'"'.$_.'"'} @$opt);
     }
-    $command =~ s/\//\\/g if windows();
+    $command =~ s/\//\\/g if osWindows();
     return $command;
 }
 
@@ -205,7 +205,7 @@ sub createMysqlBase  {
     
     ## 1. Clean old db if any
     if (-d $self->vardir) {
-        if (windows()) {
+        if (osWindows()) {
             my $vardir = $self->vardir;
             $vardir =~ s/\//\\/g;
             system('rmdir /s /q "'.$vardir.'"');
@@ -236,7 +236,7 @@ sub createMysqlBase  {
     close BOOT;
     
     ## 4. Boot database
-    if (windows()) {
+    if (osWindows()) {
         my $command = $self->generateCommand(["--no-defaults","--bootstrap"],
                                              $self->[MYSQLD_STDOPTS]);
     
@@ -280,7 +280,7 @@ sub startServer {
     
     my $serverlog = $self->vardir."/".MYSQLD_LOG_FILE;
     
-    if (windows) {
+    if (osWindows) {
         my $proc;
         my $exe = $self->[MYSQLD_MYSQLD];
         my $vardir = $self->[MYSQLD_VARDIR];
@@ -340,7 +340,7 @@ sub startServer {
 sub kill {
     my ($self) = @_;
     
-    if (windows()) {
+    if (osWindows()) {
         if (defined $self->[MYSQLD_WINDOWS_PROCESS]) {
             $self->[MYSQLD_WINDOWS_PROCESS]->Kill(0);
             say("Killed process ".$self->[MYSQLD_WINDOWS_PROCESS]->GetProcessId());
@@ -356,7 +356,7 @@ sub kill {
 sub crash {
     my ($self) = @_;
     
-    if (windows()) {
+    if (osWindows()) {
         ## How do i do this?????
         $self->kill; ## Temporary
     } else {
@@ -453,7 +453,7 @@ sub _findDir {
 sub _absPath {
     my ($self, $path) = @_;
     
-    if (windows()) {
+    if (osWindows()) {
         return 
             $path =~ m/^[A-Z]:[\/\\]/i;
     } else {
@@ -465,7 +465,7 @@ sub version {
     my($self) = @_;
 
     if (not defined $self->[MYSQLD_VERSION]) {
-	if (windows) {
+	if (osWindows) {
 	    $self->[MYSQLD_VERSION] = "5.5.5"; ## FIXME
 	} else {
 	    my $conf = $self->_find([$self->basedir], 

@@ -191,7 +191,7 @@ if ($log_lines <= 200) {
 # Assuming only one test run going on at the same time, and that all mysqld
 # processes are ours.
 say("Checking for remaining mysqld processes...\n");
-if (windows()) {
+if (osWindows()) {
 	# assumes MS Sysinternals PsTools is installed in C:\bin
 	# If you need to run pslist or pskill as non-Admin user, some permission
 	# adjustments may be needed. See:

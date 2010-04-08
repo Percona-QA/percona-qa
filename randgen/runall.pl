@@ -32,12 +32,12 @@ use strict;
 use GenTest;
 
 $| = 1;
-if (windows()) {
+if (osWindows()) {
 	$SIG{CHLD} = "IGNORE";
 }
 
 if (defined $ENV{RQG_HOME}) {
-        if (windows()) {
+        if (osWindows()) {
                 $ENV{RQG_HOME} = $ENV{RQG_HOME}.'\\';
         } else {
                 $ENV{RQG_HOME} = $ENV{RQG_HOME}.'/';

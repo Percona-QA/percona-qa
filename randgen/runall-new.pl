@@ -30,12 +30,12 @@ use GenTest::Server::MySQLd;
 use GenTest::Server::ReplMySQLd;
 
 $| = 1;
-if (windows()) {
+if (osWindows()) {
 	$SIG{CHLD} = "IGNORE";
 }
 
 if (defined $ENV{RQG_HOME}) {
-    if (windows()) {
+    if (osWindows()) {
         $ENV{RQG_HOME} = $ENV{RQG_HOME}.'\\';
     } else {
         $ENV{RQG_HOME} = $ENV{RQG_HOME}.'/';
@@ -290,7 +290,9 @@ my $gentestProps = GenTest::Properties->new(
               'views',
               'start-dirty',
               'filter',
-              'valgrind']
+              'valgrind',
+              'testname',
+              'report-xml-tt']
     );
 
 my @gentest_options;

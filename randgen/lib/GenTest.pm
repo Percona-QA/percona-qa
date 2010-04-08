@@ -18,8 +18,8 @@
 package GenTest;
 use base 'Exporter';
 
-@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'windows', 'linux',
-           'solaris', 'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug');
+@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'osWindows', 'osLinux',
+           'osSolaris', 'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug');
 
 use strict;
 
@@ -112,7 +112,7 @@ sub safe_exit {
 	POSIX::_exit($exit_status);
 }
 
-sub windows {
+sub osWindows {
 	if (
 		($^O eq 'MSWin32') ||
 	        ($^O eq 'MSWin64')
@@ -123,7 +123,7 @@ sub windows {
 	}	
 }
 
-sub linux {
+sub osLinux {
 	if ($^O eq 'linux') {
 		return 1;
 	} else {
@@ -131,7 +131,7 @@ sub linux {
 	}
 }
 
-sub solaris {
+sub osSolaris {
 	if ($^O eq 'solaris') {
 		return 1;
 	} else {

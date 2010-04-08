@@ -81,10 +81,10 @@ sub run {
     
     $SIG{INT} = sub { $ctrl_c = 1 };
     $SIG{TERM} = sub { exit(0) };
-    $SIG{CHLD} = "IGNORE" if windows();
+    $SIG{CHLD} = "IGNORE" if osWindows();
     
     if (defined $ENV{RQG_HOME}) {
-        $ENV{RQG_HOME} = windows() ? $ENV{RQG_HOME}.'\\' : $ENV{RQG_HOME}.'/';
+        $ENV{RQG_HOME} = osWindows() ? $ENV{RQG_HOME}.'\\' : $ENV{RQG_HOME}.'/';
     }
     
     my $seed = $self->config->seed;
@@ -151,7 +151,7 @@ sub run {
     foreach my $i (0..2) {
         next if $self->config->dsn->[$i] eq '';
         push @executors, GenTest::Executor->newFromDSN($self->config->dsn->[$i],
-                                                       windows()?undef:$channel);
+                                                       osWindows()?undef:$channel);
     }
     
     my $drizzle_only = $executors[0]->type == DB_DRIZZLE;
@@ -280,7 +280,7 @@ sub run {
     
     my $errorfilter = GenTest::ErrorFilter->new(channel=>$channel);
     my $errorfilter_p = GenTest::IPC::Process->new(object=>$errorfilter);
-    if (!windows()) {
+    if (!osWindows()) {
         $errorfilter_p->start();
     }
     
@@ -321,7 +321,7 @@ sub run {
         
         ### Main process
         
-        if (windows()) {
+        if (osWindows()) {
             ## Important that this is done here in the parent after the last
             ## fork since on windows Process.pm uses threads
             $errorfilter_p->start();
@@ -364,7 +364,7 @@ sub run {
             say("Killing periodic reporting process with pid $periodic_pid...");
             kill(15, $periodic_pid);
             
-            if (windows()) {
+            if (osWindows()) {
                 # We use sleep() + non-blocking waitpid() due to a bug in ActiveState Perl
                 Time::HiRes::sleep(1);
                 waitpid($periodic_pid, &POSIX::WNOHANG() );
@@ -508,7 +508,7 @@ sub stop_child {
 
     die "calling stop_child() without a \$status" if not defined $status;
 
-    if (windows()) {
+    if (osWindows()) {
         exit $status;
     } else {
         safe_exit($status);

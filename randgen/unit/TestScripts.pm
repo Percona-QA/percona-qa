@@ -40,11 +40,11 @@ sub tear_down {
 sub test_gensql {
     my $self = shift;
 
-    my $status = system("perl gensql.pl --grammar=conf/examples/example.yy --dsn=dummy --queries=1");
+    my $status = system("perl -MCarp=verbose gensql.pl --grammar=conf/examples/example.yy --dsn=dummy --queries=1");
 
     $self->assert_equals(0, $status);
 
-    my $status = system("perl gensql.pl --grammar=unit/testStack.yy --dsn=dummy --queries=5");
+    my $status = system("perl -MCarp=verbose gensql.pl --grammar=unit/testStack.yy --dsn=dummy --queries=5");
 
     $self->assert_equals(0, $status);
 
@@ -53,7 +53,7 @@ sub test_gensql {
 sub test_gendata {
     my $self = shift;
 
-    my $status = system("perl gendata.pl --spec=conf/examples/example.zz --dsn=dummy");
+    my $status = system("perl -MCarp=verbose gendata.pl --spec=conf/examples/example.zz --dsn=dummy");
 
     $self->assert_equals(0, $status);
 }
@@ -61,7 +61,7 @@ sub test_gendata {
 sub test_gendata_old {
     my $self = shift;
 
-    my $status = system("perl gendata-old.pl --dsn=dummy");
+    my $status = system("perl -MCarp=verbose gendata-old.pl --dsn=dummy");
 
     $self->assert_equals(0, $status);
 }
@@ -69,11 +69,11 @@ sub test_gendata_old {
 sub test_gentest {
     my $self = shift;
 
-    my $status = system("perl gentest.pl --dsn=dummy --grammar=conf/examples/example.yy --threads=1 --queries=1");
+    my $status = system("perl -MCarp=verbose gentest.pl --dsn=dummy --grammar=conf/examples/example.yy --threads=1 --queries=1");
 
     $self->assert_equals(0, $status);
 
-    $status = system("perl gentest.pl --dsn=dummy --grammar=conf/examples/example.yy --threads=1 --queries=1 --mask=10 --mask-level=2");
+    $status = system("perl -MCarp=verbose gentest.pl --dsn=dummy --grammar=conf/examples/example.yy --threads=1 --queries=1 --mask=10 --mask-level=2");
 
     $self->assert_equals(0, $status);
 }
@@ -90,7 +90,7 @@ sub test_runall {
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
     }
 }
@@ -104,7 +104,7 @@ sub test_runall_new {
     
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmp");
+        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmp");
         $self->assert_equals(0, $status);
     }
 }
