@@ -425,6 +425,10 @@ sub run {
             my $xml_transporter = GenTest::XML::Transporter->new(
                 type => $self->config->property('report-xml-tt-type')
             );
+            # If xml-output option is not set, bail out. TODO: Make xml-output optional.
+            if (not defined $self->config->property('xml-output')) {
+                carp("ERROR: --xml-output=<filename> must be set when using --report-xml-tt");
+            }
             my $result = $xml_transporter->sendXML(
                 $self->config->property('xml-output'),
                 $self->config->property('report-xml-tt-dest')
