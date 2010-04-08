@@ -556,8 +556,11 @@ sub getSchemaMetaData {
     ## 4. Column name
     ## 5. PRIMARY for primary key, INDEXED for indexed column and "ORDINARY" for all other columns
     my ($self) = @_;
-    my $query = 
-        "SELECT table_schema, ".
+    my $query;
+    my $version = $self->dbh()->selectrow_array("SELECT VERSION()");
+    # as of build 1320 we start using data_dictionary instead of information_schema
+    if ($version lt "2010.03.1320") {
+        $query =         "SELECT table_schema, ".
                "table_name, ".
                "CASE WHEN table_type = 'BASE TABLE' THEN 'table' ".
                     "WHEN table_type = 'VIEW' THEN 'view' ".
@@ -569,7 +572,21 @@ sub getSchemaMetaData {
                     "WHEN column_key = 'UNI' THEN 'indexed' ".
                     "ELSE 'ordinary' END ".
          "FROM information_schema.tables INNER JOIN ".
-              "information_schema.columns USING(table_schema, table_name)"; 
+              "information_schema.columns USING(table_schema, table_name)";
+     }
+     else {
+        $query = "SELECT table_schema, ".
+               "table_name, ".
+               "CASE WHEN table_type = 'STANDARD' THEN 'table' ".
+                    "WHEN table_type = 'FUNCTION' THEN 'function' ".
+                    "ELSE 'misc' END, ".
+    	       "column_name, ".
+               "CASE WHEN IS_USED_IN_PRIMARY = 'TRUE' THEN 'primary' ".
+                    "WHEN IS_INDEXED = 'TRUE' THEN 'indexed' ".
+                    "ELSE 'ordinary' END ".
+         "FROM data_dictionary.tables INNER JOIN ".
+              "data_dictionary.columns USING(table_schema, table_name)"; 
+    }
 
     return $self->dbh()->selectall_arrayref($query);
 }
@@ -579,8 +596,17 @@ sub getCollationMetaData {
     ## 1. Collation name
     ## 2. Character set
     my ($self) = @_;
-    my $query = 
-        "SELECT collation_name,character_set_name FROM information_schema.collations";
+    my $query;
+    my $version = $self->dbh()->selectrow_array("SELECT VERSION()");
+    # as of build 1320 we start using data_dictionary instead of information_schema
+    if ($version lt "2010.03.1320") {
+    	$query = 
+       		"SELECT collation_name,character_set_name FROM information_schema.collations";
+    }
+    else {
+    	$query = 
+         	"SELECT collation_name,character_set_name FROM data_dictionary.collations";
+    }
 
     return $self->dbh()->selectall_arrayref($query);
 }
