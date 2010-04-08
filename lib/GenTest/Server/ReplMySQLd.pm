@@ -23,7 +23,7 @@ use DBI;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Server::MySQLd;
-use if windows(), Win32::Process;
+use if osWindows(), Win32::Process;
 use Time::HiRes;
 
 use strict;

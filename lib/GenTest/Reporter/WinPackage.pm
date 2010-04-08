@@ -32,7 +32,7 @@ sub report {
 	my $datadir = $reporter->serverVariable('datadir');
 	$datadir =~ s{[\\/]$}{}sgio;
 
-	if (windows()) {
+	if (osWindows()) {
 		foreach my $file ('mysqld.exe', 'mysqld.pdb') {
 			my $old_loc = $bindir.'\\'.$file;
 			my $new_loc = $datadir.'\\'.$file;

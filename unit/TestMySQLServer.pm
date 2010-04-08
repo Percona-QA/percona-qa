@@ -40,7 +40,7 @@ sub set_up {
 my @pids;
 
 sub tear_down {
-    if (windows) {
+    if (osWindows) {
         ## Need to ,kill leftover processes if there are some
         foreach my $p (@pids) {
             Win32::Process::KillProcess($p,-1);
@@ -89,7 +89,7 @@ sub test_create_server {
     
     say(join(',',map{$_->[0]} @{$result->data}));
     
-    $self->assert(-f $vardir."/mysql.pid") if not windows();
+    $self->assert(-f $vardir."/mysql.pid") if not osWindows();
     $self->assert(-f $vardir."/mysql.err");
 
     $server->stopServer;
@@ -111,7 +111,7 @@ sub test_create_server {
 }
 
 sub test_crash_and_core {
-    if (not windows()) { ## crash is not yet implemented for windows
+    if (not osWindows()) { ## crash is not yet implemented for windows
         my $self = shift;
 
         my $vardir= cwd()."/unit/tmp";
@@ -143,7 +143,7 @@ sub test_crash_and_core {
         
         say(join(',',map{$_->[0]} @{$result->data}));
         
-        $self->assert(-f $vardir."/mysql.pid") if not windows();
+        $self->assert(-f $vardir."/mysql.pid") if not osWindows();
         $self->assert(-f $vardir."/mysql.err");
         
         my $backtrace = GenTest::Reporter::Backtrace->new(dsn => $server->dsn);

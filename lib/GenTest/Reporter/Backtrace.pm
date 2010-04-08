@@ -45,11 +45,11 @@ sub report {
 
 	my @commands;
 
-	if (windows()) {
+	if (osWindows()) {
 		$bindir =~ s{/}{\\}sgio;
 		my $cdb_cmd = "!sym prompts off; !analyze -v; .ecxr; !for_each_frame dv /t;~*k;q";		
 		push @commands, 'cdb -i "'.$bindir.'" -y "'.$bindir.';srv*C:\\cdb_symbols*http://msdl.microsoft.com/download/symbols" -z "'.$datadir.'\mysqld.dmp" -lines -c "'.$cdb_cmd.'"';
-    } elsif (solaris()) {
+    } elsif (osSolaris()) {
         ## We don't want to run gdb on solaris since it may core-dump
         ## if the executable was generated with SunStudio.
 

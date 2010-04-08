@@ -40,7 +40,7 @@ sub report {
 		$dbh->func('shutdown', 'admin');
 	}
 
-	if (!windows()) {
+	if (!osWindows()) {
 		say("Waiting for mysqld with pid $pid to terminate...");
 		foreach my $i (1..60) {
 			if (! -e "/proc/$pid") {

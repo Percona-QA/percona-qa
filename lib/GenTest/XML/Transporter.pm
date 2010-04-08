@@ -169,7 +169,7 @@ sub scp {
     my $xmlfile = $xml;
 
     my $cmd;
-    if (windows()) {
+    if (osWindows()) {
         $cmd = 'pscp.exe -q '.$xmlfile.' '.$dest;
     } else {
         $cmd = 'scp '.$xmlfile.' '.$dest;

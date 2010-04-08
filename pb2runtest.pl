@@ -189,7 +189,7 @@ my $config = GenTest::Properties->new(
         candidate   => '',
         verbose     => '',
         basedirForRelease => {  # Locations of binaries for various releases
-            '5.0' => windows() ?
+            '5.0' => osWindows() ?
                         'G:\mysql-releases\mysql-5.0.87-win32' :
                         '/export/home/mysql-releases/mysql-5.0'
         }
@@ -407,7 +407,7 @@ EOF
 ### MySQL's Pushbuild environment.
 ###
 sub setupPushbuildEnv {
-    if (windows()) {
+    if (osWindows()) {
         # For tail and for cdb
         # TODO: Remove randgen\bin, not used?
         $ENV{PATH} =
@@ -421,7 +421,7 @@ sub setupPushbuildEnv {
         # For vlad (~2008-09)
         #ENV{MYSQL_FULL_MINIDUMP} = 1;
 
-    } elsif (solaris()) {
+    } elsif (osSolaris()) {
         # For libmysqlclient
         $ENV{LD_LIBRARY_PATH} =
             $ENV{LD_LIBRARY_PATH}.

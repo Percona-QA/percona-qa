@@ -20,7 +20,7 @@ package GenTest::IPC::Process;
 @ISA = qw(GenTest);
 
 use GenTest;
-use if windows(), threads;
+use if osWindows(), threads;
 
 ## A Process is a placeholder for an object run in a separate process.
 ## The contract assumes that the objects constructor is run in the
@@ -47,7 +47,7 @@ sub new {
 sub start {
     my ($self, @args) = @_;
 
-    if (windows()) {
+    if (osWindows()) {
 	my $thr = threads->create(sub{$self->[PROCESS_OBJECT]->run(@args)});
 	$thr->detach();
 	$self->[PROCESS_PID]=$thr->tid();
@@ -119,7 +119,7 @@ sub childWaitStatus {
 sub kill {
     my ($self) = @_;
     
-    if (windows()) {
+    if (osWindows()) {
         ## Not sure yet, but the thread will enevtually die dtogether
         ## with the main program
     } else {

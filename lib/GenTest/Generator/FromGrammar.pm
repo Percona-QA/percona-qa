@@ -292,7 +292,7 @@ sub next {
 			# Create a new temporary file name and record it for unlinking at the next statement
 			$generator->[GENERATOR_TMPNAM] = tmpdir()."gentest".$$.".tmp" if not defined $generator->[GENERATOR_TMPNAM];
 			$_ = "'".$generator->[GENERATOR_TMPNAM]."'";
-			$_ =~ s{\\}{\\\\}sgio if windows();	# Backslash-escape backslashes on Windows
+			$_ =~ s{\\}{\\\\}sgio if osWindows();	# Backslash-escape backslashes on Windows
 		} elsif ($_ eq '_tmptable') {
 			$_ = "tmptable".$$;
 		} elsif ($_ eq '_unix_timestamp') {

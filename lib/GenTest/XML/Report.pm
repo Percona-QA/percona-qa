@@ -76,7 +76,7 @@ sub xml {
     );
 
     $writer->dataElement('date', $report->[XMLREPORT_DATE]);
-    if (linux() || solaris())
+    if (osLinux() || osSolaris())
     {
         $writer->dataElement('operator', $ENV{'LOGNAME'});
     }

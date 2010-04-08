@@ -56,7 +56,7 @@ sub monitor {
 		return STATUS_SERVER_DEADLOCKED;
 	}
 
-	if (windows()) {
+	if (osWindows()) {
 		return $reporter->monitor_threaded();
 	} else {
 		return $reporter->monitor_nonthreaded();
@@ -155,7 +155,7 @@ sub monitor_threaded {
 	foreach my $thread ($alarm_thread, $dbh_thread) {
 		next if !$thread->is_running();
 		# Windows hangs when joining killed threads
-		if (windows()) {
+		if (osWindows()) {
 			$thread->kill('SIGKILL');
 		} else {
 			$thread->kill('SIGKILL')->join();
