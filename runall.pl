@@ -56,7 +56,8 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $views, $start_dirty,
-    $filter, $build_thread);
+    $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
+    $report_xml_tt_dest);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -85,6 +86,9 @@ my $opt_result = GetOptions(
 	'debug' => \$debug,
 	'validators:s' => \$validators,
 	'reporters:s' => \$reporters,
+	'report-xml-tt' => \$report_xml_tt,
+	'report-xml-tt-type=s' => \$report_xml_tt_type,
+	'report-xml-tt-dest=s' => \$report_xml_tt_dest,
 	'gendata:s' => \$gendata,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
@@ -97,7 +101,8 @@ my $opt_result = GetOptions(
 	'views'		=> \$views,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
-    'mtr-build-thread=i' => \$build_thread
+    'mtr-build-thread=i' => \$build_thread,
+    'testname=s' => \$testname
 );
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
@@ -333,9 +338,13 @@ push @gentest_options, "--rows=$rows" if defined $rows;
 push @gentest_options, "--views" if defined $views;
 push @gentest_options, "--varchar-length=$varchar_len" if defined $varchar_len;
 push @gentest_options, "--xml-output=$xml_output" if defined $xml_output;
+push @gentest_options, "--report-xml-tt" if defined $report_xml_tt;
+push @gentest_options, "--report-xml-tt-type=$report_xml_tt_type" if defined $report_xml_tt_type;
+push @gentest_options, "--report-xml-tt-dest=$report_xml_tt_dest" if defined $report_xml_tt_dest;
 push @gentest_options, "--debug" if defined $debug;
 push @gentest_options, "--filter=$filter" if defined $filter;
 push @gentest_options, "--valgrind" if defined $valgrind;
+push @gentest_options, "--testname=$testname" if defined $testname;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
@@ -443,7 +452,11 @@ $0 - Run a complete random query generation test, including server start with re
     --mask-level: Grammar mask level. Passed to gentest.pl
     --rows      : No of rows. Passed to gentest.pl
     --varchar-length: length of strings. passed to gentest.pl
-    --xml-outputs: Passed to gentest.pl
+    --xml-output: Passed to gentest.pl
+    --report-xml-tt: Passed to gentest.pl
+    --report-xml-tt-type: Passed to gentest.pl
+    --report-xml-tt-dest: Passed to gentest.pl
+    --testname  : Name of test, used for reporting purposes.
     --views     : Generate views. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl

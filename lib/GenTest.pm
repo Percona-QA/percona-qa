@@ -18,7 +18,7 @@
 package GenTest;
 use base 'Exporter';
 
-@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'windows',
+@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'windows', 'linux',
            'solaris', 'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug');
 
 use strict;
@@ -123,6 +123,14 @@ sub windows {
 	}	
 }
 
+sub linux {
+	if ($^O eq 'linux') {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 sub solaris {
 	if ($^O eq 'solaris') {
 		return 1;
@@ -136,7 +144,7 @@ sub isoTimestamp {
 
 	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = defined $datetime ? localtime($datetime) : localtime();
 	return sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
-	
+
 }
 
 sub isoUTCTimestamp {
