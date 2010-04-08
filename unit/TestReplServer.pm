@@ -92,4 +92,50 @@ sub test_create_server {
     sayFile($server->slave->logfile);
 }
 
+sub test_create_repl {
+    my $self = shift;
+    
+    my $portbase = 30 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
+
+    my $master_vardir= cwd()."/unit/tmp1/";
+    my $slave_vardir= cwd()."/unit/tmp1_slave";
+    
+    $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
+    
+    my $master = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                              vardir => $master_vardir,
+                                              port => $portbase);
+    my $slave = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                             vardir => $slave_vardir,
+                                             port => $portbase+2);
+    
+    my $server = GenTest::Server::ReplMySQLd->new(slave => $slave,
+                                                  master => $master,
+                                                  mode => 'mixed');
+                                             
+    $self->assert_not_null($server);
+    
+    $self->assert(-f $master_vardir."/data/mysql/db.MYD","No ".$master_vardir."/data/mysql/db.MYD");
+    $self->assert(-f $slave_vardir."/data/mysql/db.MYD","No ".$slave_vardir."/data/mysql/db.MYD");
+    
+    $server->startServer;
+    push @pids,$server->master->serverpid;
+    push @pids,$server->slave->serverpid;
+
+
+    $server->master->dbh->do("CREATE TABLE test.t (i integer)");
+    $server->master->dbh->do("INSERT INTO test.t VALUES(42)");
+
+    $server->waitForSlaveSync();
+    
+    my $result = $server->slave->dbh->selectrow_array("SELECT * FROM test.t");
+    
+    $self->assert_num_equals(42, $result);
+    
+    $server->stopServer;
+    
+    sayFile($server->master->logfile);
+    sayFile($server->slave->logfile);
+}
+
 1;

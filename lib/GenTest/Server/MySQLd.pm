@@ -200,6 +200,12 @@ sub generateCommand {
     return $command;
 }
 
+sub addServerOptions {
+    my ($self,$opts) = @_;
+
+    push(@{$self->[MYSQLD_SERVER_OPTIONS]}, @$opts);
+}
+
 sub createMysqlBase  {
     my ($self) = @_;
     
