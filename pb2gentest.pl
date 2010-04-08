@@ -782,6 +782,29 @@ if ($test =~ m{valgrind}io){
 	
 $command = "perl runall.pl --mysqld=--loose-skip-safemalloc ".$command;
 
+# Pass test name to RQG, for reporting purposes
+$command = $command." --testname=".$test_name;
+# Enable XML reporting to TestTool.
+# For now only on given hosts... (testing)
+my %report_xml_from_hosts = (
+    nanna21 => ''
+);
+my $hostname = hostname();
+my $xmlfile;
+my $delete_xmlfile = 0;
+if (exists $report_xml_from_hosts{$hostname}) {
+    # TMPDIR should be set by Pushbuild to indicate a suitable location for temp files
+    my $tmpdir = $ENV{'TMPDIR'};
+    if (length($tmpdir) > 1) {
+        $xmlfile = $tmpdir.'/'.$test_name.'.xml';
+    } else {
+        # should be deleted after test end so that disks won't fill up
+        $delete_xmlfile = 1;
+        $xmlfile = $test_name.'.xml';
+    }
+    $command = $command.' --report-xml-tt --xml-output='.$xmlfile;
+}
+
 # Add env variable to specify unique port range to use to avoid conflicts.
 # Trying not to do this unless actually needed.
 if (defined $port_range_id) {
@@ -827,7 +850,10 @@ if ($command_result_shifted > 0) {
 	print($full_test_name." [ pass ]\n");
 }
 
-
+if ($delete_xmlfile && -e $xmlfile) {
+    unlink $xmlfile;
+    say("Temporary XML file $xmlfile deleted");
+}
 
 # Kill remaining mysqld processes.
 # Assuming only one test run going on at the same time, and that all mysqld
