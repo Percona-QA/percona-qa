@@ -47,7 +47,9 @@ use constant REPLMYSQLD_VALGRIND_OPTIONS => 11;
 sub new {
     my $class = shift;
 
-    my $self = $class->SUPER::new({'basedir' => REPLMYSQLD_BASEDIR,
+    my $self = $class->SUPER::new({'master' => REPLMYSQLD_MASTER,
+                                   'slave' => REPLMYSQLD_SLAVE,
+                                   'basedir' => REPLMYSQLD_BASEDIR,
                                    'master_vardir' => REPLMYSQLD_MASTER_VARDIR,
                                    'master_port' => REPLMYSQLD_MASTER_PORT,
                                    'slave_vardir' => REPLMYSQLD_SLAVE_VARDIR,
@@ -58,82 +60,94 @@ sub new {
                                    'valgrind' => REPLMYSQLD_VALGRIND,
                                    'valgrind_options', REPLMYSQLD_VALGRIND_OPTIONS},@_);
     
-    if (not defined $self->[REPLMYSQLD_MASTER_PORT]) {
-        $self->[REPLMYSQLD_MASTER_PORT] = GenTest::Server::MySQLd::MYSQLD_DEFAULT_PORT;
-    }
-    
-    if (not defined $self->[REPLMYSQLD_SLAVE_PORT]) {
-        $self->[REPLMYSQLD_SLAVE_PORT] = $self->[REPLMYSQLD_MASTER_PORT] + 2;        
-    }
+    if (defined $self->master || defined $self->slave) {
+        ## Repl pair defined from two predefined servers
 
-    if (not defined $self->[REPLMYSQLD_MODE]) {
-        $self->[REPLMYSQLD_MODE] = 'default';
-    }
+        if (not (defined $self->master && defined $self->slave)) {
+            croak("Both master and slave must be defined");
+        }
+        $self->master->addServerOptions(["--server_id=1",
+                                         "--log-bin=mysql-bin",
+                                         "--report-host=127.0.0.1",
+                                         "--report_port=".$self->master->port]);
+        $self->slave->addServerOptions(["--server_id=2",
+                                        "--report-host=127.0.0.1",
+                                        "--report_port=".$self->slave->port]);
+    } else {
+        ## Repl pair defined from parameters. The servers have the same basedir (is of the same version)
+        if (not defined $self->[REPLMYSQLD_MASTER_PORT]) {
+            $self->[REPLMYSQLD_MASTER_PORT] = GenTest::Server::MySQLd::MYSQLD_DEFAULT_PORT;
+        }
     
-    if (not defined $self->[REPLMYSQLD_MASTER_VARDIR]) {
-        $self->[REPLMYSQLD_MASTER_VARDIR] = "mysql-test/var";
-    }
-    if (not defined $self->[REPLMYSQLD_SLAVE_VARDIR]) {
-        my $varbase = $self->[REPLMYSQLD_MASTER_VARDIR];
-        $varbase =~ s/(.*)\/$/\1/;
-        $self->[REPLMYSQLD_SLAVE_VARDIR] = $varbase.'_slave';
-    }
+        if (not defined $self->[REPLMYSQLD_SLAVE_PORT]) {
+            $self->[REPLMYSQLD_SLAVE_PORT] = $self->[REPLMYSQLD_MASTER_PORT] + 2;        
+        }
+
+        if (not defined $self->[REPLMYSQLD_MODE]) {
+            $self->[REPLMYSQLD_MODE] = 'default';
+        }
     
-    my @master_options;
-    push(@master_options, 
-         "--server_id=1",
-         "--log-bin=mysql-bin",
-         "--report-host=127.0.0.1",
-         "--report_port=".$self->[REPLMYSQLD_MASTER_PORT]);
-    if (defined $self->[REPLMYSQLD_SERVER_OPTIONS]) {
+        if (not defined $self->[REPLMYSQLD_MASTER_VARDIR]) {
+            $self->[REPLMYSQLD_MASTER_VARDIR] = "mysql-test/var";
+        }
+        if (not defined $self->[REPLMYSQLD_SLAVE_VARDIR]) {
+            my $varbase = $self->[REPLMYSQLD_MASTER_VARDIR];
+            $varbase =~ s/(.*)\/$/\1/;
+            $self->[REPLMYSQLD_SLAVE_VARDIR] = $varbase.'_slave';
+        }
+        
+        my @master_options;
         push(@master_options, 
-             @{$self->[REPLMYSQLD_SERVER_OPTIONS]});
-    }
-
-
-    $self->[REPLMYSQLD_MASTER] = 
-        GenTest::Server::MySQLd->new(basedir => $self->basedir,
-                                     vardir => $self->[REPLMYSQLD_MASTER_VARDIR],
-                                     port => $self->[REPLMYSQLD_MASTER_PORT],
-                                     server_options => \@master_options,
-                                     start_dirty => $self->[REPLMYSQLD_START_DIRTY],
-                                     valgrind => $self->[REPLMYSQLD_VALGRIND],
-                                     valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
-    
-    if (not defined $self->master) {
-        croak("Could not create master");
-    }
-    
-    my @slave_options;
-    push(@slave_options, 
-         "--server_id=2",
-         "--report-host=127.0.0.1",
-         "--report_port=".$self->[REPLMYSQLD_SLAVE_PORT]);
-    if (defined $self->[REPLMYSQLD_SERVER_OPTIONS]) {
+             "--server_id=1",
+             "--log-bin=mysql-bin",
+             "--report-host=127.0.0.1",
+             "--report_port=".$self->[REPLMYSQLD_MASTER_PORT]);
+        if (defined $self->[REPLMYSQLD_SERVER_OPTIONS]) {
+            push(@master_options, 
+                 @{$self->[REPLMYSQLD_SERVER_OPTIONS]});
+        }
+        
+        
+        $self->[REPLMYSQLD_MASTER] = 
+            GenTest::Server::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
+                                         vardir => $self->[REPLMYSQLD_MASTER_VARDIR],
+                                         port => $self->[REPLMYSQLD_MASTER_PORT],
+                                         server_options => \@master_options,
+                                         start_dirty => $self->[REPLMYSQLD_START_DIRTY],
+                                         valgrind => $self->[REPLMYSQLD_VALGRIND],
+                                         valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
+        
+        if (not defined $self->master) {
+            croak("Could not create master");
+        }
+        
+        my @slave_options;
         push(@slave_options, 
-             @{$self->[REPLMYSQLD_SERVER_OPTIONS]});
-    }
-    
-    
-    $self->[REPLMYSQLD_SLAVE] = 
-        GenTest::Server::MySQLd->new(basedir => $self->basedir,
-                                     vardir => $self->[REPLMYSQLD_SLAVE_VARDIR],
-                                     port => $self->[REPLMYSQLD_SLAVE_PORT],
-                                     server_options => \@slave_options,
-                                     start_dirty => $self->[REPLMYSQLD_START_DIRTY],
-                                     valgrind => $self->[REPLMYSQLD_VALGRIND],
-                                     valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
-    
-    if (not defined $self->slave) {
-        $self->master->stopServer;
-        croak("Could not create slave");
+             "--server_id=2",
+             "--report-host=127.0.0.1",
+             "--report_port=".$self->[REPLMYSQLD_SLAVE_PORT]);
+        if (defined $self->[REPLMYSQLD_SERVER_OPTIONS]) {
+            push(@slave_options, 
+                 @{$self->[REPLMYSQLD_SERVER_OPTIONS]});
+        }
+        
+        
+        $self->[REPLMYSQLD_SLAVE] = 
+            GenTest::Server::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
+                                         vardir => $self->[REPLMYSQLD_SLAVE_VARDIR],
+                                         port => $self->[REPLMYSQLD_SLAVE_PORT],
+                                         server_options => \@slave_options,
+                                         start_dirty => $self->[REPLMYSQLD_START_DIRTY],
+                                         valgrind => $self->[REPLMYSQLD_VALGRIND],
+                                         valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
+        
+        if (not defined $self->slave) {
+            $self->master->stopServer;
+            croak("Could not create slave");
+        }
     }
     
     return $self;
-}
-
-sub basedir {
-    return $_[0]->[REPLMYSQLD_BASEDIR];
 }
 
 sub master {
