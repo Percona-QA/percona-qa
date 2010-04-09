@@ -211,11 +211,20 @@ sub get_pb2_branch_id {
 
 #### end subroutines ###########################################################
 
+# Find out active user name and mention it in the output to ease debugging.
+my $username;
+if (osLinux() || osSolaris()) {
+    $username = $ENV{'LOGNAME'};
+} else {
+    $username = $ENV{'USERNAME'};
+}
+
 chdir('randgen');
 
 say("===== Information on the host system: =====\n");
 say(" - Local time  : ".localtime()."\n");
 say(" - Hostname    : ".hostname()."\n");
+say(" - Username    : ".$username."\n");
 say(" - PID         : $$\n");
 say(" - Working dir : ".cwd()."\n");
 say(" - PATH        : ".$ENV{'PATH'}."\n");
