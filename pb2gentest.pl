@@ -61,7 +61,7 @@ my $conf = $ENV{RQG_CONF};
 $conf = 'conf' if not defined $conf;
 
 if (osWindows()) {
-	# For tail and for cdb
+	# For tail, cdb, pscp.
 	$ENV{PATH} = 'G:\pb2\scripts\randgen\bin;G:\pb2\scripts\bin;C:\Program Files\Debugging Tools for Windows (x86);'.$ENV{PATH};
 	$ENV{_NT_SYMBOL_PATH} = 'srv*c:\\cdb_symbols*http://msdl.microsoft.com/download/symbols;cache*c:\\cdb_symbols';
 
@@ -791,28 +791,48 @@ if ($test =~ m{valgrind}io){
 	
 $command = "perl runall.pl --mysqld=--loose-skip-safemalloc ".$command;
 
+### XML reporting setup START
+
 # Pass test name to RQG, for reporting purposes
 $command = $command." --testname=".$test_name;
+
 # Enable XML reporting to TestTool.
-# For now only on given hosts... (testing)
+# For now only on given hosts...
 my %report_xml_from_hosts = (
-    nanna21 => ''
+    'loki06'   => '',
+    'nanna21'  => '',
+    'techra22' => '',
+    'tor06-z1' => '',
+    'tyr41'    => ''
 );
 my $hostname = hostname();
 my $xmlfile;
-my $delete_xmlfile = 0;
+my $delete_xmlfile = 0; # boolean indicator whether to delete local XML file.
 if (exists $report_xml_from_hosts{$hostname}) {
-    # TMPDIR should be set by Pushbuild to indicate a suitable location for temp files
+    # We should enable XML reporting on this host...
+    say("XML reporting to TestTool automatically enabled based on hostname.");
+    # We need to write the XML to a file before sending to reporting framework.
+    # This is done by specifying xml-output option.
+    # TMPDIR should be set by Pushbuild to indicate a suitable location for temp files.
     my $tmpdir = $ENV{'TMPDIR'};
     if (length($tmpdir) > 1) {
         $xmlfile = $tmpdir.'/'.$test_name.'.xml';
     } else {
-        # should be deleted after test end so that disks won't fill up
+        # TMPDIR not set. Write report to current directory.
+        # This file should be deleted after test end so that disks won't fill up.
         $delete_xmlfile = 1;
         $xmlfile = $test_name.'.xml';
     }
-    $command = $command.' --report-xml-tt --xml-output='.$xmlfile;
+    # Enable XML reporting to TT (assuming this is not already enabled):
+    $command = $command.' --xml-output='.$xmlfile.' --report-xml-tt';
+    # Specify XML reporting transport type (not relying on defaults):
+    # We assume SSH keys have been properly set up to enable seamless scp use.
+    $command = $command.' --report-xml-tt-type=scp';
+    # Specify destination for XML reports (not relying on defaults):
+    $command = $command.' --report-xml-tt-dest=regin.norway.sun.com:/raid/xml_results/TestTool/xml/';
 }
+### XML reporting setup END
+
 
 # Add env variable to specify unique port range to use to avoid conflicts.
 # Trying not to do this unless actually needed.
