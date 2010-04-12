@@ -37,7 +37,7 @@ use constant XMLTRANSPORT_TYPES             => 3;  # collection of types
 use constant XML_DEFAULT_TRANSPORT_TYPE     => XMLTRANSPORT_TYPE_SCP;
 use constant XML_MYSQL_DEFAULT_DSN          => 
     'dbi:mysql:host=myhost:port=3306:user=xmldrop:password=test;database=test';
-use constant XML_SCP_DEFAULT_USER           => 'qauser';
+use constant XML_SCP_DEFAULT_USER           => undef;
 use constant XML_SCP_DEFAULT_HOST           => 'regin.norway.sun.com';
 use constant XML_SCP_DEFAULT_DEST_PATH      => '/raid/xml_results/TestTool/xml/';
 
@@ -104,8 +104,9 @@ sub type {
 #
 sub defaultScpDestination {
     my $self = shift;
-    return XML_SCP_DEFAULT_USER.'@'.XML_SCP_DEFAULT_HOST.
-            ':'.XML_SCP_DEFAULT_DEST_PATH;
+    my $dest = XML_SCP_DEFAULT_HOST.':'.XML_SCP_DEFAULT_DEST_PATH;
+    $dest = XML_SCP_DEFAULT_USER.'@'.$dest if defined XML_SCP_DEFAULT_USER;
+    return $dest;
 }
 
 
@@ -170,6 +171,12 @@ sub scp {
 
     my $cmd;
     if (osWindows()) {
+        # We currently support only pscp.exe From Putty on native Windows.
+        #
+        # NOTE: Using pscp without specifying private key (-i <keyfile>)
+        #       requires that Putty's pageant tool is running and set up with
+        #       the correct ssh key on the test host.
+        #       If support for options is needed, add it below.
         $cmd = 'pscp.exe -q '.$xmlfile.' '.$dest;
     } else {
         $cmd = 'scp '.$xmlfile.' '.$dest;
