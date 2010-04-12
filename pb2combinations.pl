@@ -49,9 +49,18 @@ my $cwd = cwd();
 my $conf = $ENV{RQG_CONF};
 $conf = 'conf' if not defined $conf;
 
+# Find out active user name and mention it in the output to ease debugging.
+my $username;
+if (osLinux() || osSolaris()) {
+    $username = $ENV{'LOGNAME'};
+} else {
+    $username = $ENV{'USERNAME'};
+}
+
 say("===== Information on the host system: =====\n");
 say(" - Local time  : ".localtime()."\n");
 say(" - Hostname    : ".hostname()."\n");
+say(" - Username    : ".$username."\n");
 say(" - PID         : $$\n");
 say(" - Working dir : ".cwd()."\n");
 say(" - PATH        : ".$ENV{PATH}."\n");
@@ -126,6 +135,49 @@ if ($test =~ m{falcon_combinations_simple}io ) {
 # Assuming Unix for now (using tail).
 
 $command = "perl combinations.pl --basedir=\"$basedir\" --vardir=\"$vardir\" ".$command;
+
+### XML reporting setup START
+
+# Pass test name to RQG, for reporting purposes
+$command = $command." --testname=".$test;
+
+# Enable XML reporting to TestTool.
+# For now only on given hosts...
+my %report_xml_from_hosts = (
+    'loki06'   => '',
+    'nanna21'  => '',
+    'techra22' => '',
+    'tor06-z1' => '',
+    'tyr41'    => ''
+);
+my $hostname = hostname();
+my $xmlfile;
+my $delete_xmlfile = 0; # boolean indicator whether to delete local XML file.
+if (exists $report_xml_from_hosts{$hostname}) {
+    # We should enable XML reporting on this host...
+    say("XML reporting to TestTool automatically enabled based on hostname.");
+    # We need to write the XML to a file before sending to reporting framework.
+    # This is done by specifying xml-output option.
+    # TMPDIR should be set by Pushbuild to indicate a suitable location for temp files.
+    my $tmpdir = $ENV{'TMPDIR'};
+    if (length($tmpdir) > 1) {
+        $xmlfile = $tmpdir.'/'.$test.'.xml';
+    } else {
+        # TMPDIR not set. Write report to current directory.
+        # This file should be deleted after test end so that disks won't fill up.
+        $delete_xmlfile = 1;
+        $xmlfile = $test.'.xml';
+    }
+    # Enable XML reporting to TT (assuming this is not already enabled):
+    $command = $command.' --xml-output='.$xmlfile.' --report-xml-tt';
+    # Specify XML reporting transport type (not relying on defaults):
+    # We assume SSH keys have been properly set up to enable seamless scp use.
+    $command = $command.' --report-xml-tt-type=scp';
+    # Specify destination for XML reports (not relying on defaults):
+    $command = $command.' --report-xml-tt-dest=regin.norway.sun.com:/raid/xml_results/TestTool/xml/';
+}
+### XML reporting setup END
+
 # redirect output to log file to avoid sending huge amount of output to PB2
 my $log_file = $vardir.'/pb2comb_'.$test.'.out';
 $command = $command." > $log_file 2>&1";
