@@ -23,7 +23,9 @@ use GenTest::Random;
 use Getopt::Long;
 use Data::Dumper;
 
-my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, $seed);
+my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
+    $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
+    $report_xml_tt_dest);
 
 my $combinations;
 my %results;
@@ -31,14 +33,19 @@ my @commands;
 my $max_result = 0;
 
 my $opt_result = GetOptions(
-        'config=s' => \$config_file,
+	'config=s' => \$config_file,
 	'basedir=s' => \$basedir,
 	'vardir=s' => \$vardir,
 	'trials=i' => \$trials,
 	'duration=i' => \$duration,
 	'seed=s' => \$seed,
 	'grammar=s' => \$grammar,
-	'gendata=s' => \$gendata
+	'gendata=s' => \$gendata,
+	'testname=s' => \$testname,
+	'xml-output=s' => \$xml_output,
+	'report-xml-tt' => \$report_xml_tt,
+	'report-xml-tt-type=s' => \$report_xml_tt_type,
+	'report-xml-tt-dest=s' => \$report_xml_tt_dest,
 );
 
 my $prng = GenTest::Random->new(
@@ -75,6 +82,11 @@ foreach my $trial_id (1..$trials) {
 	$command .= " --gendata=$gendata " if $gendata ne '';
 	$command .= " --grammar=$grammar " if $grammar ne '';
 	$command .= " --seed=$seed " if $seed ne '';
+	$command .= " --testname=$testname " if $testname ne '';
+	$command .= " --xml-output=$xml_output " if $xml_output ne '';
+	$command .= " --report-xml-tt" if defined $report_xml_tt;
+	$command .= " --report-xml-tt-type=$report_xml_tt_type " if $report_xml_tt_type ne '';
+	$command .= " --report-xml-tt-dest=$report_xml_tt_dest " if $report_xml_tt_dest ne '';
 
 	$command .= " --vardir=$vardir/current " if $command !~ m{--mem}sio && $vardir ne '';
 	$command =~ s{[\t\r\n]}{ }sgio;
