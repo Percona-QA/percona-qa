@@ -171,7 +171,7 @@ sub scp {
 
     my $cmd;
     if (osWindows()) {
-        # We currently support only pscp.exe From Putty on native Windows.
+        # We currently support only pscp.exe from Putty on native Windows.
         #
         # NOTE: Using pscp without specifying private key (-i <keyfile>)
         #       requires that Putty's pageant tool is running and set up with
