@@ -63,6 +63,8 @@ my $config = GenTest::Properties->new(
     legal => ['desired_status_codes',
               'expected_output',
               'initial_grammar_file',
+              'mask',
+              'mask-level',
               'grammar_flags',
               'trials',
               'initial_seed',
@@ -99,10 +101,18 @@ my $run_id = time();
 
 say("The ID of this run is $run_id.");
 
-open(INITIAL_GRAMMAR, $config->initial_grammar_file) 
-    or croak "Unable to open initial_grammar_file '" . $config->initial_grammar_file . "' : $!";;
-read(INITIAL_GRAMMAR, my $initial_grammar , -s $config->initial_grammar_file);
-close(INITIAL_GRAMMAR);
+my $initial_grammar;
+
+if ($config->property('mask') > 0) {
+   my $initial_grammar_obj = GenTest::Grammar->new( 'grammar_file'  => $config->initial_grammar_file );
+   my $top_grammar = $initial_grammar_obj->topGrammar($config->property('mask-level'), "query", "query_init");
+   my $masked_top = $top_grammar->mask($config->property('mask'));
+   $initial_grammar = $initial_grammar_obj->patch($masked_top);
+} else {
+   open(INITIAL_GRAMMAR, $config->initial_grammar_file) or croak "Unable to open initial_grammar_file '" . $config->initial_grammar_file . "' : $!";
+   read(INITIAL_GRAMMAR, $initial_grammar , -s $config->initial_grammar_file);
+   close(INITIAL_GRAMMAR);
+}
 
 if ( ! -d $config->vardir_prefix ) {
    croak("vardir_prefix '" . $config->vardir_prefix . "' is not an existing directory");
