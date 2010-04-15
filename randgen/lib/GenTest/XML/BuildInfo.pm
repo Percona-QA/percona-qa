@@ -32,6 +32,8 @@ use constant BUILDINFO_SERVER_PACKAGE   => 1;
 use constant BUILDINFO_SERVER_BIT       => 2;
 use constant BUILDINFO_SERVER_PATH      => 3;
 use constant BUILDINFO_SERVER_VARIABLES => 4;
+use constant BUILDINFO_SERVER_TREE      => 5;
+use constant BUILDINFO_SERVER_REVISION  => 6;
 
 sub new {
     my $class = shift;
@@ -51,9 +53,29 @@ sub new {
         my $server;
 
         # TODO: Add support for non-MySQL dsns.
-        $server->[BUILDINFO_SERVER_VERSION] = $dbh->selectrow_array('SELECT @@version');
-        $server->[BUILDINFO_SERVER_PACKAGE] = $dbh->selectrow_array('SELECT @@version_comment');
+        
+        # Server Version: 
+        #   To align with other test drivers reporting to the same place we 
+        #   report only the three x.y.z version numbers as "version".
+        #   Expecting e.g "5.5.4-m3-log-debug", using only "5.5.4".
+        #   The rest (e.g. "log-debug" as well as the version will be prepended
+        #   to the value of the "package" tag instead.
+        my $long_version = $dbh->selectrow_array('SELECT @@version');
+        if ($long_version =~ /^(\d+\.\d+\.\d+)/ )
+        {
+            # grab version number only to use for version tag.
+            $server->[BUILDINFO_SERVER_VERSION] = $1;
+        } else {
+            # version not of the expected format, so use the whole thing.
+            $server->[BUILDINFO_SERVER_VERSION] = $long_version;
+        }
+        
+        $server->[BUILDINFO_SERVER_PACKAGE] = $long_version . ' ' .
+            $dbh->selectrow_array('SELECT @@version_comment');
+
+
         # According to the schema, bit must be "32" or "64".
+        # There is no reliable way to get this on all supported platforms using MySQL queries.
         #$server->[BUILDINFO_SERVER_BIT] = $dbh->selectrow_array('SELECT @@version_compile_machine');
         $server->[BUILDINFO_SERVER_PATH] = $dbh->selectrow_array('SELECT @@basedir');
         $server->[BUILDINFO_SERVER_VARIABLES] = [];
