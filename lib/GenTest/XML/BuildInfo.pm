@@ -22,6 +22,7 @@ require Exporter;
 
 use strict;
 use GenTest;
+use GenTest::BzrInfo;
 use DBI;
 
 use constant BUILDINFO_DSNS     => 0;
@@ -54,6 +55,9 @@ sub new {
 
         # TODO: Add support for non-MySQL dsns.
         
+        # set this first because it may be used below
+        $server->[BUILDINFO_SERVER_PATH] = $dbh->selectrow_array('SELECT @@basedir');
+        
         # Server Version: 
         #   To align with other test drivers reporting to the same place we 
         #   report only the three x.y.z version numbers as "version".
@@ -73,13 +77,58 @@ sub new {
         $server->[BUILDINFO_SERVER_PACKAGE] = $long_version . ' ' .
             $dbh->selectrow_array('SELECT @@version_comment');
 
+        # Source code version-control information (tree, revision):
+        #   First we check some environment variables for information: 
+        #     BRANCH_SOURCE - source URL as understood by the underlying version
+        #                     control system.
+        #     BRANCH_NAME   - possibly non-unique name of the branch.
+        #     PUSH_REVISION - unique ID for the current revision of the branch, 
+        #                     as provided by the underlying version control system.
+        #
+        # If those are not present, we try to query bzr itself.
 
+        # This may take a few seconds due to bzr slowness.
+        my $bzrinfo_server = GenTest::BzrInfo->new(
+            dir => $server->[BUILDINFO_SERVER_PATH]
+        );
+        
+        # revision
+        if (defined $ENV{'PUSH_REVISION'}) {
+            $server->[BUILDINFO_SERVER_REVISION] = $ENV{'PUSH_REVISION'};
+        } else {
+            # If this fails, it remains undefined and will not be reported.
+            $server->[BUILDINFO_SERVER_REVISION] = $bzrinfo_server->bzrRevisionId();
+        }
+        
+        # tree:
+        #   Since BRANCH_NAME may not be uniquely identifying a branch, we
+        #   instead use the final part of the source URL as tree (branch) name.
+        #   E.g. in PB2, we may have both daily-trunk and mysql-trunk referring
+        #   to the same branch.
+        if (defined $ENV{'BRANCH_SOURCE'}) {
+            # extract last part of source URL and use as tree name.
+            # Example: 
+            #   http://host.com/bzr/server/mysql-next-mr
+            #   becomes "mysql-next-mr".
+            # Need to account for possible ending '/'.
+            if ($ENV{BRANCH_SOURCE} =~ m{([^\\\/]+)[\\\/]?$}) {
+                $server->[BUILDINFO_SERVER_TREE] = $1;
+            }
+        } else {
+            if (defined $ENV{'BRANCH_NAME'}) {
+                $server->[BUILDINFO_SERVER_TREE] = $ENV{'BRANCH_NAME'};
+            } else {
+                # Get branch nick from bzr
+                # If this fails, it remains undefined and will not be reported.
+                $server->[BUILDINFO_SERVER_TREE] = $bzrinfo_server->bzrBranchNick();
+            }
+        }
+        
         # According to the schema, bit must be "32" or "64".
         # There is no reliable way to get this on all supported platforms using MySQL queries.
         #$server->[BUILDINFO_SERVER_BIT] = $dbh->selectrow_array('SELECT @@version_compile_machine');
-        $server->[BUILDINFO_SERVER_PATH] = $dbh->selectrow_array('SELECT @@basedir');
+        
         $server->[BUILDINFO_SERVER_VARIABLES] = [];
-
         my $sth = $dbh->prepare("SHOW VARIABLES");
         $sth->execute();
         while (my ($name, $value) = $sth->fetchrow_array()) {
@@ -114,15 +163,17 @@ sub xml {
         my $server = $buildinfo->[BUILDINFO_SERVERS]->[$id];
         next if not defined $server;
 
+        # Note that the order of these tags (sequence) is significant.
+        # Commented tags are part of XML spec but not implemented here yet.
+
         $writer->startTag('build', id => $id);
         $writer->dataElement('version', $server->[BUILDINFO_SERVER_VERSION]);
+        $writer->dataElement('tree', $server->[BUILDINFO_SERVER_TREE]) if defined $server->[BUILDINFO_SERVER_TREE];
+        $writer->dataElement('revision', $server->[BUILDINFO_SERVER_REVISION]) if defined $server->[BUILDINFO_SERVER_REVISION];
+        #<xsd:element name="tag" type="xsd:string" minOccurs="0" form="qualified"/>
         $writer->dataElement('package', $server->[BUILDINFO_SERVER_PACKAGE]);
         #$writer->dataElement('bit', $server->[BUILDINFO_SERVER_BIT]); # Must be 32 or 64
         $writer->dataElement('path', $server->[BUILDINFO_SERVER_PATH]);
-        ## TODO (if applicable):
-        #<xsd:element name="tree" type="xsd:string" minOccurs="0" form="qualified"/>
-        #<xsd:element name="revision" type="xsd:string" minOccurs="0" form="qualified"/>
-        #<xsd:element name="tag" type="xsd:string" minOccurs="0" form="qualified"/>
         #<xsd:element name="compile_options" type="cassiopeia:Options" minOccurs="0" form="qualified"/>
         #<xsd:element name="commandline" type="xsd:string" minOccurs="0" form="qualified" />
         #<xsd:element name="buildscript" minOccurs="0" type="xsd:string" form="qualified" />

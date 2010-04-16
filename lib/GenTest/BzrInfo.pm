@@ -135,7 +135,7 @@ sub _getVersionInfo {
     #    # else went wrong...
     #    say("Unable to get info from bzr: $!") if rqg_debug();
     #}
-    
+
 }
 
 ################################################################################

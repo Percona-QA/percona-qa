@@ -26,6 +26,7 @@ use DBI;
 use File::Find;
 use GenTest;
 use GenTest::Random;
+use GenTest::BzrInfo;
 use POSIX;
 use Sys::Hostname;
 
@@ -221,6 +222,12 @@ if (osLinux() || osSolaris()) {
 
 chdir('randgen');
 
+say("Gathering info from the environment...");
+# calling bzr usually takes a few seconds...
+my $bzrinfo = GenTest::BzrInfo->new(
+            dir => cwd()
+);
+
 say("===== Information on the host system: =====\n");
 say(" - Local time  : ".localtime()."\n");
 say(" - Hostname    : ".hostname()."\n");
@@ -234,9 +241,18 @@ say("       vardir  = $vardir\n");
 say("       tree    = $tree\n");
 say("       test    = $test\n");
 say("\n");
+say("===== Information on the tested binaries (PB2): =====\n");
+say(" - Branch URL  : ".$ENV{'BRANCH_SOURCE'});
+say(" - Branch name : ".$ENV{'BRANCH_NAME'});
+say(" - Revision    : ".$ENV{'PUSH_REVISION'});
+say(" - Source      : ".$ENV{'SOURCE'});
 say("===== Information on Random Query Generator version (bzr): =====\n");
-system("bzr info");
-system("bzr version-info");
+say(" - Date (rev)  : ".$bzrinfo->bzrDate());
+say(" - Last pulled : ".$bzrinfo->bzrBuildDate());
+say(" - Revno       : ".$bzrinfo->bzrRevno());
+say(" - Revision ID : ".$bzrinfo->bzrRevisionId());
+say(" - Branch nick : ".$bzrinfo->bzrBranchNick());
+say(" - Clean copy? : ". ($bzrinfo->bzrClean()? "Yes" : "No"));
 say("\n");
 
 # Test name:
@@ -688,7 +704,15 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	$command = '
 		--grammar='.$conf.'/engines/maria/maria_stress.yy
 	';
-} else {
+} elsif ($test =~ m{example}io ) {
+    # this is here for the purpose testing this script
+	$command = '
+		--grammar='.$conf.'/examples/example.yy
+        --threads=1
+        --duration=40
+        --queries=10000
+	';
+}else {
 	say("[ERROR]: Test configuration for test name '$test' is not ".
 		"defined in this script.\n");
 	my $exitCode = 1;
