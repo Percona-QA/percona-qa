@@ -54,7 +54,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, @validators, @reporters, $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
-    $start_dirty, $filter, $build_thread);
+    $start_dirty, $filter, $build_thread, $sqltrace);
 
 my $gendata=''; ## default simple gendata
 
@@ -100,7 +100,8 @@ my $opt_result = GetOptions(
 	'views'		=> \$views,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
-    'mtr-build-thread=i' => \$build_thread
+    'mtr-build-thread=i' => \$build_thread,
+    'sqltrace' => \$sqltrace
     );
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
@@ -293,7 +294,8 @@ my $gentestProps = GenTest::Properties->new(
               'filter',
               'valgrind',
               'testname',
-              'report-xml-tt']
+              'report-xml-tt',
+              'sqltrace']
     );
 
 my @gentest_options;
@@ -330,6 +332,7 @@ $gentestProps->property('xml-output',$xml_output) if defined $xml_output;
 $gentestProps->debug(1) if defined $debug;
 $gentestProps->filter($filter) if defined $filter;
 $gentestProps->valgrind(1) if $valgrind;
+$gentestProps->sqltrace(1) if $sqltrace;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
