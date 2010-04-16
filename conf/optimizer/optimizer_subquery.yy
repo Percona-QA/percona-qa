@@ -773,7 +773,7 @@ _table:
 ################################################################################
 
 view:
-    _A | _B | _C | _BB | _CC ;
+    view_A | view_B | view_C | view_BB | view_CC ;
 
 _field:
     int_field_name | char_field_name ;
