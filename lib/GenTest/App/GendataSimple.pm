@@ -33,6 +33,7 @@ use constant GDS_DEFAULT_DSN => 'dbi:mysql:host=127.0.0.1:port=9306:user=root:da
 use constant GDS_DSN => 0;
 use constant GDS_ENGINE => 1;
 use constant GDS_VIEWS => 2;
+use constant GDS_SQLTRACE => 3;
 
 sub new {
     my $class = shift;
@@ -40,7 +41,8 @@ sub new {
     my $self = $class->SUPER::new({
         'dsn' => GDS_DSN,
         'engine' => GDS_ENGINE,
-        'views' => GDS_VIEWS},@_);
+        'views' => GDS_VIEWS,
+        'sqltrace' => GDS_SQLTRACE },@_);
 
     if (not defined $self->[GDS_DSN]) {
         $self->[GDS_DSN] = GDS_DEFAULT_DSN;
@@ -65,12 +67,17 @@ sub views {
     return $_[0]->[GDS_VIEWS];
 }
 
+sub sqltrace {
+    return $_[0]->[GDS_SQLTRACE];
+}
+
 sub run {
     my ($self) = @_;
 
     my $prng = GenTest::Random->new( seed => 0 );
 
     my $executor = GenTest::Executor->newFromDSN($self->dsn());
+    $executor->sqltrace($self->sqltrace);
     $executor->init();
     
     my @names = ('A', 'B', 'C', 'D', 'E', 'AA', 'BB', 'CC', 'DD');
