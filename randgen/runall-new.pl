@@ -56,6 +56,8 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread);
 
+my $gendata=''; ## default simple gendata
+
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
 my $duration = my $default_duration = 3600;
@@ -109,7 +111,6 @@ if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 say("Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
 say("Please see http://forge.mysql.com/wiki/Category:RandomQueryGenerator for more information on this test framework.");
 say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
-
 
 #
 # Calculate master and slave ports based on MTR_BUILD_THREAD (MTR
@@ -307,7 +308,7 @@ if ($#reporters == 0 and $reporters[0] =~ m/,/) {
     @reporters = split(/,/,$reporters[0]);
 }
 
-$gentestProps->start_dirty(1) if defined $start_dirty;
+$gentestProps->property('start-dirty',1) if defined $start_dirty;
 $gentestProps->gendata($gendata);
 $gentestProps->engine($engine) if defined $engine;
 $gentestProps->rpl_mode($rpl_mode) if defined $rpl_mode;
