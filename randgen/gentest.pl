@@ -102,7 +102,8 @@ my $config = GenTest::Properties->new(
               'views',
               'start-dirty',
               'filter',
-              'valgrind'],
+              'valgrind',
+              'sqltrace'],
     help => \&help);
 
 help() if !$opt_result || $config->help;

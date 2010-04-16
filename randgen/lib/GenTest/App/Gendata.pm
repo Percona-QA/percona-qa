@@ -69,6 +69,7 @@ use constant GD_ROWS => 5;
 use constant GD_VIEWS => 6;
 use constant GD_VARCHAR_LENGTH => 7;
 use constant GD_SERVER_ID => 8;
+use constant GD_SQLTRACE => 9;
 
 sub new {
     my $class = shift;
@@ -82,7 +83,8 @@ sub new {
         'rows' => GD_ROWS,
         'views' => GD_VIEWS,
         'varchar_length' => GD_VARCHAR_LENGTH,
-        'server_id' => GD_SERVER_ID},@_);
+        'server_id' => GD_SERVER_ID,
+        'sqltrace' => GD_SQLTRACE},@_);
 
     if (not defined $self->[GD_SEED]) {
         $self->[GD_SEED] = 1;
@@ -137,6 +139,10 @@ sub varchar_length {
 
 sub server_id {
     return $_[0]->[GD_SERVER_ID];
+}
+
+sub sqltrace {
+    return $_[0]->[GD_SQLTRACE];
 }
 
 
@@ -378,6 +384,7 @@ sub run {
     
     foreach my $schema (@schema_perms) {
         $executor->execute("CREATE SCHEMA /*!IF NOT EXISTS*/ $schema");
+        $executor->sqltrace($self->sqltrace);
         $executor->currentSchema($schema);
 
     foreach my $table_id (0..$#tables) {

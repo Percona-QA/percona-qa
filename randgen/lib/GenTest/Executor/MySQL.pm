@@ -486,6 +486,10 @@ sub reportError {
 
 sub execute {
 	my ($executor, $query, $silent) = @_;
+    
+    if ($executor->sqltrace) {
+        print "$query;\n";
+    }
 
 	my $dbh = $executor->dbh();
 
