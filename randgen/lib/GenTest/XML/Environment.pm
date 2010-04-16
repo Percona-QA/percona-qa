@@ -22,6 +22,7 @@ require Exporter;
 
 use strict;
 use Carp;
+use Cwd;
 use File::Spec;
 use GenTest;
 use Net::Domain qw(hostfqdn);
@@ -43,6 +44,8 @@ our $osVer;
 our $osRev;
 our $osPatch;
 our $osBit;
+our $harnessVersion;
+our $harnessRevision;
 
 
 our $DEBUG=0;
@@ -96,6 +99,9 @@ sub xml {
     #
     $writer->startTag('software');
 
+    # Note that the order of the tags under software->program is significant. 
+    # Some commented tags are part of XML spec but not implemented here yet.
+
     # <os>
     $writer->startTag('program');
     $writer->dataElement('name', $osType);
@@ -118,11 +124,12 @@ sub xml {
     $writer->startTag('program');
     $writer->dataElement('name', 'Random Query Generator');
     $writer->dataElement('type', 'harness');
+    $writer->dataElement('version', $harnessVersion) if defined $harnessVersion;
+    $writer->dataElement('revision', $harnessRevision) if defined $harnessRevision;
+    #<xsd:element name="patch" type="xsd:string" minOccurs="0" maxOccurs="1" form="qualified"/>
     my $rqg_path = File::Spec->rel2abs();   # assuming cwd is the randgen dir
     $writer->dataElement('path', $rqg_path);
-    ## TODO (if applicable):
-    #<xsd:element name="version" type="xsd:string" minOccurs="0" maxOccurs="1" form="qualified"/>
-    #<xsd:element name="revision" type="xsd:int" minOccurs="0" form="qualified"/>
+    #<xsd:element name="bit" type="cassiopeia:Bits" minOccurs="0" form="qualified"/>
     #<xsd:element name="commandline_options" type="cassiopeia:Options" minOccurs="0" form="qualified"/>
     #<xsd:element name="commandline" minOccurs="0" type="xsd:string" form="qualified" /> # alternative to the above
     $writer->endTag('program');
@@ -142,6 +149,33 @@ sub xml {
 sub getInfo()
 {
 
+    # First, OS-independent stuff:
+    
+    # Grab info from bzr, assuming current dir is randgen dir.
+    # If not a bzr branch, information is undef.
+    my $bzrinfo_randgen = GenTest::BzrInfo->new(
+            dir => cwd()
+    );
+    # Using bzr revno as RQG version until we have something better.
+    #
+    # Update: Temporarily using revid as version (instead of revision) due to
+    #         a "bug" in the XML schema where revision can only be an integer.
+    #
+    #         TODO: Use revid as "revision" and revno as "version" once XML 
+    #               schema is fixed to accept "revision" tag as string (similar 
+    #               to build->revision).
+    #
+    #         If the RQG starts to include a different version number, 
+    #         independent of the underlying version control system, we may want 
+    #         to use that as version and instead not report revno (revid is better to
+    #         use as revision due to its ability to uniquely identify a revision
+    #         over time).
+    #
+    #$harnessVersion = 'revno'.$bzrinfo_randgen->bzrRevno();
+    #$harnessRevision = $bzrinfo_randgen->bzrRevisionId();
+    $harnessVersion = $bzrinfo_randgen->bzrRevisionId();
+    
+    
     # lets see what OS type we have
     if (osLinux())
     {
