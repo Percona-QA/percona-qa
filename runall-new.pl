@@ -54,7 +54,9 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, @validators, @reporters, $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
-    $start_dirty, $filter, $build_thread);
+    $start_dirty, $filter, $build_thread, $sqltrace);
+
+my $gendata=''; ## default simple gendata
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -98,7 +100,8 @@ my $opt_result = GetOptions(
 	'views'		=> \$views,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
-    'mtr-build-thread=i' => \$build_thread
+    'mtr-build-thread=i' => \$build_thread,
+    'sqltrace' => \$sqltrace
     );
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
@@ -109,7 +112,6 @@ if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 say("Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
 say("Please see http://forge.mysql.com/wiki/Category:RandomQueryGenerator for more information on this test framework.");
 say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
-
 
 #
 # Calculate master and slave ports based on MTR_BUILD_THREAD (MTR
@@ -292,7 +294,8 @@ my $gentestProps = GenTest::Properties->new(
               'filter',
               'valgrind',
               'testname',
-              'report-xml-tt']
+              'report-xml-tt',
+              'sqltrace']
     );
 
 my @gentest_options;
@@ -307,7 +310,7 @@ if ($#reporters == 0 and $reporters[0] =~ m/,/) {
     @reporters = split(/,/,$reporters[0]);
 }
 
-$gentestProps->start_dirty(1) if defined $start_dirty;
+$gentestProps->property('start-dirty',1) if defined $start_dirty;
 $gentestProps->gendata($gendata);
 $gentestProps->engine($engine) if defined $engine;
 $gentestProps->rpl_mode($rpl_mode) if defined $rpl_mode;
@@ -329,6 +332,7 @@ $gentestProps->property('xml-output',$xml_output) if defined $xml_output;
 $gentestProps->debug(1) if defined $debug;
 $gentestProps->filter($filter) if defined $filter;
 $gentestProps->valgrind(1) if $valgrind;
+$gentestProps->sqltrace(1) if $sqltrace;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.

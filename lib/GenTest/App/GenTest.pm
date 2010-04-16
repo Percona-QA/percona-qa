@@ -111,7 +111,8 @@ sub run {
             if ($self->config->gendata eq '') {
                 $datagen = GenTest::App::GendataSimple->new(dsn => $dsn,
                                                             views => $self->config->views,
-                                                            engine => $self->config->engine);
+                                                            engine => $self->config->engine,
+                                                            sqltrace=> $self->config->sqltrace);
             } else {
                 $datagen = GenTest::App::Gendata->new(spec_file => $self->config->gendata,
                                                       dsn => $dsn,
@@ -120,7 +121,8 @@ sub run {
                                                       debug => $self->config->debug,
                                                       rows => $self->config->rows,
                                                       views => $self->config->views,
-                                                      varchar_length => $self->config->property('varchar-length'));
+                                                      varchar_length => $self->config->property('varchar-length'),
+                                                      sqltrace => $self->config->sqltrace);
             }
             $gendata_result = $datagen->run();
             
@@ -152,6 +154,7 @@ sub run {
         next if $self->config->dsn->[$i] eq '';
         push @executors, GenTest::Executor->newFromDSN($self->config->dsn->[$i],
                                                        osWindows()?undef:$channel);
+        $executors[$i]->sqltrace($self->config->sqltrace);
     }
     
     my $drizzle_only = $executors[0]->type == DB_DRIZZLE;

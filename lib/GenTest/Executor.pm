@@ -45,6 +45,7 @@ use constant EXECUTOR_SCHEMA_METADATA => 8;
 use constant EXECUTOR_COLLATION_METADATA => 9;
 use constant EXECUTOR_META_CACHE => 10;
 use constant EXECUTOR_CHANNEL => 11;
+use constant EXECUTOR_SQLTRACE => 12;
 
 1;
 
@@ -55,6 +56,7 @@ sub new {
 		'dsn'	=> EXECUTOR_DSN,
 		'dbh'	=> EXECUTOR_DBH,
         'channel' => EXECUTOR_CHANNEL,
+        'sqltrace' => EXECUTOR_SQLTRACE
 	}, @_);
     
     return $executor;
@@ -100,6 +102,16 @@ sub dbh {
 
 sub setDbh {
 	$_[0]->[EXECUTOR_DBH] = $_[1];
+}
+
+sub setDbh {
+	$_[0]->[EXECUTOR_DBH] = $_[1];
+}
+
+sub sqltrace {
+    my ($self, $sqltrace) = @_;
+    $self->[EXECUTOR_SQLTRACE] = $sqltrace if defined $sqltrace;
+    return $self->[EXECUTOR_SQLTRACE];
 }
 
 sub dsn {
