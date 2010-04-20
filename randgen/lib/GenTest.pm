@@ -42,13 +42,15 @@ sub BEGIN {
 		}
 	}
 
-	if (
-		($^O eq 'MSWin32') ||
-		($^O eq 'MSWin64')
-	) {
-		$tmpdir = $tmpdir.'\\';
-	} else {
-		$tmpdir = $tmpdir.'/';
+	if (defined $tmpdir) {
+		if (
+			($^O eq 'MSWin32') ||
+			($^O eq 'MSWin64')
+		) {
+			$tmpdir = $tmpdir.'\\';
+		} else {
+			$tmpdir = $tmpdir.'/';
+		}
 	}
 
 	croak("Unable to locate suitable temporary directory.") if not defined $tmpdir;
