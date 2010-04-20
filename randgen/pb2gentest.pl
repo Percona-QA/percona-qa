@@ -78,8 +78,14 @@ if (osWindows()) {
 	# For libmysqlclient
 	$ENV{LD_LIBRARY_PATH}=$ENV{LD_LIBRARY_PATH}.':/export/home/pb2/scripts/lib/';
 
-	# For DBI and DBD::mysql
-	$ENV{PERL5LIB}=$ENV{PERL5LIB}.':/export/home/pb2/scripts/DBI-1.607/:/export/home/pb2/scripts/DBI-1.607/lib:/export/home/pb2/scripts/DBI-1.607/blib/arch/:/export/home/pb2/scripts/DBD-mysql-4.008/lib/:/export/home/pb2/scripts/DBD-mysql-4.008/blib/arch/';
+	# For DBI and DBD::mysql and XML::Writer on hosts with local setup.
+	$ENV{PERL5LIB}=$ENV{PERL5LIB}.
+		':/export/home/pb2/scripts/DBI-1.607/'.
+		':/export/home/pb2/scripts/DBI-1.607/lib'.
+		':/export/home/pb2/scripts/DBI-1.607/blib/arch/'.
+		':/export/home/pb2/scripts/DBD-mysql-4.008/lib/'.
+		':/export/home/pb2/scripts/DBD-mysql-4.008/blib/arch/'.
+		':/export/home/pb2/scripts/XML-Writer-0.610/lib/site_perl/';
 	
 	# For c++filt
 	$ENV{PATH} = $ENV{PATH}.':/opt/studio12/SUNWspro/bin';
@@ -838,11 +844,15 @@ if (exists $report_xml_from_hosts{$hostname}) {
     # We need to write the XML to a file before sending to reporting framework.
     # This is done by specifying xml-output option.
     # TMPDIR should be set by Pushbuild to indicate a suitable location for temp files.
-    my $tmpdir = $ENV{'TMPDIR'};
+    # GenTest looks for other tmpdir alternatives.
+    my $tmpdir = $ENV{'TMPDIR'} || tmpdir();
     if (length($tmpdir) > 1) {
-        $xmlfile = $tmpdir.'/'.$test_name.'.xml';
+        # tmpdir may or may not end with a file separator. Make sure it does.
+        $tmpdir = $tmpdir.'/' if ($tmpdir =~ m{[^\/\\]+$});
+        $xmlfile = $tmpdir.$test_name.'.xml';
     } else {
-        # TMPDIR not set. Write report to current directory.
+        # tmpdir not found. Write report to current directory.
+        say("A suitable tmpdir was not found. Writing temporary files to current directory");
         # This file should be deleted after test end so that disks won't fill up.
         $delete_xmlfile = 1;
         $xmlfile = $test_name.'.xml';
