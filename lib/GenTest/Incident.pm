@@ -24,8 +24,9 @@ use strict;
 use GenTest;
 
 #
-# Those names are taken from Vemundo's specification for a 
-# test result XML report. Not all of them will be used
+# Those names are taken from an XML specification for a 
+# test result XML report (see XML/Report.pm). Not all of them will be used.
+# See commented tags / statements for omitted stuff.
 #
 
 use constant INCIDENT_ID            => 0;
@@ -81,8 +82,9 @@ sub xml {
 
     $writer->startTag('incident', 'id' => $incident->[INCIDENT_ID]);
 
-    $writer->dataElement('result', $incident->[INCIDENT_RESULT]) if defined $incident->[INCIDENT_RESULT];
+    # this is a sequence in the XML schema, so the order of elements is significant.
     $writer->dataElement('timestamp', $incident->[INCIDENT_TIMESTAMP]) if defined $incident->[INCIDENT_TIMESTAMP];
+    $writer->dataElement('result', $incident->[INCIDENT_RESULT]) if defined $incident->[INCIDENT_RESULT];
     $writer->dataElement('description', $incident->[INCIDENT_DESCRIPTION]) if defined $incident->[INCIDENT_DESCRIPTION];
     $writer->dataElement('signature', $incident->[INCIDENT_SIGNATURE]) if defined $incident->[INCIDENT_SIGNATURE];
     $writer->dataElement('corefile', $incident->[INCIDENT_COREFILE]) if defined $incident->[INCIDENT_COREFILE];
@@ -98,6 +100,11 @@ sub xml {
             $writer->endTag('debug');
         }
     }
+    
+    #$writer->dataElement('host', $incident->[INCIDENT_HOST]) if defined $incident->[INCIDENT_HOST]; # hostname
+    #$writer->dataElement('build_id', $incident->[INCIDENT_BUILD_ID]) if defined $incident->[INCIDENT_BUILD_ID]; # int
+    #$writer->dataElement('binary', $incident->[INCIDENT_BINARY]) if defined $incident->[INCIDENT_BINARY]; # string
+    #$writer->dataElement('role', $incident->[INCIDENT_ROLE]) if defined $incident->[INCIDENT_ROLE]; # string
 
     $writer->endTag('incident');
 
