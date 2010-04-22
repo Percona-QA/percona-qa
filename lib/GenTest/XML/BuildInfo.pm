@@ -152,6 +152,8 @@ sub xml {
 
     my $writer = XML::Writer->new(
         OUTPUT      => \$buildinfo_xml,
+        DATA_MODE   => 1,   # this and DATA_INDENT to have line breaks and indentation after each element
+        DATA_INDENT => 2,   # number of spaces used for indentation
     );
 
     $writer->startTag('product');
