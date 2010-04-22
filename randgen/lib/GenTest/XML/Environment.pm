@@ -205,6 +205,7 @@ sub getInfo()
         # If nothing after '_' (or no '_' at all), assume 32-bit.
         $bit = "32" if length($bit) < 1;
         #$bit = undef if length($bit) < 1;
+        $bit = trim($bit);
         $osBit = $bit;  # treat $osBit as $bit for now...
 
         $kernel=trim(`uname -r`);
@@ -221,6 +222,7 @@ sub getInfo()
         if (defined ($locale=`locale |grep LC_CTYPE| cut -b 10-`))
         {
             ($locale,$encoding) = split(/\./,$locale);
+            $encoding = trim($encoding);
         }
         else
         {
@@ -258,8 +260,8 @@ sub getInfo()
         #try to get OS Information
         ($osType,$osVer,$arch) = split (/ /, trim(`uname -srp`));
         # use of uname -m is discouraged (man pages), so use isainfo instead
-        $kernel = `isainfo -k`;
-        $osBit = `isainfo -b`;
+        $kernel = trim(`isainfo -k`);
+        $osBit = trim(`isainfo -b`);
         my $trash; # variable functioning as /dev/null
         ($trash, $trash, my $osPatch1, my $osPatch2, $trash) = split(/ /, trim(`cat /etc/release | head -1`));
         my $osPatch3 = `uname -v`;
@@ -278,7 +280,8 @@ sub getInfo()
         #locale
         if (defined ($locale=`locale |grep LC_CTYPE| cut -b 10-`))
         {
-            ($locale,$encoding) = split(/\./,$locale);
+            ($locale, $encoding) = split(/\./,$locale);
+            $encoding = trim($encoding);
         }
         else
         {
@@ -387,12 +390,13 @@ sub getInfo()
     }
 }
 
+# Removes leading and trailing whitespace and trailing newline characters
 sub trim($)
 {
     my $string = shift;
     $string =~ s/^\s+//;
     $string =~ s/\s+$//;
-    return $string;
+    return chomp($string);
 }
 
 1;
