@@ -26,8 +26,9 @@ use strict;
 use GenTest;
 use GenTest::Properties;
 use GenTest::App::GenTest;
-use GenTest::Server::MySQLd;
-use GenTest::Server::ReplMySQLd;
+use DBServer::DBServer;
+use DBServer::MySQL::MySQLd;
+use DBServer::MySQL::ReplMySQLd;
 
 $| = 1;
 if (osWindows()) {
@@ -199,7 +200,7 @@ if ($rpl_mode ne '') {
         push @options, @{$mysqld_options[0]};
     }
     
-    $rplsrv = GenTest::Server::ReplMySQLd->new(basedir => $basedirs[0],
+    $rplsrv = DBServer::MySQL::ReplMySQLd->new(basedir => $basedirs[0],
                                                master_vardir => $vardirs[0],
                                                master_port => $ports[0],
                                                slave_vardir => $vardirs[1],
@@ -212,7 +213,7 @@ if ($rpl_mode ne '') {
     
     my $status = $rplsrv->startServer();
     
-    if ($status > STATUS_OK) {
+    if ($status > DBSTATUS_OK) {
         stopServers();
         say(system("ls -l ".$rplsrv->master->datadir));
         say(system("ls -l ".$rplsrv->slave->datadir));
@@ -240,7 +241,7 @@ if ($rpl_mode ne '') {
             push @options, @{$mysqld_options[$server_id]};
         }
         
-        $server[$server_id] = GenTest::Server::MySQLd->new(basedir => $basedirs[$server_id],
+        $server[$server_id] = DBServer::MySQL::MySQLd->new(basedir => $basedirs[$server_id],
                                                            vardir => $vardirs[$server_id],
                                                            port => $ports[$server_id],
                                                            start_dirty => $start_dirty,
@@ -250,7 +251,7 @@ if ($rpl_mode ne '') {
         
         my $status = $server[$server_id]->startServer;
         
-        if ($status > STATUS_OK) {
+        if ($status > DBSTATUS_OK) {
             stopServers();
             say(system("ls -l ".$server[$server_id]->datadir));
             croak("Could not start all servers");

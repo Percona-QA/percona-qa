@@ -18,10 +18,10 @@
 package TestReplServer;
 
 use base qw(Test::Unit::TestCase);
-use lib 'lib';
+use lib 'lib','lib/DBServer';
 use Cwd;
-use GenTest;
-use GenTest::Server::ReplMySQLd;
+use DBServer::DBServer;
+use DBServer::MySQL::ReplMySQLd;
 use GenTest::Executor;
 
 use Data::Dumper;
@@ -63,7 +63,7 @@ sub test_create_server {
     
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
     
-    my $server = GenTest::Server::ReplMySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+    my $server = DBServer::MySQL::ReplMySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                                   master_vardir => $master_vardir,
                                                   mode => 'statement',
                                                   master_port => $portbase);
@@ -102,14 +102,14 @@ sub test_create_repl {
     
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
     
-    my $master = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+    my $master = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                               vardir => $master_vardir,
                                               port => $portbase);
-    my $slave = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+    my $slave = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                              vardir => $slave_vardir,
                                              port => $portbase+2);
     
-    my $server = GenTest::Server::ReplMySQLd->new(slave => $slave,
+    my $server = DBServer::MySQL::ReplMySQLd->new(slave => $slave,
                                                   master => $master,
                                                   mode => 'mixed');
                                              

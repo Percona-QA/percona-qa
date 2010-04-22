@@ -18,10 +18,10 @@
 package TestMySQLServer;
 
 use base qw(Test::Unit::TestCase);
-use lib 'lib';
+use lib 'lib','lib/DBServer';
 use Cwd;
 use GenTest;
-use GenTest::Server::MySQLd;
+use DBServer::MySQL::MySQLd;
 use GenTest::Executor;
 use GenTest::Reporter;
 use GenTest::Reporter::Backtrace;
@@ -62,7 +62,7 @@ sub test_create_server {
 
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
 
-    my $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+    my $server = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                               vardir => $vardir,
                                               port => $portbase);
     $self->assert_not_null($server);
@@ -96,7 +96,7 @@ sub test_create_server {
 
     sayFile($server->logfile);
 
-    $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+    $server = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                            vardir => $vardir,
                                            port => $portbase,
                                            start_dirty => 1);
@@ -120,7 +120,7 @@ sub test_crash_and_core {
         
         $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
         
-        my $server = GenTest::Server::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+        my $server = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                                   vardir => $vardir,
                                                   port => $portbase);
         $self->assert_not_null($server);
