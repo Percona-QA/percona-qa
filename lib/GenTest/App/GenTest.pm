@@ -412,6 +412,18 @@ sub run {
             $test->addIncident($incident);
         }
         
+        # If no Reporters reported an incident, and we have a test failure,
+        # create an incident report and add it to the test report.
+        if ((scalar(@report_results) < 1) && ($total_status != STATUS_OK)) {
+            my $unreported_incident = GenTest::Incident->new(
+                result      => 'fail',   # can we have other results as incidents?
+                description => 'Non-zero status code from RQG test run',
+                signature   => 'Exit status '.$total_status # better than nothing?
+            );
+            # Add the incident to the test report
+            $test->addIncident($unreported_incident);
+        }
+        
         $test->end($total_status == STATUS_OK ? "pass" : "fail");
         
         if (defined $self->config->property('xml-output')) {
