@@ -79,7 +79,9 @@ sub xml {
     my $test_xml;
     my $writer = XML::Writer->new(
         OUTPUT      => \$test_xml,
-        UNSAFE      => 1
+        DATA_MODE   => 1,   # this and DATA_INDENT to have line breaks and indentation after each element
+        DATA_INDENT => 2,   # number of spaces used for indentation
+        UNSAFE      => 1    # required for raw(), used when including incidents
     );
 
     $writer->startTag('test', id => $test->[TEST_ID]);
