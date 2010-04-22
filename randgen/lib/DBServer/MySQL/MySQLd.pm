@@ -15,13 +15,12 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Server::MySQLd;
+package DBServer::MySQL::MySQLd;
 
-@ISA = qw(GenTest);
+@ISA = qw(DBServer::DBServer);
 
 use DBI;
-use GenTest;
-use GenTest::Constants;
+use DBServer::DBServer;
 use if osWindows(), Win32::Process;
 use Time::HiRes;
 
@@ -331,7 +330,7 @@ sub startServer {
         }
     }
     
-    return $self->dbh ? STATUS_OK : STATUS_ENVIRONMENT_FAILURE;
+    return $self->dbh ? DBSTATUS_OK : DBSTATUS_FAILURE;
 }
 
 sub kill {

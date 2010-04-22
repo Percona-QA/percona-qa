@@ -15,14 +15,13 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Server::ReplMySQLd;
+package DBServer::MySQL::ReplMySQLd;
 
-@ISA = qw(GenTest);
+@ISA = qw(DBServer::DBServer);
 
 use DBI;
-use GenTest;
-use GenTest::Constants;
-use GenTest::Server::MySQLd;
+use DBServer::DBServer;
+use DBServer::MySQL::MySQLd;
 use if osWindows(), Win32::Process;
 use Time::HiRes;
 
@@ -76,7 +75,7 @@ sub new {
     } else {
         ## Repl pair defined from parameters. The servers have the same basedir (is of the same version)
         if (not defined $self->[REPLMYSQLD_MASTER_PORT]) {
-            $self->[REPLMYSQLD_MASTER_PORT] = GenTest::Server::MySQLd::MYSQLD_DEFAULT_PORT;
+            $self->[REPLMYSQLD_MASTER_PORT] = DBServer::MySQL::MySQLd::MYSQLD_DEFAULT_PORT;
         }
     
         if (not defined $self->[REPLMYSQLD_SLAVE_PORT]) {
@@ -109,7 +108,7 @@ sub new {
         
         
         $self->[REPLMYSQLD_MASTER] = 
-            GenTest::Server::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
+            DBServer::MySQL::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
                                          vardir => $self->[REPLMYSQLD_MASTER_VARDIR],
                                          port => $self->[REPLMYSQLD_MASTER_PORT],
                                          server_options => \@master_options,
@@ -133,7 +132,7 @@ sub new {
         
         
         $self->[REPLMYSQLD_SLAVE] = 
-            GenTest::Server::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
+            DBServer::MySQL::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
                                          vardir => $self->[REPLMYSQLD_SLAVE_VARDIR],
                                          port => $self->[REPLMYSQLD_SLAVE_PORT],
                                          server_options => \@slave_options,
@@ -189,8 +188,7 @@ sub startServer {
     
 	$slave_dbh->do("START SLAVE");
     
-
-    
+    return DBSTATUS_OK;
 }
 
 sub waitForSlaveSync {
@@ -201,9 +199,9 @@ sub waitForSlaveSync {
     if (not defined $wait_result) {
         my @slave_status = $self->slave->dbh->selectrow_array("SHOW SLAVE STATUS");
         say("Slave SQL thread has stopped with error: ".$slave_status[37]);
-		return STATUS_REPLICATION_FAILURE;
+		return DBSTATUS_FAILURE;
     } else {
-        return STATUS_OK;
+        return DBSTATUS_OK;
     }
 }
 
@@ -215,6 +213,8 @@ sub stopServer {
     
     $self->slave->stopServer;
     $self->master->stopServer;
+
+    return DBSTATUS_OK;
 }
 
 1;
