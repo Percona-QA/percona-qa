@@ -396,7 +396,8 @@ sub trim($)
     my $string = shift;
     $string =~ s/^\s+//;
     $string =~ s/\s+$//;
-    return chomp($string);
+    chomp($string);
+    return $string;
 }
 
 1;
