@@ -88,7 +88,7 @@ sub xml {
     $writer->dataElement('timestamp', $incident->[INCIDENT_TIMESTAMP]) if defined $incident->[INCIDENT_TIMESTAMP];
     $writer->dataElement('result', $incident->[INCIDENT_RESULT]) if defined $incident->[INCIDENT_RESULT];
     $writer->dataElement('description', $incident->[INCIDENT_DESCRIPTION]) if defined $incident->[INCIDENT_DESCRIPTION];
-    $writer->dataElement('signature', $incident->[INCIDENT_SIGNATURE]) if defined $incident->[INCIDENT_SIGNATURE];
+    $writer->cdataElement('signature', $incident->[INCIDENT_SIGNATURE]) if defined $incident->[INCIDENT_SIGNATURE];
     $writer->dataElement('corefile', $incident->[INCIDENT_COREFILE]) if defined $incident->[INCIDENT_COREFILE];
     $writer->dataElement('analysis', $incident->[INCIDENT_ANALYSIS]) if defined $incident->[INCIDENT_ANALYSIS];
     $writer->dataElement('class', $incident->[INCIDENT_CLASS]) if defined $incident->[INCIDENT_CLASS];
