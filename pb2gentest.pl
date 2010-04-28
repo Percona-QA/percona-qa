@@ -254,7 +254,7 @@ say(" - Revision    : ".$ENV{'PUSH_REVISION'});
 say(" - Source      : ".$ENV{'SOURCE'});
 say("===== Information on Random Query Generator version (bzr): =====\n");
 say(" - Date (rev)  : ".$bzrinfo->bzrDate());
-say(" - Last pulled : ".$bzrinfo->bzrBuildDate());
+#say(" - Date (now) : ".$bzrinfo->bzrBuildDate());  # Shows current date, we already have that.
 say(" - Revno       : ".$bzrinfo->bzrRevno());
 say(" - Revision ID : ".$bzrinfo->bzrRevisionId());
 say(" - Branch nick : ".$bzrinfo->bzrBranchNick());
@@ -322,11 +322,11 @@ my $engine;
 my $rpl_mode;
 
 if (($engine) = $test =~ m{(maria|falcon|innodb|myisam|pbxt)}io) {
-	print "Detected that this test is about the $engine engine.\n";
+	say("Detected that this test is about the $engine engine.");
 }
 
 if (($rpl_mode) = $test =~ m{(rbr|sbr|mbr|statement|mixed|row)}io) {
-	print "Detected that this test is about replication mode $rpl_mode.\n";
+	say("Detected that this test is about replication mode $rpl_mode.");
 	$rpl_mode = 'mixed' if $rpl_mode eq 'mbr';
 	$rpl_mode = 'statement' if $rpl_mode eq 'sbr';
 	$rpl_mode = 'row' if $rpl_mode eq 'rbr';
