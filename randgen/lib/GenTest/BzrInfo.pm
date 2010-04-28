@@ -81,15 +81,24 @@ sub _getVersionInfo {
     my ($date, $build_date, $clean, $revno, $revid, $nick); # align with contents of template below
     my $bzr_output_file = "rqg-bzr-version-info.txt";
     $bzr_output_file = tmpdir().$bzr_output_file if defined tmpdir();
+    # Assigning values to Perl variables in a file from a system() command
+    # requires proper escaping of special characters that may be interpreted by
+    # the shell. On *nix we need to escape '$', on Windows we don't.
+    my $var;
+    if (osWindows()) {
+        $var = '$';
+    } else {
+        $var = '\$';
+    }
     # We grab all info provided by "bzr version-info", it takes no longer than
     # to get only what is currently needed.
     my $cmd = 'bzr version-info  --custom --template="'.
-        '\$date=\'{date}\';\n'.
-        '\$build_date=\'{build_date}\';\n'.
-        '\$clean=\'{clean}\';\n'.
-        '\$revno=\'{revno}\';\n'.
-        '\$revid=\'{revision_id}\';\n'.
-        '\$nick=\'{branch_nick}\';\n"';
+        $var.'date=\'{date}\';\n'.
+        $var.'build_date=\'{build_date}\';\n'.
+        $var.'clean=\'{clean}\';\n'.
+        $var.'revno=\'{revno}\';\n'.
+        $var.'revid=\'{revision_id}\';\n'.
+        $var.'nick=\'{branch_nick}\';\n"';
     $cmd = $cmd.' '.$self->[BZRINFO_DIR] if defined $self->[BZRINFO_DIR];
 
     # Run the command and redirect output to the specified file.
@@ -120,8 +129,8 @@ sub _getVersionInfo {
     }
 
     # clean up
-    unlink $bzr_output_file or 
-        say("BzrInfo: Unable to delete tmp file ".$bzr_output_file);
+    unlink $bzr_output_file or
+        say("BzrInfo: Unable to delete tmp file ".$bzr_output_file." $!");
 
     # Alternatively, run 'bzr info' as well and get relevant info.
     #if (open(BZRINFO, 'bzr info |')) {
