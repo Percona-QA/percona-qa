@@ -113,7 +113,8 @@ sub _getVersionInfo {
             $self->[BZRINFO_DIR].'. Not a bzr branch?') if rqg_debug();
         return;
     } else {
-        open(BZROUT, $bzr_output_file);
+        open(BZROUT, $bzr_output_file) or
+            say("BzrInfo: Unable to open temporary file ".$bzr_output_file.": $!");
         # Run eval on each line in order to set the variables.
         # Note: If eval fails (command returned OK but did not do as expected)
         #       perl will die.
@@ -126,6 +127,7 @@ sub _getVersionInfo {
         $self->[BZRINFO_REVISION_ID] = $revid;
         $self->[BZRINFO_BRANCH_NICK] = $nick;
         $self->[BZRINFO_CLEAN] = $clean;
+        close(BZROUT) or say("BzrInfo: Unable to close temporary file: $!");
     }
 
     # clean up
