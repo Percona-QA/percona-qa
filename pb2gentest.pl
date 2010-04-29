@@ -593,6 +593,21 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--duration=1800
 		--mysqld=--innodb
 	';
+#
+# opt: Optimizer tests, primarily used for 5.1 regression testing...
+#
+#
+} elsif ($test =~ m{^outer_join}io ) {
+    # Any larger queries value than 30k will cause a known/documented crash (5.1).
+    # Produces large and time consuming queries, so we use a larger than default 
+    # duration to allow even slower machines to to useful testing.
+	$command = '
+        --threads=1
+        --queries=30K
+        --gendata='.$conf.'/optimizer/outer_join.zz
+        --grammar='.$conf.'/optimizer/outer_join.yy
+        --duration=1200
+	';
 } elsif ($test =~ m{^partition_ddl}io ) {
 	$command = '
 		--grammar='.$conf.'/partitioning/partitions-ddl.yy
