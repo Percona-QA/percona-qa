@@ -597,6 +597,18 @@ if ($test =~ m{falcon_.*transactions}io ) {
 # opt: Optimizer tests, primarily used for 5.1 regression testing...
 #
 #
+} elsif ($test =~ m{^opt_access_exp}io ) {
+    # More queries drastically increases runtime.
+    # We use a larger than default duration to allow even slower machines to do 
+    # useful testing.
+    # This test is for hitting as many table access methods as possible.
+	$command = '
+        --threads=1
+        --queries=10K
+        --gendata='.$conf.'/optimizer/range_access.zz
+        --grammar='.$conf.'/optimizer/optimizer_access_exp.yy
+        --duration=1200
+	';
 } elsif ($test =~ m{^outer_join}io ) {
     # Any larger queries value than 30k will cause a known/documented crash (5.1).
     # Produces large and time consuming queries, so we use a larger than default 
