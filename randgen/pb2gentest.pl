@@ -620,6 +620,22 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --grammar='.$conf.'/optimizer/outer_join.yy
         --duration=1200
 	';
+} elsif ($test =~ m{^opt_no_subquery_compare_50}io ) {
+    # Compares query results from 5.1 to those from 5.0.
+    # We do not want the Shutdown reporter (default) here, in order to be able to compare dumps, so specify --reporters.
+	$command = '
+        --basedir1='.$basedir.'
+        --basedir2='.$basedirRelease50.'
+        --vardir1='.$vardir.'/vardir-bzr
+        --vardir2='.$vardir.'/vardir-5.0
+        --threads=1
+        --queries=20K
+        --grammar='.$conf.'/optimizer/optimizer_no_subquery_portable.yy
+        --validator=ResultsetComparatorSimplify
+        --reporters=Deadlock,ErrorLog,Backtrace
+        --views
+        --duration=1200
+	';
 } elsif ($test =~ m{^opt_subquery}io ) {
     # Produces large and time consuming queries, so we use a larger than default 
     # duration to allow even slower machines to do useful testing.
