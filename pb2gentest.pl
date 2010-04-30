@@ -609,6 +609,13 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --grammar='.$conf.'/optimizer/optimizer_access_exp.yy
         --duration=1200
 	';
+} elsif ($test =~ m{^opt_no_subquery}io ) {
+	$command = '
+        --threads=1
+        --queries=100K
+        --grammar='.$conf.'/optimizer/optimizer_no_subquery.yy
+        --duration=1200
+	';
 } elsif ($test =~ m{^opt_no_subquery_compare_50}io ) {
     # Compares query results from 5.1 to those from 5.0.
     # We do not want the Shutdown reporter (default) here, in order to be able to compare dumps, so specify --reporters.
