@@ -315,6 +315,13 @@ if (defined $port_range_id) {
 
 say("Configuring test...\n");
 
+# Guess MySQL version. Some options we set later depend on this.
+my $version50 = 0;      # 1 if 5.0.x, 0 otherwise. 
+if( ($ENV{'BRANCH_SOURCE'} =~ m{-5\.0}io) || ($basedir =~ m{-5\.0}io) ) {
+    say("Detected version 5.0.x, adjusting server options accordingly.");
+    $version50 = 1;
+}
+
 my $cwd = cwd();
 
 my $command;
@@ -840,8 +847,12 @@ if ($command !~ m{--vardir}io && $command !~ m{--mem}io ) {
 	$command = $command." --vardir=\"$vardir\"";
 }
 
+# Logging to file is faster than table. And we want some form of logging.
+# This option is not present in versions prior to 5.1.6, so skipping for 5.0.
 if ($command !~ m{--log-output}io) {
-	$command = $command.' --mysqld=--log-output=file';
+	if (!$version50) {
+		$command = $command.' --mysqld=--log-output=file';
+	} 
 }
 
 # 1s to enable increased concurrency. NOTE: Removed in MySQL 5.5, Feb 2010.
