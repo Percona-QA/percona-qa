@@ -640,16 +640,18 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --duration=1200
 	';
 } elsif ($test =~ m{^opt_range_access}io ) {
-    # We use a larger than default duration to allow even slower machines to do
+    # We should use a larger than default duration to allow even slower machines to do
     # useful testing.
     # 15K queries means runtime of ~40 mins on standard desktop hardware of Apr2010.
-    # Allowing 45 mins (2700s) of runtime, beware.
+    # Used to allow 45 mins (2700s) of runtime.
+    # This caused PB2 timeouts (30 min), so duration is now set to 25 minutes.
+    # TODO: Adjust after implementing https://blueprints.launchpad.net/randgen/+spec/heartbeat-in-output
 	$command = '
         --threads=1
         --queries=15K
         --gendata='.$conf.'/optimizer/range_access.zz
         --grammar='.$conf.'/optimizer/range_access.yy
-        --duration=2700
+        --duration=1500
 	';
 } elsif ($test =~ m{^opt_subquery}io ) {
     # Produces large and time consuming queries, so we use a larger than default 
