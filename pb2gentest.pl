@@ -650,7 +650,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --gendata='.$conf.'/optimizer/range_access.zz
         --grammar='.$conf.'/optimizer/range_access.yy
         --duration=2700
-        --reporters=Shutdown,ErrorLog,Backtrace,Heartbeat
 	';
 } elsif ($test =~ m{^opt_subquery}io ) {
     # Produces large and time consuming queries, so we use a larger than default 
