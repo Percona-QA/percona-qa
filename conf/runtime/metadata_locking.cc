@@ -1,34 +1,23 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
-# Use is subject to license terms.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; version 2 of the License.
+# This combinations file is useful for running combinations.pl run against MDL and DDL changes to the server
+# The options listed herein either affect locking directly, or affect the concurrency of various server operations.
+# Some options also affect the usage of temporary or logging tables.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
-# USA
+
 
 $combinations = [
 	['
-		--grammar=conf/runtime/metadata_locking.yy
-		--gendata=conf/runtime/metadata_locking.zz
-		--queries=100K
-		--duration=600
-		--basedir=/build/bzr/azalea-bugfixing
-		--validator=ResultsetProperties
+		--grammar=conf/runtime/WL5004_sql.yy
+		--gendata=conf/runtime/WL5004_data.zz
+		--queries=1M
+		--duration=1200
                 --reporters=Deadlock,ErrorLog,Backtrace,Shutdown
 		--mysqld=--innodb-lock-wait-timeout=1
-		--mysqld=--transaction-isolation=REPEATABLE-READ
+		--mysqld=--loose-lock-wait-timeout=1
+		--mysqld=--secure-file-priv=/tmp/
 	'], [
 		'--engine=MyISAM',
-		'--engine=MEMORY',
+#		'--engine=MEMORY',
 		'--engine=Innodb'
 	], [
 		'--rows=1',
@@ -40,7 +29,52 @@ $combinations = [
 		'--threads=8',
 		'--threads=16',
 		'--threads=32',
-		'--threads=64',
-		'--threads=128'
+		'--threads=64'
+	],
+	[
+		'--mysqld=--transaction-isolation=REPEATABLE-READ',
+		'--mysqld=--transaction-isolation=SERIALIZABLE',
+		'--mysqld=--transaction-isolation=READ-COMMITTED',
+		'--mysqld=--transaction-isolation=READ-UNCOMMITTED'
+	],[
+		'--mysqld=--log-output=file',
+		'--mysqld=--log-output=none',
+		'--mysqld=--log-output=table',
+		'--mysqld=--log-output=table,file'
+	],[
+		'--mem',
+		''
+	],[
+		'--mysqld=--innodb_flush_log_at_trx_commit=0',
+		'--mysqld=--innodb_flush_log_at_trx_commit=1'
+	],[
+		'--mask-level=1',
+		'--mask-level=2'
+	],[
+		'',
+		'',
+		'',
+		'--rpl_mode=row',
+		'--rpl_mode=mixed',
+		'--rpl_mode=statement'
+	],[
+		'',
+		'--mysqld=--big-tables'
+	],[
+		'',
+		'--mysqld=--open_files_limit=10',
+		'--mysqld=--open_files_limit=100',
+		'--mysqld=--open_files_limit=1000'
+	],[
+		'',
+		'--mysqld=--table_cache=10',
+		'--mysqld=--table_cache=100',
+		'--mysqld=--table_cache=1000'
+	],[
+		'',
+		'--mysqld=--tmp_table_size=1K'
+	],[
+		'--mysqld=--query_cache_size=0 --mysqld=--query_cache_type=0',
+		'--mysqld=--query_cache_size=1M --mysqld=--query_cache_type=1'
 	]
 ];
