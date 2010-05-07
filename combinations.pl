@@ -20,6 +20,7 @@ use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use List::Util 'shuffle';
 use GenTest::Random;
+use GenTest::Constants;
 use Getopt::Long;
 use Data::Dumper;
 
@@ -99,7 +100,9 @@ foreach my $trial_id (1..$trials) {
 
 	print localtime()." [$$] $command\n";
 	my $result = system($command);
-	print localtime()." [$$] runall.pl exited with exit status ".($result >> 8)."\n";
+	$result = $result >> 8;
+	print localtime()." [$$] runall.pl exited with exit status $result. \n";
+	exit($result) if ($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255);
 
 	if ($result > 0) {
 		$max_result = $result >> 8 if ($result >> 8) > $max_result;
