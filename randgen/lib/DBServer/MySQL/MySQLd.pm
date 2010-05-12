@@ -38,15 +38,16 @@ use constant MYSQLD_LIBMYSQL => 5;
 use constant MYSQLD_BOOT_SQL => 6;
 use constant MYSQLD_STDOPTS => 7;
 use constant MYSQLD_MESSAGES => 8;
-use constant MYSQLD_SERVER_OPTIONS => 9;
-use constant MYSQLD_AUXPID => 10;
-use constant MYSQLD_SERVERPID => 11;
-use constant MYSQLD_WINDOWS_PROCESS => 12;
-use constant MYSQLD_DBH => 13;
-use constant MYSQLD_START_DIRTY => 14;
-use constant MYSQLD_VALGRIND => 15;
-use constant MYSQLD_VALGRIND_OPTIONS => 16;
-use constant MYSQLD_VERSION => 17;
+use constant MYSQLD_CHARSETS => 9;
+use constant MYSQLD_SERVER_OPTIONS => 10;
+use constant MYSQLD_AUXPID => 11;
+use constant MYSQLD_SERVERPID => 12;
+use constant MYSQLD_WINDOWS_PROCESS => 13;
+use constant MYSQLD_DBH => 14;
+use constant MYSQLD_START_DIRTY => 15;
+use constant MYSQLD_VALGRIND => 16;
+use constant MYSQLD_VALGRIND_OPTIONS => 17;
+use constant MYSQLD_VERSION => 18;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_LOG_FILE => "mysql.err";
@@ -117,6 +118,11 @@ sub new {
     $self->[MYSQLD_MESSAGES] = 
        $self->_findDir(defined $source?[$self->basedir,$source]:[$self->basedir], 
                        ["sql/share","share/mysql"], "english/errmsg.sys");
+
+    $self->[MYSQLD_CHARSETS] =
+        $self->_findDir(defined $source?[$self->basedir,$source]:[$self->basedir], 
+                        ["sql/share/charsets","share/mysql/charsets"], "Index.xml");
+                         
     
     $self->[MYSQLD_LIBMYSQL] = 
        $self->_findDir([$self->basedir], 
@@ -125,7 +131,8 @@ sub new {
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
-			       $self->_messages,
+                               $self->_messages,
+                               "--character-sets-dir=".$self->[MYSQLD_CHARSETS],
                                "--default-storage-engine=myisam",
                                "--log-warnings=0"];    
 
