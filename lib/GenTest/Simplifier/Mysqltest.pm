@@ -117,8 +117,7 @@ sub simplifyFromCSV {
 				$connections{$connection_name}++;
 			} elsif (($command eq 'Quit') && ($simplifier->[SIMPLIFIER_USE_CONNECTIONS])) {
 				push @mysqltest, "--disconnect $connection_name";
-			} elsif ($command eq 'Query') {
-
+         } elsif ($command eq 'Query' or $command eq 'Init DB') {
 				if (($last_connection ne $connection_name) && ($simplifier->[SIMPLIFIER_USE_CONNECTIONS])) {
 					if (not exists $connections{$connection_name}) {
 						push @mysqltest, "--connect ($connection_name, localhost, root, , test)";
@@ -132,13 +131,21 @@ sub simplifyFromCSV {
 				$query =~ s{\\n}{ }sgio;
 				$query =~ s{\\\\}{\\}sgio;
 
-				if ($query =~ m{;}){
-					push @mysqltest, ("DELIMITER |;",$query.'|', "DELIMITER ;|");
-				} else {
-					push @mysqltest, $query.';';
-				}
+            if ($command eq 'Init DB') {
+               # mysqldump causes entries like
+               #    ...,"root[root] @ localhost [127.0.0.1]",17,1,"Init DB","test1"
+               # which seem to change the default database to the database named at the end of the line.
+               # Replace this by USE <database>
+               push @mysqltest, ('USE '.$query.';');
+            } else {
+				   if ($query =~ m{;}){
+					   push @mysqltest, ("DELIMITER |;",$query.'|', "DELIMITER ;|");
+				   } else {
+					   push @mysqltest, $query.';';
+				   }
+            }
 			}
-	        } else {
+	   } else {
 			my $err = $csv->error_input;
 			say ("Failed to parse line: $err");
 		}
