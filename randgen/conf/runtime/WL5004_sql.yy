@@ -1496,10 +1496,9 @@ lock_item:
 	table_item AS _letter lock_type ;
 lock_type:
 	READ local_or_empty      |
-	low_priority WRITE       ;
-	# Transactional locking is not relevant for Celosia (no backport of fixes)
-	# IN SHARE MODE nowait     |
-	# IN EXCLUSIVE MODE nowait ;
+	low_priority WRITE       |
+	IN SHARE MODE nowait     |
+	IN EXCLUSIVE MODE nowait ;
 nowait:
 	NOWAIT | ;
 
