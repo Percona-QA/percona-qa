@@ -253,7 +253,7 @@ query_init:
 set_iso_level:
 	safety_check SET global_or_session TRANSACTION ISOLATION LEVEL iso_level ;
 iso_level:
-	{ if ( $format == 'STATEMENT' ) { return $prng->arrayElement(['REPEATABLE READ','SERIALIZABLE']) } else { return $prng->arrayElement(['READ UNCOMMITTED','READ COMMITTED','REPEATABLE READ','SERIALIZABLE']) } } ;
+	{ if ( $format eq 'STATEMENT' ) { return $prng->arrayElement(['REPEATABLE READ','SERIALIZABLE']) } else { return $prng->arrayElement(['READ UNCOMMITTED','READ COMMITTED','REPEATABLE READ','SERIALIZABLE']) } } ;
 
 global_or_session:
 	# There seems to be only a minor impact of GLOBAL on the test. Therefore it should be less likely.
@@ -311,7 +311,7 @@ implicit_commit:
 	# 2. There is some delay till some data modifying activity of a session gets pushed to the slave.
 	# 3. Caused by optimization of binlogging etc. the delay might differ per session.
 	# At least the deactivation of fill_is_copy via $m10,$m11 n case of SBR helped to avoid the content difference.
-	{ if ($format=='STATEMENT') { $m10 = '/*' ; $m11 = '*/'} else { $m10 = '' ; $m11 = '' } ; return undef } fill_is_copy |
+	{ if ($format eq 'STATEMENT') { $m10 = '/*' ; $m11 = '*/'} else { $m10 = '' ; $m11 = '' } ; return undef } fill_is_copy |
 	#
 	create_procedure     |
 	create_procedure     |
@@ -503,8 +503,8 @@ create_table1:
 	# 2         | nontrans                      | t1_*_myisam_*
 	# 3         | trans                         | t1_*_innodb_*
 	# 4         | nontrans and later trans      | SET pick_mode = 2 (-> t1_*_myisam_*)
-	{if ($format=='STATEMENT') {$pick_mode=2}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } ENGINE = MyISAM AS SELECT _field_list[invariant] FROM table_in_select AS A addition |
-	{if ($format=='STATEMENT') {$pick_mode=3}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } ENGINE = InnoDB AS SELECT _field_list[invariant] FROM table_in_select AS A addition ;
+	{if ($format eq 'STATEMENT') {$pick_mode=2}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } ENGINE = MyISAM AS SELECT _field_list[invariant] FROM table_in_select AS A addition |
+	{if ($format eq 'STATEMENT') {$pick_mode=3}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } ENGINE = InnoDB AS SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 drop_table:
 	# FIXME Move this out of xid.....
 	DROP             TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
@@ -595,9 +595,9 @@ create_view:
 	CREATE VIEW trans_view    |
 	CREATE VIEW nontrans_view ;
 trans_view:
-	pick_schema { if ($format=='STATEMENT') {return 'v1_trans_safe_for_sbr_'.$$ }    else { return 'v1_trans_unsafe_for_sbr_'.$$ } }    AS SELECT _field_list FROM trans_table    where ;
+	pick_schema { if ($format eq 'STATEMENT') {return 'v1_trans_safe_for_sbr_'.$$ }    else { return 'v1_trans_unsafe_for_sbr_'.$$ } }    AS SELECT _field_list FROM trans_table    where ;
 nontrans_view:
-	pick_schema { if ($format=='STATEMENT') {return 'v1_nontrans_safe_for_sbr_'.$$ } else { return 'v1_nontrans_unsafe_for_sbr_'.$$ } } AS SELECT _field_list FROM nontrans_table where ;
+	pick_schema { if ($format eq 'STATEMENT') {return 'v1_nontrans_safe_for_sbr_'.$$ } else { return 'v1_nontrans_unsafe_for_sbr_'.$$ } } AS SELECT _field_list FROM nontrans_table where ;
 drop_view:
 	DROP VIEW IF EXISTS pick_schema { 'v1_trans_safe_for_sbr_'.$$ }      |
 	DROP VIEW IF EXISTS pick_schema { 'v1_trans_unsafe_for_sbr_'.$$ }    |
@@ -616,7 +616,7 @@ rename_view:
 	RENAME TABLE pick_schema { 'v1_nontrans_safe_for_sbr_'.$$ } TO pick_schema { 'v1_nontrans_safe_for_sbr_'.$$ } ;
 
 vmarker_set:
-	{ if ($format=='STATEMENT') { $f0 = ''; $f1 = '/*'; $f2 = '*/' } else { $f0 = '/*'; $f1 = '*/'; $f2 = '' } ; return undef } ;
+	{ if ($format eq 'STATEMENT') { $f0 = ''; $f1 = '/*'; $f2 = '*/' } else { $f0 = '/*'; $f1 = '*/'; $f2 = '' } ; return undef } ;
 
 # This procedure and function handling is a bit tricky and I am till now not 100% convinced that the solution is very good.
 # The base:
@@ -850,14 +850,14 @@ correlated:
 non_correlated:
 	subquery_part1 )                                                                             ;
 where:
-	# Note abaout "AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr )"
+	# Note about "AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr )"
 	# 1. This statement piece is unsafe (we also get a warning) when using SESSION BINLOG_FORMAT = STATEMENT.
 	# 2. We add this piece whenever SESSION BINLOG_FORMAT <> STATEMENT.
 	# 3. It should be very unlikely that it gives FALSE.
 	WHERE col_tinyint BETWEEN _tinyint[invariant] AND _tinyint[invariant] + 2 { return $f0 . $f1 } unsafe_condition { return $f2 } ;
 unsafe_condition:
-	AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr ) |
-	LIMIT 2 ;
+	AND ( _field[invariant] IS NULL OR _field[invariant] <> value_unsafe_for_sbr ) ;
+	# FIXME: Syntax error in multi table delete LIMIT 2 ;
 
 insert:
 	# Insert into one table, search in no other table
@@ -915,7 +915,7 @@ value:
 	# is fixed.
 	# NULL                   |
 	pick_schema { 'f1_'.$pick_mode.'_'.$$ } () |
-	{ if ($format=='STATEMENT') {return '/*'} } value_unsafe_for_sbr { if ($format=='STATEMENT') {return '*/ 17 '} };
+	{ if ($format eq 'STATEMENT') {return '/*'} } value_unsafe_for_sbr { if ($format eq 'STATEMENT') {return '*/ 17 '} };
 
 value_unsafe_for_sbr:
 # Functions which are unsafe when bin log format = 'STATEMENT'
@@ -1024,8 +1024,8 @@ nontrans_table:
 	{ 't1_temp_myisam_'.$$ }   |
 	{ 't2_temp_myisam_'.$$ }   |
 	# A VIEW used in SBR mode must not be based on a SELECT which is unsafe in SBR mode.
-	{ if ($format=='STATEMENT') { return 'v1_nontrans_safe_for_sbr_'.$$ } else { return 'v1_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
-	{ if ($format=='STATEMENT') { return 'v2_nontrans_safe_for_sbr_'.$$ } else { return 'v2_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
+	{ if ($format eq 'STATEMENT') { return 'v1_nontrans_safe_for_sbr_'.$$ } else { return 'v1_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
+	{ if ($format eq 'STATEMENT') { return 'v2_nontrans_safe_for_sbr_'.$$ } else { return 'v2_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
 	# table0_myisam              |
 	table0_myisam_int          |
 	table0_myisam_int_autoinc  |
@@ -1042,8 +1042,8 @@ trans_table:
 	{ 't1_temp_innodb_'.$$ }   |
 	{ 't2_temp_innodb_'.$$ }   |
 	# A VIEW used in SBR mode must not be based on a SELECT which is unsafe in SBR mode.
-	{ if ($format=='STATEMENT') { return 'v1_trans_safe_for_sbr_'.$$ } else { return 'v1_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
-	{ if ($format=='STATEMENT') { return 'v2_trans_safe_for_sbr_'.$$ } else { return 'v2_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
+	{ if ($format eq 'STATEMENT') { return 'v1_trans_safe_for_sbr_'.$$ } else { return 'v1_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
+	{ if ($format eq 'STATEMENT') { return 'v2_trans_safe_for_sbr_'.$$ } else { return 'v2_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
 	# table0_innodb              |
 	table0_innodb_int          |
 	table0_innodb_int_autoinc  |
