@@ -761,7 +761,7 @@ nontrans_trans_shift:
 	# This is needed for the generation of the following scenario.
 	# m statements of an transaction use non transactional tables followed by
 	# n statements which use transactional tables.
-	{ if ( ($prng->int(1,4) == 4) && ($pick_mode == 4) ) { $pickmode = 3 } ; return undef } ;
+	{ if ( ($prng->int(1,4) == 4) && ($pick_mode == 4) ) { $pick_mode = 3 } ; return undef } ;
 
 binlog_format_set:
 	# 1. SESSION BINLOG_FORMAT --> How the actions of our current session will be bin logged.
@@ -778,7 +778,7 @@ binlog_format_set:
 	#    1559 Cannot switch out of the row-based binary log format when the session has open temporary tables
 	# Although this means we do not get the intended BINLOG_FORMAT there will be no additional
 	# problems like we run unsafe statements etc. Our fortune is that we are already running
-	# with binary log format row which is "compatible" with any pickmode.
+	# with binary log format row which is "compatible" with any pick_mode.
 	rand_global_binlog_format  |
 	rand_session_binlog_format |
 	rand_session_binlog_format |
