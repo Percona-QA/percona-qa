@@ -296,7 +296,7 @@ nontrans_trans:
 	# This is needed for the generation of the following scenario.
 	# m statements of an transaction use non transactional tables followed by
 	# n statements which use transactional tables.
-	{ if ( ($prng->int(1,4) == 4) && ($pick_mode == 4) ) { $pickmode = 3 } ; return undef } ;
+	{ if ( ($prng->int(1,4) == 4) && ($pick_mode == 4) ) { $pick_mode = 3 } ; return undef } ;
 
 binlog_format_set:
 	# 1. SESSION BINLOG_FORMAT --> How the actions of our current session will be bin logged
