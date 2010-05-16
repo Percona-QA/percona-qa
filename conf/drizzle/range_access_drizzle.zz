@@ -28,7 +28,7 @@ $fields = {
         charsets => ['utf8']
 };
 
-$data => {
+$data = {
         numbers => [ 'digit', 'null', undef ],
         strings => [ 'letter', 'english' , 'string(1024)', 'quid' ]
 };

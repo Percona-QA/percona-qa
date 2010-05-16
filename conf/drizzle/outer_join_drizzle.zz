@@ -27,7 +27,7 @@ $fields = {
         null => [undef ]
 };
 
-$data => {
+$data = {
         numbers => [ 'digit', 'null', undef ],
         strings => [ 'letter', 'english' , 'string(1024)']
 };

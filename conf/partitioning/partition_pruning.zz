@@ -203,7 +203,7 @@ $fields = {
 
 };
 
-$data => {
+$data = {
 numbers => [ 'digit' , 'digit' , 'digit' , 'digit' , 'null' ],
 strings => [ 'letter' , 'letter' , 'letter' , 'letter' , 'null' ]
 };

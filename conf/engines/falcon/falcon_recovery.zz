@@ -24,7 +24,7 @@ $fields = {
 	indexes => [ undef ]
 };
 
-$data => {
+$data = {
         numbers => [ 'digit', 'null' ],
         strings => [ 'letter', 'english' ],
         blobs => [ 'english', 'data' ]
