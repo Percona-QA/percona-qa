@@ -508,6 +508,9 @@ sub run {
         for my $ex (@executors) {
             $ex->disconnect;
         }
+
+	# Forcefully deallocate the Mixer so that Validator destructors are called
+	undef $mixer;
         
         if ($max_result > 0) {
             say("Child process completed with error code $max_result.");
