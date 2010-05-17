@@ -21,7 +21,8 @@ require Exporter;
 @ISA = qw(GenTest Exporter);
 
 @EXPORT = qw(
-    EXECUTOR_ROW_COUNTS
+	EXECUTOR_RETURNED_ROW_COUNTS
+	EXECUTOR_AFFECTED_ROW_COUNTS
 	EXECUTOR_EXPLAIN_COUNTS
 	EXECUTOR_EXPLAIN_QUERIES
 	EXECUTOR_ERROR_COUNTS
@@ -33,19 +34,20 @@ use Data::Dumper;
 use GenTest;
 use GenTest::Constants;
 
-use constant EXECUTOR_DSN		=> 0;
-use constant EXECUTOR_DBH		=> 1;
-use constant EXECUTOR_ID		=> 2;
-use constant EXECUTOR_ROW_COUNTS	=> 3;
-use constant EXECUTOR_EXPLAIN_COUNTS	=> 4;
-use constant EXECUTOR_EXPLAIN_QUERIES	=> 5;
-use constant EXECUTOR_ERROR_COUNTS	=> 6;
-use constant EXECUTOR_DEFAULT_SCHEMA => 7;
-use constant EXECUTOR_SCHEMA_METADATA => 8;
-use constant EXECUTOR_COLLATION_METADATA => 9;
-use constant EXECUTOR_META_CACHE => 10;
-use constant EXECUTOR_CHANNEL => 11;
-use constant EXECUTOR_SQLTRACE => 12;
+use constant EXECUTOR_DSN			=> 0;
+use constant EXECUTOR_DBH			=> 1;
+use constant EXECUTOR_ID			=> 2;
+use constant EXECUTOR_RETURNED_ROW_COUNTS	=> 3;
+use constant EXECUTOR_AFFECTED_ROW_COUNTS	=> 4;
+use constant EXECUTOR_EXPLAIN_COUNTS		=> 5;
+use constant EXECUTOR_EXPLAIN_QUERIES		=> 6;
+use constant EXECUTOR_ERROR_COUNTS		=> 7;
+use constant EXECUTOR_DEFAULT_SCHEMA		=> 8;
+use constant EXECUTOR_SCHEMA_METADATA		=> 9;
+use constant EXECUTOR_COLLATION_METADATA	=> 10;
+use constant EXECUTOR_META_CACHE		=> 11;
+use constant EXECUTOR_CHANNEL			=> 12;
+use constant EXECUTOR_SQLTRACE			=> 13;
 
 1;
 

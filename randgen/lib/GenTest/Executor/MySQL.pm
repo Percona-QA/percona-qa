@@ -616,14 +616,15 @@ sub execute {
 		$result->setWarnings($warnings);
 	}
 
-	if (
-		(rqg_debug()) &&
-		($query =~ m{^\s*select}sio) &&
-		(!$silent)
-	) {
-		$executor->explain($query);
-		my $row_group = $sth->rows() > 100 ? '>100' : ($sth->rows() > 10 ? ">10" : sprintf("%5d",$sth->rows()) );
-		$executor->[EXECUTOR_ROW_COUNTS]->{$row_group}++;
+	if ( (rqg_debug()) && (!$silent) ) {
+		if ($query =~ m{^\s*select}sio) {
+			$executor->explain($query);
+			my $row_group = $sth->rows() > 100 ? '>100' : ($sth->rows() > 10 ? ">10" : sprintf("%5d",$sth->rows()) );
+			$executor->[EXECUTOR_RETURNED_ROW_COUNTS]->{$row_group}++;
+		} elsif ($query =~ m{^\s*(update|delete|insert|replace)}sio) {
+			my $row_group = $affected_rows > 100 ? '>100' : ($affected_rows > 10 ? ">10" : sprintf("%5d",$affected_rows) );
+			$executor->[EXECUTOR_AFFECTED_ROW_COUNTS]->{$row_group}++;
+		}
 	}
 
 	return $result;
@@ -718,7 +719,9 @@ sub disconnect {
 		use Data::Dumper;
 		$Data::Dumper::Sortkeys = 1;
 		say("Rows returned:");
-		print Dumper $executor->[EXECUTOR_ROW_COUNTS];
+		print Dumper $executor->[EXECUTOR_RETURNED_ROW_COUNTS];
+		say("Rows affected:");
+		print Dumper $executor->[EXECUTOR_AFFECTED_ROW_COUNTS];
 		say("Explain items:");
 		print Dumper $executor->[EXECUTOR_EXPLAIN_COUNTS];
 		say("Errors:");
