@@ -30,7 +30,10 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $original_query, $executor) = @_;
 
-	return STATUS_WONT_HANDLE if $original_query !~ m{SELECT}io;
+	# Handle only SELECT statements but without subqueries
+
+	my @selects = $original_query =~ m{(SELECT)}siog;
+	return STATUS_WONT_HANDLE if $#selects != 0;
 
 	return [
 		"CREATE DATABASE IF NOT EXISTS views_db",
