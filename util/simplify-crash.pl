@@ -29,30 +29,19 @@ use GenTest::Simplifier::Test;
 # Please modify those settings to fit your environment before you run this script
 #
 
-my $basedir = '/build/bzr/mysql-next-mr-bugfixing';
-my $vardir = '/build/bzr/mysql-next-mr-bugfixing/mysql-test/var';
+my $basedir = '/build/bzr/mysql-6.0-codebase-bugfixing';
+my $vardir = $basedir.'/mysql-test/var';
 my $dsn = 'dbi:mysql:host=127.0.0.1:port=19306:user=root:database=test';
-my $original_query = "
-SELECT    table5 . `pk` AS field1 , table2 . `pk` AS field2 , table3 . `pk` AS field3 ,
-table4 . `pk` AS field4 , table1 . `int_key` AS field5 , table1 . `int_key` AS field6 ,
-COUNT( table1 . `pk` ) AS field7 FROM  BB AS table1  LEFT  JOIN    CC AS table2  LEFT 
-JOIN  CC AS table3  LEFT  JOIN  CC AS table4  RIGHT  JOIN D AS table5 ON  table4 . `pk` =
- table5 . `pk`  ON  table3 . `int_key` =  table4 . `int_key`  ON  table2 . `int_key` = 
-table4 . `pk`   LEFT  JOIN   CC AS table6  LEFT  JOIN  C AS table7  LEFT  JOIN B AS
-table8 ON  table7 . `pk` =  table8 . `pk`  ON  table6 . `int_key` =  table7 . `pk`  
-RIGHT  JOIN  C AS table9  LEFT  JOIN C AS table10 ON  table9 . `int_key` =  table10 .
-`int_key`  ON  table6 . `int_key` =  table9 . `pk`  ON  table5 . `int_key` =  table9 .
-`pk`   RIGHT  JOIN  C AS table11  LEFT  JOIN  CC AS table12  LEFT  JOIN  B AS table13 
-LEFT OUTER JOIN D AS table14 ON  table13 . `int_key` =  table14 . `int_key`  ON  table12
-. `pk` =  table14 . `int_key`  ON  table11 . `int_key` =  table12 . `pk`  ON  table9 .
-`int_key` =  table11 . `int_key`  ON  table1 . `pk` =  table12 . `pk`  WHERE ( table4 .
-`pk` >= table1 . `pk` OR table1 . `int_nokey` <> table1 . `pk` )  GROUP BY field1,
-field2, field3, field4, field5, field6 HAVING field4 < 1 ORDER BY field2 ASC , field4
-";
+
+my $original_query = ' 
+	SELECT 1 FROM DUAL
+';
+
 # Maximum number of seconds a query will be allowed to proceed. It is assumed that most crashes will happen immediately after takeoff
 my $timeout = 2;
 
 my @mtr_options = (
+#	'--mysqld=--innodb',
 	'--start-and-exit',
 	'--start-dirty',
 	"--vardir=$vardir",
