@@ -499,7 +499,7 @@ sub explain {
 	}
 
 }
-sub DESTROY {
+sub disconnect {
 	my $executor = shift;
 	if (rqg_debug()) {
 		say("Statistics for Executor ".$executor->dsn());
@@ -518,6 +518,14 @@ sub DESTROY {
 	}
 	$executor->dbh()->disconnect();
 }
+
+sub DESTROY {
+    my ($self) = @_;
+    if (defined $self->dbh) {
+        $self->disconnect;
+    }
+}
+
 
 sub currentSchema {
 	my ($executor,$schema) = @_;
