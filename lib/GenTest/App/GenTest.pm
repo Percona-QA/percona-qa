@@ -391,7 +391,7 @@ sub run {
             ($total_status == STATUS_LENGTH_MISMATCH) ||
             ($total_status == STATUS_CONTENT_MISMATCH)
             ) {
-            @report_results = $reporter_manager->report(REPORTER_TYPE_DATA);
+            @report_results = $reporter_manager->report(REPORTER_TYPE_DATA | REPORTER_TYPE_ALWAYS);
         } elsif ($total_status == STATUS_SERVER_CRASHED) {
             say("Server crash reported, initiating post-crash analysis...");
             @report_results = $reporter_manager->report(REPORTER_TYPE_CRASH | REPORTER_TYPE_ALWAYS);
