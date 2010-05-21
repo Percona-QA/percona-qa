@@ -363,20 +363,13 @@ if ($rpl_mode || (defined $basedirs[1])) {
     if ($rpl_mode ne '') {
         $rplsrv->waitForSlaveSync;
     }
-	my @dump_ports = ($ports[0]);
-	if ($rpl_mode) {
-		push @dump_ports, $ports[1];
-	} elsif (defined $basedirs[1]) {
-		push @dump_ports, $ports[1];
-	}
+
+    my @dump_files;
     
-	my @dump_files;
-    
-	foreach my $i (0..$#dump_ports) {
-		say("Dumping server on port $dump_ports[$i]...");
+	foreach my $i (0..$#server) {
 		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
         
-		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root $database | sort > $dump_files[$i]");
+		my $dump_result = $server[$i]->dumpdb($database,$dump_files[$i]);
 		exit_test($dump_result >> 8) if $dump_result > 0;
 	}
     

@@ -48,6 +48,7 @@ use constant MYSQLD_START_DIRTY => 15;
 use constant MYSQLD_VALGRIND => 16;
 use constant MYSQLD_VALGRIND_OPTIONS => 17;
 use constant MYSQLD_VERSION => 18;
+use constant MYSQLD_DUMPER => 19;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_LOG_FILE => "mysql.err";
@@ -90,6 +91,10 @@ sub new {
                                           osWindows()?["sql/Debug","sql/RelWithDebugInfo","sql/Release"]:["sql","libexec","bin","sbin"],
                                           osWindows()?"mysqld.exe":"mysqld");
     $self->[MYSQLD_BOOT_SQL] = [];
+
+    $self->[MYSQLD_DUMPER] = $self->_find([$self->basedir],
+                                          osWindows()?["client/Debug","client/RelWithDebugInfo","client/Release"]:["client","bin"],
+                                          osWindows()?"mysqldump.exe":"mysqldump");
 
 
     ## Check for CMakestuff to get hold of source dir:
@@ -534,4 +539,19 @@ sub _olderThan {
     my $v = $v1*1000 + $v2 * 100 + $v3;
 
     return $v < $b;
+}
+
+
+sub dumper {
+    return $_[0]->[MYSQLD_DUMPER];
+}
+
+sub dumpdb {
+    my ($self,$database, $file) = @_;
+    say("Dumping Mysql server ".$self->version." on port ".$self->port);
+    my $dump_result = system('"'.$self->dumper.
+                             "\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=".
+                             $self->port.
+                             " --user=root $database | sort > $file");
+    return $dump_result;
 }
