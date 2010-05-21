@@ -31,7 +31,7 @@ use Data::Dumper;
 
 my @execution_times;
 my %execution_ratios;
-my $total_queries;
+my $total_queries = 0;
 
 use constant MINIMUM_TIME_INTERVAL	=> 1;	# seconds
 use constant MINIMUM_RATIO		=> 2;	# Minimum speed-up or slow-down required in order to report a query
@@ -50,7 +50,8 @@ sub validate {
 
 	my $ratio = $time0 / $time1;
 
-	say("ratio = $ratio; time0 = $time0 sec; time1 = $time1 sec; query: $query") if $ratio >= MINIMUM_RATIO;
+	# Print both queries that became faster and those that became slower
+	say("ratio = $ratio; time0 = $time0 sec; time1 = $time1 sec; query: $query") if ($ratio >= MINIMUM_RATIO) || $ratio <= (1/MINIMUM_RATIO);
 
 	$total_queries++;
 	$execution_times[0]->{sprintf('%.1f', $time0)}++;
@@ -62,7 +63,7 @@ sub validate {
 }
 
 sub DESTROY {
-	say("Total queries: $total_queries");
+	say("Total queries suitable for execution time comparison: $total_queries");
 	print Dumper \@execution_times;
 	foreach my $ratio (sort keys %execution_ratios) {
 		print "ratio = $ratio; queries = ".scalar(@{$execution_ratios{$ratio}}).":\n";
