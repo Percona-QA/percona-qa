@@ -399,7 +399,7 @@ sub run {
         }
         
         say("# Creating ".$executor->getName().
-            " table $schema.$table_copy[TABLE_NAME] .");
+            " table: $schema.$table_copy[TABLE_NAME]; engine: $table_copy[TABLE_ENGINE]; rows: $table_copy[TABLE_ROW] .");
         
         if ($table_copy[TABLE_PK] ne '') {
             my $pk_field;
