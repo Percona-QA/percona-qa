@@ -4,6 +4,9 @@
 # Some options also affect the usage of temporary or logging tables.
 #
 
+# Attention:
+# 1. The reporter "Shutdown" is currently incompatibe with checking replication.
+# 2. Comments between the alternatives lead to an PERL error
 
 $combinations = [
 	['
@@ -11,7 +14,7 @@ $combinations = [
 		--gendata=conf/runtime/WL5004_data.zz
 		--queries=1M
 		--duration=1200
-                --reporters=Deadlock,ErrorLog,Backtrace,Shutdown
+		--reporters=Deadlock,ErrorLog,Backtrace
 		--mysqld=--innodb-lock-wait-timeout=1
 		--mysqld=--loose-lock-wait-timeout=1
 		--mysqld=--secure-file-priv=/tmp/
