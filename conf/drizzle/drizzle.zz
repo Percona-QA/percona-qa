@@ -15,6 +15,11 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
+# NOTE:  Need to add blob / temporal types to fields.types
+# When we do this, it might not be bad to add 
+# temporal types back into the grammars that use this
+# file for gendata
+
 $tables = {
         names => ['A','B','C','D', 'AA', 'BB', 'CC', 'DD' ],
         rows => [0, 0, 1, 1, 10, 10, 100, 100  ],
