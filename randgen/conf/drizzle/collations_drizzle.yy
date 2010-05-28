@@ -15,25 +15,34 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
+# NOTE:  gendata file = drizzle.zz
+# This doesn't really test collations at all
+# Need to update / fix this test
+# However, it does beat up UPDATE / DELETE ;
+
 query:
 	delete | insert | update ;
 
 xid_event:
 	START TRANSACTION | COMMIT ;
+
+# We need to beef up INSERT here, as the NOT NULL columns don't have
+# default values - thus INSERTS fail a lot
 insert:
-	INSERT INTO table_name ( field_name ) VALUES ( ' letter ' ) ;
+	INSERT INTO table_name ( field_name ) VALUES ( _char ) ;
 
 update:
-	UPDATE table_name ' letter ' WHERE field_name oper ' letter ';
+	UPDATE table_name SET field_name = _char  WHERE field_name oper _char ;
 
 delete:
-	DELETE FROM table_name WHERE field_name oper ' letter ';
+	DELETE FROM table_name WHERE field_name oper _char ;
 
 table_name:
 	_table ;
 
 field_name:
-	`col_varchar_key` | `col_varchar_nokey` ;
+	`col_char_key` | `col_char` ;
 
 oper:
 	= | > | < | >= | <= | <> ;
+

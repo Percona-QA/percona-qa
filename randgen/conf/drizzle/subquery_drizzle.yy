@@ -53,7 +53,6 @@ outer_from_disabled_unnecessary_complication:
 
 outer_join_condition:
 	OUTR2 . int_field_name arithmetic_operator OUTR . int_field_name |
-	OUTR2 . date_field_name arithmetic_operator OUTR . date_field_name |
 	OUTR2 . char_field_name arithmetic_operator OUTR . char_field_name ;
 
 outer_order_by:
@@ -114,7 +113,6 @@ inner_from_disabled_unnecessary_complication:
 
 inner_join_condition:
 	INNR2 . int_field_name arithmetic_operator INNR . int_field_name |
-	INNR2 . date_field_name arithmetic_operator INNR . date_field_name |
 	INNR2 . char_field_name arithmetic_operator INNR . char_field_name ;
 
 outer_condition_top:
@@ -128,17 +126,13 @@ outer_condition_bottom:
 expression:
 	field_name null_operator |
 	int_field_name int_expression |
-	date_field_name date_expression |
 	char_field_name char_expression ;
 
 int_expression:
 	arithmetic_operator digit ;
 
-date_expression:
-	arithmetic_operator date | BETWEEN date AND date;
-
 char_expression:
-	arithmetic_operator _varchar(1);
+	arithmetic_operator _char(1);
 
 inner_condition_top:
 	INNR . expression |
@@ -149,7 +143,6 @@ inner_condition_top:
 inner_condition_bottom:
 	INNR . expression |
 	INNR . int_field_name arithmetic_operator INNR . int_field_name |
-	INNR . date_field_name arithmetic_operator INNR . date_field_name |
 	INNR . char_field_name arithmetic_operator INNR . char_field_name;
 
 null_operator: IS NULL | IS NOT NULL ;
@@ -185,10 +178,9 @@ field_name:
 
 field_name_disabled_Field_newdate_assert: date_field_name;
 
-int_field_name:
-        `pk` | `col_int_key` | `col_int_nokey` ;
-
-date_field_name:
+# dates are disabled as they aren't in the
+# gendata file (drizzle.zz)
+date_field_name_disabled:
         `col_date_key` | `col_date_nokey` ;
 
 date_field_name_disabled_Field_datetime_assert:
@@ -198,17 +190,29 @@ date_field_name_disabled_convert_const_item:
 	`col_time_key` ,
         `col_time_nokey` ;
 
+int_field_name:
+    `pk` | `col_int_key` | `col_int` |
+    `col_bigint` | `col_bigint_key` |
+    `col_int_not_null` | `col_int_not_null_key` ;
 
 char_field_name:
-        `col_varchar_key` | `col_varchar_nokey` ;
+        `col_char` | `col_text_not_null` | `col_text_not_null_key` |
+        `col_text_key` | `col_text` | `col_char_not_null_key` | `col_char_not_null` ;
+
+char_field_name_disabled:
+# need to explore enum more before enabling this
+        `col_enum` | `col_enum_key` | `col_enum_not_null` | `col_enum_not_null_key` ;
 
 outer_table_name:
-	A | B | C | D;
+        AA | BB | small_table ;
 
 inner_table_name:
-	AA | BB | CC | DD;
+        BB | CC | DD | small_table ;
 
-value: _digit | _date | _time | _datetime | _varchar(1) | NULL ;
+small_table:
+        A | B | C | C | C | D | D | D ;
+
+value: _digit | _date | _time | _datetime | _char(1) | NULL ;
 
 select_option: | ;
 
