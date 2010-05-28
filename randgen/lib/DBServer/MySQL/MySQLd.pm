@@ -351,7 +351,7 @@ sub kill {
     if (osWindows()) {
         if (defined $self->[MYSQLD_WINDOWS_PROCESS]) {
             $self->[MYSQLD_WINDOWS_PROCESS]->Kill(0);
-            say("Killed process ".$self->[MYSQLD_WINDOWS_PROCESS]->GetProcessId());
+            say("Killed process ".$self->[MYSQLD_WINDOWS_PROCESS]->GetProcessID());
         }
     } else {
         if (defined $self->serverpid) {
