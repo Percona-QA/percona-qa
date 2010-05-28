@@ -34,7 +34,6 @@ grandparent_from:
 
 grandparent_join_condition:
 	GRANDPARENT2 . int_field_name arithmetic_operator GRANDPARENT1 . int_field_name |
-	GRANDPARENT2 . date_field_name arithmetic_operator GRANDPARENT1 . date_field_name |
 	GRANDPARENT2 . char_field_name arithmetic_operator GRANDPARENT1 . char_field_name ;
 
 grandparent_where:
@@ -134,15 +133,12 @@ child_condition_bottom:
 	( CHILD1 . expression ) |
 
 	( CHILD1 . int_field_name arithmetic_operator CHILD1 . int_field_name ) |
-	( CHILD1 . date_field_name arithmetic_operator CHILD1 . date_field_name ) |
 	( CHILD1 . char_field_name arithmetic_operator CHILD1 . char_field_name ) |
 
 	( CHILD1 . int_field_name arithmetic_operator PARENT1 . int_field_name ) |
-	( CHILD1 . date_field_name arithmetic_operator PARENT1 . date_field_name ) |
 	( CHILD1 . char_field_name arithmetic_operator PARENT1 . char_field_name ) |
 
 	( CHILD1 . int_field_name arithmetic_operator GRANDPARENT1 . int_field_name ) |
-	( CHILD1 . date_field_name arithmetic_operator GRANDPARENT1 . date_field_name ) |
 	( CHILD1 . char_field_name arithmetic_operator GRANDPARENT1 . char_field_name ) ;
 
 grandparent_condition:
@@ -155,14 +151,11 @@ grandparent_condition_bottom:
 expression:
 	field_name null_operator |
 	int_field_name int_expression |
-	date_field_name date_expression |
 	char_field_name char_expression ;
 
 int_expression:
 	arithmetic_operator digit ;
 
-date_expression:
-	arithmetic_operator date | BETWEEN date AND date;
 
 char_expression:
 	arithmetic_operator _varchar(1);
@@ -177,11 +170,9 @@ parent_condition_bottom:
 	( PARENT1 . expression ) |
 
 	( PARENT1 . int_field_name arithmetic_operator PARENT1 . int_field_name ) |
-	( PARENT1 . date_field_name arithmetic_operator PARENT1 . date_field_name ) |
 	( PARENT1 . char_field_name arithmetic_operator PARENT1 . char_field_name ) |
 
 	( PARENT1 . int_field_name arithmetic_operator GRANDPARENT1 . int_field_name ) |
-	( PARENT1 . date_field_name arithmetic_operator GRANDPARENT1 . date_field_name ) |
 	( PARENT1 . char_field_name arithmetic_operator GRANDPARENT1 . char_field_name ) ;
 
 null_operator: IS NULL | IS NOT NULL | IS UNKNOWN ;
@@ -192,19 +183,23 @@ logical_operator:
 arithmetic_operator: = | > | < | <> | >= | <= ;
 
 field_name:
-	int_field_name | char_field_name | date_field_name;
+	int_field_name | char_field_name ;
 
 int_field_name:
-        `pk` | `col_int_key` | `col_int_nokey` ;
-
-date_field_name:
-        `col_date_key` | `col_date_nokey` | `col_datetime_key` | `col_datetime_nokey` |	`col_time_key` | `col_time_nokey` ;
+    `pk` | `col_int_key` | `col_int` |
+    `col_bigint` | `col_bigint_key` | 
+    `col_int_not_null` | `col_int_not_null_key` ;
 
 char_field_name:
-        `col_varchar_key` | `col_varchar_nokey` ;
+        `col_char` | `col_text_not_null` | `col_text_not_null_key` |
+        `col_text_key` | `col_text` | `col_char_not_null_key` | `col_char_not_null` ;
+
+char_field_name_disabled: 
+# need to explore enum more before enabling this 
+        `col_enum` | `col_enum_key` | `col_enum_not_null` | `col_enum_not_null_key` ;
 
 table_name:
-	B | C | BB | CC;
+	AA | BB | CC | DD;
 
 value: _digit | _date | _time | _datetime | _varchar(1) | NULL ;
 
