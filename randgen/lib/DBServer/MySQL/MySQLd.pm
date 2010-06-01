@@ -117,7 +117,7 @@ sub new {
                       "fill_help_tables.sql") {
         push(@{$self->[MYSQLD_BOOT_SQL]}, 
              $self->_find(defined $source?[$self->basedir,$source]:[$self->basedir],
-                          ["scripts","share/mysql"], $file));
+                          ["scripts","share","share/mysql"], $file));
     }
     
     $self->[MYSQLD_MESSAGES] = 
@@ -359,6 +359,9 @@ sub kill {
             say("Killed process ".$self->serverpid);
         }
     }
+    if (-e $self->socketfile) {
+        unlink $self->socketfile;
+    }
 }
 
 sub crash {
@@ -398,6 +401,8 @@ sub stopServer {
         if (!$r or $waits >= 100) {
             say("Server would not shut down properly");
             $self->kill;
+        } else {
+            unlink $self->socketfile;
         }
     } else {
         $self->kill;
