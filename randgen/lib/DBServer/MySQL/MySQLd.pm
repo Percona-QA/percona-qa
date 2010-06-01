@@ -117,21 +117,21 @@ sub new {
                       "fill_help_tables.sql") {
         push(@{$self->[MYSQLD_BOOT_SQL]}, 
              $self->_find(defined $source?[$self->basedir,$source]:[$self->basedir],
-                          ["scripts","share","share/mysql"], $file));
+                          ["scripts","share/mysql","share"], $file));
     }
     
     $self->[MYSQLD_MESSAGES] = 
        $self->_findDir(defined $source?[$self->basedir,$source]:[$self->basedir], 
-                       ["sql/share","share/mysql"], "english/errmsg.sys");
+                       ["sql/share","share/mysql","share"], "english/errmsg.sys");
 
     $self->[MYSQLD_CHARSETS] =
         $self->_findDir(defined $source?[$self->basedir,$source]:[$self->basedir], 
-                        ["sql/share/charsets","share/mysql/charsets"], "Index.xml");
+                        ["sql/share/charsets","share/mysql/charsets","share/charsets"], "Index.xml");
                          
     
     $self->[MYSQLD_LIBMYSQL] = 
        $self->_findDir([$self->basedir], 
-                       osWindows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release"]:["libmysql","libmysql/.libs","lib/mysql"], 
+                       osWindows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
                        osWindows()?"libmysql.dll":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
