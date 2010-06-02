@@ -376,7 +376,9 @@ sub crash {
             say("Crashed process ".$self->serverpid);
         }
     }
-    
+    if (-e $self->socketfile) {
+        unlink $self->socketfile;
+    }
 }
 
 sub corefile {
