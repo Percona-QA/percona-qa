@@ -25,23 +25,28 @@
 # Attention:
 # There are modified grammar items because of
 # - Bug#46339 crash on REPAIR TABLE merge table USE_FRM
-# - Bug#46425 crash in Diagnostics_area::set_ok_status , empty statement, DELETE IGNORE
-# - Bug#46224 HANDLER statements within a transaction might lead to deadlocks
-# - Bug#46965 crash in ha_innobase::get_auto_increment
+#   2010-05 Patch pending
 # - Bug#47633 assert in ha_myisammrg::info during OPTIMIZE
+#   2010-05 Closed but not in tree
+# - Bug#54007 assert in ha_myisam::index_next , HANDLER
+#   2010-05 Open
 #
 # Nothing disabled till now for
 # - Bug#45966 Crash in MDL_context::release_ticket in .\include\master-slave-reset.inc
-# - Bug#40419 Not locking metadata on alter procedure
-#   Duplicate of Bug#30977 Concurrent statement using stored function and DROP FUNCTION breaks SBR
+#   2010-05 Can't repeat
+#
 # .. there are a lot more please search for open bugs reported by Matthias Leich
 #
 # TODO:
 #   - Adjust grammar to new open and old fixed bugs
-#   - Add INDEXES and HANDLER ... NEXT | PREV | LAST
-#     (Bug#51355 handler stmt cause assertion in bool MDL_context::try_acquire_lock(MDL_request*))
 #   - Add TRUNCATE PARTITION and check if we are missing any other related DDL.
-#     (Bug #49907 ALTER TABLE ... TRUNCATE PARTITION does not wait for locks on the table)
+#     (Bug#49907 ALTER TABLE ... TRUNCATE PARTITION does not wait for locks on the table)
+#     (2010-05 Analysing + should be fixed by patch for
+#     (Bug#42643 InnoDB does not support replication of TRUNCATE TABLE)
+#     (2010-05 Patch pending)
+#   - Add the corresponding DDL when
+#        WL#4445 Import/Export tables to/from partitioned tables
+#     is ready for testing
 #   - Check the impact of the latest modifications (use "used_select" less often) on the issues
 #     reported by Philip
 #        When using greater values for namespace_width
@@ -51,7 +56,8 @@
 #          database objects. Unfortunately, at higher namespace values, table1 is not very likely to exist, and
 #          therefore table2 is also unlikely to be created.
 #   - Add subtest for
-#     Bug #48315 Metadata lock is not taken for merged views that use an INFORMATION_SCHEMA table
+#     Bug#48315 Metadata lock is not taken for merged views that use an INFORMATION_SCHEMA table
+#     2010-05 Closed but not in tree
 #     Simple:
 #        Philip: using an I_S in a meaningless subselect would be best, just have
 #                ( SELECT user + 0 FROM INFORMATION_SCHEMA.USERS LIMIT 1)
@@ -66,6 +72,7 @@
 #
 # Bug#45225 Locking: hang if drop table with no timeout
 #           Reporter , LockTableKiller might help
+#     (2010-05 Closed but not in tree)
 #
 # General architecture rules:
 # ---------------------------
@@ -183,7 +190,11 @@ query_init:
 	# Variant 2:
 	#    Advantage: Better performance during bug hunt, test simplification etc. because objects are created at
 	#               on place (<object>_ddl) only and not also in "have_some_initial_objects".
-	init_basics ; init_namespaces ;
+	init_basics ; init_namespaces ; init_executor_table ;
+
+init_executor_table:
+   # This table is used in kill_query_or_session.
+	CREATE TABLE IF NOT EXISTS test.executors (id BIGINT, PRIMARY KEY(id)) ENGINE = MEMORY; INSERT HIGH_PRIORITY IGNORE INTO test.executors SET id = CONNECTION_ID(); COMMIT;
 
 init_basics:
 	# 1. $life_time_unit = maximum lifetime of a table created within a CREATE, wait, DROP sequence.
@@ -274,11 +285,8 @@ no_separate_objects:
 	{ $database_prefix="o1_1" ; $table_prefix="o1_" ; $procedure_prefix="o1_" ; $function_prefix="o1_" ; $trigger_prefix="o1_"  ; $event_prefix="o1_" ; return undef } ;
 
 avoid_bugs:
-	# Set this grammar item to "empty" if
-	#    Bug#47338 assertion in handler::ha_external_lock           --> optimizer_use_mrr='disable'
-	#    Bug#47367 Crash in Name_resolution_context::process_error  --> semijoin=off
-	# are fixed.
-	SET GLOBAL optimizer_use_mrr='disable' ; SET SESSION optimizer_use_mrr='disable' ; SET GLOBAL optimizer_switch = 'semijoin=off' ; SET SESSION optimizer_switch = 'semijoin=off' ;
+	# Set this grammar item to "empty" if for example no optimizer related server system variable has to be switched.
+	;
 
 event_scheduler_on:
 	SET GLOBAL EVENT_SCHEDULER = ON ;
@@ -515,6 +523,15 @@ base_temp_view_table_item:
 
 # 8. Other namespaces ##############################################################a
 template_table_item:
+	# The disabled names are for future use. They cannot work with the current properties of .zz grammars.
+	# The problem is that we get in some scenarios tables with differing numnber of columns.
+	# { $template_table_item = "test.table0" }              |
+	# { $template_table_item = "test.table1" }              |
+	# { $template_table_item = "test.table10" }             |
+	# { $template_table_item = "test.table0_int" }          |
+	{ $template_table_item = "test.table0_int" }          |
+	{ $template_table_item = "test.table1_int" }          |
+	{ $template_table_item = "test.table10_int" }         |
 	{ $template_table_item = "test.table0_int_autoinc" }  |
 	{ $template_table_item = "test.table1_int_autoinc" }  |
 	{ $template_table_item = "test.table10_int_autoinc" } ;
@@ -592,12 +609,7 @@ event_item:
 # Here starts the core of the test grammar ========================================================#
 
 query:
-	# Use if
-	#    Bug#46224 HANDLER statements within a transaction might lead to deadlocks
-	# is fixed (various -> handler removed)
-	# Handler lets currently also runs with one worker session hang.
-	# dml | dml | dml | dml | ddl | transaction | lock_unlock | flush | handler ;
-	dml | dml | dml | dml | ddl | transaction | lock_unlock | flush ;
+	dml | dml | dml | dml | ddl | transaction | lock_unlock | lock_unlock | flush | handler ;
 
 ########## TRANSACTIONS ####################
 
@@ -609,6 +621,9 @@ transaction:
 	BEGIN work_or_empty | set_autocommit | kill_query_or_session ;
 	# No impact on mdl.cc , lock.cc ..... set_isolation_level ;
 
+savepoint_id:
+	A | B ;
+
 set_isolation_level:
 	SET SESSION TX_ISOLATION = TRIM(' isolation_level ');
 
@@ -619,62 +634,63 @@ isolation_level:
 start_transaction:
 	START TRANSACTION with_consistent_snapshot ;
 with_consistent_snapshot:
-	| | | | | | | | | WITH CONSISTENT SNAPSHOT ;
+	 | | | | | | | | | WITH CONSISTENT SNAPSHOT ;
 
 commit:
 	COMMIT   work_or_empty chain release ;
 rollback:
 	ROLLBACK work_or_empty chain release ;
 chain:
-	| | | | AND no_or_empty CHAIN ;
+	 | | | | AND no_or_empty CHAIN ;
 release:
-	| | | | | | | | | no_or_empty RELEASE ;
+	 | | | | | | | | | no_or_empty RELEASE ;
 
 set_autocommit:
 	SET AUTOCOMMIT = zero_or_one ;
 
 kill_query_or_session:
-	lower_id  ; KILL query_or_session @kill_id |
-	own_id    ; KILL query_or_session @kill_id |
-	higher_id ; KILL query_or_session @kill_id ;
-# Note(mleich):
-# 1. The scenario of a KILL failing because the session does not exist is covered by:
-#    a) Current session id is minimum or maximum of all existing id's and lower_id or higher_id
-#       does not exist -> NULL as value for @kill_id.  "KILL NULL" gets valuated as "KILL 0".
-#    b) A parallel session kills the session with the just computed id before we run the KILL.
-# 2. It is intentional that I do not use "KILL _digit".
-# 2.1 In case the RQG test crashes in a scenario with thread=1, it is very likely that during analysis
-#     the test gets converted to a script for mysqltest. Most probably the mysqltest simplifier gets
-#     applied and than it is very likely that the session id's change. The use of a computation
-#     based on CONNECTION_ID(), MIN and MAX leads to more stable results.
-# 2.2 There is the risk that we compute the id iand KILL an auxiliary RQG session (reporter,validator).
-# 2.2.1 The impact of such an operation on RQG (automatic judgement about test result, deadlock detection
-#       etc. is currently unknown.
-# 2.2.2 Effects caused by killing of such an auxiliary RQG session are out of testing scope.
-#     Therefore we avoid this by the grammar item "pick_executors_only"
-#       etc. is currently unknown.
-# 2.3 We must avoid to kill a test executor session within an early phase when it probably pulls
-#     meta data (table names, column names, data types, ...). This could end up with RQG exit status 255.
-#     Philip mentioned "Can't use an undefined value as an ARRAY reference at lib/GenTest/Generator/FromGrammar.pm line 269."
-lower_id:
-	SELECT MAX(id) INTO @kill_id FROM information_schema.processlist WHERE id < CONNECTION_ID() pick_executors_only ensure_all_up ;
+#---------------------
+# Notes:
+# Killing a query or session must NOT affect an
+# - auxiliary RQG session (= non executor) because this can fool RQG's judgement
+#   about the test outcome
+# - executor session which is within the early phase when it pulls meta data (table names, column names,
+#   data types, ...). This could end up with RQG exit status 255.
+#   -> "Can't use an undefined value as an ARRAY reference at lib/GenTest/Generator/FromGrammar.pm line 269."
+# This is ensured by the following:
+# Every executor pulls meta data and runs after that "query_init".
+# Within "query_init" this executor writes his own CONNECTION_ID() into the table test.executors.
+# When running KILL for another session only the id's found in test.executors must be selected.
+# In case it is planned to kill
+# - another session             AFTER
+# - own session (suicide)       BEFORE
+# the KILL statement the entry within test.executors has to be removed.
+#
+# Depending on scenaria, whatever locking effects and maybe server bugs it might happen that
+# 1. A session disappears but the entry is not removed.
+#    This is harmless because somewhere later another session will pick the id from test.executors
+#    try the kill session and remove the entry.
+# 2. A session entry in test.executors does not exist but the session is alife.
+#    This is harmless because somewhere later this session will try to remove its' no more existing
+#    entry from test.executors and kill himself.
+#
+# Scenarios covered:
+# 1. S1 kills S2
+# 2. S1 kills S1
+# 3. S1 try to kill S3 which no more exists.
+# 4. Various combinations of sessions running 1., 2. or 3.
+#
+# The various COMMITs should ensure that locking effects caused by activity on test.executors are minimal.
+	COMMIT ; own_id     ; delete_executor_entry ; COMMIT ; KILL       @kill_id                                  |
+	COMMIT ; own_id     ;                       ; COMMIT ; KILL QUERY @kill_id                                  |
+	COMMIT ; minimal_id ;                       ; COMMIT ; KILL       @kill_id ; delete_executor_entry ; COMMIT |
+	COMMIT ; minimal_id ;                       ; COMMIT ; KILL QUERY @kill_id                                  ;
 own_id:
-	SET @kill_id = CONNECTION_ID() ensure_all_up ;
-higher_id:
-	SELECT MIN(id) INTO @kill_id FROM information_schema.processlist WHERE id > CONNECTION_ID() pick_executors_only ensure_all_up ;
-query_or_session:
-	QUERY | QUERY | ;
-pick_executors_only:
-	AND (INFO LIKE CONCAT('%',TRIM(' database_name_s '),'%') OR INFO LIKE CONCAT('%',TRIM(' database_name_n '),'%')) ;
-ensure_all_up:
-	# In case of MAX(id) > _thread_count it is very likely that the majority of executor sessions are started.
-	# In case of 'Uptime' it is likely that
-	AND _thread_count + 3 < (SELECT MAX(id) FROM information_schema.processlist)
-	AND 10 > (SELECT VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME='Uptime') ;
-
-
-savepoint_id:
-	A | B ;
+	SET @kill_id = CONNECTION_ID();
+minimal_id:
+	SELECT MIN(id) INTO @kill_id FROM test.executors ;
+delete_executor_entry:
+	DELETE FROM test.executors WHERE id = @kill_id ;
 
 ddl:
 	database_ddl                                        |
@@ -705,23 +721,40 @@ ddl:
 
 
 ########## HANDLER ####################
+	# The alias within HANDLER ... OPEN is optional. Unfortunately the HANDLER ... READ/CLOSE ... statements
+	# do not accept SCHEMA names. Therefore the tablename must be either a table within the current SCHEMA
+	# or an alias. We go with alias all time.
+
 handler:
-	handler_open | handler_read | handler_close ;
+	handler_open  |
+	handler_read  |
+	handler_close ;
 
 handler_open:
-	HANDLER table_no_view_item OPEN with_alias ;
-
-with_alias:
-	| as A ;
+	HANDLER table_no_view_item OPEN as handler_a ;
 
 handler_read:
-	# The use of indexes is omitted
-	HANDLER table_no_view_item READ FIRST handler_read_part ;
+	# Variants with handler_index disabled because of
+	#    Bug#54007 assert in ha_myisam::index_next , HANDLER
+	# HANDLER handler_a READ handler_index comparison_operator ( _digit ) handler_read_part |
+	# HANDLER handler_a READ handler_index first_next_prev_last           handler_read_part |
+	HANDLER handler_a READ               first_next                     handler_read_part ;
+handler_index:
+	`PRIMARY`     |
+	`col_int_key` ;
 handler_read_part:
-	| where ;
+	 | where ;
+first_next:
+	FIRST |
+	NEXT  ;
+first_next_prev_last:
+	FIRST |
+	NEXT  |
+	PREV  |
+	LAST  ;
 
 handler_close:
-	HANDLER table_no_view_item CLOSE ;
+	HANDLER handler_a CLOSE ;
 
 
 ########## SHOW ####################
@@ -770,14 +803,14 @@ show_columns:
 	SHOW full COLUMNS from_in table_item show_columns_part ;
 full:
 	# Only 20 %
-	| | | | FULL ;
+	 | | | | FULL ;
 from_in:
 	FROM | IN ;
 show_columns_part:
 	# Attention: LIKE '_field' does not work, because RQG does not expand _field.
 	#            LIKE '%int%' does not work, because RQG expands it to something like LIKE '%822214656%'.
 	# FIXME: Add "WHERE"
-	| LIKE '%INT%' ;
+	 | LIKE '%INT%' ;
 
 show_create_view:
 	SHOW CREATE VIEW view_table_item ;
@@ -962,7 +995,7 @@ table_maintenance_ddl:
 analyze_table:
 	ANALYZE not_to_binlog_local TABLE table_list ;
 not_to_binlog_local:
-	| NO_WRITE_TO_BINLOG | LOCAL ;
+	 | NO_WRITE_TO_BINLOG | LOCAL ;
 
 optimize_table:
 	OPTIMIZE not_to_binlog_local TABLE table_list ;
@@ -970,15 +1003,15 @@ optimize_table:
 checksum_table:
 	CHECKSUM TABLE table_list quick_extended ;
 quick_extended:
-	| quick | extended ;
+	 | quick | extended ;
 extended:
 	# Only 10 %
-	| | | | | | | | | EXTENDED ;
+	 | | | | | | | | | EXTENDED ;
 
 check_table:
 	CHECK TABLE table_list check_table_options ;
 check_table_options:
-	| FOR UPGRADE | QUICK | FAST | MEDIUM | EXTENDED | CHANGED ;
+	 | FOR UPGRADE | QUICK | FAST | MEDIUM | EXTENDED | CHANGED ;
 
 repair_table:
 	# Use if
@@ -989,14 +1022,14 @@ repair_table:
 
 use_frm:
 	# Only 10 %
-	| | | | | | | |  | USE_FRM ;
+	 | | | | | | | |  | USE_FRM ;
 
 
 ########## MIXED TABLE RELATED DDL #################################
 truncate_table:
 	TRUNCATE table_word table_no_view_item_n ;
 table_word:
-	| TABLE ;
+	 | TABLE ;
 
 drop_table_list:
 	# DROP one table is in "drop_*table"
@@ -1046,7 +1079,7 @@ create_merge_table:
 	merge_init_n build_partner1 ; build_partner2 ; create_merge ;
 
 insert_method:
-	| INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value ;
+	 | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value ;
 insert_method_value:
 	NO | FIRST | LAST ;
 
@@ -1139,7 +1172,7 @@ drop_view:
 
 restrict_cascade:
 	# RESTRICT and CASCADE, if given, are parsed and ignored.
-	| RESTRICT | CASCADE ;
+	 | RESTRICT | CASCADE ;
 
 alter_view:
 	# Attention: Only changing the algorithm is not allowed.
@@ -1284,14 +1317,14 @@ select_part1:
 	SELECT high_priority cache_results table_field_list_or_star FROM table_in_select as A ;
 
 cache_results:
-	| sql_no_cache | sql_cache ;
+	 | sql_no_cache | sql_cache ;
 sql_no_cache:
 	# Only 10 %
-	| | | | | | | | |
+	 | | | | | | | | |
 	SQL_NO_CACHE ;
 sql_cache:
 	# Only 10 %
-	| | | | | | | | |
+	 | | | | | | | | |
 	SQL_CACHE ;
 
 table_in_select:
@@ -1351,12 +1384,12 @@ procedure_analyze:
 	# 7. INSERT ... SELECT ... PROCEDURE -> It's tried to INSERT the PROCEDURE result set.
 	#    High likelihood of ER_WRONG_VALUE_COUNT_ON_ROW
 	# Only 10 %
-	| | | | | | | |  |
+	 | | | | | | | |  |
 	PROCEDURE ANALYSE( 10 , 2000 ) ;
 
 into:
 	# Only 10 %
-	| | | | | | | | |
+	 | | | | | | | | |
 	INTO into_object ;
 
 into_object:
@@ -1370,32 +1403,31 @@ into_object:
 	OUTFILE _tmpnam ;
 
 for_update_lock_in_share_mode:
-	| for_update | lock_share ;
+	 | for_update | lock_share ;
 for_update:
 	# Only 10 %
-	| | | | | | | | |
+	 | | | | | | | | |
 	FOR UPDATE ;
 lock_share:
 	# Only 10 %
-	| | | | | | | | |
+	 | | | | | | | | |
 	LOCK IN SHARE MODE ;
 
 
 ########## INSERT ####################
-# FIXME: INSERT IGNORE is missing
 insert:
 	insert_normal | insert_normal | insert_normal | insert_normal | insert_with_sleep ;
 insert_normal:
-	INSERT low_priority_delayed_high_priority into_word table_item simple_or_complicated on_duplicate_key_update ;
+	INSERT low_priority_delayed_high_priority ignore into_word table_item simple_or_complicated on_duplicate_key_update ;
 simple_or_complicated:
 	( random_field_quoted1 ) VALUES ( digit_or_null ) |
 	braced_table_field_list used_select LIMIT 1 ;
 on_duplicate_key_update:
 	# Only 10 %
-	| | | | | | | | |
+	 | | | | | | | | |
 	ON DUPLICATE KEY UPDATE random_field_quoted1 = _digit ;
 insert_with_sleep:
-	INSERT INTO table_item ( table_field_list ) SELECT $table_field_list FROM table_item WHERE wait_short = 0 LIMIT 1;
+	INSERT ignore INTO table_item ( table_field_list ) SELECT $table_field_list FROM table_item WHERE wait_short = 0 LIMIT 1;
 
 
 ########## REPLACE ####################
@@ -1416,12 +1448,12 @@ dump_load_data_sequence:
 generate_outfile:
 	SELECT * FROM template_table_item INTO OUTFILE _tmpnam ;
 low_priority_concurrent:
-	| low_priority | concurrent ;
+	 | low_priority | concurrent ;
 concurrent:
 	# Only 20 % <> empty.
-	| | | | CONCURRENT ;
+	 | | | | CONCURRENT ;
 replace_ignore:
-	| replace_option | ignore ;
+	 | replace_option | ignore ;
 
 
 ########## GRANT_REVOKE ####################
@@ -1455,15 +1487,9 @@ delete_normal:
 	# LIMIT row_count is disallowed in case we have a multi table delete.
 	# Example: DELETE low_priority quick ignore A , B FROM table_item AS A join where LIMIT _digit |
 	# DELETE is ugly because a table alias is not allowed.
-	# If
-	#    Bug#46425 crash in Diagnostics_area::set_ok_status , empty statement, DELETE IGNORE
-	# is fixed (ignore removed because of Bug#46425)
-	# DELETE low_priority quick ignore       FROM table_item      WHERE   `pk` > _digit LIMIT 1 |
-	# DELETE low_priority quick ignore A , B FROM table_item AS A join where |
-	# DELETE low_priority quick ignore A     FROM table_item AS A where_subquery ;
-	DELETE low_priority quick       FROM table_item      WHERE   `pk` > _digit LIMIT 1 |
-	DELETE low_priority quick A , B FROM table_item AS A join where                    |
-	DELETE low_priority quick A     FROM table_item AS A where_subquery                ;
+	DELETE low_priority quick ignore       FROM table_item      WHERE `pk` > _digit LIMIT 1 |
+	DELETE low_priority quick ignore A , B FROM table_item AS A join where                  |
+	DELETE low_priority quick ignore A     FROM table_item AS A where_subquery              ;
 where_subquery:
 	where | subquery ;
 delete_with_sleep:
@@ -1498,6 +1524,10 @@ lock_type:
 	READ local_or_empty      |
 	low_priority WRITE       |
 	IN SHARE MODE nowait     |
+	IN SHARE MODE nowait     |
+	IN SHARE MODE nowait     |
+	IN EXCLUSIVE MODE nowait |
+	IN EXCLUSIVE MODE nowait |
 	IN EXCLUSIVE MODE nowait ;
 nowait:
 	NOWAIT | ;
@@ -1532,6 +1562,14 @@ braced_table_field_list:
 	# Therefore <empty> is only 20 %.
 	( table_field_list ) | ( table_field_list ) | ( table_field_list ) | ( table_field_list ) | ;
 
+comparison_operator:
+	=  |
+	<= |
+	>= |
+	<  |
+	>  ;
+
+
 default_word:
 	 | DEFAULT ;
 
@@ -1540,65 +1578,60 @@ digit_or_null:
 	NULL ;
 
 engine:
-	# Use if
-	#    Bug#46965 crash in ha_innobase::get_auto_increment
-	# is fixed (InnoDB Disabled because of Bug#46965)
-	# MEMORY | MyISAM | InnoDB ;
-	MEMORY | MyISAM ;
+	MEMORY | MyISAM | InnoDB ;
 
 equal:
-	| = ;
+	 | = ;
 
 delayed:
 	# Only 10 %
-	# Kostja: Known problem | | | | | | | | | DELAYED ;
-	;
+	 | | | | | | | | | DELAYED ;
 
 high_priority:
 	# Only 20 %
-	| | | | HIGH_PRIORITY ;
+	 | | | | HIGH_PRIORITY ;
 
 ignore:
 	# Only 10 %
-	| | | | | | | | |
+	 | | | | | | | | |
 	IGNORE ;
 
 if_exists:
 	# 90 %, this reduces the amount of failing DROPs
-	| IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS ;
+	 | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS ;
 
 if_not_exists:
 	# 90 %, this reduces the amount of failing CREATEs
-	| IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS ;
+	 | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS ;
 
 into_word:
 	# Only 50 %
-	| INTO ;
+	 | INTO ;
 
 local_or_empty:
 	# Only 20%
-	| | | | LOCAL ;
+	 | | | | LOCAL ;
 
 low_priority_delayed_high_priority:
-	| low_priority | delayed | high_priority ;
+	 | low_priority | delayed | high_priority ;
 
 low_priority_delayed:
-	| low_priority | delayed ;
+	 | low_priority | delayed ;
 
 low_priority:
 	# Only 10 %
-	| | | | | | | | |
+	 | | | | | | | | |
 	LOW_PRIORITY ;
 
 no_or_empty:
-	| NO ;
+	 | NO ;
 
 not_or_empty:
-	| NOT ;
+	 | NOT ;
 
 quick:
 	# Only 10 %
-	| | | | | | | | |
+	 | | | | | | | | |
 	QUICK ;
 
 random_field_quoted:
@@ -1609,14 +1642,14 @@ random_field_quoted1:
 
 replace_option:
 	# Only 20 % <> empty.
-	| | | | REPLACE ;
+	 | | | | REPLACE ;
 
 savepoint_or_empty:
 	SAVEPOINT | ;
 
 sql_buffer_result:
 	# Only 50%
-	| SQL_BUFFER_RESULT ;
+	 | SQL_BUFFER_RESULT ;
 
 table_field_list_or_star:
 	table_field_list | table_field_list | table_field_list | table_field_list |
@@ -1641,14 +1674,14 @@ temporary:
 	#    which created the table will pick a random statement and maybe do something on
 	#    the table <> DROP.
 	# Only 10 % because no other session can use this table.
-	| | | | | | | | |
+	 | | | | | | | | |
 	TEMPORARY ;
 
 wait_short:
 	SLEEP( 0.5 * rand_val * $life_time_unit ) ;
 
 work_or_empty:
-	| WORK ;
+	 | WORK ;
 
 zero_or_one:
 	0 | 1 ;

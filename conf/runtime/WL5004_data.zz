@@ -33,12 +33,13 @@
 #
 
 $tables = {
-	rows => [0, 1, 10 ]
+	rows => [0, 1, 10 ],
+	pk => [ 'int' , 'int auto_increment' ]
 };
 
 $fields = {
 	types => [ 'int' ],
-	indexes => [undef, 'key' ]
+	indexes => [ 'key', undef ]
 };
 
 $data = {
