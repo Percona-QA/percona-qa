@@ -142,9 +142,9 @@ sub new {
                                "--log-warnings=0"];    
 
     if ($self->[MYSQLD_START_DIRTY]) {
-        say("Using existing data for Mysql " .$self->version ." at ".$self->datadir)
+        say("Using existing data for MySQL " .$self->version ." at ".$self->datadir)
     } else {
-        say("Creating Mysql " . $self->version . " database at ".$self->datadir);
+        say("Creating MySQL " . $self->version . " database at ".$self->datadir);
         $self->createMysqlBase;
     }
 
@@ -203,7 +203,7 @@ sub libmysqldir {
 sub generateCommand {
     my ($self, @opts) = @_;
 
-    my $command = '"'.$self->[MYSQLD_MYSQLD].'"';
+    my $command = '"'.$self->binary.'"';
     foreach my $opt (@opts) {
         $command .= ' '.join(' ',map{'"'.$_.'"'} @$opt);
     }
@@ -299,11 +299,11 @@ sub startServer {
     
     if (osWindows) {
         my $proc;
-        my $exe = $self->[MYSQLD_MYSQLD];
+        my $exe = $self->binary;
         my $vardir = $self->[MYSQLD_VARDIR];
         $exe =~ s/\//\\/g;
         $vardir =~ s/\//\\/g;
-        say("StartingMysql ".$self->version.": $exe as $command on $vardir");
+        say("Starting MySQL ".$self->version.": $exe as $command on $vardir");
         Win32::Process::Create($proc,
                                $exe,
                                $command,
@@ -320,7 +320,7 @@ sub startServer {
             }
             $command = "valgrind --time-stamp=yes ".$val_opt." ".$command;
         }
-        say("Starting Mysql ".$self->version.": $command");
+        say("Starting MySQL ".$self->version.": $command");
         $self->[MYSQLD_AUXPID] = fork();
         if ($self->[MYSQLD_AUXPID]) {
             ## Wait for the pid file to have been created
@@ -384,7 +384,26 @@ sub crash {
 sub corefile {
     my ($self) = @_;
 
-    return "foooooooooooooooooooooooooo";
+    ## Unix variant
+    return $self->datadir."/core.".$self->serverpid;
+}
+
+sub dumper {
+    return $_[0]->[MYSQLD_DUMPER];
+}
+
+sub dumpdb {
+    my ($self,$database, $file) = @_;
+    say("Dumping MySQL server ".$self->version." on port ".$self->port);
+    my $dump_result = system('"'.$self->dumper.
+                             "\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=".
+                             $self->port.
+                             " --user=root $database | sort > $file");
+    return $dump_result;
+}
+
+sub binary {
+    return $_[0]->[MYSQLD_MYSQLD];
 }
 
 sub stopServer {
@@ -488,23 +507,38 @@ sub version {
     my($self) = @_;
 
     if (not defined $self->[MYSQLD_VERSION]) {
-	if (osWindows) {
-	    $self->[MYSQLD_VERSION] = "5.5.5"; ## FIXME
-	} else {
-	    my $conf = $self->_find([$self->basedir], 
-				    ['scripts',
-				     'bin',
-				     'sbin'], 
-				    'mysql_config');
-
-	    my $ver = `sh "$conf" --version`;
-	    
-	    chop($ver);
-
-	    $self->[MYSQLD_VERSION] = $ver;
-	}
+        my $ver;
+        if (osWindows) {
+            my $conf = $self->_find([$self->basedir], 
+                                    ['scripts',
+                                     'bin',
+                                     'sbin'], 
+                                    'mysql_config.pl');
+            ## This will not work if there is no perl installation,
+            ## but without perl, RQG won't work either :-)
+            $ver = `perl $conf --version`;
+        } else {
+            my $conf = $self->_find([$self->basedir], 
+                                    ['scripts',
+                                     'bin',
+                                     'sbin'], 
+                                    'mysql_config');
+            
+            $ver = `sh "$conf" --version`;
+        }
+        chop($ver);
+        $self->[MYSQLD_VERSION] = $ver;
     }
     return $self->[MYSQLD_VERSION];
+}
+
+sub printInfo {
+    my($self) = @_;
+
+    say("MySQL ". $self->version);
+    say("Binary: ". $self->binary);
+    say("Datadir: ". $self->datadir);
+    say("Corefile: " . $self->corefile);
 }
 
 sub versionNumbers {
@@ -549,16 +583,3 @@ sub _olderThan {
 }
 
 
-sub dumper {
-    return $_[0]->[MYSQLD_DUMPER];
-}
-
-sub dumpdb {
-    my ($self,$database, $file) = @_;
-    say("Dumping Mysql server ".$self->version." on port ".$self->port);
-    my $dump_result = system('"'.$self->dumper.
-                             "\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=".
-                             $self->port.
-                             " --user=root $database | sort > $file");
-    return $dump_result;
-}
