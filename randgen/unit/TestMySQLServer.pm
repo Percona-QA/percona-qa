@@ -156,6 +156,8 @@ sub test_crash_and_core {
 
         sayFile($server->logfile);
 
+        say("Core: ". $server->corefile);
+
         $backtrace->report();
     }
         
