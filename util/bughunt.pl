@@ -140,8 +140,9 @@ mkdir ($storage);
 my $sql_grammar = $storage."/bughunt_sql.yy";
 copy($config->grammar, $sql_grammar)
     or croak("File " . $config->grammar . " cannot be copied to " . $sql_grammar );
+my $data_grammar = "";
 if ( defined $config->gendata ) {
-   my $data_grammar = $storage."/bughunt_data.yy";
+   $data_grammar = $storage."/bughunt_data.yy";
    copy($config->gendata, $data_grammar)
        or croak("File " . $config->gendata . " cannot be copied to " . $data_grammar );
    $rqgoptions = $rqgoptions . " --gendata=" . $data_grammar;
@@ -178,6 +179,14 @@ foreach my $trial (1..$config->trials) {
     my $runall_status = system($runall);
     $runall_status = $runall_status >> 8;
 
+    if ($runall_status == STATUS_UNKNOWN_ERROR) {
+       say("runall_status = $runall_status");
+       say("Maybe the server startup options are wrong.");
+       say("Abort");
+       exit STATUS_UNKNOWN_ERROR;
+    }
+
+
     my $end_time = Time::HiRes::time();
     my $duration = $end_time - $start_time;
 
@@ -201,7 +210,16 @@ foreach my $trial (1..$config->trials) {
         checkLogForPattern();
     }
     # Save storage space by deleting the log of a non important run.
-    if ($preserve_log == 0) { unlink($current_rqg_log) };
+    if ($preserve_log == 0) {
+       unlink($current_rqg_log)
+    } else {
+      # Preserve vardir
+      my $save_cmd = 'tar czf ' . $storage . '/' . $trial . '.tgz ' . $vardir . ' ' . $current_rqg_log . ' ' . $sql_grammar . ' ' . $data_grammar ;
+      say("save_cmd: ->$save_cmd<-");
+      my $save_vardir = system($save_cmd);
+      # FIXME: Abort in case the call to tar fails
+    }
+
 }
 
 #############################
