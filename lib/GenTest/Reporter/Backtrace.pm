@@ -97,10 +97,11 @@ sub report {
 	}
 
 
-	my $incident = GenTest::Incident->new(
-		corefile => $core,
-		debugs => \@debugs
-	);
+    my $incident = GenTest::Incident->new(
+        result   => 'fail',
+        corefile => $core,
+        debugs   => \@debugs
+    );
 
 	return STATUS_OK, $incident;
 }
