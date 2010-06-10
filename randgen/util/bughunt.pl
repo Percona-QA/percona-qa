@@ -142,7 +142,7 @@ copy($config->grammar, $sql_grammar)
     or croak("File " . $config->grammar . " cannot be copied to " . $sql_grammar );
 my $data_grammar = "";
 if ( defined $config->gendata ) {
-   $data_grammar = $storage."/bughunt_data.yy";
+   $data_grammar = $storage."/bughunt_data.zz";
    copy($config->gendata, $data_grammar)
        or croak("File " . $config->gendata . " cannot be copied to " . $data_grammar );
    $rqgoptions = $rqgoptions . " --gendata=" . $data_grammar;
