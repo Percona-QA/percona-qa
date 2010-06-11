@@ -133,7 +133,10 @@ create_procedure:
 	CREATE PROCEDURE $procedure_name (INOUT inout1 INT) procedure_body ;
 
 create_table:
-	CREATE temporary TABLE $table_name ( `col_int_key` INTEGER, KEY (`col_int_key`) ) select ;
+	CREATE temporary TABLE $table_name ( `col_int_key` INTEGER, KEY (`col_int_key`) ) ENGINE= engine select ;
+
+engine:
+	MyISAM | InnoDB | MEMORY ;
 
 create_view:
 	CREATE ALGORITHM = view_algorithm VIEW $view_name AS select ;
