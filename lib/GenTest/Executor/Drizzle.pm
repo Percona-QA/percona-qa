@@ -310,15 +310,16 @@ sub execute {
 			end_time	=> Time::HiRes::time()
 		);
 	}
+       
+        if (rqg_debug()) {
+                say("Running Query--> $query");
+        }
 
 	my $affected_rows = $sth->execute();
 	my $end_time = Time::HiRes::time();
 
 	my $err = $sth->err();
 	my $result;
-        if (rqg_debug()) {
-                say("Running Query--> $query");
-        }
 
 	if (defined $err) {			# Error on EXECUTE
 		my $err_type = $err2type{$err};
