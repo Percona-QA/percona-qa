@@ -189,7 +189,7 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
                 "perl runall.pl $rqgoptions $mysqlopt ".
                 "--grammar=$current_grammar ".
                 "--vardir=$vardir ".
-                "--seed=$current_seed 2>&1 >$current_rqg_log";
+                "--seed=$current_seed >$current_rqg_log 2>&1";
 
             say($rqgcmd);
             my $rqg_status = system($rqgcmd);
