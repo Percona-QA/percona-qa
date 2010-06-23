@@ -30,7 +30,7 @@ use GenTest::Properties;
 use GenTest::Simplifier::Grammar;
 use Time::HiRes;
 
-# 
+#
 # RQG grammar simplification with an oracle() function based on
 # 1. RQG exit status codes (-> desired_status_codes)
 # 2. expected RQG protocol output (-> expected_output)
@@ -131,6 +131,7 @@ my $storage = $config->storage_prefix.'/'.$run_id;
 say "Storage is $storage";
 mkdir ($storage);
 
+my $errfile = $vardir . '/log/master.err';
 
 my $iteration;
 my $good_seed = $config->initial_seed;
@@ -140,51 +141,49 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
     oracle => sub {
         $iteration++;
         my $oracle_grammar = shift;
-        
+
+        my $current_grammar = $storage . '/' . $iteration . '.yy';
+        open (GRAMMAR, ">$current_grammar")
+           or croak "unable to create $current_grammar : $!";
+        print GRAMMAR $oracle_grammar;
+        close (GRAMMAR);
+
+
         foreach my $trial (1..$config->trials) {
             say("run_id = $run_id; iteration = $iteration; trial = $trial");
-            
+
             # $current_seed -- The seed value to be used for the next run.
             # The test results of many grammars are quite sensitive to the
             # seed value.
             # 1. Run the first trial on the initial grammar with
-            #	   $config->initial_seed .  This should raise the chance
-            #	   that the initial oracle check passes.
+            #    $config->initial_seed .  This should raise the chance
+            #    that the initial oracle check passes.
             # 2. Run the first trial on a just simplified grammar with the
-            #	   last successfull seed value. In case the last
-            #	   simplification did remove some random determined we
-            #	   should have a bigger likelihood to reach the expected
-            #	   result.
+            #    last successfull seed value. In case the last
+            #    simplification did remove some random determined we
+            #    should have a bigger likelihood to reach the expected
+            #    result.
             # 3. In case of "threads = 1" it turned out that after a minor
-            #	   simplification the desired bad effect disappeared
-            #	   sometimes on the next run with the same seed value
-            #	   whereas a different seed value was again
-            #	   successful. Therefore we manipulate the seed value.  In
-            #	   case of "threads > 1" this manipulation might be not
-            #	   required, but it will not make the conditions worse.
+            #    simplification the desired bad effect disappeared
+            #    sometimes on the next run with the same seed value
+            #    whereas a different seed value was again
+            #    successful. Therefore we manipulate the seed value.  In
+            #    case of "threads > 1" this manipulation might be not
+            #    required, but it will not make the conditions worse.
             my $current_seed = $good_seed - 1 + $trial;
-	   
-            # Note(mleich): The grammar used is iteration specific. Don't
-            #		 store per trial.  Shouldn't the next command be
-            #		 outside of the loop ?
-            my $current_grammar = $storage . '/' . $iteration . '.yy';
+
             my $current_rqg_log = $storage . '/' . $iteration . '-'. $trial . '.log';
-            my $errfile = $vardir . '/log/master.err';
-            open (GRAMMAR, ">$current_grammar") 
-                or croak "unable to create $current_grammar : $!";
-            print GRAMMAR $oracle_grammar;
-            close (GRAMMAR);
-            
+
             my $start_time = Time::HiRes::time();
-            
+
             # Note(mleich): In case of "threads = 1" it turned out that
-            #	   after a minor simplification the desired bad effect
-            #	   disappeared sometimes on the next run with the same
-            #	   seed value whereas a different seed value was again
-            #	   successful. Therefore we manipulate the seed value.  In
-            #	   case of "threads > 1" this manipulation might be not
-            #	   required, but it will not make the conditions worse.
-            
+            #    after a minor simplification the desired bad effect
+            #    disappeared sometimes on the next run with the same
+            #    seed value whereas a different seed value was again
+            #    successful. Therefore we manipulate the seed value.  In
+            #    case of "threads > 1" this manipulation might be not
+            #    required, but it will not make the conditions worse.
+
             my $rqgcmd =
                 "perl runall.pl $rqgoptions $mysqlopt ".
                 "--grammar=$current_grammar ".
@@ -194,21 +193,21 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
             say($rqgcmd);
             my $rqg_status = system($rqgcmd);
             $rqg_status = $rqg_status >> 8;
-            
+
             my $end_time = Time::HiRes::time();
             my $duration = $end_time - $start_time;
-	   
+
             say("rqg_status = $rqg_status; duration = $duration");
-            
-            return ORACLE_ISSUE_NO_LONGER_REPEATABLE 
+
+            return ORACLE_ISSUE_NO_LONGER_REPEATABLE
                 if $rqg_status == STATUS_ENVIRONMENT_FAILURE;
-            
+
             foreach my $desired_status_code (@{$config->desired_status_codes}) {
                 if (($rqg_status == $desired_status_code) ||
                     (($rqg_status != 0) && ($desired_status_code == STATUS_ANY_ERROR))) {
                     # "backtrace" output (independend of server crash
                     # or RQG kills the server) is in $current_rqg_log
-                    open (my $my_logfile,'<'.$current_rqg_log) 
+                    open (my $my_logfile,'<'.$current_rqg_log)
                         or croak "unable to open $current_rqg_log : $!";
                     # If open (above) did not fail than size
                     # determination must be successful.
@@ -216,11 +215,11 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
                     my $filesize = $filestats[7];
                     my $offset = $filesize - $config->search_var_size;
                     # Of course read fails if $offset < 0
-                    $offset = 0 if $offset < 0;  
+                    $offset = 0 if $offset < 0;
                     read($my_logfile, my $rqgtest_output, $config->search_var_size, $offset );
                     close ($my_logfile);
                     # Debug print("$rqgtest_output");
-                    
+
                     # Every element of @expected_output must be found
                     # in $rqgtest_output.
                     my $success = 1;
