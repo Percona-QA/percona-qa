@@ -6,7 +6,10 @@
 
 # Attention:
 # 1. The reporter "Shutdown" is currently incompatibe with checking replication.
-# 2. Comments between the alternatives lead to an PERL error
+# 2. Tests with '--rpl_mode=statement' do not make sense because the grammar does not take into account
+#    that some scenarios are unsafe when having a statement based replication. The impact would be that RQG
+#    aborts the test after a short time and we have a result without value.
+# 3. Comments between the alternatives lead to an PERL error
 
 $combinations = [
 	['
@@ -51,6 +54,7 @@ $combinations = [
 		'--mysqld=--innodb_flush_log_at_trx_commit=0',
 		'--mysqld=--innodb_flush_log_at_trx_commit=1'
 	],[
+		'--mask-level=0',
 		'--mask-level=1',
 		'--mask-level=2'
 	],[
@@ -58,8 +62,7 @@ $combinations = [
 		'',
 		'',
 		'--rpl_mode=row',
-		'--rpl_mode=mixed',
-		'--rpl_mode=statement'
+		'--rpl_mode=mixed'
 	],[
 		'',
 		'--mysqld=--big-tables'
