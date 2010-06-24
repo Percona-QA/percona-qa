@@ -15,27 +15,22 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-# WL#5004 Comprehensive Locking Stress Test for Azalea
-#
 # Grammar for testing DML, DDL, FLUSH, LOCK/UNLOCK, transactions
 #
 # Created:
-#    2009-07 Matthias Leich (A few grammar items were taken from other grammar files.)
+#    2009-07 Matthias Leich
+#            WL#5004 Comprehensive Locking Stress Test for Azalea
+#                    A few grammar rules were taken from other grammar files.
+# Last Modifications:
+#    2010-05 Matthias Leich
+#            Extend grammar for WL#3561 transactional LOCK TABLE
+#    2010-06 Matthias Leich
+#            - Adjustment to fixed and new bugs for 5.5-m3 mysql-trunk-runtime
+#            - Attention: Replication bugs had to be ignored
 #
 # Attention:
-# There are modified grammar items because of
-# - Bug#46339 crash on REPAIR TABLE merge table USE_FRM
-#   2010-05 Patch pending
-# - Bug#47633 assert in ha_myisammrg::info during OPTIMIZE
-#   2010-05 Closed but not in tree
-# - Bug#54007 assert in ha_myisam::index_next , HANDLER
-#   2010-05 Open
-#
-# Nothing disabled till now for
-# - Bug#45966 Crash in MDL_context::release_ticket in .\include\master-slave-reset.inc
-#   2010-05 Can't repeat
-#
-# .. there are a lot more please search for open bugs reported by Matthias Leich
+# There are modified grammar rules because of open bugs.
+# Please search case insensitive for "disable".
 #
 # TODO:
 #   - Adjust grammar to new open and old fixed bugs
@@ -82,7 +77,7 @@
 #    Do not
 #    - have tables of "special" types (partitioned, view, merge etc.)
 #    - variate the storage engine
-#    within your object creation grammar file.
+#    within your object creation grammar file (*.zz).
 # 2. Have separated namespaces for objects (tables etc.) with configurable width.
 #    - This allows to reduce the likelihood of applying a statement in general or an option to
 #      an object which is not allowed. Example: TRUNCATE TABLE <view>
@@ -127,23 +122,26 @@
 #    and a corresponding database and automatically assigns values to variables ($database_*,$*_table_name_*)
 #    where the name cannot be predicted, you can find the generated names at least within
 #    $database_name and $table_name .
-#    Please be aware that for example a succeeding call of "procedure_item" modify the content of $database_name .
+#    Please be aware that for example a succeeding call of "procedure_item" modifies the content of $database_name.
 #
 #
 # Rules by thumb and experiences (important when extending this grammar file):
 # ----------------------------------------------------------------------------
 # 1. Any statement sequence has to be in one line.
 # 2. Be aware of the dual use of ';'. It separates SQL statements in sequences and closes the definition block
-#    of a grammar item. So any ';' before some '|' has a significant impact.
+#    of a grammar rules. So any ';' before some '|' has a significant impact.
 # 3. Strange not intended effects: '|' or ':' instead of ';' ?
-# 4. There is an open RQG problem with SHOW ... LIKE '<grammar item>'.
-# 5. If there are needs to write some message into a server log than avoid the use of auxiliary SQL (SELECT <message> etc.).
+# 4. There is an open RQG problem with SHOW ... LIKE '<grammar rule>'.
+# 5. In general: There should be spaces whenever a grammar rule is mentioned in some grammar rule component.
+#    Example: "my_table" and  "where" are grammar rules.
+#             SELECT MAX(f1) FROM my_table where ;
+# 6. If there are needs to write some message into a server log than avoid the use of auxiliary SQL (SELECT <message> etc.).
 #    Use something like:
-#       /* <your text> */
+#       /* <your text> */ <SQL statement belonging to the test> ;
 #    instead.
-# 6. Use uppercase characters for strings and keywords in statements. This avoids any not intended
-#    treatment as grammar item.
-# 7. Use the most simple option first in lists. This makes automatic grammar simplification
+# 7. Use uppercase characters for strings and keywords in statements. This avoids any not intended
+#    treatment as grammar rule.
+# 8. Use the most simple option first in lists. This makes automatic grammar simplification
 #    which walks from right to left more efficient. Example:
 #    where:
 #     	<empty> | WHERE `pk` BETWEEN _digit AND _digit | WHERE function_name_n() = _digit ;
@@ -193,8 +191,8 @@ query_init:
 	init_basics ; init_namespaces ; init_executor_table ;
 
 init_executor_table:
-   # This table is used in kill_query_or_session.
-	CREATE TABLE IF NOT EXISTS test.executors (id BIGINT, PRIMARY KEY(id)) ENGINE = MEMORY; INSERT HIGH_PRIORITY IGNORE INTO test.executors SET id = CONNECTION_ID(); COMMIT;
+	# This table is used in kill_query_or_session.
+	CREATE TABLE IF NOT EXISTS test . executors (id BIGINT, PRIMARY KEY(id)) ENGINE = MEMORY ; INSERT HIGH_PRIORITY IGNORE INTO test.executors SET id = CONNECTION_ID() ; COMMIT ;
 
 init_basics:
 	# 1. $life_time_unit = maximum lifetime of a table created within a CREATE, wait, DROP sequence.
@@ -609,7 +607,10 @@ event_item:
 # Here starts the core of the test grammar ========================================================#
 
 query:
-	dml | dml | dml | dml | ddl | transaction | lock_unlock | lock_unlock | flush | handler ;
+	# handler disabled because of
+	#    Bug#54401 assert in Diagnostics_area::set_eof_status , HANDLER
+	# dml | dml | dml | dml | ddl | transaction | lock_unlock | lock_unlock | flush | handler ;
+	dml | dml | dml | dml | ddl | transaction | lock_unlock | lock_unlock | flush ;
 
 ########## TRANSACTIONS ####################
 
@@ -634,23 +635,50 @@ isolation_level:
 start_transaction:
 	START TRANSACTION with_consistent_snapshot ;
 with_consistent_snapshot:
-	 | | | | | | | | | WITH CONSISTENT SNAPSHOT ;
+	| | | | | | | | | WITH CONSISTENT SNAPSHOT ;
+
+# COMMIT/ROLLBACK
+#----------------
+# 1. RELEASE should be rare
+# 2. AND CHAIN RELEASE is nonsense and will get an error
+# 3. COMMIT [ WORK ] [ AND [ NO ] CHAIN ] [RELEASE]
+#    AND NO CHAIN is the default, no RELEASE is the default
+# 4. ROLLBACK [ WORK ] [ AND [ NO ] CHAIN ] [RELEASE]
+#    [ TO SAVEPOINT <savepoint specifier> ]
+#    You may specify only one of:
+#    "[AND [NO] CHAIN]" or "RELEASE" or "TO SAVEPOINT ...".
+#    AND NO CHAIN is the default, no RELEASE is the default
 
 commit:
-	COMMIT   work_or_empty chain release ;
+	COMMIT work_or_empty no_chain release_or_empty |
+	COMMIT work_or_empty AND CHAIN                 ;
+no_chain:
+	| | | |
+	AND NO CHAIN ;
+release_or_empty:
+	| | | | | | | | | RELEASE ;
+
 rollback:
-	ROLLBACK work_or_empty chain release ;
-chain:
-	 | | | | AND no_or_empty CHAIN ;
-release:
-	 | | | | | | | | | no_or_empty RELEASE ;
+	ROLLBACK work_or_empty no_chain release_or_empty |
+	ROLLBACK work_or_empty AND CHAIN                 ;
 
 set_autocommit:
 	SET AUTOCOMMIT = zero_or_one ;
 
 kill_query_or_session:
 #---------------------
-# Notes:
+# I expect in case
+# - a query gets killed that most locks hold by this query are automatically removed.
+#   Metadata locks might survive till transaction end.
+# - a session gets killed that any lock hold by this session gets automatically removed.
+# We will not check the removal here via SQL or sophisticated PERL code.
+# We just hope that forgotten locks lead sooner or later to nice deadlocks.
+# 
+# Attention: 
+#    There is some unfortunate sideeffect of KILL <session> .
+#    It reduces the probability to detect deadlocks because it
+#    might hit a participating session.
+#
 # Killing a query or session must NOT affect an
 # - auxiliary RQG session (= non executor) because this can fool RQG's judgement
 #   about the test outcome
@@ -666,7 +694,7 @@ kill_query_or_session:
 # - own session (suicide)       BEFORE
 # the KILL statement the entry within test.executors has to be removed.
 #
-# Depending on scenaria, whatever locking effects and maybe server bugs it might happen that
+# Depending on scenario (a session might run COMMIT/ROLLBACK RELEASE) and whatever other effects it might happen that
 # 1. A session disappears but the entry is not removed.
 #    This is harmless because somewhere later another session will pick the id from test.executors
 #    try the kill session and remove the entry.
@@ -686,11 +714,11 @@ kill_query_or_session:
 	COMMIT ; minimal_id ;                       ; COMMIT ; KILL       @kill_id ; delete_executor_entry ; COMMIT |
 	COMMIT ; minimal_id ;                       ; COMMIT ; KILL QUERY @kill_id                                  ;
 own_id:
-	SET @kill_id = CONNECTION_ID();
+	SET @kill_id = CONNECTION_ID() ;
 minimal_id:
-	SELECT MIN(id) INTO @kill_id FROM test.executors ;
+	SELECT MIN(id) INTO @kill_id FROM test . executors ;
 delete_executor_entry:
-	DELETE FROM test.executors WHERE id = @kill_id ;
+	DELETE FROM test . executors WHERE id = @kill_id ;
 
 ddl:
 	database_ddl                                        |
@@ -709,7 +737,9 @@ ddl:
 	truncate_table             |
 	drop_table_list            |
 	rename_table               |
-	table_maintenance_ddl      |
+	# Disabled because of
+	#   Bug#54486 assert in my_seek, concurrent DROP/CREATE SCHEMA, CREATE TABLE, REPAIR
+	# table_maintenance_ddl      |
 	dump_load_data_sequence    |
 	grant_revoke               |
 	rename_column              |
@@ -734,16 +764,14 @@ handler_open:
 	HANDLER table_no_view_item OPEN as handler_a ;
 
 handler_read:
-	# Variants with handler_index disabled because of
-	#    Bug#54007 assert in ha_myisam::index_next , HANDLER
-	# HANDLER handler_a READ handler_index comparison_operator ( _digit ) handler_read_part |
-	# HANDLER handler_a READ handler_index first_next_prev_last           handler_read_part |
+	HANDLER handler_a READ handler_index comparison_operator ( _digit ) handler_read_part |
+	HANDLER handler_a READ handler_index first_next_prev_last           handler_read_part |
 	HANDLER handler_a READ               first_next                     handler_read_part ;
 handler_index:
 	`PRIMARY`     |
 	`col_int_key` ;
 handler_read_part:
-	 | where ;
+	| where ;
 first_next:
 	FIRST |
 	NEXT  ;
@@ -786,7 +814,7 @@ table_show:
 	show_open_tables  | show_columns      ;
 
 show_tables:
-	SHOW TABLES;
+	SHOW TABLES ;
 
 show_create_table:
 	# Works also for views
@@ -803,14 +831,14 @@ show_columns:
 	SHOW full COLUMNS from_in table_item show_columns_part ;
 full:
 	# Only 20 %
-	 | | | | FULL ;
+	| | | | FULL ;
 from_in:
 	FROM | IN ;
 show_columns_part:
 	# Attention: LIKE '_field' does not work, because RQG does not expand _field.
 	#            LIKE '%int%' does not work, because RQG expands it to something like LIKE '%822214656%'.
 	# FIXME: Add "WHERE"
-	 | LIKE '%INT%' ;
+	| LIKE '%INT%' ;
 
 show_create_view:
 	SHOW CREATE VIEW view_table_item ;
@@ -829,7 +857,7 @@ show_function_code:
 	SHOW FUNCTION CODE function_item ;
 
 show_function_status:
-	SHOW FUNCTION STATUS;
+	SHOW FUNCTION STATUS ;
 
 show_create_procedure:
 	SHOW CREATE PROCEDURE procedure_item ;
@@ -838,10 +866,10 @@ show_procedure_code:
 	SHOW PROCEDURE CODE procedure_item ;
 
 show_procedure_status:
-	SHOW PROCEDURE STATUS;
+	SHOW PROCEDURE STATUS ;
 
 show_triggers:
-	SHOW TRIGGERS;
+	SHOW TRIGGERS ;
 
 show_create_trigger:
 	SHOW CREATE TRIGGER trigger_item ;
@@ -930,10 +958,10 @@ base_table_ddl:
 	base_table_sequence ;
 
 create_base_table:
-	CREATE           TABLE if_not_exists base_table_item_n create_table_part ;
+	CREATE           TABLE if_not_exists base_table_item_n { $create_table_item = $base_table_item_n ; return undef } create_table_part ;
 create_table_part:
-	LIKE template_table_item ; ALTER TABLE $base_table_item_n ENGINE = engine ; INSERT INTO $base_table_item_n SELECT * FROM $template_table_item |
-	LIKE template_table_item ; ALTER TABLE $base_table_item_n ENGINE = engine ; INSERT INTO $base_table_item_n SELECT * FROM $template_table_item |
+	LIKE template_table_item ; ALTER TABLE $create_table_item ENGINE = engine ; INSERT INTO $create_table_item SELECT * FROM $template_table_item |
+	LIKE template_table_item ; ALTER TABLE $create_table_item ENGINE = engine ; INSERT INTO $create_table_item SELECT * FROM $template_table_item |
 	AS used_select           ;
 
 drop_base_table:
@@ -965,7 +993,7 @@ temp_table_ddl:
 	drop_temp_table   | alter_temp_table  ;
 
 create_temp_table:
-	CREATE TEMPORARY TABLE if_not_exists temp_table_item_n create_table_part ;
+	CREATE TEMPORARY TABLE if_not_exists temp_table_item_n { $create_table_item = $temp_table_item_n ; return undef } create_table_part ;
 
 drop_temp_table:
 	# DROP two tables is in "drop_table_list"
@@ -995,7 +1023,7 @@ table_maintenance_ddl:
 analyze_table:
 	ANALYZE not_to_binlog_local TABLE table_list ;
 not_to_binlog_local:
-	 | NO_WRITE_TO_BINLOG | LOCAL ;
+	| NO_WRITE_TO_BINLOG | LOCAL ;
 
 optimize_table:
 	OPTIMIZE not_to_binlog_local TABLE table_list ;
@@ -1003,15 +1031,15 @@ optimize_table:
 checksum_table:
 	CHECKSUM TABLE table_list quick_extended ;
 quick_extended:
-	 | quick | extended ;
+	| quick | extended ;
 extended:
 	# Only 10 %
-	 | | | | | | | | | EXTENDED ;
+	| | | | | | | | | EXTENDED ;
 
 check_table:
 	CHECK TABLE table_list check_table_options ;
 check_table_options:
-	 | FOR UPGRADE | QUICK | FAST | MEDIUM | EXTENDED | CHANGED ;
+	| FOR UPGRADE | QUICK | FAST | MEDIUM | EXTENDED | CHANGED ;
 
 repair_table:
 	# Use if
@@ -1022,14 +1050,14 @@ repair_table:
 
 use_frm:
 	# Only 10 %
-	 | | | | | | | |  | USE_FRM ;
+	| | | | | | | |  | USE_FRM ;
 
 
 ########## MIXED TABLE RELATED DDL #################################
 truncate_table:
 	TRUNCATE table_word table_no_view_item_n ;
 table_word:
-	 | TABLE ;
+	| TABLE ;
 
 drop_table_list:
 	# DROP one table is in "drop_*table"
@@ -1079,7 +1107,7 @@ create_merge_table:
 	merge_init_n build_partner1 ; build_partner2 ; create_merge ;
 
 insert_method:
-	 | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value ;
+	| INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value | INSERT_METHOD = insert_method_value ;
 insert_method_value:
 	NO | FIRST | LAST ;
 
@@ -1163,7 +1191,7 @@ create_view:
 	CREATE view_replace ALGORITHM = view_algoritm VIEW view_table_item_n AS used_select ;
 view_replace:
 	# Only 20 %
-	 | | | | OR REPLACE ;
+	| | | | OR REPLACE ;
 view_algoritm:
 	UNDEFINED | MERGE | TEMPTABLE ;
 
@@ -1172,7 +1200,7 @@ drop_view:
 
 restrict_cascade:
 	# RESTRICT and CASCADE, if given, are parsed and ignored.
-	 | RESTRICT | CASCADE ;
+	| RESTRICT | CASCADE ;
 
 alter_view:
 	# Attention: Only changing the algorithm is not allowed.
@@ -1256,7 +1284,7 @@ event_ddl:
 	drop_event   | alter_event  | drop_event   | alter_event  | drop_event   | alter_event  | drop_event   | alter_event  |
 	event_scheduler_on | event_scheduler_off ;
 create_event:
-	CREATE EVENT if_not_exists event_item_s ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO SELECT * FROM table_item LIMIT 1;
+	CREATE EVENT if_not_exists event_item_s ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO SELECT * FROM table_item LIMIT 1 ;
 completion_handling:
 	ON COMPLETION not_or_empty PRESERVE ;
 drop_event:
@@ -1305,7 +1333,7 @@ select_normal:
 
 select_with_sleep:
 	# Run a SELECT which holds locks (if there are any) longer.
-	SELECT 1 FROM table_item WHERE wait_short = 0 LIMIT 1;
+	SELECT 1 FROM table_item WHERE wait_short = 0 LIMIT 1 ;
 
 used_select:
 	# used_select = The SELECT used in CREATE VIEW/TABLE ... AS SELECT, INSERT INTO ... SELECT
@@ -1317,14 +1345,14 @@ select_part1:
 	SELECT high_priority cache_results table_field_list_or_star FROM table_in_select as A ;
 
 cache_results:
-	 | sql_no_cache | sql_cache ;
+	| sql_no_cache | sql_cache ;
 sql_no_cache:
 	# Only 10 %
-	 | | | | | | | | |
+	| | | | | | | | |
 	SQL_NO_CACHE ;
 sql_cache:
 	# Only 10 %
-	 | | | | | | | | |
+	| | | | | | | | |
 	SQL_CACHE ;
 
 table_in_select:
@@ -1351,9 +1379,7 @@ where:
 	# - tables (INSERT ... SELECT, REPLACE) do not become too big
 	# - tables (DELETE) do not become permanent empty
 	# Please note that there are some cases where LIMIT cannot be used.
-	# mleich: Temporary omit functions
-	# WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 | WHERE function_item () = _digit AND `pk` = _digit ;
-	WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 ;
+	WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 | WHERE function_item () = _digit AND `pk` = _digit ;
 
 union:
 	UNION SELECT * FROM table_in_select as B ;
@@ -1384,12 +1410,12 @@ procedure_analyze:
 	# 7. INSERT ... SELECT ... PROCEDURE -> It's tried to INSERT the PROCEDURE result set.
 	#    High likelihood of ER_WRONG_VALUE_COUNT_ON_ROW
 	# Only 10 %
-	 | | | | | | | |  |
+	| | | | | | | |  |
 	PROCEDURE ANALYSE( 10 , 2000 ) ;
 
 into:
 	# Only 10 %
-	 | | | | | | | | |
+	| | | | | | | | |
 	INTO into_object ;
 
 into_object:
@@ -1403,14 +1429,14 @@ into_object:
 	OUTFILE _tmpnam ;
 
 for_update_lock_in_share_mode:
-	 | for_update | lock_share ;
+	| for_update | lock_share ;
 for_update:
 	# Only 10 %
-	 | | | | | | | | |
+	| | | | | | | | |
 	FOR UPDATE ;
 lock_share:
 	# Only 10 %
-	 | | | | | | | | |
+	| | | | | | | | |
 	LOCK IN SHARE MODE ;
 
 
@@ -1424,10 +1450,10 @@ simple_or_complicated:
 	braced_table_field_list used_select LIMIT 1 ;
 on_duplicate_key_update:
 	# Only 10 %
-	 | | | | | | | | |
+	| | | | | | | | |
 	ON DUPLICATE KEY UPDATE random_field_quoted1 = _digit ;
 insert_with_sleep:
-	INSERT ignore INTO table_item ( table_field_list ) SELECT $table_field_list FROM table_item WHERE wait_short = 0 LIMIT 1;
+	INSERT ignore INTO table_item ( table_field_list ) SELECT $table_field_list FROM table_item WHERE wait_short = 0 LIMIT 1 ;
 
 
 ########## REPLACE ####################
@@ -1448,12 +1474,12 @@ dump_load_data_sequence:
 generate_outfile:
 	SELECT * FROM template_table_item INTO OUTFILE _tmpnam ;
 low_priority_concurrent:
-	 | low_priority | concurrent ;
+	| low_priority | concurrent ;
 concurrent:
 	# Only 20 % <> empty.
-	 | | | | CONCURRENT ;
+	| | | | CONCURRENT ;
 replace_ignore:
-	 | replace_option | ignore ;
+	| replace_option | ignore ;
 
 
 ########## GRANT_REVOKE ####################
@@ -1548,12 +1574,18 @@ flush:
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list ;
-	# temporary disabled FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
+	# Disabled because of
+	#    Bug#54436 Deadlock on concurrent FLUSH WITH READ LOCK, ALTER TABLE, ANALYZE TABLE
+	# (concurrent
+	#  - ANALYZE TABLE t1
+	#  - ALTER TABLE t1 ENGINE = InnoDB
+	#  - FLUSH TABLES WITH READ LOCK ; SELECT SLEEP( 0.01 ) ; UNLOCK TABLES; )
+	# FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
 
 
 ########## TINY GRAMMAR ITEMS USED AT MANY PLACES ###########
 as:
-	 | AS ;
+	| AS ;
 
 braced_table_field_list:
 	# In case of <empty> for braced_table_field_list we have a significant fraction of
@@ -1571,7 +1603,7 @@ comparison_operator:
 
 
 default_word:
-	 | DEFAULT ;
+	| DEFAULT ;
 
 digit_or_null:
 	_digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit | _digit |
@@ -1581,57 +1613,57 @@ engine:
 	MEMORY | MyISAM | InnoDB ;
 
 equal:
-	 | = ;
+	| = ;
 
 delayed:
 	# Only 10 %
-	 | | | | | | | | | DELAYED ;
+	| | | | | | | | | DELAYED ;
 
 high_priority:
 	# Only 20 %
-	 | | | | HIGH_PRIORITY ;
+	| | | | HIGH_PRIORITY ;
 
 ignore:
 	# Only 10 %
-	 | | | | | | | | |
+	| | | | | | | | |
 	IGNORE ;
 
 if_exists:
 	# 90 %, this reduces the amount of failing DROPs
-	 | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS ;
+	| IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS | IF EXISTS ;
 
 if_not_exists:
 	# 90 %, this reduces the amount of failing CREATEs
-	 | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS ;
+	| IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS | IF NOT EXISTS ;
 
 into_word:
 	# Only 50 %
-	 | INTO ;
+	| INTO ;
 
 local_or_empty:
 	# Only 20%
-	 | | | | LOCAL ;
+	| | | | LOCAL ;
 
 low_priority_delayed_high_priority:
-	 | low_priority | delayed | high_priority ;
+	| low_priority | delayed | high_priority ;
 
 low_priority_delayed:
-	 | low_priority | delayed ;
+	| low_priority | delayed ;
 
 low_priority:
 	# Only 10 %
-	 | | | | | | | | |
+	| | | | | | | | |
 	LOW_PRIORITY ;
 
 no_or_empty:
-	 | NO ;
+	| NO ;
 
 not_or_empty:
-	 | NOT ;
+	| NOT ;
 
 quick:
 	# Only 10 %
-	 | | | | | | | | |
+	| | | | | | | | |
 	QUICK ;
 
 random_field_quoted:
@@ -1642,26 +1674,31 @@ random_field_quoted1:
 
 replace_option:
 	# Only 20 % <> empty.
-	 | | | | REPLACE ;
+	| | | | REPLACE ;
 
 savepoint_or_empty:
 	SAVEPOINT | ;
 
 sql_buffer_result:
 	# Only 50%
-	 | SQL_BUFFER_RESULT ;
+	| SQL_BUFFER_RESULT ;
 
 table_field_list_or_star:
 	table_field_list | table_field_list | table_field_list | table_field_list |
 	{ $table_field_list = "*" }                                               ;
 
 table_field_list:
+	# It is intentional that the next line will lead to ER_FIELD_SPECIFIED_TWICE
+	# in case it is used in INSERT INTO <table> ( table_field_list )
+	# Disabled because of
+	#    Bug#54106 assert in Protocol::end_statement, INSERT IGNORE ... SELECT ... UNION SELECT ...
+	# { $table_field_list = "`pk`      , `col_int_key` , `pk`          "} |
 	{ $table_field_list = "`col_int_key` , `col_int`     , `pk`      "} |
 	{ $table_field_list = "`col_int_key` , `pk`      , `col_int`     "} |
 	{ $table_field_list = "`col_int`     , `pk`      , `col_int_key` "} |
 	{ $table_field_list = "`col_int`     , `col_int_key` , `pk`      "} |
 	{ $table_field_list = "`pk`      , `col_int`     , `col_int_key` "} |
-	{ $table_field_list = "`pk`      , `col_int_key` , `pk`      "} ;
+	{ $table_field_list = "`pk`      , `col_int_key` , `col_int`     "} ;
 
 temporary:
 	# Attention:
@@ -1674,14 +1711,14 @@ temporary:
 	#    which created the table will pick a random statement and maybe do something on
 	#    the table <> DROP.
 	# Only 10 % because no other session can use this table.
-	 | | | | | | | | |
+	| | | | | | | | |
 	TEMPORARY ;
 
 wait_short:
 	SLEEP( 0.5 * rand_val * $life_time_unit ) ;
 
 work_or_empty:
-	 | WORK ;
+	| WORK ;
 
 zero_or_one:
 	0 | 1 ;
