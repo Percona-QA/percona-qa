@@ -1547,7 +1547,9 @@ lock_item:
 	# Have a low risk to get a clash of same table alias.
 	table_item AS _letter lock_type ;
 lock_type:
-	READ local_or_empty      |
+	# Disabled because of
+	#    Bug#54553 Innodb asserts in ha_innobase::update_row, temporary table, table lock
+	# READ local_or_empty      |
 	low_priority WRITE       |
 	IN SHARE MODE nowait     |
 	IN SHARE MODE nowait     |
