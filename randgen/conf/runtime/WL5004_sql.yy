@@ -1307,7 +1307,10 @@ dml:
 
 dml2:
 	select | select | select  |
-	do     | insert | replace | delete | update | CALL procedure_item | show | is_selects ;
+	# is_selects disabled because of
+	#    Bug #54678  	InnoDB, TRUNCATE, ALTER, I_S SELECT, crash or deadlock
+	# do     | insert | replace | delete | update | CALL procedure_item | show | is_selects ;
+	do     | insert | replace | delete | update | CALL procedure_item | show ;
 
 ########## DO ####################
 do:
@@ -1548,6 +1551,7 @@ lock_item:
 	table_item AS _letter lock_type ;
 lock_type:
 	# Disabled because of
+	#    Bug#54117 crash in thr_multi_unlock, temporary table
 	#    Bug#54553 Innodb asserts in ha_innobase::update_row, temporary table, table lock
 	# READ local_or_empty      |
 	low_priority WRITE       |
