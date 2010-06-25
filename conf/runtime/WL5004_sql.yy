@@ -1290,7 +1290,10 @@ completion_handling:
 drop_event:
 	DROP EVENT if_exists event_item_s ;
 alter_event:
-	ALTER EVENT event_item_s COMMENT 'UPDATED NOW()';
+	# Disabled because of
+	#    Bug#44171 KILL ALTER EVENT can crash the server
+	# ALTER EVENT event_item_s COMMENT 'UPDATED NOW()';
+	;
 
 ########## DML ####################
 
@@ -1554,7 +1557,7 @@ lock_type:
 	#    Bug#54117 crash in thr_multi_unlock, temporary table
 	#    Bug#54553 Innodb asserts in ha_innobase::update_row, temporary table, table lock
 	# READ local_or_empty      |
-	low_priority WRITE       |
+	# low_priority WRITE       |
 	IN SHARE MODE nowait     |
 	IN SHARE MODE nowait     |
 	IN SHARE MODE nowait     |
