@@ -51,6 +51,7 @@ use GenTest::Mixer;
 use GenTest::Reporter;
 use GenTest::ReporterManager;
 use GenTest::Filter::Regexp;
+use GenTest::Incident;
 
 use constant PROCESS_TYPE_PARENT	=> 0;
 use constant PROCESS_TYPE_PERIODIC	=> 1;
