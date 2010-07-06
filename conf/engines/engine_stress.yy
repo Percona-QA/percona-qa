@@ -107,15 +107,17 @@ order_by_delete:
 
 # Use an index at all times
 where:
+	|
 	WHERE X . _field_key < value | 	# Use only < to reduce deadlocks
-	WHERE X . _field_key IN ( value , value , value ) |
+	WHERE X . _field_key IN ( value , value , value , value , value ) |
 	WHERE X . _field_key BETWEEN small_digit AND large_digit |
+	WHERE X . _field_key BETWEEN _tinyint_unsigned AND _int_unsigned |
 	WHERE X . _field_key = ( subselect ) ;
 
 where_delete:
 	|
 	WHERE _field_key = value |
-	WHERE _field_key IN ( value , value , value ) |
+	WHERE _field_key IN ( value , value , value , value , value ) |
 	WHERE _field_key IN ( subselect ) |
 	WHERE _field_key BETWEEN small_digit AND large_digit ;
 
@@ -126,7 +128,7 @@ small_digit:
 	1 | 2 | 3 | 4 ;
 
 value:
-	_digit | _tinyint_unsigned | _varchar(1);
+	_digit | _tinyint_unsigned | _varchar(1) | _int_unsigned ;
 
 zero_one:
 	0 | 0 | 1;
