@@ -99,8 +99,6 @@ sub report {
 		'--core-file',
 		'--loose-console',
 		'--loose-maria-block-size='.$maria_block_size,
-		'--loose-falcon-debug-mask=65019',
-		'--loose-skip-falcon-support-xa',
 		'--language='.$language,
 		'--loose-lc-messages-dir='.$lc_messages_dir,
 		'--datadir="'.$recovery_datadir.'"',
@@ -137,9 +135,8 @@ sub report {
 		} elsif ($_ =~ m{corrupt}) {
 			say("Log message '$_' indicates database corruption");
 			$recovery_status = STATUS_DATABASE_CORRUPTION;
-#		} elsif ($_ =~ m{exception}sio) {
-#			# Wlad says ignore all exceptions, Feb 18th, 2009
-#			$recovery_status = STATUS_DATABASE_CORRUPTION;
+		} elsif ($_ =~ m{exception}sio) {
+			$recovery_status = STATUS_DATABASE_CORRUPTION;
 		} elsif ($_ =~ m{ready for connections}sio) {
 			say("Server Recovery was apparently successfull.") if $recovery_status == STATUS_OK ;
 			last;
@@ -189,51 +186,51 @@ sub report {
 
 			$sth_keys->execute();
 
-			my @predicates = ("/* no extra predicate */");
+			my @walk_queries;
 
 			while (my $key_hashref = $sth_keys->fetchrow_hashref()) {
 				my $key_name = $key_hashref->{Key_name};
 				my $column_name = $key_hashref->{Column_name};
 
-#				push @predicates, "FORCE INDEX ($key_name) ORDER BY `$column_name` LIMIT 4294836225";
-
-				my $main_predicate;
-				if ($column_name =~ m{int}sio) {
-					$main_predicate = "WHERE `$column_name` >= -9223372036854775808";
-				} elsif ($column_name =~ m{char}sio) {
-					$main_predicate = "WHERE `$column_name` >= ''";
-				} elsif ($column_name =~ m{date}sio) {
-					$main_predicate = "WHERE (`$column_name` >= '1900-01-01' OR `$column_name` = '0000-00-00') ";
-				} elsif ($column_name =~ m{time}sio) {
-					$main_predicate = "WHERE (`$column_name` >= '-838:59:59' OR `$column_name` = '00:00:00') ";
-				} else {
-					next;
-				}
+				foreach my $select_type ('*' , "`$column_name`") {
+					my $main_predicate;
+					if ($column_name =~ m{int}sio) {
+						$main_predicate = "WHERE `$column_name` >= -9223372036854775808";
+					} elsif ($column_name =~ m{char}sio) {
+						$main_predicate = "WHERE `$column_name` >= ''";
+					} elsif ($column_name =~ m{date}sio) {
+						$main_predicate = "WHERE (`$column_name` >= '1900-01-01' OR `$column_name` = '0000-00-00') ";
+					} elsif ($column_name =~ m{time}sio) {
+						$main_predicate = "WHERE (`$column_name` >= '-838:59:59' OR `$column_name` = '00:00:00') ";
+					} else {
+						next;
+					}
 	
-				if ($key_hashref->{Null} eq 'YES') {
-					$main_predicate = $main_predicate." OR `$column_name` IS NULL";
+					if ($key_hashref->{Null} eq 'YES') {
+						$main_predicate = $main_predicate." OR `$column_name` IS NULL";
+					}
+			
+					push @walk_queries, "SELECT $select_type FROM `$database`.`$table` FORCE INDEX ($key_name) ".$main_predicate;
 				}
-		
-				push @predicates, "FORCE INDEX ($key_name) ".$main_predicate;
                         };
 
 			my %rows;
 			my %data;
 
-			foreach my $predicate (@predicates) {
-				my $rows_statement = "SELECT * FROM `$database`.`$table` $predicate";
-				my $sth_rows = $dbh->prepare($rows_statement);
+			foreach my $walk_query (@walk_queries) {
+				print "Q: $walk_query\n";
+				my $sth_rows = $dbh->prepare($walk_query);
 				$sth_rows->execute();
 
 				if (defined $sth_rows->err()) {
-					say("Failing query is $rows_statement.");
+					say("Failing query is $walk_query.");
 					return STATUS_RECOVERY_FAILURE;
 				}
 
 				my $rows = $sth_rows->rows();
 				$sth_rows->finish();
 
-				push @{$rows{$rows}} , $predicate;
+				push @{$rows{$rows}} , $walk_query;
 			}
 
 			if (keys %rows > 1) {
@@ -242,8 +239,8 @@ sub report {
 
 				my @rows_sorted = grep { $_ > 0 } sort keys %rows;
 			
-				my $least_sql = "SELECT LPAD(`pk`, 8, ' ') FROM `$database`.`$table` ".$rows{$rows_sorted[0]}->[0];
-				my $most_sql  = "SELECT LPAD(`pk`, 8, ' ') FROM `$database`.`$table` ".$rows{$rows_sorted[$#rows_sorted]}->[0];
+				my $least_sql = $rows{$rows_sorted[0]}->[0];
+				my $most_sql  = $rows{$rows_sorted[$#rows_sorted]}->[0];
 			
 				say("Query that returned least rows: $least_sql\n");
 				say("Query that returned most rows: $most_sql\n");
@@ -277,9 +274,11 @@ sub report {
 						return STATUS_DATABASE_CORRUPTION if $dbh->err() > 0 && $dbh->err() != 1178;
 						if ($sth->{NUM_OF_FIELDS} > 0) {
 							my $result = Dumper($sth->fetchall_arrayref());
-							print $result;
 							next if $result =~ m{is not BASE TABLE}sio;	# Do not process VIEWs
-							return STATUS_DATABASE_CORRUPTION if $result =~ m{error|corrupt|repaired|invalid|crashed}sio;
+							if ($result =~ m{error|corrupt|repaired|invalid|crashed}sio) {
+								print $result;
+								return STATUS_DATABASE_CORRUPTION
+							}
 						};
 
 						$sth->finish();
