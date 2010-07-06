@@ -66,30 +66,38 @@ join_list:
 
 for_update_lock_in_share_mode:
 	| | | | | 
-#	FOR UPDATE |		# bug 46539
+	FOR UPDATE |
 	LOCK IN SHARE MODE ;
 
 # Insert more than we delete
 insert_replace:
-	i_r ignore INTO _table (`pk`) VALUES (NULL) |
-	i_r ignore INTO _table ( _field_no_pk , _field_no_pk ) VALUES ( value , value ) , ( value , value ) ;
-#|
-#	i_r ignore INTO _table ( _field_no_pk ) SELECT X . _field_key FROM join_list where order_by LIMIT large_digit;	# bug46650
+	i_r INTO _table (`pk`) VALUES (NULL) |
+	i_r INTO _table ( _field_no_pk , _field_no_pk ) VALUES ( value , value ) , ( value , value ) |
+	i_r INTO _table ( _field_no_pk ) SELECT X . _field_key FROM join_list where order_by LIMIT large_digit;
 
 i_r:
-	INSERT | REPLACE ;
+	INSERT low_priority |
+	INSERT low_priority IGNORE |
+	REPLACE low_priority;
 
 ignore:
-	;
-#	IGNORE # bug 46539
+	| 
+	IGNORE ;
+
+low_priority:
+	LOW_PRIORITY;
 
 update:
-	UPDATE ignore _table AS X SET _field_no_pk = value where LIMIT large_digit ;
+	UPDATE low_priority ignore _table AS X SET _field_no_pk = value where LIMIT large_digit ;
 
 # We use a smaller limit on DELETE so that we delete less than we insert
 
 delete:
-	DELETE FROM _table where_delete order_by_delete LIMIT small_digit ;
+	DELETE low_priority quick ignore FROM _table where_delete order_by_delete LIMIT small_digit ;
+
+quick:
+	| 
+	QUICK ;
 
 order_by:
 	| ORDER BY X . _field_key ;
@@ -99,16 +107,17 @@ order_by_delete:
 
 # Use an index at all times
 where:
+	|
 	WHERE X . _field_key < value | 	# Use only < to reduce deadlocks
-	WHERE X . _field_key IN ( value , value , value ) |
-	WHERE X . _field_key BETWEEN small_digit AND large_digit ;
-# |
-#	WHERE X . _field_key = ( subselect ) ;
+	WHERE X . _field_key IN ( value , value , value , value , value ) |
+	WHERE X . _field_key BETWEEN small_digit AND large_digit |
+	WHERE X . _field_key BETWEEN _tinyint_unsigned AND _int_unsigned |
+	WHERE X . _field_key = ( subselect ) ;
 
 where_delete:
 	|
 	WHERE _field_key = value |
-	WHERE _field_key IN ( value , value , value ) |
+	WHERE _field_key IN ( value , value , value , value , value ) |
 	WHERE _field_key IN ( subselect ) |
 	WHERE _field_key BETWEEN small_digit AND large_digit ;
 
@@ -119,7 +128,7 @@ small_digit:
 	1 | 2 | 3 | 4 ;
 
 value:
-	_digit | _tinyint_unsigned | _varchar(1);
+	_digit | _tinyint_unsigned | _varchar(1) | _int_unsigned ;
 
 zero_one:
 	0 | 0 | 1;
