@@ -218,7 +218,6 @@ sub report {
 			my %data;
 
 			foreach my $walk_query (@walk_queries) {
-				print "Q: $walk_query\n";
 				my $sth_rows = $dbh->prepare($walk_query);
 				$sth_rows->execute();
 
