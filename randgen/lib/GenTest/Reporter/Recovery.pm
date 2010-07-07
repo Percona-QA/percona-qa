@@ -84,6 +84,7 @@ sub report {
 	if (defined $dbh_prev) {
 		# Server is still running, kill it.
 		$dbh_prev->disconnect();
+
 		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
 		kill(9, $pid);
 		sleep(10);
@@ -197,7 +198,7 @@ sub report {
 					if ($column_name =~ m{int}sio) {
 						$main_predicate = "WHERE `$column_name` >= -9223372036854775808";
 					} elsif ($column_name =~ m{char}sio) {
-						$main_predicate = "WHERE `$column_name` >= ''";
+						$main_predicate = "WHERE `$column_name` = '' OR `$column_name` != ''";
 					} elsif ($column_name =~ m{date}sio) {
 						$main_predicate = "WHERE (`$column_name` >= '1900-01-01' OR `$column_name` = '0000-00-00') ";
 					} elsif ($column_name =~ m{time}sio) {
@@ -207,7 +208,7 @@ sub report {
 					}
 	
 					if ($key_hashref->{Null} eq 'YES') {
-						$main_predicate = $main_predicate." OR `$column_name` IS NULL";
+						$main_predicate = $main_predicate." OR `$column_name` IS NULL OR `$column_name` IS NOT NULL";
 					}
 			
 					push @walk_queries, "SELECT $select_type FROM `$database`.`$table` FORCE INDEX ($key_name) ".$main_predicate;
@@ -290,8 +291,6 @@ sub report {
 		}
 	}
 
-#	$reporter->shutdown($dbh);
-
 	close(MYSQLD);
 
 	if ($recovery_status > STATUS_OK) {
@@ -300,18 +299,6 @@ sub report {
 	} elsif ($reporter->serverVariable('falcon_error_inject') ne '') {
 		return STATUS_SERVER_KILLED;
 	} else {
-		return STATUS_OK;
-	}
-}
-
-sub shutdown {
-	my ($reporter, $dbh) = @_;
-	say("Shutting down the recovered server.");
-
-	if (not defined $dbh) {
-		return STATUS_DATABASE_CORRUPTION;
-	} else {
-		$dbh->func('shutdown', 'admin');
 		return STATUS_OK;
 	}
 }
