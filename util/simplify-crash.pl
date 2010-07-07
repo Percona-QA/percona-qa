@@ -47,6 +47,7 @@ my @mtr_options = (
 	"--vardir=$vardir",
 	"--master_port=19306",
 	'--skip-ndbcluster',
+	'--mysqld=--core-file-size=1',
 	'--fast',
 	'1st'	# Required for proper operation of MTR --start-and-exit
 );
@@ -56,7 +57,6 @@ my $new_database = 'crash';
 
 my $executor;
 
-system("ulimit -c 1");
 start_server();
 
 my $simplifier = GenTest::Simplifier::SQL->new(
@@ -92,8 +92,6 @@ my $simplified_test = $simplifier_test->simplify();
 
 print "Simplified test\n\n";
 print $simplified_test;
-
-system("ulimit -c 0");
 
 sub start_server {
 	chdir($basedir.'/mysql-test') or die $!;

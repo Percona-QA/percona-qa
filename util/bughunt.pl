@@ -88,12 +88,14 @@ my $config = GenTest::Properties->new(
               'initial_mask',
               'search_var_size',
               'rqg_options',
+              'basedir',
               'vardir_prefix',
               'storage_prefix',
               'stop_on_match',
               'mysqld'],
     required=>['rqg_options',
                'grammar',
+               'basedir',
                'vardir_prefix',
                'storage_prefix'],
     defaults => {search_var_size=>10000,
@@ -147,6 +149,13 @@ if ( defined $config->gendata ) {
        or croak("File " . $config->gendata . " cannot be copied to " . $data_grammar );
    $rqgoptions = $rqgoptions . " --gendata=" . $data_grammar;
 }
+
+# Some bugs can be investigating using the core file and the server binary.
+# Make a copy of the server binary.
+# Attention: In the moment we do not use the copy during testing like the grammars.
+# FIXME: There is at least one more location where the "mysqld" binary might be stored.
+copy($config->basedir.'/sql/mysqld', $storage.'/mysqld');
+$rqgoptions = $rqgoptions . " --basedir=" . $config->basedir;
 
 my $good_seed = $config->initial_seed;
 my $mask_level = $config->mask_level;
@@ -214,7 +223,10 @@ foreach my $trial (1..$config->trials) {
        unlink($current_rqg_log)
     } else {
       # Preserve vardir
-      my $save_cmd = 'tar czf ' . $storage . '/' . $trial . '.tgz ' . $vardir . ' ' . $current_rqg_log . ' ' . $sql_grammar . ' ' . $data_grammar ;
+      # Sleep a bit with the intention to avoid that the archiver comes up with a
+      # warning like "<vardir>/master-data/ib_logfile1: File changed during reading
+      sleep 5;
+      my $save_cmd = 'tar czf ' . $storage . '/' . $trial . '.tgz ' . $vardir . ' ' . $current_rqg_log . ' ' . $sql_grammar . ' ' . $data_grammar . ' ' . $storage.'/mysqld' ;
       say("save_cmd: ->$save_cmd<-");
       my $save_vardir = system($save_cmd);
       # FIXME: Abort in case the call to tar fails
