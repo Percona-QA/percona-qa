@@ -37,6 +37,7 @@ sub report {
 
 	if (defined $dbh) {
 		say("Shutting down the server...");
+		kill(15, $pid);
 		$dbh->func('shutdown', 'admin');
 	}
 
