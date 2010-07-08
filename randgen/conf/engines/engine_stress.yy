@@ -31,8 +31,9 @@
 
 query:
 	transaction |
-	select | select | select |
-	select | select | select |
+	select | select |
+	insert_replace | update | delete |
+	insert_replace | update | delete |
 	insert_replace | update | delete ;
 
 transaction:
