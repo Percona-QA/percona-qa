@@ -141,7 +141,7 @@ sub report {
 		} elsif ($_ =~ m{ready for connections}sio) {
 			say("Server Recovery was apparently successfull.") if $recovery_status == STATUS_OK ;
 			last;
-		} elsif ($_ =~ m{device full error}sio) {
+		} elsif ($_ =~ m{device full error|no space left on device}sio) {
 			$recovery_status = STATUS_ENVIRONMENT_FAILURE;
 			last;
 		} elsif (
