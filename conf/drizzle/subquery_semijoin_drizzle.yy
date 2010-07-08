@@ -145,18 +145,19 @@ int_field_name:
     `col_int_not_null` | `col_int_not_null_key` ;
 
 char_field_name:
-        `col_char` | `col_text_not_null` | `col_text_not_null_key` |
-        `col_text_key` | `col_text` | `col_char_not_null_key` | `col_char_not_null` ;
+        `col_char_10` | `col_char_10_key` | `col_text_not_null` | `col_text_not_null_key` |
+        `col_text_key` | `col_text` | `col_char_10_not_null_key` | `col_char_10_not_null` |
+        `col_char_1024` | `col_char_1024_key` | `col_char_1024_not_null` | `col_char_1024_not_null_key` ;
 
 char_field_name_disabled:
 # need to explore enum more before enabling this
         `col_enum` | `col_enum_key` | `col_enum_not_null` | `col_enum_not_null_key` ;
 
 outer_table_name:
-	AA | BB ;
+	AA | BB | AA | BB | C | D | CC | DD | A ;
 
 inner_table_name:
-	BB | CC | DD ;
+	BB | CC | DD | BB | CC | DD | C | D | A ;
 
 value: _digit | _date | _time | _datetime | _varchar(1) | NULL ;
 
