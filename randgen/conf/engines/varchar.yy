@@ -19,14 +19,11 @@ query:
 	insert_replace | update | insert_replace | delete;
 
 insert_replace:
-	i_r delayed INTO _table ( _field , _field ) VALUES ( value , value ) |
-	i_r delayed INTO _table ( _field ) select LIMIT _digit ;
+	i_r INTO _table ( _field , _field ) VALUES ( value , value ) |
+	i_r INTO _table ( _field ) select LIMIT _digit ;
 
 i_r:
 	INSERT | REPLACE ;
-
-delayed:
-	| DELAYED ;
 
 select:
 	SELECT _field FROM _table WHERE condition order_by LIMIT 1;
