@@ -572,7 +572,7 @@ sub getSchemaMetaData {
     my $version = $self->dbh()->selectrow_array("SELECT VERSION()");
     # as of build 1320 we start using data_dictionary instead of information_schema
     if ($version lt "2010.03.1320") {
-        $query =         "SELECT table_schema, ".
+        $query =         "SELECT SQL_BIG_RESULT table_schema, ".
                "table_name, ".
                "CASE WHEN table_type = 'BASE TABLE' THEN 'table' ".
                     "WHEN table_type = 'VIEW' THEN 'view' ".
@@ -584,10 +584,10 @@ sub getSchemaMetaData {
                     "WHEN column_key = 'UNI' THEN 'indexed' ".
                     "ELSE 'ordinary' END ".
          "FROM information_schema.tables INNER JOIN ".
-              "information_schema.columns USING(table_schema, table_name)";
+              "information_schema.columns USING(table_schema, table_name) ORDER BY table_schema, table_name";
      }
      else {
-        $query = "SELECT table_schema, ".
+        $query = "SELECT SQL_BIG_RESULT table_schema, ".
                "table_name, ".
                "CASE WHEN table_type = 'STANDARD' THEN 'table' ".
                     "WHEN table_type = 'FUNCTION' THEN 'function' ".
@@ -597,7 +597,7 @@ sub getSchemaMetaData {
                     "WHEN IS_INDEXED = 'TRUE' THEN 'indexed' ".
                     "ELSE 'ordinary' END ".
          "FROM data_dictionary.tables INNER JOIN ".
-              "data_dictionary.columns USING(table_schema, table_name)"; 
+              "data_dictionary.columns USING(table_schema, table_name) ORDER BY table_schema, table_name"; 
     }
 
     return $self->dbh()->selectall_arrayref($query);
