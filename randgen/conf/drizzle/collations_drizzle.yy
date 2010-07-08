@@ -41,7 +41,8 @@ table_name:
 	_table ;
 
 field_name:
-	`col_char_key` | `col_char` ;
+	`col_char_10_key` | `col_char_10` | `col_char_10_not_null` | `col_char_10_not_null_key` |
+        `col_char_1024_key` | `col_char_1024` | `col_char_1024_not_null` | `col_char_1024_not_null_key` ;
 
 oper:
 	= | > | < | >= | <= | <> ;

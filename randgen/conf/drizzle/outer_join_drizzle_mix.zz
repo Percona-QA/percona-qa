@@ -29,5 +29,5 @@ $fields = {
 
 $data = {
         numbers => [ 'digit', 'null', undef ],
-        strings => [ 'letter', 'english' , 'string(1024)']
+        strings => [ 'letter', 'english' , 'string(128)']
 };

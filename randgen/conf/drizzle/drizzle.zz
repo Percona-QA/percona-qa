@@ -29,7 +29,7 @@ $tables = {
 
 
 $fields = {
-        types => [ 'bigint' , 'int', 'char', 'enum' , 'text' ],
+        types => [ 'bigint' , 'int', 'char(10)', 'char(1024)', 'enum' , 'text' ],
         indexes => [undef, 'key' ],
         null => [undef, 'not null' ],
         default => [undef, 'default null' ]
@@ -37,7 +37,7 @@ $fields = {
 
 $data = {
         numbers => [ 'digit', 'null', undef ],
-        strings => [ 'letter', 'english' ],
+        strings => [ 'letter', 'english', 'quid' ],
         enum => [ 'letter' ],
         blobs => [ 'data' ],
 	temporals => ['date', 'year', 'null', undef ]
