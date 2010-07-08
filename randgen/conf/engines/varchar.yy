@@ -16,13 +16,20 @@
 # USA
 
 query:
-	insert | update | insert | delete | select;
+	insert_replace | update | insert_replace | delete;
 
-insert:
-	INSERT INTO _table ( _field , _field ) VALUES ( value , value );
+insert_replace:
+	i_r delayed INTO _table ( _field , _field ) VALUES ( value , value ) |
+	i_r delayed INTO _table ( _field ) select LIMIT _digit ;
+
+i_r:
+	INSERT | REPLACE ;
+
+delayed:
+	| DELAYED ;
 
 select:
-	SELECT _field FROM _table WHERE condition order_by ;
+	SELECT _field FROM _table WHERE condition order_by LIMIT 1;
 
 update:
  	UPDATE _table SET _field = digit WHERE condition order_by ;
@@ -40,7 +47,8 @@ sign:
 	= | < | > | <> | <=> | != | >= | <= ;
 
 value:
-	_varchar(255);
+	_english | _letter |
+	_varchar(255) | _varchar(255) | _varchar(255) ;
 
 order_by:
 	|
