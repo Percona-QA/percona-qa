@@ -39,7 +39,6 @@ query:
 transaction:
 	START TRANSACTION |
 	COMMIT | ROLLBACK |
-	SELECT SLEEP( zero_one ) |
 	SAVEPOINT A | ROLLBACK TO SAVEPOINT A |
 	SET AUTOCOMMIT=OFF | SET AUTOCOMMIT=ON |
 	SET TRANSACTION ISOLATION LEVEL isolation_level;
@@ -74,7 +73,7 @@ for_update_lock_in_share_mode:
 insert_replace:
 	i_r INTO _table (`pk`) VALUES (NULL) |
 	i_r INTO _table ( _field_no_pk , _field_no_pk ) VALUES ( value , value ) , ( value , value ) |
-	i_r INTO _table ( _field_no_pk ) SELECT X . _field_key FROM join_list where order_by LIMIT large_digit;
+	i_r INTO _table ( _field_no_pk ) SELECT _field_key FROM _table AS X where ORDER BY _field_list LIMIT large_digit;
 
 i_r:
 	INSERT low_priority |
@@ -89,12 +88,12 @@ low_priority:
 	LOW_PRIORITY;
 
 update:
-	UPDATE low_priority ignore _table AS X SET _field_no_pk = value where LIMIT large_digit ;
+	UPDATE low_priority ignore _table AS X SET _field_no_pk = value where ORDER BY _field_list LIMIT large_digit ;
 
 # We use a smaller limit on DELETE so that we delete less than we insert
 
 delete:
-	DELETE low_priority quick ignore FROM _table where_delete order_by_delete LIMIT small_digit ;
+	DELETE low_priority quick ignore FROM _table where_delete ORDER BY _field_list LIMIT small_digit ;
 
 quick:
 	| 
@@ -102,9 +101,6 @@ quick:
 
 order_by:
 	| ORDER BY X . _field_key ;
-
-order_by_delete:
-	| ORDER BY _field_key ;
 
 # Use an index at all times
 where:
