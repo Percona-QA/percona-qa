@@ -32,16 +32,19 @@
 query:
 	transaction |
 	select | select |
+	select | select |
+	insert_replace | update | delete |
+	insert_replace | update | delete |
 	insert_replace | update | delete |
 	insert_replace | update | delete |
 	insert_replace | update | delete ;
 
 transaction:
 	START TRANSACTION |
-	COMMIT | ROLLBACK |
+	COMMIT ; SET TRANSACTION ISOLATION LEVEL isolation_level |
+	ROLLBACK ; SET TRANSACTION ISOLATION LEVEL isolation_level |
 	SAVEPOINT A | ROLLBACK TO SAVEPOINT A |
-	SET AUTOCOMMIT=OFF | SET AUTOCOMMIT=ON |
-	SET TRANSACTION ISOLATION LEVEL isolation_level;
+	SET AUTOCOMMIT=OFF | SET AUTOCOMMIT=ON ;
 
 isolation_level:
 	READ UNCOMMITTED | READ COMMITTED | REPEATABLE READ | SERIALIZABLE ;
