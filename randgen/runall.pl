@@ -182,6 +182,14 @@ foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client/Deb
 	}
 }
 
+#
+# If RQG_HOME is set, prepend it to config files if they can not be found without it 
+#
+
+$gendata = $ENV{RQG_HOME}.'/'.$gendata if defined $ENV{RQG_HOME} && ! -e $gendata;
+$grammar_file = $ENV{RQG_HOME}.'/'.$grammar_file if defined $ENV{RQG_HOME} && ! -e $grammar_file;
+$redefine_file = $ENV{RQG_HOME}.'/'.$redefine_file if defined $ENV{RQG_HOME} && ! -e $redefine_file;
+
 my $cwd = cwd();
 
 #
