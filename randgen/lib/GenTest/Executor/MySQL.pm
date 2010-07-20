@@ -463,7 +463,7 @@ sub init {
 		)
 	");
 
-#	say("Executor initialized, id ".$executor->id());
+	say("Executor initialized, id ".$executor->id());
 
     $executor->defaultSchema($executor->currentSchema());
     say "Default schema: ".$executor->defaultSchema();
@@ -486,6 +486,11 @@ sub reportError {
 
 sub execute {
 	my ($executor, $query, $silent) = @_;
+
+	# Filter out any /*executor */ comments that do not pertain to this particular Executor/DBI
+	my $executor_id = $executor->id();
+	$query =~ s{/\*executor$executor_id (.*?) \*/}{$1}sg;
+	$query =~ s{/\*executor.*?\*/}{}sgo;
     
     if ($executor->sqltrace) {
         print "$query;\n";
@@ -630,35 +635,6 @@ sub execute {
 	return $result;
 }
 
-#
-# Run EXPLAIN on the query in question, recording all notes in the EXPLAIN's Extra field into the statistics
-#
-
-sub id {
-	my $executor = shift;
-
-	# if no ID string has been defined yet, define one.
-
-	if ($executor->SUPER::id() eq '') {
-		my $dbh = $executor->dbh();
-		my $version = $dbh->selectrow_array("SELECT VERSION()");
-
-		my @capabilities;
-
-		push @capabilities, "master" if $dbh->selectrow_array("SHOW SLAVE HOSTS");
-		push @capabilities, "slave" if $dbh->selectrow_array("SHOW SLAVE STATUS");
-		push @capabilities, "no_semijoin" if $dbh->selectrow_array('SELECT @@optimizer_switch') =~ m{no_semijoin}sio;
-		push @capabilities, "no_materialization" if $dbh->selectrow_array('SELECT @@optimizer_switch') =~ m{no_materialization}sio;
-		push @capabilities, "mo_mrr" if $dbh->selectrow_array('SELECT @@optimizer_use_mrr') eq '0';
-		push @capabilities, "no_condition_pushdown" if $dbh->selectrow_array('SELECT @@engine_condition_pushdown') eq '0';
-		$executor->setId(ref($executor)." ".$version." (".join('; ', @capabilities).")");
-	}
-	
-	# Pass the call back to the parent class. It will respond with the id that was (just) defined.
-
-	return $executor->SUPER::id();
-}
-
 sub version {
 	my $executor = shift;
 	my $dbh = $executor->dbh();
@@ -675,6 +651,10 @@ sub masterStatus {
 	my $executor = shift;
 	return $executor->dbh()->selectrow_array("SHOW MASTER STATUS");
 }
+
+#
+# Run EXPLAIN on the query in question, recording all notes in the EXPLAIN's Extra field into the statistics
+#
 
 sub explain {
 	my ($executor, $query) = @_;
