@@ -37,18 +37,21 @@ my @transformers;
 
 sub BEGIN {
 	@transformer_names = (
+		'Count',
+		'DisableIndexes',
 		'Distinct',
+		'ExecuteAsPreparedTwice',
+		'ExecuteAsSPTwice',
+		'ExecuteAsView',
+		'FromSubquery',
 		'Having',
+		'InlineSubqueries',
+#		'InlineVirtualColumns',
 		'LimitDecrease',
 		'LimitIncrease',
 		'OrderBy',
-		'StraightJoin',
-		'InlineSubqueries',
-		'Count',
-		'ExecuteAsView',
-		'DisableIndexes',
-		'ExecuteAsSPTwice',
-		'ExecuteAsPreparedTwice'
+		'RemoveIndexHints',
+		'StraightJoin'
 	);
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
