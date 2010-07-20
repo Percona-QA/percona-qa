@@ -20,6 +20,7 @@ package GenTest::Transform::InlineSubqueries;
 require Exporter;
 @ISA = qw(GenTest GenTest::Transform);
 
+use strict;
 use lib 'lib';
 use GenTest;
 use GenTest::Transform;
