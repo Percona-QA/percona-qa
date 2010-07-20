@@ -153,9 +153,10 @@ sub run {
     my @executors;
     foreach my $i (0..2) {
         next if $self->config->dsn->[$i] eq '';
-        push @executors, GenTest::Executor->newFromDSN($self->config->dsn->[$i],
-                                                       osWindows()?undef:$channel);
-        $executors[$i]->sqltrace($self->config->sqltrace);
+	my $executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $channel);
+        $executor->sqltrace($self->config->sqltrace);
+	$executor->setId($i+1);
+        push @executors, $executor;
     }
     
     my $drizzle_only = $executors[0]->type == DB_DRIZZLE;
