@@ -46,8 +46,8 @@ use constant GENERATOR_VARCHAR_LENGTH	=> 10;
 use constant GENERATOR_MASKED_GRAMMAR => 11;
 use constant GENERATOR_GLOBAL_FRAME => 12;
 
-use constant GENERATOR_MAX_OCCURRENCES	=> 500;
-use constant GENERATOR_MAX_LENGTH	=> 3072;
+use constant GENERATOR_MAX_OCCURRENCES	=> 3500;
+use constant GENERATOR_MAX_LENGTH	=> 10000;
 
 my $field_pos;
 
