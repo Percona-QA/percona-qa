@@ -594,7 +594,7 @@ sub getSchemaMetaData {
                     "ELSE 'misc' END, ".
     	       "column_name, ".
                "CASE WHEN IS_USED_IN_PRIMARY = 'TRUE' THEN 'primary' ".
-                    "WHEN IS_INDEXED = 'TRUE' THEN 'indexed' ".
+                    "WHEN IS_INDEXED = 'YES' THEN 'indexed' ".
                     "ELSE 'ordinary' END ".
          "FROM data_dictionary.tables INNER JOIN ".
               "data_dictionary.columns USING(table_schema, table_name) ORDER BY table_schema, table_name"; 
