@@ -593,7 +593,7 @@ sub getSchemaMetaData {
                     "WHEN table_type = 'FUNCTION' THEN 'function' ".
                     "ELSE 'misc' END, ".
     	       "column_name, ".
-               "CASE WHEN IS_USED_IN_PRIMARY = 'TRUE' THEN 'primary' ".
+               "CASE WHEN IS_USED_IN_PRIMARY = 'YES' THEN 'primary' ".
                     "WHEN IS_INDEXED = 'YES' THEN 'indexed' ".
                     "ELSE 'ordinary' END ".
          "FROM data_dictionary.tables INNER JOIN ".
