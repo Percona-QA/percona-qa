@@ -214,7 +214,7 @@ sub run {
             croak "Dates and times are severly broken. Cannot be used for other than MySQL/Drizzle";
         }
     }
-    $field_perms[FIELD_NULLABILITY] = $fields->{null} || $fields->{nullability} || [ undef ];
+    $field_perms[FIELD_NULLABILITY] = $fields->{null} || $fields->{nullability} || [ (defined $self->[GD_NOTNULL] ? 'NOT NULL' : undef) ];
     $field_perms[FIELD_SIGN] = $fields->{sign} || [ undef ];
     $field_perms[FIELD_INDEX] = $fields->{indexes} || $fields->{keys} || [ undef, 'KEY' ];
     $field_perms[FIELD_CHARSET] =  $fields->{charsets} || [ undef ];
