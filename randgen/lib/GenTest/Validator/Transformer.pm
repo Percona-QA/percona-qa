@@ -38,7 +38,7 @@ my @transformers;
 sub BEGIN {
 	@transformer_names = (
 		'Count',
-		'DisableIndexes',
+#		'DisableIndexes',
 		'Distinct',
 		'ExecuteAsPreparedTwice',
 		'ExecuteAsSPTwice',
