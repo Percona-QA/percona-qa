@@ -57,7 +57,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $views, $start_dirty,
     $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest);
+    $report_xml_tt_dest, $notnull);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -90,6 +90,7 @@ my $opt_result = GetOptions(
 	'report-xml-tt-type=s' => \$report_xml_tt_type,
 	'report-xml-tt-dest=s' => \$report_xml_tt_dest,
 	'gendata:s' => \$gendata,
+	'notnull' => \$notnull,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
         'mask-level=i' => \$mask_level,
@@ -328,6 +329,7 @@ my @gentest_options;
 
 push @gentest_options, "--start-dirty" if defined $start_dirty;
 push @gentest_options, "--gendata=$gendata";
+push @gentest_options, "--notnull" if defined $notnull;
 push @gentest_options, "--engine=$engine" if defined $engine;
 push @gentest_options, "--rpl_mode=$rpl_mode" if defined $rpl_mode;
 push @gentest_options, map {'--validator='.$_} split(/,/,$validators) if defined $validators;

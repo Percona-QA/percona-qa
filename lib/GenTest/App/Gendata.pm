@@ -70,6 +70,7 @@ use constant GD_VIEWS => 6;
 use constant GD_VARCHAR_LENGTH => 7;
 use constant GD_SERVER_ID => 8;
 use constant GD_SQLTRACE => 9;
+use constant GD_NOTNULL => 10;
 
 sub new {
     my $class = shift;
@@ -83,6 +84,7 @@ sub new {
         'rows' => GD_ROWS,
         'views' => GD_VIEWS,
         'varchar_length' => GD_VARCHAR_LENGTH,
+        'notnull' => GD_NOTNULL,	
         'server_id' => GD_SERVER_ID,
         'sqltrace' => GD_SQLTRACE},@_);
 
@@ -218,11 +220,11 @@ sub run {
     $field_perms[FIELD_CHARSET] =  $fields->{charsets} || [ undef ];
     $field_perms[FIELD_COLLATION] = $fields->{collations} || [ undef ];
     
-    $data_perms[DATA_NUMBER] = $data->{numbers} || ['digit', 'digit', 'digit', 'digit', 'null' ];	# 20% NULL values
-    $data_perms[DATA_STRING] = $data->{strings} || ['letter', 'letter', 'letter', 'letter', 'null' ];
-    $data_perms[DATA_BLOB] = $data->{blobs} || [ 'data', 'data', 'data', 'data', 'null' ];
-    $data_perms[DATA_TEMPORAL] = $data->{temporals} || [ 'date', 'time', 'datetime', 'year', 'timestamp', 'null' ];
-    $data_perms[DATA_ENUM] = $data->{enum} || ['letter', 'letter', 'letter', 'letter', 'null' ];
+    $data_perms[DATA_NUMBER] = $data->{numbers} || ['digit', 'digit', 'digit', 'digit', (defined $self->[GD_NOTNULL] ? 'digit' : 'null') ];	# 20% NULL values
+    $data_perms[DATA_STRING] = $data->{strings} || ['letter', 'letter', 'letter', 'letter', (defined $self->[GD_NOTNULL] ? 'letter' : 'null') ];
+    $data_perms[DATA_BLOB] = $data->{blobs} || [ 'data', 'data', 'data', 'data', (defined $self->[GD_NOTNULL] ? 'data' : 'null') ];
+    $data_perms[DATA_TEMPORAL] = $data->{temporals} || [ 'date', 'time', 'datetime', 'year', 'timestamp', (defined $self->[GD_NOTNULL] ? 'date' : 'null') ];
+    $data_perms[DATA_ENUM] = $data->{enum} || ['letter', 'letter', 'letter', 'letter', (defined $self->[GD_NOTNULL] ? 'letter' : 'null') ];
 
     my @tables = (undef);
     my @myisam_tables;
@@ -337,7 +339,11 @@ sub run {
         $fields[$field_id]->[FIELD_SQL] = "`$field_name` ". join(' ' , grep { $_ ne '' } @field_copy);
         
         if ($field_copy[FIELD_TYPE] =~ m{timestamp}sio ) {
-            $field->[FIELD_SQL] .= ' NULL DEFAULT 0';
+	    if (defined $self->[GD_NOTNULL]) {
+               $field->[FIELD_SQL] .= ' NOT NULL';
+            } else {
+	       $field->[FIELD_SQL] .= ' NULL DEFAULT 0';
+            }
         }
     }
 
@@ -500,7 +506,7 @@ sub run {
                         $quote = 1;
                     }
                     
-                    if ($field->[FIELD_NULLABILITY] eq 'not null') {
+                    if (($field->[FIELD_NULLABILITY] eq 'not null') || ($self->[GD_NOTNULL])) {
                         # Remove NULL from the list of allowed values
                         @possible_values = grep { lc($_) ne 'null' } @{$data_perms[$value_type]};
                     } else {

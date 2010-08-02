@@ -27,7 +27,7 @@ use GenTest;
 use GenTest::Constants;
 use GenTest::App::GendataSimple;
 
-my ($dsn, $engine, $help, $views);
+my ($dsn, $engine, $help, $views, $notnull);
 
 my @ARGV_saved = @ARGV;
 
@@ -35,7 +35,8 @@ my $opt_result = GetOptions(
 	'dsn=s' => \$dsn,
 	'engine:s' => \$engine,
 	'help' => \$help,
-	'views' => \$views
+	'views' => \$views,
+	'notnull' => \$notnull
 );
 
 my $default_dsn = GenTest::App::GendataSimple->defaultDsn();
@@ -44,7 +45,8 @@ help() if !$opt_result || $help;
 
 my $app = GenTest::App::GendataSimple->new(dsn => $dsn,
                                            engine => $engine,
-                                           views => $views);
+                                           views => $views,
+					   notnull => $notnull);
 
 say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
 
@@ -59,6 +61,7 @@ $0 - Simple data generator. Options:
     --dsn       : MySQL DBI resource to connect to (default $default_dsn)
     --engine    : Table engine to use when creating tables (default: no ENGINE in CREATE TABLE )
     --views     : Generate views
+    --notnull	: Generate all fields with NOT NULL
     --help      : This help message 
 EOF
 ;

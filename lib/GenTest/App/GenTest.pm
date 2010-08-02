@@ -113,7 +113,8 @@ sub run {
                 $datagen = GenTest::App::GendataSimple->new(dsn => $dsn,
                                                             views => $self->config->views,
                                                             engine => $self->config->engine,
-                                                            sqltrace=> $self->config->sqltrace);
+                                                            sqltrace=> $self->config->sqltrace,
+                                                            notnull => $self->config->notnull);
             } else {
                 $datagen = GenTest::App::Gendata->new(spec_file => $self->config->gendata,
                                                       dsn => $dsn,
@@ -123,7 +124,8 @@ sub run {
                                                       rows => $self->config->rows,
                                                       views => $self->config->views,
                                                       varchar_length => $self->config->property('varchar-length'),
-                                                      sqltrace => $self->config->sqltrace);
+                                                      sqltrace => $self->config->sqltrace,
+                                                      notnull => $self->config->notnull);
             }
             $gendata_result = $datagen->run();
             
