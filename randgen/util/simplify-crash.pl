@@ -38,10 +38,11 @@ my $original_query = '
 ';
 
 # Maximum number of seconds a query will be allowed to proceed. It is assumed that most crashes will happen immediately after takeoff
-my $timeout = 5;
+my $timeout = 10;
 
 my @mtr_options = (
 #	'--mysqld=--innodb',
+	'--mysqld=--log-output=file',	# Prevents excessively long CSV recovery on each startup
 	'--start-and-exit',
 	'--start-dirty',
 	"--vardir=$vardir",
@@ -67,7 +68,13 @@ my $simplifier = GenTest::Simplifier::SQL->new(
 		my $connection_id = $dbh->selectrow_array("SELECT CONNECTION_ID()");
 		$dbh->do("CREATE EVENT timeout ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL $timeout SECOND DO KILL QUERY $connection_id");
 
-		my $oracle_result = $executor->execute($oracle_query);
+		$executor->execute($oracle_query);
+
+		# Or, alternatively, execute as a prepared statement
+		$executor->execute("PREPARE prep_stmt FROM \"$oracle_query\"");
+		$executor->execute("EXECUTE prep_stmt");
+		$executor->execute("EXECUTE prep_stmt");
+		$executor->execute("DEALLOCATE PREPARE prep_stmt");
 
 		$dbh->do("DROP EVENT IF EXISTS timeout");
 
