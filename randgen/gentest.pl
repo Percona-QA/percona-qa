@@ -67,7 +67,8 @@ my $opt_result = GetOptions($options,
                             'views',
                             'start-dirty',
                             'filter=s',
-                            'valgrind');
+                            'valgrind',
+                            'notnull');
 backwardCompatability($options);
 my $config = GenTest::Properties->new(
     options => $options,
@@ -103,7 +104,8 @@ my $config = GenTest::Properties->new(
               'start-dirty',
               'filter',
               'valgrind',
-              'sqltrace'],
+              'sqltrace',
+              'notnull'],
     help => \&help);
 
 help() if !$opt_result || $config->help;

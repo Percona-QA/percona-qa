@@ -34,6 +34,7 @@ use constant GDS_DSN => 0;
 use constant GDS_ENGINE => 1;
 use constant GDS_VIEWS => 2;
 use constant GDS_SQLTRACE => 3;
+use constant GDS_NOTNULL => 4;
 
 sub new {
     my $class = shift;
@@ -42,7 +43,8 @@ sub new {
         'dsn' => GDS_DSN,
         'engine' => GDS_ENGINE,
         'views' => GDS_VIEWS,
-        'sqltrace' => GDS_SQLTRACE },@_);
+        'sqltrace' => GDS_SQLTRACE,
+	'notnull' => GDS_NOTNULL },@_);
 
     if (not defined $self->[GDS_DSN]) {
         $self->[GDS_DSN] = GDS_DEFAULT_DSN;
@@ -100,7 +102,7 @@ sub gen_table {
 	my ($self, $executor, $name, $size, $prng) = @_;
 
     my $varchar_length = 1;
-    my $nullability = '/*! NULL */';  
+    my $nullability = defined $self->[GDS_NOTNULL] ? 'NOT NULL' : '/*! NULL */';  
     ### NULL is not a valid ANSI constraint, (but NOT NULL of course,
     ### is)
 
@@ -226,9 +228,16 @@ sub gen_table {
 		# 10% NULLs, 10% tinyint_unsigned, 80% digits
 
 		my $pick1 = $prng->uint16(0,9);
-		my $pick2 =	 $prng->uint16(0,9);
-		my $rnd_int1 = $pick1 == 9 ? "NULL" : ($pick1 == 8 ? $prng->int(0,255) : $prng->digit() );
-		my $rnd_int2 = $pick2 == 9 ? "NULL" : ($pick1 == 8 ? $prng->int(0,255) : $prng->digit() );
+		my $pick2 = $prng->uint16(0,9);
+
+		my ($rnd_int1, $rnd_int2);
+		if (defined $self->[GDS_NOTNULL]) {
+			$rnd_int1 = ($pick1 == 8 ? $prng->int(0,255) : $prng->digit() );
+			$rnd_int2 = ($pick1 == 8 ? $prng->int(0,255) : $prng->digit() );
+		} else {
+			$rnd_int1 = $pick1 == 9 ? "NULL" : ($pick1 == 8 ? $prng->int(0,255) : $prng->digit() );
+			$rnd_int2 = $pick2 == 9 ? "NULL" : ($pick1 == 8 ? $prng->int(0,255) : $prng->digit() );
+		}
 
 		# 10% NULLS, 10% '1900-01-01', pick real date/time/datetime for the rest
 
@@ -242,10 +251,21 @@ sub gen_table {
 
 		my $rnd_datetime = $prng->datetime();
 		my $rnd_datetime_date_only = $prng->date();
-		$rnd_datetime = ($rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime_date_only." 00:00:00", $rnd_datetime_date_only." 00:00:00", "NULL", '1900-01-01 00:00:00')[$prng->uint16(0,9)];
+
+		if (defined $self->[GDS_NOTNULL]) {
+			$rnd_datetime = ($rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime_date_only." 00:00:00", $rnd_datetime_date_only." 00:00:00", '1900-01-01 00:00:00')[$prng->uint16(0,9)];
+		} else {
+			$rnd_datetime = ($rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime, $rnd_datetime_date_only." 00:00:00", $rnd_datetime_date_only." 00:00:00", "NULL", '1900-01-01 00:00:00')[$prng->uint16(0,9)];
+		}
 		$rnd_datetime = "'".$rnd_datetime."'" if not $rnd_datetime eq "NULL";
 
-		my $rnd_varchar = $prng->uint16(0,9) == 9 ? "NULL" : "'".$prng->string($varchar_length)."'";
+		my $rnd_varchar;
+
+		if (defined $self->[GDS_NOTNULL]) {
+			$rnd_varchar = "'".$prng->string($varchar_length)."'";
+		} else {
+			$rnd_varchar = $prng->uint16(0,9) == 9 ? "NULL" : "'".$prng->string($varchar_length)."'";
+		}
 
 		push(@values, "($rnd_int1, $rnd_int2, $rnd_date, $rnd_date, $rnd_time, $rnd_time, $rnd_datetime, $rnd_datetime, $rnd_varchar, $rnd_varchar)");
 
