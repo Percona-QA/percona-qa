@@ -43,8 +43,8 @@ my @desired_outcomes = (
 );
 
 my @dsns = (
-	'dbi:mysql:host=127.0.0.1:port=19306:user=root:database=test',
-	'dbi:mysql:host=127.0.0.1:port=19308:user=root:database=test'
+	'dbi:mysql:host=127.0.0.1:port=19300:user=root:database=test',
+	'dbi:mysql:host=127.0.0.1:port=19302:user=root:database=test'
 );
 
 # End of user-editable part
