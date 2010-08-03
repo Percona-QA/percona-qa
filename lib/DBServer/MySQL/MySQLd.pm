@@ -28,6 +28,7 @@ use strict;
 
 use Carp;
 use Data::Dumper;
+use File::Path qw(make_path);
 
 use constant MYSQLD_BASEDIR => 0;
 use constant MYSQLD_VARDIR => 1;
@@ -232,10 +233,10 @@ sub createMysqlBase  {
     }
 
     ## 2. Create database directory structure
-    mkdir $self->vardir;
-    mkdir $self->datadir;
-    mkdir $self->datadir."/mysql";
-    mkdir $self->datadir."/test";
+    make_path($self->vardir);
+    make_path($self->datadir);
+    make_path($self->datadir."/mysql");
+    make_path($self->datadir."/test");
     
     ## 3. Create boot file
     my $boot = $self->vardir."/boot.sql";
