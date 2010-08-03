@@ -367,7 +367,7 @@ if ($rpl_mode || (defined $basedirs[1])) {
     my @dump_files;
     
 	foreach my $i (0..$#server) {
-		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
+		$dump_files[$i] = tmpdir()."server_".$$."_".$i.".dump";
         
 		my $dump_result = $server[$i]->dumpdb($database,$dump_files[$i]);
 		exit_test($dump_result >> 8) if $dump_result > 0;

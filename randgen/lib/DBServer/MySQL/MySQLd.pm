@@ -395,10 +395,16 @@ sub dumper {
 sub dumpdb {
     my ($self,$database, $file) = @_;
     say("Dumping MySQL server ".$self->version." on port ".$self->port);
-    my $dump_result = system('"'.$self->dumper.
-                             "\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=".
-                             $self->port.
-                             " --user=root $database | sort > $file");
+    my $dump_command = '"'.$self->dumper.
+                             "\" --hex-blob --skip-triggers --compact ".
+                             "--order-by-primary --skip-extended-insert ".
+                             "--no-create-info --host=127.0.0.1 ".
+                             "--port=".$self->port;
+    # --no-tablespaces option was introduced in version 5.1.14.
+    if ($self->_newerThan(5,1,13)) {
+        $dump_command = $dump_command . " --no-tablespaces";
+    }
+    my $dump_result = system("$dump_command | sort > $file");
     return $dump_result;
 }
 
@@ -580,6 +586,17 @@ sub _olderThan {
     my $v = $v1*1000 + $v2 * 100 + $v3;
 
     return $v < $b;
+}
+
+sub _newerThan {
+    my ($self,$b1,$b2,$b3) = @_;
+
+    my ($v1, $v2, $v3) = $self->versionNumbers;
+
+    my $b = $b1*1000 + $b2 * 100 + $b3;
+    my $v = $v1*1000 + $v2 * 100 + $v3;
+
+    return $v > $b;
 }
 
 
