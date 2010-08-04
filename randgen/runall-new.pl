@@ -217,8 +217,13 @@ if ($rpl_mode ne '') {
     
     if ($status > DBSTATUS_OK) {
         stopServers();
-        say(system("ls -l ".$rplsrv->master->datadir));
-        say(system("ls -l ".$rplsrv->slave->datadir));
+        if (osWindows()) {
+            say(system("dir ".$rplsrv->master->datadir));
+            say(system("dir ".$rplsrv->slave->datadir));
+        } else {
+            say(system("ls -l ".$rplsrv->master->datadir));
+            say(system("ls -l ".$rplsrv->slave->datadir));
+        }
         croak("Could not start replicating server pair");
     }
     
@@ -255,7 +260,11 @@ if ($rpl_mode ne '') {
         
         if ($status > DBSTATUS_OK) {
             stopServers();
-            say(system("ls -l ".$server[$server_id]->datadir));
+            if (osWindows()) {
+                say(system("dir ".$server[$server_id]->datadir));
+            } else {
+                say(system("ls -l ".$server[$server_id]->datadir));
+            }
             croak("Could not start all servers");
         }
         
