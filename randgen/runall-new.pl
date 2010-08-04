@@ -218,8 +218,8 @@ if ($rpl_mode ne '') {
     if ($status > DBSTATUS_OK) {
         stopServers();
         if (osWindows()) {
-            say(system("dir ".$rplsrv->master->datadir));
-            say(system("dir ".$rplsrv->slave->datadir));
+            say(system("dir ".unix2winPath($rplsrv->master->datadir)));
+            say(system("dir ".unix2winPath($rplsrv->slave->datadir)));
         } else {
             say(system("ls -l ".$rplsrv->master->datadir));
             say(system("ls -l ".$rplsrv->slave->datadir));
@@ -261,7 +261,7 @@ if ($rpl_mode ne '') {
         if ($status > DBSTATUS_OK) {
             stopServers();
             if (osWindows()) {
-                say(system("dir ".$server[$server_id]->datadir));
+                say(system("dir ".unix2winPath($server[$server_id]->datadir)));
             } else {
                 say(system("ls -l ".$server[$server_id]->datadir));
             }

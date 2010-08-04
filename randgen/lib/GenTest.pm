@@ -19,7 +19,8 @@ package GenTest;
 use base 'Exporter';
 
 @EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'osWindows', 'osLinux',
-           'osSolaris', 'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug');
+           'osSolaris', 'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug',
+		   'unix2winPath');
 
 use strict;
 
@@ -155,6 +156,15 @@ sub isoUTCTimestamp {
 	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = defined $datetime ? gmtime($datetime) : gmtime();
 	return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
 	
+}
+
+# unix2winPath:
+#   Converts the given file path from unix style to windows native style
+#   by replacing all forward slashes to backslashes.
+sub unix2winPath {
+    my $path = shift;
+    $path =~ s/\//\\/g; # replace "/" with "\"
+    return $path;
 }
 
 sub rqg_debug {
