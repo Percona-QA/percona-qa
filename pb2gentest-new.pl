@@ -995,7 +995,7 @@ if ($command_result_shifted > 0) {
 	} else {
 		print($full_test_name." [ fail ]\n");
 	}
-	say('runall.pl failed with exit code '.$command_result_shifted."\n");
+	say('runall-new.pl failed with exit code '.$command_result_shifted."\n");
 	say("Look above this message in the test log for failure details.\n");
 } else {
 	print($full_test_name." [ pass ]\n");
