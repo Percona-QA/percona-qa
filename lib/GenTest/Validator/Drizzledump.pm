@@ -28,37 +28,44 @@ use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Validator;
 
-use constant SERVER1_FILE_NAME  => 0;
-use constant SERVER2_FILE_NAME  => 1;
-
 sub validate {
 	my ($validator, $executors, $results) = @_;
 
+        my $query_value = $results->[0]->[0] ;
+
+        if ($query_value == "SELECT 1")
+        {
+        say ("Woohoo!!  $query_value"); 
         # do some setup and whatnot
 	my @files;
 	my $port = '9306';
 
-	my $database = 'drizzledump_test_db' ;
-        my $orig_database_name = $database."_orig" ;
-        my $basedir = $executors->[0]->dbh()->selectrow_array('SELECT @$basedir') ;
-        say("$basedir , $basedir->[0]");
-        my $drizzledump = $basedir.'/client/drizzledump' ;
-        my $drizzle_client = $basedir.'/client/drizzle' ;
+	my $database = 'drizzledump_db' ;
+        my $restored_database = $database."_restore" ;
+        my @basedir = $executors->[0]->dbh()->selectrow_array('SELECT @@basedir') ;
+        # little kludge to get the proper basedir if drizzle was started via test-run.pl
+        # such a situation sets basedir to the drizzle/tests directory and can
+        # muck up efforts to get to the client directory
+        my @basedir_split = split(/\//, @basedir->[0]) ;
+        if (@basedir_split[-1] == 'tests')
+        {
+          pop(@basedir_split); 
+          @basedir = join('/',@basedir_split);
+        }
+       
+        my $drizzledump = @basedir->[0].'/client/drizzledump' ;
+        my $drizzle_client = @basedir->[0].'/client/drizzle' ;
 
         
         # dump our database under test
-        say("Initial data: $basedir, $drizzledump, $drizzle_client, $orig_database_name");
 	my $drizzledump_file = tmpdir()."/dump_".$$."_".$port.".sql";
+        say("drizzledump file is:  $drizzledump_file");
 	my $drizzledump_result = system("$drizzledump --compact --order-by-primary --host=127.0.0.1 --port=$port --user=root $database  > $drizzledump_file") ;
 	return STATUS_UNKNOWN_ERROR if $drizzledump_result > 0 ;
 
-        # rename our original test database
-        say("Renaming original database...");
-        my $basedir = $executors->[0]->dbh()->selectall_arrayref("RENAME DATABASE $database TO $orig_database_name") ;
- 
         # restore test database from dumpfile
         say("Restoring from dumpfile...");
-        my $drizzle_restore_result = system("$drizzle_client --host=127.0.0.1 --port=$port --user=root <  $drizzledump_file") ;
+        my $drizzle_restore_result = system("$drizzle_client --host=127.0.0.1 --port=$port --user=root $restored_database <  $drizzledump_file") ;
         return STATUS_UNKNOWN_ERROR if $drizzle_restore_result > 0 ;
 
         # compare original + restored databases
@@ -69,13 +76,13 @@ sub validate {
 
         my $get_table_names = " SELECT DISTINCT(table_name) ".
                                " FROM data_dictionary.tables ". 
-                               " WHERE table_schema = '".$orig_database_name."'" ;
+                               " WHERE table_schema = '".$database."'" ;
 
         my $table_name = $executors->[0]->dbh()->selectall_arrayref($get_table_names) ;
   
         my $get_table_columns = " SELECT column_name FROM data_dictionary.tables INNER JOIN ".
                                   " DATA_DICTIONARY.columns USING (table_schema, table_name) ".
-                                  " WHERE table_schema = '".$orig_database_name."'". 
+                                  " WHERE table_schema = '".$database."'". 
                                   " AND table_name = '".$table_name."'"   ;
 
         my $table_columns = $executors->[0]->dbh()->selectall_arrayref($get_table_columns) ; 
@@ -103,6 +110,10 @@ sub validate {
 		unlink($drizzledump_file);
 		return STATUS_OK;
 	}
+
+  }
+
+return STATUS_OK ;
 }
 
 
