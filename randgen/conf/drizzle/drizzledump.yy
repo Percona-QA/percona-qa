@@ -6,12 +6,12 @@
 
 query:
   { $tables = 0 ;  "" } 
-  DROP DATABASE IF EXISTS drizzledump_test_db ; CREATE DATABASE drizzledump_test_db ; USE drizzledump_test_db ; create_test_table_list ;
+  DROP DATABASE IF EXISTS drizzledump_db ; DROP DATABASE IF EXISTS drizzledump_db_restore ; CREATE DATABASE drizzledump_db ; CREATE DATABASE drizzledump_db_restore ; USE drizzledump_db ; create_test_table_list ; SELECT 1 ;
 
 create_test_table_list:
 # rule for picking one or more tables from the initial test bed
 # sub-rules handle table population and composition
-  create_test_table_list ; create_test_table_set | 
+# this line of the rule is disabled currently (want only one table at a time:  create_test_table_list ; create_test_table_set | 
   create_test_table_set | create_test_table_set ;
 
 create_test_table_set:
