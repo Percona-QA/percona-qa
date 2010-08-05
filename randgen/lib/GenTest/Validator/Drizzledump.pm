@@ -47,7 +47,7 @@ sub validate {
           # such a situation sets basedir to the drizzle/tests directory and can
           # muck up efforts to get to the client directory
           my @basedir_split = split(/\//, @basedir->[0]) ;
-          if (@basedir_split[-1] == 'tests')
+          if (@basedir_split[-1] eq 'tests')
           {
             pop(@basedir_split); 
             @basedir = join('/',@basedir_split);
