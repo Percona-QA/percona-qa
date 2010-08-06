@@ -78,36 +78,42 @@ sub validate {
                                  " FROM data_dictionary.tables ". 
                                  " WHERE table_schema = '".$database."'" ;
 
-          my $table_name = $executors->[0]->dbh()->selectall_arrayref($get_table_names) ;
+          # Here, we get the name of the single table in the test db
+          # Need to change the perl to better deal with a list of tables (more than 1)
+          my $table_name = $executors->[0]->dbh()->selectrow_array($get_table_names) ;
   
           my $get_table_columns = " SELECT column_name FROM data_dictionary.tables INNER JOIN ".
                                   " DATA_DICTIONARY.columns USING (table_schema, table_name) ".
                                   " WHERE table_schema = '".$database."'". 
                                   " AND table_name = '".$table_name."'"   ;
 
-          my $table_columns = $executors->[0]->dbh()->selectall_arrayref($get_table_columns) ; 
 
-          my $compare_orig_and_restored =     "SELECT MIN(TableName) as TableName, a, b ".
+          my $table_columns = $executors->[0]->dbh()->selectcol_arrayref($get_table_columns) ; 
+          my $table_column_list = join(' , ' , @$table_columns) ;
+
+          say("Comparing original and restored tables for table : $database . $table_name" );
+          my $compare_orig_and_restored =     "SELECT MIN(TableName) as TableName, $table_column_list ".
                                  " FROM ".
                                  " ( ".
-                                 "   SELECT 'Table A' as TableName, a, b ".
-                                 " FROM t1 ".
+                                 "   SELECT 'Table A' as TableName, $table_column_list ".
+                                 " FROM $database . $table_name ".
                                  " UNION ALL ".
-                                 " SELECT 'Table B' as TableName, a, b ".
-                                 " FROM t2 ".
+                                 " SELECT 'Table B' as TableName, $table_column_list ".
+                                 " FROM $restored_database . $table_name ".
                                  " ) tmp ".
-                                 " GROUP BY a, b ".
+                                 " GROUP BY $table_column_list ".
                                  " HAVING COUNT(*) = 1 ORDER BY `pk` " ;
+          say("$compare_orig_and_restored");
 
           my $diff_result = $executors->[0]->dbh()->selectall_arrayref($compare_orig_and_restored) ;
 
-	  if ($diff_result ) {
+	  if ($diff_result->[0] != undef ) {
 		say("Differences between the two databases were found after dump/restore from file ".$drizzledump_file );
                 say("Comparison query: ".$compare_orig_and_restored ) ;
                 say("Returned:  ".$diff_result) ;
 		return STATUS_DATABASE_CORRUPTION ;
 	  } else {
-		unlink($drizzledump_file);
+		#unlink($drizzledump_file);
 		return STATUS_OK;
 	}
 
