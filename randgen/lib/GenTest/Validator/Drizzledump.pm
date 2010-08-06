@@ -30,7 +30,8 @@ use GenTest::Validator;
 
 sub validate {
 	my ($validator, $executors, $results) = @_;
-
+        my $fail_count ;
+        my $total_count ;
         my $query_value = $results->[0]->[0] ;
         say ("$query_value");
         if ($query_value eq ' SELECT 1')
@@ -80,45 +81,59 @@ sub validate {
 
           # Here, we get the name of the single table in the test db
           # Need to change the perl to better deal with a list of tables (more than 1)
-          my $table_name = $executors->[0]->dbh()->selectrow_array($get_table_names) ;
-  
-          my $get_table_columns = " SELECT column_name FROM data_dictionary.tables INNER JOIN ".
-                                  " DATA_DICTIONARY.columns USING (table_schema, table_name) ".
-                                  " WHERE table_schema = '".$database."'". 
-                                  " AND table_name = '".$table_name."'"   ;
+          my $table_names = $executors->[0]->dbh()->selectcol_arrayref($get_table_names) ;
+
+          say("@$table_names");
+ 
+          foreach(@$table_names)
+          { 
+            $total_count += 1 ;
+            my $get_table_columns = " SELECT column_name FROM data_dictionary.tables INNER JOIN ".
+                                    " DATA_DICTIONARY.columns USING (table_schema, table_name) ".
+                                    " WHERE table_schema = '".$database."'". 
+                                    " AND table_name = '".$_."'"   ;
 
 
-          my $table_columns = $executors->[0]->dbh()->selectcol_arrayref($get_table_columns) ; 
-          my $table_column_list = join(' , ' , @$table_columns) ;
+            my $table_columns = $executors->[0]->dbh()->selectcol_arrayref($get_table_columns) ; 
+            my $table_column_list = join(' , ' , @$table_columns) ;
 
-          say("Comparing original and restored tables for table : $database . $table_name" );
-          my $compare_orig_and_restored =     "SELECT MIN(TableName) as TableName, $table_column_list ".
+            say("Comparing original and restored tables for table : $database . $_" );
+            my $compare_orig_and_restored =     "SELECT MIN(TableName) as TableName, $table_column_list ".
                                  " FROM ".
                                  " ( ".
                                  "   SELECT 'Table A' as TableName, $table_column_list ".
-                                 " FROM $database . $table_name ".
+                                 " FROM $database . $_ ".
                                  " UNION ALL ".
                                  " SELECT 'Table B' as TableName, $table_column_list ".
-                                 " FROM $restored_database . $table_name ".
+                                 " FROM $restored_database . $_ ".
                                  " ) tmp ".
                                  " GROUP BY $table_column_list ".
                                  " HAVING COUNT(*) = 1 ORDER BY `pk` " ;
-          say("$compare_orig_and_restored");
 
-          my $diff_result = $executors->[0]->dbh()->selectall_arrayref($compare_orig_and_restored) ;
+            my $diff_result = $executors->[0]->dbh()->selectall_arrayref($compare_orig_and_restored) ;
+            if ($diff_result->[0] != undef)
+            {
+               say("Differences between the two databases were found after dump/restore from file ".$drizzledump_file );
+               say("Comparison query: ".$compare_orig_and_restored ) ;
+               say("Returned:  ".$diff_result) ; 
+               $fail_count += 1;
+            } 
 
-	  if ($diff_result->[0] != undef ) {
-		say("Differences between the two databases were found after dump/restore from file ".$drizzledump_file );
-                say("Comparison query: ".$compare_orig_and_restored ) ;
-                say("Returned:  ".$diff_result) ;
+          }
+
+	    if ($fail_count ) {
+                say("$fail_count /  $total_count test tables failed validation") ;
 		return STATUS_DATABASE_CORRUPTION ;
-	  } else {
+	    } else {
+                # TODO - have proper cleanup for each drizzledump file created
 		#unlink($drizzledump_file);
+                say("All tests passed - tested $total_count tables");
 		return STATUS_OK;
-	}
+	   }
+
 
   }
-say("I'm lonely");
+
 return STATUS_OK ;
 }
 
