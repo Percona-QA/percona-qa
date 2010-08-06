@@ -12,7 +12,9 @@ create_test_table_list:
 # rule for picking one or more tables from the initial test bed
 # sub-rules handle table population and composition
 # this line of the rule is disabled currently (want only one table at a time:  create_test_table_list ; create_test_table_set | 
-  create_test_table_set | create_test_table_set ;
+# temp disable  create_test_table_set | create_test_table_set ;
+# Line below is test for handling 2+ tables in a query set
+create_test_table_set ; create_test_table_set ;
 
 create_test_table_set:
   create_table ; populate_table ; modify_table ;
