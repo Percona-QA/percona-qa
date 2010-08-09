@@ -30,6 +30,8 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $orig_query) = @_;
 
+	return STATUS_WONT_HANDLE if $orig_query =~ m{OFFSET}sio;
+
 	if (my ($orig_limit) = $orig_query =~ m{LIMIT (\d+)}sio) {
 		return STATUS_WONT_HANDLE if $orig_limit == 0;
 		$orig_query =~ s{LIMIT \d+}{LIMIT 1}sio;
