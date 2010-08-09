@@ -33,10 +33,8 @@ sub validate {
         my $fail_count ;
         my $total_count ;
         my $query_value = $results->[0]->[0] ;
-        say ("$query_value");
         if ($query_value eq ' SELECT 1')
         {
-          say ("Woohoo!!  $query_value"); 
           # do some setup and whatnot
           my @files;
 	  my $port = '9306';
@@ -109,6 +107,8 @@ sub validate {
                                  " ) tmp ".
                                  " GROUP BY $table_column_list ".
                                  " HAVING COUNT(*) = 1 ORDER BY `pk` " ;
+
+            say("$compare_orig_and_restored");
 
             my $diff_result = $executors->[0]->dbh()->selectall_arrayref($compare_orig_and_restored) ;
             if ($diff_result->[0] != undef)
