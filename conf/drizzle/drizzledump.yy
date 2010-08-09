@@ -11,10 +11,13 @@ query:
 create_test_table_list:
 # rule for picking one or more tables from the initial test bed
 # sub-rules handle table population and composition
-# this line of the rule is disabled currently (want only one table at a time:  create_test_table_list ; create_test_table_set | 
-# temp disable  create_test_table_set | create_test_table_set ;
-# Line below is test for handling 2+ tables in a query set
-create_test_table_set ; create_test_table_set ;
+ create_test_table_list ; create_test_table_set |
+ create_test_table_list ; create_test_table_set |
+ create_test_table_list ; create_test_table_set | 
+ create_test_table_list ; create_test_table_set |
+ create_test_table_set ; create_test_table_set ; create_test_table_set |
+ create_test_table_set ; create_test_table_set |
+ create_test_table_set | create_test_table_set ;
 
 create_test_table_set:
   create_table ; populate_table ; modify_table ;
@@ -59,7 +62,31 @@ modify_table:
 # We alter the tables by ALTERing the table and DROPping COLUMNS
 # we also include not dropping any columns as an option
 # TODO:  Allow for adding columns
- | ;
+# We set the list of droppable columns here so it'll be consistent
+# during the query generation
+# NOTE - we don't drop pk as our comparison function relies
+# on the presence of a primary key (this is a bit of a cheat, perhaps)
+#
+# We are currently generating individual ALTER / DROP statements.
+# While it would be nice to also generate compound / multi-DROP ALTER statements,
+# we would need to ensure that we don't generate bad ALTER's otherwise we
+# would have a lot of bad queries / not generate as many interesting
+# table combos
+alter_table_list ;
+
+alter_table_list:
+   alter_table_list ; alter_table_item | alter_table_item | alter_table_item ;
+
+alter_table_item:
+  ALTER TABLE { "dump_table".$tables } DROP drop_column_name ;
+
+drop_column_name:
+  `col_char_10` | `col_char_10_key` | `col_char_10_not_null` | `col_char_10_not_null_key` |
+  `col_char_1024` | `col_char_1024_key`  | `col_char_1024_not_null` | `col_char_1024_not_null_key` |
+  `col_int` | `col_int_key` | `col_int_not_null` | `col_int_not_null_key` |  
+  `col_bigint` | `col_bigint_key` | `col_bigint_not_null` | `col_bigint_not_null_key` |  
+  `col_enum` | `col_enum_key` | `col_enum_not_null` | `col_enum_not_null_key` |  
+  `col_text` | `col_text_key` | `col_text_not_null` | `col_text_not_null_key` ;
 
 new_test_table:
 # This rule should generate tables to be dumped named dump_table1, dump_table2, etc
