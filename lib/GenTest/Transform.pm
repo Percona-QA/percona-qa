@@ -71,6 +71,7 @@ sub transformExecuteValidate {
 		# and pick the first result set that was returned and use it during further processing.
 
 		foreach my $transformed_query_part (@$transformed_query) {
+			$transformed_query_part = "/* ".ref($transformer)." */ ".$transformed_query_part;
 			my $part_result = $executor->execute($transformed_query_part);
 			if (
 				($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
@@ -87,6 +88,7 @@ sub transformExecuteValidate {
 
 		$transformed_query = join('; ',@$transformed_query);
 	} else {
+		$transformed_query = "/* ".ref($transformer)." */ ".$transformed_query;
 		$result_transformed = $executor->execute($transformed_query, 1);
 	}
 
