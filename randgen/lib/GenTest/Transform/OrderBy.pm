@@ -32,7 +32,6 @@ sub transform {
 	my ($class, $original_query) = @_;
 
 	if (
-		($original_query !~ m{ORDER\s+BY}io) ||
 		($original_query =~ m{GROUP\s+BY}io)
 	) {
 		return STATUS_WONT_HANDLE;
@@ -40,11 +39,26 @@ sub transform {
 		my $transform_outcome;
 		if ($original_query =~ m{LIMIT[^()]*$}sio) {
 			$transform_outcome = "TRANSFORM_OUTCOME_SUPERSET";
+
+			if ($original_query =~ s{ORDER\s+BY[^()]*$}{}sio) {
+				# Removing ORDER BY
+			} elsif ($original_query =~ s{LIMIT[^()]*$}{ORDER BY 1}sio) {
+				# Add ORDER BY 1 ... LIMIT
+			} else {
+				return STATUS_WONT_HANDLE;
+			}
 		} else {
 			$transform_outcome = "TRANSFORM_OUTCOME_UNORDERED_MATCH";
+
+			if ($original_query =~ s{ORDER\s+BY[^()]*$}{}sio) {
+				# Removing ORDER BY
+			} elsif ($original_query =~ s{$}{ORDER BY 1}sio) {
+				# Add ORDER BY 1 (no LIMIT)
+			} else {
+				return STATUS_WONT_HANDLE;
+			}
 		}
 
-		$original_query =~ s{ORDER\s+BY[^()]*$}{}sio;
 		return $original_query." /* $transform_outcome */ ";
 	}
 }
