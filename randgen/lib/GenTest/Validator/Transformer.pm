@@ -37,6 +37,7 @@ my @transformers;
 
 sub BEGIN {
 	@transformer_names = (
+		'ConvertSubqueriesToViews',
 		'Count',
 #		'DisableIndexes',
 		'Distinct',
