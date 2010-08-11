@@ -133,7 +133,7 @@ sub new {
     $self->[MYSQLD_LIBMYSQL] = 
        $self->_findDir([$self->basedir], 
                        osWindows()?["libmysql/Debug","libmysql/RelWithDebInfo","libmysql/Release","lib","lib/debug","lib/opt","bin"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
-                       osWindows()?"libmysql.dll":"libmysqlclient.so");
+                       osWindows()?"libmysql.dll":osMac()?"libmysqlclient.dylib":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
