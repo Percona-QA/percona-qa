@@ -30,11 +30,15 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $orig_query) = @_;
 
-	if ($orig_query !~ m{HAVING}sio) {
+	my $having_count = $orig_query =~ m{HAVING}sio;
+	
+	if ($having_count != 1) {
 		return STATUS_WONT_HANDLE;
-	} else {
+	} elsif ($orig_query =~ m{HAVING[^()]*$}sio) {
 		$orig_query =~ s{HAVING.*(ORDER\s+BY|LIMIT|$)}{ $1}sio;
 		return $orig_query." /* TRANSFORM_OUTCOME_SUPERSET */";
+	} else {
+		return STATUS_WONT_HANDLE;
 	}
 }
 

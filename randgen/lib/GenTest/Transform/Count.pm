@@ -32,7 +32,7 @@ use GenTest::Constants;
 # 
 # SELECT COUNT(*) FROM ... -> SELECT * FROM ...
 #
-# SELECT ... FROM ... -> SELECT COUNT(*) FROM ...
+# SELECT ... FROM ... -> SELECT COUNT(*), ... FROM ...
 #
 # It avoids GROUP BY and any other aggregate functions because
 # those are difficult to validate with a simple check such as 
@@ -48,7 +48,7 @@ sub transform {
 
 	my ($select_list) = $orig_query =~ m{SELECT (.*?) FROM}sio;
 
-	if ($select_list =~ m{AVG|BIT|DISTINCT|GROUP|MAX|MIN|STD|SUM|VAR}sio) {
+	if ($select_list =~ m{AVG|BIT|DISTINCT|GROUP|MAX|MIN|STD|SUM|VAR|STRAIGHT_JOIN|SQL_SMALL_RESULT}sio) {
 		return STATUS_WONT_HANDLE;
 	} elsif ($select_list !~ m{COUNT}sio) {
 		$orig_query =~ s{SELECT (.*?) FROM}{SELECT COUNT(*) , $1 FROM}sio;
