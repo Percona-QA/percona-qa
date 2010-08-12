@@ -37,7 +37,6 @@ use constant TRANSFORM_OUTCOME_SINGLE_ROW	=> 1005;
 use constant TRANSFORM_OUTCOME_FIRST_ROW	=> 1006;
 use constant TRANSFORM_OUTCOME_DISTINCT		=> 1007;
 use constant TRANSFORM_OUTCOME_COUNT		=> 1008;
-use constant TRANSFORM_OUTCOME_CUSTOM		=> 1009;
 
 my %transform_outcomes = (
 	'TRANSFORM_OUTCOME_EXACT_MATCH'		=> 1001,
@@ -47,8 +46,7 @@ my %transform_outcomes = (
 	'TRANSFORM_OUTCOME_SINGLE_ROW'		=> 1005,
 	'TRANSFORM_OUTCOME_FIRST_ROW'		=> 1006,
 	'TRANSFORM_OUTCOME_DISTINCT'		=> 1007,
-	'TRANSFORM_OUTCOME_COUNT'		=> 1008,
-	'TRANSFORM_OUTCOME_CUSTOM'		=> 1009
+	'TRANSFORM_OUTCOME_COUNT'		=> 1008
 );
 
 sub transformExecuteValidate {
@@ -57,7 +55,9 @@ sub transformExecuteValidate {
 	$transformer->[TRANSFORMER_QUERIES_PROCESSED]++;
 
 	my $transformed_query = $transformer->transform($original_query, $executor);
-	my $result_transformed;
+	my @transformed_queries;
+	my @transformed_results;
+	my $transform_outcome;
 
 	if (
 		($transformed_query eq STATUS_OK) ||
@@ -65,52 +65,50 @@ sub transformExecuteValidate {
 	) {
 		return STATUS_OK;
 	} elsif ($transformed_query =~ m{^\d+$}sgio) {
-		return $transformed_query;
+		return $transformed_query;	# Error was returned and no queries
 	} elsif (ref($transformed_query) eq 'ARRAY') {
-		# If the Transformer returned several queries, execute each one independently
-		# and pick the first result set that was returned and use it during further processing.
-
-		foreach my $transformed_query_part (@$transformed_query) {
-			$transformed_query_part = "/* ".ref($transformer)." */ ".$transformed_query_part;
-			my $part_result = $executor->execute($transformed_query_part);
-			if (
-				($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
-			) {
-				return STATUS_ENVIRONMENT_FAILURE; # No Transform should ever produce a syntax or semantic error;
-			} elsif ($part_result->status() != STATUS_OK) {
-				return $part_result->status();
-			} else {
-				$result_transformed = $part_result if defined $part_result->data();
-			}
-		}
-	
-		# Join the separate queries together for further printing and analysis
-
-		$transformed_query = join('; ',@$transformed_query);
+		# Transformer returned several queries, execute each one independently
+		@transformed_queries = @$transformed_query;
 	} else {
-		$transformed_query = "/* ".ref($transformer)." */ ".$transformed_query;
-		$result_transformed = $executor->execute($transformed_query, 1);
+		@transformed_queries = ($transformed_query);
 	}
 
-	$transformer->[TRANSFORMER_QUERIES_TRANSFORMED]++;
+	$transformed_queries[0] =  "/* ".ref($transformer)." */ ".$transformed_queries[0];
 
-	my $transform_outcome = $transformer->validate([ $original_result, $result_transformed ]);
+	foreach my $transformed_query_part (@transformed_queries) {
+		my $part_result = $executor->execute($transformed_query_part);
+		if (
+			($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
+		) {
+			say("Transform ".ref($transformer)." failed with a syntactic or semantic error.");
+			return STATUS_ENVIRONMENT_FAILURE;
+		} elsif ($part_result->status() != STATUS_OK) {
+			return $part_result->status();
+		} elsif (defined $part_result->data()) {
+			my $part_outcome = $transformer->validate($original_result, $part_result);
+			$transform_outcome = $part_outcome if ($part_outcome > $transform_outcome) || (! defined $transform_outcome);
+			push @transformed_results, $part_result if ($part_outcome != STATUS_WONT_HANDLE) && ($part_outcome != STATUS_OK);
+		}
+	}
 
-	return ($transform_outcome, $transformed_query, $result_transformed);
+	if (
+		(not defined $transform_outcome) ||
+		($transform_outcome == STATUS_WONT_HANDLE)
+	) {
+		say("Transform ".ref($transformer)." produced no query which could be validated ($transform_outcome).");
+		say("The following queries were produced:\n".join("\n", @transformed_queries));
+		return STATUS_ENVIRONMENT_FAILURE;
+	} else {
+		return ($transform_outcome, $transformed_query, \@transformed_results);
+	}
 }
 
 sub validate {
-	my ($transformer, $results) = @_;
+	my ($transformer, $original_result, $transformed_result) = @_;
 
-	foreach my $result (@$results) {
-		# Account for the fact that the transformed query may have failed
-		return STATUS_OK if not defined $result;
-		return STATUS_OK if not defined $result->data();
-	}
+	my $transformed_query = $transformed_result->query();
 
-	my $transformed_query = $results->[1]->query();
-
-	my $transform_outcome = TRANSFORM_OUTCOME_CUSTOM;
+	my $transform_outcome;
 
 	foreach my $potential_outcome (keys %transform_outcomes) {
 		if ($transformed_query =~ m{$potential_outcome}s) {
@@ -120,53 +118,58 @@ sub validate {
 	}
 
 	if ($transform_outcome == TRANSFORM_OUTCOME_SINGLE_ROW) {
-		return $transformer->isSingleRow($results);
+		return $transformer->isSingleRow($original_result, $transformed_result);
 	} elsif ($transform_outcome == TRANSFORM_OUTCOME_DISTINCT) {
-		return $transformer->isDistinct($results);
+		return $transformer->isDistinct($original_result, $transformed_result);
 	} elsif ($transform_outcome == TRANSFORM_OUTCOME_UNORDERED_MATCH) {
-		return GenTest::Comparator::compare($results->[0], $results->[1]);
+		return GenTest::Comparator::compare($original_result, $transformed_result);
 	} elsif ($transform_outcome == TRANSFORM_OUTCOME_SUPERSET) {
-		return $transformer->isSuperset($results);
+		return $transformer->isSuperset($original_result, $transformed_result);
 	} elsif ($transform_outcome == TRANSFORM_OUTCOME_FIRST_ROW) {
-		return $transformer->isFirstRow($results);
+		return $transformer->isFirstRow($original_result, $transformed_result);
 	} elsif ($transform_outcome == TRANSFORM_OUTCOME_COUNT) {
-		return $transformer->isCount($results);
+		return $transformer->isCount($original_result, $transformed_result);
 	} else {
-		die ("Unknown transform_outcome = $transform_outcome.");
+		return STATUS_WONT_HANDLE;
 	}
 }
 
 sub isFirstRow {
-	my ($transformer, $results) = @_;
+	my ($transformer, $original_result, $transformed_result) = @_;
 
 	if (
-		($results->[1]->rows() == 0) &&
-		($results->[0]->rows() == 0)
+		($original_result->rows() == 0) &&
+		($transformed_result->rows() == 0)
 	) {
 		return STATUS_OK;
 	} else {
-		my $row1 = join('<col>', @{$results->[0]->data()->[0]}) if defined $results->[0]->data();
-		my $row2 = join('<col>', @{$results->[1]->data()->[0]}) if defined $results->[1]->data();
+		my $row1 = join('<col>', @{$original_result->data()->[0]});
+		my $row2 = join('<col>', @{$transformed_result->data()->[0]});
 		return STATUS_CONTENT_MISMATCH if $row1 ne $row2;
 	}
 	return STATUS_OK;
 }
 
 sub isDistinct {
-	my ($transformer, $results) = @_;
+	my ($transformer, $original_result, $transformed_result) = @_;
 
-	my @rows;
+	my $original_rows;
+	my $transformed_rows;
 
-	foreach my $i (0..1) {
-		foreach my $row_ref (@{$results->[$i]->data()}) {
-			my $row = join('<col>', @$row_ref);
-			$rows[$i]->{$row}++;
-			return STATUS_LENGTH_MISMATCH if $rows[$i]->{$row} > 1 && $i == 1;
-		}
+	foreach my $row_ref (@{$original_result->data()}) {
+		my $row = join('<col>', @$row_ref);
+		$original_rows->{$row}++;
 	}
-	
-	my $distinct_original = join ('<row>', sort keys %{$rows[0]} );
-	my $distinct_transformed = join ('<row>', sort keys %{$rows[1]} );
+
+	foreach my $row_ref (@{$transformed_result->data()}) {
+		my $row = join('<col>', @$row_ref);
+		$transformed_rows->{$row}++;
+		return STATUS_LENGTH_MISMATCH if $transformed_rows->{$row} > 1;
+	}
+
+
+	my $distinct_original = join ('<row>', sort keys %{$original_rows} );
+	my $distinct_transformed = join ('<row>', sort keys %{$transformed_rows} );
 
 	if ($distinct_original ne $distinct_transformed) {
 		return STATUS_CONTENT_MISMATCH;
@@ -176,14 +179,15 @@ sub isDistinct {
 }
 
 sub isSuperset {
-	my ($transformer, $results) = @_;
+	my ($transformer, $original_result, $transformed_result) = @_;
 	my %rows;
-	foreach my $row_ref (@{$results->[0]->data()}) {
+
+	foreach my $row_ref (@{$original_result->data()}) {
 		my $row = join('<col>', @$row_ref);
 		$rows{$row}++;
 	}
 
-	foreach my $row_ref (@{$results->[1]->data()}) {
+	foreach my $row_ref (@{$transformed_result->data()}) {
 		my $row = join('<col>', @$row_ref);
 		$rows{$row}--;
 	}
@@ -196,16 +200,16 @@ sub isSuperset {
 }
 
 sub isSingleRow {
-	my ($transformer, $results) = @_;
+	my ($transformer, $original_result, $transformed_result) = @_;
 
 	if (
-		($results->[1]->rows() == 0) &&
-		($results->[0]->rows() == 0)
+		($original_result == 0) &&
+		($transformed_result == 0)
 	) {
 		return STATUS_OK;
-	} elsif ($results->[1]->rows() == 1) {
-		my $transformed_row = join('<col>', @{$results->[1]->data()->[0]});
-		foreach my $original_row_ref (@{$results->[0]->data()}) {
+	} elsif ($transformed_result->rows() == 1) {
+		my $transformed_row = join('<col>', @{$transformed_result->data()->[0]});
+		foreach my $original_row_ref (@{$original_result->data()}) {
 			my $original_row = join('<col>', @$original_row_ref);
 			return STATUS_OK if $original_row eq $transformed_row;
 		}
@@ -217,32 +221,32 @@ sub isSingleRow {
 }
 
 sub isCount {
-	my ($transformer, $results) = @_;
+	my ($transformer, $original_result, $transformed_result) = @_;
 
 	my ($large_result, $small_result) ;
 
 	if (
-		($results->[0]->rows() == 0) ||
-		($results->[1]->rows() == 0)
+		($original_result->rows() == 0) ||
+		($transformed_result->rows() == 0)
 	) {
 		return STATUS_OK;
 	} elsif (
-		($results->[0]->rows() == 1) &&
-		($results->[1]->rows() == 1)
+		($original_result->rows() == 1) &&
+		($transformed_result->rows() == 1)
 	) {
 		return STATUS_OK;
 	} elsif (
-		($results->[0]->rows() == 1) &&
-		($results->[1]->rows() >= 1)
+		($original_result->rows() == 1) &&
+		($transformed_result->rows() >= 1)
 	) {
-		$small_result = $results->[0];
-		$large_result = $results->[1];
+		$small_result = $original_result;
+		$large_result = $transformed_result;
 	} elsif (
-		($results->[1]->rows() == 1) &&
-		($results->[0]->rows() >= 1)
+		($transformed_result->rows() == 1) &&
+		($original_result->rows() >= 1)
 	) {
-		$small_result = $results->[1];
-		$large_result = $results->[0];
+		$small_result = $transformed_result;
+		$large_result = $original_result;
 	} else {
 		return STATUS_LENGTH_MISMATCH;
 	}
