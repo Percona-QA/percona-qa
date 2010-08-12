@@ -89,12 +89,12 @@ sub new {
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
     $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
-                                          osWindows()?["sql/Debug","sql/RelWithDebugInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
+                                          osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
                                           osWindows()?"mysqld.exe":"mysqld");
     $self->[MYSQLD_BOOT_SQL] = [];
 
     $self->[MYSQLD_DUMPER] = $self->_find([$self->basedir],
-                                          osWindows()?["client/Debug","client/RelWithDebugInfo","client/Release","bin"]:["client","bin"],
+                                          osWindows()?["client/Debug","client/RelWithDebInfo","client/Release","bin"]:["client","bin"],
                                           osWindows()?"mysqldump.exe":"mysqldump");
 
 
@@ -132,8 +132,8 @@ sub new {
     
     $self->[MYSQLD_LIBMYSQL] = 
        $self->_findDir([$self->basedir], 
-                       osWindows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release","lib","lib/debug","lib/opt","bin"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
-                       osWindows()?"libmysql.dll":"libmysqlclient.so");
+                       osWindows()?["libmysql/Debug","libmysql/RelWithDebInfo","libmysql/Release","lib","lib/debug","lib/opt","bin"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
+                       osWindows()?"libmysql.dll":osMac()?"libmysqlclient.dylib":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,

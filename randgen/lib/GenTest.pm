@@ -18,9 +18,9 @@
 package GenTest;
 use base 'Exporter';
 
-@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'osWindows', 'osLinux',
-           'osSolaris', 'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug',
-		   'unix2winPath');
+@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 
+           'osWindows', 'osLinux', 'osSolaris', 'osMac',
+           'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug', 'unix2winPath');
 
 use strict;
 
@@ -140,6 +140,14 @@ sub osSolaris {
 	} else {
 		return 0;
 	}	
+}
+
+sub osMac {
+    if ($^O eq 'darwin') {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 sub isoTimestamp {
