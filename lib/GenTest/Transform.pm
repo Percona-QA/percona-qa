@@ -81,6 +81,8 @@ sub transformExecuteValidate {
 			($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
 		) {
 			say("Transform ".ref($transformer)." failed with a syntactic or semantic error.");
+			say("Offending query is: $transformed_query_part;");
+			say("Original query is: $original_query;");
 			return STATUS_ENVIRONMENT_FAILURE;
 		} elsif ($part_result->status() != STATUS_OK) {
 			return $part_result->status();
@@ -99,7 +101,7 @@ sub transformExecuteValidate {
 		say("The following queries were produced:\n".join("\n", @transformed_queries));
 		return STATUS_ENVIRONMENT_FAILURE;
 	} else {
-		return ($transform_outcome, $transformed_query, \@transformed_results);
+		return ($transform_outcome, \@transformed_queries, \@transformed_results);
 	}
 }
 
@@ -203,8 +205,8 @@ sub isSingleRow {
 	my ($transformer, $original_result, $transformed_result) = @_;
 
 	if (
-		($original_result == 0) &&
-		($transformed_result == 0)
+		($original_result->rows() == 0) &&
+		($transformed_result->rows() == 0)
 	) {
 		return STATUS_OK;
 	} elsif ($transformed_result->rows() == 1) {
