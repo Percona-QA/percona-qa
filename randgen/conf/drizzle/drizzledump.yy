@@ -1,3 +1,19 @@
+# Copyright (C) 2010-2011 Patrick Crews. All rights reserved.
+# Use is subject to license terms.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
 # drizzledump.yy
 # grammar for generating test beds for drizzledump
 # one or more tables are selected, populated, then altered
@@ -13,16 +29,19 @@ create_test_table_list:
 # sub-rules handle table population and composition
  create_test_table_list ; create_test_table_set |
  create_test_table_list ; create_test_table_set |
- create_test_table_list ; create_test_table_set | 
- create_test_table_list ; create_test_table_set |
- create_test_table_set ; create_test_table_set ; create_test_table_set |
- create_test_table_set ; create_test_table_set |
- create_test_table_set | create_test_table_set ;
+ create_test_table_set ; create_test_table_set ;
+# create_test_table_set ; create_test_table_set ; create_test_table_set ; create_test_table_set ; create_test_table_set ; create_test_table_set ; create_test_table_set ; 
 
 create_test_table_set:
-  create_table ; populate_table ; modify_table ;
+  select_set | like_set ;
 
-create_table:
+like_set:
+  create_table_like ; populate_table ; modify_table ; 
+
+select_set:
+  create_table_select ; modify_table2 ;
+
+create_table_like:
 # even though all test tables have the same columns, they are created in
 # different orders, so we randomly choose a table from the test db
 # to enhance randomness / alter the composition of our test tables
@@ -75,7 +94,11 @@ modify_table:
 alter_table_list ;
 
 alter_table_list:
-   alter_table_list ; alter_table_item | alter_table_item | alter_table_item ;
+    alter_table_list ; alter_table_item | 
+    alter_table_list ; alter_table_item |
+    alter_table_list ; alter_table_item |
+    alter_table_item ; alter_table_item ; alter_table_item | 
+    alter_table_item ; alter_table_item ; alter_table_item ; alter_table_item ;
 
 alter_table_item:
   ALTER TABLE { "dump_table".$tables } DROP drop_column_name ;
@@ -88,10 +111,57 @@ drop_column_name:
   `col_enum` | `col_enum_key` | `col_enum_not_null` | `col_enum_not_null_key` |  
   `col_text` | `col_text_key` | `col_text_not_null` | `col_text_not_null_key` ;
 
+create_table_select:
+# alternate test-table generation rule that uses CREATE TABLE...SELECT
+# for generating tables and data
+  CREATE TABLE new_test_table ( `pk` INT NOT NULL AUTO_INCREMENT, PRIMARY KEY(`pk`)) select_statement ;
+
+select_statement:
+# We have to alias each column in the column list, so we limit ourselves to a 2-table join
+# for simplicity.  We can perhaps look into more complex joins later
+  SELECT column_list FROM `test`. _table AS t1 , `test`. _table AS t2 ;
+
+column_list:
+  t1 . `col_char_10` AS field0 ,  t1 . `col_char_10_key` AS field1 ,  t1 . `col_char_10_not_null` AS field2 ,
+  t1 . `col_char_10_not_null_key` AS field3 ,  t1 . `col_char_1024` AS field4 ,  t1 . `col_char_1024_key` AS field5 ,
+  t1 . `col_char_1024_not_null` AS field6 ,  t1 . `col_char_1024_not_null_key` AS field7 ,  t1 . `col_int` AS field8 , 
+  t1 . `col_int_key` AS field9 ,  t1 . `col_int_not_null` AS field10 ,  t1 . `col_int_not_null_key` AS field11 ,
+  t1 . `col_bigint` AS field12 ,  t1 . `col_bigint_key` AS field13 ,  t1 . `col_bigint_not_null` AS field14 ,
+  t1 . `col_bigint_not_null_key` AS field15 ,  t1 . `col_enum` AS field16 ,  t1 . `col_enum_key` AS field17 , 
+  t1 . `col_enum_not_null` AS field18 ,  t1 . `col_enum_not_null_key` AS field19 ,  t1 . `col_text` AS field20 , 
+  t1 . `col_text_key` AS field21 ,  t1 . `col_text_not_null` AS field22 ,  t1 . `col_text_not_null_key` AS field23 , 
+  t2 . `col_char_10` AS field24 ,  t2 . `col_char_10_key` AS field25 ,  t2 . `col_char_10_not_null` AS field26 , 
+  t2 . `col_char_10_not_null_key` AS field27 ,  t2 . `col_char_1024` AS field28 ,  t2 . `col_char_1024_key` AS field29 ,
+  t2 . `col_char_1024_not_null` AS field30 ,  t2 . `col_char_1024_not_null_key` AS field31 ,
+  t2 . `col_int` AS field32 ,  t2 . `col_int_key` AS field33 ,  t2 . `col_int_not_null` AS field34 ,
+  t2 . `col_int_not_null_key` AS field35 ,  t2 . `col_bigint` AS field36 ,  t2 . `col_bigint_key` AS field37 , 
+  t2 . `col_bigint_not_null` AS field38 ,  t2 . `col_bigint_not_null_key` AS field39 ,  t2 . `col_enum` AS field40 ,
+  t2 . `col_enum_key` AS field41 ,  t2 . `col_enum_not_null` AS field42 ,  t2 . `col_enum_not_null_key` AS field43 , 
+  t2 . `col_text` AS field44 ,  t2 . `col_text_key` AS field45 ,  t2 . `col_text_not_null` AS field46 , 
+  t2 . `col_text_not_null_key` AS field47 ;
+
+modify_table2:
+  alter_table_list2 ;
+
+alter_table_list2:
+   alter_table_list2 ; alter_table_item2 | alter_table_item2 ; 
+
+alter_table_item2:
+  ALTER TABLE { "dump_table".$tables } DROP { "field".$prng->int(0,47)  } ;
+
+ 
 new_test_table:
 # This rule should generate tables to be dumped named dump_table1, dump_table2, etc
   { "dump_table".++$tables } ;
 
 
-  
- 
+ _table:
+# we hack the _table rule a bit here to ensure we have a majority of populated tables being used
+  AA | AA | BB | BB | 
+  CC | CC | DD | DD |
+  small_table ;
+
+small_table:
+  A | B |
+  C | C | C | C |
+  D | D | D | D ; 
