@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (C) 2010-2011 Patrick Crews. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -58,12 +58,20 @@ sub validate {
         
           # dump our database under test
 	  my $drizzledump_file = tmpdir()."/dump_".$$."_".$port.".sql";
-          say("drizzledump file is:  $drizzledump_file");
+          
+          if (rqg_debug()) 
+          {
+            say("drizzledump file is:  $drizzledump_file");
+          }
+
 	  my $drizzledump_result = system("$drizzledump --compact --order-by-primary --host=127.0.0.1 --port=$port --user=root $database  > $drizzledump_file") ;
 	  return STATUS_UNKNOWN_ERROR if $drizzledump_result > 0 ;
 
           # restore test database from dumpfile
-          say("Restoring from dumpfile...");
+          if (rqg_debug()) 
+          {
+            say("Restoring from dumpfile...");
+          }
           my $drizzle_restore_result = system("$drizzle_client --host=127.0.0.1 --port=$port --user=root $restored_database <  $drizzledump_file") ;
           return STATUS_UNKNOWN_ERROR if $drizzle_restore_result > 0 ;
 
@@ -71,7 +79,6 @@ sub validate {
           # 1) We get the list of columns for the original table (use original as it is the standard)
           # 2) Use said column list in the comparison query (will report on any rows / values not in both tables)  
           # 3) Check the rows returned
-          # TODO:  Loop through all tables in the database.  Current testing / experiment stage only wanting one table at a time
 
           my $get_table_names =  " SELECT DISTINCT(table_name) ".
                                  " FROM data_dictionary.tables ". 
@@ -81,8 +88,6 @@ sub validate {
           # Need to change the perl to better deal with a list of tables (more than 1)
           my $table_names = $executors->[0]->dbh()->selectcol_arrayref($get_table_names) ;
 
-          say("@$table_names");
- 
           foreach(@$table_names)
           { 
             $total_count += 1 ;
@@ -94,8 +99,11 @@ sub validate {
 
             my $table_columns = $executors->[0]->dbh()->selectcol_arrayref($get_table_columns) ; 
             my $table_column_list = join(' , ' , @$table_columns) ;
-
-            say("Comparing original and restored tables for table : $database . $_" );
+            
+            if (rqg_debug()) 
+            {
+              say("Comparing original and restored tables for table : $database . $_" );
+            }
             my $compare_orig_and_restored =     "SELECT MIN(TableName) as TableName, $table_column_list ".
                                  " FROM ".
                                  " ( ".
@@ -108,7 +116,7 @@ sub validate {
                                  " GROUP BY $table_column_list ".
                                  " HAVING COUNT(*) = 1 ORDER BY `pk` " ;
 
-            say("$compare_orig_and_restored");
+            # say("$compare_orig_and_restored");
 
             my $diff_result = $executors->[0]->dbh()->selectall_arrayref($compare_orig_and_restored) ;
             if ($diff_result->[0] != undef)
@@ -125,8 +133,8 @@ sub validate {
                 say("$fail_count /  $total_count test tables failed validation") ;
 		return STATUS_DATABASE_CORRUPTION ;
 	    } else {
-                # TODO - have proper cleanup for each drizzledump file created
-		#unlink($drizzledump_file);
+                # cleanup our dumpfile - we leave it only if we found a mismatch
+		unlink($drizzledump_file);
                 say("All tests passed - tested $total_count tables");
 		return STATUS_OK;
 	   }
