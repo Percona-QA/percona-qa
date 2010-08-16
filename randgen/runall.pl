@@ -84,8 +84,8 @@ my $opt_result = GetOptions(
 	'duration=i' => \$duration,
 	'help' => \$help,
 	'debug' => \$debug,
-	'validators:s' => \$validators,
-	'reporters:s' => \$reporters,
+	'validators:s@' => \$validators,
+	'reporters:s@' => \$reporters,
 	'report-xml-tt' => \$report_xml_tt,
 	'report-xml-tt-type=s' => \$report_xml_tt_type,
 	'report-xml-tt-dest=s' => \$report_xml_tt_dest,
@@ -105,6 +105,9 @@ my $opt_result = GetOptions(
     'mtr-build-thread=i' => \$build_thread,
     'testname=s' => \$testname
 );
+
+$validators = join(',', @$validators) if defined $validators;
+$reporters = join(',', @$reporters) if defined $reporters;
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 	help();

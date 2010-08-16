@@ -995,7 +995,7 @@ if ($command_result_shifted > 0) {
 	} else {
 		print($full_test_name." [ fail ]\n");
 	}
-	say('runall.pl failed with exit code '.$command_result_shifted."\n");
+	say('runall-new.pl failed with exit code '.$command_result_shifted."\n");
 	say("Look above this message in the test log for failure details.\n");
 } else {
 	print($full_test_name." [ pass ]\n");
@@ -1015,10 +1015,18 @@ if (osWindows()) {
 	# If you need to run pslist or pskill as non-Admin user, some adjustments
 	# may be needed. See:
 	#   http://blogs.technet.com/markrussinovich/archive/2007/07/09/1449341.aspx
+
+	# Vardir may be relative path on windows, so convert to absolute path first:
+	my $vardir_abspath = $vardir;
+	if ($vardir !~ m/^[A-Z]:[\/\\]/i) {
+	    # use basedir as prefix
+	    $vardir_abspath = $basedir.'\\'.$vardir;
+	}
+
 	if (system('C:\bin\pslist mysqld') == 0) {
 		say(" ^--- Found running mysqld process(es), to be killed if possible.\n");
-		system('C:\bin\pskill mysqld > '.$vardir.'/pskill_mysqld.out 2>&1');
-		system('C:\bin\pskill mysqld-nt > '.$vardir.'/pskill_mysqld-nt.out 2>&1');
+		system('C:\bin\pskill mysqld > '.$vardir_abspath.'/pskill_mysqld.out 2>&1');
+		system('C:\bin\pskill mysqld-nt > '.$vardir_abspath.'/pskill_mysqld-nt.out 2>&1');
 	} else { say("  None found.\n"); }
 	
 } else {
