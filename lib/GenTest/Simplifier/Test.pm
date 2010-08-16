@@ -169,11 +169,13 @@ sub simplify {
 			foreach my $ex (0..1) {
 				if (defined $executors->[$ex]) {
 					$test .= "/* Query plan Server $ex:\n";
-					my $plan =  $executors->[$ex]->dbh()->selectall_arrayref("EXPLAIN $query");
+					my $plan = $executors->[$ex]->execute("EXPLAIN EXTENDED $query", 1);
 					
-					foreach my $row (@$plan) {
-						$test .= "# |".join("|",@$row)."|\n";
+					foreach my $row (@{$plan->data()}) {
+						$test .= "# |".join("|", @$row)."|\n";
 					}
+
+					$test .= "# Extended: \n# ".join("# \n", map { $_->[2] } @{$plan->warnings()})."\n";
 					$test .= "# */\n\n";
 				}
 			}
