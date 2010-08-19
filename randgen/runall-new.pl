@@ -458,6 +458,7 @@ $0 - Run a complete random query generation test, including server start with re
     --mask-level: Grammar mask level. Passed to gentest.pl
     --notnull   : Generate all fields with NOT NULL
     --rows      : No of rows. Passed to gentest.pl
+    --sqltrace  : Print all generated SQL statements.
     --varchar-length: length of strings. passed to gentest.pl
     --xml-outputs: Passed to gentest.pl
     --views     : Generate views. Passed to gentest.pl
