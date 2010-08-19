@@ -57,7 +57,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $views, $start_dirty,
     $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $notnull);
+    $report_xml_tt_dest, $notnull, $sqltrace);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -100,6 +100,7 @@ my $opt_result = GetOptions(
 	'xml-output=s'	=> \$xml_output,
 	'valgrind'	=> \$valgrind,
 	'views'		=> \$views,
+	'sqltrace' => \$sqltrace,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
@@ -358,6 +359,7 @@ push @gentest_options, "--debug" if defined $debug;
 push @gentest_options, "--filter=$filter" if defined $filter;
 push @gentest_options, "--valgrind" if defined $valgrind;
 push @gentest_options, "--testname=$testname" if defined $testname;
+push @gentest_options, "--sqltrace" if defined $sqltrace;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
@@ -470,6 +472,7 @@ $0 - Run a complete random query generation test, including server start with re
     --report-xml-tt-type: Passed to gentest.pl
     --report-xml-tt-dest: Passed to gentest.pl
     --testname  : Name of test, used for reporting purposes.
+    --sqltrace  : Print all generated SQL statements.
     --views     : Generate views. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
