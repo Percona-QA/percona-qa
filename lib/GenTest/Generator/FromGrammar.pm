@@ -210,17 +210,18 @@ sub next {
 		if (ref($sentence[$pos]) eq 'GenTest::Grammar::Rule') {
 			splice (@sentence, $pos, 1 , map {
 
+				$rule_counters{$_}++ if $_ ne uc($_);
+
+				if ($rule_counters{$_} > GENERATOR_MAX_OCCURRENCES) {
+					say("Rule $_ occured more than ".GENERATOR_MAX_OCCURRENCES()." times. Possible endless loop in grammar. Aborting.");
+					return undef;
+				}
+
 				# Check if we just picked a grammar rule. If yes, then return its Rule object.	
 				# If not, use the original literal, stored in $_
 
 				if (exists $grammar_rules->{$_}) {
-					$rule_counters{$_}++;
-					if ($rule_counters{$_} > GENERATOR_MAX_OCCURRENCES) {
-						say("Rule $_ occured more than ".GENERATOR_MAX_OCCURRENCES()." times. Possible endless loop in grammar. Aborting.");
-						return undef;
-					} else {
-						$grammar_rules->{$_};
-					}
+					$grammar_rules->{$_};
 				} else {
 					$_;
 				}
@@ -387,12 +388,12 @@ sub next {
 		($sentence =~ m{CREATE}sio) && 
 		($sentence =~ m{BEGIN|END}sio)
 	) {
-		return [ $sentence ];
+		return [ $sentence ], rqg_debug() ? [ keys %rule_counters ] : [];
 	} elsif ($sentence =~ m{;}) {
 		my @sentences = split (';', $sentence);
-		return \@sentences;
+		return \@sentences, rqg_debug() ? [ keys %rule_counters ] : [];
 	} else {
-		return [ $sentence ];
+		return [ $sentence ], rqg_debug() ? [ keys %rule_counters ] : [];
 	}
 }
 

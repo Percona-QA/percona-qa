@@ -31,6 +31,8 @@ use constant MIXER_EXECUTORS	=> 1;
 use constant MIXER_VALIDATORS	=> 2;
 use constant MIXER_FILTERS	=> 3;
 
+my %rule_status;
+
 1;
 
 sub new {
@@ -97,7 +99,7 @@ sub next {
 	my $executors = $mixer->executors();
 	my $filters = $mixer->filters();
 
-	my $queries = $mixer->generator()->next($executors);
+	my ($queries, $participating_rules) = $mixer->generator()->next($executors);
 	if (not defined $queries) {
 		say("Internal grammar problem. Terminating.");
 		return STATUS_ENVIRONMENT_FAILURE;
@@ -137,7 +139,35 @@ sub next {
 		}
 	}
 
+	#
+	# Record the lowest (best) status achieved for all participating rules. The goal
+	# is for all rules to generate at least some STATUS_OK queries. If not, the offending
+	# rules will be reported on DESTROY.
+	#
+
+	if (rqg_debug()) {
+		foreach my $participating_rule (@$participating_rules) {
+			if (
+				(not exists $rule_status{$participating_rule}) ||
+				($rule_status{$participating_rule} > $max_status)
+			) {
+				$rule_status{$participating_rule} = $max_status
+			}
+		}
+	}
+
 	return $max_status;
+}
+
+sub DESTROY {
+	my $rule_failure = 0;
+	foreach my $rule (keys %rule_status) {
+		if ($rule_status{$rule} > STATUS_OK) {
+			say("Rule '$rule' never produced a STATUS_OK query. Best query produced had status $rule_status{$rule}.");
+			$rule_failure = 1;
+		}
+	}
+	exit(STATUS_ENVIRONMENT_FAILURE) if $rule_failure > 0;
 }
 
 sub generator {
