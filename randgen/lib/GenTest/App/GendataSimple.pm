@@ -85,7 +85,8 @@ sub run {
     my @names = ('A', 'B', 'C', 'D', 'E', 'AA', 'BB', 'CC', 'DD');
     my @sizes = (0, 1, 20, 100, 1000, 0, 1, 20, 100);
     foreach my $i (0..$#names) {
-        $self->gen_table ($executor, $names[$i], $sizes[$i], $prng);
+        my $gen_table_result = $self->gen_table ($executor, $names[$i], $sizes[$i], $prng);
+        return $gen_table_result if $gen_table_result != STATUS_OK;
     }
     
     # Need to create a dummy supdstituion for non-protable DUAL
@@ -271,7 +272,7 @@ sub gen_table {
 
 		## We do one insert per 500 rows for speed
 		if ($row % 500 == 0 || $row == $size) {
-			$executor->execute("
+			my $insert_result = $executor->execute("
 			INSERT /*! IGNORE */ INTO $name (
 				col_int_key, col_int_nokey,
 				col_date_key, col_date_nokey,
@@ -279,9 +280,11 @@ sub gen_table {
 				col_datetime_key, col_datetime_nokey,
 				col_varchar_key, col_varchar_nokey
 			) VALUES " . join(",",@values));
+			return $insert_result->status() if $insert_result->status() != STATUS_OK;
 			@values = ();
 		}
 	}
+	return STATUS_OK;
 }
 
 1;
