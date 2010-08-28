@@ -30,14 +30,20 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $orig_query) = @_;
 
-	if ($orig_query =~ m{DISTINCT|DISTINCTROW|ALL}io) {
+	if ($orig_query =~ m{LIMIT}){
 		return STATUS_WONT_HANDLE;
-	} elsif ($orig_query =~ m{SELECT\s+STRAIGHT_JOIN}io) {
-		$orig_query =~ s{STRAIGHT_JOIN}{}sio;
-		return $orig_query."  /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
+	} elsif ($orig_query =~ s{STRAIGHT_JOIN}{}sio) {
+		return $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
+	} elsif ($orig_query =~ m{DISTINCT|DISTINCTROW|ALL}io) {
+		# Add STRAIGHT_JOIN after DISTINCT|DISTINCTROW|ALL
+
+                $orig_query =~ s{(DISTINCT|DISTINCTROW|ALL)}{$1 STRAIGHT_JOIN}sgio;
+                return $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
 	} else {
+		# Add STRAIGHT_JOIN immediately after SELECT
+
 		$orig_query =~ s{SELECT}{SELECT STRAIGHT_JOIN}sgio;
-		return $orig_query."  /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
+		return $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
 	}
 }
 

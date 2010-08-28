@@ -56,7 +56,8 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
-    $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest);
+    $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
+    $notnull);
 
 my $gendata=''; ## default simple gendata
 
@@ -90,6 +91,7 @@ my $opt_result = GetOptions(
 	'validators=s@' => \@validators,
 	'reporters=s@' => \@reporters,
 	'gendata:s' => \$gendata,
+	'notnull' => \$notnull,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
     'mask-level=i' => \$mask_level,
@@ -215,8 +217,13 @@ if ($rpl_mode ne '') {
     
     if ($status > DBSTATUS_OK) {
         stopServers();
-        say(system("ls -l ".$rplsrv->master->datadir));
-        say(system("ls -l ".$rplsrv->slave->datadir));
+        if (osWindows()) {
+            say(system("dir ".unix2winPath($rplsrv->master->datadir)));
+            say(system("dir ".unix2winPath($rplsrv->slave->datadir)));
+        } else {
+            say(system("ls -l ".$rplsrv->master->datadir));
+            say(system("ls -l ".$rplsrv->slave->datadir));
+        }
         croak("Could not start replicating server pair");
     }
     
@@ -253,7 +260,11 @@ if ($rpl_mode ne '') {
         
         if ($status > DBSTATUS_OK) {
             stopServers();
-            say(system("ls -l ".$server[$server_id]->datadir));
+            if (osWindows()) {
+                say(system("dir ".unix2winPath($server[$server_id]->datadir)));
+            } else {
+                say(system("ls -l ".$server[$server_id]->datadir));
+            }
             croak("Could not start all servers");
         }
         
@@ -298,6 +309,7 @@ my $gentestProps = GenTest::Properties->new(
               'views',
               'start-dirty',
               'filter',
+              'notnull',
               'valgrind',
               'testname',
               'sqltrace',
@@ -339,6 +351,7 @@ $gentestProps->property('varchar-length',$varchar_len) if defined $varchar_len;
 $gentestProps->property('xml-output',$xml_output) if defined $xml_output;
 $gentestProps->debug(1) if defined $debug;
 $gentestProps->filter($filter) if defined $filter;
+$gentestProps->notnull($notnull) if defined $notnull;
 $gentestProps->valgrind(1) if $valgrind;
 $gentestProps->sqltrace(1) if $sqltrace;
 $gentestProps->testname($testname) if $testname;
@@ -367,7 +380,7 @@ if ($rpl_mode || (defined $basedirs[1])) {
     my @dump_files;
     
 	foreach my $i (0..$#server) {
-		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
+		$dump_files[$i] = tmpdir()."server_".$$."_".$i.".dump";
         
 		my $dump_result = $server[$i]->dumpdb($database,$dump_files[$i]);
 		exit_test($dump_result >> 8) if $dump_result > 0;
@@ -443,7 +456,9 @@ $0 - Run a complete random query generation test, including server start with re
     --seed      : PRNG seed. Passed to gentest.pl
     --mask      : Grammar mask. Passed to gentest.pl
     --mask-level: Grammar mask level. Passed to gentest.pl
+    --notnull   : Generate all fields with NOT NULL
     --rows      : No of rows. Passed to gentest.pl
+    --sqltrace  : Print all generated SQL statements.
     --varchar-length: length of strings. passed to gentest.pl
     --xml-outputs: Passed to gentest.pl
     --views     : Generate views. Passed to gentest.pl
