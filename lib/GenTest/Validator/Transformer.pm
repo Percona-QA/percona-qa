@@ -37,6 +37,8 @@ my @transformers;
 
 sub BEGIN {
 	@transformer_names = (
+		'DisableChosenPlan',
+		'ConvertSubqueriesToViews',
 		'Count',
 #		'DisableIndexes',
 		'Distinct',
@@ -90,11 +92,15 @@ sub transform {
 	my $original_result = $results->[0];
 	my $original_query = $original_result->query();
 
-	my ($transform_outcome, $transformed_query, $transformed_result) = $transformer->transformExecuteValidate($original_query, $original_result, $executor);
+	my ($transform_outcome, $transformed_queries, $transformed_results) = $transformer->transformExecuteValidate($original_query, $original_result, $executor);
 	return $transform_outcome if ($transform_outcome > STATUS_CRITICAL_FAILURE) || ($transform_outcome eq STATUS_OK);
 
 	say("Original query: $original_query failed transformation with Transformer ".$transformer->name());
-	say("Transformed query: $transformed_query");
+	say("Transformed query: ".join('; ', @$transformed_queries));
+
+	say(GenTest::Comparator::dumpDiff($original_result, $transformed_results->[0]));
+
+	say("Simplifying...");
 
 	my $simplifier_query = GenTest::Simplifier::SQL->new(
 		oracle => sub {
@@ -103,7 +109,7 @@ sub transform {
 
 			return ORACLE_ISSUE_STATUS_UNKNOWN if $oracle_result->status() != STATUS_OK;
 
-			my ($oracle_outcome, $oracle_transformed_query, $oracle_transformed_result) = $transformer->transformExecuteValidate($oracle_query, $oracle_result, $executor);
+			my ($oracle_outcome, $oracle_transformed_queries, $oracle_transformed_results) = $transformer->transformExecuteValidate($oracle_query, $oracle_result, $executor);
 
 			if (
 				($oracle_outcome == STATUS_CONTENT_MISMATCH) ||
@@ -131,21 +137,22 @@ sub transform {
 
 	say("Simplified query: $simplified_query");
 
-	my $simplified_transformed_query = $transformer->transform($simplified_query, $executor);
-	$simplified_transformed_query = join('; ', @$simplified_transformed_query) if ref($simplified_transformed_query) eq 'ARRAY';
-	say("Simplified transformed query: $simplified_transformed_query");
+	my ($transform_outcome, $simplified_transformed_queries, $simplified_transformed_results) = $transformer->transformExecuteValidate($simplified_query, $simplified_result, $executor);
 
-	my $simplified_transformed_result = $executor->execute($simplified_transformed_query, 1);
-	if (defined $simplified_transformed_result->warnings()) {
+	$simplified_transformed_queries = join('; ', @$simplified_transformed_queries) if ref($simplified_transformed_queries) eq 'ARRAY';
+	say("Simplified transformed query: $simplified_transformed_queries");
+
+	if (defined $simplified_transformed_results->[0]->warnings()) {
 		say("Simplified transformed query produced warnings.");
 #		return STATUS_WONT_HANDLE;
 	}
 
-	say(GenTest::Comparator::dumpDiff($simplified_result, $simplified_transformed_result));
+	say(GenTest::Comparator::dumpDiff($simplified_result, $simplified_transformed_results->[0]));
 
 	my $simplifier_test = GenTest::Simplifier::Test->new(
 		executors => [ $executor ],
-		queries => [ $simplified_query, $simplified_transformed_query ]
+		results => [ [ $simplified_result, $simplified_transformed_results->[0] ] ],
+		queries => [ $simplified_query, $simplified_transformed_queries ]
 	);
 
 	my $test = $simplifier_test->simplify();

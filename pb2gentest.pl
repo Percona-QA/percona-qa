@@ -601,8 +601,8 @@ if ($test =~ m{falcon_.*transactions}io ) {
 		--mysqld=--innodb
 	';
 #
-# opt: Optimizer tests, primarily used for 5.1 regression testing...
-#
+# opt: Optimizer tests in "nice mode", primarily used for regression testing (5.1 and beyond).
+#      By "nice mode" we mean relatively short duration and/or num of queries and fixed seed.
 #
 } elsif ($test =~ m{^opt_access_exp}io ) {
     # More queries drastically increases runtime.
@@ -663,15 +663,16 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --duration=1200
 	';
 } elsif ($test =~ m{^outer_join}io ) {
-    # Any larger queries value than 30k will cause a known/documented crash (5.1).
+    # Any larger queries value than 30k used to cause a known/documented crash (5.1).
+    # This seems to have been fixed by now.
     # Produces large and time consuming queries, so we use a larger than default
     # duration to allow even slower machines to do useful testing.
 	$command = '
         --threads=1
-        --queries=30K
+        --queries=80K
         --gendata='.$conf.'/optimizer/outer_join.zz
         --grammar='.$conf.'/optimizer/outer_join.yy
-        --duration=1200
+        --duration=900
 	';
 #
 # End of optimizer tests.
@@ -1014,10 +1015,18 @@ if (osWindows()) {
 	# If you need to run pslist or pskill as non-Admin user, some adjustments
 	# may be needed. See:
 	#   http://blogs.technet.com/markrussinovich/archive/2007/07/09/1449341.aspx
+
+	# Vardir may be relative path on windows, so convert to absolute path first:
+	my $vardir_abspath = $vardir;
+	if ($vardir !~ m/^[A-Z]:[\/\\]/i) {
+	    # use basedir as prefix
+	    $vardir_abspath = $basedir.'\\'.$vardir;
+	}
+
 	if (system('C:\bin\pslist mysqld') == 0) {
 		say(" ^--- Found running mysqld process(es), to be killed if possible.\n");
-		system('C:\bin\pskill mysqld > '.$vardir.'/pskill_mysqld.out 2>&1');
-		system('C:\bin\pskill mysqld-nt > '.$vardir.'/pskill_mysqld-nt.out 2>&1');
+		system('C:\bin\pskill mysqld > '.$vardir_abspath.'/pskill_mysqld.out 2>&1');
+		system('C:\bin\pskill mysqld-nt > '.$vardir_abspath.'/pskill_mysqld-nt.out 2>&1');
 	} else { say("  None found.\n"); }
 	
 } else {

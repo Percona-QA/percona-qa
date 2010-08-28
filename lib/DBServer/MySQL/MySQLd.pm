@@ -28,6 +28,7 @@ use strict;
 
 use Carp;
 use Data::Dumper;
+use File::Path qw(mkpath);
 
 use constant MYSQLD_BASEDIR => 0;
 use constant MYSQLD_VARDIR => 1;
@@ -88,12 +89,12 @@ sub new {
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
     $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
-                                          osWindows()?["sql/Debug","sql/RelWithDebugInfo","sql/Release"]:["sql","libexec","bin","sbin"],
+                                          osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
                                           osWindows()?"mysqld.exe":"mysqld");
     $self->[MYSQLD_BOOT_SQL] = [];
 
     $self->[MYSQLD_DUMPER] = $self->_find([$self->basedir],
-                                          osWindows()?["client/Debug","client/RelWithDebugInfo","client/Release"]:["client","bin"],
+                                          osWindows()?["client/Debug","client/RelWithDebInfo","client/Release","bin"]:["client","bin"],
                                           osWindows()?"mysqldump.exe":"mysqldump");
 
 
@@ -131,8 +132,8 @@ sub new {
     
     $self->[MYSQLD_LIBMYSQL] = 
        $self->_findDir([$self->basedir], 
-                       osWindows()?["libmysql/Debug","libmysql/RelWithDebugInfo","libmysql/Release"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
-                       osWindows()?"libmysql.dll":"libmysqlclient.so");
+                       osWindows()?["libmysql/Debug","libmysql/RelWithDebInfo","libmysql/Release","lib","lib/debug","lib/opt","bin"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
+                       osWindows()?"libmysql.dll":osMac()?"libmysqlclient.dylib":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
@@ -232,10 +233,10 @@ sub createMysqlBase  {
     }
 
     ## 2. Create database directory structure
-    mkdir $self->vardir;
-    mkdir $self->datadir;
-    mkdir $self->datadir."/mysql";
-    mkdir $self->datadir."/test";
+    mkpath($self->vardir);
+    mkpath($self->datadir);
+    mkpath($self->datadir."/mysql");
+    mkpath($self->datadir."/test");
     
     ## 3. Create boot file
     my $boot = $self->vardir."/boot.sql";
@@ -395,10 +396,16 @@ sub dumper {
 sub dumpdb {
     my ($self,$database, $file) = @_;
     say("Dumping MySQL server ".$self->version." on port ".$self->port);
-    my $dump_result = system('"'.$self->dumper.
-                             "\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=".
-                             $self->port.
-                             " --user=root $database | sort > $file");
+    my $dump_command = '"'.$self->dumper.
+                             "\" --hex-blob --skip-triggers --compact ".
+                             "--order-by-primary --skip-extended-insert ".
+                             "--no-create-info --host=127.0.0.1 ".
+                             "--port=".$self->port;
+    # --no-tablespaces option was introduced in version 5.1.14.
+    if ($self->_newerThan(5,1,13)) {
+        $dump_command = $dump_command . " --no-tablespaces";
+    }
+    my $dump_result = system("$dump_command | sort > $file");
     return $dump_result;
 }
 
@@ -580,6 +587,17 @@ sub _olderThan {
     my $v = $v1*1000 + $v2 * 100 + $v3;
 
     return $v < $b;
+}
+
+sub _newerThan {
+    my ($self,$b1,$b2,$b3) = @_;
+
+    my ($v1, $v2, $v3) = $self->versionNumbers;
+
+    my $b = $b1*1000 + $b2 * 100 + $b3;
+    my $v = $v1*1000 + $v2 * 100 + $v3;
+
+    return $v > $b;
 }
 
 

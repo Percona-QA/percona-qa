@@ -133,8 +133,8 @@ join_type:
 join_condition_item:
     current_table_item . int_indexed = previous_table_item . int_field_name on_subquery |
     current_table_item . int_field_name = previous_table_item . int_indexed on_subquery |
-    current_table_item . `col_char_key` = previous_table_item . char_field_name on_subquery |
-    current_table_item . char_field_name = previous_table_item . `col_char_key` on_subquery ;
+    current_table_item . char_indexed = previous_table_item . char_field_name on_subquery |
+    current_table_item . char_field_name = previous_table_item . char_indexed on_subquery ;
 
 on_subquery:
     |||||||||||||||||||| { $subquery_idx += 1 ; $subquery_tables=0 ; ""} and_or general_subquery ;
@@ -327,8 +327,8 @@ subquery_join_list:
 subquery_join_condition_item:
     subquery_current_table_item . int_field_name = subquery_previous_table_item . int_indexed subquery_on_subquery |
     subquery_current_table_item . int_indexed = subquery_previous_table_item . int_field_name subquery_on_subquery |
-    subquery_current_table_item . `col_char_key` = subquery_previous_table_item . char_field_name subquery_on_subquery |
-    subquery_current_table_item . char_field_name = subquery_previous_table_item . `col_char_key` subquery_on_subquery ;
+    subquery_current_table_item . char_indexed = subquery_previous_table_item . char_field_name subquery_on_subquery |
+    subquery_current_table_item . char_field_name = subquery_previous_table_item . char_indexed subquery_on_subquery ;
 
 subquery_on_subquery:
     |||||||||||||||||||| { $child_subquery_idx += 1 ; $child_subquery_tables=0 ; ""} and_or general_child_subquery ;
@@ -483,8 +483,8 @@ child_subquery_join_list:
 child_subquery_join_condition_item:
     child_subquery_current_table_item . int_field_name = child_subquery_previous_table_item . int_indexed |
     child_subquery_current_table_item . int_indexed = child_subquery_previous_table_item . int_field_name |
-    child_subquery_current_table_item . `col_char_key` = child_subquery_previous_table_item . char_field_name |
-    child_subquery_current_table_item . char_field_name = child_subquery_previous_table_item . `col_char_key` ;
+    child_subquery_current_table_item . char_indexed = child_subquery_previous_table_item . char_field_name |
+    child_subquery_current_table_item . char_field_name = child_subquery_previous_table_item . char_indexed ;
 
 single_child_subquery_group_by:
     | | | | | | | | | GROUP BY { child_subquery.$child_subquery_idx."_field1" } ;
@@ -519,9 +519,9 @@ range_predicate1_list:
 
 range_predicate1_item:
          table1 . int_indexed not BETWEEN _tinyint_unsigned[invariant] AND ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
-         table1 . `col_char_key` arithmetic_operator _char[invariant]  |
+         table1 . char_indexed arithmetic_operator _char[invariant]  |
          table1 . int_indexed not IN (number_list) |
-         table1 . `col_char_key` not IN (char_list) |
+         table1 . char_indexed not IN (char_list) |
          table1 . `pk` > _tinyint_unsigned[invariant] AND table1 . `pk` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
          table1 . `col_int_key` > _tinyint_unsigned[invariant] AND table1 . `col_int_key` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) ;
 
@@ -539,11 +539,11 @@ range_predicate2_list:
 range_predicate2_item:
         table1 . `pk` = _tinyint_unsigned |
         table1 . `col_int_key` = _tinyint_unsigned |
-        table1 . `col_char_key` = _char |
+        table1 . char_indexed = _char |
         table1 . int_indexed = _tinyint_unsigned |
-        table1 . `col_char_key` = _char |
+        table1 . char_indexed = _char |
         table1 . int_indexed = existing_table_item . int_indexed |
-        table1 . `col_char_key` = existing_table_item . `col_char_key` ;
+        table1 . char_indexed = existing_table_item . char_indexed ;
 
 ################################################################################
 # The number and char_list rules are for creating WHERE conditions that test   #
@@ -781,8 +781,9 @@ int_field_name:
     `col_int_not_null` | `col_int_not_null_key` ;
 
 char_field_name:
-        `col_char` | `col_char_key` |
-        `col_char_not_null_key` | `col_char_not_null` ;
+        `col_char_10` | `col_char_10_key` | `col_text_not_null` | `col_text_not_null_key` |
+        `col_text_key` | `col_text` | `col_char_10_not_null_key` | `col_char_10_not_null` |
+        `col_char_1024` | `col_char_1024_key` | `col_char_1024_not_null` | `col_char_1024_not_null_key` ;
 
 char_field_name_disabled:
 # need to explore enum more before enabling this
@@ -790,6 +791,10 @@ char_field_name_disabled:
 
 int_indexed:
     `pk` | `col_int_key` | `col_bigint_key` | `col_int_not_null_key` ;
+
+char_indexed:
+    `col_char_1024_key` | `col_char_1024_not_null_key` |
+    `col_char_10_key` | `col_char_10_not_null_key` ;
 
 ################################################################################
 # We define LIMIT_rows in this fashion as LIMIT values can differ depending on      #

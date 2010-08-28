@@ -27,20 +27,20 @@ use GenTest;
 use GenTest::Transform;
 use GenTest::Constants;
 
+
 sub transform {
 	my ($class, $original_query, $executor) = @_;
 
-	# Handle only SELECT statements but without subqueries
-
-	my @selects = $original_query =~ m{(SELECT)}siog;
-	return STATUS_WONT_HANDLE if $#selects != 0;
-
-	return [
-		"CREATE DATABASE IF NOT EXISTS views_db",
-		"CREATE OR REPLACE VIEW views_db.view_$$ AS $original_query",
-		"SELECT * FROM views_db.view_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DROP VIEW IF EXISTS views_db.view_$$"
-	];
+	if ($executor->execute("CREATE OR REPLACE VIEW view_".$$."_probe AS $original_query", 1)->err() > 0) {
+		return STATUS_WONT_HANDLE;
+	} else {
+		return [
+			"CREATE OR REPLACE ALGORITHM=MERGE VIEW view_".$$."_merge AS $original_query",
+			"SELECT * FROM view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+			"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW view_".$$."_temptable AS $original_query",
+			"SELECT * FROM view_".$$."_temptable /* TRANSFORM_OUTCOME_UNORDERED_MATCH */"
+		];
+	}
 }
 
 1;

@@ -18,8 +18,9 @@
 package DBServer::DBServer;
 use base 'Exporter';
 
-@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 'osWindows',
-           'osLinux', 'osSolaris', 'isoTimestamp', 'isoUTCTimestamp',
+@EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 
+           'osWindows', 'osLinux', 'osSolaris', 'osMac',
+           'isoTimestamp', 'isoUTCTimestamp',
            'DBSTATUS_OK','DBSTATUS_FAILURE');
 
 use strict;
@@ -143,6 +144,14 @@ sub osSolaris {
 	} else {
 		return 0;
 	}	
+}
+
+sub osMac {
+    if ($^O eq 'darwin') {
+        return 1;
+    } else {
+        return 0;
+   }
 }
 
 sub isoTimestamp {
