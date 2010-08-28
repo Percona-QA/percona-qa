@@ -45,6 +45,7 @@ sub BEGIN {
 		'ExecuteAsPreparedTwice',
 		'ExecuteAsSPTwice',
 		'ExecuteAsView',
+		'ExecuteAsInsertSelect',
 		'FromSubquery',
 		'Having',
 		'InlineSubqueries',
