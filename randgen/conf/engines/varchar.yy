@@ -20,13 +20,13 @@ query:
 
 insert_replace:
 	i_r INTO _table ( _field , _field ) VALUES ( value , value ) |
-	i_r INTO _table ( _field ) select LIMIT _digit ;
+	i_r INTO _table ( _field ) select ;
 
 i_r:
 	INSERT | REPLACE ;
 
 select:
-	SELECT _field FROM _table WHERE condition order_by LIMIT 1;
+	SELECT _field FROM _table WHERE condition order_by LIMIT _digit;
 
 update:
  	UPDATE _table SET _field = digit WHERE condition order_by ;
