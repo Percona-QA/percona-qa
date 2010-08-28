@@ -44,7 +44,7 @@ sign:
 	= | < | > | <> | <=> | != | >= | <= ;
 
 value:
-	_english | _letter |
+	_english | _varchar(1) |
 	_varchar(255) | _varchar(255) | _varchar(255) ;
 
 order_by:
