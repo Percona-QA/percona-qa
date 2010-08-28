@@ -129,7 +129,7 @@ sub run {
             }
             $gendata_result = $datagen->run();
             
-            return ($gendata_result >> 8) if $gendata_result > STATUS_OK;
+            return $gendata_result if $gendata_result > STATUS_OK;
         }
     }
     
