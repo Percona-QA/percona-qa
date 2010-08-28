@@ -32,12 +32,12 @@ sub transform {
 
 	if ($orig_query =~ m{LIMIT}){
 		return STATUS_WONT_HANDLE;
-	} elsif ($orig_query =~ s{STRAIGHT_JOIN}{}sio) {
+	} elsif ($orig_query =~ s{SELECT\s+STRAIGHT_JOIN}{SELECT}sio) {
 		return $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
-	} elsif ($orig_query =~ m{DISTINCT|DISTINCTROW|ALL}io) {
+	} elsif ($orig_query =~ m{\SELECT\s+(DISTINCT|DISTINCTROW|ALL)}io) {
 		# Add STRAIGHT_JOIN after DISTINCT|DISTINCTROW|ALL
 
-                $orig_query =~ s{(DISTINCT|DISTINCTROW|ALL)}{$1 STRAIGHT_JOIN}sgio;
+                $orig_query =~ s{SELECT\s+(DISTINCT|DISTINCTROW|ALL)}{SELECT $1 STRAIGHT_JOIN}sgio;
                 return $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
 	} else {
 		# Add STRAIGHT_JOIN immediately after SELECT
