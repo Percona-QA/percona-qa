@@ -90,7 +90,9 @@ sub report {
 		sleep(10);
 	}
 
+	say("Copying datadir... (interrupting the copy operation may cause a false recovery failure to be reported below");
 	system("cp -r $datadir $recovery_datadir");
+	say("Copying complete");
 	system("rm -f $recovery_datadir/core*");	# Remove cores from any previous crash
 	
 	say("Attempting database recovery...");
