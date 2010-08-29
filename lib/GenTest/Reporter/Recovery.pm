@@ -81,21 +81,48 @@ sub report {
 	my $engine = $reporter->serverVariable('storage_engine');
 
 	my $dbh_prev = DBI->connect($reporter->dsn());
+
 	if (defined $dbh_prev) {
 		# Server is still running, kill it.
 		$dbh_prev->disconnect();
 
 		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
 		kill(9, $pid);
-		sleep(10);
+		sleep(5);
 	}
 
 	say("Copying datadir... (interrupting the copy operation may cause a false recovery failure to be reported below");
 	system("cp -r $datadir $recovery_datadir");
-	say("Copying complete");
 	system("rm -f $recovery_datadir/core*");	# Remove cores from any previous crash
-	
-	say("Attempting database recovery...");
+
+	if ($engine =~ m{ALABALA}sio) {
+		say("Attempting database recovery using maria_read_log ...");
+		my $recovery_datadir_aria = $recovery_datadir.'-aria';
+
+		# Copy just the maria* files in an empty location and create a test "database"
+		system("mkdir $recovery_datadir_aria");
+		system("cp $datadir/maria_log* $recovery_datadir_aria");
+		system("mkdir $recovery_datadir_aria/test");
+
+		say("Copying complete");
+
+		my $maria_read_log_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_read_log";
+		my $maria_chk_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_chk";
+
+		chdir($recovery_datadir_aria);
+
+		my $maria_read_log_result = system("$maria_read_log_path -l $recovery_datadir_aria --apply --check --silent");
+		return STATUS_RECOVERY_FAILURE if $maria_read_log_result > 0;
+		say("maria_read_log apparently returned success");
+
+		my $maria_chk_result = system("$maria_chk_path --extend-check */*.MAI");
+		return STATUS_RECOVERY_FAILURE if $maria_chk_result > 0;
+		say("maria_chk_result apparently returned success");
+	} else {
+		say("Copying complete");
+	}
+
+	say("Attempting database recovery using the server ...");
 
 	my @mysqld_options = (
 		'--no-defaults',
@@ -111,8 +138,9 @@ sub report {
 		'--socket="'.$socket.'"',
 		'--port='.$port,
 		'--loose-plugin-dir='.$plugin_dir,
-
 	);
+	push @mysqld_options, '--loose-skip-innodb' if lc($engine) ne 'innodb';
+	push @mysqld_options, '--loose-skip-pbxt' if lc($engine) ne 'pbxt';
 
 	foreach my $plugin (@$plugins) {
 		push @mysqld_options, '--plugin-load='.$plugin->[0].'='.$plugin->[1];
