@@ -30,8 +30,6 @@ use GenTest::Stack::Stack;
 use GenTest;
 use Cwd;
 
-use Data::Dumper;
-
 use constant GENERATOR_GRAMMAR_FILE	=> 0;
 use constant GENERATOR_GRAMMAR_STRING	=> 1;
 use constant GENERATOR_GRAMMAR		=> 2;
@@ -45,6 +43,7 @@ use constant GENERATOR_MASK_LEVEL => 9;
 use constant GENERATOR_VARCHAR_LENGTH	=> 10;
 use constant GENERATOR_MASKED_GRAMMAR => 11;
 use constant GENERATOR_GLOBAL_FRAME => 12;
+use constant GENERATOR_PARTICIPATING_RULES => 13;	# Stores the list of rules used in the last generated query
 
 use constant GENERATOR_MAX_OCCURRENCES	=> 3500;
 use constant GENERATOR_MAX_LENGTH	=> 10000;
@@ -140,6 +139,10 @@ sub globalFrame {
     $self->[GENERATOR_GLOBAL_FRAME] = GenTest::Stack::StackFrame->new()
         if not defined $self->[GENERATOR_GLOBAL_FRAME];
     return $self->[GENERATOR_GLOBAL_FRAME];
+}
+
+sub participatingRules {
+	return $_[0]->[GENERATOR_PARTICIPATING_RULES];
 }
 
 #
@@ -380,6 +383,8 @@ sub next {
 
 	my $sentence = join ('', @sentence);
 
+	$generator->[GENERATOR_PARTICIPATING_RULES] = [ keys %rule_counters ];
+
 	# If this is a BEGIN ... END block then send it to server without splitting.
 	# Otherwise, split it into individual statements so that the error and the result set from each statement
 	# can be examined
@@ -388,12 +393,12 @@ sub next {
 		($sentence =~ m{CREATE}sio) && 
 		($sentence =~ m{BEGIN|END}sio)
 	) {
-		return [ $sentence ], rqg_debug() ? [ keys %rule_counters ] : [];
+		return [ $sentence ];
 	} elsif ($sentence =~ m{;}) {
 		my @sentences = split (';', $sentence);
-		return \@sentences, rqg_debug() ? [ keys %rule_counters ] : [];
+		return \@sentences;
 	} else {
-		return [ $sentence ], rqg_debug() ? [ keys %rule_counters ] : [];
+		return [ $sentence ];
 	}
 }
 

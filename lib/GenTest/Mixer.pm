@@ -99,7 +99,7 @@ sub next {
 	my $executors = $mixer->executors();
 	my $filters = $mixer->filters();
 
-	my ($queries, $participating_rules) = $mixer->generator()->next($executors);
+	my $queries = $mixer->generator()->next($executors);
 	if (not defined $queries) {
 		say("Internal grammar problem. Terminating.");
 		return STATUS_ENVIRONMENT_FAILURE;
@@ -146,6 +146,7 @@ sub next {
 	#
 
 	if (rqg_debug()) {
+		my $participating_rules = $mixer->generator()->participatingRules();
 		foreach my $participating_rule (@$participating_rules) {
 			if (
 				(not exists $rule_status{$participating_rule}) ||
