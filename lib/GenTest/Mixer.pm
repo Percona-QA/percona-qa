@@ -21,6 +21,7 @@ require Exporter;
 @ISA = qw(GenTest);
 
 use strict;
+use Data::Dumper;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Result;
@@ -115,7 +116,8 @@ sub next {
 
 		if (defined $filters) {
 			foreach my $filter (@$filters) {
-				my $filter_result = $filter->filter($query);
+				my $explain = Dumper $executors->[0]->execute("EXPLAIN $query") if $query =~ m{^\s+SELECT}sio;
+				my $filter_result = $filter->filter($query." ".$explain);
 				next query if $filter_result == STATUS_SKIP;
 			}
 		}
