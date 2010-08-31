@@ -64,8 +64,8 @@ sub test_advanced {
     my $self = shift;
 
     my $gen = GenTest::App::Gendata->new(dsn => "dummy",
-                                         spec_file => "conf/examples/example.zz",
-                                         rows => 10000000,
+                                         spec_file => "unit/GendataTest.zz",
+                                         rows => 10000,
                                          views => 1);
 
     
