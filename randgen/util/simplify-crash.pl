@@ -48,7 +48,7 @@ my @mtr_options = (
 	"--vardir=$vardir",
 	"--master_port=19306",
 	'--skip-ndbcluster',
-	'--mysqld=--core-file-size=1',
+	'--mysqld=--loose-core-file-size=1',
 	'--fast',
 	'1st'	# Required for proper operation of MTR --start-and-exit
 );
@@ -71,10 +71,10 @@ my $simplifier = GenTest::Simplifier::SQL->new(
 		$executor->execute($oracle_query);
 
 		# Or, alternatively, execute as a prepared statement
-		$executor->execute("PREPARE prep_stmt FROM \"$oracle_query\"");
-		$executor->execute("EXECUTE prep_stmt");
-		$executor->execute("EXECUTE prep_stmt");
-		$executor->execute("DEALLOCATE PREPARE prep_stmt");
+		# $executor->execute("PREPARE prep_stmt FROM \"$oracle_query\"");
+		# $executor->execute("EXECUTE prep_stmt");
+		# $executor->execute("EXECUTE prep_stmt");
+		# $executor->execute("DEALLOCATE PREPARE prep_stmt");
 
 		$dbh->do("DROP EVENT IF EXISTS timeout");
 
