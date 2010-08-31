@@ -71,20 +71,20 @@ sub filter {
 			($query =~ m{$rule}si)
 		) {
 			$filtered_queries++;
-			say("Query: $query filtered out by regexp rule $rule_name.");
+#			say("Query: $query filtered out by regexp rule $rule_name.");
 			return STATUS_SKIP;
 		} elsif (
 			(ref($rule) eq '') &&
 			(lc($query) eq lc($rule))
 		) {
 			$filtered_queries++;
-			say("Query: $query filtered out by literal rule $rule_name.");
+#			say("Query: $query filtered out by literal rule $rule_name.");
 			return STATUS_SKIP;
 		} elsif (ref($rule) eq 'CODE') {
 			local $_ = $query;
 			if ($rule->($query)) {
 				$filtered_queries++;
-				say("Query: $query filtered out by code rule $rule_name");
+#				say("Query: $query filtered out by code rule $rule_name");
 	                        return STATUS_SKIP;
 			}
 		}
@@ -94,7 +94,7 @@ sub filter {
 }
 
 sub DESTROY {
-	print "GenTest::Filter::Regexp: total_queries: $total_queries; filtered_queries: $filtered_queries\n" if rqg_debug();
+	print "GenTest::Filter::Regexp: total_queries: $total_queries; filtered_queries: $filtered_queries\n" if rqg_debug() && defined $total_queries;
 }
 
 1;
