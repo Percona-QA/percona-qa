@@ -26,7 +26,7 @@ use Data::Dumper;
 
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest);
+    $report_xml_tt_dest, $no_mask);
 
 my $combinations;
 my %results;
@@ -40,6 +40,7 @@ my $opt_result = GetOptions(
 	'trials=i' => \$trials,
 	'duration=i' => \$duration,
 	'seed=s' => \$seed,
+	'no-mask' => \$no_mask,
 	'grammar=s' => \$grammar,
 	'gendata=s' => \$gendata,
 	'testname=s' => \$testname,
@@ -58,7 +59,7 @@ read(CONF, my $config_text, -s $config_file);
 eval ($config_text);
 die "Unable to load $config_file: $@" if $@;
 
-mkdir($basedir);
+mkdir($vardir);
 
 my $comb_count = $#$combinations + 1;
 
@@ -72,12 +73,9 @@ foreach my $trial_id (1..$trials) {
 
 	my $mask = $prng->uint16(0, 65535);
 
-	my $command = "
-		perl runall.pl $comb_str
-		--mask=$mask
-		--queries=100000000
-	";
+	my $command = "perl runall.pl $comb_str --queries=1M ";
 
+	$command .= " --mask=$mask" if not defined $no_mask;
 	$command .= " --duration=$duration" if $duration ne '';
 	$command .= " --basedir=$basedir " if $basedir ne '';
 	$command .= " --gendata=$gendata " if $gendata ne '';
