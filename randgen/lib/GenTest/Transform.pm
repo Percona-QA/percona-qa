@@ -54,7 +54,7 @@ sub transformExecuteValidate {
 
 	$transformer->[TRANSFORMER_QUERIES_PROCESSED]++;
 
-	my $transformed_query = $transformer->transform($original_query, $executor);
+	my $transformed_query = $transformer->transform($original_query, $executor, $original_result);
 	my @transformed_queries;
 	my @transformed_results;
 	my $transform_outcome;
@@ -101,6 +101,7 @@ sub transformExecuteValidate {
 		say("The following queries were produced:\n".join("\n", @transformed_queries));
 		return STATUS_ENVIRONMENT_FAILURE;
 	} else {
+		$transformer->[TRANSFORMER_QUERIES_TRANSFORMED]++;
 		return ($transform_outcome, \@transformed_queries, \@transformed_results);
 	}
 }

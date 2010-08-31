@@ -46,6 +46,7 @@ sub BEGIN {
 		'ExecuteAsSPTwice',
 		'ExecuteAsView',
 		'ExecuteAsInsertSelect',
+		'ExecuteAsSelectItem',
 		'FromSubquery',
 		'Having',
 		'InlineSubqueries',
@@ -183,6 +184,10 @@ sub transform {
     }
 
 	return $transform_outcome;
+}
+
+sub DESTROY {
+	@transformers = ();
 }
 
 1;
