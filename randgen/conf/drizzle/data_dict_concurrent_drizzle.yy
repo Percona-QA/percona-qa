@@ -30,7 +30,8 @@ query:
   data_dictionary_select | show_command ;
 
 data_dictionary_select:
-  simple_data_dictionary_select | complex_data_dictionary_select ;
+  simple_data_dictionary_select | 
+  complex_data_dictionary_select ;
 
 simple_data_dictionary_select:
   SELECT * FROM `data_dictionary` . data_dictionary_table ;
@@ -103,7 +104,7 @@ where_value:
   `data_dictionary` | `test` | `information_schema` | _quid ;
 
 name_schema:
-  schema | schema | schema | name ;
+  table_schema | table_schema | table_schema | table_name ;
 
 comparison_operator:
   > | >= | < | <= | 
