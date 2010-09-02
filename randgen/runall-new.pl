@@ -24,6 +24,7 @@ use lib "$ENV{RQG_HOME}/lib";
 use Carp;
 use strict;
 use GenTest;
+use GenTest::Constants;
 use GenTest::Properties;
 use GenTest::App::GenTest;
 use DBServer::DBServer;
@@ -365,7 +366,7 @@ $ENV{RQG_THREADS}= $threads;
 
 my $gentest = GenTest::App::GenTest->new(config => $gentestProps);
 my $gentest_result = $gentest->run();
-say("GenTest exited with exit status ".($gentest_result));
+say("GenTest exited with exit status ".status2text($gentest_result)." ($gentest_result)");
 exit_test($gentest_result) if $gentest_result > 0;
 
 #
@@ -481,6 +482,6 @@ EOF
 sub exit_test {
 	my $status = shift;
     stopServers();
-	say("[$$] $0 will exit with exit status $status");
+	say("[$$] $0 will exit with exit status ".status2text($status). " ($status)");
 	safe_exit($status);
 }

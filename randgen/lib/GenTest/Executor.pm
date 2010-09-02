@@ -26,6 +26,7 @@ require Exporter;
 	EXECUTOR_EXPLAIN_COUNTS
 	EXECUTOR_EXPLAIN_QUERIES
 	EXECUTOR_ERROR_COUNTS
+	EXECUTOR_STATUS_COUNTS
 );
 
 use strict;
@@ -42,12 +43,13 @@ use constant EXECUTOR_AFFECTED_ROW_COUNTS	=> 4;
 use constant EXECUTOR_EXPLAIN_COUNTS		=> 5;
 use constant EXECUTOR_EXPLAIN_QUERIES		=> 6;
 use constant EXECUTOR_ERROR_COUNTS		=> 7;
-use constant EXECUTOR_DEFAULT_SCHEMA		=> 8;
-use constant EXECUTOR_SCHEMA_METADATA		=> 9;
-use constant EXECUTOR_COLLATION_METADATA	=> 10;
-use constant EXECUTOR_META_CACHE		=> 11;
-use constant EXECUTOR_CHANNEL			=> 12;
-use constant EXECUTOR_SQLTRACE			=> 13;
+use constant EXECUTOR_STATUS_COUNTS		=> 8;
+use constant EXECUTOR_DEFAULT_SCHEMA		=> 9;
+use constant EXECUTOR_SCHEMA_METADATA		=> 10;
+use constant EXECUTOR_COLLATION_METADATA	=> 11;
+use constant EXECUTOR_META_CACHE		=> 12;
+use constant EXECUTOR_CHANNEL			=> 13;
+use constant EXECUTOR_SQLTRACE			=> 14;
 
 1;
 

@@ -107,6 +107,8 @@ my $opt_result = GetOptions(
     'testname=s' => \$testname
 );
 
+$ENV{RQG_DEBUG} = 1 if defined $debug;
+
 $validators = join(',', @$validators) if defined $validators;
 $reporters = join(',', @$reporters) if defined $reporters;
 
@@ -365,9 +367,9 @@ push @gentest_options, "--sqltrace" if defined $sqltrace;
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
 $ENV{RQG_THREADS}= $threads;
 
-my $gentest_result = system("perl $ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_options));
-say("gentest.pl exited with exit status ".($gentest_result >> 8));
-exit_test($gentest_result >> 8) if $gentest_result > 0;
+my $gentest_result = system("perl $ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_options)) >> 8;
+say("gentest.pl exited with exit status ".status2text($gentest_result). " ($gentest_result)");
+exit_test($gentest_result) if $gentest_result > 0;
 
 if ($rpl_mode) {
 	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
@@ -493,6 +495,6 @@ EOF
 sub exit_test {
 	my $status = shift;
 
-	print isoTimestamp()." [$$] $0 will exit with exit status $status\n";
+	print isoTimestamp()." [$$] $0 will exit with exit status ".status2text($status)." ($status)\n";
 	safe_exit($status);
 }

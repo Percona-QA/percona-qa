@@ -461,7 +461,7 @@ sub run {
             say("Test completed successfully.");
             return STATUS_OK;
         } else {
-            say("Test completed with failure status $total_status.");
+            say("Test completed with failure status ".status2text($total_status)." ($total_status)");
             return $total_status;
         }
     } elsif ($process_type == PROCESS_TYPE_PERIODIC) {
@@ -501,7 +501,10 @@ sub run {
         
         foreach my $i (1..$queries) {
             my $result = $mixer->next();
-            $self->stop_child($result) if $result > STATUS_CRITICAL_FAILURE;
+	    if ($result > STATUS_CRITICAL_FAILURE) {
+                undef $mixer;	# so that destructors are called
+                $self->stop_child($result);
+            }
 
             $max_result = $result if $result > $max_result && $result > STATUS_TEST_FAILURE;
             last if $result == STATUS_EOF;
@@ -511,6 +514,7 @@ sub run {
         
         for my $ex (@executors) {
             $ex->disconnect;
+            undef $ex;
         }
 
 	# Forcefully deallocate the Mixer so that Validator destructors are called
