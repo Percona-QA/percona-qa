@@ -163,14 +163,15 @@ sub next {
 }
 
 sub DESTROY {
-	my $rule_failure = 0;
+	my @rule_failures;
+
 	foreach my $rule (keys %rule_status) {
-		if ($rule_status{$rule} > STATUS_OK) {
-			say("Rule '$rule' never produced a STATUS_OK query. Best query produced had status $rule_status{$rule}.");
-			$rule_failure = 1;
-		}
+		push @rule_failures, "$rule (".status2text($rule_status{$rule}).")" if $rule_status{$rule} > STATUS_OK;
 	}
-	exit(STATUS_ENVIRONMENT_FAILURE) if $rule_failure > 0;
+
+	if ($#rule_failures > -1) {
+		say("The following rules produced no STATUS_OK queries: ".join(', ', @rule_failures));
+	}
 }
 
 sub generator {

@@ -69,7 +69,8 @@ my $opt_result = GetOptions($options,
                             'start-dirty',
                             'filter=s',
                             'valgrind',
-                            'notnull');
+                            'notnull',
+                            'debug');
 backwardCompatability($options);
 my $config = GenTest::Properties->new(
     options => $options,
@@ -114,6 +115,7 @@ help() if !$opt_result || $config->help;
 
 say("Starting \n $0 \\ \n ".join(" \\ \n ", @ARGV_saved));
 
+$ENV{RQG_DEBUG} = 1 if defined $config->debug;
 my $gentest = GenTest::App::GenTest->new(config => $config);
 
 my $status = $gentest->run();

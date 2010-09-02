@@ -537,10 +537,12 @@ sub execute {
 	my $end_time = Time::HiRes::time();
 
 	my $err = $sth->err();
+	my $err_type = $err2type{$err} || STATUS_OK;
+	$executor->[EXECUTOR_STATUS_COUNTS]->{$err_type}++ if rqg_debug() && !$silent;
+
 	my $result;
 
 	if (defined $err) {			# Error on EXECUTE
-		my $err_type = $err2type{$err};
 
 		if (
 			($err_type == STATUS_SYNTAX_ERROR) ||
@@ -549,7 +551,7 @@ sub execute {
 		) {
 			my $errstr = $executor->normalizeError($sth->errstr());
 			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
-            $executor->reportError($query, $err, $errstr, $silent);
+			$executor->reportError($query, $err, $errstr, $silent);
 		} elsif (
 			($err_type == STATUS_SERVER_CRASHED) ||
 			($err_type == STATUS_SERVER_KILLED)
@@ -696,7 +698,18 @@ sub explain {
 
 sub disconnect {
 	my $executor = shift;
-	if (rqg_debug()) {
+	$executor->dbh()->disconnect() if defined $executor->dbh();
+	$executor->setDbh(undef);
+}
+
+sub DESTROY {
+	my $executor = shift;
+	$executor->disconnect();
+
+	if (
+		(rqg_debug()) &&
+		(defined $executor->[EXECUTOR_STATUS_COUNTS])
+	) {
 		say("Statistics for Executor ".$executor->dsn());
 		use Data::Dumper;
 		$Data::Dumper::Sortkeys = 1;
@@ -710,17 +723,8 @@ sub disconnect {
 		print Dumper $executor->[EXECUTOR_ERROR_COUNTS];
 		say("Rare EXPLAIN items:");
 		print Dumper $executor->[EXECUTOR_EXPLAIN_QUERIES];
+		say("Statuses: ".join(', ', map { status2text($_).": ".$executor->[EXECUTOR_STATUS_COUNTS]->{$_}." queries" } keys %{$executor->[EXECUTOR_STATUS_COUNTS]}));
 	}
-	$executor->dbh()->disconnect();
-    $executor->setDbh(undef);
-}
-
-
-sub DESTROY {
-    my ($self) = @_;
-    if (defined $self->dbh) {
-        $self->disconnect;
-    }
 }
 
 sub currentSchema {

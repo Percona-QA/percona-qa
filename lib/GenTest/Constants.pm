@@ -28,6 +28,7 @@ require Exporter;
 
 	STATUS_EOF
 	STATUS_ENVIRONMENT_FAILURE
+	STATUS_PERL_FAILURE
 
 	STATUS_CUSTOM_OUTCOME
 
@@ -63,14 +64,19 @@ require Exporter;
 	ORACLE_ISSUE_STATUS_UNKNOWN
 
 	DB_UNKNOWN
-    DB_DUMMY
+	DB_DUMMY
 	DB_MYSQL
 	DB_POSTGRES
 	DB_JAVADB
 	DB_DRIZZLE
 
-    DEFAULT_MTR_BUILD_THREAD
+	DEFAULT_MTR_BUILD_THREAD
+
+	constant2text
+	status2text
 );
+
+use strict;
 
 use constant STATUS_OK				=> 0; ## Suitable for exit code
 use constant STATUS_UNKNOWN_ERROR		=> 2;
@@ -103,6 +109,7 @@ use constant STATUS_CONTENT_MISMATCH		=> 33;	#
 use constant STATUS_CRITICAL_FAILURE		=> 100;	# Boundary between critical and non-critical errors
 
 use constant STATUS_ENVIRONMENT_FAILURE		=> 110;	# A failure in the environment or the grammar file
+use constant STATUS_PERL_FAILURE		=> 255; # Perl died for some reason
 
 use constant STATUS_CUSTOM_OUTCOME		=> 36;	# Used for things such as signaling an EXPLAIN hit from the ExplainMatch Validator
 
@@ -128,5 +135,36 @@ use constant DB_JAVADB		=> 4;
 use constant DB_DRIZZLE		=> 5;
 
 use constant DEFAULT_MTR_BUILD_THREAD => 930; ## Legacy...
+
+#
+# The part below deals with constant value to constant name conversions
+#
+
+
+my %text2value;
+
+sub BEGIN {
+
+	# What we do here is open the Constants.pm file and parse the 'use constant' lines from it
+	# The regexp is faily hairy in order to be more permissive.
+
+	open (CONSTFILE, __FILE__) or die "Unable to read constants from ".__FILE__;
+	read(CONSTFILE, my $constants_text, -s __FILE__);
+	%text2value = $constants_text =~ m{^\s*use\s+constant\s+([A-Z_0-9]*?)\s*=>\s*(\d+)\s*;}mgio;
+}
+
+sub constant2text {
+	my ($constant_value, $prefix) = @_;
+
+	foreach my $constant_text (keys %text2value) {
+		return $constant_text if $text2value{$constant_text} == $constant_value && $constant_text =~ m{^$prefix}si;
+	}
+	warn "Unable to obtain constant text for constant_value = $constant_value; prefix = $prefix";
+	return undef;
+}
+
+sub status2text {
+	return constant2text($_[0], 'STATUS_');
+}
 
 1;
