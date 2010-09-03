@@ -31,7 +31,7 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $original_query, $executor) = @_;
 
-	return STATUS_WONT_HANDLE if $original_query !~ m{^\s+SELECT}sio;
+	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio;
 
 	my $table_name = 'insert_select_'.$$;
 

@@ -116,7 +116,7 @@ sub next {
 
 		if (defined $filters) {
 			foreach my $filter (@$filters) {
-				my $explain = Dumper $executors->[0]->execute("EXPLAIN $query") if $query =~ m{^\s+SELECT}sio;
+				my $explain = Dumper $executors->[0]->execute("EXPLAIN $query") if $query =~ m{^\s*SELECT}sio;
 				my $filter_result = $filter->filter($query." ".$explain);
 				next query if $filter_result == STATUS_SKIP;
 			}

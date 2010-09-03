@@ -31,7 +31,7 @@ sub transform {
 	my ($class, $orig_query, $executor, $orig_result) = @_;
 
 	if (
-		($orig_query !~ m{^\s+SELECT}sio) ||
+		($orig_query !~ m{^\s*SELECT}sio) ||
 		($orig_result->rows() != 1) ||
 		($#{$orig_result->data->[0]} != 0)
 	) {
