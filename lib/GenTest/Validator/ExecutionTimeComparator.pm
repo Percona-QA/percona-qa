@@ -32,9 +32,10 @@ use Data::Dumper;
 my @execution_times;
 my %execution_ratios;
 my $total_queries = 0;
+my $different_plans = 0;
 
-use constant MINIMUM_TIME_INTERVAL	=> 1;	# seconds
-use constant MINIMUM_RATIO		=> 2;	# Minimum speed-up or slow-down required in order to report a query
+use constant MINIMUM_TIME_INTERVAL	=> 0.2;	# seconds
+use constant MINIMUM_RATIO		=> 1.5;	# Minimum speed-up or slow-down required in order to report a query
 
 sub validate {
 	my ($comparator, $executors, $results) = @_;
@@ -44,6 +45,17 @@ sub validate {
 	my $time0 = $results->[0]->duration();
 	my $time1 = $results->[1]->duration();
 	my $query = $results->[0]->query();
+
+	return STATUS_WONT_HANDLE if $query !~ m{^\s*SELECT}sio;
+
+	my @explains;
+	foreach my $executor_id (0..1) {
+		my $explain_extended = $executors->[$executor_id]->dbh()->selectall_arrayref("EXPLAIN EXTENDED $query");
+		my $explain_warnings = $executors->[$executor_id]->dbh()->selectall_arrayref("SHOW WARNINGS");
+		$explains[$executor_id] = Dumper($explain_extended)."\n".Dumper($explain_warnings);
+	}
+
+	$different_plans++ if $explains[0] ne $explains[1];
 
 	return STATUS_WONT_HANDLE if $time0 == 0 || $time1 == 0;
 	return STATUS_WONT_HANDLE if $time0 < MINIMUM_TIME_INTERVAL && $time1 < MINIMUM_TIME_INTERVAL;
@@ -63,7 +75,7 @@ sub validate {
 }
 
 sub DESTROY {
-	say("Total queries suitable for execution time comparison: $total_queries");
+	say("Queries with different EXPLAIN plans: $different_plans; Queries suitable for execution time comparison: $total_queries.");
 	print Dumper \@execution_times;
 	foreach my $ratio (sort keys %execution_ratios) {
 		print "ratio = $ratio; queries = ".scalar(@{$execution_ratios{$ratio}}).":\n";
