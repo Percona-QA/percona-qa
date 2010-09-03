@@ -57,7 +57,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $views, $start_dirty,
     $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $notnull, $sqltrace);
+    $report_xml_tt_dest, $notnull, $sqltrace, $lcov);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -104,7 +104,8 @@ my $opt_result = GetOptions(
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
-    'testname=s' => \$testname
+    'testname=s' => \$testname,
+	'lcov' => \$lcov
 );
 
 $ENV{RQG_DEBUG} = 1 if defined $debug;
@@ -199,6 +200,11 @@ $redefine_file = $ENV{RQG_HOME}.'/'.$redefine_file if defined $redefine_file && 
 
 my $cwd = cwd();
 
+if ($lcov) {
+	unlink(tmpdir()."/lcov-rqg.info");
+	system("lcov --directory $basedirs[0] --zerocounters");
+}
+
 #
 # Start servers. Use rpl_alter if replication is needed.
 #
@@ -233,7 +239,7 @@ foreach my $server_id (0..1) {
 	push @mtr_options, "--mysqld=--master-retry-count=65535";
 
 	push @mtr_options, "--start-dirty" if defined $start_dirty;
-#	push @mtr_options, "--gcov";
+	push @mtr_options, "--gcov" if $lcov;
 
 	if (($rpl_mode ne '') && ($server_id != 0)) {
 		# If we are running in replication, and we start the slave separately (because it is a different binary)
@@ -369,6 +375,15 @@ $ENV{RQG_THREADS}= $threads;
 
 my $gentest_result = system("perl $ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_options)) >> 8;
 say("gentest.pl exited with exit status ".status2text($gentest_result). " ($gentest_result)");
+
+if ($lcov) {
+	say("Trying to generate a genhtml lcov report in ".tmpdir()."/rqg-lcov-$$ ...");
+	system("lcov --quiet --directory $basedirs[0] --capture --output-file ".tmpdir()."/lcov-rqg.info");
+	system("genhtml --quiet --no-sort --output-directory=".tmpdir()."/rqg-lcov-$$ ".tmpdir()."/lcov-rqg.info");
+	say("genhtml lcov report may have been generated in ".tmpdir()."/rqg-lcov-$$ .");
+
+}	
+
 exit_test($gentest_result) if $gentest_result > 0;
 
 if ($rpl_mode) {
