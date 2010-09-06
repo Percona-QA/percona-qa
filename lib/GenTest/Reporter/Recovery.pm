@@ -95,7 +95,7 @@ sub report {
 	system("cp -r $datadir $recovery_datadir");
 	system("rm -f $recovery_datadir/core*");	# Remove cores from any previous crash
 
-	if ($engine =~ m{ALABALA}sio) {
+	if ($engine =~ m{Maria}sio) {
 		say("Attempting database recovery using maria_read_log ...");
 		my $recovery_datadir_aria = $recovery_datadir.'-aria';
 
