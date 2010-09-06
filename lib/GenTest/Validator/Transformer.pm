@@ -47,6 +47,7 @@ sub BEGIN {
 		'ExecuteAsView',
 		'ExecuteAsInsertSelect',
 		'ExecuteAsSelectItem',
+		'ExecuteAsUnion',
 		'FromSubquery',
 		'Having',
 		'InlineSubqueries',
