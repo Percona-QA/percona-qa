@@ -438,7 +438,7 @@ sub run {
         
         my $index_sqls = $#index_fields > -1 ? join(",\n", map { $_->[FIELD_INDEX_SQL] } @index_fields) : undef;
         
-        $executor->execute("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n/*Indices*/\n", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] ");
+        $executor->execute("CREATE TABLE `$table->[TABLE_NAME]` (\n".join(",\n/*Indices*/\n", grep { defined $_ } (@field_sqls, $index_sqls) ).") $table->[TABLE_SQL] /*! CHECKSUM=1 */");
         
         if (not ($executor->type() == DB_MYSQL || 
                  $executor->type() == DB_DRIZZLE)) {
