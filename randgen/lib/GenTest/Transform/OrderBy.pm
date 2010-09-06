@@ -31,9 +31,9 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $original_query) = @_;
 
-	if (
-		($original_query =~ m{GROUP\s+BY}io)
-	) {
+       my @selects = $original_query =~ m{(SELECT)}sgio;
+
+       if ($original_query =~ m{GROUP\s+BY}io) {
 		return STATUS_WONT_HANDLE;
 	} else {
 		my $transform_outcome;
@@ -42,8 +42,8 @@ sub transform {
 
 			if ($original_query =~ s{ORDER\s+BY[^()]*$}{}sio) {
 				# Removing ORDER BY
-			} elsif ($original_query =~ s{LIMIT[^()]*$}{ORDER BY 1}sio) {
-				# Add ORDER BY 1 ... LIMIT
+                       } elsif ($#selects == 0) {
+                               return STATUS_WONT_HANDLE if $original_query !~ s{LIMIT[^()]*$}{ORDER BY 1}sio;
 			} else {
 				return STATUS_WONT_HANDLE;
 			}
@@ -52,7 +52,8 @@ sub transform {
 
 			if ($original_query =~ s{ORDER\s+BY[^()]*$}{}sio) {
 				# Removing ORDER BY
-			} elsif ($original_query =~ s{$}{ORDER BY 1}sio) {
+                       } elsif ($#selects == 0) {
+                               return STATUS_WONT_HANDLE if $original_query !~ s{$}{ ORDER BY 1}sio;
 				# Add ORDER BY 1 (no LIMIT)
 			} else {
 				return STATUS_WONT_HANDLE;
