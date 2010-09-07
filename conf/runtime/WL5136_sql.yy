@@ -446,7 +446,7 @@ event_item:
 # Here starts the core of the test grammar ========================================================#
 
 query:
-	dml | dml | dml | dml | ddl | transaction | lock_unlock | lock_unlock | flush | handler ;
+	dml | dml | dml | dml | ddl | transaction | lock_unlock | lock_unlock | flush ;
 
 ########## TRANSACTIONS ####################
 
@@ -569,7 +569,6 @@ ddl:
 	truncate_table             |
 	drop_table_list            |
 	rename_table               |
-	table_maintenance_ddl      |
 	dump_load_data_sequence    |
 	grant_revoke               |
 	rename_column              |
@@ -578,44 +577,6 @@ ddl:
 	# consists more of DML statements, but we place this here under "ddl" because the
 	# statements in "dml" are often executed as prepared statements. And the text after
 	# PREPARE st1 FOR must not contain multiple statements.
-
-
-########## HANDLER ####################
-	# The alias within HANDLER ... OPEN is optional. Unfortunately the HANDLER ... READ/CLOSE ... statements
-	# do not accept SCHEMA names. Therefore the tablename must be either a table within the current SCHEMA
-	# or an alias. We go with alias all time.
-
-handler:
-	handler_open  |
-	handler_read  |
-	handler_close ;
-
-handler_open:
-	HANDLER table_no_view_item OPEN as handler_a ;
-
-handler_read:
-	HANDLER handler_a READ handler_index comparison_operator ( _digit ) handler_read_part |
-	HANDLER handler_a READ handler_index first_next_prev_last           handler_read_part |
-	HANDLER handler_a READ               first_next                     handler_read_part ;
-handler_index:
-	`PRIMARY`     |
-	`col_int_key` ;
-handler_read_part:
-	# Grammar rule "where" disabled because of
-	#    Bug#54920 Stored functions are allowed in HANDLER statements, but broken.
-	# Use of functions like WHERE f1() = 1 in HANDLER statements is "ill".
-	; # | where ;
-first_next:
-	FIRST |
-	NEXT  ;
-first_next_prev_last:
-	FIRST |
-	NEXT  |
-	PREV  |
-	LAST  ;
-
-handler_close:
-	HANDLER handler_a CLOSE ;
 
 
 ########## SHOW ####################
@@ -643,7 +604,6 @@ show_create_database:
 table_show:
 	show_tables       | show_tables       |
 	show_table_status | show_table_status |
-	show_create_table | show_create_view  |
 	show_open_tables  | show_columns      ;
 
 show_tables:
@@ -681,7 +641,7 @@ routine_show:
 	show_create_function  | show_function_code  | show_function_status  |
 	show_create_procedure | show_procedure_code | show_procedure_status |
 	show_triggers         | show_create_trigger |
-	show_events           | show_create_event   ;
+	show_events           ;
 
 show_create_function:
 	SHOW CREATE FUNCTION function_item ;
