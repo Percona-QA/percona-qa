@@ -549,7 +549,8 @@ sub run {
                 (($row_id % 50) == 0) ||
                 ($row_id == $table->[TABLE_ROW])
                 ) {
-                $executor->execute("INSERT /*! IGNORE */ INTO $table->[TABLE_NAME] VALUES ".join(', ', @row_buffer));
+                my $insert_result = $executor->execute("INSERT /*! IGNORE */ INTO $table->[TABLE_NAME] VALUES ".join(', ', @row_buffer));
+                return $insert_result->status() if $insert_result->status() >= STATUS_CRITICAL_FAILURE;
                 @row_buffer = ();
             }
             
