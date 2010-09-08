@@ -73,7 +73,11 @@ foreach my $trial_id (1..$trials) {
 
 	my $mask = $prng->uint16(0, 65535);
 
-	my $command = "perl runall.pl $comb_str --queries=1M ";
+	my $command = "
+		perl ".(defined $ENV{RQG_HOME} ? $ENV{RQG_HOME}."/" : "" )."runall.pl $comb_str
+		--mask=$mask
+		--queries=100000000
+	";
 
 	$command .= " --mask=$mask" if not defined $no_mask;
 	$command .= " --duration=$duration" if $duration ne '';
