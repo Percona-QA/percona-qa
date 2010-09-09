@@ -22,15 +22,16 @@
 #            WL#5004 Comprehensive Locking Stress Test for Azalea
 #                    A few grammar rules were taken from other grammar files.
 # Last Modifications:
-#    2010-05 Matthias Leich
-#            Extend grammar for WL#3561 transactional LOCK TABLE
-#    2010-06 Matthias Leich
-#            - Adjustment to fixed and new bugs for 5.5-m3 mysql-trunk-runtime
+#    2010-09 Matthias Leich
+#            - Adjustment to fixed and new bugs for 5.5-runtime
 #            - Attention: Replication bugs had to be ignored
 #
 # Attention:
-# There are modified grammar rules because of open bugs.
-# Please search case insensitive for "disable".
+# 1. There are modified grammar rules because of open bugs.
+#    Please search case insensitive for "disable".
+# 2. Some locking statements will get an syntax error as long as
+#       WL#3561 transactional LOCK TABLE
+#    is not pushed.
 #
 # TODO:
 #   - Adjust grammar to new open and old fixed bugs
@@ -52,7 +53,6 @@
 #          therefore table2 is also unlikely to be created.
 #   - Add subtest for
 #     Bug#48315 Metadata lock is not taken for merged views that use an INFORMATION_SCHEMA table
-#     2010-05 Closed but not in tree
 #     Simple:
 #        Philip: using an I_S in a meaningless subselect would be best, just have
 #                ( SELECT user + 0 FROM INFORMATION_SCHEMA.USERS LIMIT 1)
@@ -64,10 +64,6 @@
 #   - Simplify grammar:
 #           Namespace concept is good for grammar development, avoiding failing statements,
 #           understanding statement logs but bad for grammar simplification speed.
-#
-# Bug#45225 Locking: hang if drop table with no timeout
-#           Reporter , LockTableKiller might help
-#     (2010-05 Closed but not in tree)
 #
 # General architecture rules:
 # ---------------------------
@@ -125,12 +121,12 @@
 #    Please be aware that for example a succeeding call of "procedure_item" modifies the content of $database_name.
 #
 #
-# Rules by thumb and experiences (important when extending this grammar file):
-# ----------------------------------------------------------------------------
+# Hints and experiences (important when extending this grammar ):
+# -------------------------------------------------------------------
 # 1. Any statement sequence has to be in one line.
 # 2. Be aware of the dual use of ';'. It separates SQL statements in sequences and closes the definition block
 #    of a grammar rules. So any ';' before some '|' has a significant impact.
-# 3. Strange not intended effects: '|' or ':' instead of ';' ?
+# 3. Strange not intended effects might be caused by '|' or ':' instead of ';'
 # 4. There is an open RQG problem with SHOW ... LIKE '<grammar rule>'.
 # 5. In general: There should be spaces whenever a grammar rule is mentioned in some grammar rule component.
 #    Example: "my_table" and  "where" are grammar rules.
@@ -142,9 +138,12 @@
 # 7. Use uppercase characters for strings and keywords in statements. This avoids any not intended
 #    treatment as grammar rule.
 # 8. Use the most simple option first in lists. This makes automatic grammar simplification
-#    which walks from right to left more efficient. Example:
+#    which walks basically from right to left more efficient.
+#    Example:
 #    where:
 #     	<empty> | WHERE `pk` BETWEEN _digit AND _digit | WHERE function_name_n() = _digit ;
+# 9. The RQG "Reporter" LockTableKiller can help to accelerate "deadlocked" tests.
+#
 #
 
 # Naming conventions (default)
@@ -159,17 +158,17 @@
 # p1_*                             | procedure
 # tr1_*                            | trigger
 
-# End of grammar item name (default) | characteristic
+# End of grammar rule name (default) | characteristic
 # -------------------------------------------------------
 # _S                                 | related to "sequence" object
 # _N                                 | related to "normal" object
 #
-# Within grammar item name  | characteristic
+# Within grammar rule name  | characteristic
 # -----------------------------------------------
 # _name                     | name of the object
 # _item                     | <schema name> . <name of the object>
-# _list                     | either single item (<schema name> . <name of the object>) or comma separated list
-#                           | of such items
+# _list                     | either single rule (<schema name> . <name of the object>) or comma separated list
+#                           | of such rules
 
 #
 # Missing but not really important improvements:
@@ -180,7 +179,7 @@
 #
 
 
-# Section of easy changeable items with high impact on the test =============================================#
+# Section of easy changeable rules with high impact on the test =============================================#
 query_init:
 	# Variant 1:
 	#    Advantage: Less failing (table does not exist ...) statements within the first phase of the test.
@@ -210,7 +209,7 @@ init_basics:
 	#    function        | 0.5 * RAND() * $life_time_unit
 	#    trigger         | 0.5 * RAND() * $life_time_unit
 	#
-	#    A DML statement using SLEEP will use 0.5 * RAND() * $life_time_unit
+	#    A DML statement using SLEEP will use 0.5 * RAND() * $life_time_unit seconds.
 	#
 	#    one_thread_correction will correct $life_time_unit to 0 if we have only one "worker" thread.
 	#
@@ -235,7 +234,7 @@ init_namespaces:
 	# 2. Higher amount of failing statements, risk to run into known temporary table related crashes
 	# separate_objects ; separate_normal_sequence ; no_separate_table_types ;
 	# 3. Total chaos
-	# High amount of failing statements, risk to run into known temporary table related crashes
+	# High amount of failing statements, especially risk to run into known temporary table related crashes and asserts.
 	# no_separate_objects ; separate_normal_sequence ; no_separate_table_types ;
 
 separate_table_types:
@@ -283,7 +282,7 @@ no_separate_objects:
 	{ $database_prefix="o1_1" ; $table_prefix="o1_" ; $procedure_prefix="o1_" ; $function_prefix="o1_" ; $trigger_prefix="o1_"  ; $event_prefix="o1_" ; return undef } ;
 
 avoid_bugs:
-	# Set this grammar item to "empty" if for example no optimizer related server system variable has to be switched.
+	# Set this grammar rule to "empty" if for example no optimizer related server system variable has to be switched.
 	;
 
 event_scheduler_on:
@@ -294,13 +293,12 @@ event_scheduler_off:
 
 have_some_initial_objects:
 	# It is assumed that this reduces the likelihood of "Table does not exist" significant when running with a small number of "worker" threads.
-	# The amount of create_..._table items within the some_..._tables should depend a bit on the value in $namespace_width but I currently
+	# The amount of create_..._table rules within the some_..._tables should depend a bit on the value in $namespace_width but I currently
 	# do not know how to express this in the grammar.
-	# Use if
-	#   Bug#47633 assert in ha_myisammrg::info during OPTIMIZE
-	# is fixed (merge tables disabled)
+   # Partitioned tables disabled because of
+   #    Bug#55385 UPDATE statement throws an error, but still updates the table entries
 	# some_databases ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
-	some_databases ; some_base_tables ; some_temp_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
+	some_databases ; some_base_tables ; some_temp_tables ; some_merge_tables ;                    some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
 some_databases:
 	create_database    ; create_database    ; create_database    ; create_database    ;
 some_base_tables:
@@ -330,7 +328,7 @@ system_table_stuff:
 	CREATE USER otto@localhost ;
 
 
-# Useful grammar items ====================================================================================#
+# Useful grammar rules ====================================================================================#
 
 rand_val:
 	{ $rand_val = $prng->int(0,100) / 100 } ;
@@ -510,7 +508,7 @@ table_no_view_item:
 
 
 # 7.3 All base and temp tables + views ##############################################################
-#     These grammar elements is used to avoid some partioning related bugs.
+#     These grammar rules could be used to avoid some partioning or merge table related bugs.
 base_temp_view_table_item_s:
 	base_table_item_s | temp_table_item_s | view_table_item_s | part_table_item_s ;
 base_temp_view_table_item_n:
@@ -607,10 +605,7 @@ event_item:
 # Here starts the core of the test grammar ========================================================#
 
 query:
-	# handler disabled because of
-	#    Bug#54401 assert in Diagnostics_area::set_eof_status , HANDLER
-	# dml | dml | dml | dml | ddl | transaction | lock_unlock | lock_unlock | flush | handler ;
-	dml | dml | dml | dml | ddl | transaction | lock_unlock | lock_unlock | flush ;
+	dml | dml | dml | dml | ddl | transaction | lock_unlock | lock_unlock | flush | handler ;
 
 ########## TRANSACTIONS ####################
 
@@ -724,11 +719,10 @@ ddl:
 	database_ddl                                        |
 	base_table_ddl  | base_table_ddl  | base_table_ddl  |
 	temp_table_ddl  | temp_table_ddl  | temp_table_ddl  |
-	# Use if
-	#   Bug#47633 assert in ha_myisammrg::info during OPTIMIZE
-	# is fixed (merge tables disabled)
-	# merge_table_ddl | merge_table_ddl | merge_table_ddl |
-	part_table_ddl  | part_table_ddl  | part_table_ddl  |
+	merge_table_ddl | merge_table_ddl | merge_table_ddl |
+   # Partitioned tables disabled because of
+   #    Bug#55385 UPDATE statement throws an error, but still updates the table entries
+	# part_table_ddl  | part_table_ddl  | part_table_ddl  |
 	view_ddl        | view_ddl        | view_ddl        |
 	procedure_ddl   | procedure_ddl   | procedure_ddl   |
 	function_ddl    | function_ddl    | function_ddl    |
@@ -737,8 +731,13 @@ ddl:
 	truncate_table             |
 	drop_table_list            |
 	rename_table               |
-	# Disabled because of
-	#   Bug#54486 assert in my_seek, concurrent DROP/CREATE SCHEMA, CREATE TABLE, REPAIR
+	# Bug#54486 assert in my_seek, concurrent DROP/CREATE SCHEMA, CREATE TABLE, REPAIR
+	# affects table_maintenance_ddl in mysql-5.1.
+	# The grammar rule is not disabled because the problem seems to have disappeared in
+	# higher versions.
+   # Grammar rule disabled because of
+	#    Bug#56516 crash in MDL_context::upgrade_shared_lock_to_exclusive
+   # (OPTIMIZE table crashes after ALTER TABLE caused an invalif merge table definition)
 	# table_maintenance_ddl      |
 	dump_load_data_sequence    |
 	grant_revoke               |
@@ -771,7 +770,10 @@ handler_index:
 	`PRIMARY`     |
 	`col_int_key` ;
 handler_read_part:
-	| where ;
+	# Grammar rule "where" disabled because of
+	#    Bug#54920 Stored functions are allowed in HANDLER statements, but broken.
+	# Use of functions like WHERE f1() = 1 in HANDLER statements is "ill".
+	; # | where ;
 first_next:
 	FIRST |
 	NEXT  ;
@@ -1290,10 +1292,7 @@ completion_handling:
 drop_event:
 	DROP EVENT if_exists event_item_s ;
 alter_event:
-	# Disabled because of
-	#    Bug#44171 KILL ALTER EVENT can crash the server
-	# ALTER EVENT event_item_s COMMENT 'UPDATED NOW()';
-	;
+	ALTER EVENT event_item_s COMMENT 'UPDATED NOW()';
 
 ########## DML ####################
 
@@ -1310,8 +1309,8 @@ dml:
 
 dml2:
 	select | select | select  |
-	# is_selects disabled because of
-	#    Bug #54678  	InnoDB, TRUNCATE, ALTER, I_S SELECT, crash or deadlock
+	# Bug #54678  	InnoDB, TRUNCATE, ALTER, I_S SELECT, crash or deadlock
+	# affects is_selects , seems to be not fixed in 5.5-runtime
 	# do     | insert | replace | delete | update | CALL procedure_item | show | is_selects ;
 	do     | insert | replace | delete | update | CALL procedure_item | show ;
 
@@ -1365,17 +1364,22 @@ table_in_select:
 	# Attention: In case of CREATE VIEW a subquery in the FROM clause (derived table) is disallowed.
 	#            Therefore they should be rare.
 	table_item | table_item | table_item | table_item | table_item |
-	( SELECT table_field_list_or_star FROM table_item ) ;
+	( SELECT table_field_list_or_star FROM table_item )            ;
 
 addition:
 	# Involve one (simple where condition) or two tables (subquery | join | union)
-	where procedure_analyze | subquery procedure_analyze | join where procedure_analyze | procedure_analyze union where ;
+	where procedure_analyze       |
+	subquery procedure_analyze    |
+	join where procedure_analyze  |
+	procedure_analyze union where ;
 
 addition_no_procedure:
 	# Involve one (simple where condition) or two tables (subquery | join | union)
 	# Don't add procedure_analyze.
 	where | where | where | where | where | where | where |
-	subquery | join where | union where ;
+	subquery    |
+	join where  |
+	union where ;
 
 where:
 	# The very selective condition is intentional.
@@ -1385,7 +1389,8 @@ where:
 	# - tables (INSERT ... SELECT, REPLACE) do not become too big
 	# - tables (DELETE) do not become permanent empty
 	# Please note that there are some cases where LIMIT cannot be used.
-	WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 | WHERE function_item () = _digit AND `pk` = _digit ;
+	WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 |
+	WHERE function_item () = _digit AND `pk` = _digit              ;
 
 union:
 	UNION SELECT * FROM table_in_select as B ;
@@ -1395,7 +1400,8 @@ join:
 	NATURAL JOIN table_item B ;
 
 subquery:
-	correlated | non_correlated ;
+	correlated     |
+	non_correlated ;
 subquery_part1:
 	WHERE A.`pk` IN ( SELECT `pk` FROM table_item AS B WHERE B.`pk` = ;
 correlated:
@@ -1453,7 +1459,7 @@ insert_normal:
 	INSERT low_priority_delayed_high_priority ignore into_word table_item simple_or_complicated on_duplicate_key_update ;
 simple_or_complicated:
 	( random_field_quoted1 ) VALUES ( digit_or_null ) |
-	braced_table_field_list used_select LIMIT 1 ;
+	braced_table_field_list used_select LIMIT 1       ;
 on_duplicate_key_update:
 	# Only 10 %
 	| | | | | | | | |
@@ -1497,7 +1503,7 @@ grant_revoke:
 	DELETE FROM mysql.tables_priv WHERE user = LOWER('OTTO') ; FLUSH PRIVILEGES          |
 	/* table_item */ INSERT INTO mysql.tables_priv (host,db,user,table_name,grantor,table_priv) VALUES (LOWER('LOCALHOST'),TRIM(' $database '),LOWER('OTTO'),TRIM(' $table_name '),LOWER('ROOT@LOCALHOST'),'Select') ; FLUSH PRIVILEGES |
 	SELECT COUNT(*) FROM information_schema.table_privileges WHERE grantee LIKE '%OTTO%' |
-	SHOW GRANTS FOR otto@localhost ;
+	SHOW GRANTS FOR otto@localhost                                                       ;
 
 ########## SQL MODE ########################
 sql_mode:
@@ -1532,7 +1538,7 @@ delete_with_sleep:
 update:
 	update_normal | update_normal | update_normal | update_normal | update_with_sleep ;
 update_normal:
-	UPDATE low_priority ignore table_item SET random_field_quoted1 = _digit WHERE `pk` > _digit LIMIT _digit  |
+	UPDATE low_priority ignore table_item SET random_field_quoted1 = _digit WHERE `pk` > _digit LIMIT _digit                |
 	UPDATE low_priority ignore table_item AS A join SET A. random_field_quoted1 = _digit , B. random_field_quoted1 = _digit ;
 update_with_sleep:
 	UPDATE low_priority ignore table_item SET random_field_quoted1 = _digit WHERE wait_short = 0 LIMIT 1 ;
@@ -1554,7 +1560,6 @@ lock_item:
 	table_item AS _letter lock_type ;
 lock_type:
 	# Disabled because of
-	#    Bug#54117 crash in thr_multi_unlock, temporary table
 	#    Bug#54553 Innodb asserts in ha_innobase::update_row, temporary table, table lock
 	# READ local_or_empty      |
 	# low_priority WRITE       |
@@ -1582,14 +1587,14 @@ flush:
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
 	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list ;
-	# Disabled because of
-	#    Bug#54436 Deadlock on concurrent FLUSH WITH READ LOCK, ALTER TABLE, ANALYZE TABLE
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+	# Bug#54436 Deadlock on concurrent FLUSH WITH READ LOCK, ALTER TABLE, ANALYZE TABLE
 	# (concurrent
 	#  - ANALYZE TABLE t1
 	#  - ALTER TABLE t1 ENGINE = InnoDB
-	#  - FLUSH TABLES WITH READ LOCK ; SELECT SLEEP( 0.01 ) ; UNLOCK TABLES; )
-	# FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
+	# !! -> FLUSH TABLES WITH READ LOCK ; SELECT SLEEP( 0.01 ) ; UNLOCK TABLES ; )
+	# affects 5.1 but till now no more repeatable in 5.5-runtime.
+	FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
 
 
 ########## TINY GRAMMAR ITEMS USED AT MANY PLACES ###########
@@ -1699,9 +1704,7 @@ table_field_list_or_star:
 table_field_list:
 	# It is intentional that the next line will lead to ER_FIELD_SPECIFIED_TWICE
 	# in case it is used in INSERT INTO <table> ( table_field_list )
-	# Disabled because of
-	#    Bug#54106 assert in Protocol::end_statement, INSERT IGNORE ... SELECT ... UNION SELECT ...
-	# { $table_field_list = "`pk`      , `col_int_key` , `pk`          "} |
+	{ $table_field_list = "`pk`      , `col_int_key` , `pk`          "} |
 	{ $table_field_list = "`col_int_key` , `col_int`     , `pk`      "} |
 	{ $table_field_list = "`col_int_key` , `pk`      , `col_int`     "} |
 	{ $table_field_list = "`col_int`     , `pk`      , `col_int_key` "} |
