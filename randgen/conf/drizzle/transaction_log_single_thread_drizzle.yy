@@ -58,7 +58,8 @@ query_type:
 transaction:
 	START TRANSACTION |
 	COMMIT ; SET TRANSACTION ISOLATION LEVEL isolation_level |
-	ROLLBACK ; SET TRANSACTION ISOLATION LEVEL isolation_level ;
+	ROLLBACK ; SET TRANSACTION ISOLATION LEVEL isolation_level |
+        SET AUTOCOMMIT=OFF | SET AUTOCOMMIT=ON ;
 
 
 transaction_disabled:
