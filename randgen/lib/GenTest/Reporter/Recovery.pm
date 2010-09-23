@@ -74,7 +74,7 @@ sub report {
 	my $socket = $reporter->serverVariable('socket');
 	my $port = $reporter->serverVariable('port');
 	my $pid = $reporter->serverInfo('pid');
-	my $maria_block_size = $reporter->serverVariable('maria_block_size');
+	my $aria_block_size = $reporter->serverVariable('maria_block_size') || $reporter->serverVariable('aria_block_size');
 	my $plugin_dir = $reporter->serverVariable('plugin_dir');
 	my $plugins = $reporter->serverPlugins();
 
@@ -95,29 +95,42 @@ sub report {
 	system("cp -r $datadir $recovery_datadir");
 	system("rm -f $recovery_datadir/core*");	# Remove cores from any previous crash
 
-	if ($engine =~ m{Maria}sio) {
-		say("Attempting database recovery using maria_read_log ...");
+	if ($engine =~ m{aria}sio) {
+		say("Attempting database recovery using aria_read_log ...");
 		my $recovery_datadir_aria = $recovery_datadir.'-aria';
 
-		# Copy just the maria* files in an empty location and create a test "database"
+		# Copy just the *aria* files in an empty location and create a test "database"
 		system("mkdir $recovery_datadir_aria");
-		system("cp $datadir/maria_log* $recovery_datadir_aria");
+		system("cp $datadir/*aria_log* $recovery_datadir_aria");
 		system("mkdir $recovery_datadir_aria/test");
 
 		say("Copying complete");
 
-		my $maria_read_log_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_read_log";
-		my $maria_chk_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_chk";
+	
+		my $aria_read_log_path;
+		if (-e $reporter->serverVariable('basedir')."/../storage/maria/aria_read_log") {
+			$aria_read_log_path = $reporter->serverVariable('basedir')."/../storage/maria/aria_read_log";
+		} else {
+			$aria_read_log_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_read_log";			
+		}
+
+		my $aria_chk_path;
+
+		if (-e $reporter->serverVariable('basedir')."/../storage/maria/aria_chk") {
+			$aria_chk_path = $reporter->serverVariable('basedir')."/../storage/maria/aria_chk";
+		} else {
+			$aria_chk_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_chk";
+		}
 
 		chdir($recovery_datadir_aria);
 
-		my $maria_read_log_result = system("$maria_read_log_path -l $recovery_datadir_aria --apply --check --silent");
-		return STATUS_RECOVERY_FAILURE if $maria_read_log_result > 0;
-		say("maria_read_log apparently returned success");
+		my $aria_read_log_result = system("$aria_read_log_path -l $recovery_datadir_aria --apply --check --silent");
+		return STATUS_RECOVERY_FAILURE if $aria_read_log_result > 0;
+		say("$aria_read_log_path apparently returned success");
 
-		my $maria_chk_result = system("$maria_chk_path --extend-check */*.MAI");
-		return STATUS_RECOVERY_FAILURE if $maria_chk_result > 0;
-		say("maria_chk_result apparently returned success");
+		my $aria_chk_result = system("$aria_chk_path --extend-check */*.MAI");
+		return STATUS_RECOVERY_FAILURE if $aria_chk_result > 0;
+		say("$aria_chk_path apparently returned success");
 	} else {
 		say("Copying complete");
 	}
@@ -128,7 +141,8 @@ sub report {
 		'--no-defaults',
 		'--core-file',
 		'--loose-console',
-		'--loose-maria-block-size='.$maria_block_size,
+		'--loose-maria-block-size='.$aria_block_size,
+		'--loose-aria-block-size='.$aria_block_size,
 		'--language='.$language,
 		'--loose-lc-messages-dir='.$lc_messages_dir,
 		'--datadir="'.$recovery_datadir.'"',
