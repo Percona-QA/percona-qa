@@ -68,7 +68,7 @@ sub validate {
           my $drizzledump = @basedir->[0].'/client/drizzledump' ;
           my $drizzle_client = @basedir->[0].'/client/drizzle' ;
           my $transaction_reader = @basedir->[0].'/drizzled/message/transaction_reader' ;
-          my $transaction_log = @datadir->[0].'transaction.log' ;
+          my $transaction_log = @datadir->[0].'/local/transaction.log' ;
 
 
           # We now attempt to replicate from the transaction log

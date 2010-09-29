@@ -185,7 +185,7 @@ sub run {
     
     my $reporter_manager = GenTest::ReporterManager->new();
     
-    if ($mysql_only ) {
+    if ($mysql_only || $drizzle_only ) {
         foreach my $i (0..2) {
             next if $self->config->dsn->[$i] eq '';
             foreach my $reporter (@{$self->config->reporters}) {
