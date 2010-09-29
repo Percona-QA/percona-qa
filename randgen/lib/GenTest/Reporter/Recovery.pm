@@ -320,7 +320,7 @@ sub report {
 						if ($sth->{NUM_OF_FIELDS} > 0) {
 							my $result = Dumper($sth->fetchall_arrayref());
 							next if $result =~ m{is not BASE TABLE}sio;	# Do not process VIEWs
-							if ($result =~ m{error|corrupt|repaired|invalid|crashed}sio) {
+							if ($result =~ m{error'|corrupt|repaired|invalid|crashed}sio) {
 								print $result;
 								return STATUS_DATABASE_CORRUPTION
 							}
