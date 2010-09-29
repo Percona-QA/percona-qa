@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Transform::ExecuteAsInsertSelect;
+package GenTest::Transform::ExecuteAsWhereSubquery;
 
 require Exporter;
 @ISA = qw(GenTest GenTest::Transform);
@@ -29,24 +29,25 @@ use GenTest::Constants;
 
 
 sub transform {
-	my ($class, $original_query, $executor) = @_;
+	my ($class, $original_query, $executor, $original_result) = @_;
 
-	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio;
+	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio || $original_query =~ m{LIMIT}sio;
+	return STATUS_WONT_HANDLE if $original_result->rows() == 0;
 
-	my $table_name = 'transforms.insert_select_'.$$;
+	# This transformation can not work if the result set contains NULLs
+	foreach my $orig_row (@{$original_result->data()}) {
+		foreach my $orig_col (@$orig_row) {
+			return STATUS_WONT_HANDLE if $orig_col eq '';
+		}
+	}
+
+	my $table_name = 'transforms.where_subselect_'.$$;
 
 	return [
 		"CREATE TABLE $table_name $original_query",
-		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DELETE FROM $table_name",
-
-		"INSERT INTO $table_name $original_query",
-		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DELETE FROM $table_name",
-
-		"REPLACE INTO $table_name $original_query",
-		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DROP TABLE $table_name"
+		"SELECT * FROM $table_name WHERE (".join(', ', @{$original_result->columnNames()}).") IN ( $original_query ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"SELECT * FROM $table_name WHERE (".join(', ', @{$original_result->columnNames()}).") NOT IN ( $original_query ) /* TRANSFORM_OUTCOME_EMPTY_RESULT */",
+		"DROP TABLE $table_name",
 	];
 }
 

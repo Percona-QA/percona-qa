@@ -533,6 +533,7 @@ sub execute {
 	}
 
 	my $affected_rows = $sth->execute();
+	my $column_names = $sth->{NAME} if $sth->{NUM_OF_FIELDS} > 0;
 
 	my $end_time = Time::HiRes::time();
 
@@ -612,7 +613,8 @@ sub execute {
 			affected_rows 	=> $affected_rows,
 			data		=> \@data,
 			start_time	=> $start_time,
-			end_time	=> $end_time
+			end_time	=> $end_time,
+			column_names	=> $column_names
 		);
 
 		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
