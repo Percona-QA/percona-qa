@@ -25,6 +25,7 @@ use strict;
 use lib 'lib';
 use GenTest;
 use GenTest::Constants;
+use Data::Dumper;
 
 use constant TRANSFORMER_QUERIES_PROCESSED	=> 0;
 use constant TRANSFORMER_QUERIES_TRANSFORMED	=> 1;
@@ -37,6 +38,8 @@ use constant TRANSFORM_OUTCOME_SINGLE_ROW	=> 1005;
 use constant TRANSFORM_OUTCOME_FIRST_ROW	=> 1006;
 use constant TRANSFORM_OUTCOME_DISTINCT		=> 1007;
 use constant TRANSFORM_OUTCOME_COUNT		=> 1008;
+use constant TRANSFORM_OUTCOME_EMPTY_RESULT	=> 1009;
+use constant TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE	=> 1010;
 
 my %transform_outcomes = (
 	'TRANSFORM_OUTCOME_EXACT_MATCH'		=> 1001,
@@ -46,7 +49,9 @@ my %transform_outcomes = (
 	'TRANSFORM_OUTCOME_SINGLE_ROW'		=> 1005,
 	'TRANSFORM_OUTCOME_FIRST_ROW'		=> 1006,
 	'TRANSFORM_OUTCOME_DISTINCT'		=> 1007,
-	'TRANSFORM_OUTCOME_COUNT'		=> 1008
+	'TRANSFORM_OUTCOME_COUNT'		=> 1008,
+	'TRANSFORM_OUTCOME_EMPTY_RESULT'	=> 1009,
+	'TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE'	=> 1010
 );
 
 sub transformExecuteValidate {
@@ -88,7 +93,8 @@ sub transformExecuteValidate {
 			return $part_result->status();
 		} elsif (defined $part_result->data()) {
 			my $part_outcome = $transformer->validate($original_result, $part_result);
-			$transform_outcome = $part_outcome if ($part_outcome > $transform_outcome) || (! defined $transform_outcome);
+			$transform_outcome = $part_outcome if (($part_outcome > $transform_outcome) || (! defined $transform_outcome));
+
 			push @transformed_results, $part_result if ($part_outcome != STATUS_WONT_HANDLE) && ($part_outcome != STATUS_OK);
 		}
 	}
@@ -98,7 +104,8 @@ sub transformExecuteValidate {
 		($transform_outcome == STATUS_WONT_HANDLE)
 	) {
 		say("Transform ".ref($transformer)." produced no query which could be validated ($transform_outcome).");
-		say("The following queries were produced:\n".join("\n", @transformed_queries));
+		say("The following queries were produced");
+		print Dumper \@transformed_queries;
 		return STATUS_ENVIRONMENT_FAILURE;
 	} else {
 		$transformer->[TRANSFORMER_QUERIES_TRANSFORMED]++;
@@ -132,6 +139,10 @@ sub validate {
 		return $transformer->isFirstRow($original_result, $transformed_result);
 	} elsif ($transform_outcome == TRANSFORM_OUTCOME_COUNT) {
 		return $transformer->isCount($original_result, $transformed_result);
+	} elsif ($transform_outcome == TRANSFORM_OUTCOME_EMPTY_RESULT) {
+		return $transformer->isEmptyResult($original_result, $transformed_result);
+	} elsif ($transform_outcome == TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE) {
+		return $transformer->isSingleIntegerOne($original_result, $transformed_result);
 	} else {
 		return STATUS_WONT_HANDLE;
 	}
@@ -261,6 +272,35 @@ sub isCount {
 	}
 }
 
+sub isEmptyResult {
+	my ($transformer, $original_result, $transformed_result) = @_;
+
+	if ($transformed_result->rows() == 0) {
+		return STATUS_OK;
+	} else {
+		return STATUS_LENGTH_MISMATCH;
+	}
+}
+
+sub isSingleIntegerOne {
+	my ($transformer, $original_result, $transformed_result) = @_;
+
+	if (
+		($transformed_result->rows() == 1) &&
+		($#{$transformed_result->data()->[0]} == 0) &&
+		($transformed_result->data()->[0]->[0] eq '1')
+	) {
+		return STATUS_OK;
+	} else {
+		use Data::Dumper;
+		print Dumper $transformed_result;
+		exit;
+		return STATUS_LENGTH_MISMATCH;
+	}
+
+
+}
+
 sub name {
 	my $transformer = shift;
 	my ($name) = $transformer =~ m{.*::([a-z]*)}sgio;
@@ -269,7 +309,7 @@ sub name {
 
 sub DESTROY {
 	my $transformer = shift;
-	print "# $transformer: queries_processed: ".$transformer->[TRANSFORMER_QUERIES_PROCESSED]."; queries_transformed: ".$transformer->[TRANSFORMER_QUERIES_TRANSFORMED]."\n" if rqg_debug();
+	print "# ".ref($transformer).": queries_processed: ".$transformer->[TRANSFORMER_QUERIES_PROCESSED]."; queries_transformed: ".$transformer->[TRANSFORMER_QUERIES_TRANSFORMED]."\n" if rqg_debug();
 }
 
 1;

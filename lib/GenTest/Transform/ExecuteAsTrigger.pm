@@ -1,6 +1,3 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
-# Use is subject to license terms.
-#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License.
@@ -15,7 +12,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Transform::ExecuteAsInsertSelect;
+package GenTest::Transform::ExecuteAsTrigger;
 
 require Exporter;
 @ISA = qw(GenTest GenTest::Transform);
@@ -27,26 +24,18 @@ use GenTest;
 use GenTest::Transform;
 use GenTest::Constants;
 
-
 sub transform {
 	my ($class, $original_query, $executor) = @_;
-
-	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio;
-
-	my $table_name = 'transforms.insert_select_'.$$;
+	
+	return STATUS_WONT_HANDLE if $original_query !~ m{\s*SELECT}sio || $original_query =~ m{LIMIT}sio;
 
 	return [
-		"CREATE TABLE $table_name $original_query",
-		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DELETE FROM $table_name",
-
-		"INSERT INTO $table_name $original_query",
-		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DELETE FROM $table_name",
-
-		"REPLACE INTO $table_name $original_query",
-		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DROP TABLE $table_name"
+		"CREATE TABLE IF NOT EXISTS trigger1".$$." (f1 INTEGER)",
+		"CREATE TABLE IF NOT EXISTS transforms.trigger2".$$." $original_query LIMIT 0",
+		"CREATE TRIGGER trigger1 BEFORE INSERT ON trigger1".$$." FOR EACH ROW INSERT INTO transforms.trigger2".$$." $original_query;",
+		"INSERT INTO trigger1".$$." VALUES (1)",
+		"SELECT * FROM transforms.trigger2".$$." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$
 	];
 }
 
