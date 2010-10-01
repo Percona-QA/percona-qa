@@ -790,7 +790,10 @@ sub getSchemaMetaData {
                     "ELSE 'ordinary' END ".
          "FROM information_schema.tables INNER JOIN ".
               "information_schema.columns USING(table_schema, table_name) ".
-          "WHERE table_name <> 'DUMMY'"; 
+          "WHERE table_name <> 'DUMMY'
+           AND information_schema.tables.TABLE_SCHEMA NOT IN ('information_schema','mysql')
+           AND information_schema.columns.TABLE_SCHEMA NOT IN ('information_schema','mysql')
+    "; 
 
     return $self->dbh()->selectall_arrayref($query);
 }
