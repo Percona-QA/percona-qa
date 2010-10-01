@@ -168,15 +168,19 @@ sub simplify {
 		if ($query =~ m/^\s*SELECT/) {
 			foreach my $ex (0..1) {
 				if (defined $executors->[$ex]) {
-					$test .= "/* Query plan Server $ex:\n";
-					my $plan = $executors->[$ex]->execute("EXPLAIN EXTENDED $query", 1);
-					
-					foreach my $row (@{$plan->data()}) {
-						$test .= "# |".join("|", @$row)."|\n";
-					}
-
-					$test .= "# Extended: \n# ".join("# \n", map { $_->[2] } @{$plan->warnings()})."\n";
-					$test .= "# */\n\n";
+#
+#	The original idea was to run EXPLAIN and provide the query plan for each test case dumped.
+#	However, for crashing queries, running EXPLAIN frequently crashes as well, so we disable it for the time being.
+#
+#					$test .= "/* Query plan Server $ex:\n";
+#					my $plan = $executors->[$ex]->execute("EXPLAIN EXTENDED $query", 1);
+#					
+#					foreach my $row (@{$plan->data()}) {
+#						$test .= "# |".join("|", @$row)."|\n";
+#					}
+#
+#					$test .= "# Extended: \n# ".join("# \n", map { $_->[2] } @{$plan->warnings()})."\n";
+#					$test .= "# */\n\n";
 				}
 			}
 		}
