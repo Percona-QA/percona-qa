@@ -34,6 +34,7 @@ use GenTest::Translator::MysqlDML2ANSI;
 
 my @transformer_names;
 my @transformers;
+my $database_created = 0;
 
 sub BEGIN {
 	@transformer_names = (
@@ -48,6 +49,9 @@ sub BEGIN {
 		'ExecuteAsInsertSelect',
 		'ExecuteAsSelectItem',
 		'ExecuteAsUnion',
+		'ExecuteAsUpdateDelete',
+		'ExecuteAsWhereSubquery',
+		'ExecuteAsTrigger',
 		'FromSubquery',
 		'Having',
 		'InlineSubqueries',
@@ -74,6 +78,11 @@ sub validate {
 	my $executor = $executors->[0];
 	my $original_result = $results->[0];
 	my $original_query = $original_result->query();
+
+	if ($database_created == 0) {
+		$executor->dbh()->do("CREATE DATABASE IF NOT EXISTS transforms");
+		$database_created = 1;
+	}
 
 	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio;
 	return STATUS_WONT_HANDLE if defined $results->[0]->warnings();

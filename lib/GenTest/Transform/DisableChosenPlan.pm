@@ -41,7 +41,8 @@ my %explain2switch = (
 	'cache'			=> 'subquery_cache',
 	'materializ'		=> 'materialization',	# hypothetical
 	'semijoin'		=> 'semijoin',
-	'loosescan'		=> 'loosescan'
+	'loosescan'		=> 'loosescan',
+	'<exists>'		=> 'in_to_exists'
 );
 
 sub transform {

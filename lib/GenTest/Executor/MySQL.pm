@@ -533,6 +533,7 @@ sub execute {
 	}
 
 	my $affected_rows = $sth->execute();
+	my $column_names = $sth->{NAME} if $sth->{NUM_OF_FIELDS} > 0;
 
 	my $end_time = Time::HiRes::time();
 
@@ -612,7 +613,8 @@ sub execute {
 			affected_rows 	=> $affected_rows,
 			data		=> \@data,
 			start_time	=> $start_time,
-			end_time	=> $end_time
+			end_time	=> $end_time,
+			column_names	=> $column_names
 		);
 
 		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
@@ -788,7 +790,10 @@ sub getSchemaMetaData {
                     "ELSE 'ordinary' END ".
          "FROM information_schema.tables INNER JOIN ".
               "information_schema.columns USING(table_schema, table_name) ".
-          "WHERE table_name <> 'DUMMY'"; 
+          "WHERE table_name <> 'DUMMY'
+           AND information_schema.tables.TABLE_SCHEMA NOT IN ('information_schema','mysql')
+           AND information_schema.columns.TABLE_SCHEMA NOT IN ('information_schema','mysql')
+    "; 
 
     return $self->dbh()->selectall_arrayref($query);
 }
