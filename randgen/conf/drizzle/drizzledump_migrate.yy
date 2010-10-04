@@ -75,14 +75,7 @@ insert_column_list:
 # We use a set column list because even though all tables have the same
 # columns, each table has a different order of those columns for 
 # enhanced randomness
- `col_char_10` , `col_char_10_key` , `col_char_10_not_null` , `col_char_10_not_null_key` ,
- `col_char_128` , `col_char_128_key` , `col_char_128_not_null` , `col_char_128_not_null_key` ,
- `col_int` , `col_int_key` , `col_int_not_null` , `col_int_not_null_key` ,
- `col_bigint` , `col_bigint_key` , `col_bigint_not_null` , `col_bigint_not_null_key` ,
- `col_enum` , `col_enum_key` , `col_enum_not_null` , `col_enum_not_null_key` ,
- `col_text` , `col_text_key` , `col_text_not_null` , `col_text_not_null_key` 
- ;
-
+`col_mediumint`, `col_tinyint_not_null`, `col_year_not_null`, `col_mediumint_not_null_key`, `col_varbinary_5_not_null`, `col_char_128_not_null_key`, `col_smallint_key`, `col_tinyint_key`, `col_tinyint`, `col_bigint_not_null`, `col_timestamp_not_null_key`, `col_time_not_null_key`, `col_mediumint_key`, `col_enum_key`, `col_date`, `col_enum_not_null_key`, `col_year_key`, `col_char_10`, `col_varbinary_5`, `col_int_key`, `col_char_128_not_null`, `col_timestamp_key`, `col_varbinary_5_not_null_key`, `col_date_not_null`, `col_bigint_key`, `col_char_10_not_null_key`, `col_smallint_not_null_key`, `col_smallint_not_null`, `col_char_128_key`, `col_smallint`, `col_binary_5_key`, `col_binary_5_not_null_key`, `col_year`, `col_time`, `col_timestamp_not_null`, `col_bigint_not_null_key`, `col_date_key`, `col_char_10_not_null`, `col_mediumint_not_null`, `col_int`, `col_char_10_key`, `col_enum`, `col_int_not_null`, `col_date_not_null_key`, `col_int_not_null_key`, `col_time_not_null`, `col_year_not_null_key`, `col_datetime_not_null_key`, `col_datetime_not_null`, `col_binary_5_not_null`, `col_varbinary_5_key`, `col_enum_not_null`, `col_timestamp`, `col_bigint`, `col_datetime_key`, `col_char_128`, `col_binary_5`, `col_datetime`, `col_time_key`, `col_tinyint_not_null_key` ;
 
 modify_table:
 # We alter the tables by ALTERing the table and DROPping COLUMNS
