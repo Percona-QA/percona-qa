@@ -33,19 +33,15 @@ my $db_created;
 sub transform {
 	my ($class, $original_query, $executor) = @_;
 	
-	$executor->execute("CREATE DATABASE IF NOT EXISTS views");
-
-	if ($executor->execute("CREATE OR REPLACE VIEW views.view_".$$."_probe AS $original_query", 1)->err() > 0) {
+	if ($executor->execute("CREATE OR REPLACE VIEW transforms.view_".$$."_probe AS $original_query", 1)->err() > 0) {
 		return STATUS_WONT_HANDLE;
 	} else {
-		$executor->execute("DROP VIEW views.view_".$$."_probe");
+		$executor->execute("DROP VIEW transforms.view_".$$."_probe");
 		return [
-			"CREATE DATABASE IF NOT EXISTS views",
-			"CREATE OR REPLACE ALGORITHM=MERGE VIEW views.view_".$$."_merge AS $original_query",
-			"SELECT * FROM views.view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-			"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW views.view_".$$."_temptable AS $original_query",
-			"SELECT * FROM views.view_".$$."_temptable /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-			"DROP DATABASE views"
+			"CREATE OR REPLACE ALGORITHM=MERGE VIEW transforms.view_".$$."_merge AS $original_query",
+			"SELECT * FROM transforms.view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+			"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW transforms.view_".$$."_temptable AS $original_query",
+			"SELECT * FROM transforms.view_".$$."_temptable /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		];
 	}
 }

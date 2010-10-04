@@ -33,7 +33,7 @@ sub transform {
 
 	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio;
 
-	my $table_name = 'insert_select_'.$$;
+	my $table_name = 'transforms.insert_select_'.$$;
 
 	return [
 		"CREATE TABLE $table_name $original_query",

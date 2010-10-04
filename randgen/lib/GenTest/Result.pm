@@ -33,6 +33,7 @@ use constant RESULT_DATA		=> 6;
 use constant RESULT_START_TIME		=> 7;
 use constant RESULT_END_TIME		=> 8;
 use constant RESULT_WARNINGS		=> 9;
+use constant RESULT_COLUMN_NAMES	=> 10;
 
 1;
 
@@ -48,7 +49,8 @@ sub new {
 		'data'		=> RESULT_DATA,
 		'start_time'	=> RESULT_START_TIME,
 		'end_time'	=> RESULT_END_TIME,
-		'warnings'	=> RESULT_WARNINGS
+		'warnings'	=> RESULT_WARNINGS,
+		'column_names'	=> RESULT_COLUMN_NAMES
 	}, @_);
 }
 
@@ -107,6 +109,10 @@ sub warnings {
 
 sub setWarnings {
 	$_[0]->[RESULT_WARNINGS] = $_[1];
+}
+
+sub columnNames {
+	return $_[0]->[RESULT_COLUMN_NAMES];
 }
 
 1;
