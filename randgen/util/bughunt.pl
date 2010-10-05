@@ -66,6 +66,7 @@ my $options = {};
 GetOptions($options,
            'config=s',
            'grammar=s',
+           'redefine=s',
            'trials=i',
            'initial_seed=i',
            'storage_prefix=s',
@@ -150,6 +151,13 @@ if ( defined $config->gendata ) {
        or croak("File " . $config->gendata . " cannot be copied to " . $data_grammar );
    $rqgoptions = $rqgoptions . " --gendata=" . $data_grammar;
 }
+my $redefine_grammar = "";
+if ( defined $config->redefine ) {
+   $redefine_grammar = $storage."/bughunt_sql_redefine.yy";
+   copy($config->gendata, $redefine_grammar)
+       or croak("File " . $config->gendata . " cannot be copied to " . $redefine_grammar );
+   $rqgoptions = $rqgoptions . " --redefine=" . $redefine_grammar;
+}
 
 # Some bugs can be investigating using the core file and the server binary.
 # Make a copy of the server binary.
@@ -223,11 +231,12 @@ foreach my $trial (1..$config->trials) {
     if ($preserve_log == 0) {
        unlink($current_rqg_log)
     } else {
-      # Preserve vardir
+      # Backup vardir, the grammars and the mysqld binary 
+      # Attention: There might be warnings about missing grammar files
       # Sleep a bit with the intention to avoid that the archiver comes up with a
       # warning like "<vardir>/master-data/ib_logfile1: File changed during reading
-      sleep 5;
-      my $save_cmd = 'tar czf ' . $storage . '/' . $trial . '.tgz ' . $vardir . ' ' . $current_rqg_log . ' ' . $sql_grammar . ' ' . $data_grammar . ' ' . $storage.'/mysqld' ;
+      sleep 10;
+      my $save_cmd = 'tar czf ' . $storage . '/' . $trial . '.tgz ' . $vardir . ' ' . $current_rqg_log . ' ' . $sql_grammar . ' ' . $data_grammar . ' ' . $redefine_grammar . ' ' . $storage.'/mysqld' ;
       say("save_cmd: ->$save_cmd<-");
       my $save_vardir = system($save_cmd);
       # FIXME: Abort in case the call to tar fails
