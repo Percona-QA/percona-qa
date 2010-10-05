@@ -82,6 +82,7 @@ my $config = GenTest::Properties->new(
               'expected_outputs',
               'grammar',
               'gendata',
+              'redefine',
               'trials',
               'initial_seed',
               'mask_level',
