@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Patrick Crews. All rights reserved.
+# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -14,12 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
-
-# This Reporter is designed to be used with the Drizzle concurrent
-# transaction log grammars.  It will let however many threads run
-# to completion and then attempt to generate SQL from the transaction
-# log contents and send it to a validation server.  From there, we
-# compare drizzledump files and report on any differences we find.
 
 package GenTest::Reporter::DrizzleConcurrentTransactionLog;
 
@@ -41,27 +35,15 @@ use constant SERVER2_FILE_NAME  => 1;
 sub report 
   {
 	my $reporter = shift;
-        my $dsn = $reporter->dsn();
-	my $dbh = DBI->connect($dsn, undef, undef, {PrintError => 0});
+
+	my $dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
 	my $pid = $reporter->serverInfo('pid');
-
-
-        # do some setup and whatnot
         
+        # do some setup and whatnot
+        my $main_port = '9306';
 	my $validator_port = '9307';
-        # get datadir as we need it to know where to find transaction.log
-        my @datadir = $dbh->selectrow_array('SELECT @@datadir') ;
-        my @basedir = $dbh->selectrow_array('SELECT @@basedir') ;
-
-        # little kludge to get the proper basedir if drizzle was started via test-run.pl
-        # such a situation sets basedir to the drizzle/tests directory and can
-        # muck up efforts to get to the client directory
-        my @basedir_split = split(/\//, @basedir->[0]) ;
-        if (@basedir_split[-1] eq 'tests')
-        {
-          pop(@basedir_split); 
-          @basedir = join('/',@basedir_split);
-        }
+        my @basedir= $dbh->selectrow_array('SELECT @@basedir');
+        my @datadir= $dbh->selectrow_array('SELECT @@datadir');
      
         my $drizzledump = @basedir->[0].'/client/drizzledump' ;
         my $drizzle_client = @basedir->[0].'/client/drizzle' ;
@@ -87,20 +69,23 @@ sub report
          if (rqg_debug())
          {
            say ("$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root test <  $transaction_log_sql_file");
-           say ("$drizzle_rpl_result");
          }
          return STATUS_UNKNOWN_ERROR if $drizzle_rpl_result > 0 ;
 
           
-        
+         if (rqg_debug())
+         {
+           say("Validating replication via dumpfile compare...");
+         }
          my @files;
-         my @ports = ('9306', $validator_port);
+         my @ports = ($main_port, $validator_port);
 
 	 foreach my $port_id (0..1) 
          {
 	   $files[$port_id] = tmpdir()."/translog_rpl_dump_".$$."_".$ports[$port_id].".sql";
            say("$files[$port_id]");
-	   my $drizzledump_result = system("$drizzledump --compact --order-by-primary --skip-extended-insert --host=127.0.0.1 --port=$ports[$port_id] --user=root test >$files[$port_id]");
+           say("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$ports[$port_id] --user=root test >$files[$port_id]");
+	   my $drizzledump_result = system("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$ports[$port_id] --user=root test >$files[$port_id]");
            # disable pipe to 'sort' from drizzledump call above
            #| sort > $files[$port_id]");
 	   return STATUS_UNKNOWN_ERROR if $drizzledump_result > 0;
@@ -121,7 +106,8 @@ sub report
          {
            say ("Resetting validation server...");
          }
-         system("$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root -e 'CREATE SCHEMA test'");
+         my $create_schema_result = system("$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root -e 'CREATE SCHEMA test'");
+         say("$create_schema_result");      
 
 	 return STATUS_UNKNOWN_ERROR if $diff_result > 1;
 
