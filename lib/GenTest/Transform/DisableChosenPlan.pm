@@ -38,7 +38,7 @@ use Data::Dumper;
 
 my %explain2switch = (
 	'firstmatch'		=> 'firstmatch',
-	'cache'			=> 'subquery_cache',
+	'<expr_cache>'		=> 'subquery_cache',
 	'materializ'		=> 'materialization',	# hypothetical
 	'semijoin'		=> 'semijoin',
 	'loosescan'		=> 'loosescan',
