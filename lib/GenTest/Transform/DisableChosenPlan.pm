@@ -45,8 +45,19 @@ my %explain2switch = (
 	'<exists>'		=> 'in_to_exists'
 );
 
+my $available_switches;
+
 sub transform {
 	my ($class, $original_query, $executor) = @_;
+
+	if (not defined $available_switches) {
+		my $optimizer_switches = $executor->dbh()->selectrow_array('SELECT @@optimizer_switch');
+		my @optimizer_switches = split(',', $optimizer_switches);
+		foreach my $optimizer_switch (@optimizer_switches) {
+			my ($switch_name, $switch_value) = split('=', $optimizer_switch);
+			$available_switches->{$switch_name}++;
+		}
+	}
 
 	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio;
 
@@ -62,6 +73,7 @@ sub transform {
 
 	my @transformed_queries;
 	while (my ($explain_fragment, $optimizer_switch) = each %explain2switch) {
+		next if not exists $available_switches->{$optimizer_switch};
 		if ($original_explain_string =~ m{$explain_fragment}si) {
 			push @transformed_queries,
 				"SET SESSION optimizer_switch='".$optimizer_switch."=OFF' ;",
