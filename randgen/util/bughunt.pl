@@ -154,8 +154,8 @@ if ( defined $config->gendata ) {
 my $redefine_grammar = "";
 if ( defined $config->redefine ) {
    $redefine_grammar = $storage."/bughunt_sql_redefine.yy";
-   copy($config->gendata, $redefine_grammar)
-       or croak("File " . $config->gendata . " cannot be copied to " . $redefine_grammar );
+   copy($config->redefine, $redefine_grammar)
+       or croak("File " . $config->redefine . " cannot be copied to " . $redefine_grammar );
    $rqgoptions = $rqgoptions . " --redefine=" . $redefine_grammar;
 }
 
