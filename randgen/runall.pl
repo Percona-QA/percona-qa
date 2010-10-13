@@ -387,6 +387,10 @@ if ($lcov) {
 exit_test($gentest_result) if $gentest_result > 0;
 
 if ($rpl_mode) {
+	if (!$master_dbh->ping()) {
+		say("Reestablishing connection to master...");
+		$master_dbh = DBI->connect($master_dsns[0], undef, undef, { RaiseError => 1 } );
+	}
 	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
 
 	say("Waiting for slave to catch up..., file $file, pos $pos .");
