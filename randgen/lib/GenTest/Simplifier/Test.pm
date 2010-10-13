@@ -61,6 +61,16 @@ sub new {
 	return $simplifier;
 }
 
+sub _comment {
+    my ($inLine,$useHash) = @_;
+    ## Neat for MTR and readability of multiline diffs
+    my $splitLine = join("\n# ", split("\n", $inLine));
+    if ($useHash) {
+        return "# " . $splitLine;
+    } else {
+        return "/* ". $splitLine . " */"; 
+    }
+}
 sub simplify {
 	my $simplifier = shift;
 
@@ -72,13 +82,23 @@ sub simplify {
 	my $queries = $simplifier->queries();
 	my ($foo, $tcp_port) = $executors->[0]->dbh()->selectrow_array("SHOW VARIABLES LIKE 'port'");
 
+    ## We use Hash-comments in an pure MySQL environment due to MTR
+    ## limitations
+    my $useHash = 1;
+	foreach my $i (0,1) {
+		if (defined $executors->[$i]) {
+            $useHash = 0 if $executors->[$i]->type() != DB_MYSQL;
+        }
+    }
+
+
 	# If we have two Executors determine the differences in Optimizer settings and print them as test comments
 	# If there is only one executor, dump its settings directly into the test as test queries
 
 	foreach my $i (0,1) {
 		if (defined $executors->[$i]) {
 			my $version = $executors->[$i]->getName()." ".$executors->[$i]->version();
-			$test .= "/* Server".$i.": $version */\n";
+			$test .= _comment("Server".$i.": $version",$useHash)."\n";
 		}
 	}
 	$test .= "\n";
@@ -96,9 +116,9 @@ sub simplify {
 
             foreach my $i (0..1) {
                 if ($optimizer_values[$i] =~ m{^\d+$}) {
-                    $test .= "/* Server $i : SET SESSION $optimizer_variable = $optimizer_values[$i]; */\n";
+                    $test .= _comment("Server $i : SET SESSION $optimizer_variable = $optimizer_values[$i]",$useHash)."\n";
                 } elsif (defined $optimizer_values[$i]) {
-                    $test .= "/* Server $i : SET SESSION $optimizer_variable = '$optimizer_values[$i]' */;\n";
+                    $test .= _comment("Server $i : SET SESSION $optimizer_variable = '$optimizer_values[$i]'",$useHash)."\n";
                 }
             }
 		}
@@ -130,7 +150,7 @@ sub simplify {
 			$query = $results->[$query_id]->[0]->query();
 		}
 
-		$test .= "/* Begin test case for query $query_id */\n\n";
+		$test .= _comment("Begin test case for query $query_id",$useHash)."\n\n";
 
 		my $simplified_database = 'query'.$query_id.$$;
 
@@ -189,16 +209,14 @@ sub simplify {
 			(defined $results) &&
 			(defined $results->[$query_id])
 		) {
-			$test .= "/* Diff: */\n\n";
-
-			# Add comments to each line in the diff, since MTR has issues with /* */ comment blocks.
+			$test .= _comment("Diff:",$useHash)."\n\n";
 
 			my $diff = GenTest::Comparator::dumpDiff(
 				$simplifier->results()->[$query_id]->[0],
 				$simplifier->results()->[$query_id]->[1]
 			);
 
-			$test .= "/* ".join("\n# ", split("\n", $diff))." */\n\n\n";
+			$test .= _comment($diff,$useHash)."\n\n\n";
 		}
 
 		if ($#participating_tables > -1) {
@@ -207,7 +225,7 @@ sub simplify {
 			}
 		}
 	
-		$test .= "/* End of test case for query $query_id */\n\n";
+		$test .= _comment("End of test case for query $query_id",$useHash)."\n\n";
 	}
 
 	return $test;
