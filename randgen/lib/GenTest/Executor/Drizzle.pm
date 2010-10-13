@@ -265,9 +265,6 @@ sub execute {
 		);
 	}
        
-        if (rqg_debug()) {
-                say("Running Query--> $query");
-        }
 
 	my $affected_rows = $sth->execute();
 	my $end_time = Time::HiRes::time();
