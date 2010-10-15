@@ -51,6 +51,8 @@ use constant EXECUTOR_META_CACHE		=> 12;
 use constant EXECUTOR_CHANNEL			=> 13;
 use constant EXECUTOR_SQLTRACE			=> 14;
 
+my %global_schema_cache;
+
 1;
 
 sub new {
@@ -219,7 +221,6 @@ sub currentSchema {
     croak "currentSchema not defined for ". (ref $_[0]);
 }
 
-
 sub getSchemaMetaData {
     croak "getSchemaMetaData not defined for ". (ref $_[0]);
 }
@@ -235,14 +236,19 @@ sub getCollationMetaData {
 sub cacheMetaData {
     my ($self) = @_;
     
-    say ("Caching metadata for ".$self->dsn());
-
     my $meta = {};
-    foreach my $row (@{$self->getSchemaMetaData()}) {
-        my ($schema, $table, $type, $col, $key) = @$row;
-        $meta->{$schema}={} if not exists $meta->{$schema};
-        $meta->{$schema}->{$table}={} if not exists $meta->{$schema}->{$table};
-        $meta->{$schema}->{$table}->{$col}=$key;
+
+    if (not exists $global_schema_cache{$self->dsn()}) {
+        say ("Caching schema metadata for ".$self->dsn());
+        foreach my $row (@{$self->getSchemaMetaData()}) {
+            my ($schema, $table, $type, $col, $key) = @$row;
+            $meta->{$schema}={} if not exists $meta->{$schema};
+            $meta->{$schema}->{$table}={} if not exists $meta->{$schema}->{$table};
+            $meta->{$schema}->{$table}->{$col}=$key;
+        }
+	$global_schema_cache{$self->dsn()} = $meta;
+    } else {
+	$meta = $global_schema_cache{$self->dsn()};
     }
 
     $self->[EXECUTOR_SCHEMA_METADATA] = $meta;

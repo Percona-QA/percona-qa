@@ -159,6 +159,11 @@ sub run {
         $executor->sqltrace($self->config->sqltrace);
 	$executor->setId($i+1);
         push @executors, $executor;
+	if ($executor->type() == DB_MYSQL) {
+	    my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $channel);
+	    $metadata_executor->init();
+	    $metadata_executor->cacheMetaData();
+	}
     }
     
     my $drizzle_only = $executors[0]->type == DB_DRIZZLE;
