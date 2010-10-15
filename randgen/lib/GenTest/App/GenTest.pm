@@ -162,7 +162,7 @@ sub run {
 	if ($executor->type() == DB_MYSQL) {
 	    my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $channel);
 	    $metadata_executor->init();
-	    $metadata_executor->cacheMetaData();
+	    $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
 	}
     }
     
