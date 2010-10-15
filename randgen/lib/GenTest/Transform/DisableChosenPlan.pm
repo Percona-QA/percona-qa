@@ -37,12 +37,15 @@ use Data::Dumper;
 #
 
 my %explain2switch = (
-	'firstmatch'		=> 'firstmatch',
-	'<expr_cache>'		=> 'subquery_cache',
-	'materializ'		=> 'materialization',	# hypothetical
-	'semijoin'		=> 'semijoin',
-	'loosescan'		=> 'loosescan',
-	'<exists>'		=> 'in_to_exists'
+	'firstmatch'		=> "optimizer_switch='firstmatch=off'",
+	'<expr_cache>'		=> "optimizer_switch='subquery_cache=off'",
+	'materializ'		=> "optimizer_switch='materialization=off'",	# hypothetical
+	'semijoin'		=> "optimizer_switch='semijoin=off'",
+	'loosescan'		=> "optimizer_switch='loosescan=off'",
+	'<exists>'		=> "optimizer_switch='in_to_exists=off'",
+	'mrr'			=> "optimizer_use_mrr='disable'",
+	'join buffer'		=> "join_cache_level=0",
+	'join buffer'		=> "optimizer_join_cache_level=0"
 );
 
 my $available_switches;
@@ -55,7 +58,19 @@ sub transform {
 		my @optimizer_switches = split(',', $optimizer_switches);
 		foreach my $optimizer_switch (@optimizer_switches) {
 			my ($switch_name, $switch_value) = split('=', $optimizer_switch);
-			$available_switches->{$switch_name}++;
+			$available_switches->{"optimizer_switch='$switch_name=off'"}++;
+		}
+
+		if ($executor->dbh()->selectrow_array('SELECT @@optimizer_use_mrr')) {
+			$available_switches->{"optimizer_use_mrr='disable'"}++;
+		}
+
+		if ($executor->dbh()->selectrow_array('SELECT @@join_cache_level')) {
+			$available_switches->{"join_cache_level=0"}++;
+		}
+
+		if ($executor->dbh()->selectrow_array('SELECT @@optimizer_join_cache_level')) {
+			$available_switches->{"optimizer_join_cache_level=0"}++;
 		}
 	}
 
@@ -75,11 +90,13 @@ sub transform {
 	while (my ($explain_fragment, $optimizer_switch) = each %explain2switch) {
 		next if not exists $available_switches->{$optimizer_switch};
 		if ($original_explain_string =~ m{$explain_fragment}si) {
-			push @transformed_queries,
-				"SET SESSION optimizer_switch='".$optimizer_switch."=OFF' ;",
+			my ($switch_name) = $optimizer_switch =~ m{^(.*?)=}sgio;
+			push @transformed_queries, (
+				'SET @switch_saved = @@'.$switch_name.';',
+				"SET SESSION $optimizer_switch;",
 				"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
-				"SET SESSION optimizer_switch='".$optimizer_switch."=ON' ;"
-			;
+				'SET SESSION '.$switch_name.'=@switch_saved'
+			);
 		}
 	}
 	if ($#transformed_queries > -1) {
