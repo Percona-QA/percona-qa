@@ -467,10 +467,9 @@ sub init {
 		)
 	");
 
-	say("Executor initialized, id ".$executor->id());
+	$executor->defaultSchema($executor->currentSchema());
 
-    $executor->defaultSchema($executor->currentSchema());
-    say "Default schema: ".$executor->defaultSchema();
+#	say("Executor initialized. id: ".$executor->id()."; default schema: ".$executor->defaultSchema());
 
 	return STATUS_OK;
 }
