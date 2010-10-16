@@ -78,6 +78,7 @@ sub report {
 	my $plugin_dir = $reporter->serverVariable('plugin_dir');
 	my $plugins = $reporter->serverPlugins();
 	my $binlog_format = $reporter->serverVariable('binlog_format');
+	my $binlog_on = $reporter->serverVariable('log_bin');
 
 	my $engine = $reporter->serverVariable('storage_engine');
 
@@ -153,12 +154,18 @@ sub report {
 		'--datadir="'.$recovery_datadir.'"',
 		'--socket="'.$socket.'"',
 		'--port='.$port,
-		'--loose-plugin-dir='.$plugin_dir,
-		'--log-bin',
-		'--binlog-format='.$binlog_format,
-		'--log-bin='.$reporter->serverVariable('basedir').'/var/log/master-bin',
-		'--server-id=1'
+		'--loose-plugin-dir='.$plugin_dir
 	);
+
+	if ($binlog_on =~ m{YES|ON}sio) {
+		push @mysqld_options, (
+			'--log-bin',
+			'--binlog-format='.$binlog_format,
+			'--log-bin='.$datadir.'/../log/master-bin',
+			'--server-id=1'
+		);
+	};
+
 	push @mysqld_options, '--loose-skip-innodb' if lc($engine) ne 'innodb';
 	push @mysqld_options, '--loose-skip-pbxt' if lc($engine) ne 'pbxt';
 
