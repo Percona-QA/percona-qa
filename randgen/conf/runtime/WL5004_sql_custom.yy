@@ -1,17 +1,19 @@
-# Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved.
+# Copyright (C) 2008-2010 Sun Microsystems, Inc. All rights reserved.
+# Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# 51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
 
 # Grammar for testing DML, DDL, FLUSH, LOCK/UNLOCK, transactions
 #
@@ -20,7 +22,7 @@
 #            WL#5004 Comprehensive Locking Stress Test for Azalea
 #                    A few grammar rules were taken from other grammar files.
 # Last Modifications:
-#    2010-10 Matthias Leich
+#    2010-09 Matthias Leich
 #            - Adjustment to fixed and new bugs for 5.5-runtime
 #            - Attention: Replication bugs had to be ignored
 #
@@ -293,7 +295,10 @@ have_some_initial_objects:
 	# It is assumed that this reduces the likelihood of "Table does not exist" significant when running with a small number of "worker" threads.
 	# The amount of create_..._table rules within the some_..._tables should depend a bit on the value in $namespace_width but I currently
 	# do not know how to express this in the grammar.
-	some_databases ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
+   # Partitioned tables disabled because of
+   #    Bug#55385 UPDATE statement throws an error, but still updates the table entries
+	# some_databases ; some_base_tables ; some_temp_tables ; some_merge_tables ; some_part_tables ; some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
+	some_databases ; some_base_tables ; some_temp_tables ; some_merge_tables ;                    some_view_tables ; some_functions ; some_procedures ; some_trigger ; some_events ;
 some_databases:
 	create_database    ; create_database    ; create_database    ; create_database    ;
 some_base_tables:
@@ -715,7 +720,9 @@ ddl:
 	base_table_ddl  | base_table_ddl  | base_table_ddl  |
 	temp_table_ddl  | temp_table_ddl  | temp_table_ddl  |
 	merge_table_ddl | merge_table_ddl | merge_table_ddl |
-	part_table_ddl  | part_table_ddl  | part_table_ddl  |
+   # Partitioned tables disabled because of
+   #    Bug#55385 UPDATE statement throws an error, but still updates the table entries
+	# part_table_ddl  | part_table_ddl  | part_table_ddl  |
 	view_ddl        | view_ddl        | view_ddl        |
 	procedure_ddl   | procedure_ddl   | procedure_ddl   |
 	function_ddl    | function_ddl    | function_ddl    |
@@ -726,8 +733,12 @@ ddl:
 	rename_table               |
 	# Bug#54486 assert in my_seek, concurrent DROP/CREATE SCHEMA, CREATE TABLE, REPAIR
 	# affects table_maintenance_ddl in mysql-5.1.
-	# The problem seems to have disappeared in higher MySQL versions.
-	table_maintenance_ddl      |
+	# The grammar rule is not disabled because the problem seems to have disappeared in
+	# higher versions.
+   # Grammar rule disabled because of
+	#    Bug#56516 crash in MDL_context::upgrade_shared_lock_to_exclusive
+   # (OPTIMIZE table crashes after ALTER TABLE caused an invalif merge table definition)
+	# table_maintenance_ddl      |
 	dump_load_data_sequence    |
 	grant_revoke               |
 	rename_column              |
@@ -759,7 +770,10 @@ handler_index:
 	`PRIMARY`     |
 	`col_int_key` ;
 handler_read_part:
-	| where ;
+	# Grammar rule "where" disabled because of
+	#    Bug#54920 Stored functions are allowed in HANDLER statements, but broken.
+	# Use of functions like WHERE f1() = 1 in HANDLER statements is "ill".
+	; # | where ;
 first_next:
 	FIRST |
 	NEXT  ;
@@ -1030,7 +1044,11 @@ check_table_options:
 	| FOR UPGRADE | QUICK | FAST | MEDIUM | EXTENDED | CHANGED ;
 
 repair_table:
-	REPAIR not_to_binlog_local TABLE table_list quick extended use_frm ;
+	# Use if
+	#    Bug#46339 crash on REPAIR TABLE merge table USE_FRM
+	# is fixed  (base_temp_table_view_list instead of table_list because of Bug#46339)
+	# REPAIR not_to_binlog_local TABLE table_list quick extended use_frm ;
+	REPAIR not_to_binlog_local TABLE table_list quick extended ;
 
 use_frm:
 	# Only 10 %
@@ -1101,7 +1119,7 @@ drop_merge_table:
 
 merge_table_sequence:
 	# Notes:
-	# There is a significant likelihood that random picked table names as base for the merge table cannot
+	# There is a significant likelihood that a random picked table names as base for the merge table cannot
 	# be used for the creation of a merge table because the corresponding tables
 	# - must exist
 	# - use the storage engine MyISAM
@@ -1114,9 +1132,10 @@ merge_table_sequence:
 
 alter_merge_table:
 	# We do not change here the UNION because of the high risk that this fails.
+	# A simple change of the insert_method_value is also not doable because we
+	# would need to mention also the UNION.
 	# It is intentional that we use merge_table_name and not merge_table_name_n.
-	ALTER ignore TABLE merge_table_item_n COMMENT = 'UPDATED NOW()'           |
-	ALTER        TABLE merge_table_item_n INSERT_METHOD = insert_method_value ;
+	ALTER ignore TABLE merge_table_item_n COMMENT = 'UPDATED NOW()' ;
 
 merge_init_s:
 	/* merge_table_item_s { $mt = $merge_table_item_s ; return undef } consists of ( base_table_item_s { $mp1 = $base_table_item_s ; return undef } , base_table_item_s { $mp2 = $base_table_item_s ; return undef } ) based on template_table_item */ ;
@@ -1290,7 +1309,10 @@ dml:
 
 dml2:
 	select | select | select  |
-	do     | insert | replace | delete | update | CALL procedure_item | show | is_selects ;
+	# Bug #54678  	InnoDB, TRUNCATE, ALTER, I_S SELECT, crash or deadlock
+	# affects is_selects , seems to be not fixed in 5.5-runtime
+	# do     | insert | replace | delete | update | CALL procedure_item | show | is_selects ;
+	do     | insert | replace | delete | update | CALL procedure_item | show ;
 
 ########## DO ####################
 do:
@@ -1537,8 +1559,10 @@ lock_item:
 	# Have a low risk to get a clash of same table alias.
 	table_item AS _letter lock_type ;
 lock_type:
-	READ local_or_empty      |
-	low_priority WRITE       |
+	# Disabled because of
+	#    Bug#54553 Innodb asserts in ha_innobase::update_row, temporary table, table lock
+	# READ local_or_empty      |
+	# low_priority WRITE       |
 	IN SHARE MODE nowait     |
 	IN SHARE MODE nowait     |
 	IN SHARE MODE nowait     |
