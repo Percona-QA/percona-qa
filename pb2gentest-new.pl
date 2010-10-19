@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# Foundation, Inc., 51 Franklin St, Suite 500, Boston, MA 02110-1335
 # USA
 
 use lib 'lib';
@@ -50,6 +50,10 @@ $| = 1;
 #
 # Prepare ENV variables and other settings.
 #
+
+# Variable to indicate usage and location of grammar redefine files.
+# Variable should remain undef if no redefine file is used.
+my $redefine_file = undef;
 
 # Local "installation" of MySQL 5.0. Default is for Unix hosts. See below for Windows.
 my $basedirRelease50 = '/export/home/mysql-releases/mysql-5.0';
@@ -100,6 +104,88 @@ if (osWindows()) {
 ## subroutines
 ##
 ################################################################################
+
+#
+# Looks for a file name with the same name as the grammar mentioned in the
+# command line string, except with a "_redefine.yy" suffix.
+#
+# The redefine file is expected to be in the same directory as the grammar 
+# itself, at least for now.
+# If such a file is not found, undef is returned.
+#
+# Input: Command string including "--grammar=...".
+# Output: Filename of redefine file, to be used with --redefine option.
+#         Returns undef if such a file is not found where expected.
+#
+sub redefine_filename ($){
+    # Steps:
+    #  1. Find out the grammar file name.
+    #  2. Construct the expected redefine file name
+    #     (replacing ".yy" with "_redefine.yy").
+    #  3. Check if the redefine file exists.
+    #  4. Return the redefine file name, or undef.
+    #
+    my $command_string = @_[0];
+    if ($command_string =~ /(--grammar)=(.+)\s/m) {
+        my $grammar_filename = $2;
+        my $redefine_filename = $grammar_filename;
+        $redefine_filename =~ s/\.yy/_redefine\.yy/;
+        if (-e $redefine_filename) {
+            say("Using redefine file ".$redefine_filename.".");
+            print_special_comments($redefine_filename);
+            return $redefine_filename;
+        } else {
+            say("No redefine file found for grammar ".$grammar_filename.".");
+            print_special_comments($grammar_filename);
+            return undef;
+        }
+    } else {
+        croak("redefine_filename: Option --grammar not found in command. Command is: $command_string");
+    }
+}
+
+#
+# Looks in a file for comments of a certain format and prints them to standard
+# output with some cruft to separate it from other output.
+#
+# Input: Filename (path)
+#
+sub print_special_comments ($){
+    # Corresponding Unix command: grep '.*\(WL#\|Bug#\|Disabled\).*' grammar_file_redefine.yy
+    
+    my $filename = @_[0];
+    my $pattern = "# +(WL#|Bug#|Disabled).*";
+
+    say("Looking for special comments in grammar or redefine file...");
+    say("Using pattern: ".$pattern);
+    say("\n#### SPECIAL COMMENTS IN FILE $filename: ####");
+    say();
+    open FILE, "$filename" or croak("Unable to open file $filename");
+    my $line;
+    while ( <FILE> ) {
+        $line = trim($_);
+        if ($line =~ m{$pattern}) {
+            say("\t".$line);
+        }
+    }
+    close FILE;
+    say("");
+    say("#### END OF SPECIAL COMMENTS ####\n");
+    say("");
+}
+
+
+#
+# Removes leading and trailing whitespace.
+#
+sub trim($)
+{
+    my $string = shift;
+    $string =~ s/^\s+//;
+    $string =~ s/\s+$//;
+    return $string;
+}
+
 
 #
 # Skips the test, displays reason (argument to the routine) quasi-MTR-style and
@@ -313,7 +399,8 @@ if (defined $port_range_id) {
 #	}
 #}
 
-say("Configuring test...\n");
+say("Configuring test...");
+say("");
 
 # Guess MySQL version. Some options we set later depend on this.
 my $version50 = 0;      # 1 if 5.0.x, 0 otherwise. 
@@ -577,8 +664,17 @@ if ($test =~ m{falcon_.*transactions}io ) {
     # lock-wait-timeout=31536000 (bug#45225).
     # We may want to switch to real (implicit) defaults later.
     #
+    # We use full grammar + redefine file for some branches, and custom grammar
+    # with possibly no redefine file for others, hence this special grammar
+    # logic.
+    #
+    my $grammar = "conf/runtime/WL5004_sql.yy";
+    if ($tree =~ m{next-mr}i) {
+        say("Custom grammar selected based on tree name ($tree).");
+        $grammar = "conf/runtime/WL5004_sql_custom.yy";
+    }
     $command = '
-        --grammar=conf/runtime/WL5004_sql.yy
+        --grammar='.$grammar.'
         --threads=10
         --queries=1M
         --duration=1200
@@ -586,20 +682,32 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --mysqld=--innodb-lock-wait-timeout=50
         --mysqld=--lock-wait-timeout=31536000
         --mysqld=--log-output=file
-    ';
+        ';
 } elsif ($test =~ m{^mdl_stress}io ) {
 	# Seems like --gendata=conf/WL5004_data.zz unexplicably causes more test
 	# failures, so let's leave this out of PB2 for the time being (pstoev).
 	#
 	# InnoDB should be loaded but the test is not per se for InnoDB, hence
 	# no "innodb" in test name.
+	#
+	# We use full grammar + redefine file for some branches, and custom grammar
+	# with possibly no redefine file for others, hence this special grammar
+	# logic.
+	#
+	my $grammar = "conf/runtime/WL5004_sql.yy";
+	if ($tree =~ m{next-mr}i) {
+		say("Custom grammar selected based on tree name ($tree).");
+		$grammar = "conf/runtime/WL5004_sql_custom.yy";
+	}
 	$command = '
-		--grammar=conf/runtime/WL5004_sql.yy
+		--grammar='.$grammar.'
 		--threads=10
 		--queries=1M
 		--duration=1800
 		--mysqld=--innodb
 	';
+	
+
 #
 # opt: Optimizer tests in "nice mode", primarily used for regression testing (5.1 and beyond).
 #      By "nice mode" we mean relatively short duration and/or num of queries and fixed seed.
@@ -809,6 +917,15 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	say("Will exit $0 with exit code $exitCode.\n");
 	POSIX::_exit ($exitCode);
 }
+
+#
+# Look for a redefine file for the grammar used, and add it to the command line
+# if found. Also print special comments (e.g. about disabled parts) from the
+# redefine file, alternatively the grammar file if no redefine file was found.
+#
+$redefine_file = redefine_filename($command);
+$command = $command.' --redefine='.$redefine_file if defined $redefine_file;
+
 
 #
 # Specify some "default" Reporters if none have been specified already.
