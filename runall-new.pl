@@ -342,7 +342,7 @@ $gentestProps->queries($queries) if defined $queries;
 $gentestProps->duration($duration) if defined $duration;
 $gentestProps->dsn(\@dsns) if defined @dsns;
 $gentestProps->grammar($grammar_file);
-$gentestProps->redefine_file($redefine_file) if defined $redefine_file;
+$gentestProps->redefine($redefine_file) if defined $redefine_file;
 $gentestProps->seed($seed) if defined $seed;
 $gentestProps->mask($mask) if defined $mask;
 $gentestProps->property('mask-level',$mask_level) if defined $mask_level;
