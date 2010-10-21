@@ -52,8 +52,17 @@ sub test_parse {
         print "... $f\n";
         my $grammar = new GenTest::Grammar(grammar_file => $f);
         $self->assert_not_null($grammar, "Grammar was null: $f");
+
+        # Skip further checks of redefine files, recognized by "_redefine." in 
+        # file name. These files can contain just a subset of a grammar, so 
+        # there is no point looking for a specific grammar rule.
+        my $redefine_file = undef;
+        if ($f =~ m{_redefine\.}) {
+            $redefine_file = 1;
+        }
+        
         my $startRule = $grammar->firstMatchingRule("query");
-        $self->assert_not_null($startRule, '"query" rule was null in '.$f);
+        $self->assert_not_null($startRule, '"query" rule was null in '.$f) unless defined $redefine_file;
     }
 }
 
