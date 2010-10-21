@@ -155,6 +155,11 @@ sub print_special_comments ($){
     
     my $filename = @_[0];
     my $pattern = "# +(WL#|Bug#|Disabled).*";
+    my $pattern_new_entry = "# +(WL#|Bug#).+";
+    # We assume that "Disabled" always comes after "Bug#" or "WL#" in files with
+    # special comments with agreed structure. So in a line that matches the
+    # first pattern we look for indicators of a new entry by using 
+    # $pattern_new_entry (see below).
 
     say("Looking for special comments in grammar or redefine file...");
     say("Using pattern: ".$pattern);
@@ -165,7 +170,13 @@ sub print_special_comments ($){
     while ( <FILE> ) {
         $line = trim($_);
         if ($line =~ m{$pattern}) {
-            say("\t".$line);
+            # Add a blank line before all new entries, so that it is easier to 
+            # distinguish separate entries in the test log. 
+            if ($line =~ m{$pattern_new_entry}) {
+                say("\n\t".$line);
+            } else {
+                say("\t".$line);
+            }
         }
     }
     close FILE;
