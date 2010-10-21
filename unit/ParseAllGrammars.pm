@@ -51,9 +51,9 @@ sub test_parse {
     foreach $f (@files) {
         print "... $f\n";
         my $grammar = new GenTest::Grammar(grammar_file => $f);
-        $self->assert_not_null($grammar);
+        $self->assert_not_null($grammar, "Grammar was null: $f");
         my $startRule = $grammar->firstMatchingRule("query");
-        $self->assert_not_null($startRule);
+        $self->assert_not_null($startRule, '"query" rule was null in '.$f);
     }
 }
 
