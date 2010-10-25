@@ -55,7 +55,7 @@ my @master_dsns;
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
-    $varchar_len, $xml_output, $valgrind, $views, $start_dirty,
+    $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views, $start_dirty,
     $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $notnull, $sqltrace, $lcov);
 
@@ -99,6 +99,7 @@ my $opt_result = GetOptions(
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s'	=> \$xml_output,
 	'valgrind'	=> \$valgrind,
+	'valgrind-xml'	=> \$valgrind_xml,
 	'views'		=> \$views,
 	'sqltrace' => \$sqltrace,
 	'start-dirty'	=> \$start_dirty,
@@ -223,8 +224,18 @@ foreach my $server_id (0..1) {
 	push @mtr_options, lc("--mysqld=--$engine") if defined $engine && $engine !~ m{myisam|memory}sio;
 
 	push @mtr_options, "--mem" if defined $mem;
-	push @mtr_options, "--valgrind" if defined $valgrind;
-
+	if ((defined $valgrind) || (defined $valgrind_xml)) {
+		push @mtr_options, "--valgrind";
+		if (defined $valgrind_xml) {
+			push @mtr_options, "--valgrind-option='--xml=yes'";
+			if (defined $vardirs[$server_id]) {
+				push @mtr_options, "--valgrind-option='--xml-file=".$vardirs[$server_id]."/log/valgrind.xml'";
+			} else {
+				push @mtr_options, "--valgrind-option='--xml-file=".$basedirs[$server_id]."/mysql-test/var/log/valgrind.xml'";
+			}
+		}
+	}
+			
 	push @mtr_options, "--skip-ndb";
 	push @mtr_options, "--mysqld=--core-file";
 	push @mtr_options, "--mysqld=--loose-new";
@@ -366,6 +377,7 @@ push @gentest_options, "--report-xml-tt-dest=$report_xml_tt_dest" if defined $re
 push @gentest_options, "--debug" if defined $debug;
 push @gentest_options, "--filter=$filter" if defined $filter;
 push @gentest_options, "--valgrind" if defined $valgrind;
+push @gentest_options, "--valgrind-xml" if defined $valgrind_xml;
 push @gentest_options, "--testname=$testname" if defined $testname;
 push @gentest_options, "--sqltrace" if defined $sqltrace;
 

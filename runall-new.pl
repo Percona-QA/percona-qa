@@ -312,6 +312,7 @@ my $gentestProps = GenTest::Properties->new(
               'filter',
               'notnull',
               'valgrind',
+              'valgrind-xml',
               'testname',
               'sqltrace',
               'report-xml-tt',

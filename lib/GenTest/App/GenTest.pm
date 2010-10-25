@@ -176,6 +176,7 @@ sub run {
         $self->config->reporters([]);
         if ($mysql_only || $drizzle_only) {
             $self->config->reporters(['ErrorLog', 'Backtrace']);
+            push @{$self->config->reporters}, 'ValgrindXMLErrors' if (defined $self->config->property('valgrind-xml'));
         }
     } else {
         ## Remove the "None" reporter
