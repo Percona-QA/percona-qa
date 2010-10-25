@@ -36,16 +36,19 @@ use Data::Dumper;
 # joins with re-execution of the enitre subquery for each loop.
 #
 
-my %explain2switch = (
-	'firstmatch'		=> "optimizer_switch='firstmatch=off'",
-	'<expr_cache>'		=> "optimizer_switch='subquery_cache=off'",
-	'materializ'		=> "optimizer_switch='materialization=off'",	# hypothetical
-	'semijoin'		=> "optimizer_switch='semijoin=off'",
-	'loosescan'		=> "optimizer_switch='loosescan=off'",
-	'<exists>'		=> "optimizer_switch='in_to_exists=off'",
-	'mrr'			=> "optimizer_use_mrr='disable'",
-	'join buffer'		=> "join_cache_level=0",
-	'join buffer'		=> "optimizer_join_cache_level=0"
+my @explain2switch = (
+	[ 'firstmatch'		=> "optimizer_switch='firstmatch=off'" ],
+	[ '<expr_cache>'	=> "optimizer_switch='subquery_cache=off'" ],
+	[ 'materializ'		=> "optimizer_switch='materialization=off'" ],	# hypothetical
+	[ 'semijoin'		=> "optimizer_switch='semijoin=off'" ],
+	[ 'loosescan'		=> "optimizer_switch='loosescan=off'" ],
+	[ '<exists>'		=> "optimizer_switch='in_to_exists=off'" ],
+	[ qr{BNLH|BKAH}		=> "optimizer_switch='join_cache_hashed=off'" ],	
+	[ 'BKA'			=> "optimizer_switch='join_cache_bka=off'" ],
+	[ 'incremental'		=> "optimizer_switch='join_cache_incremental=off'" ],
+	[ 'join buffer'		=> "join_cache_level=0" ],
+	[ 'join buffer'		=> "optimizer_join_cache_level=0" ],
+	[ 'mrr'			=> "optimizer_use_mrr='disable'" ]
 );
 
 my $available_switches;
@@ -87,7 +90,8 @@ sub transform {
 	my $original_explain_string = Dumper($original_explain->data())."\n".Dumper($original_explain->warnings());
 
 	my @transformed_queries;
-	while (my ($explain_fragment, $optimizer_switch) = each %explain2switch) {
+	foreach my $explain2switch (@explain2switch) {
+		my ($explain_fragment, $optimizer_switch) = ($explain2switch->[0], $explain2switch->[1]);
 		next if not exists $available_switches->{$optimizer_switch};
 		if ($original_explain_string =~ m{$explain_fragment}si) {
 			my ($switch_name) = $optimizer_switch =~ m{^(.*?)=}sgio;
@@ -99,6 +103,7 @@ sub transform {
 			);
 		}
 	}
+
 	if ($#transformed_queries > -1) {
 		return \@transformed_queries;
 	} else {
