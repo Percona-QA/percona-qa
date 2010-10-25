@@ -75,7 +75,6 @@ foreach my $trial_id (1..$trials) {
 
 	my $command = "
 		perl ".(defined $ENV{RQG_HOME} ? $ENV{RQG_HOME}."/" : "" )."runall.pl $comb_str
-		--mask=$mask
 		--queries=100000000
 	";
 
