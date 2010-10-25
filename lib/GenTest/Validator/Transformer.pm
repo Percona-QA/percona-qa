@@ -142,30 +142,38 @@ sub transform {
 #		return STATUS_WONT_HANDLE;
 	}
 
+	my $simplifier_test;
+
 	if (not defined $simplified_query) {
 		say("Simplification failed -- failure is likely sporadic.");
-		return STATUS_WONT_HANDLE;
+
+		$simplifier_test = GenTest::Simplifier::Test->new(
+			executors => [ $executor ],
+			results => [ [ $original_result, $transformed_results->[0] ] ],
+			queries => [ $original_query, join('; ', @$transformed_queries) ]
+		);
+
+	} else {
+		say("Simplified query: $simplified_query");
+
+		my ($transform_outcome, $simplified_transformed_queries, $simplified_transformed_results) = $transformer->transformExecuteValidate($simplified_query, $simplified_result, $executor);
+
+		$simplified_transformed_queries = join('; ', @$simplified_transformed_queries) if ref($simplified_transformed_queries) eq 'ARRAY';
+		say("Simplified transformed query: $simplified_transformed_queries");
+
+		if (defined $simplified_transformed_results->[0]->warnings()) {
+			say("Simplified transformed query produced warnings.");
+	#		return STATUS_WONT_HANDLE;
+		}
+
+		say(GenTest::Comparator::dumpDiff($simplified_result, $simplified_transformed_results->[0]));
+
+		$simplifier_test = GenTest::Simplifier::Test->new(
+			executors => [ $executor ],
+			results => [ [ $simplified_result, $simplified_transformed_results->[0] ] ],
+			queries => [ $simplified_query, $simplified_transformed_queries ]
+		);
 	}
-
-	say("Simplified query: $simplified_query");
-
-	my ($transform_outcome, $simplified_transformed_queries, $simplified_transformed_results) = $transformer->transformExecuteValidate($simplified_query, $simplified_result, $executor);
-
-	$simplified_transformed_queries = join('; ', @$simplified_transformed_queries) if ref($simplified_transformed_queries) eq 'ARRAY';
-	say("Simplified transformed query: $simplified_transformed_queries");
-
-	if (defined $simplified_transformed_results->[0]->warnings()) {
-		say("Simplified transformed query produced warnings.");
-#		return STATUS_WONT_HANDLE;
-	}
-
-	say(GenTest::Comparator::dumpDiff($simplified_result, $simplified_transformed_results->[0]));
-
-	my $simplifier_test = GenTest::Simplifier::Test->new(
-		executors => [ $executor ],
-		results => [ [ $simplified_result, $simplified_transformed_results->[0] ] ],
-		queries => [ $simplified_query, $simplified_transformed_queries ]
-	);
 
 	my $test = $simplifier_test->simplify();
 
