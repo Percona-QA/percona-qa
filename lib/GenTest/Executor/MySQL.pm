@@ -248,7 +248,9 @@ use constant	ER_CHECKREAD		=> 1020;
 use constant	ER_DUP_KEY		=> 1022;
 use constant	ER_DUP_ENTRY		=> 1062;
 use constant	ER_LOCK_OR_ACTIVE_TRANSACTION	=> 1192;
-# The table is already read locked by the same seeion.
+use constant	ER_TRANS_CACHE_FULL	=> 1197;
+
+# The table is already read locked by the same session.
 use constant  	ER_CANT_UPDATE_WITH_READLOCK => 1223 ;
 
 # Storage engine failures
@@ -427,6 +429,7 @@ my %err2type = (
 	ER_CHECKREAD()		=> STATUS_TRANSACTION_ERROR,
 	ER_DUP_KEY()		=> STATUS_TRANSACTION_ERROR,
 	ER_DUP_ENTRY()		=> STATUS_TRANSACTION_ERROR,
+	ER_TRANS_CACHE_FULL()	=> STATUS_TRANSACTION_ERROR,
 	
 	ER_NOT_KEYFILE()	=> STATUS_DATABASE_CORRUPTION,
 	ER_KEY_NOT_FOUND()	=> STATUS_DATABASE_CORRUPTION,
