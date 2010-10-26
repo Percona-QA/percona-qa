@@ -34,8 +34,9 @@ my %execution_ratios;
 my $total_queries = 0;
 my $different_plans = 0;
 
-use constant MINIMUM_TIME_INTERVAL	=> 0.2;	# seconds
-use constant MINIMUM_RATIO		=> 1.5;	# Minimum speed-up or slow-down required in order to report a query
+use constant MIN_DURATION	=> 0.2;	# seconds
+use constant MIN_RATIO		=> 5;	# Minimum speed-up or slow-down required in order to report a query
+use constant MAX_ROWS		=> 20;
 
 sub validate {
 	my ($comparator, $executors, $results) = @_;
@@ -47,6 +48,7 @@ sub validate {
 	my $query = $results->[0]->query();
 
 	return STATUS_WONT_HANDLE if $query !~ m{^\s*SELECT}sio;
+	return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK || $results->[0]->status() != STATUS_OK;
 
 	my @explains;
 	foreach my $executor_id (0..1) {
@@ -58,12 +60,13 @@ sub validate {
 	$different_plans++ if $explains[0] ne $explains[1];
 
 	return STATUS_WONT_HANDLE if $time0 == 0 || $time1 == 0;
-	return STATUS_WONT_HANDLE if $time0 < MINIMUM_TIME_INTERVAL && $time1 < MINIMUM_TIME_INTERVAL;
+	return STATUS_WONT_HANDLE if $time0 < MIN_DURATION && $time1 < MIN_DURATION;
+	return STATUS_WONT_HANDLE if $results->[0]->rows() > MAX_ROWS;
 
 	my $ratio = $time0 / $time1;
 
 	# Print both queries that became faster and those that became slower
-	say("ratio = $ratio; time0 = $time0 sec; time1 = $time1 sec; query: $query") if ($ratio >= MINIMUM_RATIO) || $ratio <= (1/MINIMUM_RATIO);
+	say("ratio = $ratio; time0 = $time0 sec; time1 = $time1 sec; query: $query") if ($ratio >= MIN_RATIO) || $ratio <= (1/MIN_RATIO);
 
 	$total_queries++;
 	$execution_times[0]->{sprintf('%.1f', $time0)}++;
@@ -80,8 +83,8 @@ sub DESTROY {
 	foreach my $ratio (sort keys %execution_ratios) {
 		print "ratio = $ratio; queries = ".scalar(@{$execution_ratios{$ratio}}).":\n";
 		if (
-			($ratio <= (1 - (1 / MINIMUM_RATIO) ) ) ||
-			($ratio >= MINIMUM_RATIO)
+			($ratio <= (1 - (1 / MIN_RATIO) ) ) ||
+			($ratio >= MIN_RATIO)
 		) {
 			foreach my $query (@{$execution_ratios{$ratio}}) {
 				print "$query\n";
