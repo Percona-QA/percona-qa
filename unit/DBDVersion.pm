@@ -15,25 +15,42 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package Suite;
-use lib 'unit';
-use base qw(Test::Unit::TestSuite);
+# Basic grammar test
+# Walk through all the grammars and feed them to the Grammar
+# constructor. 
+#
+package DBDVersion;
+use base qw(Test::Unit::TestCase);
+use lib 'lib';
+use GenTest;
+use GenTest::Constants;
+use GenTest::Executor;
+use DBI;
 
-sub name { 'RQG Unit Tests' } 
+use Data::Dumper;
 
-sub include_tests { 
-qw(DBDVersion
-RandomTest 
-GrammarTest 
-FromGrammarTest 
-ParseAllGrammars
-GendataTest
-ExecutorTest
-TestScripts
-Metadata
-IPC
-TestMySQLServer
-TestReplServer
-) }
+sub new {
+    my $self = shift()->SUPER::new(@_);
+    # your state for fixture here
+    return $self;
+}
+
+my $executor;
+sub set_up {
+}
+
+sub tear_down {
+    # clean up after test
+}
+
+sub test_dbd {
+    my $self = shift;
+
+    my $version = DBI->installed_versions->{'DBD::mysql'};
+
+    say("DBD::mysql Version ".$version);
+    
+    $self->assert_not_null($version);
+}
 
 1;
