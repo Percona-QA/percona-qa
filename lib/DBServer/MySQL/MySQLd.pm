@@ -325,14 +325,15 @@ sub startServer {
         $self->[MYSQLD_AUXPID] = fork();
         if ($self->[MYSQLD_AUXPID]) {
             ## Wait for the pid file to have been created
+            my $wait_time = 0.2;
             my $waits = 0;
             while (!-f $self->pidfile && $waits < 100) {
-                Time::HiRes::sleep(0.2);
+                Time::HiRes::sleep($wait_time);
                 $waits++;
             }
             if (!-f $self->pidfile) {
                 sayFile($self->logfile);
-                croak("Could not start mysql server");
+                croak("Could not start mysql server, waited ".($waits*$wait_time)." seconds for pid file");
             }
             my $pidfile = $self->pidfile;
             my $pid = `cat \"$pidfile\"`;
