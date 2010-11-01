@@ -65,7 +65,7 @@ insert_query_list:
 insert_query:
 # We work on one test table at a time, thus we use the $tables variable to let us
 # reference the current table (started in the create_table rule) here
-  INSERT INTO {"dump_table".$tables } ( insert_column_list ) SELECT insert_column_list FROM `test` . _table insert_where_clause;
+  INSERT INTO {"dump_table".$tables } ( insert_column_list ) SELECT insert_column_list FROM `test` . _table insert_where_clause LIMIT small_digit;
 
 insert_where_clause:
 # we use a WHERE clause on the populating SELECT to increase randomness
@@ -88,8 +88,8 @@ insert_column_list:
 `col_year`, `col_year_key`, `col_year_not_null`, `col_year_not_null_key`,
 `col_time`, `col_time_key`, `col_time_not_null_key`, `col_time_not_null` ,
 `col_binary_5`, `col_binary_5_key`, `col_binary_5_not_null`, `col_binary_5_not_null_key`,
-`col_varbinary_5`, `col_varbinary_5_key`, `col_varbinary_5_not_null`, #`col_varbinary_5_not_null_key` ; 
-#`col_text`, `col_text_key`, `col_text_not_null_key`, `col_text_not_null` ;
+`col_varbinary_5`, `col_varbinary_5_key`, `col_varbinary_5_not_null`, #`col_varbinary_5_not_null_key` ,
+`col_text`, `col_text_key`, `col_text_not_null_key`, `col_text_not_null` ;
 
 modify_table:
 # We alter the tables by ALTERing the table and DROPping COLUMNS
@@ -179,3 +179,6 @@ small_table:
   A | B |
   C | C | C | C |
   D | D | D | D ; 
+
+small_digit:
+1 ;
