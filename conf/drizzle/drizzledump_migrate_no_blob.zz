@@ -29,14 +29,14 @@
 
 $tables = {
         names => ['A','B','C','D', 'AA', 'BB', 'CC', 'DD' ],
-        rows => [0, 0, 1, 1, 10, 10, 100, 100  ],
+        rows => [10, 10, 20, 20, 50, 50, 75, 75  ],
         partitions => [ undef ]
 };
 
 
 
 $fields = {
-        types => [ 'time', 'year', 'datetime','timestamp', 'date', 'binary(5)', 'varbinary(5)', 'bigint' , 'tinyint', 'smallint', 'mediumint', 'int', 'char(10)', 'char(128)', 'enum' ],
+        types => [ 'varbinary(5)','binary(5)','time', 'year', 'datetime','timestamp', 'date',  'bigint' , 'tinyint', 'smallint', 'mediumint', 'int', 'char(10)', 'char(128)', 'enum' ],
         indexes => [undef, 'key' ],
         null => [undef, 'not null' ],
         default => [undef, 'default null' ]
