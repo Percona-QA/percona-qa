@@ -43,6 +43,7 @@ my @optimizer_variables = (
     'optimizer_use_mrr',
     'optimizer_condition_pushdown',
 	'join_cache_level',
+	'join_buffer_size',
 	'optimizer_join_cache_level',
 	'debug'
 );
@@ -103,7 +104,6 @@ sub simplify {
 	}
 	$test .= "\n";
 
-
 	if (defined $executors->[1] and $executors->[0]->type() == DB_MYSQL and $executors->[1]->type() == DB_MYSQL) {
 		foreach my $optimizer_variable (@optimizer_variables) {
 			my @optimizer_values;
@@ -143,11 +143,11 @@ sub simplify {
 
 	foreach my $query_id (0..$query_count) {
 
-		my $query;
+		my $original_query;
 		if (defined $queries) {
-			$query = $queries->[$query_id];
+			$original_query = $queries->[$query_id];
 		} else {
-			$query = $results->[$query_id]->[0]->query();
+			$original_query = $results->[$query_id]->[0]->query();
 		}
 
 		$test .= _comment("Begin test case for query $query_id",$useHash)."\n\n";
@@ -160,32 +160,40 @@ sub simplify {
 			new_database	=> $simplified_database
 		);
 
-		my @participating_tables = $tables_simplifier->simplify($query);
+		my ($participating_tables, $rewritten_query) = $tables_simplifier->simplify($original_query);
 		
-		if ($#participating_tables > -1) {
+		if ($#$participating_tables > -1) {
 			$test .= "--disable_warnings\n";
-			foreach my $tab (@participating_tables) {
+			foreach my $tab (@$participating_tables) {
 				$test .= "DROP TABLE /*! IF EXISTS */ $tab;\n";
 			}
 			$test .= "--enable_warnings\n\n"
 		}
 			
-		my $mysqldump_cmd = "mysqldump -uroot --extended-insert=FALSE --no-set-names --compact --force --protocol=tcp --port=$tcp_port $simplified_database ";
-		$mysqldump_cmd .= join(' ', @participating_tables) if $#participating_tables > -1;
+		my $mysqldump_cmd = "mysqldump -uroot --net_buffer_length=4096 --max_allowed_packet=4096 --no-set-names --compact --force --protocol=tcp --port=$tcp_port $simplified_database ";
+		$mysqldump_cmd .= join(' ', @$participating_tables) if $#$participating_tables > -1;
 		open (MYSQLDUMP, "$mysqldump_cmd|") or say("Unable to run $mysqldump_cmd: $!");
 		while (<MYSQLDUMP>) {
-			next if $_=~ m{SET \@saved_cs_client}sio;
-			next if $_=~ m{SET character_set_client}sio;
+			$_ =~ s{`([a-zA-Z0-9_]+)`}{$1}sgio;
+			next if $_ =~ m{SET \@saved_cs_client}sio;
+			next if $_ =~ m{SET character_set_client}sio;
 			$test .= $_;
 		}
 		close (MYSQLDUMP);
 
 		$test .= "\n\n";
 
-		$query =~ s{(SELECT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)}{\n$1}sgio;
-		$test .= $query.";\n\n";
+		$rewritten_query =~ s{\s+}{ }sgio;
+		$rewritten_query =~ s{`}{}sgio;
+		$rewritten_query =~ s{\s+\.}{.}sgio;
+		$rewritten_query =~ s{\.\s+}{.}sgio;
+		$rewritten_query =~ s{(SELECT|LEFT|RIGHT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)}{\n$1}sgio;
+		$rewritten_query =~ s{\(}{\n(}sgio;	# Put each set of parenthesis on its own line 
+		$rewritten_query =~ s{\)}{)\n}sgio;	# 
+		$rewritten_query =~ s{[\r\n]+}{\n}sgio;
+		$test .= $rewritten_query.";\n\n";
 
-		if ($query =~ m/^\s*SELECT/) {
+		if ($rewritten_query =~ m/^\s*SELECT/) {
 			foreach my $ex (0..1) {
 				if (defined $executors->[$ex]) {
 #
@@ -219,8 +227,8 @@ sub simplify {
 			$test .= _comment($diff,$useHash)."\n\n\n";
 		}
 
-		if ($#participating_tables > -1) {
-			foreach my $tab (@participating_tables) {
+		if ($#$participating_tables > -1) {
+			foreach my $tab (@$participating_tables) {
 				$test .= "DROP TABLE $tab;\n";
 			}
 		}
