@@ -158,20 +158,39 @@ sub transform {
 
 		my ($transform_outcome, $simplified_transformed_queries, $simplified_transformed_results) = $transformer->transformExecuteValidate($simplified_query, $simplified_result, $executor);
 
-		$simplified_transformed_queries = join('; ', @$simplified_transformed_queries) if ref($simplified_transformed_queries) eq 'ARRAY';
-		say("Simplified transformed query: $simplified_transformed_queries");
+		my $simplified_transformed_queries_str;
+		if (ref($simplified_transformed_queries) eq 'ARRAY') {
+			$simplified_transformed_queries_str = join('; ', @$simplified_transformed_queries);
+		} else {
+			$simplified_transformed_queries_str = $simplified_transformed_queries;
+		}
+
+		say("Simplified transformed query: $simplified_transformed_queries_str");
 
 		if (defined $simplified_transformed_results->[0]->warnings()) {
 			say("Simplified transformed query produced warnings.");
 	#		return STATUS_WONT_HANDLE;
 		}
 
+		my @explains;
+		$explains[0] = $executor->execute("EXPLAIN ".$simplified_query);
+		foreach my $simplified_transformed_query (@$simplified_transformed_queries) {
+			$executor->execute($simplified_transformed_query);
+			if ($simplified_transformed_query eq $simplified_transformed_results->[0]->query()) {
+				$explains[1] = $executor->execute("EXPLAIN ".$simplified_transformed_query)
+			}
+		}
+
+		say("EXPLAIN diff:");
+		say(GenTest::Comparator::dumpDiff(@explains));
+
+		say("Result set diff:");
 		say(GenTest::Comparator::dumpDiff($simplified_result, $simplified_transformed_results->[0]));
 
 		$simplifier_test = GenTest::Simplifier::Test->new(
 			executors => [ $executor ],
 			results => [ [ $simplified_result, $simplified_transformed_results->[0] ] ],
-			queries => [ $simplified_query, $simplified_transformed_queries ]
+			queries => [ $simplified_query, $simplified_transformed_queries_str ]
 		);
 	}
 
