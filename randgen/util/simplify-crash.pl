@@ -29,13 +29,13 @@ use GenTest::Simplifier::Test;
 # Please modify those settings to fit your environment before you run this script
 #
 
-my $basedir = '/build/bzr/mysql-6.0-codebase-bugfixing';
+my $basedir = '/home/philips/bzr/maria-5.3-mwl128/';
 my $vardir = $basedir.'/mysql-test/var';
-my $dsn = 'dbi:mysql:host=127.0.0.1:port=19306:user=root:database=test';
+my $dsn = 'dbi:mysql:host=127.0.0.1:port=19300:user=root:database=test';
 
-my $original_query = ' 
+my $original_query = "
 	SELECT 1 FROM DUAL
-';
+";
 
 # Maximum number of seconds a query will be allowed to proceed. It is assumed that most crashes will happen immediately after takeoff
 my $timeout = 10;
@@ -101,14 +101,16 @@ print "Simplified test\n\n";
 print $simplified_test;
 
 sub start_server {
-	chdir($basedir.'/mysql-test') or die $!;
-	system("MTR_VERSION=1 perl mysql-test-run.pl ".join(" ", @mtr_options));
+	chdir($basedir.'/mysql-test') or die "Unable to chdir() to $basedir/mysql-test: $!";
 
 	$executor = GenTest::Executor::MySQL->new( dsn => $dsn );
+	$executor->init() if defined $executor;
 
-	$executor->init();
+	if ((not defined $executor) || (not defined $executor->dbh()) || (!$executor->dbh()->ping())) {
+		system("MTR_VERSION=1 perl mysql-test-run.pl ".join(" ", @mtr_options));
+		$executor = GenTest::Executor::MySQL->new( dsn => $dsn );
+		$executor->init();
+	}
 
-	my $dbh = $executor->dbh();
-
-	$dbh->do("SET GLOBAL EVENT_SCHEDULER = ON");
+	$executor->dbh()->do("SET GLOBAL EVENT_SCHEDULER = ON");
 }
