@@ -312,7 +312,7 @@ foreach my $server_id (0..1) {
 	if ($mtr_status != 0) {
 #		system("cat $out_file");
 		system("cat \"$vardir/log/master.err\"");
-		exit_test($mtr_status >> 8);
+		exit_test(STATUS_ENVIRONMENT_FAILURE);
 	}
 #	unlink($out_file);
 	
