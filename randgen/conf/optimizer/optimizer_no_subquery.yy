@@ -117,7 +117,7 @@ distinct: DISTINCT | | | |  ;
 
 select_option:  | | | | | | | | | SQL_SMALL_RESULT ;
 
-straight_join:  | | | | | | | | | | | STRAIGHT_JOIN ;
+straight_join:  | | | | | | | | | | | | | | | | | | | | | STRAIGHT_JOIN ;
 
 select_list:
 	new_select_item |
