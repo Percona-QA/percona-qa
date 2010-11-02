@@ -46,7 +46,7 @@ my @mtr_options = (
 	'--start-and-exit',
 	'--start-dirty',
 	"--vardir=$vardir",
-	"--master_port=19306",
+	"--master_port=19300",
 	'--skip-ndbcluster',
 	'--mysqld=--loose-core-file-size=1',
 	'--fast',
@@ -107,7 +107,7 @@ sub start_server {
 	$executor->init() if defined $executor;
 
 	if ((not defined $executor) || (not defined $executor->dbh()) || (!$executor->dbh()->ping())) {
-		system("MTR_VERSION=1 perl mysql-test-run.pl ".join(" ", @mtr_options));
+		system("MTR_VERSION=1 perl mysql-test-run.pl ".join(" ", @mtr_options)." > /dev/null");
 		$executor = GenTest::Executor::MySQL->new( dsn => $dsn );
 		$executor->init();
 	}
