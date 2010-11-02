@@ -95,7 +95,7 @@ sub descend {
 	foreach my $child_id (0..$#children) {
 
 		my $orig_child = $children[$child_id];
-		next if $orig_child->print() =~ m{AS}; # Do not remove the AS from "table1 AS alias1"
+		next if $orig_child->print() =~ m{^\s*AS}so; # Do not remove the AS from "table1 AS alias1"
 
 		my $orig_parent = $grandparent->[$parent_id + 1];
 
