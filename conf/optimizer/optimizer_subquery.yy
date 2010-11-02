@@ -92,7 +92,7 @@ distinct: DISTINCT | | | | | | | | | ;
 
 select_option:  | | | | | | | | | | | SQL_SMALL_RESULT ;
 
-straight_join:  | | | | | | | | | | | STRAIGHT_JOIN ;
+straight_join:  | | | | | | | | | | | | | | | | | | | | | STRAIGHT_JOIN ;
 
 select_list:
 	new_select_item |
@@ -128,7 +128,12 @@ join_list_disabled:
         ( new_table_item join_type join_list ON (join_condition_item ) ) ;
 
 join_type:
-	INNER JOIN | left_right outer JOIN | STRAIGHT_JOIN ;  
+	INNER JOIN | left_right outer JOIN |
+	INNER JOIN | left_right outer JOIN |
+	INNER JOIN | left_right outer JOIN |
+	INNER JOIN | left_right outer JOIN |
+	INNER JOIN | left_right outer JOIN |
+	STRAIGHT_JOIN ;  
 
 join_condition_item:
     current_table_item . int_indexed = previous_table_item . int_field_name on_subquery |
