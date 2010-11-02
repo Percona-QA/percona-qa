@@ -54,7 +54,7 @@ my @master_dsns;
 
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file,
-    $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
+    $redefine_file, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views, $start_dirty,
     $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $notnull, $sqltrace, $lcov);
@@ -94,6 +94,7 @@ my $opt_result = GetOptions(
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
         'mask-level=i' => \$mask_level,
+	'no-mask' => \$no_mask,
 	'mem' => \$mem,
 	'rows=i' => \$rows,
 	'varchar-length=i' => \$varchar_len,
@@ -114,9 +115,17 @@ $ENV{RQG_DEBUG} = 1 if defined $debug;
 $validators = join(',', @$validators) if defined $validators;
 $reporters = join(',', @$reporters) if defined $reporters;
 
-if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
+if (!$opt_result) {
+	exit(1);
+} elsif ($help) {
 	help();
-	exit($help ? 0 : 1);
+	exit(0);
+} elsif ($basedirs[0] eq '') {
+	say("No basedir provided via --basedir.");
+	exit(0);
+} elsif (not defined $grammar_file) {
+	say("No grammar file provided via --grammar");
+	exit(0);
 }
 
 say("Copyright (c) 2008-2009 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.");
@@ -365,7 +374,7 @@ push @gentest_options, "--dsn=$master_dsns[1]" if defined $master_dsns[1];
 push @gentest_options, "--grammar=$grammar_file";
 push @gentest_options, "--redefine=$redefine_file" if defined $redefine_file;
 push @gentest_options, "--seed=$seed" if defined $seed;
-push @gentest_options, "--mask=$mask" if defined $mask;
+push @gentest_options, "--mask=$mask" if ((defined $mask) && (not defined $no_mask));
 push @gentest_options, "--mask-level=$mask_level" if defined $mask_level;
 push @gentest_options, "--rows=$rows" if defined $rows;
 push @gentest_options, "--views" if defined $views;
