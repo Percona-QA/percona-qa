@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Reporter::DrizzleConcurrentTransactionLog;
+package GenTest::Reporter::DrizzleConcurrentTransactionLog1;
 
 require Exporter;
 @ISA = qw(GenTest::Reporter);
@@ -41,19 +41,33 @@ sub report
         
         # do some setup and whatnot
         my $main_port = '9306';
-	my $validator_port = '9307';
+        my $database = 'test';
+        my $new_database = 'orig_test';
         my @basedir= $dbh->selectrow_array('SELECT @@basedir');
         my @datadir= $dbh->selectrow_array('SELECT @@datadir');
      
         my $drizzledump = @basedir->[0].'/client/drizzledump' ;
         my $drizzle_client = @basedir->[0].'/client/drizzle' ;
         my $transaction_reader = @basedir->[0].'/drizzled/message/transaction_reader' ;
-        my $transaction_log = @datadir->[0].'/local/transaction.log' ;
-
-
-        # We now attempt to replicate from the transaction log
-        # We call transaction_reader and send the output
-        # via the drizzle client to the validation server (slave)
+        my $transaction_log = @basedir->[0].'/tests/var/master-data/local/transaction.log' ;
+        # Dump the original test db - we will use this for comparison
+        # purposes once we have attempted to restore from the 
+        # transaction log
+        if (rqg_debug())
+        {
+            say("Dumping original test db...")
+        }
+        my $original_dumpfile = tmpdir()."/translog_rpl_dump_".$$."_orig.sql";
+        say("$original_dumpfile");
+        say("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$main_port --user=root $database >$original_dumpfile");
+	my $drizzledump_result = system("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$main_port --user=root $database >$original_dumpfile");
+        if ($drizzledump_result > 0)
+        {
+            say("$drizzledump_result");
+	    return STATUS_UNKNOWN_ERROR;
+        }
+        
+        # We now call transaction_reader to produce SQL from the log file contents
         my $transaction_log_sql_file = tmpdir()."/translog_".$$."_.sql" ;
         if (rqg_debug()) 
         {
@@ -61,72 +75,94 @@ sub report
           say("$transaction_reader $transaction_log > $transaction_log_sql_file");
         }
         system("$transaction_reader $transaction_log > $transaction_log_sql_file") ;
-         if (rqg_debug()) 
-         {
-           say("Replicating from transaction_log output...");
-         }
-         my $drizzle_rpl_result = system("$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root test <  $transaction_log_sql_file") ;
-         if (rqg_debug())
-         {
-           say ("$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root test <  $transaction_log_sql_file");
-         }
-         return STATUS_UNKNOWN_ERROR if $drizzle_rpl_result > 0 ;
+
+        # We 'rename' the original test db so that we can restore from 
+        # the transaction log.  By rename, we do:
+        # RENAME TABLE org_db.table_name TO new_db.table_name;
+        if (rqg_debug())
+        {
+           say ("Cleaning up validation server...");
+        }
+        system("$drizzle_client --host=127.0.0.1 --port=$main_port --user=root -e 'DROP SCHEMA IF EXISTS $new_database'");
+
+        if (rqg_debug())
+        {
+          say ("Resetting validation server...");
+        }
+        my $create_schema_result = system("$drizzle_client --host=127.0.0.1 --port=$main_port --user=root -e 'CREATE SCHEMA $new_database'");
+        say("$create_schema_result");      
+        my $get_table_names =  " SELECT DISTINCT(table_name) ".
+                                 " FROM data_dictionary.tables ". 
+                                 " WHERE table_schema = '".$database."'" ;
+
+        # Here, we get the name of the single table in the test db
+        # Need to change the perl to better deal with a list of tables (more than 1)
+        my $table_names = $dbh->selectcol_arrayref($get_table_names) ;
+
+        foreach(@$table_names)
+        {
+          my $rename_command = "RENAME TABLE $database.$_ TO $new_database.$_";
+          say("$rename_command");
+          system("$drizzle_client --host=127.0.0.1 --port=$main_port --user=root -e '$rename_command'"); 
+
+        }
+        # Now, we attempt to replicate from the SQL generated via transaction_reader
+        # from the transaction log
+        if (rqg_debug()) 
+        {
+          say("Replicating from transaction_log output...");
+        }
+        my $drizzle_rpl_result = system("$drizzle_client --host=127.0.0.1 --port=$main_port --user=root $database <  $transaction_log_sql_file") ;
+        if (rqg_debug())
+        {
+          say ("$drizzle_client --host=127.0.0.1 --port=$main_port --user=root $database <  $transaction_log_sql_file");
+        }
+        return STATUS_UNKNOWN_ERROR if $drizzle_rpl_result > 0 ;
 
           
-         if (rqg_debug())
-         {
-           say("Validating replication via dumpfile compare...");
-         }
-         my @files;
-         my @ports = ($main_port, $validator_port);
+        if (rqg_debug())
+        {
+          say("Validating replication via dumpfile compare...");
+        }
+        # Dump the 'replicated' test db - we will use this for comparison
+        # purposes once we have attempted to restore from the 
+        # transaction log
+        if (rqg_debug())
+        {
+            say("Dumping replicated test db...")
+        }
+        my $restored_dumpfile = tmpdir()."/translog_rpl_dump_".$$."_restored.sql";
+        say("$restored_dumpfile");
+        say("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$main_port --user=root $database >$restored_dumpfile");
+        my $drizzledump_result = system("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$main_port --user=root $database >$restored_dumpfile");
+        if ($drizzledump_result > 0)
+        {
+            say("$drizzledump_result");
+            return STATUS_UNKNOWN_ERROR;
+        }
 
-	 foreach my $port_id (0..1) 
-         {
-	   $files[$port_id] = tmpdir()."/translog_rpl_dump_".$$."_".$ports[$port_id].".sql";
-           say("$files[$port_id]");
-           say("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$ports[$port_id] --user=root test >$files[$port_id]");
-	   my $drizzledump_result = system("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$ports[$port_id] --user=root test >$files[$port_id]");
-           # disable pipe to 'sort' from drizzledump call above
-           #| sort > $files[$port_id]");
-	   return STATUS_UNKNOWN_ERROR if $drizzledump_result > 0;
-	 }
-         if (rqg_debug())
-         {
-           say ("Executing diff --unified $files[SERVER1_FILE_NAME] $files[SERVER2_FILE_NAME]");
-	 }
-         my $diff_result = system("diff --unified $files[SERVER1_FILE_NAME] $files[SERVER2_FILE_NAME]");
-	 $diff_result = $diff_result >> 8;
-         if (rqg_debug())
-         {
-            say ("Cleaning up validation server...");
-         }
-         system("$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root -e 'DROP SCHEMA test'");
-
-         if (rqg_debug())
-         {
-           say ("Resetting validation server...");
-         }
-         my $create_schema_result = system("$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root -e 'CREATE SCHEMA test'");
-         say("$create_schema_result");      
-
-	 return STATUS_UNKNOWN_ERROR if $diff_result > 1;
-
-	 if ($diff_result == 1) 
-         {
-	   say("Differences between the two servers were found after comparing dumpfiles");
-           say("diff command:  diff --unified $files[SERVER1_FILE_NAME] $files[SERVER2_FILE_NAME]");
-           say("Master dumpfile:  $files[SERVER1_FILE_NAME]");
-           say("Slave dumpfile:   $files[SERVER2_FILE_NAME]");
-	   return STATUS_REPLICATION_FAILURE;
-	 } 
-         else 
-         {
-	   foreach my $file (@files) 
-           {
-	     unlink($file);
-	   }
-	   return STATUS_OK;
-	 }
+        if (rqg_debug())
+        {
+          say ("Executing diff --unified $original_dumpfile $restored_dumpfile");
+        }
+        my $diff_result = system("diff --unified $original_dumpfile $restored_dumpfile");
+        $diff_result = $diff_result >> 8;
+        return STATUS_UNKNOWN_ERROR if $diff_result > 1;
+        if ($diff_result == 1) 
+        {
+          say("Differences between the two servers were found after comparing dumpfiles");
+          say("diff command:  diff --unified $original_dumpfile $restored_dumpfile");
+          say("Master dumpfile:  $original_dumpfile");
+          say("Slave dumpfile:   $restored_dumpfile");
+          return STATUS_REPLICATION_FAILURE;
+        } 
+        else 
+        {
+	  unlink $original_dumpfile;
+          unlink $restored_dumpfile;
+          unlink $transaction_log_sql_file;
+          return STATUS_OK;
+        }
 
    }	
 	
