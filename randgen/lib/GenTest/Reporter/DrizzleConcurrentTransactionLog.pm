@@ -43,12 +43,10 @@ sub report
         my $main_port = '9306';
 	my $validator_port = '9307';
         my @basedir= $dbh->selectrow_array('SELECT @@basedir');
-        my @datadir= $dbh->selectrow_array('SELECT @@datadir');
-     
         my $drizzledump = @basedir->[0].'/client/drizzledump' ;
         my $drizzle_client = @basedir->[0].'/client/drizzle' ;
         my $transaction_reader = @basedir->[0].'/drizzled/message/transaction_reader' ;
-        my $transaction_log = @datadir->[0].'/local/transaction.log' ;
+        my $transaction_log = @basedir->[0].'/tests/var/master-data/local/transaction.log' ;
 
 
         # We now attempt to replicate from the transaction log
