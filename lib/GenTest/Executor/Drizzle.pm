@@ -232,6 +232,11 @@ sub execute {
 	my ($executor, $query, $silent) = @_;
 
 	my $dbh = $executor->dbh();
+       
+        if ($executor->sqltrace) 
+        {
+            print "$query;\n";
+        }
 
 	return GenTest::Result->new( query => $query, status => STATUS_UNKNOWN_ERROR ) if not defined $dbh;
 
