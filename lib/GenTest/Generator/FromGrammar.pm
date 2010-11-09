@@ -303,6 +303,8 @@ sub next {
 			$_ = time();
 		} elsif ($_ eq '_pid') {
 			$_ = $$;
+		} elsif ($_ eq '_thread_id') {
+			$_ = $generator->threadId();
 		} elsif ($_ eq '_thread_count') {
 			$_ = $ENV{RQG_THREADS};
 		} elsif (($_ eq '_database') || ($_ eq '_db') || ($_ eq '_schema')) {
