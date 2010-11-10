@@ -32,7 +32,7 @@ use constant PROCESSLIST_PROCESS_STATE		=> 6;
 use constant PROCESSLIST_PROCESS_INFO		=> 7;
 
 # Minimum lifetime for a query before it is killed
-use constant QUERY_LIFETIME_THRESHOLD		=> 10;	# Seconds
+use constant QUERY_LIFETIME_THRESHOLD		=> 20;	# Seconds
 
 sub monitor {
 	my $reporter = shift;
