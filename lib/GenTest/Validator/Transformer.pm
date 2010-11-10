@@ -41,7 +41,7 @@ sub BEGIN {
 		'DisableChosenPlan',
 		'ConvertSubqueriesToViews',
 		'Count',
-#		'DisableIndexes',
+		'DisableIndexes',
 		'Distinct',
 		'ExecuteAsPreparedTwice',
 		'ExecuteAsSPTwice',
@@ -55,7 +55,7 @@ sub BEGIN {
 		'FromSubquery',
 		'Having',
 		'InlineSubqueries',
-#		'InlineVirtualColumns',
+		'InlineVirtualColumns',
 		'LimitDecrease',
 		'LimitIncrease',
 		'OrderBy',
@@ -91,6 +91,7 @@ sub validate {
 	my $max_transformer_status; 
 	foreach my $transformer (@transformers) {
 		my $transformer_status = $validator->transform($transformer, $executor, $results);
+		$transformer_status = STATUS_OK if ($transformer_status == STATUS_CONTENT_MISMATCH) && ($original_query =~ m{LIMIT}sio);
 		return $transformer_status if $transformer_status > STATUS_CRITICAL_FAILURE;
 		$max_transformer_status = $transformer_status if $transformer_status > $max_transformer_status;
 	}
@@ -124,7 +125,7 @@ sub transform {
 			my ($oracle_outcome, $oracle_transformed_queries, $oracle_transformed_results) = $transformer->transformExecuteValidate($oracle_query, $oracle_result, $executor);
 
 			if (
-				($oracle_outcome == STATUS_CONTENT_MISMATCH) ||
+				(($oracle_outcome == STATUS_CONTENT_MISMATCH) && ($oracle_query !~ m{LIMIT}sio)) ||
 				($oracle_outcome == STATUS_LENGTH_MISMATCH)
 			) {
 				return ORACLE_ISSUE_STILL_REPEATABLE;
