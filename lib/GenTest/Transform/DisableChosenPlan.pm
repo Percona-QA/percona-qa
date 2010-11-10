@@ -48,7 +48,8 @@ my @explain2switch = (
 	[ 'incremental'		=> "optimizer_switch='join_cache_incremental=off'" ],
 	[ 'join buffer'		=> "join_cache_level=0" ],
 	[ 'join buffer'		=> "optimizer_join_cache_level=0" ],
-	[ 'mrr'			=> "optimizer_use_mrr='disable'" ]
+	[ 'mrr'			=> "optimizer_use_mrr='disable'" ],
+	[ 'index condition'	=> "optimizer_switch='index_condition_pushdown=off'" ]
 );
 
 my $available_switches;
