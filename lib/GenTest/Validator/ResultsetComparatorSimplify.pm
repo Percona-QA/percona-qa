@@ -111,10 +111,18 @@ sub validate {
 		
 		if (defined $simplified_query) {
 			say("Simplified query: $simplified_query;");
-			my $simplified_results = [];
 
+			my @explains = (
+				$executors->[0]->execute("EXPLAIN ".$simplified_query),
+				$executors->[1]->execute("EXPLAIN ".$simplified_query)
+			);
+	                say("EXPLAIN diff:");
+			say(GenTest::Comparator::dumpDiff(@explains));
+
+			my $simplified_results = [];
 			$simplified_results->[0] = $executors->[0]->execute($simplified_query, 1);
 			$simplified_results->[1] = $executors->[1]->execute($simplified_query, 1);
+			say("Result set diff:");
 			say(GenTest::Comparator::dumpDiff($simplified_results->[0], $simplified_results->[1]));
 
 			my $simplifier_test = GenTest::Simplifier::Test->new(
