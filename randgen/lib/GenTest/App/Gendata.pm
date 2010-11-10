@@ -195,7 +195,7 @@ sub run {
     }
 
     $table_perms[TABLE_ROW] = (defined $self->rows() ? [ $self->rows() ] : undef ) || $tables->{rows} || [0, 1, 2, 10, 100];
-    $table_perms[TABLE_ENGINE] = $tables->{engines} || [ $self->engine() ];
+    $table_perms[TABLE_ENGINE] = defined $self->engine() ? [ $self->engine() ] : $tables->{engines};
     $table_perms[TABLE_CHARSET] = $tables->{charsets} || [ undef ];
     $table_perms[TABLE_COLLATION] = $tables->{collations} || [ undef ];
     $table_perms[TABLE_PARTITION] = $tables->{partitions} || [ undef ];
