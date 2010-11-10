@@ -32,7 +32,7 @@ sub transform {
 	return [
 		"CREATE TABLE IF NOT EXISTS trigger1".$$." (f1 INTEGER)",
 		"CREATE TABLE IF NOT EXISTS transforms.trigger2".$$." $original_query LIMIT 0",
-		"CREATE TRIGGER trigger1 BEFORE INSERT ON trigger1".$$." FOR EACH ROW INSERT INTO transforms.trigger2".$$." $original_query;",
+		"CREATE TRIGGER trigger1".$$." BEFORE INSERT ON trigger1".$$." FOR EACH ROW INSERT INTO transforms.trigger2".$$." $original_query;",
 		"INSERT INTO trigger1".$$." VALUES (1)",
 		"SELECT * FROM transforms.trigger2".$$." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$
