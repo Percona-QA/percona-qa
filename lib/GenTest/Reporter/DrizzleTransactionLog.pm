@@ -48,7 +48,7 @@ sub report
         my @basedir= $dbh->selectrow_array('SELECT @@basedir');
         my $drizzledump = @basedir->[0].'/client/drizzledump' ;
         my $drizzle_client = @basedir->[0].'/client/drizzle' ;
-        my $transaction_reader = @basedir->[0].'/drizzled/message/transaction_reader' ;
+        my $transaction_reader = @basedir->[0].'/plugins/transaction_log/utilities/transaction_reader' ;
         # NOTE:  We need to edit this depending on whether we run via d-a or
         # whatever.  We don't have a good means for finding the transaction log otherwise
         # my $transaction_log = @basedir->[0].'tests/master-data/var/local/transaction.log' ;
