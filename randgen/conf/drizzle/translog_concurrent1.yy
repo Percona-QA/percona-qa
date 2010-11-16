@@ -54,13 +54,11 @@ transaction:
   SET AUTOCOMMIT=OFF ; START TRANSACTION ; normal_query_list ; end_transaction ; SET AUTOCOMMIT=ON ;
 
 end_transaction:
-  commit_rollback ; SET TRANSACTION ISOLATION LEVEL isolation_level ;
+  commit_rollback ; 
 
 commit_rollback:
   COMMIT | COMMIT | COMMIT | COMMIT | COMMIT | ROLLBACK ;
 
-isolation_level:
-	READ UNCOMMITTED | READ COMMITTED | REPEATABLE READ | SERIALIZABLE ;
 
 select:
 	SELECT select_list FROM join_list where LIMIT large_digit for_update_lock_in_share_mode;
