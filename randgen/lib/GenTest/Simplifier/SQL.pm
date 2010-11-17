@@ -92,10 +92,19 @@ sub descend {
 	my @children = $parent->children();
 	return if $#children == -1;
 
-	foreach my $child_id (0..$#children) {
-
+	
+	# We start chopping from the end in order to remove GROUP BY/HAVING, etc., before we 
+	# start chewing on the SELECT list and the list of joined tables
+ 
+	foreach my $child_id (reverse (0..$#children)) {
 		my $orig_child = $children[$child_id];
-		next if $orig_child->print() =~ m{^\s*AS}so; # Do not remove the AS from "table1 AS alias1"
+		
+		# Do not remove the AS from "table1 AS alias1"
+		next if $orig_child->print() =~ m{^\s*AS}so;
+		
+		# No not remove FORCE KEY. This is sometimes useful when simplifying optimizer bugs 
+		# that use InnoDB tables and have unstable query plans due to unstable InnoDB row estimates
+#		next if $orig_child->print() =~ m{^\s*FORCE}so; 
 
 		my $orig_parent = $grandparent->[$parent_id + 1];
 
