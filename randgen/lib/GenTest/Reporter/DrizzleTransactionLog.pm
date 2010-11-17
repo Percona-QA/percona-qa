@@ -48,10 +48,19 @@ sub report
         my @basedir= $dbh->selectrow_array('SELECT @@basedir');
         my $drizzledump = @basedir->[0].'/client/drizzledump' ;
         my $drizzle_client = @basedir->[0].'/client/drizzle' ;
-        my $transaction_reader = @basedir->[0].'/plugin/transaction_log/utilities/transaction_reader' ;
+        my $transaction_reader; 
+        if (-e @basedir->[0].'/drizzled/message/transaction_reader') 
+        {
+            $transaction_reader = @basedir->[0].'/drizzled/message/transaction_reader';
+        }
+        else 
+        {
+            $transaction_reader = @basedir->[0].'/plugin/transaction_log/utilities/transaction_reader' ;
+        }
+
         # NOTE:  We need to edit this depending on whether we run via d-a or
         # whatever.  We don't have a good means for finding the transaction log otherwise
-        # my $transaction_log = @basedir->[0].'tests/master-data/var/local/transaction.log' ;
+        # my $transaction_log = @basedir->[0].'tests/var/master-data/local/transaction.log' ;
         my $transaction_log = @basedir->[0].'/var/local/transaction.log' ;
         my $transaction_log_copy = tmpdir()."/translog_".$$."_.log" ;
         copy($transaction_log, $transaction_log_copy);
