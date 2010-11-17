@@ -50,6 +50,17 @@ my @mtr_options = (
 	'--skip-ndbcluster',
 	'--mysqld=--loose-core-file-size=1',
 	'--fast',
+	'--mysqld=--key_buffer_size=16K',
+	'--mysqld=--table_open_cache=4',
+	'--mysqld=--sort_buffer_size=64K',
+	'--mysqld=--read_buffer_size=256K',
+	'--mysqld=--read_rnd_buffer_size=256K',
+	'--mysqld=--thread_stack=240K',
+	'--mysqld=--looose-innodb_buffer_pool_size=16M',
+	'--mysqld=--loose-innodb_additional_mem_pool_size=2M',
+	'--mysqld=--innodb_log_file_size=5M',
+	'--mysqld=--innodb_log_buffer_size=8M',
+	'--mysqld=--innodb_flush_log_at_trx_commit=2',
 	'1st'	# Required for proper operation of MTR --start-and-exit
 );
 
@@ -107,7 +118,7 @@ sub start_server {
 	$executor->init() if defined $executor;
 
 	if ((not defined $executor) || (not defined $executor->dbh()) || (!$executor->dbh()->ping())) {
-		system("MTR_VERSION=1 perl mysql-test-run.pl ".join(" ", @mtr_options)." > /dev/null");
+		system("MTR_VERSION=1 perl mysql-test-run.pl ".join(" ", @mtr_options));
 		$executor = GenTest::Executor::MySQL->new( dsn => $dsn );
 		$executor->init();
 	}
