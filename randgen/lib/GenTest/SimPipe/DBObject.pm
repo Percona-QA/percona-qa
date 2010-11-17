@@ -14,11 +14,11 @@
 # USA
 #
 
-package GenTest::SimPipe::DatabaseObject;
+package GenTest::SimPipe::DBObject;
 
 require Exporter;
 @ISA = qw(GenTest);
-@EXPORT = qw(COLUMN_NAME COLUMN_TYPE COLUMN_COLLATION KEY_COLUMN);
+@EXPORT = qw(COLUMN_NAME COLUMN_TYPE COLUMN_COLLATION KEY_COLUMN DBOBJECT_NAME DBOBJECT_ENGINE);
 
 use strict;
 use DBI;
@@ -111,7 +111,7 @@ sub newFromDSN {
 		push @data, $row;
 	}
 
-	my $dbobject = GenTest::SimPipe::DatabaseObject->new(
+	my $dbobject = GenTest::SimPipe::DBObject->new(
 		name	=> $table_name,
 		engine	=> $engine,
 		columns	=> \@columns,
@@ -126,13 +126,22 @@ sub toString {
 	my @column_strings;
 	foreach my $column (@{$dbobject->columns()}) {
 		next if not defined $column;
+		next if not defined $column->[COLUMN_NAME];
+
 		my $column_string = $column->[COLUMN_NAME]." ".$column->[COLUMN_TYPE];
 		$column_string .= " COLLATE ".$column->[COLUMN_COLLATION] if defined $column->[COLUMN_COLLATION];
 		push @column_strings, $column_string;
 	}
 
+	return "" if ($#column_strings == -1);
+
 	foreach my $key (@{$dbobject->keys()}) {
 		next if not defined $key;
+		my $underlying_column_exists = 0;
+		foreach my $column (@{$dbobject->columns()}) {
+			$underlying_column_exists = 1 if $column->[COLUMN_NAME] eq $key->[KEY_COLUMN];
+		}
+		next if !$underlying_column_exists;
 		if ($key->[KEY_NAME] eq 'PRIMARY') {
 			push @column_strings, "PRIMARY KEY (".$key->[KEY_COLUMN].")";
 		} else {
@@ -141,19 +150,27 @@ sub toString {
 	}
 
 	my $create_string = "DROP TABLE IF EXISTS ".$dbobject->name().";\n";
-	$create_string .= "CREATE TABLE ".$dbobject->name()." (\n".join(",\n", @column_strings).") ENGINE=".$dbobject->engine().";\n";
+	$create_string .= "CREATE TABLE ".$dbobject->name()." (\n".join(",\n", @column_strings).") ";
+	$create_string .= " ENGINE=".$dbobject->engine() if defined $dbobject->engine();
+	$create_string .= " TRANSACTIONAL=0 " if $dbobject->engine() =~ m{Aria}sio;
+	$create_string .= ";\n";
 
-	my $data_string;
+	my @rows_data;
 
 	foreach my $row_id (0..$#{$dbobject->[DBOBJECT_DATA]}) {
 		next if not defined $dbobject->[DBOBJECT_DATA]->[$row_id];
 		my @row_data;
 		foreach my $column (@{$dbobject->columns()}) {
+			next if not defined $column;
+			next if not defined $column->[COLUMN_NAME];
 			my $cell = $dbobject->[DBOBJECT_DATA]->[$row_id]->{$column->[COLUMN_NAME]} || $dbobject->[DBOBJECT_DATA]->[$row_id]->{$column->[COLUMN_ORIG_NAME]};
+			$cell =~ s{'}{\\'}sgio;
 			push @row_data, defined $cell ? "'".$cell."'" : 'NULL';
 		}
-		$data_string .= "INSERT INTO ".$dbobject->name()." VALUES (".join(',', @row_data).");\n";
+		push @rows_data, "(".join(',', @row_data).")";
 	}
+
+	my $data_string = "INSERT IGNORE INTO ".$dbobject->name()." VALUES ".join(',', @rows_data).";\n" if $#rows_data > -1;
 
 	return $create_string.$data_string;
 	

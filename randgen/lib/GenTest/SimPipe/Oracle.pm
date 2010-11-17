@@ -24,7 +24,8 @@ use strict;
 use DBI;
 use GenTest;
 
-use constant ORACLE_DSN => 0;
+use constant ORACLE_DSN		=> 0;
+use constant ORACLE_BASEDIR	=> 1;
 
 1;
 
@@ -32,7 +33,8 @@ sub new {
 	my $class = shift;
 
 	my $oracle = $class->SUPER::new({
-		'dsn' => ORACLE_DSN
+		'dsn' => ORACLE_DSN,
+		'basedir' => ORACLE_BASEDIR
 	}, @_);
 	
 	return $oracle;
@@ -40,4 +42,8 @@ sub new {
 
 sub dsn {
 	return $_[0]->[ORACLE_DSN];
+}
+
+sub basedir {
+	return $_[0]->[ORACLE_BASEDIR];
 }
