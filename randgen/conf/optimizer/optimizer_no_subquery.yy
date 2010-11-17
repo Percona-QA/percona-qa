@@ -201,15 +201,15 @@ not:
 # rnd_pos optimization                                                         #
 ################################################################################
 where_item:
-        table1 .`pk` arithmetic_operator existing_table_item . _field  |
-        table1 .`pk` arithmetic_operator existing_table_item . _field  |
+        alias1 .`pk` arithmetic_operator existing_table_item . _field  |
+        alias1 .`pk` arithmetic_operator existing_table_item . _field  |
 	existing_table_item . _field arithmetic_operator value  |
         existing_table_item . _field arithmetic_operator existing_table_item . _field |
         existing_table_item . _field arithmetic_operator value  |
         existing_table_item . _field arithmetic_operator existing_table_item . _field |
-        table1 .`pk` IS not NULL |
-        table1 . _field IS not NULL |
-        table1 . _field_indexed arithmetic_operator value AND ( table1 . char_field_name LIKE '%a%' OR table1.char_field_name LIKE '%b%') ;
+        alias1 .`pk` IS not NULL |
+        alias1 . _field IS not NULL |
+        alias1 . _field_indexed arithmetic_operator value AND ( alias1 . char_field_name LIKE '%a%' OR alias1.char_field_name LIKE '%b%') ;
 
 ################################################################################
 # The range_predicate_1* rules below are in place to ensure we hit the         #
@@ -223,12 +223,12 @@ range_predicate1_list:
       ( range_predicate1_item OR range_predicate1_list ) ;
 
 range_predicate1_item:
-         table1 . int_indexed not BETWEEN _tinyint_unsigned[invariant] AND ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
-         table1 . `col_varchar_key` arithmetic_operator _char[invariant]  |
-         table1 . int_indexed not IN (number_list) |
-         table1 . `col_varchar_key` not IN (char_list) |
-         table1 . `pk` > _tinyint_unsigned[invariant] AND table1 . `pk` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
-         table1 . `col_int_key` > _tinyint_unsigned[invariant] AND table1 . `col_int_key` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) ;
+         alias1 . int_indexed not BETWEEN _tinyint_unsigned[invariant] AND ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
+         alias1 . `col_varchar_key` arithmetic_operator _char[invariant]  |
+         alias1 . int_indexed not IN (number_list) |
+         alias1 . `col_varchar_key` not IN (char_list) |
+         alias1 . `pk` > _tinyint_unsigned[invariant] AND alias1 . `pk` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
+         alias1 . `col_int_key` > _tinyint_unsigned[invariant] AND alias1 . `col_int_key` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) ;
 
 ################################################################################
 # The range_predicate_2* rules below are in place to ensure we hit the         #
@@ -242,13 +242,13 @@ range_predicate2_list:
       ( range_predicate2_item and_or range_predicate2_list ) ;
 
 range_predicate2_item:
-        table1 . `pk` = _tinyint_unsigned |
-        table1 . `col_int_key` = _tinyint_unsigned |
-        table1 . `col_varchar_key` = _char |
-        table1 . int_indexed = _tinyint_unsigned |
-        table1 . `col_varchar_key` = _char |
-        table1 . int_indexed = existing_table_item . int_indexed |
-        table1 . `col_varchar_key` = existing_table_item . `col_varchar_key` ;
+        alias1 . `pk` = _tinyint_unsigned |
+        alias1 . `col_int_key` = _tinyint_unsigned |
+        alias1 . `col_varchar_key` = _char |
+        alias1 . int_indexed = _tinyint_unsigned |
+        alias1 . `col_varchar_key` = _char |
+        alias1 . int_indexed = existing_table_item . int_indexed |
+        alias1 . `col_varchar_key` = existing_table_item . `col_varchar_key` ;
 
 ################################################################################
 # The number and char_list rules are for creating WHERE conditions that test   #
@@ -289,7 +289,7 @@ having_item:
 
 order_by_clause:
 	|
-        ORDER BY total_order_by , table1 . _field_indexed desc limit |
+        ORDER BY total_order_by , alias1 . _field_indexed desc limit |
 	ORDER BY order_by_list |
 	ORDER BY total_order_by,  order_by_list limit ;
 
@@ -301,8 +301,8 @@ order_by_list:
 	order_by_item  , order_by_list ;
 
 order_by_item:
-        table1 . _field_indexed , existing_table_item .`pk` desc  |
-        table1 . _field_indexed desc |
+        alias1 . _field_indexed , existing_table_item .`pk` desc  |
+        alias1 . _field_indexed desc |
 	existing_select_item desc ;
 
 desc:
@@ -351,7 +351,7 @@ combo_select_item:
     CONCAT ( table_one_two . char_field_name , table_one_two . char_field_name ) AS { my $f = "field".++$fields ; push @nonaggregates , $f ; $f } ;
 
 table_one_two:
-	table1 | table2 ;
+	alias1 | alias2 ;
 
 aggregate:
 	COUNT( distinct | SUM( distinct | MIN( distinct | MAX( distinct ;
@@ -362,16 +362,16 @@ aggregate:
 # track of what we have added.  You shouldn't need to touch these ever         #
 ################################################################################
 new_table_item:
-	_table AS { "table".++$tables };
+	_table AS { "alias".++$tables };
 
 current_table_item:
-	{ "table".$tables };
+	{ "alias".$tables };
 
 previous_table_item:
-	{ "table".($tables - 1) };
+	{ "alias".($tables - 1) };
 
 existing_table_item:
-	{ "table".$prng->int(1,$tables) };
+	{ "alias".$prng->int(1,$tables) };
 
 existing_select_item:
 	{ "field".$prng->int(1,$fields) };
