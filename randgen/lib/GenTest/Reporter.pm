@@ -79,7 +79,7 @@ sub new {
 	my $slave_info = $dbh->selectrow_arrayref("SHOW SLAVE HOSTS");
 	$reporter->[REPORTER_SERVER_INFO]->{slave_host} = $slave_info->[1];
 	$reporter->[REPORTER_SERVER_INFO]->{slave_port} = $slave_info->[2];
-
+        
 	if ($reporter->serverVariable('version') !~ m{^5\.0}sgio) {
 		$reporter->[REPORTER_SERVER_PLUGINS] = $dbh->selectall_arrayref("
 	                SELECT PLUGIN_NAME, PLUGIN_LIBRARY
