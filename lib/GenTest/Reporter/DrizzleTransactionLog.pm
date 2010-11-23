@@ -37,31 +37,33 @@ sub report
   {
 	my $reporter = shift;
 
-	my $dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
-        my $dsn = $reporter->dsn();
-        say("$dsn");
-	my $pid = $reporter->serverInfo('pid');
         
         # do some setup and whatnot
         my $main_port = '9306';
 	my $validator_port = '9307';
-        my @basedir= $dbh->selectrow_array('SELECT @@basedir');
-        my $drizzledump = @basedir->[0].'/client/drizzledump' ;
-        my $drizzle_client = @basedir->[0].'/client/drizzle' ;
+        my $basedir= $reporter->serverVariable('basedir');
+        my $drizzledump = $basedir.'/client/drizzledump' ;
+        my $drizzle_client = $basedir.'/client/drizzle' ;
         my $transaction_reader; 
-        if (-e @basedir->[0].'/drizzled/message/transaction_reader') 
+        if (-e $basedir.'/drizzled/message/transaction_reader') 
         {
-            $transaction_reader = @basedir->[0].'/drizzled/message/transaction_reader';
+            $transaction_reader = $basedir.'/drizzled/message/transaction_reader';
         }
         else 
         {
-            $transaction_reader = @basedir->[0].'/plugin/transaction_log/utilities/transaction_reader' ;
+            $transaction_reader = $basedir.'/plugin/transaction_log/utilities/transaction_reader' ;
         }
 
-        # NOTE:  We need to edit this depending on whether we run via d-a or
-        # whatever.  We don't have a good means for finding the transaction log otherwise
-        # my $transaction_log = @basedir->[0].'tests/var/master-data/local/transaction.log' ;
-        my $transaction_log = @basedir->[0].'/var/local/transaction.log' ;
+        # transaction log location can vary depending on how we start the server
+        # we really only account for test-run and drizzle-automation starts
+        if (-e $basedir.'/var/local/transaction.log')
+        {
+          my $transaction_log = $basedir.'/var/local/transaction.log' ;
+        }
+        else
+        {
+          my $transaction_log = $basedir.'/tests/var/master-data/local/transaction.log' ;
+        }
         my $transaction_log_copy = tmpdir()."/translog_".$$."_.log" ;
         copy($transaction_log, $transaction_log_copy);
 
@@ -74,10 +76,7 @@ sub report
         say("$transaction_reader $transaction_log > $transaction_log_sql_file");
         system("$transaction_reader $transaction_log > $transaction_log_sql_file") ;
         say("Replicating from transaction_log output...");
-        # We need to alter this depending on where we run
         my $rpl_command = "$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root test <  $transaction_log_sql_file";
-        # setup for test-run runs
-        # my $rpl_command = "$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root test <  $transaction_log_sql_file"; 
         say ("$rpl_command");
         my $drizzle_rpl_result = system($rpl_command) ;
         return STATUS_UNKNOWN_ERROR if $drizzle_rpl_result > 0 ;
@@ -115,6 +114,7 @@ sub report
            say("diff command:  diff --unified $files[SERVER1_FILE_NAME] $files[SERVER2_FILE_NAME]");
            say("Master dumpfile:  $files[SERVER1_FILE_NAME]");
            say("Slave dumpfile:   $files[SERVER2_FILE_NAME]");
+           say("transaction_log output file:  $transaction_log_sql_file");
            say("Transaction log:  $transaction_log_copy");
 	   return STATUS_REPLICATION_FAILURE;
 	 } 
