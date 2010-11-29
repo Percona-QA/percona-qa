@@ -56,7 +56,7 @@ sub report
 
         # transaction log location can vary depending on how we start the server
         # we really only account for test-run and drizzle-automation starts
-        my $transaction_log;
+        my $transaction_log = '';
         if (-e $basedir.'/var/local/transaction.log')
         {
           $transaction_log = $basedir.'/var/local/transaction.log' ;
