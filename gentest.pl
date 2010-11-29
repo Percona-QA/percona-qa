@@ -65,6 +65,7 @@ my $opt_result = GetOptions($options,
                             'varchar-length=i',
                             'xml-output=s',
                             'sqltrace',
+                            'no-err-filter',
                             'views',
                             'start-dirty',
                             'filter=s',
@@ -105,6 +106,7 @@ my $config = GenTest::Properties->new(
               'xml-output',
               'views',
               'sqltrace',
+              'no-err-filter',
               'start-dirty',
               'filter',
               'valgrind',
@@ -155,6 +157,7 @@ $0 - Testing via random query generation. Options:
         --views     : Pass --views to gendata-old.pl or gendata.pl
         --filter    : ......
         --sqltrace  : Print all generated SQL statements.
+        --no-err-filter:  Do not suppress error messages.  Output all error messages encountered.
         --start-dirty: Do not generate data (use existing database(s))
         --xml-output: Name of a file to which an XML report will be written if this option is set.
         --report-xml-tt: Report test results in XML-format to the Test Tool (TT) reporting framework.

@@ -235,7 +235,7 @@ sub execute {
        
         if ($executor->sqltrace) 
         {
-            print "$query;\n";
+            print "$query;\n\n";
         }
 
 	return GenTest::Result->new( query => $query, status => STATUS_UNKNOWN_ERROR ) if not defined $dbh;
@@ -287,10 +287,16 @@ sub execute {
 		) {
 			my $errstr = $executor->normalizeError($sth->errstr());
 			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
-			if (not defined $reported_errors{$errstr}) {
-				say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
-				$reported_errors{$errstr}++;
+			if (not defined $reported_errors{$errstr} and not $executor->noErrFilter()) 
+                        {
+			    say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
+			    $reported_errors{$errstr}++;
 			}
+                        else
+                        {
+                            say("Query: $query failed: $err $errstr \n\n");
+                        }
+                           
 		} elsif (
 			($err_type == STATUS_SERVER_CRASHED) ||
 			($err_type == STATUS_SERVER_KILLED)

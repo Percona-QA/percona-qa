@@ -50,6 +50,7 @@ use constant EXECUTOR_COLLATION_METADATA	=> 11;
 use constant EXECUTOR_META_CACHE		=> 12;
 use constant EXECUTOR_CHANNEL			=> 13;
 use constant EXECUTOR_SQLTRACE			=> 14;
+use constant EXECUTOR_NO_ERR_FILTER             => 15;
 
 my %global_schema_cache;
 
@@ -62,7 +63,8 @@ sub new {
 		'dsn'	=> EXECUTOR_DSN,
 		'dbh'	=> EXECUTOR_DBH,
         'channel' => EXECUTOR_CHANNEL,
-        'sqltrace' => EXECUTOR_SQLTRACE
+        'sqltrace' => EXECUTOR_SQLTRACE,
+        'no-err-filter' => EXECUTOR_NO_ERR_FILTER
 	}, @_);
     
     return $executor;
@@ -118,6 +120,12 @@ sub sqltrace {
     my ($self, $sqltrace) = @_;
     $self->[EXECUTOR_SQLTRACE] = $sqltrace if defined $sqltrace;
     return $self->[EXECUTOR_SQLTRACE];
+}
+
+sub noErrFilter {
+    my ($self, $no_err_filter) = @_;
+    $self->[EXECUTOR_NO_ERR_FILTER] = $no_err_filter if defined $no_err_filter;
+    return $self->[EXECUTOR_NO_ERR_FILTER];
 }
 
 sub dsn {
