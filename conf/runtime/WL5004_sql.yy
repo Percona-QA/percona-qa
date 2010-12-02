@@ -1249,7 +1249,7 @@ create_trigger:
 trigger_time:
 	BEFORE | AFTER ;
 trigger_event:
-	INSERT | DELETE ;
+	INSERT | DELETE | UPDATE ;
 trigger_action:
 	insert | replace | delete | update | CALL procedure_item ;
 
@@ -1560,17 +1560,14 @@ flush:
 	# - be rare
 	# - last only very short time
 	# So I put it into a sequence with FLUSH ... ; wait a bit ; UNLOCK TABLES
-	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-	# Bug#54436 Deadlock on concurrent FLUSH WITH READ LOCK, ALTER TABLE, ANALYZE TABLE
-	# (concurrent
-	#  - ANALYZE TABLE t1
-	#  - ALTER TABLE t1 ENGINE = InnoDB
-	# !! -> FLUSH TABLES WITH READ LOCK ; SELECT SLEEP( 0.01 ) ; UNLOCK TABLES ; )
-	# affects 5.1 but till now no more repeatable in 5.5-runtime.
-	FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
+        FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+        FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+        FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+        FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+        FLUSH TABLES | FLUSH TABLES | FLUSH TABLES |
+        FLUSH TABLES | FLUSH TABLES | FLUSH TABLES |
+        FLUSH TABLES table_list WITH READ LOCK | UNLOCK TABLES | UNLOCK TABLES |
+        FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
 
 
 ########## TINY GRAMMAR ITEMS USED AT MANY PLACES ###########
