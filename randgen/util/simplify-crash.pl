@@ -56,7 +56,7 @@ my @mtr_options = (
 	'--mysqld=--read_buffer_size=256K',
 	'--mysqld=--read_rnd_buffer_size=256K',
 	'--mysqld=--thread_stack=240K',
-	'--mysqld=--looose-innodb_buffer_pool_size=16M',
+	'--mysqld=--loose-innodb_buffer_pool_size=16M',
 	'--mysqld=--loose-innodb_additional_mem_pool_size=2M',
 	'--mysqld=--innodb_log_file_size=5M',
 	'--mysqld=--innodb_log_buffer_size=8M',
