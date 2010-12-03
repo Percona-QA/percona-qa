@@ -140,7 +140,7 @@ sub dbObjectsToString {
 
 	my @dbobject_strings;
 
-	foreach my $dbobject (@{$testcase->dbObjects()}) {
+	foreach my $dbobject (sort @{$testcase->dbObjects()}) {
 		next if not defined $dbobject;
 		push @dbobject_strings, $dbobject->toString();
 	}
@@ -226,10 +226,32 @@ sub simplify {
 			$column->[COLUMN_TYPE] = 'varchar(32)'; $column->[COLUMN_COLLATION] = undef;
 			next if $oracle->oracle($testcase) == ORACLE_ISSUE_STILL_REPEATABLE;
 			$column = $saved_column;
-
 		}
 
+		my $rows = $db_object->data();
+
+		foreach my $row_group_size (5000,500,50,10) {
+			my $row_group_count = int(($#$rows + 1) / $row_group_size);
+			next if $row_group_count < 1;
+
+			foreach my $row_group (0..($row_group_count-1)) {
+				next if not defined $rows->[$row_group * $row_group_size];
+				my @saved_rows;
+				foreach my $i (0..($row_group_size-1)) {
+					$saved_rows[$i] = $rows->[($row_group * $row_group_size) + $i];
+					$rows->[($row_group * $row_group_size) + $i] = undef;
+				}
+
+				next if $oracle->oracle($testcase) == ORACLE_ISSUE_STILL_REPEATABLE;
+
+				foreach my $i (0..($row_group_size-1)) {
+					$rows->[($row_group * $row_group_size) + $i] = $saved_rows[$i];
+				}
+			}			
+		}
+	
 		foreach my $row (@{$db_object->data()}) {
+			next if not defined $row;
 			print "R";
 			my $saved_row = $row;
 			$row = undef;
@@ -268,7 +290,7 @@ sub simplify {
 				next if not defined $cell || length($cell) == 1;
 				my $saved_cell = $cell;
 				foreach my $new_length (1,4,8,32,128) {
-					last if length($saved_cell) < $new_length;
+					last if length($saved_cell) <= $new_length;
 					$cell = substr($saved_cell, 0, $new_length);
 					if ($oracle->oracle($testcase) !=ORACLE_ISSUE_STILL_REPEATABLE) {
 						$cell = $saved_cell;
