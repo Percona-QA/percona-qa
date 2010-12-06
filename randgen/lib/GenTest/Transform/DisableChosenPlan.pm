@@ -37,6 +37,8 @@ use Data::Dumper;
 #
 
 my @explain2switch = (
+	[ 'sort_intersect'	=> "optimizer_switch='index_merge_sort_intersection=off'"],
+	[ 'intersect'		=> "optimizer_switch='index_merge_intersection=off'"],
 	[ 'firstmatch'		=> "optimizer_switch='firstmatch=off'" ],
 	[ '<expr_cache>'	=> "optimizer_switch='subquery_cache=off'" ],
 	[ 'materializ'		=> "optimizer_switch='materialization=off'" ],	# hypothetical
