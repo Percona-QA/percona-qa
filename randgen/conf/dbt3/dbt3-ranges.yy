@@ -1,7 +1,6 @@
 query:
-        SELECT distinct select_item FROM lineitem index_hint WHERE where order_by |
-        SELECT aggregate key_field ) FROM lineitem index_hint WHERE where |
-        SELECT key_field , aggregate key_field ) FROM lineitem index_hint WHERE where GROUP BY key_field ;
+	SELECT distinct select_item FROM lineitem index_hint WHERE where order_by |
+	SELECT aggregate key_field ) FROM lineitem WHERE where ;
 
 order_by:
         | | ORDER BY key_field , l_orderkey , l_linenumber ;
@@ -36,7 +35,7 @@ key_clause:
 	commitdate_clause ;
 
 aggregate:
-	MIN( | MAX( | COUNT( ;
+	MIN( | MAX( | COUNT( | COUNT( ;
 
 and_or:
 	AND | AND | AND | AND | OR ;
