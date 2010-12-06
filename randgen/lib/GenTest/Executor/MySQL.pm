@@ -683,7 +683,7 @@ sub explain {
 
 		foreach my $extra_item (split('; ', ($explain_row->{Extra} || '(empty)')) ) {
 			$extra_item =~ s{0x.*?\)}{%d\)}sgio;
-			$extra_item =~ s{PRIMARY|[a-z_]+_key}{%s}sgio;
+			$extra_item =~ s{PRIMARY|[a-z_]+_key|i_l_[a-z_]+}{%s}sgio;
 			push @explain_fragments, "extra: ".$extra_item;
 		}
 	}
