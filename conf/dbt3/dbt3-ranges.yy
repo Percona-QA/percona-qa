@@ -43,7 +43,7 @@ and_or:
 or_and:
         OR | OR | OR | OR | AND ;
 
-arith_op:
+comp_op:
         = | = | = | = | = | = |
         != | > | >= | < | <= | <> ;
 
@@ -51,7 +51,7 @@ not:
 	| | | | | | | | | NOT ;
 
 shipdate_clause:
-	l_shipdate arith_op any_date |
+	l_shipdate comp_op any_date |
 	l_shipdate not IN ( date_list ) |
 	l_shipdate date_between ;
 
@@ -90,7 +90,7 @@ within_a_month:
 # LINENUMBER
 
 linenumber_clause:
-	l_linenumber arith_op linenumber_item |
+	l_linenumber comp_op linenumber_item |
 	l_linenumber not IN ( linenumber_list ) |
 	l_linenumber BETWEEN linenumber_item AND linenumber_item + linenumber_range ;
 
@@ -107,7 +107,7 @@ linenumber_range:
 # PARTKEY
 
 partkey_clause:
-	l_partkey arith_op partkey_item |
+	l_partkey comp_op partkey_item |
 	l_partkey not IN ( partkey_list ) |
 	l_partkey BETWEEN partkey_item AND partkey_item + partkey_range ;
 
@@ -128,7 +128,7 @@ partkey_item:
 # SUPPKEY
 
 suppkey_clause:
-	l_suppkey arith_op suppkey_item |
+	l_suppkey comp_op suppkey_item |
 	l_suppkey not IN ( suppkey_list ) |
 	l_suppkey BETWEEN suppkey_item AND suppkey_item + _digit ;
 
@@ -142,21 +142,21 @@ suppkey_list:
 # RECEPITDATE
 
 receiptdate_clause:
-	l_receiptDATE arith_op any_date |
+	l_receiptDATE comp_op any_date |
 	l_receiptDATE not IN ( date_list ) |
 	l_receiptDATE date_between ;
 
 # COMMITDATE
 
 commitdate_clause:
-	l_commitDATE arith_op any_date |
+	l_commitDATE comp_op any_date |
 	l_commitDATE not IN ( date_list ) |
 	l_commitDATE date_between ;
 
 # ORDERKEY
 
 orderkey_clause:
-	l_orderkey arith_op orderkey_item |
+	l_orderkey comp_op orderkey_item |
 	l_orderkey not IN ( orderkey_list ) |
 	l_orderkey BETWEEN orderkey_item AND orderkey_item + orderkey_range ;
 
@@ -173,7 +173,7 @@ orderkey_range:
 # QUANTITY
 
 quantity_clause:
-	l_quantity arith_op quantity_item |
+	l_quantity comp_op quantity_item |
 	l_quantity not IN ( quantity_list ) |
 	l_quantity BETWEEN quantity_item AND quantity_item + quantity_range ;
 
