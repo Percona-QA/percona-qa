@@ -1,32 +1,77 @@
-query:
-	# supplier -> partsupp -> lineitem -> orders -> customer /* -> nation -> region */
-	select_s_ps_l_o_c |
-	select_p_ps_s_n_r ;
+#
+# This grammar attempts to create realistic queries against the DBT-3 data set. The following rules apply:
+# 
+# * standard DBT-3 prefixes are used for stuff ,e.g. ps = partsupp , r = region , etc.
+#
+# * each join is one of several plausible join chains allowed by the dataset
+#
+# * each WHERE condition is realistic for the column being queried and only uses table that are known to participate in the particular join chain
+#
+# * More AND is used as opposed to OR to keep with the spirit of the original queries from the benchmark
+#
+# * MariaDB's table elimination will remove unnecessary tables that have been joined but for which no WHERE conditions apply
+#
+# * The joinable fields are indexed in both tables and most WHERE conditions also involve indexes. To provide some non-indexed clauses
+# * we include some WHERE conditions on the comment field that appears in each table
+#
+# * In order to have realistic HAVING, for the HAVING queries we only use fields that hold currency ammounts
+#
 
-select_s_ps_l_o_c:
-	SELECT select_list_s_ps_l_o_c join_s_ps_l_o_c order_by_1_2 |
-	SELECT aggregate field_s_ps_l_o_c ) join_s_ps_l_o_c |
-	SELECT field_s_ps_l_o_c , aggregate field_s_ps_l_o_c ) join_s_ps_l_o_c GROUP BY 1 order_by_1 |
-	SELECT field_s_ps_l_o_c , field_s_ps_l_o_c , aggregate field_s_ps_l_o_c ) join_s_ps_l_o_c GROUP BY 1 , 2 order_by_1_2 ;
+query:
+	select_r_n_s_ps_l_o_c | select_p_ps_s_n_r | select_p_ps_l_o_c_r_n_s | currency_select_p_ps_s_l_o_c;
+
+# region -> nation -> supplier -> partsupp -> lineitem -> orders -> customer
+
+select_r_n_s_ps_l_o_c:
+	SELECT select_list_r_n_s_ps_l_o_c join_r_n_s_ps_l_o_c WHERE where_r_n_s_ps_l_o_c order_by_1_2 |
+	SELECT aggregate field_r_n_s_ps_l_o_c ) join_r_n_s_ps_l_o_c WHERE where_r_n_s_ps_l_o_c |
+	SELECT field_r_n_s_ps_l_o_c , aggregate field_r_n_s_ps_l_o_c ) join_r_n_s_ps_l_o_c WHERE where_r_n_s_ps_l_o_c GROUP BY 1 asc_desc order_by_1 |
+	SELECT field_r_n_s_ps_l_o_c , field_r_n_s_ps_l_o_c , aggregate field_r_n_s_ps_l_o_c ) join_r_n_s_ps_l_o_c WHERE where_r_n_s_ps_l_o_c GROUP BY 1 asc_desc , 2 asc_desc order_by_1_2 ;
+
+# part -> partsupp -> supplier -> nation -> region
 
 select_p_ps_s_n_r:
-	SELECT select_list_p_ps_s_n_r join_p_ps_s_n_r order_by_1_2 |
-	SELECT aggregate field_p_ps_s_n_r ) join_p_ps_s_n_r |
-	SELECT field_p_ps_s_n_r , aggregate field_p_ps_s_n_r ) join_p_ps_s_n_r GROUP BY 1 order_by_1 |
-	SELECT field_p_ps_s_n_r , field_p_ps_s_n_r , aggregate field_p_ps_s_n_r ) join_p_ps_s_n_r GROUP BY 1 , 2 order_by_1_2 ;
+	SELECT select_list_p_ps_s_n_r join_p_ps_s_n_r WHERE where_p_ps_s_n_r order_by_1_2 |
+	SELECT aggregate field_p_ps_s_n_r ) join_p_ps_s_n_r WHERE where_p_ps_s_n_r |
+	SELECT field_p_ps_s_n_r , aggregate field_p_ps_s_n_r ) join_p_ps_s_n_r WHERE where_p_ps_s_n_r GROUP BY 1 asc_desc order_by_1 |
+	SELECT field_p_ps_s_n_r , field_p_ps_s_n_r , aggregate field_p_ps_s_n_r ) join_p_ps_s_n_r WHERE where_p_ps_s_n_r GROUP BY 1 asc_desc , 2 asc_desc order_by_1_2 ;
+
+# part -> partsupp -> lineitem -> orders -> customer -> region -> nation -> supplier
+
+select_p_ps_l_o_c_r_n_s:
+	SELECT select_list_p_ps_l_o_c_r_n_s join_p_ps_l_o_c_r_n_s WHERE where_p_ps_l_o_c_r_n_s order_by_1_2 |
+	SELECT aggregate field_p_ps_l_o_c_r_n_s ) join_p_ps_l_o_c_r_n_s WHERE where_p_ps_l_o_c_r_n_s |
+	SELECT field_p_ps_l_o_c_r_n_s , aggregate field_p_ps_l_o_c_r_n_s ) join_p_ps_l_o_c_r_n_s WHERE where_p_ps_l_o_c_r_n_s GROUP BY 1 asc_desc order_by_1 |
+	SELECT field_p_ps_l_o_c_r_n_s , field_p_ps_l_o_c_r_n_s , aggregate field_p_ps_l_o_c_r_n_s ) join_p_ps_l_o_c_r_n_s WHERE where_p_ps_l_o_c_r_n_s GROUP BY 1 asc_desc , 2 asc_desc order_by_1_2 ;
+
+# part -> partsupp -> lineitem -> orders -> customer with currency fields only
+# This allows for a meaningful HAVING condition because the type and the spirit of values in the SELECT list will be known
+
+currency_select_p_ps_s_l_o_c:
+	SELECT currency_field_p_ps_s_l_o_c AS currency1 , currency_field_p_ps_s_l_o_c AS currency2 join_p_ps_s_l_o_c WHERE where_p_ps_s_l_o_c HAVING currency_having order_by_1_2 |
+	SELECT field_p_ps_s_l_o_c, currency_field_p_ps_s_l_o_c AS currency1 , aggregate currency_field_p_ps_s_l_o_c ) AS currency2 join_p_ps_s_l_o_c WHERE where_p_ps_s_l_o_c GROUP BY 1 , 2 HAVING currency_having order_by_1_2 ;
+
+asc_desc:
+	| | | | | | ASC | DESC ;
 
 order_by_1:
-	| ORDER BY 1 ;
+	| | ORDER BY 1 ;					# 30% of queries have ORDER BY on a single column
 
 order_by_1_2:
-	| ORDER BY 1 | ORDER BY 2 | ORDER BY 1 , 2 ;
+	| | | | | | ORDER BY 1 | ORDER BY 2 | ORDER BY 1 , 2 ;	# 30% of queries have ORDER BY on two columns
 
-join_s_ps_l_o_c:
-	FROM supplier join_type partsupp ON ( s_suppkey = ps_suppkey ) join_type lineitem ON ( partsupp_lineitem_join_cond ) join_type orders ON ( l_orderkey = o_orderkey ) join_type customer ON ( o_custkey = c_custkey ) WHERE where_s_ps_l_o_c ;
+join_r_n_s_ps_l_o_c:
+	FROM region join_type nation ON ( r_regionkey = n_regionkey ) join_type supplier ON ( s_nationkey = n_nationkey ) join_type partsupp ON ( s_suppkey = ps_suppkey ) join_type lineitem ON ( partsupp_lineitem_join_cond ) join_type orders ON ( l_orderkey = o_orderkey ) join_type customer ON ( o_custkey = c_custkey ) ;
 
 join_p_ps_s_n_r:
-	FROM part join_type partsupp ON ( p_partkey = ps_partkey ) join_type supplier ON ( ps_suppkey = s_suppkey ) join_type nation ON ( s_nationkey = n_nationkey ) join_type region ON ( n_regionkey = r_regionkey ) WHERE where_p_ps_s_n_r ;
+	FROM part join_type partsupp ON ( p_partkey = ps_partkey ) join_type supplier ON ( ps_suppkey = s_suppkey ) join_type nation ON ( s_nationkey = n_nationkey ) join_type region ON ( n_regionkey = r_regionkey ) ;
 
+join_p_ps_l_o_c_r_n_s:
+	FROM part join_type partsupp ON ( p_partkey = ps_partkey ) join_type lineitem ON ( partsupp_lineitem_join_cond ) join_type orders ON ( l_orderkey = o_orderkey ) join_type customer ON ( o_custkey = c_custkey ) join_type nation ON ( c_nationkey = n_nationkey ) join_type supplier ON ( s_nationkey = n_nationkey ) join_type region ON ( n_regionkey = r_regionkey ) ;
+
+join_p_ps_s_l_o_c:
+	FROM part join_type partsupp ON ( p_partkey = ps_partkey ) join_type supplier ON (s_suppkey = ps_suppkey) join_type lineitem ON ( partsupp_lineitem_join_cond ) join_type orders ON ( l_orderkey = o_orderkey ) join_type customer ON ( o_custkey = c_custkey ) ;
+	
 join_type:
 	JOIN | LEFT JOIN | RIGHT JOIN ;
 
@@ -36,17 +81,16 @@ partsupp_lineitem_join_cond:
 	ps_partkey = l_partkey | ps_suppkey = l_suppkey ;
 
 lineitem_orders_join_cond:
-	l_orderkey = o_orderkey |
-	lineitem_date_field = o_orderdate ;
+	l_orderkey = o_orderkey | lineitem_date_field = o_orderdate ;
 
 lineitem_date_field:
 	l_shipDATE | l_commitDATE | l_receiptDATE ;
 
-select_list_s_ps_l_o_c:
-	field_s_ps_l_o_c , field_s_ps_l_o_c | field_s_ps_l_o_c , select_list_s_ps_l_o_c ;
+select_list_r_n_s_ps_l_o_c:
+	field_r_n_s_ps_l_o_c , field_r_n_s_ps_l_o_c | field_r_n_s_ps_l_o_c , select_list_r_n_s_ps_l_o_c ;
 
-field_s_ps_l_o_c:
-	field_s | field_ps | field_l | field_o | field_c ;
+field_r_n_s_ps_l_o_c:
+	field_r | field_n | field_s | field_ps | field_l | field_o | field_c ;
 
 select_list_p_ps_s_n_r:
 	field_p_ps_s_n_r , field_p_ps_s_n_r | field_p_ps_s_n_r , select_list_p_ps_s_n_r ;
@@ -54,18 +98,33 @@ select_list_p_ps_s_n_r:
 field_p_ps_s_n_r:
 	field_p | field_ps | field_s | field_n | field_r;
 
+select_list_p_ps_l_o_c_r_n_s:
+	field_p_ps_l_o_c_r_n_s , field_p_ps_l_o_c_r_n_s | field_p_ps_l_o_c_r_n_s , select_list_p_ps_l_o_c_r_n_s ;
+
+field_p_ps_l_o_c_r_n_s:
+	field_p | field_ps | field_l | field_o | field_c | field_r | field_n | field_s ;
+
+field_p_ps_s_l_o_c:
+	field_p | field_ps | field_s | field_l | field_o | field_c |;
+
+currency_field_p_ps_s_l_o_c:
+	p_retailprice | ps_supplycost | l_extendedprice | o_totalprice | s_acctbal | c_acctbal ;
+
 field_p:
 	p_partkey;
 
 field_s:
 	s_suppkey | s_nationkey ;
+
 field_ps:
 	ps_partkey | ps_suppkey ;
+
 field_l:
 	l_orderkey | l_partkey | l_suppkey | l_linenumber | l_shipDATE | l_commitDATE | l_receiptDATE ;
 
 field_o:
 	o_orderkey | o_custkey ;
+
 field_c:
 	c_custkey | c_nationkey ;
 
@@ -81,17 +140,37 @@ aggregate:
 distinct:
 	| | | DISTINCT ;
 
-where_s_ps_l_o_c:
-	cond_s_ps_l_o_c and_or cond_s_ps_l_o_c and_or cond_s_ps_l_o_c | where_s_ps_l_o_c and_or cond_s_ps_l_o_c ;
+where_r_n_s_ps_l_o_c:
+	cond_r_n_s_ps_l_o_c and_or cond_r_n_s_ps_l_o_c and_or cond_r_n_s_ps_l_o_c | where_r_n_s_ps_l_o_c and_or cond_r_n_s_ps_l_o_c ;
+cond_r_n_s_ps_l_o_c:
+	cond_r | cond_n | cond_s | cond_ps | cond_l | cond_o | cond_c | cond_l_o | cond_l_o | cond_s_c | cond_ps_l ;
 
 where_p_ps_s_n_r:
 	cond_p_ps_s_n_r and_or cond_p_ps_s_n_r and_or cond_p_ps_s_n_r | where_p_ps_s_n_r and_or cond_p_ps_s_n_r ;
-
-cond_s_ps_l_o_c:
-	cond_s | cond_ps | cond_l | cond_o | cond_c | cond_l_o | cond_l_o | cond_s_c | cond_ps_l ;
-
 cond_p_ps_s_n_r:
 	cond_p | cond_ps | cond_s | cond_n | cond_r ;
+
+
+where_p_ps_l_o_c_r_n_s:
+	cond_p_ps_l_o_c_r_n_s and_or cond_p_ps_l_o_c_r_n_s and_or cond_p_ps_l_o_c_r_n_s | where_p_ps_l_o_c_r_n_s and_or cond_p_ps_l_o_c_r_n_s ;
+cond_p_ps_l_o_c_r_n_s:
+	cond_p | cond_ps | cond_l | cond_o | cond_c | cond_r | cond_n | cond_s ;
+
+where_p_ps_s_l_o_c:
+	cond_p_ps_s_l_o_c and_or cond_p_ps_s_l_o_c and_or cond_p_ps_s_l_o_c | where_p_ps_s_l_o_c and_or cond_p_ps_s_l_o_c ;
+
+cond_p_ps_s_l_o_c:
+	cond_p | cond_ps | cond_s | cond_l | cond_o | cond_c ;
+
+currency_having:
+	currency_having_item |
+	currency_having_item and_or currency_having_item ;
+
+currency_having_item:
+	currency_having_field currency_clause ;
+
+currency_having_field:
+	currency1 | currency2 ;
 
 and_or:
 	AND | AND | AND | AND | OR ;
@@ -101,12 +180,10 @@ and_or:
 #
 
 cond_l_o:
-	l_extendedprice comp_op o_totalprice |
-	lineitem_date_field comp_op o_orderdate ;
+	l_extendedprice comp_op o_totalprice | lineitem_date_field comp_op o_orderdate ;
 
 cond_ps_l:
-	ps_availqty comp_op l_quantity |
-	ps_supplycost comp_op l_extendedprice ;
+	ps_availqty comp_op l_quantity | ps_supplycost comp_op l_extendedprice ;
 
 cond_s_c:
 	c_nationkey comp_op s_nationkey ;
@@ -117,16 +194,19 @@ cond_s_c:
 
 cond_p:
 	p_partkey partkey_clause |
+	p_retailprice currency_clause |
 	p_comment comment_clause ;
 
 cond_s:
 	s_suppkey suppkey_clause |
+	s_nationkey nationkey_clause |
+	s_acctbal currency_clause |
 	s_comment comment_clause ;
-#	s_nationkey nationkey_clause ;
 
 cond_ps:
 	ps_partkey partkey_clause |
 	ps_suppkey suppkey_clause |
+	ps_supplycost currency_clause |
 	ps_comment comment_clause ;
 
 cond_l:
@@ -138,15 +218,18 @@ cond_l:
 	l_orderkey orderkey_clause |
 	l_quantity quantity_clause |
 	l_commitDATE commitdate_clause |
+	l_extendedprice currency_clause |
 	l_comment comment_clause ;
 
 cond_o:
 	o_orderkey orderkey_clause |
 	o_custkey custkey_clause |
+	o_totalprice currency_clause |
 	o_comment comment_clause ;
 
 cond_c:
 	c_custkey custkey_clause |
+	c_acctbal currency_clause |
 	c_comment comment_clause ;
 
 cond_n:
@@ -160,7 +243,6 @@ cond_r:
 #
 # Per-column WHERE conditions
 #
-
 
 comp_op:
         = | = | = | = | != | > | >= | < | <= | <> ;
@@ -322,21 +404,6 @@ custkey_list:
 custkey_range:
 	_digit | _tinyint_unsigned ;
 
-# COMMENT
-
-comment_clause:
-	IS NOT NULL | IS NOT NULL | IS NOT NULL |
-	comp_op _varchar(1) |
-	comment_not LIKE CONCAT( comment_count , '%' ) |
-	BETWEEN _varchar(1) AND _varchar(1) ;
-
-
-comment_not:
-	NOT | NOT | NOT | ;
-
-comment_count:
-	_varchar(1) | _varchar(1) |  _varchar(1) | _varchar(1) | _varchar(2) ;
-
 # NATIONKEY 
 
 nationkey_clause:
@@ -371,7 +438,28 @@ regionkey_list:
 regionkey_range:
 	1 | 2 | 3 | 4 ;
 
+# COMMENT
 
+comment_clause:
+	IS NOT NULL | IS NOT NULL | IS NOT NULL |
+	comp_op _varchar(1) |
+	comment_not LIKE CONCAT( comment_count , '%' ) |
+	BETWEEN _varchar(1) AND _varchar(1) ;
 
+comment_not:
+	NOT | NOT | NOT | ;
 
+comment_count:
+	_varchar(1) | _varchar(1) |  _varchar(1) | _varchar(1) | _varchar(2) ;
 
+# CURRENCIES
+
+currency_clause:
+	comp_op currency_item |
+	BETWEEN currency_item AND currency_item + currency_range ;
+
+currency_item:
+	_digit | _tinyint_unsigned | _tinyint_unsigned | _tinyint_unsigned | _mediumint_unsigned ;
+
+currency_range:
+	_tinyint_unsigned ;
