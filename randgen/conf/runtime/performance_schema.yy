@@ -38,24 +38,24 @@ update_settings:
 	update_timers ;
 
 update_consumers:
-	UPDATE performance_schema . SETUP_CONSUMERS SET ENABLED = yes_no WHERE NAME IN ( consumer_list ) |
-	UPDATE performance_schema . SETUP_CONSUMERS SET ENABLED = yes_no WHERE NAME LIKE consumer_category ;
+	UPDATE performance_schema . setup_consumers SET enabled = yes_no WHERE name IN ( consumer_list ) |
+	UPDATE performance_schema . setup_consumers SET enabled = yes_no WHERE name LIKE consumer_category ;
 
 update_instruments:
-	UPDATE performance_schema . SETUP_INSTRUMENTS SET enabled_timed = yes_no WHERE NAME LIKE instrument_category |
-	UPDATE performance_schema . SETUP_INSTRUMENTS SET enabled_timed = yes_no ORDER BY RAND() LIMIT _digit ;
+	UPDATE performance_schema . setup_instruments SET enabled_timed = yes_no WHERE NAME LIKE instrument_category |
+	UPDATE performance_schema . setup_instruments SET enabled_timed = yes_no ORDER BY RAND() LIMIT _digit ;
 
 update_timers:
-	UPDATE performance_schema . SETUP_TIMERS SET TIMER_NAME = timer_type ;
+	UPDATE performance_schema . setup_timers SET timer_name = timer_type ;
 
 truncate:
 	TRUNCATE TABLE performance_schema . truncateable_table ;
 
 truncateable_table:
-	EVENTS_WAITS_CURRENT |
-	EVENTS_WAITS_HISTORY | EVENTS_WAITS_HISTORY_LONG |
-	EVENTS_WAITS_SUMMARY_BY_EVENT_NAME | EVENTS_WAITS_SUMMARY_BY_INSTANCE | EVENTS_WAITS_SUMMARY_BY_THREAD_BY_EVENT_NAME |
-	FILE_SUMMARY_BY_EVENT_NAME | FILE_SUMMARY_BY_INSTANCE ;
+	events_waits_current |
+	events_waits_history | events_waits_history_long |
+	events_waits_summary_by_event_name | events_waits_summary_by_instance | events_waits_summary_by_thread_by_event_name |
+	file_summary_by_event_name | file_summary_by_instance ;
 
 consumer_list:
 	consumer | 
@@ -119,7 +119,7 @@ ddl:
 	views ;
 
 columns:
-	ALTER TABLE _table ADD COLUMN _letter INTEGER |
+	ALTER TABLE _table ADD COLUMN _letter INTEGER DEFAULT NULL |
 	ALTER TABLE _table DROP COLUMN _letter ;
 
 column_privileges:
@@ -354,5 +354,5 @@ delete:
         DELETE FROM _table WHERE _field sign value LIMIT _digit ;
 
 insert:
-        INSERT INTO _table ( `pk` ) VALUES ( NULL ) ;
+        INSERT INTO _table ( `pk` ) VALUES  (NULL);
 
