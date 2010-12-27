@@ -113,6 +113,20 @@ sub transform {
 
 	say(GenTest::Comparator::dumpDiff($original_result, $transformed_results->[0]));
 
+
+	my @orig_explains;
+	$orig_explains[0] = $executor->execute("EXPLAIN ".$original_query);
+	foreach my $transformed_query (@$transformed_queries) {
+		$executor->execute($transformed_query);
+		if ($transformed_query eq $transformed_results->[0]->query()) {
+			$orig_explains[1] = $executor->execute("EXPLAIN ".$transformed_query);
+		}
+	}
+
+	say("Original EXPLAIN diff:");
+	say(GenTest::Comparator::dumpDiff(@orig_explains));
+
+
 	say("Simplifying...");
 
 	my $simplifier_query = GenTest::Simplifier::SQL->new(
@@ -182,7 +196,7 @@ sub transform {
 			}
 		}
 
-		say("EXPLAIN diff:");
+		say("Simplified EXPLAIN diff:");
 		say(GenTest::Comparator::dumpDiff(@explains));
 
 		say("Result set diff:");
