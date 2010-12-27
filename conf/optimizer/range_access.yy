@@ -119,7 +119,7 @@ single_idx_where_list:
 
 
 single_int_idx_where_clause:
-   { my @int_idx_fields = ("`pk`" , "`col_int_key`") ; $int_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@int_idx_fields) ; "" } single_int_idx_where_list ;
+   { my @int_idx_fields = ("`pk`" , "`col_int_key`") ; $int_idx_field = ("alias".$prng->int(1,$tables))." . ".$prng->arrayElement(\@int_idx_fields) ; "" } single_int_idx_where_list ;
 
 
 single_int_idx_where_list:
@@ -140,7 +140,7 @@ single_int_idx_where_item:
 
 
 single_char_idx_where_clause:
-  { my @char_idx_fields = ("`col_varchar_10_latin1_key`", "`col_varchar_10_utf8_key`", "`col_varchar_1024_latin1_key`", "`col_varchar_1024_utf8_key`") ; $char_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@char_idx_fields) ; "" } single_char_idx_where_list ;
+  { my @char_idx_fields = ("`col_varchar_10_latin1_key`", "`col_varchar_10_utf8_key`", "`col_varchar_1024_latin1_key`", "`col_varchar_1024_utf8_key`") ; $char_idx_field = ("alias".$prng->int(1,$tables))." . ".$prng->arrayElement(\@char_idx_fields) ; "" } single_char_idx_where_list ;
 
 single_char_idx_where_list:
   single_char_idx_where_list and_or single_char_idx_where_item |
@@ -167,7 +167,7 @@ multi_int_idx_where_list:
 
 
 multi_int_idx_where_clause:
-   {  $int_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@idx_fields) ; "" } single_int_idx_where_list ;
+   {  $int_idx_field = ("alias".$prng->int(1,$tables))." . ".$prng->arrayElement(\@idx_fields) ; "" } single_int_idx_where_list ;
 
 # char rules
 multi_char_idx_where_list:
@@ -175,7 +175,7 @@ multi_char_idx_where_list:
     multi_char_idx_where_list and_or multi_char_idx_where_clause | multi_char_idx_where_list and_or multi_char_idx_where_clause ;
 
 multi_char_idx_where_clause:
-   {  $char_idx_field = ("table".$prng->int(1,$tables))." . ".$prng->arrayElement(\@idx_fields) ; "" } single_char_idx_where_list ;
+   {  $char_idx_field = ("alias".$prng->int(1,$tables))." . ".$prng->arrayElement(\@idx_fields) ; "" } single_char_idx_where_list ;
   
 
 
@@ -249,11 +249,11 @@ table_or_join:
            table | table | join | join ;
 
 table:
-# We use the "AS table" bit here so we can have unique aliases if we use the same table many times
-       { $stack->push(); my $x = $prng->arrayElement($executors->[0]->tables())." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
+# We use the "AS alias" bit here so we can have unique aliases if we use the same table many times
+       { $stack->push(); my $x = $prng->arrayElement($executors->[0]->tables())." AS alias".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
 
 idx_table_for_join:
-       { $stack->push() ; my $x = $idx_table." AS table".++$tables; my @s=($x); $stack->pop(\@s); $x } ;
+       { $stack->push() ; my $x = $idx_table." AS alias".++$tables; my @s=($x); $stack->pop(\@s); $x } ;
 
 join_type:
 	INNER JOIN | left_right outer JOIN | STRAIGHT_JOIN ; 
@@ -316,10 +316,10 @@ limit_size:
 ################################################################################
 
 new_table_item:
-	_table AS { "table".++$tables };
+	_table AS { "alias".++$tables };
 
 existing_table_item:
-	{ "table".$prng->int(1,$tables) };
+	{ "alias".$prng->int(1,$tables) };
 
 existing_select_item:
 	{ "field".$prng->int(1,$fields) };
@@ -383,7 +383,7 @@ char_list:
    _char | char_list, _char ;
 
 table_one_two:
-   table1 | table1 | table1 | table2 | table2 ;
+   alias1 | alias1 | alias1 | alias2 | alias2 ;
 
 and_or:
    AND | AND | OR ;

@@ -202,13 +202,13 @@ table_or_join:
            table | table | table | join | join ;
 
 table_disabled:
-# We use the "AS table" bit here so we can have unique aliases if we use the same table many times
-       { $stack->push(); my $x = $prng->arrayElement(\@table_set)." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
+# We use the "AS alias" bit here so we can have unique aliases if we use the same table many times
+       { $stack->push(); my $x = $prng->arrayElement(\@table_set)." AS alias".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
 
 
 table:
-# We use the "AS table" bit here so we can have unique aliases if we use the same table many times
-       { $stack->push(); my $x = $prng->arrayElement($executors->[0]->tables())." AS table".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
+# We use the "AS alias" bit here so we can have unique aliases if we use the same table many times
+       { $stack->push(); my $x = $prng->arrayElement($executors->[0]->tables())." AS alias".++$tables;  my @s=($x); $stack->pop(\@s); $x } ;
 
 int_field_name:
   `pk` | `col_int_key` | `col_int` ;
@@ -232,14 +232,14 @@ char_indexed:
 
 
 table_alias:
-  table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 | table1 |
-  table2 | table2 | table2 | table2 | table2 | table2 | table2 | table2 | table2 | other_table ;
+  alias1 | alias1 | alias1 | alias1 | alias1 | alias1 | alias1 | alias1 | alias1 | alias1 |
+  alias2 | alias2 | alias2 | alias2 | alias2 | alias2 | alias2 | alias2 | alias2 | other_table ;
 
 other_table:
-  table3 | table3 | table3 | table3 | table3 | table4 | table4 | table5 ;
+  alias3 | alias3 | alias3 | alias3 | alias3 | alias4 | alias4 | alias5 ;
 
 existing_table_item:
-	{ "table".$prng->int(1,$tables) };
+	{ "alias".$prng->int(1,$tables) };
 
 existing_select_item:
 	{ "field".$prng->int(1,$fields) };
