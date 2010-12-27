@@ -174,6 +174,9 @@ sub simplify {
 		$mysqldump_cmd .= join(' ', @$participating_tables) if $#$participating_tables > -1;
 		open (MYSQLDUMP, "$mysqldump_cmd|") or say("Unable to run $mysqldump_cmd: $!");
 		while (<MYSQLDUMP>) {
+			$_ =~ s{,\n}{,}sgio;
+			$_ =~ s{\(\n}{(}sgio;
+			$_ =~ s{\)\n}{)}sgio;
 			$_ =~ s{`([a-zA-Z0-9_]+)`}{$1}sgio;
 			next if $_ =~ m{SET \@saved_cs_client}sio;
 			next if $_ =~ m{SET character_set_client}sio;
