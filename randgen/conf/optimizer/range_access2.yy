@@ -32,10 +32,21 @@ query:
 	select | select | select | select | select |
 	select | select | select | select | select |
 	select | select | select | select | select |
+	select | select | select | select | select |
+	select | select | select | select | select |
+	select | select | select | select | select |
+	select | select | select | select | select |
+	select | select | select | select | select |
+	select | select | select | select | select |
+	select | select | select | select | select |
+	select | select | select | select | select |
 	select | select | select | select | select ;
 
 select:
-	SELECT distinct * FROM _table index_hint WHERE where order_by limit |
+	SELECT distinct * FROM _table index_hint WHERE where order_by /* limit */ |
+	SELECT distinct * FROM _table index_hint WHERE where order_by /* limit */ |
+	SELECT distinct * FROM _table index_hint WHERE where order_by /* limit */ |
+	SELECT distinct * FROM _table index_hint WHERE where order_by /* limit */ |
 	SELECT aggregate int_key ) FROM _table index_hint WHERE where |
 	SELECT int_key , aggregate int_key ) FROM _table index_hint WHERE where GROUP BY int_key ;
 
@@ -57,8 +68,13 @@ limit:
 	| LIMIT _tinyint_unsigned;
 
 where:
+	where_list and_or where_list ;
+
+where_list:
+	where_two and_or ( where_list ) |
 	where_two and_or where_two |
-	where_two and_or where_two and_or where_two ;
+	where_two and_or where_two and_or where_two |
+	where_two ;
 
 where_two:
 	( integer_item or_and integer_item ) |
