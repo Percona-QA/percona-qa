@@ -63,7 +63,7 @@ mixed_select:
 	explain_extended SELECT distinct straight_join select_option select_list
 	FROM join_list
 	where_clause
-	group_by_clause
+	group_by_clause 
         having_clause
 	order_by_clause ;
 
@@ -71,7 +71,7 @@ simple_select:
         explain_extended SELECT distinct straight_join select_option simple_select_list
         FROM join_list
         where_clause
-        optional_group_by
+        optional_group_by 
         having_clause
         order_by_clause ;
  
@@ -79,12 +79,12 @@ aggregate_select:
         explain_extended SELECT distinct straight_join select_option aggregate_select_list
         FROM join_list
         where_clause
-        optional_group_by
+        optional_group_by 
         having_clause
         order_by_clause ;
 
-explain_extended:
-    | | | | | | | | | explain_extended2 ;
+explain_extended:	
+        | | | | | | | | | explain_extended2 ;
 
 explain_extended2: | | | | EXPLAIN | EXPLAIN EXTENDED ; 
        
@@ -171,14 +171,14 @@ not:
 
 where_item:
         where_subquery  |  
-        table1 . int_field_name arithmetic_operator existing_table_item . int_field_name  |
+        alias1 . int_field_name arithmetic_operator existing_table_item . int_field_name  |
 	existing_table_item . char_field_name arithmetic_operator _char  |
         existing_table_item . char_field_name arithmetic_operator existing_table_item . char_field_name |
-        table1 . _field IS not NULL |
-        table1 . int_field_name arithmetic_operator existing_table_item . int_field_name  |
+        alias1 . _field IS not NULL |
+        alias1 . int_field_name arithmetic_operator existing_table_item . int_field_name  |
 	existing_table_item . char_field_name arithmetic_operator _char  |
         existing_table_item . char_field_name arithmetic_operator existing_table_item . char_field_name |
-        table1 . _field IS not NULL ;
+        alias1 . _field IS not NULL ;
 
 ################################################################################
 # subquery rules
@@ -217,21 +217,21 @@ special_subquery:
     char_single_value_subquery IS not NULL ;
 
 int_single_value_subquery:
-    ( SELECT distinct select_option aggregate subquery_table_one_two . int_field_name ) AS { "SUBQUERY".$subquery_idx."_field1" } 
+    ( SELECT distinct select_option aggregate subquery_table_one_two . int_field_name ) AS { "SQ".$subquery_idx."_field1" } 
       subquery_body ) |
-    ( SELECT distinct select_option aggregate subquery_table_one_two . int_field_name ) AS { "SUBQUERY".$subquery_idx."_field1" } 
+    ( SELECT distinct select_option aggregate subquery_table_one_two . int_field_name ) AS { "SQ".$subquery_idx."_field1" } 
       subquery_body ) |
     ( SELECT _digit FROM DUAL ) ;
 
 char_single_value_subquery:
-    ( SELECT distinct select_option aggregate subquery_table_one_two . char_field_name ) AS { "SUBQUERY".$subquery_idx."_field1" } 
+    ( SELECT distinct select_option aggregate subquery_table_one_two . char_field_name ) AS { "SQ".$subquery_idx."_field1" } 
       subquery_body ) |
-    ( SELECT distinct select_option aggregate subquery_table_one_two . char_field_name ) AS { "SUBQUERY".$subquery_idx."_field1" } 
+    ( SELECT distinct select_option aggregate subquery_table_one_two . char_field_name ) AS { "SQ".$subquery_idx."_field1" } 
       subquery_body ) |
     ( SELECT _char FROM DUAL ) ;
    
 int_single_member_subquery:
-    ( SELECT distinct select_option subquery_table_one_two . int_field_name AS { "SUBQUERY".$subquery_idx."_field1" }
+    ( SELECT distinct select_option subquery_table_one_two . int_field_name AS { "SQ".$subquery_idx."_field1" }
       subquery_body 
       single_subquery_group_by
       subquery_having ) |
@@ -244,20 +244,20 @@ int_single_union_subquery_disabled:
     int_single_member_subquery   UNION all_distinct  int_single_member_subquery ;
 
 int_double_member_subquery:
-    ( SELECT distinct select_option subquery_table_one_two . int_field_name AS { "SUBQUERY".$subquery_idx."_field1" } , 
-      subquery_table_one_two . int_field_name AS { SUBQUERY.$subquery_idx."_field2" }
+    ( SELECT distinct select_option subquery_table_one_two . int_field_name AS { "SQ".$subquery_idx."_field1" } , 
+      subquery_table_one_two . int_field_name AS { "SQ".$subquery_idx."_field2" }
       subquery_body 
       double_subquery_group_by
       subquery_having ) |
-    ( SELECT distinct select_option subquery_table_one_two . int_field_name AS { "SUBQUERY".$subquery_idx."_field1" } , 
-      aggregate subquery_table_one_two . int_field_name ) AS { SUBQUERY.$subquery_idx."_field2" }
+    ( SELECT distinct select_option subquery_table_one_two . int_field_name AS { "SQ".$subquery_idx."_field1" } , 
+      aggregate subquery_table_one_two . int_field_name ) AS { "SQ".$subquery_idx."_field2" }
       subquery_body 
       single_subquery_group_by
       subquery_having ) |
     (  SELECT _digit , _digit  UNION all_distinct  SELECT _digit, _digit  ) ;
 
 char_single_member_subquery:
-    ( SELECT distinct select_option subquery_table_one_two . char_field_name AS { "SUBQUERY".$subquery_idx."_field1" }
+    ( SELECT distinct select_option subquery_table_one_two . char_field_name AS { "SQ".$subquery_idx."_field1" }
      subquery_body
      single_subquery_group_by
      subquery_having) ;
@@ -269,30 +269,30 @@ char_single_union_subquery_disabled:
     char_single_member_subquery   UNION all_distinct char_single_member_subquery  ;
 
 char_double_member_subquery:
-   ( SELECT distinct select_option subquery_table_one_two . char_field_name AS { "SUBQUERY".$subquery_idx."_field1" } ,
-     subquery_table_one_two . char_field_name AS { SUBQUERY.$subquery_idx."_field2" }
+   ( SELECT distinct select_option subquery_table_one_two . char_field_name AS { "SQ".$subquery_idx."_field1" } ,
+     subquery_table_one_two . char_field_name AS { "SQ".$subquery_idx."_field2" }
      subquery_body
      double_subquery_group_by
      subquery_having ) |
-   ( SELECT distinct select_option subquery_table_one_two . char_field_name AS { "SUBQUERY".$subquery_idx."_field1" } ,
-     aggregate subquery_table_one_two . char_field_name ) AS { SUBQUERY.$subquery_idx."_field2" }
+   ( SELECT distinct select_option subquery_table_one_two . char_field_name AS { "SQ".$subquery_idx."_field1" } ,
+     aggregate subquery_table_one_two . char_field_name ) AS { "SQ".$subquery_idx."_field2" }
      subquery_body
      single_subquery_group_by
      subquery_having ) |
    (  SELECT _char , _char  UNION all_distinct  SELECT _char , _char  ) ;
 
 int_correlated_subquery:
-    ( SELECT distinct select_option subquery_table_one_two . int_field_name AS { "SUBQUERY".$subquery_idx."_field1" }
+    ( SELECT distinct select_option subquery_table_one_two . int_field_name AS { "SQ".$subquery_idx."_field1" }
       FROM subquery_join_list 
       correlated_subquery_where_clause ) ;
 
 char_correlated_subquery:
-    ( SELECT distinct select_option subquery_table_one_two . char_field_name AS { "SUBQUERY".$subquery_idx."_field1" }
+    ( SELECT distinct select_option subquery_table_one_two . char_field_name AS { "SQ".$subquery_idx."_field1" }
       FROM subquery_join_list 
       correlated_subquery_where_clause ) ;
 
 int_scalar_correlated_subquery:
-     ( SELECT distinct select_option aggregate subquery_table_one_two . int_field_name ) AS { "SUBQUERY".$subquery_idx."_field1" }
+     ( SELECT distinct select_option aggregate subquery_table_one_two . int_field_name ) AS { "SQ".$subquery_idx."_field1" }
       FROM subquery_join_list 
       correlated_subquery_where_clause ) ;
 
@@ -342,11 +342,11 @@ subquery_on_subquery:
     |||||||||||||||||||| { $child_subquery_idx += 1 ; $child_subquery_tables=0 ; ""} and_or general_child_subquery ;
 
 single_subquery_group_by:
-    | | | | | | | | | GROUP BY { SUBQUERY.$subquery_idx."_field1" } ;
+    | | | | | | | | | GROUP BY { "SQ".$subquery_idx."_field1" } ;
 
 
 double_subquery_group_by:
-    | | | | | | | | | GROUP BY { SUBQUERY.$subquery_idx."_field1" } ,  { SUBQUERY.$subquery_idx."_field2" } ;
+    | | | | | | | | | GROUP BY { "SQ".$subquery_idx."_field1" } ,  { "SQ".$subquery_idx."_field2" } ;
 
 subquery_having:
     | | | | | | | | | | HAVING subquery_having_list ;
@@ -393,15 +393,15 @@ special_child_subquery:
 
 
 int_single_value_child_subquery:
-    ( SELECT distinct select_option aggregate child_subquery_table_one_two . int_field_name ) AS { "CHILD_SUBQUERY".$child_subquery_idx."_field1" } 
+    ( SELECT distinct select_option aggregate child_subquery_table_one_two . int_field_name ) AS { "C_SQ".$child_subquery_idx."_field1" } 
       child_subquery_body ) ;
 
 char_single_value_child_subquery:
-    ( SELECT distinct select_option aggregate child_subquery_table_one_two . char_field_name ) AS { "CHILD_SUBQUERY".$child_subquery_idx."_field1" } 
+    ( SELECT distinct select_option aggregate child_subquery_table_one_two . char_field_name ) AS { "C_SQ".$child_subquery_idx."_field1" } 
       child_subquery_body ) ;
    
 int_single_member_child_subquery:
-    ( SELECT distinct select_option child_subquery_table_one_two . int_field_name AS { "CHILD_SUBQUERY".$child_subquery_idx."_field1" }
+    ( SELECT distinct select_option child_subquery_table_one_two . int_field_name AS { "C_SQ".$child_subquery_idx."_field1" }
       child_subquery_body 
       single_child_subquery_group_by
       child_subquery_having ) ;
@@ -410,19 +410,19 @@ int_single_union_child_subquery:
     (  SELECT _digit  UNION all_distinct  SELECT _digit  )  ;
 
 int_double_member_child_subquery:
-    ( SELECT distinct select_option child_subquery_table_one_two . int_field_name AS { "CHILD_SUBQUERY".$child_subquery_idx."_field1" } , 
-      child_subquery_table_one_two . int_field_name AS { child_subquery.$child_subquery_idx."_field2" }
+    ( SELECT distinct select_option child_subquery_table_one_two . int_field_name AS { "C_SQ".$child_subquery_idx."_field1" } , 
+      child_subquery_table_one_two . int_field_name AS { "C_SQ".$child_subquery_idx."_field2" }
       child_subquery_body 
       double_child_subquery_group_by
       child_subquery_having ) |
-    ( SELECT distinct select_option child_subquery_table_one_two . int_field_name AS { "CHILD_SUBQUERY".$child_subquery_idx."_field1" } , 
-      aggregate child_subquery_table_one_two . int_field_name ) AS { child_subquery.$child_subquery_idx."_field2" }
+    ( SELECT distinct select_option child_subquery_table_one_two . int_field_name AS { "C_SQ".$child_subquery_idx."_field1" } , 
+      aggregate child_subquery_table_one_two . int_field_name ) AS { "C_SQ".$child_subquery_idx."_field2" }
       child_subquery_body 
       single_child_subquery_group_by
       child_subquery_having );
 
 char_single_member_child_subquery:
-    ( SELECT distinct select_option child_subquery_table_one_two . char_field_name AS { "CHILD_SUBQUERY".$child_subquery_idx."_field1" }
+    ( SELECT distinct select_option child_subquery_table_one_two . char_field_name AS { "C_SQ".$child_subquery_idx."_field1" }
      child_subquery_body
      single_child_subquery_group_by
      child_subquery_having) ;
@@ -431,24 +431,24 @@ char_single_union_child_subquery:
     (  SELECT _digit  UNION all_distinct  SELECT _digit  )  ;
 
 char_double_member_child_subquery:
-   ( SELECT distinct select_option child_subquery_table_one_two . char_field_name AS { "CHILD_SUBQUERY".$child_subquery_idx."_field1" } ,
-     child_subquery_table_one_two . char_field_name AS { "CHILD_SUBQUERY".$child_subquery_idx."_field2" }
+   ( SELECT distinct select_option child_subquery_table_one_two . char_field_name AS { "C_SQ".$child_subquery_idx."_field1" } ,
+     child_subquery_table_one_two . char_field_name AS { "C_SQ".$child_subquery_idx."_field2" }
      child_subquery_body
      double_child_subquery_group_by
      child_subquery_having ) |
-   ( SELECT distinct select_option child_subquery_table_one_two . char_field_name AS { "CHILD_SUBQUERY".$child_subquery_idx."_field1" } ,
-     aggregate child_subquery_table_one_two . char_field_name ) AS { "CHILD_SUBQUERY".$child_subquery_idx."_field2" }
+   ( SELECT distinct select_option child_subquery_table_one_two . char_field_name AS { "C_SQ".$child_subquery_idx."_field1" } ,
+     aggregate child_subquery_table_one_two . char_field_name ) AS { "C_SQ".$child_subquery_idx."_field2" }
      child_subquery_body
      single_child_subquery_group_by
      child_subquery_having );
 
 int_correlated_child_subquery:
-    ( SELECT distinct select_option child_subquery_table_one_two . int_field_name AS { "CHILD_SUBQUERY".$subquery_idx."_field1" }
+    ( SELECT distinct select_option child_subquery_table_one_two . int_field_name AS { "C_SQ".$subquery_idx."_field1" }
       FROM child_subquery_join_list 
       correlated_child_subquery_where_clause ) ;
 
 char_correlated_child_subquery:
-    ( SELECT distinct select_option child_subquery_table_one_two . char_field_name AS { "CHILD_SUBQUERY".$subquery_idx."_field1" }
+    ( SELECT distinct select_option child_subquery_table_one_two . char_field_name AS { "C_SQ".$subquery_idx."_field1" }
       FROM child_subquery_join_list 
       correlated_child_subquery_where_clause ) ;
 
@@ -479,8 +479,9 @@ child_subquery_where_item:
    existing_child_subquery_table_item . int_field_name arithmetic_operator _digit |
    existing_child_subquery_table_item . char_field_name arithmetic_operator _char |
    existing_child_subquery_table_item . int_field_name arithmetic_operator existing_child_subquery_table_item . int_field_name |
-   existing_child_subquery_table_item . char_field_name arithmetic_operator existing_child_subquery_table_item . char_field_name |
-   child_child_subquery ;
+   existing_child_subquery_table_item . char_field_name arithmetic_operator existing_child_subquery_table_item . char_field_name ;
+#|
+#   child_child_subquery ;
 
 child_subquery_join_list:
     child_subquery_new_table_item  |  child_subquery_new_table_item  |
@@ -495,11 +496,11 @@ child_subquery_join_condition_item:
     child_subquery_current_table_item . char_field_name = child_subquery_previous_table_item . `col_varchar_key` ;
 
 single_child_subquery_group_by:
-    | | | | | | | | | GROUP BY { child_subquery.$child_subquery_idx."_field1" } ;
+    | | | | | | | | | GROUP BY { "C_SQ".$child_subquery_idx."_field1" } ;
 
 
 double_child_subquery_group_by:
-    | | | | | | | | | GROUP BY { child_subquery.$child_subquery_idx."_field1" } ,  { child_subquery.$child_subquery_idx."_field2" } ;
+    | | | | | | | | | GROUP BY { "C_SQ".$child_subquery_idx."_field1" } ,  { "C_SQ".$child_subquery_idx."_field2" } ;
 
 child_subquery_having:
     | | | | | | | | | | HAVING child_subquery_having_list ;
@@ -526,12 +527,12 @@ range_predicate1_list:
       ( range_predicate1_item OR range_predicate1_item ) ;
 
 range_predicate1_item:
-         table1 . int_indexed not BETWEEN _tinyint_unsigned[invariant] AND ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
-         table1 . `col_varchar_key` arithmetic_operator _char[invariant]  |
-         table1 . int_indexed not IN (number_list) |
-         table1 . `col_varchar_key` not IN (char_list) |
-         table1 . `pk` > _tinyint_unsigned[invariant] AND table1 . `pk` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
-         table1 . `col_int_key` > _tinyint_unsigned[invariant] AND table1 . `col_int_key` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) ;
+         alias1 . int_indexed not BETWEEN _tinyint_unsigned[invariant] AND ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
+         alias1 . `col_varchar_key` arithmetic_operator _char[invariant]  |
+         alias1 . int_indexed not IN (number_list) |
+         alias1 . `col_varchar_key` not IN (char_list) |
+         alias1 . `pk` > _tinyint_unsigned[invariant] AND alias1 . `pk` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) |
+         alias1 . `col_int_key` > _tinyint_unsigned[invariant] AND alias1 . `col_int_key` < ( _tinyint_unsigned[invariant] + _tinyint_unsigned ) ;
 
 ################################################################################
 # The range_predicate_2* rules below are in place to ensure we hit the         #
@@ -545,13 +546,13 @@ range_predicate2_list:
       ( range_predicate2_item and_or range_predicate2_item ) ;
 
 range_predicate2_item:
-        table1 . `pk` = _tinyint_unsigned |
-        table1 . `col_int_key` = _tinyint_unsigned |
-        table1 . `col_varchar_key` = _char |
-        table1 . int_indexed = _tinyint_unsigned |
-        table1 . `col_varchar_key` = _char |
-        table1 . int_indexed = existing_table_item . int_indexed |
-        table1 . `col_varchar_key` = existing_table_item . `col_varchar_key` ;
+        alias1 . `pk` = _tinyint_unsigned |
+        alias1 . `col_int_key` = _tinyint_unsigned |
+        alias1 . `col_varchar_key` = _char |
+        alias1 . int_indexed = _tinyint_unsigned |
+        alias1 . `col_varchar_key` = _char |
+        alias1 . int_indexed = existing_table_item . int_indexed |
+        alias1 . `col_varchar_key` = existing_table_item . `col_varchar_key` ;
 
 ################################################################################
 # The number and char_list rules are for creating WHERE conditions that test   #
@@ -598,7 +599,7 @@ having_item:
 
 order_by_clause:
 	|
-        ORDER BY table1 . _field_indexed desc , total_order_by  limit |
+        ORDER BY alias1 . _field_indexed desc , total_order_by  limit |
 	ORDER BY order_by_list |
 	ORDER BY  order_by_list, total_order_by limit ;
 
@@ -610,8 +611,8 @@ order_by_list:
 	order_by_item  , order_by_list ;
 
 order_by_item:
-        table1 . _field_indexed , existing_table_item .`pk` desc  |
-        table1 . _field_indexed desc |
+        alias1 . _field_indexed , existing_table_item .`pk` desc  |
+        alias1 . _field_indexed desc |
 	existing_select_item desc |
         CONCAT ( existing_table_item . char_field_name, existing_table_item . char_field_name );
 desc:
@@ -629,7 +630,7 @@ new_select_item:
         nonaggregate_select_item |
 	nonaggregate_select_item |
 	aggregate_select_item |
-        select_subquery;
+	select_subquery;
 
 ################################################################################
 # We have the perl code here to help us write more sensible queries            #
@@ -666,15 +667,15 @@ combo_select_item:
     CONCAT ( table_one_two . char_field_name , table_one_two . char_field_name ) AS { my $f = "field".++$fields ; push @nonaggregates , $f ; $f } ;
 
 table_one_two:
-	table1 | table1 | table2 ;
+	alias1 | alias1 | alias2 ;
 
 subquery_table_one_two:
-        { "SUBQUERY".$subquery_idx."_t1" ;  } | { "SUBQUERY".$subquery_idx."_t1" ;  } |
-        { "SUBQUERY".$subquery_idx."_t1" ;  } | { "SUBQUERY".$subquery_idx."_t2" ;  } ;      
+        { "SQ".$subquery_idx."_alias1" ;  } | { "SQ".$subquery_idx."_alias1" ;  } |
+        { "SQ".$subquery_idx."_alias1" ;  } | { "SQ".$subquery_idx."_alias2" ;  } ;      
 
 child_subquery_table_one_two:
-        { "CHILD_SUBQUERY".$child_subquery_idx."_t1" ;  } | { "CHILD_SUBQUERY".$child_subquery_idx."_t1" ;  } |
-        { "CHILD_SUBQUERY".$child_subquery_idx."_t1" ;  } | { "CHILD_SUBQUERY".$child_subquery_idx."_t2" ;  } ;
+        { "C_SQ".$child_subquery_idx."_alias1" ;  } | { "C_SQ".$child_subquery_idx."_alias1" ;  } |
+        { "C_SQ".$child_subquery_idx."_alias1" ;  } | { "C_SQ".$child_subquery_idx."_alias2" ;  } ;
 
 aggregate:
 	COUNT( distinct | SUM( distinct | MIN( distinct | MAX( distinct ;
@@ -685,44 +686,44 @@ aggregate:
 # track of what we have added.  You shouldn't need to touch these ever         #
 ################################################################################
 new_table_item:
-	_table AS { "table".++$tables } | _table AS { "table".++$tables } | _table AS { "table".++$tables } |
-        ( from_subquery ) AS { "table".++$tables } ;
+	_table AS { "alias".++$tables } | _table AS { "alias".++$tables } | _table AS { "alias".++$tables } |
+        ( from_subquery ) AS { "alias".++$tables } ;
 
 from_subquery:
        { $subquery_idx += 1 ; $subquery_tables=0 ; ""}  SELECT distinct select_option subquery_table_one_two . * subquery_body  ;
 
 subquery_new_table_item:
-        _table AS { "SUBQUERY".$subquery_idx."_t".++$subquery_tables } ;
+        _table AS { "SQ".$subquery_idx."_alias".++$subquery_tables } ;
 
 child_subquery_new_table_item:
-        _table AS { "CHILD_SUBQUERY".$child_subquery_idx."_t".++$child_subquery_tables } ;      
+        _table AS { "C_SQ".$child_subquery_idx."_alias".++$child_subquery_tables } ;      
 
 current_table_item:
-	{ "table".$tables };
+	{ "alias".$tables };
 
 subquery_current_table_item:
-        { "SUBQUERY".$subquery_idx."_t".$subquery_tables } ;
+        { "SQ".$subquery_idx."_alias".$subquery_tables } ;
 
 child_subquery_current_table_item:
-        { "CHILD_SUBQUERY".$child_subquery_idx."_t".$child_subquery_tables } ;
+        { "C_SQ".$child_subquery_idx."_alias".$child_subquery_tables } ;
 
 previous_table_item:
-	{ "table".($tables - 1) };
+	{ "alias".($tables - 1) };
 
 subquery_previous_table_item:
-        { "SUBQUERY".$subquery_idx."_t".($subquery_tables-1) } ;
+        { "SQ".$subquery_idx."_alias".($subquery_tables-1) } ;
 
 child_subquery_previous_table_item:
-        { "CHILD_SUBQUERY".$child_subquery_idx."_t".($child_subquery_tables-1) } ;
+        { "C_SQ".$child_subquery_idx."_alias".($child_subquery_tables-1) } ;
 
 existing_table_item:
-	{ "table".$prng->int(1,$tables) };
+	{ "alias".$prng->int(1,$tables) };
 
 existing_subquery_table_item:
-        { "SUBQUERY".$subquery_idx."_t".$prng->int(1,$subquery_tables) } ;
+        { "SQ".$subquery_idx."_alias".$prng->int(1,$subquery_tables) } ;
 
 existing_child_subquery_table_item:
-        { "CHILD_SUBQUERY".$child_subquery_idx."_t".$prng->int(1,$child_subquery_tables) } ;
+        { "C_SQ".$child_subquery_idx."_alias".$prng->int(1,$child_subquery_tables) } ;
 
 existing_select_item:
 	{ "field".$prng->int(1,$fields) };
