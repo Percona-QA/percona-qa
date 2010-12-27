@@ -48,7 +48,8 @@ sub oracle {
 
 	$dbh->do($testcase_string, { RaiseError => 1 , mysql_multi_statements => 1 });
 
-	$dbh->do(join(";\n", @{$testcase->queries()}), {RaiseError => 1, mysql_multi_statements => 1});
+	my $sth = $dbh->prepare(join(";\n", @{$testcase->queries()}), {RaiseError => 1, mysql_multi_statements => 1});
+	$sth->execute();
 
 	$testcase_string .= "\n".join(";\n", @{$testcase->queries()})."\n";
 
@@ -73,7 +74,7 @@ sub startServer {
 	my $basedir = $oracle->basedir();
 
 	chdir($basedir.'/mysql-test');
-	system("MTR_VERSION=1 perl mysql-test-run.pl --start-and-exit --mysqld=--innodb --master_port=19300 1st");
+	system("MTR_VERSION=1 perl mysql-test-run.pl --start-and-exit --master_port=19300 --mysqld=--skip-innodb 1st");
 }
 
 1;

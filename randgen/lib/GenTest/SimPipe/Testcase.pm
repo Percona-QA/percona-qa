@@ -56,6 +56,12 @@ sub newFromDSN {
 
 	my $dbh = DBI->connect($dsn, undef, undef, { mysql_multi_statements => 1, RaiseError => 1 });
 
+	return $class->newFromDBH($dbh, $queries);
+}
+
+sub newFromDBH {
+	my ($class, $dbh, $queries) = @_;
+
 	my @table_objs;
 	my $table_names = $dbh->selectcol_arrayref("
 		SELECT TABLE_NAME
@@ -65,12 +71,12 @@ sub newFromDSN {
 	");
 
 	foreach my $table_name (@$table_names) {
-		push @table_objs, GenTest::SimPipe::DBObject::newFromDSN($dsn, $table_name);
+		push @table_objs, GenTest::SimPipe::DBObject->newFromDBH($dbh, $table_name);
 	}
 
 	my %mysqld_options = @{$dbh->selectcol_arrayref("
 		SELECT LOWER(VARIABLE_NAME), VARIABLE_VALUE
-		FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES
+		FROM INFORMATION_SCHEMA.SESSION_VARIABLES
 		WHERE VARIABLE_NAME IN (
 			'optimizer_use_mrr',
 			'mrr_buffer_size',
@@ -178,6 +184,7 @@ sub simplify {
 		while (my ($old, $new) = each %col_map) {
 			$query =~ s{$old([^A-Za-z_0-9])}{$new$1}sgi;
 		}
+		print "Rewritten: $query\n";
 	}
 
 	if ($oracle->oracle($testcase) != ORACLE_ISSUE_STILL_REPEATABLE) {
@@ -196,46 +203,15 @@ sub simplify {
 	foreach my $db_object (@{$testcase->dbObjects()}) {
 		next if not defined $db_object;
 
-		my $saved_engine = $db_object->[DBOBJECT_ENGINE];
-		$db_object->[DBOBJECT_ENGINE] = undef;
-		if ($oracle->oracle($testcase) != ORACLE_ISSUE_STILL_REPEATABLE) {
-			$db_object->[DBOBJECT_ENGINE] = $saved_engine;
-		}
-
-		foreach my $key (@{$db_object->keys()}) {
-			print "K";
-			my $saved_key = $key;
-			$key = undef;
-			if ($oracle->oracle($testcase) != ORACLE_ISSUE_STILL_REPEATABLE) {
-				$key = $saved_key;
-			}
-		}
-
-		foreach my $column (@{$db_object->columns()}) {
-			print "C";
-			my $saved_column = $column;
-	
-			$column = undef;
-			next if $oracle->oracle($testcase) == ORACLE_ISSUE_STILL_REPEATABLE;
-			$column = $saved_column;
-		
-			$column->[COLUMN_TYPE] = 'int'; $column->[COLUMN_COLLATION] = undef;
-			next if $oracle->oracle($testcase) == ORACLE_ISSUE_STILL_REPEATABLE;
-			$column = $saved_column;
-
-			$column->[COLUMN_TYPE] = 'varchar(32)'; $column->[COLUMN_COLLATION] = undef;
-			next if $oracle->oracle($testcase) == ORACLE_ISSUE_STILL_REPEATABLE;
-			$column = $saved_column;
-		}
-
 		my $rows = $db_object->data();
 
-		foreach my $row_group_size (5000,500,50,10) {
+		foreach my $row_group_size (5000,500,50,10,5) {
 			my $row_group_count = int(($#$rows + 1) / $row_group_size);
 			next if $row_group_count < 1;
-
+	
 			foreach my $row_group (0..($row_group_count-1)) {
 				next if not defined $rows->[$row_group * $row_group_size];
+				print "Trying row_group $row_group, row_group_count $row_group_count, row_group_size $row_group_size\n";
 				my @saved_rows;
 				foreach my $i (0..($row_group_size-1)) {
 					$saved_rows[$i] = $rows->[($row_group * $row_group_size) + $i];
@@ -259,7 +235,59 @@ sub simplify {
 				$row = $saved_row;
 			}
 		}
+
+
+		my $saved_engine = $db_object->[DBOBJECT_ENGINE];
+		$db_object->[DBOBJECT_ENGINE] = undef;
+		if ($oracle->oracle($testcase) != ORACLE_ISSUE_STILL_REPEATABLE) {
+			$db_object->[DBOBJECT_ENGINE] = $saved_engine;
+		}
+
+		foreach my $key (@{$db_object->keys()}) {
+			print "K";
+			my $saved_key = $key;
+			$key = undef;
+			if ($oracle->oracle($testcase) != ORACLE_ISSUE_STILL_REPEATABLE) {
+				$key = $saved_key;
+			}
+		}
+
+		foreach my $column (@{$db_object->columns()}) {
+			print "Column";
+			my $saved_column = $column;
+	
+			$column = undef;
+			next if $oracle->oracle($testcase) == ORACLE_ISSUE_STILL_REPEATABLE;
+			$column = $saved_column;
+		
+#			$column->[COLUMN_TYPE] = 'int'; $column->[COLUMN_COLLATION] = undef;
+#			next if $oracle->oracle($testcase) == ORACLE_ISSUE_STILL_REPEATABLE;
+#			$column = $saved_column;
+
+#			$column->[COLUMN_TYPE] = 'varchar(32)'; $column->[COLUMN_COLLATION] = undef;
+#			next if $oracle->oracle($testcase) == ORACLE_ISSUE_STILL_REPEATABLE;
+#			$column = $saved_column;
+		}
+
+		foreach my $row (@{$db_object->data()}) {
+			next if not defined $row;
+			foreach my $cell (values %$row) {
+				print "Cell";
+				next if not defined $cell || length($cell) == 1;
+				my $saved_cell = $cell;
+				foreach my $new_length (16,32,128) {
+					last if length($saved_cell) <= $new_length;
+					$cell = substr($saved_cell, 0, $new_length);
+					if ($oracle->oracle($testcase) !=ORACLE_ISSUE_STILL_REPEATABLE) {
+						$cell = $saved_cell;
+					} else {
+						last;
+					}
+				}
+			}
+		}
 	}
+
 
 	my $mysqld_options = $testcase->mysqldOptions();
 	foreach my $mysqld_option (keys %{$mysqld_options}) {
@@ -281,27 +309,6 @@ sub simplify {
 		}
 	}
 
-	foreach my $db_object (@{$testcase->dbObjects()}) {
-		next if not defined $db_object;
-		foreach my $row (@{$db_object->data()}) {
-			next if not defined $row;
-			foreach my $cell (values %$row) {
-				print "C";
-				next if not defined $cell || length($cell) == 1;
-				my $saved_cell = $cell;
-				foreach my $new_length (1,4,8,32,128) {
-					last if length($saved_cell) <= $new_length;
-					$cell = substr($saved_cell, 0, $new_length);
-					if ($oracle->oracle($testcase) !=ORACLE_ISSUE_STILL_REPEATABLE) {
-						$cell = $saved_cell;
-					} else {
-						last;
-					}
-				}
-			}
-		}
-	}
-	
 	print "\n";
 
 	if ($oracle->oracle($testcase) != ORACLE_ISSUE_STILL_REPEATABLE) {
