@@ -59,9 +59,15 @@ sub new {
 }
 
 sub newFromDSN {
-	my ($dsn, $table_name) = @_;
+	my ($class, $dsn, $table_name) = @_;
 
 	my $dbh = DBI->connect($dsn);
+
+	return $class->newFromDBH($dbh, $table_name);
+}
+
+sub newFromDBH {
+	my ($class, $dbh, $table_name) = @_;
 	
 	my $table_info = $dbh->selectrow_hashref("
 		SELECT * FROM INFORMATION_SCHEMA.TABLES
@@ -150,7 +156,7 @@ sub toString {
 	}
 
 	my $create_string = "DROP TABLE IF EXISTS ".$dbobject->name().";\n";
-	$create_string .= "CREATE TABLE ".$dbobject->name()." (\n".join(",\n", @column_strings).") ";
+	$create_string .= "CREATE TABLE ".$dbobject->name()." ( ".join(", ", @column_strings).") ";
 	$create_string .= " ENGINE=".$dbobject->engine() if defined $dbobject->engine();
 	$create_string .= " TRANSACTIONAL=0 " if $dbobject->engine() =~ m{Aria}sio;
 	$create_string .= ";\n";
@@ -170,7 +176,11 @@ sub toString {
 		push @rows_data, "(".join(',', @row_data).")";
 	}
 
-	my $data_string = "INSERT IGNORE INTO ".$dbobject->name()." VALUES ".join(',', @rows_data).";\n" if $#rows_data > -1;
+	print "Object ".$dbobject->name()." has ".($#rows_data + 1)." rows\n";
+
+#	my $data_string = "ALTER TABLE ".$dbobject->name()." DISABLE KEYS;\n";
+	my $data_string .= "INSERT IGNORE INTO ".$dbobject->name()." VALUES ".join(',', @rows_data).";\n" if $#rows_data > -1;
+#	$data_string .= "ALTER TABLE ".$dbobject->name()." ENABLE KEYS;\n";
 
 	return $create_string.$data_string;
 	

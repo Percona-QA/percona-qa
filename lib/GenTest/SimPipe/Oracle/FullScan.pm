@@ -38,7 +38,7 @@ my %option_defaults = (
         'join_buffer_space_limit'       => 1048576,
         'rowid_merge_buff_size'         => 8388608,
 	'storage_engine'		=> 'MyISAM',
-        'optimizer_switch'              => 'index_merge=off,index_merge_union=off,index_merge_sort_union=off,index_merge_intersection=off,index_condition_pushdown=off,firstmatch=off,loosescan=off,materialization=off,semijoin=off,partial_match_rowid_merge=off,partial_match_table_scan=off,subquery_cache=off,join_cache_incremental=off,join_cache_hashed=off,join_cache_bka=off,table_elimination=off,outer_join_with_cache=off'
+        'optimizer_switch'              => 'index_merge=off,index_merge_union=off,index_merge_sort_union=off,index_merge_intersection=off,index_merge_sort_intersection=off,table_elimination=off'
 );
 
 
@@ -59,6 +59,7 @@ sub oracle {
 	}
 
 	my $testcase_string = join("\n", (
+		"DROP DATABASE IF EXISTS fullscan$$;",
 		"CREATE DATABASE IF NOT EXISTS fullscan$$;",
 		"USE fullscan$$;",
 		$testcase->mysqldOptionsToString(),
@@ -73,6 +74,12 @@ sub oracle {
 
 	my $original_query = $testcase->queries()->[0];
 	my $original_result = $executor->execute($original_query);
+
+	use Data::Dumper;
+	print Dumper $original_result;
+	my $original_explain = $executor->execute("EXPLAIN ".$original_query);
+	print Dumper $original_explain;
+
         $testcase_string .= "\n$original_query;\n";
 
 	my @table_names = @{$dbh->selectcol_arrayref("SHOW TABLES")};
@@ -86,7 +93,7 @@ sub oracle {
 
 	my $fullscan_result = $executor->execute($original_query);
 
-	$dbh->do("DROP DATABASE fullscan$$");
+#	$dbh->do("DROP DATABASE fullscan$$");
 
         my $compare_outcome = GenTest::Comparator::compare($original_result, $fullscan_result);
 
