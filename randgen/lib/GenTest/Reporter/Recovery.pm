@@ -190,7 +190,7 @@ sub report {
 		if ($_ =~ m{registration as a STORAGE ENGINE failed.}sio) {
 			say("Storage engine registration failed");
 			$recovery_status = STATUS_DATABASE_CORRUPTION;
-		} elsif ($_ =~ m{corrupt}) {
+		} elsif ($_ =~ m{corrupt|crashed}) {
 			say("Log message '$_' indicates database corruption");
 			$recovery_status = STATUS_DATABASE_CORRUPTION;
 		} elsif ($_ =~ m{exception}sio) {
