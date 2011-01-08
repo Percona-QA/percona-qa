@@ -105,9 +105,10 @@ sub report {
 		system("mkdir $recovery_datadir_aria");
 		system("cp $datadir/*aria_log* $recovery_datadir_aria");
 		system("mkdir $recovery_datadir_aria/test");
+		system("mkdir $recovery_datadir_aria/smf");
+		system("mkdir $recovery_datadir_aria/smf2");
 
 		say("Copying complete");
-
 	
 		my $aria_read_log_path;
 		if (-e $reporter->serverVariable('basedir')."/../storage/maria/aria_read_log") {
