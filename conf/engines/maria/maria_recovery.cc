@@ -1,20 +1,21 @@
+# --mysqld=--debug=d:t:i:-f,alloc_dynamic/,my_malloc/,my_multi_malloc/,mysql_select/,open_tables/,close_thread_tables/,log_general/,find_block/,make_lock_and_pin/,reg_requests/,unreg_request/,fix_paths/,translog_write_variable_record/,_ma_seq_search/:O,/dev/shm/mysqld.trace
+
 $combinations = [
 	['
-		--grammar=conf/engines/engine_stress.yy
-		--gendata=conf/engines/engine_stress.zz
 		--queries=1M
 		--engine=Maria
+		--mysqld=--default-storage-engine=Maria
+		--mysqld=--safe-mode
+		--mysqld=--loose-debug-assert-if-crashed-table
+		--mysqld=--sync-sys=0
 		--mysqld=--log-output=file
-	'],[
-		'--reporters=ErrorLog,Backtrace,Recovery,Shutdown',
-		'--reporters=ErrorLog,Backtrace,Recovery,Shutdown',
-		'--reporters=ErrorLog,Backtrace,Recovery,Shutdown',
-		'--reporters=ErrorLog,Backtrace,DatabaseConsistency,Shutdown'
+		--mysqld=--maria_log_purge_type=at_flush
+		--reporters=ErrorLog,Backtrace,Recovery,Shutdown
+	'
 	],[
 		'--duration=30',
 		'--duration=120',
-		'--duration=240',
-		'--duration=360'
+		'--duration=240'
 	],[
 		'--threads=1',
 		'--threads=5',
@@ -25,8 +26,9 @@ $combinations = [
 		'--rows=10',
 		'--rows=100',
 		'--rows=1000',
-		'--rows=10000',
-		'--rows=100000',
+		'--rows=10000'
+#,
+#		'--rows=100000',
 	],[
 		'--mask-level=0',
 		'--mask-level=1',
@@ -35,20 +37,28 @@ $combinations = [
 		'',
 		'--mysqld=--maria-repair-threads=2'
 	],[
-		'--mysqld=--maria-group-commit=soft',
-		'--mysqld=--maria-group-commit=hard'
+		'--mysqld=--loose-maria-group-commit=soft',
+		'--mysqld=--loose-maria-group-commit=hard'
 	],[
-		'--mysqld=--maria_group_commit_interval=0',
-		'--mysqld=--maria_group_commit_interval=1',
-		'--mysqld=--maria_group_commit_interval=10',
-		'--mysqld=--maria_group_commit_interval=100'
+		'--mysqld=--loose-maria_group_commit_interval=0',
+		'--mysqld=--loose-maria_group_commit_interval=1',
+		'--mysqld=--loose-maria_group_commit_interval=10',
+		'--mysqld=--loose-maria_group_commit_interval=100'
 	],[
 		'--mysqld=--maria-checkpoint-interval=0',
 		'--mysqld=--maria-checkpoint-interval=1',
 		'--mysqld=--maria-checkpoint-interval=120'
 	],[
-		'--mysqld=--maria-block-size=1K',
 		'--mysqld=--maria-block-size=4K',
 		'--mysqld=--maria-block-size=16K'
-	]
+	],[
+		'--grammar=conf/engines/engine_stress.yy --gendata=conf/engines/engine_stress.zz',
+		'--grammar=conf/engines/many_indexes.yy --gendata=conf/engines/many_indexes.zz',
+		'--grammar=conf/engines/tiny_inserts.yy --gendata=conf/engines/tiny_inserts.zz',
+		'--grammar=conf/engines/varchar.yy --gendata=conf/engines/varchar.zz',
+		'--mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/smf/smf2.sql --grammar=conf/smf/smf2.yy',
+		'--mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/smf/smf2.sql --grammar=conf/smf/smf2.yy',
+		'--mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/smf/smf2.sql --grammar=conf/smf/smf2.yy',
+		'--mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/smf/smf2.sql --grammar=conf/smf/smf2.yy'
+]
 ];
