@@ -28,7 +28,7 @@ use GenTest::Reporter;
 use GenTest::Comparator;
 use Data::Dumper;
 use IPC::Open2;
-use IPC::Open3;
+use POSIX;
 
 my $first_reporter;
 
@@ -315,34 +315,32 @@ sub report {
 				$recovery_status = STATUS_DATABASE_CORRUPTION;
 			}
 
-			if (lc($engine) ne 'falcon') {
-				foreach my $sql (
-					"CHECK TABLE `$database`.`$table` EXTENDED",
-					"ANALYZE TABLE `$database`.`$table`",
-					"OPTIMIZE TABLE `$database`.`$table`",
-					"REPAIR TABLE `$database`.`$table` EXTENDED",
-					"ALTER TABLE `$database`.`$table` ENGINE = $engine"
-				) {
-					say("Executing $sql.");
-					my $sth = $dbh->prepare($sql);
-					if (defined $sth) {
-						$sth->execute();
+			foreach my $sql (
+				"CHECK TABLE `$database`.`$table` EXTENDED",
+				"ANALYZE TABLE `$database`.`$table`",
+				"OPTIMIZE TABLE `$database`.`$table`",
+				"REPAIR TABLE `$database`.`$table` EXTENDED",
+				"ALTER TABLE `$database`.`$table` ENGINE = $engine"
+			) {
+				say("Executing $sql.");
+				my $sth = $dbh->prepare($sql);
+				if (defined $sth) {
+					$sth->execute();
 
-						return STATUS_DATABASE_CORRUPTION if $dbh->err() > 0 && $dbh->err() != 1178;
-						if ($sth->{NUM_OF_FIELDS} > 0) {
-							my $result = Dumper($sth->fetchall_arrayref());
-							next if $result =~ m{is not BASE TABLE}sio;	# Do not process VIEWs
-							if ($result =~ m{error'|corrupt|repaired|invalid|crashed}sio) {
-								print $result;
-								return STATUS_DATABASE_CORRUPTION
-							}
-						};
+					return STATUS_DATABASE_CORRUPTION if $dbh->err() > 0 && $dbh->err() != 1178;
+					if ($sth->{NUM_OF_FIELDS} > 0) {
+						my $result = Dumper($sth->fetchall_arrayref());
+						next if $result =~ m{is not BASE TABLE}sio;	# Do not process VIEWs
+						if ($result =~ m{error'|corrupt|repaired|invalid|crashed}sio) {
+							print $result;
+							return STATUS_DATABASE_CORRUPTION
+						}
+					};
 
-						$sth->finish();
-					} else {
-						say("Prepare failed: ".$dbh->errrstr());
-						return STATUS_DATABASE_CORRUPTION;
-					}
+					$sth->finish();
+				} else {
+					say("Prepare failed: ".$dbh->errrstr());
+					return STATUS_DATABASE_CORRUPTION;
 				}
 			}
 		}
@@ -350,11 +348,22 @@ sub report {
 
 	close(MYSQLD);
 
+	# 
+	# We reap the process we spawned to consume the server error log
+	# If there have been any log messages such as "table X is marked as crashed", then
+	# the eater process will exit with STATUS_RECOVERY_FAILURE which we will pass to the caller.
+	#
+	
+
+	waitpid($eater_pid, &POSIX::WNOHANG());
+	my $eater_status = $?;
+	if ($eater_status > -1) {
+		$recovery_status = $eater_status >> 8 if $eater_status > $recovery_status;
+	}
+
 	if ($recovery_status > STATUS_OK) {
 		say("Recovery has failed.");
 		return $recovery_status;
-	} elsif ($reporter->serverVariable('falcon_error_inject') ne '') {
-		return STATUS_SERVER_KILLED;
 	} else {
 		return STATUS_OK;
 	}
@@ -371,9 +380,13 @@ sub eater {
 		while (<$fh>) {
 			$_ =~ s{[\r\n]}{}siog;
 			say($_);
+			if ($_ =~ m{corrupt|repaired|invalid|crashed}sio) {
+				say ("Server stderr line '$_' indicates recovery failure.");
+				exit(STATUS_RECOVERY_FAILURE);
+			}
 		}
 
-		exit(0);
+		exit(STATUS_OK);
 	}
 }
 
