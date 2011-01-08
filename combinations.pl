@@ -60,6 +60,8 @@ eval ($config_text);
 die "Unable to load $config_file: $@" if $@;
 
 mkdir($vardir);
+system("bzr version-info $basedir");
+system("bzr log --limit=1");
 
 my $comb_count = $#$combinations + 1;
 
