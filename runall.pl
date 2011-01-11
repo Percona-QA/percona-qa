@@ -258,6 +258,20 @@ foreach my $server_id (0..1) {
 	push @mtr_options, "--mysqld=--loose-innodb-status-file=1";
 	push @mtr_options, "--mysqld=--master-retry-count=65535";
 
+	# Some options to reduce mysqld memory usage
+
+	push @mtr_options, "--mysqld=--loose-key-buffer-size=4M";
+	push @mtr_options, "--mysqld=--loose-innodb-buffer-pool-size=4M";
+	push @mtr_options, "--mysqld=--loose-innodb-additional-mem-pool-size=4M";
+	push @mtr_options, "--mysqld=--loose-maria-pagecache-buffer-size=4M";
+	push @mtr_options, "--mysqld=--loose-maria-sort-buffer-size=4M";
+	push @mtr_options, "--mysqld=--loose-aria-pagecache-buffer-size=4M";
+	push @mtr_options, "--mysqld=--loose-aria-sort-buffer-size=4M";
+	push @mtr_options, "--mysqld=--loose-myisam-sort-buffer-size=4M";
+	push @mtr_options, "--mysqld=--loose-pbxt_index_cache_size=4M";
+	push @mtr_options, "--mysqld=--loose-pbxt_log_cache_size=4M";
+	push @mtr_options, "--mysqld=--loose-pbxt_record_cache_size=4M";
+
 	push @mtr_options, "--start-dirty" if defined $start_dirty;
 	push @mtr_options, "--gcov" if $lcov;
 
