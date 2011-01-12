@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
+
+#
+# The point of this grammar is to test repeatable read for transactional storage
+# engines. It is designed to be used with the SelectStability validator.
+# See http://forge.mysql.com/wiki/RandomQueryGeneratorValidators for more info.
+#
 
 query_init:
 	START TRANSACTION ;
