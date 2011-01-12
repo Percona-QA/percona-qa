@@ -38,7 +38,9 @@ call:
 
 dml:
 	update | 
-#	delete |	# bug46746
+        # Bug#46746 Innodb transactional consistency is broken with UPDATE + DELETE
+        # Disabled: DELETE
+        # delete |
 	insert_select ;
 
 update:
@@ -77,7 +79,7 @@ operator:
 
 ddl:
 	table_ddl |
-#	function_ddl |	# bug48246
+	function_ddl |
 	table_ddl |
 	view_ddl |
 	procedure_ddl |
@@ -101,8 +103,8 @@ trigger_ddl:
 	pick_trigger_name drop_trigger ; create_trigger ;
 
 view_ddl:
-	pick_view_name create_view | pick_view_name create_view | pick_view_name create_view ;
-	# pick_view_name alter_view | pick_view_name drop_view ; create_view ;	# bug 49891 
+	pick_view_name create_view | pick_view_name create_view | pick_view_name create_view |
+        pick_view_name alter_view | pick_view_name drop_view ; create_view ;
 
 pick_function_name:
 	{ $function_name = 'func_'.$prng->int(1,3) ; return undef } ;
@@ -127,20 +129,16 @@ procedure_name:
 	{ 'proc_'.$prng->int(1,3) } ;
 
 create_function:
-	CREATE FUNCTION $function_name (in1 INTEGER) RETURNS INTEGER deterministic function_body ;
+	CREATE FUNCTION $function_name (in1 INTEGER) RETURNS INTEGER function_body ;
 
 create_procedure:
 	CREATE PROCEDURE $procedure_name (INOUT inout1 INT) procedure_body ;
 
 create_table:
-	CREATE temporary TABLE $table_name ( `col_int_key` INTEGER, KEY (`col_int_key`) ) ENGINE= engine select ;
-
-engine:
-	MyISAM | InnoDB | MEMORY ;
+	CREATE temporary TABLE $table_name ( `col_int_key` INTEGER, KEY (`col_int_key`) ) select ;
 
 create_view:
-	CREATE ALGORITHM = view_algorithm VIEW $view_name AS select ;
-	# OR REPLACE 	# bug 49891
+	CREATE OR REPLACE ALGORITHM = view_algorithm VIEW $view_name AS select ;
 
 alter_view:
 	ALTER ALGORITHM = view_algorithm VIEW $view_name AS select ;
@@ -186,6 +184,3 @@ function_body:
 procedure_body:
 	BEGIN SELECT COUNT(DISTINCT select_item ) INTO inout1 FROM join_list where ; END |
 	BEGIN SELECT select_item FROM join_list where ; END ;
-
-deterministic:
-	| DETERMINISTIC | NOT DETERMINISTIC ;
