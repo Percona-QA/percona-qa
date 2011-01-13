@@ -114,7 +114,7 @@ sub report {
 		if (-e $reporter->serverVariable('basedir')."/../storage/maria/aria_read_log") {
 			$aria_read_log_path = $reporter->serverVariable('basedir')."/../storage/maria/aria_read_log";
 		} else {
-			$aria_read_log_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_read_log";
+			$aria_read_log_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_read_log";			
 		}
 
 		my $aria_chk_path;
@@ -127,11 +127,11 @@ sub report {
 
 		chdir($recovery_datadir_aria);
 
-		my $aria_read_log_result = system("$aria_read_log_path --page_buffer_size=16M -l $recovery_datadir_aria --apply --check --silent");
+		my $aria_read_log_result = system("$aria_read_log_path -l $recovery_datadir_aria --apply --check --silent");
 		return STATUS_RECOVERY_FAILURE if $aria_read_log_result > 0;
 		say("$aria_read_log_path apparently returned success");
 
-		my $aria_chk_result = system("$aria_chk_path --page_buffer_size=16M --sort_buffer_size=16M --extend-check */*.MAI");
+		my $aria_chk_result = system("$aria_chk_path --extend-check */*.MAI");
 		return STATUS_RECOVERY_FAILURE if $aria_chk_result > 0;
 		say("$aria_chk_path apparently returned success");
 	} else {
@@ -155,17 +155,7 @@ sub report {
 		'--datadir="'.$recovery_datadir.'"',
 		'--socket="'.$socket.'"',
 		'--port='.$port,
-		'--loose-plugin-dir='.$plugin_dir,
-
-		# Various options to reduce mysqld memory usage
-		'--loose-key-buffer-size=16M',
-		'--loose-myisam-sort-buffer-size=16M',
-		'--loose-innodb-buffer-pool-size=16M',
-		'--loose-innodb-additional-mem-pool-size=16M',
-		'--loose-maria-pagecache-buffer-size=16M',
-		'--loose-maria-sort-buffer-size=16M',
-		'--loose-aria-pagecache-buffer-size=16M',
-		'--loose-aria-sort-buffer-size=16M'
+		'--loose-plugin-dir='.$plugin_dir
 	);
 
 	if ($binlog_on =~ m{YES|ON}sio) {
