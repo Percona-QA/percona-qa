@@ -77,7 +77,7 @@ if (osWindows()) {
 	#system("time /T");
 
 	# Path to MySQL releases used for comparison runs.
-	$basedirRelease50 = 'G:\mysql-releases\mysql-5.0.87-win32'; # loki06
+	$basedirRelease50 = 'G:\mysql-releases\mysql-5.0.91-win32'; # loki06
 } elsif (osSolaris()) {
 	# For libmysqlclient
 	$ENV{LD_LIBRARY_PATH}=$ENV{LD_LIBRARY_PATH}.':/export/home/pb2/scripts/lib/';
