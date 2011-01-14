@@ -30,7 +30,9 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $original_query, $executor) = @_;
 
-	return STATUS_WONT_HANDLE if $original_query !~ m{SELECT}io;
+	return STATUS_WONT_HANDLE if $original_query !~ m{SELECT|HANDLER}sio;
+	# Certain HANDLER statements can not be re-run as prepared because they advance a cursor
+	return STATUS_WONT_HANDLE if $original_query =~ m{PREPARE|OPEN|CLOSE|PREV|NEXT}sio;
 
 	return [
 		"PREPARE prep_stmt_$$ FROM ".$executor->dbh()->quote($original_query),
