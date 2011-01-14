@@ -84,7 +84,7 @@ sub validate {
 		$database_created = 1;
 	}
 
-	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio;
+	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*(SELECT|HANDLER)}sio;
 	return STATUS_WONT_HANDLE if defined $results->[0]->warnings();
 	return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK;
 

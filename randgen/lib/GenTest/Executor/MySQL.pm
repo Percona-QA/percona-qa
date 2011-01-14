@@ -205,6 +205,8 @@ use constant	ER_MIX_OF_GROUP_FUNC_AND_FIELDS		=> 1140;
 
 # The PREPARE already failed
 use constant  	ER_UNKNOWN_STMT_HANDLER => 1243 ;
+use constant	ER_NEED_REPREPARE	=> 1615 ;
+
 # Table mentioned more than once in statement processing a table list.
 use constant  	ER_NONUNIQ_TABLE	=> 1066 ;
 # Base table of a view was modified or dropped or ..
@@ -250,6 +252,7 @@ use constant  	ER_CANT_UPDATE_WITH_READLOCK => 1223 ;
 use constant	ER_GET_ERRNO			=> 1030;
 use constant	ER_UNKNOWN_STORAGE_ENGINE 	=> 1286;
 use constant	ER_KEY_NOT_FOUND		=> 1032;
+use constant	ER_ILLEGAL_HA			=> 1031;
 
 # Database corruption
 
@@ -379,6 +382,7 @@ my %err2type = (
 	ER_MIX_OF_GROUP_FUNC_AND_FIELDS()	=> STATUS_SEMANTIC_ERROR,
 
 	ER_UNKNOWN_STMT_HANDLER()		=> STATUS_SEMANTIC_ERROR,
+	ER_NEED_REPREPARE()			=> STATUS_SEMANTIC_ERROR,
 	ER_CANT_UPDATE_WITH_READLOCK()		=> STATUS_SEMANTIC_ERROR,
 	ER_NONUNIQ_TABLE()			=> STATUS_SEMANTIC_ERROR,
 	ER_VIEW_INVALID()			=> STATUS_SEMANTIC_ERROR,
@@ -421,6 +425,7 @@ my %err2type = (
 	ER_CRASHED2()		=> STATUS_DATABASE_CORRUPTION,
 	ER_UNEXPECTED_EOF()	=> STATUS_DATABASE_CORRUPTION,
 #	ER_SP_PROC_TABLE_CORRUPT() => STATUS_DATABASE_CORRUPTION,	# this error is bogus due to bug # 47870
+	ER_ILLEGAL_HA()		=> STATUS_SEMANTIC_ERROR,
 
 	ER_BACKUP_SEND_DATA1()	=> STATUS_BACKUP_FAILURE,
 	ER_BACKUP_SEND_DATA2()	=> STATUS_BACKUP_FAILURE,
