@@ -34,6 +34,8 @@ use constant RESULT_START_TIME		=> 7;
 use constant RESULT_END_TIME		=> 8;
 use constant RESULT_WARNINGS		=> 9;
 use constant RESULT_COLUMN_NAMES	=> 10;
+use constant RESULT_MATCHED_ROWS	=> 11;
+use constant RESULT_CHANGED_ROWS	=> 12;
 
 1;
 
@@ -50,7 +52,9 @@ sub new {
 		'start_time'	=> RESULT_START_TIME,
 		'end_time'	=> RESULT_END_TIME,
 		'warnings'	=> RESULT_WARNINGS,
-		'column_names'	=> RESULT_COLUMN_NAMES
+		'column_names'	=> RESULT_COLUMN_NAMES,
+		'matched_rows'	=> RESULT_MATCHED_ROWS,
+		'changed_rows'	=> RESULT_CHANGED_ROWS
 	}, @_);
 }
 
@@ -76,6 +80,14 @@ sub sqlstate {
 
 sub affectedRows {
 	return $_[0]->[RESULT_AFFECTED_ROWS];
+}
+
+sub matchedRows {
+	return $_[0]->[RESULT_MATCHED_ROWS];
+}
+
+sub changedRows {
+	return $_[0]->[RESULT_CHANGED_ROWS];
 }
 
 sub data {

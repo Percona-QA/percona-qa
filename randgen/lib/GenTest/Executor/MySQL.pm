@@ -543,6 +543,10 @@ sub execute {
 	}
 
 	my $affected_rows = $sth->execute();
+
+	my $mysql_info = $dbh->{'mysql_info'};
+	my ($matched_rows, $changed_rows) = $mysql_info =~ m{^Rows matched:\s+(\d+)\s+Changed:\s+(\d+)}sgio;
+
 	my $column_names = $sth->{NAME} if $sth->{NUM_OF_FIELDS} > 0;
 
 	my $end_time = Time::HiRes::time();
@@ -601,6 +605,8 @@ sub execute {
 			query		=> $query,
 			status		=> STATUS_OK,
 			affected_rows	=> $affected_rows,
+			matched_rows	=> $matched_rows,
+			changed_rows	=> $changed_rows,
 			start_time	=> $start_time,
 			end_time	=> $end_time
 		);
