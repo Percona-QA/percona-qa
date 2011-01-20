@@ -22,22 +22,22 @@ update:
 # region -> nation -> supplier -> partsupp -> lineitem -> orders -> customer
 
 update_r_n_s_ps_l_o_c:
-	UPDATE ignore join_r_n_s_ps_l_o_c SET field_r_n_s_ps_l_o_c_nonunique = field_r_n_s_ps_l_o_c_nonunique WHERE where_r_n_s_ps_l_o_c ;
+	UPDATE ignore join_r_n_s_ps_l_o_c SET field_r_n_s_ps_l_o_c_nonunique = DEFAULT , field_r_n_s_ps_l_o_c_nonunique = DEFAULT WHERE where_r_n_s_ps_l_o_c ;
 
 # part -> partsupp -> supplier -> nation -> region
 
 update_p_ps_s_n_r:
-	UPDATE ignore join_p_ps_s_n_r SET field_p_ps_s_n_r_nonunique = field_p_ps_s_n_r_nonunique WHERE where_p_ps_s_n_r ;
+	UPDATE ignore join_p_ps_s_n_r SET field_p_ps_s_n_r_nonunique = DEFAULT , field_p_ps_s_n_r_nonunique = DEFAULT WHERE where_p_ps_s_n_r ;
 
 # part -> partsupp -> lineitem -> orders -> customer -> region -> nation -> supplier
 
 update_p_ps_l_o_c_r_n_s:
-	UPDATE ignore join_p_ps_l_o_c_r_n_s SET field_p_ps_l_o_c_r_n_s_nonunique = field_p_ps_l_o_c_r_n_s_nonunique WHERE where_p_ps_l_o_c_r_n_s ;
+	UPDATE ignore join_p_ps_l_o_c_r_n_s SET field_p_ps_l_o_c_r_n_s_nonunique = DEFAULT , field_p_ps_l_o_c_r_n_s_nonunique = DEFAULT WHERE where_p_ps_l_o_c_r_n_s ;
 
 # part -> partsupp -> lineitem -> orders -> customer with currency fields only
 
 update_p_ps_s_l_o_c:
-	UPDATE ignore join_p_ps_s_l_o_c SET field_p_ps_s_l_o_c_nonunique = field_p_ps_s_l_o_c_nonunique WHERE where_p_ps_s_l_o_c ;
+	UPDATE ignore join_p_ps_s_l_o_c SET field_p_ps_s_l_o_c_nonunique = DEFAULT , field_p_ps_s_l_o_c_nonunique = DEFAULT WHERE where_p_ps_s_l_o_c ;
 
 ignore:
 	| | | | | | ;
