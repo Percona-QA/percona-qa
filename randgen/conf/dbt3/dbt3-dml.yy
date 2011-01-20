@@ -3,8 +3,11 @@
 # set. It is derived from dbt3-joins.yy and is used in conjunction with the 
 # DML Validator.
 #
-# It must operate in transactional environment due to the way the DML Validator
+# * The test must operate in transactional environment due to the way the DML Validator
 # operates
+#
+# * We use only non-unique, non-PK fields in the UPDATE list in order to prevent
+# "duplicate key" errors
 #
 
 query_init:
@@ -14,28 +17,27 @@ query:
 	START TRANSACTION ; update ;
 
 update:
-	update_r_n_s_ps_l_o_c | update_p_ps_s_n_r | update_p_ps_l_o_c_r_n_s | update_p_ps_s_l_o_c;
+	update_r_n_s_ps_l_o_c | update_p_ps_s_n_r | update_p_ps_l_o_c_r_n_s | update_p_ps_s_l_o_c ;
 
 # region -> nation -> supplier -> partsupp -> lineitem -> orders -> customer
 
 update_r_n_s_ps_l_o_c:
-	UPDATE ignore join_r_n_s_ps_l_o_c SET field_r_n_s_ps_l_o_c = field_r_n_s_ps_l_o_c * field_r_n_s_ps_l_o_c WHERE where_r_n_s_ps_l_o_c ;
+	UPDATE ignore join_r_n_s_ps_l_o_c SET field_r_n_s_ps_l_o_c_nonunique = field_r_n_s_ps_l_o_c_nonunique WHERE where_r_n_s_ps_l_o_c ;
 
 # part -> partsupp -> supplier -> nation -> region
 
 update_p_ps_s_n_r:
-	UPDATE ignore join_p_ps_s_n_r SET field_p_ps_s_n_r = field_p_ps_s_n_r * field_p_ps_s_n_r WHERE where_p_ps_s_n_r ;
+	UPDATE ignore join_p_ps_s_n_r SET field_p_ps_s_n_r_nonunique = field_p_ps_s_n_r_nonunique WHERE where_p_ps_s_n_r ;
 
 # part -> partsupp -> lineitem -> orders -> customer -> region -> nation -> supplier
 
 update_p_ps_l_o_c_r_n_s:
-	UPDATE ignore join_p_ps_l_o_c_r_n_s SET field_p_ps_l_o_c_r_n_s = field_p_ps_l_o_c_r_n_s * field_p_ps_s_n_r WHERE where_p_ps_l_o_c_r_n_s ;
+	UPDATE ignore join_p_ps_l_o_c_r_n_s SET field_p_ps_l_o_c_r_n_s_nonunique = field_p_ps_l_o_c_r_n_s_nonunique WHERE where_p_ps_l_o_c_r_n_s ;
 
 # part -> partsupp -> lineitem -> orders -> customer with currency fields only
-# This allows for a meaningful HAVING condition because the type and the spirit of values in the SELECT list will be known
 
 update_p_ps_s_l_o_c:
-	UPDATE ignore join_p_ps_s_l_o_c SET field_p_ps_s_l_o_c = currency_field_p_ps_s_l_o_c * currency_field_p_ps_s_l_o_c WHERE where_p_ps_s_l_o_c ;
+	UPDATE ignore join_p_ps_s_l_o_c SET field_p_ps_s_l_o_c_nonunique = field_p_ps_s_l_o_c_nonunique WHERE where_p_ps_s_l_o_c ;
 
 ignore:
 	| | | | | | ;
@@ -75,26 +77,17 @@ lineitem_orders_join_cond:
 lineitem_date_field:
 	l_shipDATE | l_commitDATE | l_receiptDATE ;
 
-select_list_r_n_s_ps_l_o_c:
-	field_r_n_s_ps_l_o_c , field_r_n_s_ps_l_o_c | field_r_n_s_ps_l_o_c , select_list_r_n_s_ps_l_o_c ;
+field_r_n_s_ps_l_o_c_nonunique:
+	field_r_nonunique | field_n_nonunique | field_s_nonunique | field_ps_nonunique | field_l_nonunique | field_o_nonunique | field_c_nonunique ;
 
-field_r_n_s_ps_l_o_c:
-	field_r | field_n | field_s | field_ps | field_l | field_o | field_c ;
+field_p_ps_s_n_r_nonunique:
+	field_p_nonunique | field_ps_nonunique | field_s_nonunique | field_n_nonunique | field_r_nonunique ;
 
-select_list_p_ps_s_n_r:
-	field_p_ps_s_n_r , field_p_ps_s_n_r | field_p_ps_s_n_r , select_list_p_ps_s_n_r ;
+field_p_ps_l_o_c_r_n_s_nonunique:
+	field_p_nonunique | field_ps_nonunique | field_l_nonunique | field_o_nonunique | field_c_nonunique | field_r_nonunique | field_n_nonunique | field_s_nonunique ;
 
-field_p_ps_s_n_r:
-	field_p | field_ps | field_s | field_n | field_r;
-
-select_list_p_ps_l_o_c_r_n_s:
-	field_p_ps_l_o_c_r_n_s , field_p_ps_l_o_c_r_n_s | field_p_ps_l_o_c_r_n_s , select_list_p_ps_l_o_c_r_n_s ;
-
-field_p_ps_l_o_c_r_n_s:
-	field_p | field_ps | field_l | field_o | field_c | field_r | field_n | field_s ;
-
-field_p_ps_s_l_o_c:
-	field_p | field_ps | field_s | field_l | field_o | field_c |;
+field_p_ps_s_l_o_c_nonunique:
+	field_p_nonunique | field_ps_nonunique | field_s_nonunique | field_l_nonunique | field_o_nonunique | field_c_nonunique ;
 
 currency_field_p_ps_s_l_o_c:
 	p_retailprice | ps_supplycost | l_extendedprice | o_totalprice | s_acctbal | c_acctbal ;
@@ -122,6 +115,34 @@ field_n:
 
 field_r:
 	r_regionkey ;
+
+#
+
+field_p_nonunique:
+	p_name | p_mfgr | p_brand | p_type | p_size | p_container | p_retailprice | p_comment ;
+
+field_s_nonunique:
+	s_name | s_address | s_nationkey | s_phone | s_acctbal | s_comment ;
+
+field_ps_nonunique:
+	ps_availqty | ps_supplycost | ps_comment ;
+
+field_l_nonunique:
+	l_partkey | l_suppkey | l_quantity | l_extendedprice | l_discount | l_tax | l_returnflag | l_linestatus | l_shipDATE | l_commitDATE | l_receiptDATE | l_shipinstruct | l_shipmode | l_comment ;
+
+field_o_nonunique:
+	o_custkey | o_orderstatus | o_totalprice | o_orderDATE | o_orderpriority | o_clerk | o_shippriority | o_comment ;
+
+field_c_nonunique:
+	c_name | c_address | c_nationkey | c_phone | c_acctbal | c_mktsegment | c_comment ;
+
+field_n_nonunique:
+	n_name | n_regionkey | n_comment ;
+
+field_r_nonunique:
+	r_name | r_comment ;
+
+#
 
 aggregate:
 	COUNT( distinct | SUM( distinct | MIN( | MAX( ;
