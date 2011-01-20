@@ -607,6 +607,7 @@ sub execute {
 			affected_rows	=> $affected_rows,
 			matched_rows	=> $matched_rows,
 			changed_rows	=> $changed_rows,
+			info		=> $mysql_info,
 			start_time	=> $start_time,
 			end_time	=> $end_time
 		);

@@ -36,6 +36,7 @@ use constant RESULT_WARNINGS		=> 9;
 use constant RESULT_COLUMN_NAMES	=> 10;
 use constant RESULT_MATCHED_ROWS	=> 11;
 use constant RESULT_CHANGED_ROWS	=> 12;
+use constant RESULT_INFO		=> 13;
 
 1;
 
@@ -54,7 +55,8 @@ sub new {
 		'warnings'	=> RESULT_WARNINGS,
 		'column_names'	=> RESULT_COLUMN_NAMES,
 		'matched_rows'	=> RESULT_MATCHED_ROWS,
-		'changed_rows'	=> RESULT_CHANGED_ROWS
+		'changed_rows'	=> RESULT_CHANGED_ROWS,
+		'info'		=> RESULT_INFO
 	}, @_);
 }
 
@@ -88,6 +90,10 @@ sub matchedRows {
 
 sub changedRows {
 	return $_[0]->[RESULT_CHANGED_ROWS];
+}
+
+sub info {
+	return $_[0]->[RESULT_INFO];
 }
 
 sub data {
