@@ -59,58 +59,74 @@ sub transformExecuteValidate {
 
 	$transformer->[TRANSFORMER_QUERIES_PROCESSED]++;
 
-	my $transformed_query = $transformer->transform($original_query, $executor, $original_result);
-	my @transformed_queries;
-	my @transformed_results;
-	my $transform_outcome;
+	my $transformer_output = $transformer->transform($original_query, $executor, $original_result);
+
+	my $transform_blocks;
 
 	if (
-		($transformed_query eq STATUS_OK) ||
-		($transformed_query == STATUS_WONT_HANDLE)
+		($transformer_output eq STATUS_OK) ||
+		($transformer_output == STATUS_WONT_HANDLE)
 	) {
 		return STATUS_OK;
-	} elsif ($transformed_query =~ m{^\d+$}sgio) {
-		return $transformed_query;	# Error was returned and no queries
-	} elsif (ref($transformed_query) eq 'ARRAY') {
-		# Transformer returned several queries, execute each one independently
-		@transformed_queries = @$transformed_query;
+	} elsif ($transformer_output =~ m{^\d+$}sgio) {
+		return $transformer_output;	# Error was returned and no queries
+	} elsif (ref($transformer_output) eq 'ARRAY') {
+		if (ref($transformer_output->[0]) eq 'ARRAY') {
+			# Transformation produced more than one block of queries
+			$transform_blocks = $transformer_output;
+		} else {
+			# Transformation produced a single block of queries
+			$transform_blocks = [ $transformer_output ];
+		}	
 	} else {
-		@transformed_queries = ($transformed_query);
+		# Transformation produced a single query, convert it to a single block
+		$transform_blocks = [ [ $transformer_output ] ];
 	}
 
-	$transformed_queries[0] =  "/* ".ref($transformer)." */ ".$transformed_queries[0];
+	foreach my $transform_block (@$transform_blocks) {
+		my @transformed_queries = @$transform_block;
+		my @transformed_results;
+		my $transform_outcome;
+	
+		$transformed_queries[0] =  "/* ".ref($transformer)." */ ".$transformed_queries[0];
 
-	foreach my $transformed_query_part (@transformed_queries) {
-		my $part_result = $executor->execute($transformed_query_part);
+		foreach my $transformed_query_part (@transformed_queries) {
+			my $part_result = $executor->execute($transformed_query_part);
+			if (
+				($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
+			) {
+				say("Transform ".ref($transformer)." failed with a syntactic or semantic error.");
+				say("Offending query is: $transformed_query_part;");
+				say("Original query is: $original_query;");
+				return STATUS_ENVIRONMENT_FAILURE;
+			} elsif ($part_result->status() != STATUS_OK) {
+				return $part_result->status();
+			} elsif (defined $part_result->data()) {
+				my $part_outcome = $transformer->validate($original_result, $part_result);
+				$transform_outcome = $part_outcome if (($part_outcome > $transform_outcome) || (! defined $transform_outcome));
+				push @transformed_results, $part_result if ($part_outcome != STATUS_WONT_HANDLE) && ($part_outcome != STATUS_OK);
+			}
+		}
+
 		if (
-			($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
+			(not defined $transform_outcome) ||
+			($transform_outcome == STATUS_WONT_HANDLE)
 		) {
-			say("Transform ".ref($transformer)." failed with a syntactic or semantic error.");
-			say("Offending query is: $transformed_query_part;");
-			say("Original query is: $original_query;");
+			say("Transform ".ref($transformer)." produced no query which could be validated ($transform_outcome).");
+			say("The following queries were produced");
+			print Dumper \@transformed_queries;
 			return STATUS_ENVIRONMENT_FAILURE;
-		} elsif ($part_result->status() != STATUS_OK) {
-			return $part_result->status();
-		} elsif (defined $part_result->data()) {
-			my $part_outcome = $transformer->validate($original_result, $part_result);
-			$transform_outcome = $part_outcome if (($part_outcome > $transform_outcome) || (! defined $transform_outcome));
+		}
 
-			push @transformed_results, $part_result if ($part_outcome != STATUS_WONT_HANDLE) && ($part_outcome != STATUS_OK);
+		$transformer->[TRANSFORMER_QUERIES_TRANSFORMED]++;
+
+		if ($transform_outcome != STATUS_OK) {
+			return ($transform_outcome, \@transformed_queries, \@transformed_results);
 		}
 	}
+	
+	return STATUS_OK;
 
-	if (
-		(not defined $transform_outcome) ||
-		($transform_outcome == STATUS_WONT_HANDLE)
-	) {
-		say("Transform ".ref($transformer)." produced no query which could be validated ($transform_outcome).");
-		say("The following queries were produced");
-		print Dumper \@transformed_queries;
-		return STATUS_ENVIRONMENT_FAILURE;
-	} else {
-		$transformer->[TRANSFORMER_QUERIES_TRANSFORMED]++;
-		return ($transform_outcome, \@transformed_queries, \@transformed_results);
-	}
 }
 
 sub validate {
