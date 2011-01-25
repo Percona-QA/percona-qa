@@ -31,14 +31,25 @@ use IPC::Open2;
 use IPC::Open3;
 
 my $first_reporter;
+my $clone_done;
 my $client_basedir;
 
 sub monitor {
 	my $reporter = shift;
 
-	return STATUS_OK if defined $first_reporter;	
-	$first_reporter = $reporter;
+	# In case of two servers, we will be called twice.
+	# Only clone a slave when called for the master
 
+        $first_reporter = $reporter if not defined $first_reporter;
+        return STATUS_OK if $reporter ne $first_reporter;
+
+        my $pid = $reporter->serverInfo('pid');
+
+	return STATUS_OK if time() < ($reporter->testStart() + ($reporter->testDuration() / 2)) ;
+	return STATUS_OK if $clone_done == 1;
+
+	$clone_done = 1;
+	
 	my $basedir = $reporter->serverVariable('basedir');
 
 	foreach my $path ("$basedir/../client", "$basedir/../bin", "$basedir/client/RelWithDebInfo", "$basedir/client/Debug", "$basedir/client", "$basedir/bin") {
@@ -83,7 +94,8 @@ sub monitor {
 		'--log_error="'.$slave_datadir.'/clonedslave.err"',
 		'--datadir="'.$slave_datadir.'"',
 		'--port='.$slave_port,
-		'--loose-plugin-dir='.$plugin_dir
+		'--loose-plugin-dir='.$plugin_dir,
+		'--max-allowed-packet=20M'
 	);
 
 	foreach my $plugin (@$plugins) {
@@ -106,25 +118,14 @@ sub monitor {
 
 	$slave_dbh->do("CREATE DATABASE test");
 
-	my $mysqldump_command = $client_basedir.'/mysqldump -uroot --protocol=tcp --port='.$master_port.' --single-transaction --master-data test | sed -e \'s/\/home\/philips\/bzr\/maria-5.1-mwl136\/mysql-test\/var\/log\///g\' | '.$client_basedir.'/mysql -uroot --protocol=tcp --port='.$slave_port.' test';
+	my $mysqldump_command = $client_basedir.'/mysqldump --max_allowed_packet=1M --net_buffer_length=1M -uroot --protocol=tcp --port='.$master_port.' --single-transaction --master-data --databases test test1 | sed -e \'s/\/home\/philips\/bzr\/maria-5.1-mwl136\/mysql-test\/var\/log\///g\' | '.$client_basedir.'/mysql -uroot --max_allowed_packet=20M --protocol=tcp --port='.$slave_port.' test';
 	say("Executing ".$mysqldump_command) or die "Unable to run mysqldump: $!";
 	system($mysqldump_command);
-
+	say("Mysqldump done.");
 	$slave_dbh->do("START SLAVE");
+	say("Cloned slave started.");
 
-	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
-        say("Waiting for slave to catch up..., file $file, pos $pos .");
-	exit_test(STATUS_UNKNOWN_ERROR) if !defined $file;
-
-	my $wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
-
-	if (not defined $wait_result) {
-                say("MASTER_POS_WAIT() failed. Slave thread not running.");
-#		$slave_dbh->func('shutdown','admin');
-                return STATUS_REPLICATION_FAILURE;
-        }
-	
-	say("Slave caught up.");
+	return STATUS_OK;
 }
 
 sub report {
@@ -144,6 +145,24 @@ sub report {
 	my $master_port = $reporter->serverVariable('port');
 	my $slave_port = $master_port + 4;
 	my $master_dbh = DBI->connect($reporter->dsn());
+	my $slave_dbh = DBI->connect("dbi:mysql:user=root:host=127.0.0.1:port=".$slave_port, undef, undef, { RaiseError => 1 } );
+
+	$slave_dbh->do("START SLAVE");
+	say("Cloned slave started 2.");
+
+	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
+        say("Waiting for cloned slave to catch up..., file $file, pos $pos .");
+	exit_test(STATUS_UNKNOWN_ERROR) if !defined $file;
+
+	my $wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
+
+	if (not defined $wait_result) {
+                say("MASTER_POS_WAIT() failed. Cloned slave replication thread not running.");
+#		$slave_dbh->func('shutdown','admin');
+                return STATUS_REPLICATION_FAILURE;
+        }
+	
+	say("Cloned slave caught up.");
 		
 	my @dump_ports = ($master_port, $slave_port);
 
@@ -153,7 +172,7 @@ sub report {
                 say("Dumping server on port $dump_ports[$i]...");
 		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
 
-		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root test | sort > $dump_files[$i]") >> 8;
+		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root --databases test test1 | sort > $dump_files[$i]") >> 8;
 		return STATUS_ENVIRONMENT_FAILURE if $dump_result > 0;
         }
 
@@ -161,7 +180,7 @@ sub report {
 	my $diff_result = system("diff -u $dump_files[0] $dump_files[1]") >> 8;
 
 	if ($diff_result == 0) {
-		say("No differences were found between servers.");
+		say("No differences were found between master and cloned slave.");
         }
 
         foreach my $dump_file (@dump_files) {
