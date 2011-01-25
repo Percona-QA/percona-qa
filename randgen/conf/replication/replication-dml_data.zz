@@ -70,6 +70,6 @@ $fields = {
 $data = {
         numbers   => [ 'digit' , 'null' , undef ],
         strings   => [ 'letter' , 'english' , 'null' ],
-        blobs     => [ 'english', 'data' ],
+        blobs     => [ 'english', 'english', 'english', 'english', 'english', 'english', 'english', 'english', 'english', 'data' ],
         temporals => [ undef , 'null' , 'time' , 'date' , 'datetime' , 'year(2)' , 'year(4)' , 'timestamp' ]
 }
