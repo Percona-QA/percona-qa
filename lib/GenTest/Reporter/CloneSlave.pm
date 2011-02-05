@@ -95,7 +95,9 @@ sub monitor {
 		'--datadir="'.$slave_datadir.'"',
 		'--port='.$slave_port,
 		'--loose-plugin-dir='.$plugin_dir,
-		'--max-allowed-packet=20M'
+		'--max-allowed-packet=20M',
+		'--innodb',
+		'--sql_mode="NO_ENGINE_SUBSTITUTION"'
 	);
 
 	foreach my $plugin (@$plugins) {
@@ -103,7 +105,8 @@ sub monitor {
 	};
 
 	my $mysqld_command = $binary.' '.join(' ', @mysqld_options).' 2>&1';
-	say("Executing $mysqld_command.");
+	say("Starting a new mysqld for the cloned slave.");
+	say("$mysqld_command.");
 	my $mysqld_pid = open2(\*RDRFH, \*WTRFH, $mysqld_command);
 
 	sleep(10);
@@ -116,14 +119,25 @@ sub monitor {
 		MASTER_CONNECT_RETRY = 1
 	");
 
-	$slave_dbh->do("CREATE DATABASE test");
+#	$slave_dbh->do("CREATE DATABASE test");
 
-	my $mysqldump_command = $client_basedir.'/mysqldump --max_allowed_packet=1M --net_buffer_length=1M -uroot --protocol=tcp --port='.$master_port.' --single-transaction --master-data --databases test test1 | sed -e \'s/\/home\/philips\/bzr\/maria-5.1-mwl136\/mysql-test\/var\/log\///g\' | '.$client_basedir.'/mysql -uroot --max_allowed_packet=20M --protocol=tcp --port='.$slave_port.' test';
-	say("Executing ".$mysqldump_command) or die "Unable to run mysqldump: $!";
+	my $dump_file = $slave_datadir.'/'.time().'.dump';
+	say("Dumping master to $dump_file.");
+	my $mysqldump_command = $client_basedir.'/mysqldump --max_allowed_packet=25M --net_buffer_length=1M -uroot --protocol=tcp --port='.$master_port.' --single-transaction --master-data --skip-tz-utc --databases test test1 > '.$dump_file;
+	say($mysqldump_command);
 	system($mysqldump_command);
+	return STATUS_ENVIRONMENT_FAILURE if $? != 0;
 	say("Mysqldump done.");
+
+	say("Loading dump from $dump_file into cloned slave.");
+	my $mysql_command = $client_basedir.'/mysql -uroot --max_allowed_packet=30M --protocol=tcp --port='.$slave_port.' < '.$dump_file;
+	say($mysql_command);
+	system($mysql_command);
+	return STATUS_ENVIRONMENT_FAILURE if $? != 0;
+	say("Mysql done.");
+
+	say("Issuing START SLAVE on the cloned slave.");
 	$slave_dbh->do("START SLAVE");
-	say("Cloned slave started.");
 
 	return STATUS_OK;
 }
@@ -147,8 +161,8 @@ sub report {
 	my $master_dbh = DBI->connect($reporter->dsn());
 	my $slave_dbh = DBI->connect("dbi:mysql:user=root:host=127.0.0.1:port=".$slave_port, undef, undef, { RaiseError => 1 } );
 
+	say("Issuing START SLAVE on the cloned slave.");
 	$slave_dbh->do("START SLAVE");
-	say("Cloned slave started 2.");
 
 	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
         say("Waiting for cloned slave to catch up..., file $file, pos $pos .");
