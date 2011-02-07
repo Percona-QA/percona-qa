@@ -334,6 +334,9 @@ sub next {
 		} elsif (($_ eq '_field_indexed') || ($_ eq '_field_key')) {
 			my $fields_indexed = $executors->[0]->metaColumnsType('indexed',$last_table, $last_database);
 			$_ = '`'.$prng->arrayElement($fields_indexed).'`';
+		} elsif (($_ eq '_field_unindexed') || ($_ eq '_field_nokey')) {
+			my $fields_unindexed = $executors->[0]->metaColumnsTypeNot('indexed',$last_table, $last_database);
+			$_ = '`'.$prng->arrayElement($fields_unindexed).'`';
 		} elsif ($_ eq '_collation') {
 			my $collations = $executors->[0]->metaCollations();
 			$_ = '_'.$prng->arrayElement($collations);
