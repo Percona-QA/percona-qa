@@ -122,7 +122,7 @@ sub validate {
     $candidate_queries++;
 
     return STATUS_WONT_HANDLE if $query !~ m{^\s*SELECT}sio;
-    return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK || $results->[0]->status() != STATUS_OK;
+    return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK || $results->[1]->status() != STATUS_OK;
 
     # First check the original query.
     # This will also repeat the query if the constant QUERY_REPEATS is > 0.
