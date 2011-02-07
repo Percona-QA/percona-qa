@@ -34,6 +34,15 @@ my $first_reporter;
 my $clone_done;
 my $client_basedir;
 
+#
+# We abort the test in case not enough binlog events have been generated
+# since the test can contain FLUSH , we check for either enough binlogs
+# OR enough events in last binlog .
+#
+
+use constant MINIMUM_BINLOG_COUNT	=> 10;
+use constant MINIMUM_BINLOG_SIZE	=> 1000000;
+
 sub monitor {
 	my $reporter = shift;
 
@@ -119,10 +128,18 @@ sub monitor {
 		MASTER_CONNECT_RETRY = 1
 	");
 
-#	$slave_dbh->do("CREATE DATABASE test");
+	my ($binlog_file, $binlog_pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
+	my ($binlog_id) = $binlog_file =~ m{(\d+)}sgio;
+	if (
+		(not defined $binlog_file) || (not defined $binlog_id) || (not defined $binlog_pos) ||
+		(($binlog_id < MINIMUM_BINLOG_COUNT) && ($binlog_pos < MINIMUM_BINLOG_SIZE))
+	) {
+		say("The master has not generated sufficiently many binlog events: binlog_file = $binlog_file; binlog_pos = $binlog_pos; binlog_id = $binlog_id.");
+		return STATUS_ENVIRONMENT_FAILURE;
+	}
 
 	my $dump_file = $slave_datadir.'/'.time().'.dump';
-	say("Dumping master to $dump_file.");
+	say("Dumping master to $dump_file, someplace around $binlog_file:$binlog_pos.");
 	my $mysqldump_command = $client_basedir.'/mysqldump --max_allowed_packet=25M --net_buffer_length=1M -uroot --protocol=tcp --port='.$master_port.' --single-transaction --master-data --skip-tz-utc --databases test test1 > '.$dump_file;
 	say($mysqldump_command);
 	system($mysqldump_command);
@@ -164,15 +181,14 @@ sub report {
 	say("Issuing START SLAVE on the cloned slave.");
 	$slave_dbh->do("START SLAVE");
 
-	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
-        say("Waiting for cloned slave to catch up..., file $file, pos $pos .");
-	exit_test(STATUS_UNKNOWN_ERROR) if !defined $file;
+	my ($binlog_file, $binlog_pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
+        say("Waiting for cloned slave to catch up..., file $binlog_file, pos $binlog_pos .");
+	exit_test(STATUS_UNKNOWN_ERROR) if !defined $binlog_file;
 
-	my $wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
+	my $wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$binlog_file',$binlog_pos)");
 
 	if (not defined $wait_result) {
                 say("MASTER_POS_WAIT() failed. Cloned slave replication thread not running.");
-#		$slave_dbh->func('shutdown','admin');
                 return STATUS_REPLICATION_FAILURE;
         }
 	
@@ -201,10 +217,7 @@ sub report {
                 unlink($dump_file);
         }
 
-#	$slave_dbh->func('shutdown','admin');
-
 	return $diff_result == 0 ? STATUS_OK : STATUS_REPLICATION_FAILURE;
-
 }
 
 sub type {
