@@ -109,7 +109,7 @@ sub monitor {
 	say("$mysqld_command.");
 	my $mysqld_pid = open2(\*RDRFH, \*WTRFH, $mysqld_command);
 
-	sleep(10);
+	sleep(15);
 	my $slave_dbh = DBI->connect("dbi:mysql:user=root:host=127.0.0.1:port=".$slave_port, undef, undef, { RaiseError => 1 } );
 	$slave_dbh->do(my $change_master_sql = "
 		CHANGE MASTER TO
