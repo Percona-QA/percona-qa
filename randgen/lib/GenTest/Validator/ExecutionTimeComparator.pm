@@ -83,6 +83,9 @@ my $different_plans = 0;    # Number of queries with different query plan from E
 my $zero_queries = 0;       # Number of queries with execution time of zero
 my $quick_queries = 0;      # Number of queries with execution times lower than MIN_DURATION for both servers
 my $over_max_rows = 0;      # Number of queries that produce more than MAX_ROWS rows
+my $non_status_ok = 0;      # Number of failed queries (status != STATUS_OK)
+my $non_selects = 0;        # Number of non-SELECT statements
+my $no_results = 0;         # Number of (rejected) queries with no results (original query/tables only)
 
 # If a query modified by this validator fails, a non-ok status may be returned 
 # from the validator even if the original query executed OK.
@@ -116,13 +119,22 @@ sub validate {
 
     my ($comparator, $executors, $results) = @_;
 
-    return STATUS_WONT_HANDLE if $#$results != 1;
+    if ($#$results != 1) {
+        $no_results++;
+        return STATUS_WONT_HANDLE;
+    }
 
     my $query = $results->[0]->query();
     $candidate_queries++;
 
-    return STATUS_WONT_HANDLE if $query !~ m{^\s*SELECT}sio;
-    return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK || $results->[1]->status() != STATUS_OK;
+    if ($query !~ m{^\s*SELECT}sio) {
+        $non_selects++;
+        return STATUS_WONT_HANDLE;
+    }
+    if ($results->[0]->status() != STATUS_OK || $results->[1]->status() != STATUS_OK) {
+        $non_status_ok++;
+        return STATUS_WONT_HANDLE
+    }
 
     # First check the original query.
     # This will also repeat the query if the constant QUERY_REPEATS is > 0.
@@ -287,11 +299,14 @@ sub doTableVariation() {
 
 sub DESTROY {
     say("Total number of queries entering ExecutionTimeComparator: $candidate_queries");
+    say("Excluded non-SELECT queries: ".$non_selects);
     say("Extra tables used for query repetition: ".scalar(@tables));
     say("Query repetitions per table per query: ".QUERY_REPEATS);
     say("Queries with execution time of 0: ".$zero_queries);
     say("Queries with execution time lower than MIN_DURATION (".MIN_DURATION." s): ".$quick_queries);
     say("Queries that were skipped due to returning more than MAX_ROWS (".MAX_ROWS.") rows: ".$over_max_rows);
+    say("Queries that were skipped due to missing results: ".$no_results);
+    say("Queries that were skipped due to not returning STATUS_OK: ".$non_status_ok);
     say("Queries with different EXPLAIN plans: $different_plans") if ($skip_explain == 0);
     say("Queries suitable for execution time comparison: $total_queries");
     say("Notable execution times for basedir0 and basedir1, respectively:"); 
