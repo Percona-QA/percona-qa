@@ -210,7 +210,8 @@ sub report {
 	my $diff_result = system("diff -u $dump_files[0] $dump_files[1]") >> 8;
 
 	if ($diff_result == 0) {
-		say("No differences were found between master and cloned slave.");
+		say("No differences were found between master and cloned slave. Shutting down cloned slave.");
+		$slave_dbh->func('shutdown','admin');
         }
 
         foreach my $dump_file (@dump_files) {
