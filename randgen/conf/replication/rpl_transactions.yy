@@ -130,7 +130,7 @@ value:
 	nonconflicting_value | nonconflicting_value | nonconflicting_value |  nonconflicting_value | conflicting_value ;
 
 nonconflicting_value:
-	{ $$ } | { rand() } | REPEAT(LPAD(CONNECTION_ID(), 2, ' '), _digit ) | CONNECTION_ID() ;
+	{ $$ } | REPEAT(LPAD(CONNECTION_ID(), 2, ' '), _digit ) | CONNECTION_ID() ;
 
 conflicting_value:
 	_tinyint_unsigned | _digit | _varchar(1) | _varchar(64) | { time() } ;

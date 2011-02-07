@@ -18,13 +18,11 @@ $tables = {
         rows => [ 10 , 100, 1000 ],
 	engines => [ 'InnoDB' ],
 	indexes => [ undef, 'KEY' ],
-	# We avoid non-PK tables because they are known to cause
-	# replication issues in versions < 5.5
-	pk => [ 'int auto_increment' , 'int' ]
+	pk => [ 'int auto_increment' , 'int', undef ]
 };
 
 $fields = {
-	types => [ 'bit(64)' , 'bigint' , 'double' , 'set' , 'varchar(255)' , 'text' ],
+	types => [ 'bit(64)' , 'bigint' , 'set' , 'varchar(255)' , 'text' ],
         charsets => [ 'utf8' , 'binary'  ]
 };
 
