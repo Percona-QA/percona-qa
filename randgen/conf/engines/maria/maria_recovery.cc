@@ -15,7 +15,8 @@ $combinations = [
 	],[
 		'--duration=30',
 		'--duration=120',
-		'--duration=240'
+		'--duration=240',
+		'--duration=480'
 	],[
 		'--threads=1',
 		'--threads=5',
@@ -27,8 +28,6 @@ $combinations = [
 		'--rows=100',
 		'--rows=1000',
 		'--rows=10000'
-#,
-#		'--rows=100000',
 	],[
 		'--mask-level=0',
 		'--mask-level=1',
@@ -47,10 +46,27 @@ $combinations = [
 	],[
 		'--mysqld=--maria-checkpoint-interval=0',
 		'--mysqld=--maria-checkpoint-interval=1',
-		'--mysqld=--maria-checkpoint-interval=120'
+		'--mysqld=--maria-checkpoint-interval=120',
+		'--mysqld=--maria-checkpoint-interval=32K'
 	],[
+		'--mysqld=--maria-block-size=1K',
+		'--mysqld=--maria-block-size=2K',
 		'--mysqld=--maria-block-size=4K',
-		'--mysqld=--maria-block-size=16K'
+		'--mysqld=--maria-block-size=8K',
+		'--mysqld=--maria-block-size=16K',
+		'--mysqld=--maria-block-size=32K'
+	],[
+		'', '',
+		'--mysqld=--table_cache=32K', '--mysqld=--table_cache=10'
+	],[
+		'', '',
+		'--mysqld=--maria-pagecache-buffer-size=16K'
+	],[
+		'',
+		'--mysqld=--maria-pagecache-division-limit=75'
+	],[
+		'',
+		'--mysqld=--maria_pagecache_age_threshold=10'
 	],[
 		'--grammar=conf/engines/engine_stress.yy --gendata=conf/engines/engine_stress.zz',
 		'--grammar=conf/engines/many_indexes.yy --gendata=conf/engines/many_indexes.zz',
@@ -60,5 +76,5 @@ $combinations = [
 		'--mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/smf/smf2.sql --grammar=conf/smf/smf2.yy',
 		'--mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/smf/smf2.sql --grammar=conf/smf/smf2.yy',
 		'--mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/smf/smf2.sql --grammar=conf/smf/smf2.yy'
-]
+	]
 ];
