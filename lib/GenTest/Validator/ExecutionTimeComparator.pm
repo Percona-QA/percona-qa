@@ -173,18 +173,6 @@ sub compareDurations {
     my $time0 = $results->[0]->duration();
     my $time1 = $results->[1]->duration();
 
-    # We only do EXPLAIN checking for the first execution, not repetitions.
-    if ($skip_explain == 0) {
-        my @explains;
-        foreach my $executor_id (0..1) {
-            my $explain_extended = $executors->[$executor_id]->dbh()->selectall_arrayref("EXPLAIN EXTENDED $query");
-            my $explain_warnings = $executors->[$executor_id]->dbh()->selectall_arrayref("SHOW WARNINGS");
-            $explains[$executor_id] = Dumper($explain_extended)."\n".Dumper($explain_warnings);
-        }
-
-        $different_plans++ if $explains[0] ne $explains[1];
-    }
-
     if ($time0 == 0 || $time1 == 0) {
         $zero_queries++;
         return STATUS_WONT_HANDLE;
@@ -198,11 +186,11 @@ sub compareDurations {
         return STATUS_WONT_HANDLE;
     }
 
-
     if ($results->[0]->rows() > MAX_ROWS) {
         $over_max_rows++;
         return STATUS_WONT_HANDLE;
     }
+
 
     # Repeat the same query, collect results (depending on settings).
     my $sum_time0 = 0;
@@ -231,6 +219,19 @@ sub compareDurations {
             $quick_queries++;
             return STATUS_WONT_HANDLE;
     }
+    
+    # We only do EXPLAIN checking once.
+    if ($skip_explain == 0) {
+        my @explains;
+        foreach my $executor_id (0..1) {
+            my $explain_extended = $executors->[$executor_id]->dbh()->selectall_arrayref("EXPLAIN EXTENDED $query");
+            my $explain_warnings = $executors->[$executor_id]->dbh()->selectall_arrayref("SHOW WARNINGS");
+            $explains[$executor_id] = Dumper($explain_extended)."\n".Dumper($explain_warnings);
+        }
+
+        $different_plans++ if $explains[0] ne $explains[1];
+    }
+
 
     # We prepare a file for output of per-query performance numbers.
     # Only do this if the file is not already open.
@@ -312,17 +313,18 @@ sub doTableVariation() {
 
 sub DESTROY {
     say("Total number of queries entering ExecutionTimeComparator: $candidate_queries");
-    say("Excluded non-SELECT queries: ".$non_selects);
     say("Extra tables used for query repetition: ".scalar(@tables));
     say("Query repetitions per table per query: ".QUERY_REPEATS);
-    say("Queries with execution time of 0: ".$zero_queries);
-    say("Queries with execution time shorter than MIN_DURATION (".MIN_DURATION." s): ".$quick_queries);
-    say("Queries with execution time longer than MAX_DURATION (".MAX_DURATION." s): ".$slow_queries);
-    say("Queries that were skipped due to returning more than MAX_ROWS (".MAX_ROWS.") rows: ".$over_max_rows);
-    say("Queries that were skipped due to missing results: ".$no_results);
-    say("Queries that were skipped due to not returning STATUS_OK: ".$non_status_ok);
-    say("Queries with different EXPLAIN plans: $different_plans") if ($skip_explain == 0);
+    say("Skipped queries:");
+    say("  Excluded non-SELECT queries: ".$non_selects);
+    say("  Queries with execution time of 0: ".$zero_queries);
+    say("  Queries shorter than MIN_DURATION (".MIN_DURATION." s): ".$quick_queries);
+    say("  Queries longer than MAX_DURATION (".MAX_DURATION." s): ".$slow_queries);
+    say("  Queries returning more than MAX_ROWS (".MAX_ROWS.") rows: ".$over_max_rows);
+    say("  Queries with missing results: ".$no_results);
+    say("  Queries not returning STATUS_OK: ".$non_status_ok);
     say("Queries suitable for execution time comparison: $total_queries");
+    say("Queries with different EXPLAIN plans: $different_plans") if ($skip_explain == 0);
     say("Notable execution times for basedir0 and basedir1, respectively:"); 
     print Dumper \@execution_times;
     foreach my $ratio (sort keys %execution_ratios) {
