@@ -229,12 +229,13 @@ sub compareDurations {
     }
 
     my $ratio = $time0 / $time1;
+    $ratio = sprintf('%.4f', $ratio) if $ratio > 0.0001;
 
     # Print both queries that became faster and those that became slower
     if ( ($ratio >= MIN_RATIO) || ($ratio <= (1/MIN_RATIO)) ) {
         say("ratio = $ratio; time0 = $time0 sec; time1 = $time1 sec; query: $query");
         # also print to output file
-        my $reversed_ratio = $time1/$time0;
+        my $reversed_ratio = sprintf('%.4f', ($time1/$time0));
         print(OUTFILE "$ratio\t$reversed_ratio\t$time0\t$time1\t$query\n") if defined $outfile;
 
         #else:
