@@ -54,7 +54,8 @@ use Data::Dumper;
 
 
 # Configurable constants:
-use constant MIN_DURATION   => 0.2; # (seconds) Queries with lower execution times are skipped.
+use constant MIN_DURATION   => 0.2; # (seconds) Queries with shorter execution times are not processed.
+use constant MAX_DURATION   => 1800;# (seconds) Queries with longer execution times are not processed.
 use constant MIN_RATIO      => 5;   # Minimum speed-up or slow-down required in order to report a query
 use constant MAX_ROWS       => 20;  # Skip query if initial execution resulted in more than so many rows.
 use constant QUERY_REPEATS  => 0;   # Repeat each incoming query this many times and compute averge numbers.
@@ -82,6 +83,7 @@ my $candidate_queries = 0;  # Number of original queries with results entering t
 my $different_plans = 0;    # Number of queries with different query plan from EXPLAIN
 my $zero_queries = 0;       # Number of queries with execution time of zero
 my $quick_queries = 0;      # Number of queries with execution times lower than MIN_DURATION for both servers
+my $slow_queries = 0;       # Number of queries with execution times higher than MAX_DURATION for either server.
 my $over_max_rows = 0;      # Number of queries that produce more than MAX_ROWS rows
 my $non_status_ok = 0;      # Number of failed queries (status != STATUS_OK)
 my $non_selects = 0;        # Number of non-SELECT statements
@@ -137,7 +139,8 @@ sub validate {
     }
 
     # First check the original query.
-    # This will also repeat the query if the constant QUERY_REPEATS is > 0.
+    # This will also repeat the query if the constant QUERY_REPEATS is > 0,
+    # unless some conditions (duration, result set size, etc.) are not met.
     my $compare_status = compareDurations($executors, $results, $query);
     $total_status = $compare_status if $compare_status > $total_status;
 
@@ -186,6 +189,15 @@ sub compareDurations {
         $zero_queries++;
         return STATUS_WONT_HANDLE;
     }
+
+    # We check for MAX_DURATION prior to repeating, to avoid wasting time.
+    # If query repetition is not enabled one might as well continue, but we
+    # bail here anyway to have a consistent meaning of MAX_DURATION setting.
+    if ($time0 > MAX_DURATION || $time1 > MAX_DURATION) {
+        $slow_queries++;
+        return STATUS_WONT_HANDLE;
+    }
+
 
     if ($results->[0]->rows() > MAX_ROWS) {
         $over_max_rows++;
@@ -304,7 +316,8 @@ sub DESTROY {
     say("Extra tables used for query repetition: ".scalar(@tables));
     say("Query repetitions per table per query: ".QUERY_REPEATS);
     say("Queries with execution time of 0: ".$zero_queries);
-    say("Queries with execution time lower than MIN_DURATION (".MIN_DURATION." s): ".$quick_queries);
+    say("Queries with execution time shorter than MIN_DURATION (".MIN_DURATION." s): ".$quick_queries);
+    say("Queries with execution time longer than MAX_DURATION (".MAX_DURATION." s): ".$slow_queries);
     say("Queries that were skipped due to returning more than MAX_ROWS (".MAX_ROWS.") rows: ".$over_max_rows);
     say("Queries that were skipped due to missing results: ".$no_results);
     say("Queries that were skipped due to not returning STATUS_OK: ".$non_status_ok);
