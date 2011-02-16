@@ -100,22 +100,32 @@ sub new {
 
 	$reporter->[REPORTER_SERVER_INFO]->{pid} = $pid;
 
-	foreach my $path (
+	foreach my $server_path (
 			'bin', 'sbin', 'sql', 'libexec',
 			'../bin', '../sbin', '../sql', '../libexec',
 			'../sql/RelWithDebInfo', '../sql/Debug',
 		) {
-		my $binary_unix = $reporter->serverVariable('basedir').'/'.$path."/mysqld";
-		my $binary_windows = $reporter->serverVariable('basedir').'/'.$path."/mysqld.exe";
+		my $binary_unix = $reporter->serverVariable('basedir').'/'.$server_path."/mysqld";
+		my $binary_windows = $reporter->serverVariable('basedir').'/'.$server_path."/mysqld.exe";
 
 		if (
 			(-e $binary_unix) ||
 			(-e $binary_windows)
 		) {
-			$reporter->[REPORTER_SERVER_INFO]->{bindir} = $reporter->serverVariable('basedir').'/'.$path;
+			$reporter->[REPORTER_SERVER_INFO]->{bindir} = $reporter->serverVariable('basedir').'/'.$server_path;
 			$reporter->[REPORTER_SERVER_INFO]->{binary} = $binary_unix if -e $binary_unix;
 			$reporter->[REPORTER_SERVER_INFO]->{binary} = $binary_windows if -e $binary_windows;
 		}
+	}
+
+	foreach my $client_path (
+		"client/RelWithDebInfo", "client/Debug",
+		"client", "../client", "bin", "../bin"
+	) {
+	        if (-e $reporter->serverVariable('basedir').'/'.$client_path) {
+			$reporter->[REPORTER_SERVER_INFO]->{'client_bindir'} = $reporter->serverVariable('basedir').'/'.$client_path;
+	                last;
+	        }
 	}
 
 	my $prng = GenTest::Random->new( seed => 1 );

@@ -191,15 +191,6 @@ if (
 	die("Please specify either different --basedir[12] or different --vardir[12] in order to start two MySQL servers");
 }
 
-my $client_basedir;
-	
-foreach my $path ("$basedirs[0]/client/RelWithDebInfo", "$basedirs[0]/client/Debug", "$basedirs[0]/client", "$basedirs[0]/bin") {
-	if (-e $path) {
-		$client_basedir = $path;
-		last;
-	}
-}
-
 #
 # If RQG_HOME is set, prepend it to config files if they can not be found without it 
 #
@@ -405,68 +396,7 @@ if ($lcov) {
 
 }	
 
-exit_test($gentest_result) if $gentest_result > 0;
-
-if ($rpl_mode) {
-	if (!$master_dbh->ping()) {
-		say("Reestablishing connection to master...");
-		$master_dbh = DBI->connect($master_dsns[0], undef, undef, { RaiseError => 1 } );
-	}
-	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
-
-	say("Waiting for slave to catch up..., file $file, pos $pos .");
-	exit_test(STATUS_UNKNOWN_ERROR) if !defined $file;
-
-	my $slave_dsn = "dbi:mysql:host=127.0.0.1:port=".$slave_port.":user=root:database=".$database;
-	my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { PrintError => 1 } );
-
-	exit_test(STATUS_REPLICATION_FAILURE) if not defined $slave_dbh;
-
-	$slave_dbh->do("START SLAVE");
-	my $wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
-
-	if (not defined $wait_result) {
-		say("MASTER_POS_WAIT() failed. Slave thread not running.");
-		exit_test(STATUS_REPLICATION_FAILURE);
-	}
-}
-
-#
-# Compare master and slave, or two masters
-#
-
-if ($rpl_mode || (defined $basedirs[1])) {
-	my @dump_ports = ($master_ports[0]);
-	if ($rpl_mode) {
-		push @dump_ports, $slave_port;
-	} elsif (defined $basedirs[1]) {
-		push @dump_ports, $master_ports[1];
-	}
-
-	my @dump_files;
-
-	foreach my $i (0..$#dump_ports) {
-		say("Dumping server on port $dump_ports[$i]...");
-		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
-
-		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root $database | sort > $dump_files[$i]");
-		exit_test($dump_result >> 8) if $dump_result > 0;
-	}
-
-	say("Comparing SQL dumps...");
-	my $diff_result = system("diff -u $dump_files[0] $dump_files[1]");
-	$diff_result = $diff_result >> 8;
-
-	if ($diff_result == 0) {
-		say("No differences were found between servers.");
-	}
-
-	foreach my $dump_file (@dump_files) {
-		unlink($dump_file);
-	}
-
-	exit_test($diff_result);
-}
+exit_test($gentest_result);
 
 sub help {
 

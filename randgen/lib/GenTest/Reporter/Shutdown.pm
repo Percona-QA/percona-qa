@@ -32,28 +32,47 @@ use IPC::Open3;
 sub report {
 	my $reporter = shift;
 
-	my $dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
-	my $pid = $reporter->serverInfo('pid');
+	my $primary_port = $reporter->serverVariable('port');
 
-	if (defined $dbh) {
-		say("Shutting down the server...");
-		kill(15, $pid);
-		$dbh->func('shutdown', 'admin');
-	}
+	foreach my $port ($primary_port, $primary_port + 2, $primary_port + 4) {
+	        my $dsn = "dbi:mysql:host=127.0.0.1:port=".$port.":user=root";
+	        my $dbh = DBI->connect($dsn, undef, undef, { PrintError => 0 } );
 
-	if (!osWindows()) {
-		say("Waiting for mysqld with pid $pid to terminate...");
-		foreach my $i (1..60) {
-			if (! -e "/proc/$pid") {
-				print "\n";
-				last;
-			}
-			sleep(1);
-			print "+";
+		my $pid;
+		if ($port == $primary_port) {
+			$pid = $reporter->serverInfo('pid');
+		} elsif (defined $dbh) {
+			my ($pid_file) = $dbh->selectrow_array('SELECT @@pid_file');
+		        open (PF, $pid_file) or say("Unable to obtain pid: $!");
+		        read (PF, $pid, -s $pid_file);
+		        close (PF);
+		        $pid =~ s{[\r\n]}{}sio;
 		}
-		say("... waiting complete.");
-	}
-	
+
+		if (defined $dbh) {
+			say("Shutting down server on port $port via DBI...");
+			$dbh->func('shutdown', 'admin');
+		}
+
+		if (defined $pid) {
+			say("Shutting down server with pid $pid with SIGTERM...");
+			kill(15, $pid);
+
+			if (!osWindows()) {
+				say("Waiting for mysqld with pid $pid to terminate...");
+				foreach my $i (1..60) {
+					if (! -e "/proc/$pid") {
+						print "\n";
+						last;
+					}
+					sleep(1);
+					print "+";
+				}
+				say("... waiting complete. Just in case, killing server with pid $pid with SIGKILL ...");
+				kill(9, $pid);
+			}
+		}
+	}	
 	return STATUS_OK;
 }
 
