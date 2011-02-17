@@ -118,7 +118,7 @@ sub monitor {
 	say("$mysqld_command.");
 	my $mysqld_pid = open2(\*RDRFH, \*WTRFH, $mysqld_command);
 
-	sleep(15);
+	sleep(30);
 	my $slave_dbh = DBI->connect("dbi:mysql:user=root:host=127.0.0.1:port=".$slave_port, undef, undef, { RaiseError => 1 } );
 	$slave_dbh->do(my $change_master_sql = "
 		CHANGE MASTER TO
@@ -130,13 +130,6 @@ sub monitor {
 
 	my ($binlog_file, $binlog_pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
 	my ($binlog_id) = $binlog_file =~ m{(\d+)}sgio;
-	if (
-		(not defined $binlog_file) || (not defined $binlog_id) || (not defined $binlog_pos) ||
-		(($binlog_id < MINIMUM_BINLOG_COUNT) && ($binlog_pos < MINIMUM_BINLOG_SIZE))
-	) {
-		say("The master has not generated sufficiently many binlog events: binlog_file = $binlog_file; binlog_pos = $binlog_pos; binlog_id = $binlog_id.");
-		return STATUS_ENVIRONMENT_FAILURE;
-	}
 
 	my $dump_file = $slave_datadir.'/'.time().'.dump';
 	say("Dumping master to $dump_file, someplace around $binlog_file:$binlog_pos.");
