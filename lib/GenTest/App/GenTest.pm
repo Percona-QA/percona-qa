@@ -474,9 +474,13 @@ sub run {
     } elsif ($process_type == PROCESS_TYPE_PERIODIC) {
         ## Periodic does not use channel
         $channel->close();
+	my $killed = 0;
+	local $SIG{TERM} = sub { $killed = 1 };
+
         while (1) {
             my $reporter_status = $reporter_manager->monitor(REPORTER_TYPE_PERIODIC);
             $self->stop_child($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
+            last if $killed == 1;
             sleep(10);
         }
         $self->stop_child(STATUS_OK);
