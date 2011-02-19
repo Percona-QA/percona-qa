@@ -34,7 +34,7 @@ sub report {
 
 	my $primary_port = $reporter->serverVariable('port');
 
-	foreach my $port ($primary_port, $primary_port + 2, $primary_port + 4) {
+	foreach my $port ($primary_port + 4, $primary_port + 2, $primary_port) {
 	        my $dsn = "dbi:mysql:host=127.0.0.1:port=".$port.":user=root";
 	        my $dbh = DBI->connect($dsn, undef, undef, { PrintError => 0 } );
 

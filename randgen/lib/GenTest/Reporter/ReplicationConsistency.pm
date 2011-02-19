@@ -33,11 +33,6 @@ sub report {
 	$reporter_called = 1;
 
 	my $master_dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
-        my ($binlog_file, $binlog_pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
-
-	my @all_databases = @{$master_dbh->selectcol_arrayref("SHOW DATABASES")};
-	my $databases_string = join(' ', grep { $_ !~ m{^(mysql|information_schema|performance_schema)$}sgio } @all_databases );
-
 	my $master_port = $reporter->serverVariable('port');
 	my $slave_port = $master_port + 2;
 
@@ -48,15 +43,40 @@ sub report {
 
 	$slave_dbh->do("START SLAVE");
 
-	say("Executing: MASTER_POS_WAIT(): binlog_file: $binlog_file, binlog_pos: $binlog_pos.");
-	my $wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$binlog_file',$binlog_pos)");
+	#
+	# We call MASTER_POS_WAIT at 100K increments in order to avoid buildbot timeout in case
+	# one big MASTER_POS_WAIT would take more than 20 minutes.
+	#
 
-	if (not defined $wait_result) {
-		say("MASTER_POS_WAIT() failed in slave on port $slave_port. Slave replication thread not running.");
+	my $sth_binlogs = $master_dbh->prepare("SHOW BINARY LOGS");
+	$sth_binlogs->execute();
+	while (my ($intermediate_binlog_file, $intermediate_binlog_size) = $sth_binlogs->fetchrow_array()) {
+		my $intermediate_binlog_pos = $intermediate_binlog_size < 10000000 ? $intermediate_binlog_size : 10000000;
+		do {
+			say("Executing intermediate MASTER_POS_WAIT('$intermediate_binlog_file', $intermediate_binlog_pos).");
+			my $intermediate_wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$intermediate_binlog_file',$intermediate_binlog_pos)");
+			if (not defined $intermediate_wait_result) {
+				say("Intermediate MASTER_POS_WAIT('$intermediate_binlog_file', $intermediate_binlog_pos) failed in slave on port $slave_port. Slave replication thread not running.");
+				return STATUS_REPLICATION_FAILURE;
+			}
+			$intermediate_binlog_pos += 10000000;
+	        } while (  $intermediate_binlog_pos <= $intermediate_binlog_size );
+	}
+
+        my ($final_binlog_file, $final_binlog_pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
+
+	say("Executing final MASTER_POS_WAIT('$final_binlog_file', $final_binlog_pos.");
+	my $final_wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$final_binlog_file',$final_binlog_pos)");
+
+	if (not defined $final_wait_result) {
+		say("Final MASTER_POS_WAIT('$final_binlog_file', $final_binlog_pos) failed in slave on port $slave_port. Slave replication thread not running.");
 		return STATUS_REPLICATION_FAILURE;
 	} else {
-		say("MASTER_POS_WAIT() complete.");
+		say("Final MASTER_POS_WAIT('$final_binlog_file', $final_binlog_pos) complete.");
 	}
+
+	my @all_databases = @{$master_dbh->selectcol_arrayref("SHOW DATABASES")};
+	my $databases_string = join(' ', grep { $_ !~ m{^(mysql|information_schema|performance_schema)$}sgio } @all_databases );
 	
 	my @dump_ports = ($master_port , $slave_port);
 	my @dump_files;
