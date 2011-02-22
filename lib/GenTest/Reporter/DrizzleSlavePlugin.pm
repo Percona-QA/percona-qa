@@ -88,12 +88,7 @@ sub report
          say ("Executing diff --unified $files[SERVER1_FILE_NAME] $files[SERVER2_FILE_NAME]");
          my $diff_result = system("diff --unified $files[SERVER1_FILE_NAME] $files[SERVER2_FILE_NAME]");
 	 $diff_result = $diff_result >> 8;
-         say ("Cleaning up validation server...");
-         system("$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root -e 'DROP SCHEMA test'");
-
-         say ("Resetting validation server...");
-         my $create_schema_result = system("$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root -e 'CREATE SCHEMA test'");
-         say("$create_schema_result");      
+       
 
 	 return STATUS_UNKNOWN_ERROR if $diff_result > 1;
 
