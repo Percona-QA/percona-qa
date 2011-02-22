@@ -462,7 +462,7 @@ sub run {
             }
         }
         
-        if ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE) {
+        if ($executor->type == DB_MYSQL ) {
             $executor->execute("ALTER TABLE `$table->[TABLE_NAME]` DISABLE KEYS");
             
             if ($table->[TABLE_ROW] > 100) {
@@ -552,7 +552,7 @@ sub run {
                 say("# Progress: loaded $row_id out of $table->[TABLE_ROW] rows");
             }
         }
-        if ($executor->type == DB_MYSQL or $executor->type == DB_DRIZZLE) {
+        if ($executor->type == DB_MYSQL ) {
             $executor->execute("COMMIT");
             
             $executor->execute("ALTER TABLE `$table->[TABLE_NAME]` ENABLE KEYS");
