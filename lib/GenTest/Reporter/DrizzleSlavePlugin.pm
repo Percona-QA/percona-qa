@@ -39,9 +39,34 @@ sub report
 
         
         # do some setup and whatnot
-        my $main_port = '9306';
-	my $validator_port = '9308';
-        my $basedir= $reporter->serverVariable('basedir');
+        my $main_port;
+	my $validator_port;
+        my $basedir;
+
+        if (exists $ENV{'MASTER_MYPORT'})
+        {
+            $main_port = $ENV{'MASTER_MYPORT'};
+        }
+        else
+        {
+            $main_port = '9306';
+        }
+        if (exists $ENV{'TESTBOT0_SERVER1'})
+        {
+            $validator_port = $ENV{'TESTBOT0_SERVER1'};
+        }
+        else
+        {
+	    $validator_port = '9307';
+        }
+        if (exists $ENV{'DRIZZLE_BASEDIR'})
+        {
+            $basedir = $ENV{'DRIZZLE_BASEDIR'};
+        }
+        else
+        {
+            $basedir= $reporter->serverVariable('basedir');
+        }
         my $drizzledump = $basedir.'/client/drizzledump' ;
         my $drizzle_client = $basedir.'/client/drizzle' ;
         my $transaction_reader; 
@@ -60,6 +85,10 @@ sub report
         if (-e $basedir.'/var/local/transaction.log')
         {
           $transaction_log = $basedir.'/var/local/transaction.log' ;
+        }
+        elsif (-e $basedir.'/tests/workdir/testbot0/server0/var/master-data/local/transaction.log')
+        {
+          $transaction_log = $basedir.'/tests/workdir/testbot0/server0/var/master-data/local/transaction.log' ;
         }
         else
         {
