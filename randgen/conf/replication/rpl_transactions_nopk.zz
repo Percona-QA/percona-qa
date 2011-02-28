@@ -1,6 +1,3 @@
-# Copyright (C) 2008 Sun Microsystems, Inc. All rights reserved.
-# Use is subject to license terms.
-#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License.
@@ -15,22 +12,22 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
+$schemas = [ 'test' , 'test1' ];
+
 $tables = {
-	rows => [1, 1000, 10000],
-	# 378 is the largest key size possible with --aria-block-size=1K
-	pk => ['VARCHAR(378) NOT NULL' ],
-        partitions => [ undef , 'KEY (pk) PARTITIONS 2' ]
+        rows => [ 10 , 100, 1000 ],
+	engines => [ 'InnoDB' ],
+	indexes => [ undef, 'KEY' ],
+	pk => [ undef ]
 };
 
 $fields = {
-        types => [ 'varchar(1024)' ],
-        indexes => [undef, 'key' ],
-        null => [undef, 'not null'],
-        default => [undef, 'default null'],
-        sign => [undef, 'unsigned'],
-        charsets => ['utf8', 'latin1']
+	types => [ 'bit(64)' , 'bigint' , 'set' , 'varchar(255)' , 'text' ],
+        charsets => [ 'utf8' , 'binary'  ]
 };
 
 $data = {
-        strings => [ 'varchar(1024)', 'varchar(1024)', 'varchar(1024)' , 'english' , 'letter' ]
+        numbers   => [ 'digit' , 'null' , undef ],
+        strings   => [ 'letter' , 'english' , 'null' ],
+        blobs     => [ 'english', 'english', 'english', 'english', 'english', 'english', 'english', 'english', 'english', 'varchar(512)' ]
 }
