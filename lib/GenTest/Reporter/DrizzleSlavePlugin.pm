@@ -98,8 +98,26 @@ sub report
         copy($transaction_log, $transaction_log_copy);
 
         say("Waiting for slave to catch up...");
-        sleep 60;
-
+        #sleep 60;
+        my $slave_dsn="dbi:drizzle:host=localhost:port=$validator_port:user=root:password='':database=sys_replication";
+        my $slave_dbh = DBI->connect($slave_dsn, undef, undef, {PrintError => 0});
+        my $master_dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
+        my $not_done = 1;
+        while ($not_done)
+        {
+            my @max_slave_id_res = $slave_dbh->selectrow_array('SELECT last_applied_commit_id from applier_state');
+            my $max_slave_id = @max_slave_id_res->[0] ;
+            my @max_master_id_res = $master_dbh->selectrow_arrayref("SELECT MAX(commit_id) from DATA_DICTIONARY.SYS_REPLICATION_LOG");
+            my $max_master_id = @max_master_id_res->[0]->[0] ;
+            if ($max_slave_id == $max_master_id)
+            {
+                $not_done = 0 ;
+            }
+            sleep 1;
+            #say ("$max_slave_id");
+            #say ("$max_master_id");
+            #$not_done = 0;
+        }
         say("Validating replication via dumpfile compare...");
         my @files;
         my @ports = ($main_port, $validator_port);
@@ -127,6 +145,8 @@ sub report
            say("diff command:  diff --unified $files[SERVER1_FILE_NAME] $files[SERVER2_FILE_NAME]");
            say("Master dumpfile:  $files[SERVER1_FILE_NAME]");
            say("Slave dumpfile:   $files[SERVER2_FILE_NAME]");
+           #say ("$max_slave_id");
+           #say ("$max_master_id");
 	   return STATUS_REPLICATION_FAILURE;
 	 } 
          else 
