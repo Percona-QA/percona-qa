@@ -18,7 +18,7 @@ package GenTest::SimPipe::DBObject;
 
 require Exporter;
 @ISA = qw(GenTest);
-@EXPORT = qw(COLUMN_NAME COLUMN_TYPE COLUMN_COLLATION KEY_COLUMN DBOBJECT_NAME DBOBJECT_ENGINE);
+@EXPORT = qw(COLUMN_NAME COLUMN_TYPE COLUMN_COLLATION KEY_COLUMNS DBOBJECT_NAME DBOBJECT_ENGINE);
 
 use strict;
 use DBI;
@@ -38,8 +38,8 @@ use constant COLUMN_IS_NULLABLE		=> 3;
 use constant COLUMN_TYPE		=> 4;
 use constant COLUMN_COLLATION		=> 5;
 
-use constant KEY_NAME	=> 0;
-use constant KEY_COLUMN	=> 1;
+use constant KEY_NAME		=> 0;
+use constant KEY_COLUMNS	=> 1;
 
 my $dbname = 'test';
 
@@ -97,16 +97,18 @@ sub newFromDBH {
 
 	my @keys;
 	my $sth_keys = $dbh->prepare("
-		SELECT * FROM INFORMATION_SCHEMA.STATISTICS
+		SELECT INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',') AS COLUMN_NAMES
+		FROM INFORMATION_SCHEMA.STATISTICS
 		WHERE TABLE_NAME = ?
 		AND TABLE_SCHEMA = ?
+		GROUP BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME
 	");
 	$sth_keys->execute($table_name, $dbname);
 
 	while (my $key_info = $sth_keys->fetchrow_hashref()) {
 		my $new_key;
 		$new_key->[KEY_NAME] = $key_info->{'INDEX_NAME'};
-		$new_key->[KEY_COLUMN] = $key_info->{'COLUMN_NAME'};
+		$new_key->[KEY_COLUMNS] = [split(',', $key_info->{'COLUMN_NAMES'})];
 		push @keys, $new_key;
 	}
 
@@ -145,13 +147,15 @@ sub toString {
 		next if not defined $key;
 		my $underlying_column_exists = 0;
 		foreach my $column (@{$dbobject->columns()}) {
-			$underlying_column_exists = 1 if $column->[COLUMN_NAME] eq $key->[KEY_COLUMN];
+			foreach my $key_column_name (@{$key->[KEY_COLUMNS]}) {
+				$underlying_column_exists = 1 if $column->[COLUMN_NAME] eq $key_column_name;
+			}
 		}
 		next if !$underlying_column_exists;
 		if ($key->[KEY_NAME] eq 'PRIMARY') {
-			push @column_strings, "PRIMARY KEY (".$key->[KEY_COLUMN].")";
+			push @column_strings, "PRIMARY KEY (".join(',', @{$key->[KEY_COLUMNS]}).")";
 		} else {
-			push @column_strings, "KEY (".$key->[KEY_COLUMN].")";
+			push @column_strings, "KEY (".join(',', @{$key->[KEY_COLUMNS]}).")";
 		}
 	}
 
