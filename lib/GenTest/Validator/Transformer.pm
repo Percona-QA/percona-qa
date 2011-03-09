@@ -45,6 +45,7 @@ sub BEGIN {
 		'Distinct',
 		'ExecuteAsPreparedTwice',
 		'ExecuteAsSPTwice',
+		'ExecuteAsFunctionTwice',
 		'ExecuteAsView',
 		'ExecuteAsInsertSelect',
 		'ExecuteAsSelectItem',
