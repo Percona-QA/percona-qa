@@ -48,6 +48,7 @@ sub transform {
 	return STATUS_WONT_HANDLE if $col_name =~ m{`}sgio;
 
 	return [
+		"DROP TABLE IF EXISTS $table_name",
 		"CREATE TABLE $table_name $original_query",
 
 		# If the result set has more than 1 row, we can not use it in the SET clause
@@ -56,24 +57,24 @@ sub transform {
 			"UPDATE $table_name SET `$col_name` = $col_name + 9999 WHERE `$col_name` NOT IN ( $original_query ) "
 		),
 
-		# The above queries should not have updated any rows. Sometimes ROW_COUNT() returns -1 
-		"SELECT IF(ROW_COUNT() > 0 , 0, 1) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
-
+		# The queries above should not have updated any rows. Sometimes ROW_COUNT() returns -1 
+		"SELECT IF(ROW_COUNT() = 0 OR ROW_COUNT() = -1, 1, 0) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
 		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+
 		( $original_result->rows() == 1 ? 
 			"UPDATE $table_name SET `$col_name` = ( $original_query ) WHERE `$col_name` IN ( $original_query ) " :
 			"UPDATE $table_name SET `$col_name` = $col_name WHERE `$col_name` IN ( $original_query ) "
 		),
 
-		# The above queries should have updated all rows
+		# The queries above should have updated all rows
 		"SELECT IF(ROW_COUNT() = ".$original_result->rows()." OR ROW_COUNT() = -1, 1, 0) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
 		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 
 		# All rows should end up deleted
 		"DELETE FROM $table_name WHERE `$col_name` IN ( $original_query ) ",
-		"SELECT ROW_COUNT() = ".$original_result->rows()." /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */ ",
+		"SELECT IF(ROW_COUNT() = ".$original_result->rows()." OR ROW_COUNT() = -1, 1, 0) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
 		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_EMPTY_RESULT */",
-		"DROP TABLE $table_name",
+		"DROP TABLE IF EXISTS $table_name",
 	];
 }
 
