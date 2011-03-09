@@ -14,7 +14,7 @@
 
 $tables = {
         rows => [ 5 ],
-        partitions => [ undef ], 'KEY (pk) PARTITIONS 2' ]
+        partitions => [ undef , 'KEY (pk) PARTITIONS 2' ]
 };
 
 $fields = {
