@@ -42,8 +42,8 @@ sub transform {
 
 			if ($original_query =~ s{ORDER\s+BY[^()]*$}{}sio) {
 				# Removing ORDER BY
-                       } elsif ($#selects == 0) {
-                               return STATUS_WONT_HANDLE if $original_query !~ s{LIMIT[^()]*$}{ORDER BY 1}sio;
+			} elsif ($#selects == 0) {
+				return STATUS_WONT_HANDLE if $original_query !~ s{LIMIT[^()]*$}{ORDER BY 1}sio;
 			} else {
 				return STATUS_WONT_HANDLE;
 			}
