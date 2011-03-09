@@ -95,7 +95,7 @@ sub transformExecuteValidate {
 			if (
 				($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
 			) {
-				say("Transform ".ref($transformer)." failed with a syntactic or semantic error.");
+				say("Transform ".ref($transformer)." failed with a syntactic or semantic error: ".$part_result->errstr());
 				say("Offending query is: $transformed_query_part;");
 				say("Original query is: $original_query;");
 				return STATUS_ENVIRONMENT_FAILURE;
@@ -308,9 +308,6 @@ sub isSingleIntegerOne {
 	) {
 		return STATUS_OK;
 	} else {
-		use Data::Dumper;
-		print Dumper $transformed_result;
-		exit;
 		return STATUS_LENGTH_MISMATCH;
 	}
 
