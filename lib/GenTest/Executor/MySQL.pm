@@ -548,6 +548,7 @@ sub execute {
 	my ($matched_rows, $changed_rows) = $mysql_info =~ m{^Rows matched:\s+(\d+)\s+Changed:\s+(\d+)}sgio;
 
 	my $column_names = $sth->{NAME} if $sth->{NUM_OF_FIELDS} > 0;
+	my $column_types = $sth->{mysql_type_name} if $sth->{NUM_OF_FIELDS} > 0;
 
 	my $end_time = Time::HiRes::time();
 
@@ -631,7 +632,8 @@ sub execute {
 			data		=> \@data,
 			start_time	=> $start_time,
 			end_time	=> $end_time,
-			column_names	=> $column_names
+			column_names	=> $column_names,
+			column_types	=> $column_types
 		);
 
 		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
