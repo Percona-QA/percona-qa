@@ -37,6 +37,7 @@ use constant RESULT_COLUMN_NAMES	=> 10;
 use constant RESULT_MATCHED_ROWS	=> 11;
 use constant RESULT_CHANGED_ROWS	=> 12;
 use constant RESULT_INFO		=> 13;
+use constant RESULT_COLUMN_TYPES	=> 14;
 
 1;
 
@@ -56,7 +57,8 @@ sub new {
 		'column_names'	=> RESULT_COLUMN_NAMES,
 		'matched_rows'	=> RESULT_MATCHED_ROWS,
 		'changed_rows'	=> RESULT_CHANGED_ROWS,
-		'info'		=> RESULT_INFO
+		'info'		=> RESULT_INFO,
+		'column_types'  => RESULT_COLUMN_TYPES
 	}, @_);
 }
 
@@ -131,6 +133,10 @@ sub setWarnings {
 
 sub columnNames {
 	return $_[0]->[RESULT_COLUMN_NAMES];
+}
+
+sub columnTypes {
+	return $_[0]->[RESULT_COLUMN_TYPES];
 }
 
 1;
