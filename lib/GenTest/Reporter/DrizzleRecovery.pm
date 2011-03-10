@@ -68,19 +68,29 @@ sub report {
 	$first_reporter = $reporter if not defined $first_reporter;
 	return STATUS_OK if $reporter ne $first_reporter;
 
-	my $basedir = $reporter->serverVariable('basedir');
-        say("$basedir");
-        my $binary = $basedir.'/drizzled/drizzled' ;
-        my $datadir = '';
-        if (-e $basedir.'/var')
+	my $main_port;
+        my $basedir;
+
+        if (exists $ENV{'MASTER_MYPORT'})
         {
-	    $datadir = $basedir.'/var/';
+            $main_port = $ENV{'MASTER_MYPORT'};
         }
         else
         {
-            $datadir = $basedir.'tests/var/master-data';
+            $main_port = '9306';
         }
-	$datadir =~ s{[\\/]$}{}sgio;
+        
+        if (exists $ENV{'DRIZZLE_BASEDIR'})
+        {
+            $basedir = $ENV{'DRIZZLE_BASEDIR'};
+        }
+        else
+        {
+            $basedir= $reporter->serverVariable('basedir');
+        }
+        say("$basedir");
+        my $binary = $basedir.'/drizzled/drizzled' ;
+        my $datadir = $reporter->serverVariable('datadir');
 	my $recovery_datadir = $datadir.'_recovery';
 	my $port = $reporter->serverVariable('mysql_protocol_port');
 	
