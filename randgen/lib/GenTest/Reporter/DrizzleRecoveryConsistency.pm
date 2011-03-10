@@ -15,6 +15,9 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
+# We need to revisit the grammar we use / how we validate consistency
+# if we need to keep using this reporter
+
 package GenTest::Reporter::DrizzleRecoveryConsistency;
 
 require Exporter;
@@ -30,7 +33,7 @@ sub monitor {
 	my $reporter = shift;
                 my $dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
 
-	if (time() > $reporter->testEnd() - 10) {
+	if (time() > $reporter->testEnd() - 20) {
 		say("Sending shutdown() call to server.");
 		$dbh->selectrow_array('SELECT shutdown()');
 		sleep(5);
@@ -39,6 +42,7 @@ sub monitor {
 		return STATUS_OK;
 	}
 }
+
 
 sub report {
         my $reporter = shift;
