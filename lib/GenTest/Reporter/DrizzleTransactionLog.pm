@@ -101,8 +101,8 @@ sub report
         # via the drizzle client to the validation server (slave)
         my $transaction_log_sql_file = tmpdir()."/translog_".$$."_.sql" ;
         say("transaction_log output file:  $transaction_log_sql_file");
-        say("$transaction_reader $transaction_log > $transaction_log_sql_file");
-        system("$transaction_reader $transaction_log > $transaction_log_sql_file") ;
+        say("$transaction_reader -uroot $transaction_log > $transaction_log_sql_file");
+        system("$transaction_reader -uroot $transaction_log > $transaction_log_sql_file") ;
         say("Replicating from transaction_log output...");
         my $rpl_command = "$drizzle_client --host=127.0.0.1 --port=$validator_port --user=root test <  $transaction_log_sql_file";
         say ("$rpl_command");
