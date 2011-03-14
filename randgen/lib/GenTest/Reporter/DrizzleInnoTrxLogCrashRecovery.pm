@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Reporter::DrizzleInnoTrxLog;
+package GenTest::Reporter::DrizzleInnoTrxLogCrashRecovery;
 
 require Exporter;
 @ISA = qw(GenTest::Reporter);
@@ -32,10 +32,43 @@ use File::Copy;
 
 use constant SERVER1_FILE_NAME  => 0;
 use constant SERVER2_FILE_NAME  => 1;
+my $first_reporter;
+
+sub monitor {
+	my $reporter = shift;
+
+	# In case of two servers, we will be called twice.
+	# Only kill the first server and ignore the second call.
+	
+	$first_reporter = $reporter if not defined $first_reporter;
+	return STATUS_OK if $reporter ne $first_reporter;
+        
+        my $dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
+       
+        my $time = time();
+        say("time:  $time");
+        say("testEnd:  $reporter->testEnd()");
+	if (time() > $reporter->testEnd() - 19) 
+        {
+		say("Sending shutdown() call to server in order to force a recovery.");
+		$dbh->selectrow_array('SELECT shutdown()');
+		return STATUS_SERVER_KILLED;
+	} 
+        else 
+        {
+		return STATUS_OK;
+	}
+}
+
 
 sub report 
   {
-	my $reporter = shift;
+        my $reporter = shift;
+
+        $first_reporter = $reporter if not defined $first_reporter;
+	return STATUS_OK if $reporter ne $first_reporter;
+
+
         my $main_port;
         my $validator_port;
         my $basedir;
@@ -65,6 +98,7 @@ sub report
         {
             $basedir= $reporter->serverVariable('basedir');
         }
+        
         my $drizzledump = $basedir.'/client/drizzledump' ;
         my $drizzle_client = $basedir.'/client/drizzle' ;
         my $transaction_reader; 
@@ -95,6 +129,56 @@ sub report
         my $transaction_log_copy = tmpdir()."/translog_".$$."_.log" ;
         copy($transaction_log, $transaction_log_copy);
 
+        # Server restart razzle-dazzle
+        my $binary = $basedir.'/drizzled/drizzled' ;
+        my $datadir = $reporter->serverVariable('datadir');
+
+	
+
+	my $dbh_prev = DBI->connect($reporter->dsn());
+
+	if (defined $dbh_prev) {
+		# Server is still running, kill it.
+		$dbh_prev->disconnect();
+
+		say("Sending shutdown() call to server.");
+		$dbh_prev->selectrow_array('SELECT shutdown()');
+		sleep(5);
+	}
+
+        	say("Attempting database recovery using the server ...");
+
+	my @drizzled_options = (
+		'--no-defaults',
+		'--core-file',	
+		'--datadir="'.$datadir.'"',
+                '--basedir="'.$basedir.'"',
+                '--plugin-add=shutdown_function',
+		'--mysql-protocol.port='.$main_port,
+
+	);
+
+	my $drizzled_command = $binary.' '.join(' ', @drizzled_options).' 2>&1';
+	say("Executing $drizzled_command .");
+
+	my $drizzled_pid = open2(\*RDRFH, \*WTRFH, $drizzled_command);
+        say("$drizzled_pid");
+
+	#
+	# Phase1 - the server is running single-threaded. We consume the error log and parse it for
+	# statements that indicate failed recovery
+	# 
+
+	my $recovery_status = STATUS_OK;
+	
+        sleep(5);
+	my $dbh = DBI->connect($reporter->dsn());
+	$recovery_status = STATUS_DATABASE_CORRUPTION if not defined $dbh && $recovery_status == STATUS_OK;
+
+	if ($recovery_status > STATUS_OK) {
+		say("Recovery has failed.");
+		return $recovery_status;
+	}
 
         # We now attempt to replicate from the transaction log
         # We call transaction_reader and send the output
