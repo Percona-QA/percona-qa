@@ -56,7 +56,7 @@ my $config = GenTest::Properties->new(
         'basedir2',
         'expected_mtr_output',
         'mtr_options',
-        'vebose',
+        'verbose',
         'header',
         'footer',
         'filter',
