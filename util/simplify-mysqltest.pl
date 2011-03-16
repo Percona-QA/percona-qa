@@ -190,14 +190,17 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
                 return ORACLE_ISSUE_STILL_REPEATABLE;
             } else {
                 # error ($compare_result < 0)
-                say("\nError ($compare_result) comparing result files for test $testfile_base_name");
+                if ( (! -e $resultfile_full_path) && (! -e $resultfile2_full_path) ) {
+                    # both servers are lacking result file. Probably due to bad SQL in simplified test.
+                    return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
+                }
                 if (! -e $resultfile_full_path) {
+                    say("Error ($compare_result) comparing result files for test $testfile_base_name");
                     say("Test output was:");
                     say $mysqltest_output;
-                    # TODO: No result file may mean that we tried an invalid query
-                    #       Try comparing .reject files in this case?
                     croak("Resultfile  $resultfile_full_path not found");
-                } elsif (! -e $resultfile_full_path) {
+                } elsif (! -e $resultfile2_full_path) {
+                    say("Error ($compare_result) comparing result files for test $testfile_base_name");
                     say("Test output was:");
                     say $mysqltest_output2;
                     croak("Resultfile2 $resultfile2_full_path not found");
