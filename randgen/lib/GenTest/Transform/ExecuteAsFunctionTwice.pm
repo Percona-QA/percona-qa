@@ -34,10 +34,8 @@ sub transform {
 	my $return_type = $original_result->columnTypes()->[0];
 	$return_type .= "(255)" if $return_type =~ m{char}sgio;
 
-	$original_query =~ s{FROM}{INTO ret FROM}sgio;
-
 	return [
-		"CREATE FUNCTION stored_func_$$ () RETURNS $return_type NOT DETERMINISTIC BEGIN DECLARE ret $return_type; $original_query ; RETURN ret; END",
+		"CREATE FUNCTION stored_func_$$ () RETURNS $return_type NOT DETERMINISTIC BEGIN DECLARE ret $return_type; $original_query INTO ret ; RETURN ret; END",
 		"SELECT stored_func_$$() /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
                 "SELECT stored_func_$$() /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		"DROP FUNCTION IF EXISTS stored_func_$$"
