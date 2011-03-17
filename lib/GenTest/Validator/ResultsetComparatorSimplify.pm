@@ -38,7 +38,6 @@ use DBIx::MyParsePP::Rule;
 my $empty_child = DBIx::MyParsePP::Rule->new();
 my $myparse = DBIx::MyParsePP->new();
 my $query_obj;
-my %cache;
 
 sub validate {
 	my ($comparator, $executors, $results) = @_;
@@ -50,7 +49,8 @@ sub validate {
 	return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK;
 	return STATUS_WONT_HANDLE if $results->[1]->status() != STATUS_OK;
 
-	%cache = ();
+	return STATUS_WONT_HANDLE if defined $results->[0]->warnings();
+	return STATUS_WONT_HANDLE if defined $results->[1]->warnings();
 
 	my $query = $results->[0]->query();
 	my $compare_outcome = GenTest::Comparator::compare($results->[0], $results->[1]);
@@ -82,6 +82,7 @@ sub validate {
 					my $oracle_result = $executor->execute($oracle_query, 1);
 
 					return ORACLE_ISSUE_STATUS_UNKNOWN if $oracle_result->status() != STATUS_OK;
+					return ORACLE_ISSUE_STATUS_UNKNOWN if defined $oracle_result->warnings();
 
 					push @oracle_results, $oracle_result;
 				}
