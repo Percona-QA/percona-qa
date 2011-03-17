@@ -44,6 +44,7 @@ sub transform {
 	my $table_name = 'transforms.where_subselect_'.$$;
 
 	return [
+		"DROP TABLE IF EXISTS $table_name",
 		"CREATE TABLE $table_name $original_query",
 		"SELECT * FROM $table_name WHERE (".join(', ', @{$original_result->columnNames()}).") IN ( $original_query ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		"SELECT * FROM $table_name WHERE (".join(', ', @{$original_result->columnNames()}).") NOT IN ( $original_query ) /* TRANSFORM_OUTCOME_EMPTY_RESULT */",
