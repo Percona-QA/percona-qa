@@ -20,13 +20,22 @@ use base 'Exporter';
 
 @EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 
            'osWindows', 'osLinux', 'osSolaris', 'osMac',
-           'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug', 'unix2winPath');
+           'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug', 'unix2winPath',
+           'setLoggingToFile','setLogConf');
 
 use strict;
 
 use Cwd;
 use POSIX;
 use Carp;
+
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.gentest');
+};
 
 my $tmpdir;
 
@@ -84,14 +93,22 @@ sub new {
 
 sub say {
 	my $text = shift;
-
-	if ($text =~ m{[\r\n]}sio) {
-	        foreach my $line (split (m{[\r\n]}, $text)) {
-			print "# ".isoTimestamp()." $line\n";
-		}
-	} else {
-		print "# ".isoTimestamp()." $text\n";
-	}
+    defaultLogging();
+    if ($text =~ m{[\r\n]}sio) {
+        foreach my $line (split (m{[\r\n]}, $text)) {
+            if (defined $logger) {
+                $logger->info($line);
+            } else {
+                print "# ".isoTimestamp()." $line\n";
+            }
+        }
+    } else {
+        if (defined $logger) {
+            $logger->info($text);
+        } else {
+            print "# ".isoTimestamp()." $text\n";
+        }
+    }
 }
 
 sub sayFile {
@@ -181,6 +198,46 @@ sub rqg_debug {
 	} else {
 		return 0;
 	}
+}
+
+sub defaultLogging {
+    if (defined $logger) {
+        if (not Log::Log4perl::initialized()) {
+            my $logconf = q(
+log4perl.logger.randgen = DEBUG, STDOUT
+log4perl.appender.STDOUT=Log::Log4perl::Appender::Screen
+log4perl.appender.STDOUT.layout=PatternLayout
+log4perl.appender.STDOUT.layout.ConversionPattern=# %d{yyyy-MM-dd'T'HH:mm:ss} %m%n
+);
+            Log::Log4perl::init( \$logconf );
+        }
+    }
+}
+
+
+sub setLoggingToFile {
+    my $logfile = shift;
+    my $logconf = {
+        'log4perl.logger.randgen' => 'DEBUG, STDOUT, FILE',
+        
+        'log4perl.appender.STDOUT' => 'Log::Log4perl::Appender::Screen',
+        'log4perl.appender.STDOUT.layout'=>'PatternLayout',
+        'log4perl.appender.STDOUT.layout.ConversionPattern'=>"# %d{yyyy-MM-dd'T'HH:mm:ss} %m%n",
+        
+        'log4perl.appender.FILE'=>'Log::Log4perl::Appender::File',
+        'log4perl.appender.FILE.filename'=>$logfile,
+        'log4perl.appender.FILE.mode'=>'append',
+        'log4perl.appender.FILE.layout'=>'PatternLayout',
+        'log4perl.appender.FILE.layout.ConversionPattern'=>"# %d{yyyy-MM-dd'T'HH:mm:ss} %m%n"
+    };
+    Log::Log4perl::init($logconf);
+    say("Logging to stdout and $logfile");
+}
+
+sub setLogConf {
+    my $logfile = shift;
+    Log::Log4perl::init($logfile);
+    say("Logging defined by $logfile");
 }
 
 1;

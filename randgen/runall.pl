@@ -31,6 +31,14 @@ use lib "$ENV{RQG_HOME}/lib";
 use strict;
 use GenTest;
 
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.gentest');
+};
+
 $| = 1;
 if (osWindows()) {
 	$SIG{CHLD} = "IGNORE";
@@ -57,7 +65,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $redefine_file, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views, $start_dirty,
     $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $notnull, $sqltrace, $lcov);
+    $report_xml_tt_dest, $notnull, $sqltrace, $lcov, $logfile, $logconf);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -107,8 +115,19 @@ my $opt_result = GetOptions(
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
     'testname=s' => \$testname,
-	'lcov' => \$lcov
+	'lcov' => \$lcov,
+    'logfile=s' => \$logfile,
+    'logconf=s' => \$logconf
 );
+
+if (defined $logfile && defined $logger) {
+    setLoggingToFile($logfile);
+} else {
+    if (defined $logconf && defined $logger) {
+        setLogConf($logconf);
+    }
+}
+
 
 $ENV{RQG_DEBUG} = 1 if defined $debug;
 
@@ -380,6 +399,8 @@ push @gentest_options, "--valgrind" if defined $valgrind;
 push @gentest_options, "--valgrind-xml" if defined $valgrind_xml;
 push @gentest_options, "--testname=$testname" if defined $testname;
 push @gentest_options, "--sqltrace" if defined $sqltrace;
+push @gentest_options, "--logfile=$logfile" if defined $logfile;
+push @gentest_options, "--logconf=$logconf" if defined $logconf;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.

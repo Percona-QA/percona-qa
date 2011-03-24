@@ -31,6 +31,14 @@ use DBServer::DBServer;
 use DBServer::MySQL::MySQLd;
 use DBServer::MySQL::ReplMySQLd;
 
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.gentest');
+};
+
 $| = 1;
 if (osWindows()) {
 	$SIG{CHLD} = "IGNORE";
@@ -58,7 +66,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
-    $notnull);
+    $notnull,$logfile,$logconf);
 
 my $gendata=''; ## default simple gendata
 
@@ -110,8 +118,18 @@ my $opt_result = GetOptions(
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
-    'sqltrace' => \$sqltrace
+    'sqltrace' => \$sqltrace,
+    'logfile=s' => \$logfile,
+    'logconf=s' => \$logconf
     );
+
+if (defined $logfile && defined $logger) {
+    setLoggingToFile($logfile);
+} else {
+    if (defined $logconf && defined $logger) {
+        setLogConf($logconf);
+    }
+}
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 	help();
