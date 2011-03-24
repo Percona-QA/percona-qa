@@ -190,7 +190,7 @@ sub defaultLogging {
     if (defined $logger) {
         if (not Log::Log4perl::initialized()) {
             my $logconf = q(
-log4perl.logger.randgen = DEBUG, STDOUT
+log4perl.rootLogger = INFO, STDOUT
 log4perl.appender.STDOUT=Log::Log4perl::Appender::Screen
 log4perl.appender.STDOUT.layout=PatternLayout
 log4perl.appender.STDOUT.layout.ConversionPattern=# %d{yyyy-MM-dd'T'HH:mm:ss} %m%n
