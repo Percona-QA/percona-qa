@@ -56,12 +56,12 @@ my $config = GenTest::Properties->new(
         'basedir2',
         'expected_mtr_output',
         'mtr_options',
-        'vebose',
-	'header',
-	'footer',
-	'filter',
+        'verbose',
+        'header',
+        'footer',
+        'filter',
         'mysqld',
-	'use_connections'
+        'use_connections'
     ],
     required => [
         'basedir',
@@ -97,34 +97,31 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
         
         open (ORACLE_MYSQLTEST, ">t/$testfile") or croak "Unable to open $testfile: $!";
 
-	print ORACLE_MYSQLTEST join("\n",@{$header})."\n\n";
+        print ORACLE_MYSQLTEST join("\n",@{$header})."\n\n";
         print ORACLE_MYSQLTEST $oracle_mysqltest;
-	print ORACLE_MYSQLTEST "\n\n".join("\n",@{$footer})."\n";
+        print ORACLE_MYSQLTEST "\n\n".join("\n",@{$footer})."\n";
         close ORACLE_MYSQLTEST;
 
         my $mysqldopt = $config->genOpt('--mysqld=--', 'mysqld');
-
-	my $mtr_start_time = Time::HiRes::time();
-
+        my $mtr_start_time = Time::HiRes::time();
         my $mysqltest_cmd = "perl mysql-test-run.pl $mysqldopt ". $config->genOpt('--', 'mtr_options')." t/$testfile 2>&1";
-
         my $mysqltest_output = `$mysqltest_cmd`;
-	my $mtr_exit_code = $? >> 8;
-	my $mtr_duration = Time::HiRes::time() - $mtr_start_time;
-	if ($iteration == 1) {
-		say ($mysqltest_output);
-	} else {
-		say ("MTR test duration: $mtr_duration; exit_code: $mtr_exit_code");
-	}
-
-	system("grep 'Unsafe statement binlogged' ".$config->basedir()."/mysql-test/var/log/mysqld.1.err");
-	my $grep_exit_code = $? >> 8;
-	if ($grep_exit_code == 0) {
-		say("Messages about unsafe replication found in master error log.");
-		return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
-	} elsif ($grep_exit_code > 1) {
-		say("grep on the mysqld.1.err error log failed");
-	}
+        my $mtr_exit_code = $? >> 8;
+        my $mtr_duration = Time::HiRes::time() - $mtr_start_time;
+        if ($iteration == 1) {
+            say ($mysqltest_output);
+        } else {
+            say ("MTR test duration: $mtr_duration; exit_code: $mtr_exit_code");
+        }
+    
+        system("grep 'Unsafe statement binlogged' ".$config->basedir()."/mysql-test/var/log/mysqld.1.err");
+        my $grep_exit_code = $? >> 8;
+        if ($grep_exit_code == 0) {
+            say("Messages about unsafe replication found in master error log.");
+            return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
+        } elsif ($grep_exit_code > 1) {
+            say("grep on the mysqld.1.err error log failed");
+        }
 
         ########################################################################
         # Start of comparison mode (two basedirs)
@@ -175,14 +172,12 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
             if ( $compare_result == 0) {
                 # no diff
                 say('Issue not repeatable (results were equal) with test '.$testfile_base_name);
-
-		if ($iteration > 1) {
-	                unlink($testfile_full_path); # deletes test for Server A
-	                unlink($testfile2_full_path); # deletes test for Server B
-	                unlink($resultfile_full_path); # deletes result for Server A
-        	        unlink($resultfile2_full_path); # deletes result for Server B
-		}
-
+                if ($iteration > 1) {
+                    unlink($testfile_full_path); # deletes test for Server A
+                    unlink($testfile2_full_path); # deletes test for Server B
+                    unlink($resultfile_full_path); # deletes result for Server A
+                    unlink($resultfile2_full_path); # deletes result for Server B
+                }
                 return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
             } elsif ($compare_result > 0) {
                 # diff
@@ -190,14 +185,17 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
                 return ORACLE_ISSUE_STILL_REPEATABLE;
             } else {
                 # error ($compare_result < 0)
-                say("\nError ($compare_result) comparing result files for test $testfile_base_name");
+                if ( (! -e $resultfile_full_path) && (! -e $resultfile2_full_path) ) {
+                    # both servers are lacking result file. Probably due to bad SQL in simplified test.
+                    return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
+                }
                 if (! -e $resultfile_full_path) {
+                    say("Error ($compare_result) comparing result files for test $testfile_base_name");
                     say("Test output was:");
                     say $mysqltest_output;
-                    # TODO: No result file may mean that we tried an invalid query
-                    #       Try comparing .reject files in this case?
                     croak("Resultfile  $resultfile_full_path not found");
-                } elsif (! -e $resultfile_full_path) {
+                } elsif (! -e $resultfile2_full_path) {
+                    say("Error ($compare_result) comparing result files for test $testfile_base_name");
                     say("Test output was:");
                     say $mysqltest_output2;
                     croak("Resultfile2 $resultfile2_full_path not found");
@@ -227,17 +225,15 @@ my $simplifier = GenTest::Simplifier::Mysqltest->new(
                 return ORACLE_ISSUE_STILL_REPEATABLE;
             } else {
                 say("Issue not repeatable with $testfile.");
+                if (
+                    ($mtr_exit_code == 0) &&
+                    ($iteration > 1)
+                ) {
+                    unlink('t/'.$testfile);
+                    unlink('r/'.$resultfile);
+                }
 
-		if (
-			($mtr_exit_code == 0) &&
-			($iteration > 1)
-		) {
-	                unlink('t/'.$testfile);
-	                unlink('r/'.$resultfile);
-		}
-
-		say $mysqltest_output if $iteration > 1 && $mtr_exit_code != 0;
-		
+                say $mysqltest_output if $iteration > 1 && $mtr_exit_code != 0;
                 return ORACLE_ISSUE_NO_LONGER_REPEATABLE;
             }
         }
@@ -268,7 +264,7 @@ if (-f $config->input_file){
 
     if (defined $simplified_mysqltest) {
         say "Simplified mysqltest:";
-	print "\n\n".join("\n",@{$header})."\n\n\n".$simplified_mysqltest.join("\n",@{$footer})."\n\n";
+        print "\n\n".join("\n",@{$header})."\n\n\n".$simplified_mysqltest.join("\n",@{$footer})."\n\n";
         exit (STATUS_OK);
     } else {
         say "Unable to simplify ". $config->input_file.".\n";
