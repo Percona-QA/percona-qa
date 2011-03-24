@@ -28,6 +28,14 @@ use GenTest::Properties;
 use GenTest::Constants;
 use GenTest::App::GenTest;
 
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.gentest');
+};
+
 my $DEFAULT_THREADS = 10;
 my $DEFAULT_QUERIES = 1000;
 my $DEFAULT_DURATION = 3600;
@@ -72,7 +80,9 @@ my $opt_result = GetOptions($options,
                             'valgrind',
                             'valgrind-xml',
                             'notnull',
-                            'debug');
+                            'debug',
+                            'logfile=s',
+                            'logconf=s');
 backwardCompatability($options);
 my $config = GenTest::Properties->new(
     options => $options,
@@ -112,10 +122,20 @@ my $config = GenTest::Properties->new(
               'valgrind',
               'valgrind-xml',
               'sqltrace',
-              'notnull'],
+              'notnull',
+              'logfile',
+              'logconf'],
     help => \&help);
 
 help() if !$opt_result || $config->help;
+
+if (defined $config->logfile && defined $logger) {
+    setLoggingToFile($config->logfile);
+} else {
+    if (defined $config->logconf && defined $logger) {
+        setLogConf($config->logconf);
+    }
+}
 
 say("Starting \n $0 \\ \n ".join(" \\ \n ", @ARGV_saved));
 

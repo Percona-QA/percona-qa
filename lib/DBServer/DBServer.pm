@@ -29,6 +29,14 @@ use Cwd;
 use POSIX;
 use Carp;
 
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.dbserver');
+};
+
 use constant DBSTATUS_OK => 0;
 use constant DBSTATUS_FAILURE => 1;
 
@@ -88,14 +96,22 @@ sub new {
 
 sub say {
 	my $text = shift;
-
-	if ($text =~ m{[\r\n]}sio) {
-	        foreach my $line (split (m{[\r\n]}, $text)) {
-			print "# ".isoTimestamp()." $line\n";
-		}
-	} else {
-		print "# ".isoTimestamp()." $text\n";
-	}
+    defaultLogging();
+    if ($text =~ m{[\r\n]}sio) {
+        foreach my $line (split (m{[\r\n]}, $text)) {
+            if (defined $logger) {
+                $logger->info($line);
+            } else {
+                print "# ".isoTimestamp()." $line\n";
+            }
+        }
+    } else {
+        if (defined $logger) {
+            $logger->info($text);
+        } else {
+            print "# ".isoTimestamp()." $text\n";
+        }
+    }
 }
 
 sub sayFile {
@@ -168,6 +184,20 @@ sub isoUTCTimestamp {
 	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = defined $datetime ? gmtime($datetime) : gmtime();
 	return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
 	
+}
+
+sub defaultLogging {
+    if (defined $logger) {
+        if (not Log::Log4perl::initialized()) {
+            my $logconf = q(
+log4perl.logger.randgen = DEBUG, STDOUT
+log4perl.appender.STDOUT=Log::Log4perl::Appender::Screen
+log4perl.appender.STDOUT.layout=PatternLayout
+log4perl.appender.STDOUT.layout.ConversionPattern=# %d{yyyy-MM-dd'T'HH:mm:ss} %m%n
+);
+            Log::Log4perl::init( \$logconf );
+        }
+    }
 }
 
 1;
