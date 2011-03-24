@@ -47,14 +47,21 @@ sub monitor {
         my $dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
        
         my $time = time();
+                my $pid = $ENV{'BOT0_S0_PID'};
+        my $time = time();
+        my $testEnd = $reporter->testEnd();
         say("time:  $time");
-        say("testEnd:  $reporter->testEnd()");
-	if (time() > $reporter->testEnd() - 19) 
+        say("testEnd:  $testEnd");
+	if (time() > $reporter->testEnd() - 3500) 
         {
-		say("Sending shutdown() call to server in order to force a recovery.");
-		$dbh->selectrow_array('SELECT shutdown()');
+                #my $ps_result = system("ps -al");
+                #say ("$ps_result");
+		say("Sending kill -9 to server pid $pid in order to force a recovery.");
+		kill(9, $pid);
+                #my $ps_result = system("ps -al");
+                #say ("$ps_result");
 		return STATUS_SERVER_KILLED;
-	} 
+        }
         else 
         {
 		return STATUS_OK;
@@ -82,9 +89,9 @@ sub report
         {
             $main_port = '9306';
         }
-        if (exists $ENV{'TESTBOT0_SERVER1'})
+        if (exists $ENV{'BOT0_S1'})
         {
-            $validator_port = $ENV{'TESTBOT0_SERVER1'};
+            $validator_port = $ENV{'BOT0_S1'};
         }
         else
         {
@@ -117,9 +124,9 @@ sub report
         {
           $transaction_log = $basedir.'/var/local/transaction.log' ;
         }
-        elsif (-e $basedir.'/tests/workdir/testbot0/server0/var/master-data/local/transaction.log')
+        elsif (-e $basedir.'/tests/workdir/bot0/s0/var/master-data/local/transaction.log')
         {
-          $transaction_log = $basedir.'/tests/workdir/testbot0/server0/var/master-data/local/transaction.log' ;
+          $transaction_log = $basedir.'/tests/workdir/bot0/s0/var/master-data/local/transaction.log' ;
         }
         else
         {
@@ -181,6 +188,8 @@ sub report
 
         say("Waiting for slave to catch up...");
         #sleep 60;
+        say("$validator_port");
+        say("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
         my $slave_dsn="dbi:drizzle:host=localhost:port=$validator_port:user=root:password='':database=sys_replication";
         my $slave_dbh = DBI->connect($slave_dsn, undef, undef, {PrintError => 0});
         my $master_dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
@@ -245,7 +254,7 @@ sub report
  
 
 sub type {
-	return REPORTER_TYPE_ALWAYS;
+	return REPORTER_TYPE_ALWAYS | REPORTER_TYPE_PERIODIC;
 }
 
 1;
