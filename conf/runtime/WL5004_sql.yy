@@ -1,4 +1,4 @@
-# Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,9 +20,9 @@
 #            WL#5004 Comprehensive Locking Stress Test for Azalea
 #                    A few grammar rules were taken from other grammar files.
 # Last Modifications:
-#    2010-10 Matthias Leich
-#            - Adjustment to fixed and new bugs for 5.5-runtime
-#            - Attention: Replication bugs had to be ignored
+#    2011-03 Matthias Leich
+#               Prevent the generation of SHOW PROCEDURE/FUNCTION CODE in case
+#               we do not have a server compiled with debug
 #
 # Attention:
 # 1. There are modified grammar rules because of open bugs.
@@ -181,17 +181,17 @@
 query_init:
 	# Variant 1:
 	#    Advantage: Less failing (table does not exist ...) statements within the first phase of the test.
-	# init_basics : init_namespaces ; event_scheduler_on ; have_some_initial_objects ;
+	# init_basics1 : init_basics2 ; init_namespaces ; init_executor_table ; event_scheduler_on ; have_some_initial_objects ;
 	# Variant 2:
 	#    Advantage: Better performance during bug hunt, test simplification etc. because objects are created at
-	#               on place (<object>_ddl) only and not also in "have_some_initial_objects".
-	init_basics ; init_namespaces ; init_executor_table ;
+	#               one place (<object>_ddl) only and not also in "have_some_initial_objects".
+	init_basics1 ; init_basics2 ; init_namespaces ; init_executor_table ;
 
 init_executor_table:
 	# This table is used in kill_query_or_session.
 	CREATE TABLE IF NOT EXISTS test . executors (id BIGINT, PRIMARY KEY(id)) ENGINE = MEMORY ; INSERT HIGH_PRIORITY IGNORE INTO test.executors SET id = CONNECTION_ID() ; COMMIT ;
 
-init_basics:
+init_basics1:
 	# 1. $life_time_unit = maximum lifetime of a table created within a CREATE, wait, DROP sequence.
 	#
 	#    A reasonable value is bigger than any "wait for <whatever> lock" timeout.
@@ -221,6 +221,16 @@ init_basics:
 	# - In case of one thread a $life_time_unit <> 0 does not make sense, because there is no parallel
 	#   "worker" thread which could do something with the object during the "wait" period.
 	{ $life_time_unit = 1 ; $namespace_width = 2 ; if ( $ENV{RQG_THREADS} == 1 ) { $life_time_unit = 0 } ; return undef } avoid_bugs ; nothing_disabled ; system_table_stuff ;
+
+init_basics2:
+	# Store information if we have a debug server in $out_file.
+	# 1. The "Home" directory of
+	#    - the server would be <vardir>/master-data/
+	#      <vardir> is alculated by MTR and affected by options given to runall.pl
+	#    - RQG is <RQG install directory>
+	# 2. The environment does not contain any variable pointing to <vardir> or RQG directories
+	# Therefore we need a $outfile with absolute path.
+	{$out_file='/tmp/'.$$.'.tmp' ; unlink($out_file); return undef} SELECT VERSION() LIKE '%debug%' INTO OUTFILE {return "'".$out_file."'"};
 
 init_namespaces:
 	# Please choose between the following alternatives
@@ -663,8 +673,8 @@ kill_query_or_session:
 # - a session gets killed that any lock hold by this session gets automatically removed.
 # We will not check the removal here via SQL or sophisticated PERL code.
 # We just hope that forgotten locks lead sooner or later to nice deadlocks.
-# 
-# Attention: 
+#
+# Attention:
 #    There is some unfortunate sideeffect of KILL <session> .
 #    It reduces the probability to detect deadlocks because it
 #    might hit a participating session.
@@ -842,7 +852,7 @@ show_create_function:
 	SHOW CREATE FUNCTION function_item ;
 
 show_function_code:
-	SHOW FUNCTION CODE function_item ;
+	is_debug1 is_debug2 { return $m1 } SHOW FUNCTION CODE function_item { return $m2 };
 
 show_function_status:
 	SHOW FUNCTION STATUS ;
@@ -851,7 +861,15 @@ show_create_procedure:
 	SHOW CREATE PROCEDURE procedure_item ;
 
 show_procedure_code:
-	SHOW PROCEDURE CODE procedure_item ;
+	is_debug1 is_debug2 { return $m1 } SHOW PROCEDURE CODE procedure_item { return $m2 };
+
+is_debug1:
+	# Calculate if we have a debug server.
+	{ $is_debug_server = -1; open($my_file,'<'.$out_file); read($my_file,$is_debug_server,1000); close($my_file); return undef };
+
+is_debug2:
+	# Set the marker according if we have a debug server or not.
+	{ $m1='/*'; $m2='*/'; if ( $is_debug_server == 1 ) { $m1=''; $m2='' }; return undef } ;
 
 show_procedure_status:
 	SHOW PROCEDURE STATUS ;
@@ -1560,14 +1578,14 @@ flush:
 	# - be rare
 	# - last only very short time
 	# So I put it into a sequence with FLUSH ... ; wait a bit ; UNLOCK TABLES
-        FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-        FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-        FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-        FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
-        FLUSH TABLES | FLUSH TABLES | FLUSH TABLES |
-        FLUSH TABLES | FLUSH TABLES | FLUSH TABLES |
-        FLUSH TABLES table_list WITH READ LOCK | UNLOCK TABLES | UNLOCK TABLES |
-        FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+	FLUSH TABLE table_list | FLUSH TABLE table_list | FLUSH TABLE table_list |
+	FLUSH TABLES | FLUSH TABLES | FLUSH TABLES |
+	FLUSH TABLES | FLUSH TABLES | FLUSH TABLES |
+	FLUSH TABLES table_list WITH READ LOCK | UNLOCK TABLES | UNLOCK TABLES |
+	FLUSH TABLES WITH READ LOCK ; SELECT wait_short ; UNLOCK TABLES ;
 
 
 ########## TINY GRAMMAR ITEMS USED AT MANY PLACES ###########
