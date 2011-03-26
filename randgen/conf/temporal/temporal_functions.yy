@@ -21,7 +21,9 @@ where_list:
 
 where_item:
 	_field not IN ( datetime_list ) |
-	_field comp_op datetime_expr ;
+	_field not BETWEEN datetime_expr AND datetime_expr |
+	_field comp_op datetime_expr |
+	datetime_expr IS not NULL ;
 
 order_by:
 	| 
@@ -37,7 +39,7 @@ field_list:
 	_field , _field ; 
 
 comp_op:
-	= | < | > | != | <> ;
+	= | < | > | != | <> |  <=> | >= | <= ;
 
 not:
 	| NOT ;
@@ -52,6 +54,10 @@ datetime_list:
 datetime_expr:
 	datetime_func | datetime_field ;
 
+arg_datetime_list:
+	arg_datetime , arg_datetime |
+	arg_datetime , arg_datetime_list ; 
+
 arg_datetime:
 	arg_datetime | arg_datetime | arg_datetime | arg_datetime | arg_date | datetime_func | '0000-00-00 00:00:00' | datetime_field ;
 
@@ -61,8 +67,14 @@ arg_date:
 arg_time:
 	_time | _time | _time | _time | '00:00:00' | datetime_func | datetime_field ;
 
+arg_any_list:
+	arg_any , arg_any |
+	arg_any , arg_any_list ;
+
 arg_any:
-	arg_datetime | arg_time | arg_date | datetime_func | datetime_field ;
+	arg_datetime |
+	# arg_time |
+	arg_date | datetime_func | datetime_field ;
 
 arg_integer:
 	_tinyint_unsigned | digit | integer_func | integer_field ;
@@ -110,6 +122,10 @@ plus_minus:
 	'-' | '+' ;
 
 datetime_func:
+	LEAST( arg_any_list ) |
+	GREATEST( arg_any_list ) |
+	COALESCE( arg_any_list ) |
+	CAST( arg_any AS arg_cast_type ) |
 	date_add_sub |
 	ADDDATE( arg_datetime , arg_days ) |
 	ADDTIME( arg_any , arg_time ) |
@@ -120,8 +136,8 @@ datetime_func:
 	DATE( arg_date ) | DATE ( arg_datetime ) |
 	FROM_DAYS( arg_integer ) |
 	FROM_UNIXTIME( arg_unix ) | FROM_UNIXTIME( arg_unix , arg_format ) |
-#	LAST_DAY( arg_datetime ) |
-#	LOCALTIME() | LOCALTIMESTAMP() |
+	LAST_DAY( arg_datetime ) |
+	LOCALTIME() | LOCALTIMESTAMP() |
 	MAKEDATE( arg_year , arg_dayofyear ) |
 	MAKETIME( arg_hour , arg_minute, arg_second ) |
 #	NOW() |
@@ -133,8 +149,9 @@ datetime_func:
 	TIMESTAMP( arg_any ) | TIMESTAMP( arg_any , arg_time ) |
 	TIMESTAMPADD( arg_unit_timestamp , arg_integer , arg_datetime ) |
 #	UNIX_TIMESTAMP() |
-	UNIX_TIMESTAMP( arg_datetime ) |
-#	UTC_DATE() | UTC_TIME() | UTC_TIMESTAMP() |
+#	UNIX_TIMESTAMP( arg_datetime ) |
+	UTC_DATE() |
+#	UTC_TIME() | UTC_TIMESTAMP() |
 	SUBTIME( arg_datetime , arg_time ) |
 	EXTRACT( arg_unit_noninteger FROM arg_any ) ;
 
@@ -161,7 +178,13 @@ integer_func:
 	WEEKDAY( arg_datetime ) |
 	WEEKOFYEAR( arg_datetime ) |
 	YEAR( arg_datetime ) ;
-	YEARWEEK( arg_datetime ) | YEARWEEK( arg_datetime , arg_mode ) ;
+	YEARWEEK( arg_datetime ) | YEARWEEK( arg_datetime , arg_mode ) |
+
+	IF( integer_func , datetime_func , datetime_func ) |
+	IFNULL( datetime_func ) |
+	NULLFIF( datetime_func, datetime_func ) |
+	INTERVAL ( arg_datetime_list ) ;
+
 
 string_func:
 	DATE_FORMAT( arg_any , arg_format ) |
@@ -189,25 +212,31 @@ date_add_sub:
 	add_sub arg_datetime , INTERVAL CONCAT_WS('-' , arg_year , arg_month ) YEAR_MONTH ) ;
 
 arg_unit_integer:
-	MICROSECOND | SECOND | MINUTE | HOUR | DAY | WEEK | MONTH | QUARTER | YEAR ;
+#	MICROSECOND |
+ SECOND | MINUTE | HOUR | DAY | WEEK | MONTH | QUARTER | YEAR ;
 
 arg_unit_noninteger:
 	SECOND_MICROSECOND | MINUTE_MICROSECOND | MINUTE_SECOND | HOUR_MICROSECOND | HOUR_SECOND | HOUR_MINUTE | DAY_MICROSECOND | DAY_SECOND | DAY_MINUTE | DAY_HOUR | YEAR_MONTH ;
 
 arg_unit:
-	MICROSECOND | SECOND | MINUTE | HOUR | DAY | WEEK | MONTH | QUARTER | YEAR | SECOND_MICROSECOND | MINUTE_MICROSECOND | MINUTE_SECOND | HOUR_MICROSECOND | HOUR_SECOND | HOUR_MINUTE | DAY_MICROSECOND | DAY_SECOND | DAY_MINUTE | DAY_HOUR | YEAR_MONTH ;
+#	MICROSECOND |
+ SECOND | MINUTE | HOUR | DAY | WEEK | MONTH | QUARTER | YEAR | SECOND_MICROSECOND | MINUTE_MICROSECOND | MINUTE_SECOND | HOUR_MICROSECOND | HOUR_SECOND | HOUR_MINUTE | DAY_MICROSECOND | DAY_SECOND | DAY_MINUTE | DAY_HOUR | YEAR_MONTH ;
 
 arg_unit_timestamp:
-	MICROSECOND | SECOND | MINUTE | HOUR | DAY | WEEK | MONTH | QUARTER | YEAR ;
+#	MICROSECOND |
+ SECOND | MINUTE | HOUR | DAY | WEEK | MONTH | QUARTER | YEAR ;
 
 add_sub:
 	DATE_ADD( | DATE_SUB( | SUBDATE 
 
 arg_mode:
 	0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 ;
-	
-	
 
+arg_cast_type:
+	DATE | DATETIME | TIME | DATETIME( precision ) | TIME | TIME( precision ) ;
+
+precision:
+	0 | 3 | 6 ;
 	
 get_format:
 	GET_FORMAT( date_time_datetime , country_code ) ;
