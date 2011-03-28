@@ -484,8 +484,16 @@ sub run {
                         } else {
                             $value = 'DEFAULT';
                         }
-                    } else {	
-                        $value = $row_id;	# Otherwise, insert sequential numbers
+                    } else {
+			if ($field->[FIELD_TYPE] =~ m{datetime|timestamp}sgio) {
+				$value = "FROM_UNIXTIME(UNIX_TIMESTAMP('2000-01-01') + $row_id)";
+			} elsif ($field->[FIELD_TYPE] =~ m{date}sgio) {
+				$value = "FROM_DAYS(TO_DAYS('2000-01-01') + $row_id)";
+			} elsif ($field->[FIELD_TYPE] =~ m{time}sgio) {
+				$value = "SEC_TO_TIME($row_id)";
+			} else {
+	                        $value = $row_id;	# Otherwise, insert sequential numbers
+			}
                     }
                 } else {
                     my (@possible_values, $value_type);

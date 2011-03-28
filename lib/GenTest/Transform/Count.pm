@@ -44,12 +44,12 @@ sub transform {
 
 	return STATUS_WONT_HANDLE if $orig_query =~ m{GROUP\s+BY|LIMIT|HAVING}sio;
 
-#	print "A: $orig_query\n";
-
 	my ($select_list) = $orig_query =~ m{SELECT (.*?) FROM}sio;
 
 	if ($select_list =~ m{AVG|BIT|DISTINCT|GROUP|MAX|MIN|STD|SUM|VAR|STRAIGHT_JOIN|SQL_SMALL_RESULT}sio) {
 		return STATUS_WONT_HANDLE;
+	} elsif ($select_list =~ m{\*}sio) {
+		$orig_query =~ s{SELECT (.*?) FROM}{SELECT COUNT(*) FROM}sio;
 	} elsif ($select_list !~ m{COUNT}sio) {
 		$orig_query =~ s{SELECT (.*?) FROM}{SELECT COUNT(*) , $1 FROM}sio;
 	} elsif ($select_list =~ m{^\s*COUNT\(\s*\*\s*\)}sio) {
@@ -58,7 +58,6 @@ sub transform {
 		return STATUS_WONT_HANDLE;
 	}
 
-#	print "BBB: $orig_query\n";
 	return $orig_query." /* TRANSFORM_OUTCOME_COUNT */";
 }
 

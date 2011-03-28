@@ -13,13 +13,16 @@
 # USA
 
 $tables = {
-        rows => [ 5 ],
-        partitions => [ undef , 'KEY (pk) PARTITIONS 2' ]
+        partitions => [ undef , 'KEY (pk) PARTITIONS 2' ],
+	pk => [
+		'datetime', 'timestamp', 'time',
+		'datetime(3)', 'timestamp(3)', 'time(3)',
+		'datetime(6)', 'timestamp(6)', 'time(6)'
+	]
 };
 
 $fields = {
-        types => [ 'date',
-		'time', 'time(3)', 'time(6)' ,
+        types => [ 'date',		'time', 'time(3)', 'time(6)',
 		'datetime', 'datetime(3)', 'datetime(6)',
 		'timestamp', 'timestamp(3)', 'timestamp(6)'
 	],
