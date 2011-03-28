@@ -283,10 +283,11 @@ sub year {
 
 sub time {
 	my $prng = shift;
-	return sprintf('%02d:%02d:%02d',
+	return sprintf('%02d:%02d:%02d.%06d',
                    $prng->uint16(0,23),
                    $prng->uint16(0,59),
-                   $prng->uint16(0,59));
+                   $prng->uint16(0,59),
+                   $prng->uint16(0,999999));
 }
 
 sub datetime {
@@ -296,13 +297,14 @@ sub datetime {
 
 sub timestamp {
 	my $prng = shift;
-	return sprintf('%04d%02d%02d%02d%02d%02d',
+	return sprintf('%04d%02d%02d%02d%02d%02d.%06d',
                    $prng->uint16(2000,2009),
                    $prng->uint16(1,12),
                    $prng->uint16(1,28),
                    $prng->uint16(0,23),
                    $prng->uint16(0,59),
-                   $prng->uint16(0,59));
+                   $prng->uint16(0,59),
+                   $prng->uint16(0,999999));
 }
 
 sub enum {
