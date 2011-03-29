@@ -193,17 +193,17 @@ sub compareDurations {
 
 
     # Repeat the same query, collect results (depending on settings).
-    my $sum_time0 = 0;
-    my $sum_time1 = 0;
-    my $count_time0 = 0;
-    my $count_time1 = 0;
-    my $repeats_left = QUERY_REPEATS;
-    while ($repeats_left > 0) {
-        $sum_time0 += $executors->[0]->execute($query)->duration();
-        $count_time0++;
-        $sum_time1 += $executors->[1]->execute($query)->duration();
-        $count_time1++;
-        $repeats_left--;
+    # If repeating, use one server at a time to allow it to stabilize.
+    # All arrays with results should contain two elements, one per executor.
+    my @sum_time = (0, 0);   # sum of execution times for all repetitions
+    my @count_time = (0, 0); # number of execution times added to sum_time
+    foreach my $executor_id (0..1) {
+        my $repeats_left = QUERY_REPEATS;
+        while ($repeats_left > 0) {
+            $sum_time[$executor_id] += $executors->[$executor_id]->execute($query)->duration();
+            $count_time[$executor_id]++;
+            $repeats_left--;
+        }
     }
 
     # Compute averages if QUERY_REPEAT is set.
@@ -211,8 +211,8 @@ sub compareDurations {
     # the validator), as it may be off for some reason.
     # We use only the first 4 decimals.
     if (QUERY_REPEATS > 0) {
-        $time0 = sprintf('%.4f', ($sum_time0 / $count_time0));
-        $time1 = sprintf('%.4f', ($sum_time1 / $count_time1));
+        $time0 = sprintf('%.4f', ($sum_time[0] / $count_time[0]));
+        $time1 = sprintf('%.4f', ($sum_time[1] / $count_time[1]));
     }
 
     if ($time0 < MIN_DURATION && $time1 < MIN_DURATION) {
