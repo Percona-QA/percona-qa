@@ -54,11 +54,11 @@ use Data::Dumper;
 
 
 # Configurable constants:
-use constant MIN_DURATION   => 0.2; # (seconds) Queries with shorter execution times are not processed.
-use constant MAX_DURATION   => 1800;# (seconds) Queries with longer execution times are not processed.
-use constant MIN_RATIO      => 5;   # Minimum speed-up or slow-down required in order to report a query
-use constant MAX_ROWS       => 20;  # Skip query if initial execution resulted in more than so many rows.
-use constant QUERY_REPEATS  => 0;   # Repeat each incoming query this many times and compute averge numbers.
+use constant MIN_DURATION   => 0.02; # (seconds) Queries with shorter execution times are not processed.
+use constant MAX_DURATION   => 300;  # (seconds) Queries with longer execution times are not processed.
+use constant MIN_RATIO      => 1.5;  # Minimum speed-up or slow-down required in order to report a query
+use constant MAX_ROWS       => 200;  # Skip query if initial execution resulted in more than so many rows.
+use constant QUERY_REPEATS  => 0;    # Repeat each incoming query this many times and compute averge numbers.
 
 # NOTE: If QUERY_REPEATS is > 0, execution times for the original execution
 # will be ignored when computing averages and doing time comparisons. 
