@@ -196,6 +196,7 @@ log4perl.appender.STDOUT.layout=PatternLayout
 log4perl.appender.STDOUT.layout.ConversionPattern=# %d{yyyy-MM-dd'T'HH:mm:ss} %m%n
 );
             Log::Log4perl::init( \$logconf );
+	    say("Using Log::Log4perl");
         }
     }
 }
