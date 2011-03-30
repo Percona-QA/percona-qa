@@ -54,6 +54,17 @@ my %transform_outcomes = (
 	'TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE'	=> 1010
 );
 
+# Subset of semantic errors that we may want to allow during transforms.
+my %mysql_grouping_errors = (
+	1004 => 'ER_NON_GROUPING_FIELD_USED',
+	1055 => 'ER_WRONG_FIELD_WITH_GROUP',
+	1056 => 'ER_WRONG_GROUP_FIELD',
+	1140 => 'ER_MIX_OF_GROUP_FUNC_AND_FIELDS'
+);
+
+# List of encountered errors that we want to suppress later in the test run.
+my %suppressed_errors = ();
+
 sub transformExecuteValidate {
 	my ($transformer, $original_query, $original_result, $executor) = @_;
 
@@ -93,8 +104,38 @@ sub transformExecuteValidate {
 		foreach my $transformed_query_part (@transformed_queries) {
 			my $part_result = $executor->execute($transformed_query_part);
 			if (
-				($part_result->status() == STATUS_SYNTAX_ERROR) || ($part_result->status() == STATUS_SEMANTIC_ERROR)
+				($part_result->status() == STATUS_SYNTAX_ERROR) || 
+				($part_result->status() == STATUS_SEMANTIC_ERROR)
 			) {
+				# We normally return a critical error when a transformer returns
+				# a semantic or syntactic error, because we want to detect any
+				# faulty transformers, e.g. those which do not produce valid 
+				# queries. However, some errors may need to be accepted in
+				# certain situations.
+				#
+				# For example, with MySQL's ONLY_FULL_GROUP_BY sql mode, some
+				# queries return grouping related errors, whereas they would
+				# not return such errors without this mode, and we want to 
+				# continue the test even if such errors occur.
+				# We have logic in place to take care of this below.
+				#
+				if ( 
+					($executor->type() == DB_MYSQL) && 
+					(exists $mysql_grouping_errors{$part_result->err()}) 
+				){
+					if (rqg_debug()) {
+						say("Ignoring transform ".ref($transformer)." that failed with the error: ".$part_result->errstr());
+						say("Offending query is: $transformed_query_part;");
+					} else {
+						if (not defined $suppressed_errors{$part_result->err()}) {
+							say("Ignoring transforms of the type ".ref($transformer)." that fail with an error like: ".$part_result->errstr());
+							$suppressed_errors{$part_result->err()}++;
+						}
+					}
+					# Then move on...
+					# We "cheat" by returning STATUS_OK, as the validator would otherwise try to access the result.
+					return STATUS_OK;
+				}
 				say("Transform ".ref($transformer)." failed with a syntactic or semantic error: ".$part_result->errstr());
 				say("Offending query is: $transformed_query_part;");
 				say("Original query is: $original_query;");
