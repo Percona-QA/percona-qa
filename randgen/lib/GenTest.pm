@@ -20,7 +20,8 @@ use base 'Exporter';
 
 @EXPORT = ('say', 'sayFile', 'tmpdir', 'safe_exit', 
            'osWindows', 'osLinux', 'osSolaris', 'osMac',
-           'isoTimestamp', 'isoUTCTimestamp', 'rqg_debug', 'unix2winPath',
+           'isoTimestamp', 'isoUTCTimestamp', 'isoUTCSimpleTimestamp', 
+           'rqg_debug', 'unix2winPath',
            'setLoggingToFile','setLogConf');
 
 use strict;
@@ -172,16 +173,22 @@ sub isoTimestamp {
 
 	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = defined $datetime ? localtime($datetime) : localtime();
 	return sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
-
 }
 
 sub isoUTCTimestamp {
 	my $datetime = shift;
 
 	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = defined $datetime ? gmtime($datetime) : gmtime();
-	return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
-	
+	return sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
 }
+
+sub isoUTCSimpleTimestamp {
+	my $datetime = shift;
+
+	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = defined $datetime ? gmtime($datetime) : gmtime();
+	return sprintf("%04d%02d%02dT%02d%02d%02d", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
+}
+	
 
 # unix2winPath:
 #   Converts the given file path from unix style to windows native style

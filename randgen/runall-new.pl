@@ -335,7 +335,9 @@ my $gentestProps = GenTest::Properties->new(
               'sqltrace',
               'report-xml-tt',
               'report-xml-tt-type',
-              'report-xml-tt-dest']
+              'report-xml-tt-dest',
+              'logfile',
+              'logconf']
     );
 
 my @gentest_options;
@@ -375,6 +377,8 @@ $gentestProps->notnull($notnull) if defined $notnull;
 $gentestProps->valgrind(1) if $valgrind;
 $gentestProps->sqltrace(1) if $sqltrace;
 $gentestProps->testname($testname) if $testname;
+$gentestProps->logfile($logfile) if defined $logfile;
+$gentestProps->logconf($logconf) if defined $logconf;
 $gentestProps->property('report-xml-tt', 1) if defined $report_xml_tt;
 $gentestProps->property('report-xml-tt-type', $report_xml_tt_type) if defined $report_xml_tt_type;
 $gentestProps->property('report-xml-tt-dest', $report_xml_tt_dest) if defined $report_xml_tt_dest;
