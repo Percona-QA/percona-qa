@@ -566,6 +566,8 @@ sub stop_child {
 
 sub copyLogFiles {
     my ($self,$ld, $executors) = @_;
+    ## Won't copy log files on windows (yet)
+    ## And do this only when tt-logging is enabled
     if (!osWindows() && -e $self->config->property('report-tt-logdir')) {
         ## Only for unices
         my $logdir =  $self->config->property('report-tt-logdir')."/".$ld;
@@ -581,16 +583,20 @@ sub copyLogFiles {
             my $sth = $dbh->prepare("show variables like '%log_file'");
             $sth->execute();
             while (my $row = $sth->fetchrow_arrayref()) {
-                my $file = @{$row}[1];
-                if ( -e $file ) {
-                    say("Copying ". $file. " to ".$logdir);
-                    system("cp ".$file." ".$logdir);
-                }
+                copyFileToDir(@{$row}[1], $logdir) if -e @{$row}[1];
             }
         }
-        say("Copying ". $self->config->logfile. " to ".$logdir);
-        system("cp ".$self->config->logfile." ".$logdir);
+        copyFileToDir($self->config->logfile,$logdir);
     }
 }
 
+sub copyFileToDir {
+    ## Not ported to windows. But then again TT-reporing with scp does
+    ## not work on Windows either...
+    my ($from, $todir) = @_;
+    say("Copying '$from' to '$todir'");
+    system("cp ".$from." ".$todir);
+}
+
 1;
+
