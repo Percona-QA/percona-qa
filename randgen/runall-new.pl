@@ -66,7 +66,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
-    $notnull,$logfile,$logconf);
+    $notnull, $logfile, $logconf, $report_tt_logdir);
 
 my $gendata=''; ## default simple gendata
 
@@ -120,7 +120,8 @@ my $opt_result = GetOptions(
     'mtr-build-thread=i' => \$build_thread,
     'sqltrace' => \$sqltrace,
     'logfile=s' => \$logfile,
-    'logconf=s' => \$logconf
+    'logconf=s' => \$logconf,
+    'report-tt-logdir=s' => \$report_tt_logdir
     );
 
 if (defined $logfile && defined $logger) {
@@ -337,7 +338,8 @@ my $gentestProps = GenTest::Properties->new(
               'report-xml-tt-type',
               'report-xml-tt-dest',
               'logfile',
-              'logconf']
+              'logconf',
+              'report-tt-logdir']
     );
 
 my @gentest_options;
@@ -379,6 +381,7 @@ $gentestProps->sqltrace(1) if $sqltrace;
 $gentestProps->testname($testname) if $testname;
 $gentestProps->logfile($logfile) if defined $logfile;
 $gentestProps->logconf($logconf) if defined $logconf;
+$gentestProps->property('report-tt-logdir',$report_tt_logdir) if defined $report_tt_logdir;
 $gentestProps->property('report-xml-tt', 1) if defined $report_xml_tt;
 $gentestProps->property('report-xml-tt-type', $report_xml_tt_type) if defined $report_xml_tt_type;
 $gentestProps->property('report-xml-tt-dest', $report_xml_tt_dest) if defined $report_xml_tt_dest;
