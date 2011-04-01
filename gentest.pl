@@ -82,7 +82,8 @@ my $opt_result = GetOptions($options,
                             'notnull',
                             'debug',
                             'logfile=s',
-                            'logconf=s');
+                            'logconf=s',
+                            'report-tt-logdir=s');
 backwardCompatability($options);
 my $config = GenTest::Properties->new(
     options => $options,
@@ -124,7 +125,8 @@ my $config = GenTest::Properties->new(
               'sqltrace',
               'notnull',
               'logfile',
-              'logconf'],
+              'logconf',
+              'report-tt-logdir'],
     help => \&help);
 
 help() if !$opt_result || $config->help;

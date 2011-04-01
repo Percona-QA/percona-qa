@@ -59,8 +59,6 @@ use constant PROCESS_TYPE_CHILD		=> 2;
 
 use constant GT_CONFIG => 0;
 
-use constant GT_LOGDIR_PREFIX => "/log/huge2/rqg";
-
 sub new {
     my $class = shift;
     
@@ -272,7 +270,7 @@ sub run {
     my $test = GenTest::XML::Test->new(
         id => time(),
         name => $test_suite_name,  # NOTE: Consider changing to test (or test case) name when suites are supported.
-        logdir => GT_LOGDIR_PREFIX.'/'.$logdir,
+        logdir => $self->config->property('report-tt-logdir').'/'.$logdir,
         attributes => {
             engine => $self->config->engine,
             gendata => $self->config->gendata,
@@ -467,7 +465,8 @@ sub run {
             if ($result != STATUS_OK) {
                 croak("Error from XML Transporter: $result");
             }
-            if (defined $self->config->logfile) {
+            if (defined $self->config->logfile && defined 
+                $self->config->property('report-tt-logdir')) {
                 $self->copyLogFiles($logdir, \@executors);
             }
         }
@@ -567,9 +566,9 @@ sub stop_child {
 
 sub copyLogFiles {
     my ($self,$ld, $executors) = @_;
-    if (!osWindows() && -e GT_LOGDIR_PREFIX) {
+    if (!osWindows() && -e $self->config->property('report-tt-logdir')) {
         ## Only for unices
-        my $logdir =  GT_LOGDIR_PREFIX."/".$ld;
+        my $logdir =  $self->config->property('report-tt-logdir')."/".$ld;
         mkdir $logdir if ! -e $logdir;
     
         foreach my $exe (@$executors) {

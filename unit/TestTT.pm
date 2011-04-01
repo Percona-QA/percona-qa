@@ -43,7 +43,7 @@ sub test_xml_runall {
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none  --xml-output=unit/test1.xml --logfile=unit/foo1.log --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none  --xml-output=unit/test1.xml --logfile=unit/foo1.log --report-tt-logdir=unit --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
     }
 }
@@ -57,7 +57,7 @@ sub test_xml_runall_new {
     
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none --xml-output=unit/test2.xml --logfile=unit/foo2.log --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmp");
+        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none --xml-output=unit/test2.xml --logfile=unit/foo2.log --report-tt-logdir=unit --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmp");
         $self->assert_equals(0, $status);
     }
 }
