@@ -88,7 +88,7 @@ sub report
         {
           $transaction_log = $basedir.'/var/local/transaction.log' ;
         }
-        if (-e $basedir.'/tests/workdir/bot0/s0/var/master-data/local/transaction.log')
+        elsif (-e $basedir.'/tests/workdir/bot0/s0/var/master-data/local/transaction.log')
         {
           $transaction_log = $basedir.'/tests/workdir/bot0/s0/var/master-data/local/transaction.log' ;
         }
