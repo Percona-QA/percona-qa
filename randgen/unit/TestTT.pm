@@ -34,6 +34,11 @@ sub set_up {
 
 sub tear_down {
     # clean up after test
+    unlink "unit/test1.xml";
+    unlink "unit/test2.xml";
+    unlink "unit/foo1.log";
+    unlink "unit/foo2.log";
+    system("rm -r unit/example*");
 }
 
 sub test_xml_runall {
