@@ -48,7 +48,7 @@ select:
 	SELECT distinct * FROM _table index_hint WHERE where order_by /* limit */ |
 	SELECT distinct * FROM _table index_hint WHERE where order_by /* limit */ |
 	SELECT aggregate int_key ) FROM _table index_hint WHERE where |
-	SELECT int_key , aggregate int_key ) FROM _table index_hint WHERE where GROUP BY int_key ;
+	SELECT int_key , aggregate int_key ) FROM _table index_hint WHERE where GROUP BY 1 ;
 
 alter_add:
 	ALTER TABLE _table ADD KEY key1 ( index_list ) ;
