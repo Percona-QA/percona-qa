@@ -307,7 +307,7 @@ foreach my $server_id (0..1) {
 	push @mtr_options, "--skip-ndb";
 	push @mtr_options, "--mysqld=--core-file";
 	push @mtr_options, "--mysqld=--loose-new";
-#	push @mtr_options, "--mysqld=--default-storage-engine=$engine" if defined $engine;
+	push @mtr_options, "--mysqld=--default-storage-engine=$engine" if defined $engine;
 	push @mtr_options, "--mysqld=--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
 	push @mtr_options, "--mysqld=--relay-log=slave-relay-bin";
 	push @mtr_options, "--mysqld=--loose-innodb";
