@@ -168,6 +168,7 @@ sub report
 		'--datadir="'.$datadir.'"',
                 '--basedir="'.$basedir.'"',
                 '--plugin-add=shutdown_function',
+                '--innodb.replication-log',
 		'--mysql-protocol.port='.$main_port,
 
 	);
