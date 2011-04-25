@@ -130,7 +130,7 @@ if (!$opt_result) {
 
 say("Copyright (c) 2008-2009 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.");
 say("Please see http://forge.mysql.com/wiki/Category:RandomQueryGenerator for more information on this test framework.");
-say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
+say("Starting: $0 ".join(" ", @ARGV_saved));
 
 #
 # Calculate master and slave ports based on MTR_BUILD_THREAD (MTR

@@ -45,7 +45,6 @@ use GenTest::XML::Transporter;
 use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Validator;
-use GenTest::Generator::FromGrammar;
 use GenTest::Executor;
 use GenTest::Mixer;
 use GenTest::Reporter;
@@ -135,20 +134,29 @@ sub run {
     
     my $test_start = time();
     my $test_end = $test_start + $self->config->duration;
-    
-    my $grammar = GenTest::Grammar->new(
-        grammar_file => $self->config->grammar
-        );
-    
-    return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
-    
-    if (defined $self->config->redefine) {
-        my $patch_grammar = GenTest::Grammar->new(
-            grammar_file => $self->config->redefine);
-        $grammar = $grammar->patch($patch_grammar);
+
+    my $generator_name = "GenTest::Generator::".$self->config->generator;
+    say("Loading Generator $generator_name.");
+    eval("use $generator_name");
+    croak($@) if $@;
+
+    my $grammar;
+
+    if ($generator_name eq 'GenTest::Generator::FromGrammar') {
+	$grammar = GenTest::Grammar->new(
+	    grammar_file => $self->config->grammar
+        ) if defined $self->config->grammar;
+
+	return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
+
+        if (defined $self->config->redefine) {
+            my $patch_grammar = GenTest::Grammar->new(
+                grammar_file => $self->config->redefine);
+            $grammar = $grammar->patch($patch_grammar);
+        }
+
+        return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
     }
-    
-    return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
     
     my $channel = GenTest::IPC::Channel->new();
     
@@ -223,7 +231,7 @@ sub run {
             if (defined $self->config->valgrind) && ($mysql_only || $drizzle_only);
         
         push @{$self->config->validators}, 'QueryProperties' 
-            if $grammar->hasProperties() && ($mysql_only || $drizzle_only);
+            if defined $grammar && $grammar->hasProperties() && ($mysql_only || $drizzle_only);
     } else {
         ## Remove the "None" validator
         foreach my $i (0..$#{$self->config->validators}) {
@@ -487,20 +495,20 @@ sub run {
     } elsif ($process_type == PROCESS_TYPE_CHILD) {
 
         # We are a child process, execute the desired queries and terminate
-        
-        my $generator = GenTest::Generator::FromGrammar->new(
+
+        my $generator_obj = $generator_name->new(
             grammar => $grammar,
             varchar_length => $self->config->property('varchar-length'),
             seed => $seed + $id,
             thread_id => $id,
             mask => $self->config->mask,
-	        mask_level => $self->config->property('mask-level')
-            );
+            mask_level => $self->config->property('mask-level')
+        );
         
-        $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $generator;
+        $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $generator_obj;
         
         my $mixer = GenTest::Mixer->new(
-            generator => $generator,
+            generator => $generator_obj,
             executors => \@executors,
             validators => $self->config->validators,
             filters => defined $filter_obj ? [ $filter_obj ] : undef
