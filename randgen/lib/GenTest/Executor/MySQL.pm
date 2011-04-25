@@ -27,7 +27,9 @@ use GenTest;
 use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Executor;
+use GenTest::QueryPerformance;
 use Time::HiRes;
+use Digest::MD5;
 
 use constant RARE_QUERY_THRESHOLD	=> 5;
 use constant MAX_ROWS_THRESHOLD		=> 10000;
@@ -521,20 +523,22 @@ sub init {
 }
 
 sub reportError {
-    my ($self, $query, $err, $errstr, $silent) = @_;
+    my ($self, $query, $err, $errstr, $execution_flags) = @_;
     
     my $msg = [$query,$err,$errstr];
     
     if (defined $self->channel) {
-        $self->sendError($msg) if !$silent;
+        $self->sendError($msg) if not ($execution_flags & EXECUTOR_FLAG_SILENT);
     } elsif (not defined $reported_errors{$errstr}) {
-        say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if !$silent;
+        say("Query: $query failed: $err $errstr. Further errors of this kind will be suppressed.") if not ($execution_flags & EXECUTOR_FLAG_SILENT);
         $reported_errors{$errstr}++;
     }
 }
 
 sub execute {
-	my ($executor, $query, $silent) = @_;
+	my ($executor, $query, $execution_flags) = @_;
+
+	$execution_flags = $execution_flags | $executor->flags();
 
 	# Filter out any /*executor */ comments that do not pertain to this particular Executor/DBI
 	my $executor_id = $executor->id();
@@ -560,12 +564,21 @@ sub execute {
 		}
 	}
 
+	my $performance;
+
+	if ($execution_flags & EXECUTOR_FLAG_PERFORMANCE) {
+		$performance = GenTest::QueryPerformance->new(
+			dbh => $executor->dbh(),
+			query => $query
+		);	
+	}
+
 	my $start_time = Time::HiRes::time();
 	my $sth = $dbh->prepare($query);
 
 	if (not defined $sth) {			# Error on PREPARE
 		my $errstr = $executor->normalizeError($sth->errstr());
-		$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
+		$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
 		return GenTest::Result->new(
 			query		=> $query,
 			status		=> $executor->getStatusFromErr($dbh->err()) || STATUS_UNKNOWN_ERROR,
@@ -578,6 +591,7 @@ sub execute {
 	}
 
 	my $affected_rows = $sth->execute();
+	$performance->record() if defined $performance;
 
 	my $mysql_info = $dbh->{'mysql_info'};
 	my ($matched_rows, $changed_rows) = $mysql_info =~ m{^Rows matched:\s+(\d+)\s+Changed:\s+(\d+)}sgio;
@@ -586,10 +600,12 @@ sub execute {
 	my $column_types = $sth->{mysql_type_name} if $sth->{NUM_OF_FIELDS} > 0;
 
 	my $end_time = Time::HiRes::time();
+	my $query_duration = $end_time - $start_time;
+	$performance->setQueryDuration($query_duration) if defined $performance;
 
 	my $err = $sth->err();
 	my $err_type = $err2type{$err} || STATUS_OK;
-	$executor->[EXECUTOR_STATUS_COUNTS]->{$err_type}++ if rqg_debug() && !$silent;
+	$executor->[EXECUTOR_STATUS_COUNTS]->{$err_type}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
 
 	if ($executor->sqltrace) {
 	    if (defined $err && ($executor->sqltrace eq 'MarkErrors')) {
@@ -613,8 +629,8 @@ sub execute {
 			($err_type == STATUS_TRANSACTION_ERROR)
 		) {
 			my $errstr = $executor->normalizeError($sth->errstr());
-			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if rqg_debug() && !$silent;
-			$executor->reportError($query, $err, $errstr, $silent);
+			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
+			$executor->reportError($query, $err, $errstr, $execution_flags);
 		} elsif (
 			($err_type == STATUS_SERVER_CRASHED) ||
 			($err_type == STATUS_SERVER_KILLED)
@@ -633,10 +649,10 @@ sub execute {
 				$executor->setDbh($dbh);
 			}
 
-			say("Query: $query failed: $err ".$sth->errstr()) if !$silent;
-		} else {
-			$executor->[EXECUTOR_ERROR_COUNTS]->{$sth->errstr()}++ if rqg_debug() && !$silent;
-			say("Query: $query failed: $err ".$sth->errstr()) if !$silent;
+			say("Query: $query failed: $err ".$sth->errstr()) if not ($execution_flags & EXECUTOR_FLAG_SILENT);
+		} elsif (not ($execution_flags & EXECUTOR_FLAG_SILENT)) {
+			$executor->[EXECUTOR_ERROR_COUNTS]->{$sth->errstr()}++;
+			say("Query: $query failed: $err ".$sth->errstr());
 		}
 
 		$result = GenTest::Result->new(
@@ -646,7 +662,8 @@ sub execute {
 			errstr		=> $sth->errstr(),
 			sqlstate	=> $sth->state(),
 			start_time	=> $start_time,
-			end_time	=> $end_time
+			end_time	=> $end_time,
+			performance	=> $performance
 		);
 	} elsif ((not defined $sth->{NUM_OF_FIELDS}) || ($sth->{NUM_OF_FIELDS} == 0)) {
 		$result = GenTest::Result->new(
@@ -657,57 +674,56 @@ sub execute {
 			changed_rows	=> $changed_rows,
 			info		=> $mysql_info,
 			start_time	=> $start_time,
-			end_time	=> $end_time
+			end_time	=> $end_time,
+			performance	=> $performance
 		);
-		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
+		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
 	} else {
-		#
-		# We do not use fetchall_arrayref() due to a memory leak
-		# We also copy the row explicitly into a fresh array
-		# otherwise the entire @data array ends up referencing row #1 only
-		#
 		my @data;
-
+		my %data_hash;
 		my $row_count = 0;
+		my $result_status = STATUS_OK;
 
 		while (my @row = $sth->fetchrow_array()) {
-			push @data, \@row;
 			$row_count++;
+			if ($execution_flags & EXECUTOR_FLAG_HASH_DATA) {
+				$data_hash{substr(Digest::MD5::md5_hex(@row), 0, 3)}++;
+			} else {
+				push @data, \@row;				
+			}
 
-			if ($row_count > MAX_ROWS_THRESHOLD) {
-				say("Query: $query returned more than MAX_ROWS_THRESHOLD (".MAX_ROWS_THRESHOLD().") rows. Killing it ...");
-				$executor->[EXECUTOR_RETURNED_ROW_COUNTS]->{'>MAX_ROWS_THRESHOLD'}++;
+			$row_count++;
+			last if ($row_count > MAX_ROWS_THRESHOLD);
+		}
 
-				my $kill_dbh = DBI->connect($executor->dsn(), undef, undef, { PrintError => 1 });
-				$kill_dbh->do("KILL QUERY ".$executor->connectionId()); 
-				$kill_dbh->disconnect();
-				$sth->finish();
+		if ($row_count > MAX_ROWS_THRESHOLD) {
+			say("Query: $query returned more than MAX_ROWS_THRESHOLD (".MAX_ROWS_THRESHOLD().") rows. Killing it ...");
+			$executor->[EXECUTOR_RETURNED_ROW_COUNTS]->{'>MAX_ROWS_THRESHOLD'}++;
 
-				$result = GenTest::Result->new(
-					query		=> $query,
-					status		=> STATUS_SKIP,
-					start_time	=> $start_time,
-					end_time	=> $end_time
-				);
-
-				last;
+			my $kill_dbh = DBI->connect($executor->dsn(), undef, undef, { PrintError => 1 });
+			$kill_dbh->do("KILL QUERY ".$executor->connectionId()); 
+			$kill_dbh->disconnect();
+			$sth->finish();
+			$result_status = STATUS_SKIP;
+		} elsif ($execution_flags & EXECUTOR_FLAG_HASH_DATA) {
+			while (my ($key, $value) = each %data_hash) {
+				push @data, [ $key , $value ];
 			}
 		}
 
-		if (not defined $result) {
-			$result = GenTest::Result->new(
-				query		=> $query,
-				status		=> STATUS_OK,
-				affected_rows 	=> $affected_rows,
-				data		=> \@data,
-				start_time	=> $start_time,
-				end_time	=> $end_time,
-				column_names	=> $column_names,
-				column_types	=> $column_types
-			);
-		}
+		$result = GenTest::Result->new(
+			query		=> $query,
+			status		=> STATUS_OK,
+			affected_rows 	=> $affected_rows,
+			data		=> \@data,
+			start_time	=> $start_time,
+			end_time	=> $end_time,
+			column_names	=> $column_names,
+			column_types	=> $column_types,
+			performance	=> $performance
+		);
 
-		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
+		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
 	}
 
 	$sth->finish();
@@ -717,7 +733,7 @@ sub execute {
 		$result->setWarnings($warnings);
 	}
 
-	if ( (rqg_debug()) && (!$silent) ) {
+	if ( (rqg_debug()) && (! ($execution_flags & EXECUTOR_FLAG_SILENT)) ) {
 		if ($query =~ m{^\s*select}sio) {
 			$executor->explain($query);
 
@@ -905,6 +921,18 @@ sub getCollationMetaData {
         "SELECT collation_name,character_set_name FROM information_schema.collations";
 
     return $self->dbh()->selectall_arrayref($query);
+}
+
+sub read_only {
+	my $executor = shift;
+	my $dbh = $executor->dbh();
+	my ($grant_command) = $dbh->selectrow_array("SHOW GRANTS FOR CURRENT_USER()");
+	my ($grants) = $grant_command =~ m{^grant (.*?) on}sio;
+	if (uc($grants) eq 'SELECT') {
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 1;
