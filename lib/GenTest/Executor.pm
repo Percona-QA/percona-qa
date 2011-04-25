@@ -31,6 +31,10 @@ require Exporter;
 	FETCH_METHOD_AUTO
 	FETCH_METHOD_STORE_RESULT
 	FETCH_METHOD_USE_RESULT
+
+	EXECUTOR_FLAG_SILENT
+	EXECUTOR_FLAG_PERFORMANCE
+	EXECUTOR_FLAG_HASH_DATA
 );
 
 use strict;
@@ -57,10 +61,15 @@ use constant EXECUTOR_SQLTRACE			=> 14;
 use constant EXECUTOR_NO_ERR_FILTER             => 15;
 use constant EXECUTOR_FETCH_METHOD		=> 16;
 use constant EXECUTOR_CONNECTION_ID		=> 17;
+use constant EXECUTOR_FLAGS			=> 18;
 
 use constant FETCH_METHOD_AUTO		=> 0;
 use constant FETCH_METHOD_STORE_RESULT	=> 1;
 use constant FETCH_METHOD_USE_RESULT	=> 2;
+
+use constant EXECUTOR_FLAG_SILENT	=> 1;
+use constant EXECUTOR_FLAG_PERFORMANCE	=> 2;
+use constant EXECUTOR_FLAG_HASH_DATA	=> 4;
 
 my %global_schema_cache;
 
@@ -167,6 +176,14 @@ sub connectionId {
 
 sub setConnectionId {
 	$_[0]->[EXECUTOR_CONNECTION_ID] = $_[1];
+}
+
+sub flags {
+	return $_[0]->[EXECUTOR_FLAGS];
+}
+
+sub setFlags {
+	$_[0]->[EXECUTOR_FLAGS] = $_[1];
 }
 
 sub type {
