@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -33,6 +33,7 @@ use strict;
 use GenTest;
 use GenTest::Result;
 use GenTest::Random;
+use Cwd 'abs_path';
 use DBI;
 
 use constant REPORTER_PRNG		=> 0;
@@ -126,6 +127,18 @@ sub new {
 			$reporter->[REPORTER_SERVER_INFO]->{'client_bindir'} = $reporter->serverVariable('basedir').'/'.$client_path;
 	                last;
 	        }
+	}
+
+	# look for error log relative to datadir
+	foreach my $errorlog_path (
+		"../log/master.err",  # MTRv1 regular layout
+		"../log/mysqld1.err", # MTRv2 regular layout
+		"../mysql.err"        # DBServer::MySQL layout
+	) {
+		my $possible_path = abs_path($reporter->serverVariable('datadir').'/'.$errorlog_path);
+		if (-e $possible_path) {
+			$reporter->[REPORTER_SERVER_INFO]->{'errorlog'} = $possible_path;
+		}
 	}
 
 	my $prng = GenTest::Random->new( seed => 1 );
