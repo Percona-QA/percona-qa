@@ -9,7 +9,6 @@ use Getopt::Long;
 
 use GenTest;
 use GenTest::Generator::FromDirectory;
-use GenTest::Generator::FromCSV;
 use GenTest::QueryPerformance;
 use GenTest::QueryPerformanceDelta;
 use GenTest::Executor;
