@@ -577,8 +577,8 @@ sub execute {
 	my $sth = $dbh->prepare($query);
 
 	if (not defined $sth) {			# Error on PREPARE
-		my $errstr = $executor->normalizeError($sth->errstr());
-		$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
+		my $errstr_prepare = $executor->normalizeError($dbh->errstr());
+		$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr_prepare}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
 		return GenTest::Result->new(
 			query		=> $query,
 			status		=> $executor->getStatusFromErr($dbh->err()) || STATUS_UNKNOWN_ERROR,
@@ -591,21 +591,23 @@ sub execute {
 	}
 
 	my $affected_rows = $sth->execute();
-	$performance->record() if defined $performance;
+	my $end_time = Time::HiRes::time();
+	my $execution_time = $end_time - $start_time;
 
+	my $err = $sth->err();
+	my $errstr = $executor->normalizeError($sth->errstr()) if defined $sth->errstr();
+	my $err_type = $err2type{$err} || STATUS_OK;
+	$executor->[EXECUTOR_STATUS_COUNTS]->{$err_type}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
 	my $mysql_info = $dbh->{'mysql_info'};
 	my ($matched_rows, $changed_rows) = $mysql_info =~ m{^Rows matched:\s+(\d+)\s+Changed:\s+(\d+)}sgio;
 
 	my $column_names = $sth->{NAME} if $sth->{NUM_OF_FIELDS} > 0;
 	my $column_types = $sth->{mysql_type_name} if $sth->{NUM_OF_FIELDS} > 0;
 
-	my $end_time = Time::HiRes::time();
-	my $query_duration = $end_time - $start_time;
-	$performance->setQueryDuration($query_duration) if defined $performance;
-
-	my $err = $sth->err();
-	my $err_type = $err2type{$err} || STATUS_OK;
-	$executor->[EXECUTOR_STATUS_COUNTS]->{$err_type}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
+	if (defined $performance) {
+		$performance->record();
+		$performance->setExecutionTime($execution_time);
+	}
 
 	if ($executor->sqltrace) {
 	    if (defined $err && ($executor->sqltrace eq 'MarkErrors')) {
@@ -620,7 +622,6 @@ sub execute {
 	}
 
 	my $result;
-
 	if (defined $err) {			# Error on EXECUTE
 
 		if (
@@ -628,7 +629,6 @@ sub execute {
 			($err_type == STATUS_SEMANTIC_ERROR) ||
 			($err_type == STATUS_TRANSACTION_ERROR)
 		) {
-			my $errstr = $executor->normalizeError($sth->errstr());
 			$executor->[EXECUTOR_ERROR_COUNTS]->{$errstr}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
 			$executor->reportError($query, $err, $errstr, $execution_flags);
 		} elsif (
@@ -659,7 +659,7 @@ sub execute {
 			query		=> $query,
 			status		=> $err_type || STATUS_UNKNOWN_ERROR,
 			err		=> $err,
-			errstr		=> $sth->errstr(),
+			errstr		=> $errstr,
 			sqlstate	=> $sth->state(),
 			start_time	=> $start_time,
 			end_time	=> $end_time,

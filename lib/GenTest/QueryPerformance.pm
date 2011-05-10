@@ -20,10 +20,11 @@ require Exporter;
 use strict;
 use GenTest;
 
-use constant PERFORMANCE_DBH	=> 0;
-use constant PERFORMANCE_QUERY	=> 1;
-use constant PERFORMANCE_SESSION_STATUS	=> 2;
-use constant PERFORMANCE_QUERY_DURATION	=> 3;
+use constant PERFORMANCE_DBH		=> 0;
+use constant PERFORMANCE_VERSION	=> 1;
+use constant PERFORMANCE_QUERY		=> 2;
+use constant PERFORMANCE_SESSION_STATUS	=> 3;
+use constant PERFORMANCE_EXECUTION_TIME	=> 4;
 
 1;
 
@@ -33,13 +34,14 @@ sub new {
 	my $class = shift;
 	my $performance = $class->SUPER::new({
 		'dbh'			=> PERFORMANCE_DBH,
+		'version'		=> PERFORMANCE_VERSION,
 		'query'			=> PERFORMANCE_QUERY,
-		'query_duration'	=> PERFORMANCE_QUERY_DURATION
+		'execution_time'	=> PERFORMANCE_EXECUTION_TIME
 	}, @_);
 
 	$performance->dbh()->do("FLUSH STATUS");
 	%innodb_baseline = @{$performance->dbh()->selectcol_arrayref("SHOW GLOBAL STATUS LIKE 'Innodb_%'",  { Columns=>[1,2] })};
-
+	$performance->[PERFORMANCE_VERSION] = $performance->dbh()->selectrow_array('SELECT @@version');
 
 	return $performance;
 }
@@ -52,7 +54,10 @@ sub record {
 	foreach my $variable_name (keys %status_hash) {
 		delete $status_hash{$variable_name} if $variable_name =~ m{^(com_|qcache_|ssl_)}sgio;
 		delete $status_hash{$variable_name} if $variable_name =~ m{^(threads_created|uptime|opened_files|queries|connections)}sgio;
-		delete $status_hash{$variable_name} if $variable_name =~ m{^(maria_|innodb_)}sgio;
+		delete $status_hash{$variable_name} if $variable_name =~ m{^(aria_|innodb_)}sgio;
+
+		delete $status_hash{$variable_name} if $variable_name !~ m{^handler}sgio;
+	
 #		delete $status_hash{$variable_name} if $status_hash{$variable_name} eq '0';
 	}
 
@@ -77,16 +82,20 @@ sub sessionStatusVariables {
 	return $_[0]->[PERFORMANCE_SESSION_STATUS];
 }
 
-sub queryDuration {
-	return $_[0]->[PERFORMANCE_QUERY_DURATION];
+sub executionTime {
+	return $_[0]->[PERFORMANCE_EXECUTION_TIME];
 }
 
-sub setQueryDuration {
-	$_[0]->[PERFORMANCE_QUERY_DURATION] = $_[1];
+sub setExecutionTime {
+	$_[0]->[PERFORMANCE_EXECUTION_TIME] = $_[1];
 }
 
 sub dbh {
 	return $_[0]->[PERFORMANCE_DBH];
+}
+
+sub version {
+	return $_[0]->[PERFORMANCE_VERSION];
 }
 
 1;
