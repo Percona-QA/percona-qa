@@ -743,7 +743,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --grammar='.$conf.'/optimizer/optimizer_access_exp.yy
         --duration=1200
 	';
-} elsif ($test =~ m{^opt_no_subquery$}io ) {
+} elsif ($test =~ m{^opt_no_subquery(_trace)$}io ) {
 	$command = '
         --threads=1
         --queries=100K
@@ -937,6 +937,19 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	POSIX::_exit ($exitCode);
 }
 
+# Additional tests that are variants of the above defined tests:
+#
+# 1. Optimizer trace - all tests which name ends with "_trace":
+#    Enable tracing and the OptimizerTraceParser validator.
+#    NOTE: For applicable tests, must make sure regex in if checks above
+#          will match the _trace suffix, otherwise the script will say
+#          that the test configuration is not defined.
+if ($test =~ m{.*_trace$}io ) {
+    $command = $command.' --mysqld=--optimizer_trace="enabled=on"';
+    $command = $command.' --validator=OptimizerTraceParser';
+}
+
+
 #
 # Look for a redefine file for the grammar used, and add it to the command line
 # if found. Also print special comments (e.g. about disabled parts) from the
@@ -944,7 +957,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
 #
 $redefine_file = redefine_filename($command);
 $command = $command.' --redefine='.$redefine_file if defined $redefine_file;
-
 
 #
 # Specify some "default" Reporters if none have been specified already.
