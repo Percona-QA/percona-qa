@@ -311,6 +311,7 @@ my $gentestProps = GenTest::Properties->new(
               'dsn',
               'engine',
               'gendata',
+              'generator',
               'redefine',
               'threads',
               'queries',
@@ -353,6 +354,8 @@ if ($#validators == 0 and $validators[0] =~ m/,/) {
 if ($#reporters == 0 and $reporters[0] =~ m/,/) {
     @reporters = split(/,/,$reporters[0]);
 }
+
+$gentestProps->property('generator','FromGrammar') if not defined $gentestProps->property('generator');
 
 $gentestProps->property('start-dirty',1) if defined $start_dirty;
 $gentestProps->gendata($gendata);

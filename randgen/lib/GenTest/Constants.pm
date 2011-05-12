@@ -1,4 +1,4 @@
-# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -59,6 +59,7 @@ require Exporter;
 	STATUS_DATABASE_CORRUPTION
 	STATUS_SERVER_DEADLOCKED
 	STATUS_VALGRIND_FAILURE
+	STATUS_ALARM
 
 	ORACLE_ISSUE_STILL_REPEATABLE
 	ORACLE_ISSUE_NO_LONGER_REPEATABLE
@@ -124,6 +125,7 @@ use constant STATUS_DATABASE_CORRUPTION		=> 105;
 use constant STATUS_SERVER_DEADLOCKED		=> 106;
 use constant STATUS_BACKUP_FAILURE		=> 107;
 use constant STATUS_VALGRIND_FAILURE		=> 108;
+use constant STATUS_ALARM			=> 109; # A module, e.g. a Reporter, raises an alarm with critical severity
 
 use constant ORACLE_ISSUE_STILL_REPEATABLE	=> 1;
 use constant ORACLE_ISSUE_NO_LONGER_REPEATABLE	=> 0;

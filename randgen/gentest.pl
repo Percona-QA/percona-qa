@@ -51,6 +51,7 @@ my $opt_result = GetOptions($options,
                             'dsn2=s',
                             'dsn3=s',
                             'engine=s',
+                            'generator=s',
                             'gendata:s',
                             'grammar=s',
                             'redefine=s',
@@ -92,10 +93,11 @@ my $config = GenTest::Properties->new(
                  queries => $DEFAULT_QUERIES,
                  duration => $DEFAULT_DURATION,
                  threads => $DEFAULT_THREADS},
-    required => ['grammar'],
     legal => ['dsn',
               'engine',
               'gendata',
+              'generator',
+              'grammar',
               'redefine',
               'testname',
               'threads',
@@ -139,7 +141,7 @@ if (defined $config->logfile && defined $logger) {
     }
 }
 
-say("Starting \n $0 \\ \n ".join(" \\ \n ", @ARGV_saved));
+say("Starting: $0 ".join(" ", @ARGV_saved));
 
 $ENV{RQG_DEBUG} = 1 if defined $config->debug;
 my $gentest = GenTest::App::GenTest->new(config => $config);
@@ -213,17 +215,21 @@ sub backwardCompatability {
         }
         $options->{dsn} = \@dsns;
     }
-    
-    
+        
     if (grep (/,/,@{$options->{reporters}})) {
         my $newreporters = [];
         map {push(@$newreporters,split(/,/,$_))} @{$options->{reporters}};
         $options->{reporters}=$newreporters ;
     }
+
     if (grep (/,/,@{$options->{validators}})) {
         my $newvalidators = [];
         map {push(@$newvalidators,split(/,/,$_))} @{$options->{validators}};
         $options->{validators}=$newvalidators ;
+    }
+
+    if (not defined $options->{generator}) {
+        $options->{generator} = 'FromGrammar';
     }
 }
 

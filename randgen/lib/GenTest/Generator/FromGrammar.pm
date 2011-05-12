@@ -18,7 +18,7 @@
 package GenTest::Generator::FromGrammar;
 
 require Exporter;
-@ISA = qw(GenTest GenTest::Generator);
+@ISA = qw(GenTest::Generator GenTest);
 
 use strict;
 use GenTest::Constants;
@@ -30,21 +30,6 @@ use GenTest::Stack::Stack;
 use GenTest;
 use Cwd;
 
-use constant GENERATOR_GRAMMAR_FILE	=> 0;
-use constant GENERATOR_GRAMMAR_STRING	=> 1;
-use constant GENERATOR_GRAMMAR		=> 2;
-use constant GENERATOR_SEED		=> 3;
-use constant GENERATOR_PRNG		=> 4;
-use constant GENERATOR_TMPNAM		=> 5;
-use constant GENERATOR_THREAD_ID	=> 6;
-use constant GENERATOR_SEQ_ID		=> 7;
-use constant GENERATOR_MASK		=> 8;
-use constant GENERATOR_MASK_LEVEL => 9;
-use constant GENERATOR_VARCHAR_LENGTH	=> 10;
-use constant GENERATOR_MASKED_GRAMMAR => 11;
-use constant GENERATOR_GLOBAL_FRAME => 12;
-use constant GENERATOR_PARTICIPATING_RULES => 13;	# Stores the list of rules used in the last generated query
-
 use constant GENERATOR_MAX_OCCURRENCES	=> 3500;
 use constant GENERATOR_MAX_LENGTH	=> 10000;
 
@@ -52,17 +37,7 @@ my $field_pos;
 
 sub new {
         my $class = shift;
-	my $generator = $class->SUPER::new({
-		'grammar_file'		=> GENERATOR_GRAMMAR_FILE,
-		'grammar_string'	=> GENERATOR_GRAMMAR_STRING,
-		'grammar'		=> GENERATOR_GRAMMAR,
-		'seed'			=> GENERATOR_SEED,
-		'prng'			=> GENERATOR_PRNG,
-		'thread_id'		=> GENERATOR_THREAD_ID,
-		'mask'			=> GENERATOR_MASK,
-        'mask_level'    => GENERATOR_MASK_LEVEL,
-		'varchar_length'	=> GENERATOR_VARCHAR_LENGTH
-	}, @_);
+	my $generator = $class->SUPER::new(@_);
 
 	if (not defined $generator->grammar()) {
 #		say("Loading grammar file '".$generator->grammarFile()."' ...");
@@ -96,42 +71,6 @@ sub new {
     }
 
 	return $generator;
-}
-
-sub prng {
-	return $_[0]->[GENERATOR_PRNG];
-}
-
-sub grammar {
-	return $_[0]->[GENERATOR_GRAMMAR];
-}
-
-sub grammarFile {
-	return $_[0]->[GENERATOR_GRAMMAR_FILE];
-}
-
-sub grammarString {
-	return $_[0]->[GENERATOR_GRAMMAR_STRING];
-}
-
-sub threadId {
-	return $_[0]->[GENERATOR_THREAD_ID];
-}
-
-sub seqId {
-	return $_[0]->[GENERATOR_SEQ_ID];
-}
-
-sub mask {
-	return $_[0]->[GENERATOR_MASK];
-}
-
-sub maskLevel {
-	return $_[0]->[GENERATOR_MASK_LEVEL];
-}
-
-sub maskedGrammar {
-	return $_[0]->[GENERATOR_MASKED_GRAMMAR];
 }
 
 sub globalFrame {
