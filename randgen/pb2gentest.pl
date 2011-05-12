@@ -18,6 +18,7 @@
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use lib 'randgen/lib';
+#use lib 'randgen-alt/lib';
 
 use strict;
 use Carp;
@@ -31,6 +32,13 @@ use POSIX;
 use Sys::Hostname;
 
 my ($basedir, $vardir, $tree, $test) = @ARGV;
+
+# Which randgen variant do we use?
+# When modifying this, remember to also modify the "use" statement above.
+# (and ENV{PATH} for windows below)
+my $randgen = 'randgen';
+#my $randgen = 'randgen-alt';
+
 
 #
 # For further details about tests and recommended RQG options, see
@@ -323,7 +331,7 @@ if (osLinux() || osSolaris()) {
     $username = $ENV{'USERNAME'};
 }
 
-chdir('randgen');
+chdir($randgen);
 
 say("Gathering info from the environment...");
 # calling bzr usually takes a few seconds...
