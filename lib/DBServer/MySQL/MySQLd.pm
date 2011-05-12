@@ -419,7 +419,7 @@ sub stopServer {
     
     if (defined $self->[MYSQLD_DBH]) {
         say("Stopping server on port ".$self->port);
-        my $r = $self->dbh->func('shutdown','127.0.0.1','root','admin');
+        my $r = $self->[MYSQLD_DBH]->func('shutdown','127.0.0.1','root','admin');
         my $waits = 0;
         if ($r) {
             while (-f $self->pidfile && $waits < 100) {

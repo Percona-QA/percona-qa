@@ -49,7 +49,7 @@ sub new {
 	foreach my $executor (@{$mixer->executors()}) {
 		my $init_result = $executor->init();
 		return undef if $init_result > STATUS_OK;
-        $executor->cacheMetaData();
+	        $executor->cacheMetaData();
 	}
 
 	my @validators = @{$mixer->validators()};
@@ -147,7 +147,7 @@ sub next {
 	# rules will be reported on DESTROY.
 	#
 
-	if (rqg_debug()) {
+	if ((rqg_debug()) && (ref($mixer->generator()) eq 'GenTest::Generator::FromGrammar')) {
 		my $participating_rules = $mixer->generator()->participatingRules();
 		foreach my $participating_rule (@$participating_rules) {
 			if (
