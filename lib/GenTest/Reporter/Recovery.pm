@@ -167,7 +167,6 @@ sub report {
 		);
 	};
 
-	push @mysqld_options, '--loose-skip-innodb' if lc($engine) ne 'innodb';
 	push @mysqld_options, '--loose-skip-pbxt' if lc($engine) ne 'pbxt';
 
 	foreach my $plugin (@$plugins) {
