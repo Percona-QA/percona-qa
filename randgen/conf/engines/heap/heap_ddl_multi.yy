@@ -143,7 +143,7 @@ short_value:
 	_digit | _varchar(1) | NULL | _english ;
 
 long_value:
-	_varchar(128) | _varchar(1024) | NULL | _data ;
+	REPEAT( _varchar(128) , _digit ) | NULL | _data ;
 
 update:
 	UPDATE table_name SET field_name = value WHERE where ;
