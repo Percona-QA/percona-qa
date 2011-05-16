@@ -29,16 +29,20 @@ use DBI;
 sub monitor {
 	my $reporter = shift;
 
+	system('ps -Ffyl -p '.$reporter->serverInfo('pid'));
+
 	my $dsn = $reporter->dsn();
 	my $dbh = DBI->connect($dsn);
 
-	system('ps -Ffyl -p '.$reporter->serverInfo('pid'));
+	if (defined $dbh) {
+		my ($total_rows, $total_data, $total_indexes) = $dbh->selectrow_array("
+			SELECT SUM(TABLE_ROWS) , SUM(DATA_LENGTH) , SUM(INDEX_LENGTH)
+			FROM INFORMATION_SCHEMA.TABLES
+			WHERE TABLE_SCHEMA NOT IN ('information_schema','mysql','performance_schema')
+		");
 
-	my ($total_rows, $total_data, $total_indexes) = $dbh->selectrow_array("
-		SELECT SUM(TABLE_ROWS) , SUM(DATA_LENGTH) , SUM(INDEX_LENGTH)
-		FROM INFORMATION_SCHEMA.TABLES
-	");
-	say("Total_rows: $total_rows; total_data: $total_data; total_indexes: $total_indexes");	
+		say("Total_rows: $total_rows; total_data: $total_data; total_indexes: $total_indexes");	
+	}
 
 	return STATUS_OK;
 }
