@@ -9,24 +9,22 @@
 #
 
 query_init:
+	{ $table_name = 'local_'.$generator->threadId().'_1' ; return undef; } create_definition_init ;	{ $table_name = 'local_'.$generator->threadId().'_2' ; return undef; } create_definition_init ; { $table_name = 'local_'.$generator->threadId().'_3' ; return undef; } create_definition_init ;
+
+create_definition_init:
 	create_definition SELECT short_value  AS f1 , short_value AS f2 , short_value AS f3 , short_value AS f4 , short_value AS f5 FROM DUAL ;
 
 query:
-	create | create | create |
-	create | create | create |
-	create | create | create |
-	create | create | create |
-	insert | insert | insert | insert |
-	insert | insert | insert | insert |
+	create_drop |
 	insert | insert | insert | insert |
 	insert | insert | insert | insert |
 	update | update | update | update |
 	delete | delete | delete | delete |
-	alter | drop ;
+	alter | truncate ;
 
-create:
-	create_definition |
-	create_definition select_all ;
+create_drop:
+	set_table_name DROP TABLE IF EXISTS { $table_name } ; create_definition ; create_definition ; create_definition |
+	set_table_name DROP TABLE IF EXISTS { $table_name } ; create_definition select_all ;
 
 alter:
 	ALTER TABLE table_name ENGINE = HEAP ;
@@ -35,9 +33,9 @@ select_all:
 	SELECT * FROM table_name ;
 
 create_definition:
-	CREATE temporary TABLE IF NOT EXISTS table_name (
-		f1 column_def ,
-		f2 column_def ,
+	CREATE temporary TABLE IF NOT EXISTS { $table_name } (
+		f1 column_def_index ,
+		f2 column_def_index ,
 		f3 column_def ,
 		f4 column_def ,
 		f5 column_def ,
@@ -48,7 +46,7 @@ temporary:
 	| | | | | | TEMPORARY ;
 
 insert:
-	insert_multi | 	insert_select ;
+	insert_multi | insert_multi | insert_select ;
 
 insert_multi:
 	INSERT IGNORE INTO table_name VALUES row_list ;
@@ -71,31 +69,34 @@ index_definition:
 	index_type ( index_column_list ) ;
 
 index_type:
-	KEY | KEY | UNIQUE | PRIMARY KEY ;
+	KEY | KEY | KEY | KEY | PRIMARY KEY ;
 
 index_column_list:
-	index_column /*  ( index_column_size ) */ |
-	index_column /* ( index_column_size ) */ , index_column /* ( index_column_size ) */ ;	# bug 783366
-
-index_column:
-	f1 | f2 ;
+	f1 /*  ( index_column_size ) */ |
+	f2 /*  ( index_column_size ) */ |
+	f1 /* ( index_column_size ) */ , f2 /* ( index_column_size ) */ ;	# bug 783366
+	f2 /* ( index_column_size ) */ , f1 /* ( index_column_size ) */ ;	# bug 783366
 
 index_column_size:
 	1 | 2 | 32 ;
 
 key_block_size:
-	64 | 128 | 256 | 512 | 1024 | 2048 | 3072 ;
+	512 | 1024 | 2048 | 3072 ;
 
 column_def:
-	varchar ( size ) not_null default unique ;
-#|
-#	blob not_null unique ;
+	varchar ( size_nonindex ) not_null default ;
+	#|
+#	blob not_null ;
 
-unique:
-	| UNIQUE ;
 
-size:
-	32 | 128 | 512 | 1024 | 2048 | 3072 ;
+column_def_index:
+	varchar ( size_index ) not_null default ;
+
+size_nonindex:
+	32 | 128 | 512 | 1024  ;
+
+size_index:
+	32 | 128 ;
 
 varchar:
 	VARCHAR | VARBINARY ;
@@ -111,9 +112,6 @@ default:
 
 unique:
 	| UNIQUE ;
-
-drop:
-	DROP TABLE IF EXISTS table_name ;
 
 table_name:
 	connection_specific_table |
@@ -131,6 +129,9 @@ connection_specific_table:
 
 global_table:
 	global_1 | global_2 | global_3 | global_4 | global_5 ;
+
+set_table_name:
+	{ $table_name = $prng->int(1,5) < 4 ? 'local_'.$generator->threadId().'_'.$prng->int(1,3) : 'global_'.$prng->int(1,5) ; return undef ; } ;
 
 value_list:
 	value , value |
