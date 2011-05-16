@@ -29,6 +29,9 @@ create_drop:
 alter:
 	ALTER TABLE table_name ENGINE = HEAP ;
 
+truncate:
+	TRUNCATE TABLE table_name ;
+
 select_all:
 	SELECT * FROM table_name ;
 
