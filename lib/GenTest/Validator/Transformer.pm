@@ -109,6 +109,7 @@ sub transform {
 	my ($transform_outcome, $transformed_queries, $transformed_results) = $transformer->transformExecuteValidate($original_query, $original_result, $executor);
 	return $transform_outcome if ($transform_outcome > STATUS_CRITICAL_FAILURE) || ($transform_outcome eq STATUS_OK);
 
+	say("---------- TRANSFORM ISSUE ----------");
 	say("Original query: $original_query failed transformation with Transformer ".$transformer->name());
 	say("Transformed query: ".join('; ', @$transformed_queries));
 
