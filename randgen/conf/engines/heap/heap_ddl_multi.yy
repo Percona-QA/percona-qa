@@ -32,7 +32,7 @@ alter:
 	ALTER TABLE table_name ENGINE = HEAP ;
 
 select_all:
-	SELECT * FROM table_name ORDER BY f1 , f2 , f3 , f4 , f5 ;
+	SELECT * FROM table_name ;
 
 create_definition:
 	CREATE temporary TABLE IF NOT EXISTS table_name (
