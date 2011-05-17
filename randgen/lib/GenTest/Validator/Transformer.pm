@@ -61,7 +61,8 @@ sub BEGIN {
 		'LimitIncrease',
 		'OrderBy',
 		'RemoveIndexHints',
-		'StraightJoin'
+		'StraightJoin',
+		'SelectOption'
 	);
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
