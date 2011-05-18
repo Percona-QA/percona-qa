@@ -127,7 +127,7 @@ sub report {
 
 		chdir($recovery_datadir_aria);
 
-		my $aria_read_log_result = system("$aria_read_log_path --maria-log-dir-path $recovery_datadir_aria --apply --check --silent");
+		my $aria_read_log_result = system("$aria_read_log_path --aria-log-dir-path $recovery_datadir_aria --apply --check --silent");
 		return STATUS_RECOVERY_FAILURE if $aria_read_log_result > 0;
 		say("$aria_read_log_path apparently returned success");
 
