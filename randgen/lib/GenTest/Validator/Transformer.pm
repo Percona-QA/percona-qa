@@ -111,7 +111,8 @@ sub transform {
 	return $transform_outcome if ($transform_outcome > STATUS_CRITICAL_FAILURE) || ($transform_outcome eq STATUS_OK);
 
 	say("---------- TRANSFORM ISSUE ----------");
-	say("Original query: $original_query failed transformation with Transformer ".$transformer->name());
+	say("Original query: $original_query failed transformation with Transformer ".$transformer->name().
+	    "; RQG Status: ".status2text($transform_outcome)." ($transform_outcome)");
 	say("Transformed query: ".join('; ', @$transformed_queries));
 
 	say(GenTest::Comparator::dumpDiff($original_result, $transformed_results->[0]));

@@ -136,9 +136,12 @@ sub transformExecuteValidate {
 					# We "cheat" by returning STATUS_OK, as the validator would otherwise try to access the result.
 					return STATUS_OK;
 				}
-				say("Transform ".ref($transformer)." failed with a syntactic or semantic error: ".$part_result->errstr());
+				say("Transform ".ref($transformer)." failed with a syntactic or semantic error: ".$part_result->errstr().
+					"; RQG Status: ".status2text($part_result->status())." (".$part_result->status().")");
 				say("Offending query is: $transformed_query_part;");
 				say("Original query is: $original_query;");
+				say("ERROR: Possible syntax or semantic error caused by code in transformer ".ref($transformer).
+					". Raising severity to STATUS_ENVIRONMENT_FAILURE.");
 				return STATUS_ENVIRONMENT_FAILURE;
 			} elsif ($part_result->status() != STATUS_OK) {
 				return $part_result->status();
