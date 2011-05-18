@@ -136,6 +136,7 @@ sub transformExecuteValidate {
 					# We "cheat" by returning STATUS_OK, as the validator would otherwise try to access the result.
 					return STATUS_OK;
 				}
+				say("---------- TRANSFORM ISSUE ----------");
 				say("Transform ".ref($transformer)." failed with a syntactic or semantic error: ".$part_result->errstr().
 					"; RQG Status: ".status2text($part_result->status())." (".$part_result->status().")");
 				say("Offending query is: $transformed_query_part;");
