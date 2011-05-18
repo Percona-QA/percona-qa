@@ -55,7 +55,7 @@ sub transform {
 }
 
 DESTROY {
-	say("InlineVirtualColumns Transformer was able to inline $global_inlines expressions");
+	say("[Statistics]: InlineVirtualColumns Transformer inlined $global_inlines expressions");
 }
 
 1;
