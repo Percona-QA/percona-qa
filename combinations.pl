@@ -19,6 +19,7 @@ use strict;
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use List::Util 'shuffle';
+use GenTest;
 use GenTest::Random;
 use GenTest::Constants;
 use Getopt::Long;
@@ -26,7 +27,7 @@ use Data::Dumper;
 
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $no_mask);
+    $report_xml_tt_dest, $no_mask, $exhaustive, $debug);
 
 my $combinations;
 my %results;
@@ -48,7 +49,10 @@ my $opt_result = GetOptions(
 	'report-xml-tt' => \$report_xml_tt,
 	'report-xml-tt-type=s' => \$report_xml_tt_type,
 	'report-xml-tt-dest=s' => \$report_xml_tt_dest,
+    'run-all-combinations-once' => \$exhaustive,
+    'debug' => \$debug
 );
+
 
 my $prng = GenTest::Random->new(
 	seed => $seed eq 'time' ? time() : $seed
@@ -65,13 +69,85 @@ system("bzr log --limit=1");
 
 my $comb_count = $#$combinations + 1;
 
-foreach my $trial_id (1..$trials) {
-	my @comb;
-	foreach my $comb_id (0..($comb_count-1)) {
-		$comb[$comb_id] = $combinations->[$comb_id]->[$prng->uint16(0, $#{$combinations->[$comb_id]})];
-	}
+my $total = 1;
+if ($exhaustive) {
+    foreach my $comb_id (0..($comb_count-1)) {
+        $total *= $#{$combinations->[$comb_id]}+1;
+    }
+    if (defined $trials) {
+        say("You have specified --run-all-combinations-once, but limited with --trials=$trials");
+    }
+    doExhaustive(0);
+} else {
+    doRandom();
+}
 
-	my $comb_str = join(' ', @comb);
+
+say("[$$] Summary of various interesting strings from the logs:");
+say(Dumper \%results);
+foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
+	system("grep -i '$string' $vardir/trial*log");
+} 
+
+say("[$$] $0 will exit with exit status $max_result");
+exit($max_result);
+
+## ----------------------------------------------------
+
+my $trial_counter = 0;
+
+sub doExhaustive {
+    my ($level,@idx) = @_;
+    if ($level < $comb_count) {
+        my @alts;
+        foreach my $i (0..$#{$combinations->[$level]}) {
+            push @alts, $i;
+        }
+        ## Shuffle array
+        for (my $i= $#alts;$i>=0;$i--) {
+            my $j = $prng->uint16(0, $i);
+            my $t = $alts[$i];
+            $alts[$i] = $alts[$j];
+            $alts[$j] = $t;
+        }
+
+        foreach my $alt (@alts) {
+            push @idx, $alt;
+            if ($trials > 0) {
+                doExhaustive($level+1,@idx) if $trial_counter < $trials;
+            } else {
+                doExhaustive($level+1,@idx);
+            }
+            pop @idx;
+        }
+    } else {
+        $trial_counter++;
+        my @comb;
+        foreach my $i (0 .. $#idx) {
+            push @comb, $combinations->[$i]->[$idx[$i]];
+        }
+        my $comb_str = join(' ', @comb);        
+        say("Executing Combination ".$trial_counter."/".$total);
+        doCombination($trial_counter,$comb_str);
+    }
+}
+
+## ----------------------------------------------------
+
+sub doRandom {
+    foreach my $trial_id (1..$trials) {
+        my @comb;
+        foreach my $comb_id (0..($comb_count-1)) {
+            $comb[$comb_id] = $combinations->[$comb_id]->[$prng->uint16(0, $#{$combinations->[$comb_id]})];
+        }
+        my $comb_str = join(' ', @comb);        
+        doCombination($trial_id,$comb_str);
+    }
+}
+
+## ----------------------------------------------------
+sub doCombination {
+    my ($trial_id,$comb_str) = @_;
 
 	my $mask = $prng->uint16(0, 65535);
 
@@ -101,15 +177,17 @@ foreach my $trial_id (1..$trials) {
 	$command =~ s{"}{\\"}sgio;
 	$command = 'bash -c "set -o pipefail; '.$command.'"';
 
-	print localtime()." [$$] $command\n";
-	my $result = system($command);
+	say("[$$] $command");
+    my $result = 0;
+    $result = system($command) if not $debug;
+
 	$result = $result >> 8;
-	print localtime()." [$$] runall.pl exited with exit status $result. \n";
+	say("[$$] runall.pl exited with exit status $result");
 	exit($result) if ($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255);
 
 	if ($result > 0) {
 		$max_result = $result >> 8 if ($result >> 8) > $max_result;
-		print localtime()." [$$] Copying vardir to $vardir/vardir".$trial_id."\n";
+		say("[$$] Copying vardir to $vardir/vardir".$trial_id);
 		if ($command =~ m{--mem}) {
 			system("cp -r /dev/shm/var $vardir/vardir".$trial_id);
 		} else {
@@ -121,12 +199,3 @@ foreach my $trial_id (1..$trials) {
 	}
 	$results{$result >> 8}++;
 }
-
-print localtime()." [$$] Summary of various interesting strings from the logs:\n";
-print Dumper \%results;
-foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
-	system("grep -i '$string' $vardir/trial*log");
-} 
-
-print localtime()." [$$] $0 will exit with exit status $max_result\n";
-exit($max_result);
