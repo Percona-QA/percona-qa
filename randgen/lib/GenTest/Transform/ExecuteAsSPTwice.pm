@@ -33,6 +33,7 @@ sub transform {
 	return STATUS_WONT_HANDLE if $original_query !~ m{SELECT}io;
 
 	return [
+		"DROP PROCEDURE IF EXISTS stored_proc_$$",
 		"CREATE PROCEDURE stored_proc_$$ () LANGUAGE SQL $original_query",
 		"CALL stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
                 "CALL stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
