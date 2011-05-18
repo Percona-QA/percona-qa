@@ -48,7 +48,8 @@ sub transform {
 
 	if ($select_list =~ m{AVG|BIT|DISTINCT|GROUP|MAX|MIN|STD|SUM|VAR|STRAIGHT_JOIN|SQL_SMALL_RESULT}sio) {
 		return STATUS_WONT_HANDLE;
-	} elsif ($select_list =~ m{\*}sio) {
+	} elsif ($select_list =~ m{SELECT\s?\*}sio) {
+		# "SELECT *" was matched. Cannot have both * and COUNT(...) in SELECT list.
 		$orig_query =~ s{SELECT (.*?) FROM}{SELECT COUNT(*) FROM}sio;
 	} elsif ($select_list !~ m{COUNT}sio) {
 		$orig_query =~ s{SELECT (.*?) FROM}{SELECT COUNT(*) , $1 FROM}sio;
