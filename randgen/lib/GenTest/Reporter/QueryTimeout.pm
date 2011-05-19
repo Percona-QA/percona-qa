@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -34,6 +34,7 @@ use constant PROCESSLIST_PROCESS_INFO		=> 7;
 # Minimum lifetime for a query before it is killed
 use constant QUERY_LIFETIME_THRESHOLD		=> 20;	# Seconds
 
+
 sub monitor {
 	my $reporter = shift;
 
@@ -48,18 +49,23 @@ sub monitor {
 
 	my $processlist = $dbh->selectall_arrayref("SHOW FULL PROCESSLIST");
 
+    my $q_l_t = QUERY_LIFETIME_THRESHOLD;
+    $q_l_t = $reporter->properties->querytimeout 
+        if defined $reporter->properties->querytimeout;
+    say("GenTest::Reporter::QueryTimeout using query timeout threshold $q_l_t seconds");
+
 	foreach my $process (@$processlist) {
 		if ($process->[PROCESSLIST_PROCESS_INFO] ne '') {
-			if ($process->[PROCESSLIST_PROCESS_TIME] > QUERY_LIFETIME_THRESHOLD + 100) {
+			if ($process->[PROCESSLIST_PROCESS_TIME] > $q_l_t + 100) {
 				# Query survived QUERY_LIFETIME + 100 seconds.
 				# If QUERY_LIFETIME_THRESHOLD is 20, and reporter interval is
 				# 10 seconds, this means query survived more than 120 seconds and
 				# 10 attempted KILL QUERY attempts. This looks like a mysqld issue.
 				# Hence, we now try killing the whole thread instead.
-				say("Query: ".$process->[PROCESSLIST_PROCESS_INFO]." took more than ".(QUERY_LIFETIME_THRESHOLD + 100). " seconds (QUERY_LIFETIME_THRESHOLD + 100). Killing thread.");
+				say("Query: ".$process->[PROCESSLIST_PROCESS_INFO]." took more than ".($q_l_t + 100). " seconds ($q_l_t + 100). Killing thread.");
 				$dbh->do("KILL ".$process->[PROCESSLIST_CONNECTION_ID]);
-			}elsif ($process->[PROCESSLIST_PROCESS_TIME] > QUERY_LIFETIME_THRESHOLD) {
-				say("Query: ".$process->[PROCESSLIST_PROCESS_INFO]." is taking more than ".(QUERY_LIFETIME_THRESHOLD). " seconds. Killing query.");
+			}elsif ($process->[PROCESSLIST_PROCESS_TIME] > $q_l_t) {
+				say("Query: ".$process->[PROCESSLIST_PROCESS_INFO]." is taking more than ".($q_l_t). " seconds. Killing query.");
 				$dbh->do("KILL QUERY ".$process->[PROCESSLIST_CONNECTION_ID]);
 			}
 		}

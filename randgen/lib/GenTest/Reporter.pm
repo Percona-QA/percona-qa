@@ -44,6 +44,7 @@ use constant REPORTER_SERVER_PLUGINS	=> 4;
 use constant REPORTER_TEST_START	=> 5;
 use constant REPORTER_TEST_END		=> 6;
 use constant REPORTER_TEST_DURATION	=> 7;
+use constant REPORTER_PROPERTIES	=> 8;
 
 use constant REPORTER_TYPE_PERIODIC    	 => 2;
 use constant REPORTER_TYPE_DEADLOCK    	 => 4;
@@ -62,7 +63,8 @@ sub new {
 		dsn => REPORTER_SERVER_DSN,
 		test_start => REPORTER_TEST_START,
 		test_end => REPORTER_TEST_END,
-		test_duration => REPORTER_TEST_DURATION
+		test_duration => REPORTER_TEST_DURATION,
+		properties => REPORTER_PROPERTIES
 	}, @_);
 
 	my $dbh = DBI->connect($reporter->dsn(), undef, undef, { RaiseError => 0 , PrintError => 1 } );
@@ -179,12 +181,12 @@ sub testEnd {
 	return $_[0]->[REPORTER_TEST_END];
 }
 
-sub testDuration {
-	return $_[0]->[REPORTER_TEST_DURATION];
-}
-
 sub prng {
 	return $_[0]->[REPORTER_PRNG];
+}
+
+sub properties {
+	return $_[0]->[REPORTER_PROPERTIES];
 }
 
 sub configure {

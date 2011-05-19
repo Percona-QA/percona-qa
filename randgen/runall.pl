@@ -57,7 +57,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $redefine_file, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views, $start_dirty,
     $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $notnull, $sqltrace, $lcov, $transformers);
+    $report_xml_tt_dest, $notnull, $sqltrace, $lcov, $transformers, $querytimeout);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -108,7 +108,8 @@ my $opt_result = GetOptions(
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
     'testname=s' => \$testname,
-	'lcov' => \$lcov
+	'lcov' => \$lcov,
+    'querytimeout=i' => \$querytimeout
 );
 
 $ENV{RQG_DEBUG} = 1 if defined $debug;
@@ -383,6 +384,7 @@ push @gentest_options, "--valgrind" if defined $valgrind;
 push @gentest_options, "--valgrind-xml" if defined $valgrind_xml;
 push @gentest_options, "--testname=$testname" if defined $testname;
 push @gentest_options, "--sqltrace" if defined $sqltrace;
+push @gentest_options, "--querytimeout=$querytimeout" if defined $querytimeout;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
