@@ -37,10 +37,11 @@ my @transformer_names;
 my @transformers;
 my $database_created = 0;
 
-sub BEGIN {
-}
-sub initialize {
-    my ($self, $list) = @_;
+sub configure {
+    my ($self, $props) = @_;
+
+    my $list = $props->transformers;
+
     if (defined $list and $#{$list} >= 0) {
         @transformer_names = @$list;
     } else {
