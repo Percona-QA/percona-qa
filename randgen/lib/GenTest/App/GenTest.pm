@@ -522,7 +522,7 @@ sub run {
             generator => $generator_obj,
             executors => \@executors,
             validators => $self->config->validators,
-            transformers =>  $self->config->transformers,
+            properties =>  $self->config,
             filters => defined $filter_obj ? [ $filter_obj ] : undef
             );
         
