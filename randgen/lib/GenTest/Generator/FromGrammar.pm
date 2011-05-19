@@ -34,6 +34,7 @@ use constant GENERATOR_MAX_OCCURRENCES	=> 3500;
 use constant GENERATOR_MAX_LENGTH	=> 10000;
 
 my $field_pos;
+my $cwd = cwd();
 
 sub new {
         my $class = shift;
@@ -226,7 +227,7 @@ sub next {
 		} elsif ( ($_ eq 'digit')  || ($_ eq '_digit') ) {
 			$_ = $prng->digit();
 		} elsif ($_ eq '_cwd') {
-			$_ = "'".cwd()."'";
+			$_ = "'".$cwd."'";
 		} elsif (
 			($_ eq '_tmpnam') ||
 			($_ eq 'tmpnam') ||
@@ -283,7 +284,7 @@ sub next {
 			my $charsets = $executors->[0]->metaCharactersets();
 			$_ = '_'.$prng->arrayElement($charsets);
 		} elsif ($_ eq '_data') {
-			$_ = $prng->file(cwd()."/data");
+			$_ = $prng->file($cwd."/data");
 		} elsif (
 			($prng->isFieldType($_) == FIELD_TYPE_NUMERIC) ||
 			($prng->isFieldType($_) == FIELD_TYPE_BLOB) 

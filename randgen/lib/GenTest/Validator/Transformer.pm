@@ -61,7 +61,8 @@ sub BEGIN {
 		'LimitIncrease',
 		'OrderBy',
 		'RemoveIndexHints',
-		'StraightJoin'
+		'StraightJoin',
+		'SelectOption'
 	);
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
@@ -109,7 +110,9 @@ sub transform {
 	my ($transform_outcome, $transformed_queries, $transformed_results) = $transformer->transformExecuteValidate($original_query, $original_result, $executor);
 	return $transform_outcome if ($transform_outcome > STATUS_CRITICAL_FAILURE) || ($transform_outcome eq STATUS_OK);
 
-	say("Original query: $original_query failed transformation with Transformer ".$transformer->name());
+	say("---------- TRANSFORM ISSUE ----------");
+	say("Original query: $original_query failed transformation with Transformer ".$transformer->name().
+	    "; RQG Status: ".status2text($transform_outcome)." ($transform_outcome)");
 	say("Transformed query: ".join('; ', @$transformed_queries));
 
 	say(GenTest::Comparator::dumpDiff($original_result, $transformed_results->[0]));

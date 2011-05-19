@@ -49,12 +49,19 @@ sub monitor {
 	my $processlist = $dbh->selectall_arrayref("SHOW FULL PROCESSLIST");
 
 	foreach my $process (@$processlist) {
-		if (
-			($process->[PROCESSLIST_PROCESS_INFO] ne '') &&
-			($process->[PROCESSLIST_PROCESS_TIME] > QUERY_LIFETIME_THRESHOLD)
-		) {
-			say("Query: ".$process->[PROCESSLIST_PROCESS_INFO]." is taking more than ".(QUERY_LIFETIME_THRESHOLD). " seconds. Killing query.");
-			$dbh->do("KILL QUERY ".$process->[PROCESSLIST_CONNECTION_ID]);
+		if ($process->[PROCESSLIST_PROCESS_INFO] ne '') {
+			if ($process->[PROCESSLIST_PROCESS_TIME] > QUERY_LIFETIME_THRESHOLD + 100) {
+				# Query survived QUERY_LIFETIME + 100 seconds.
+				# If QUERY_LIFETIME_THRESHOLD is 20, and reporter interval is
+				# 10 seconds, this means query survived more than 120 seconds and
+				# 10 attempted KILL QUERY attempts. This looks like a mysqld issue.
+				# Hence, we now try killing the whole thread instead.
+				say("Query: ".$process->[PROCESSLIST_PROCESS_INFO]." took more than ".(QUERY_LIFETIME_THRESHOLD + 100). " seconds (QUERY_LIFETIME_THRESHOLD + 100). Killing thread.");
+				$dbh->do("KILL ".$process->[PROCESSLIST_CONNECTION_ID]);
+			}elsif ($process->[PROCESSLIST_PROCESS_TIME] > QUERY_LIFETIME_THRESHOLD) {
+				say("Query: ".$process->[PROCESSLIST_PROCESS_INFO]." is taking more than ".(QUERY_LIFETIME_THRESHOLD). " seconds. Killing query.");
+				$dbh->do("KILL QUERY ".$process->[PROCESSLIST_CONNECTION_ID]);
+			}
 		}
 	}
 

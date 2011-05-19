@@ -35,6 +35,7 @@ sub transform {
 	$return_type .= "(255)" if $return_type =~ m{char}sgio;
 
 	return [
+		"DROP FUNCTION IF EXISTS stored_func_$$",
 		"CREATE FUNCTION stored_func_$$ () RETURNS $return_type NOT DETERMINISTIC BEGIN DECLARE ret $return_type; $original_query INTO ret ; RETURN ret; END",
 		"SELECT stored_func_$$() /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
                 "SELECT stored_func_$$() /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
