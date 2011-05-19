@@ -438,6 +438,8 @@ $0 - Run a complete random query generation test, including server start with re
     --duration  : Duration of the test in seconds (default $default_duration seconds);
     --validator : The validators to use
     --reporter  : The reporters to use
+    --transformer: The transformers to use (turns on --validator=transformer). Accepts comma separated list
+    --querytimeout: The timeout to use for the QueryTimeout reporter
     --gendata   : Generate data option. Passed to gentest.pl
     --seed      : PRNG seed. Passed to gentest.pl
     --mask      : Grammar mask. Passed to gentest.pl
@@ -448,14 +450,13 @@ $0 - Run a complete random query generation test, including server start with re
     --report-xml-tt: Passed to gentest.pl
     --report-xml-tt-type: Passed to gentest.pl
     --report-xml-tt-dest: Passed to gentest.pl
-    --testname  : Name of test, used for reporting purposes.
-    --sqltrace  : Print all generated SQL statements.
+    --testname  : Name of test, used for reporting purposes
+    --sqltrace  : Print all generated SQL statements
     --views     : Generate views. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
-    --mem       : Passed to mtr.
-    --mtr-build-thread: 
-                  Value used for MTR_BUILD_THREAD when servers are started and accessed.
+    --mem       : Passed to mtr
+    --mtr-build-thread: Value used for MTR_BUILD_THREAD when servers are started and accessed 
     --debug     : Debug mode
     --help      : This help message
 
