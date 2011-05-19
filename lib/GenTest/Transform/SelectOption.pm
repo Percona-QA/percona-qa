@@ -1,5 +1,3 @@
-# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
-# Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +13,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Transform::ExecuteAsSPTwice;
+package GenTest::Transform::SelectOption;
 
 require Exporter;
 @ISA = qw(GenTest GenTest::Transform);
@@ -28,17 +26,22 @@ use GenTest::Transform;
 use GenTest::Constants;
 
 sub transform {
-	my ($class, $original_query, $executor) = @_;
+	my ($class, $orig_query) = @_;
 
-	return STATUS_WONT_HANDLE if $original_query !~ m{SELECT}io;
+	return STATUS_WONT_HANDLE if $orig_query !~ m{SELECT}io;
+	return STATUS_WONT_HANDLE if $orig_query =~ m{SQL_BIG_RESULT|SQL_SMALL_RESULT|SQL_BUFFER_RESULT}io;
 
-	return [
-		"DROP PROCEDURE IF EXISTS stored_proc_$$",
-		"CREATE PROCEDURE stored_proc_$$ () LANGUAGE SQL $original_query",
-		"CALL stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-                "CALL stored_proc_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DROP PROCEDURE IF EXISTS stored_proc_$$"
+	my $modified_queries = [
+		$orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ",
+		$orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ",
+		$orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ "
 	];
+	
+	$modified_queries->[0] =~ s{SELECT}{SELECT SQL_BIG_RESULT}io;
+	$modified_queries->[1] =~ s{SELECT}{SELECT SQL_SMALL_RESULT}io;
+	$modified_queries->[2] =~ s{SELECT}{SELECT SQL_BUFFER_RESULT}io;
+
+	return $modified_queries;
 }
 
 1;

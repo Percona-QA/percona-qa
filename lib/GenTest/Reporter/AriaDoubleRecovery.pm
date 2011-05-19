@@ -127,7 +127,7 @@ sub report {
 	}
 
 	chdir($recovery_datadir_aria);
-	my $aria_read_log_command = $aria_read_log_path." --maria-log-dir-path $recovery_datadir_aria --apply --check --silent";
+	my $aria_read_log_command = $aria_read_log_path." --aria-log-dir-path $recovery_datadir_aria --apply --check --silent";
 
 	my $recovery_pid;
 	my $recovery_duration = 4;

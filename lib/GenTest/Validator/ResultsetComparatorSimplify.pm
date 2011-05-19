@@ -55,6 +55,12 @@ sub validate {
 	my $query = $results->[0]->query();
 	my $compare_outcome = GenTest::Comparator::compare($results->[0], $results->[1]);
 
+	if ( ($compare_outcome == STATUS_LENGTH_MISMATCH) ||
+	     ($compare_outcome == STATUS_CONTENT_MISMATCH) 
+	) {
+		say("---------- RESULT COMPARISON ISSUE START ----------");
+	}
+		
 	if ($compare_outcome == STATUS_LENGTH_MISMATCH) {
 		if ($query =~ m{^\s*select}io) {
 	                say("Query: $query; failed: result length mismatch between servers (".$results->[0]->rows()." vs. ".$results->[1]->rows().")");
@@ -141,6 +147,12 @@ sub validate {
 		} else {
 			say("Could not simplify failure, appears to be sporadic.");
 		}
+	}
+
+	if ( ($compare_outcome == STATUS_LENGTH_MISMATCH) ||
+	     ($compare_outcome == STATUS_CONTENT_MISMATCH) 
+	) {
+		say("---------- RESULT COMPARISON ISSUE END ------------");
 	}
 
 	#
