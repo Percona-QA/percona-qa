@@ -59,7 +59,11 @@ my %mysql_grouping_errors = (
 	1004 => 'ER_NON_GROUPING_FIELD_USED',
 	1055 => 'ER_WRONG_FIELD_WITH_GROUP',
 	1056 => 'ER_WRONG_GROUP_FIELD',
-	1140 => 'ER_MIX_OF_GROUP_FUNC_AND_FIELDS'
+	1140 => 'ER_MIX_OF_GROUP_FUNC_AND_FIELDS',
+	1317 => 'ER_QUERY_INTERRUPTED',
+	2013 => 'CR_SERVER_LOST',
+	2006 => 'CR_SERVER_GONE_ERROR',
+	1028 => 'ER_FILSORT_ABORT'
 );
 
 # List of encountered errors that we want to suppress later in the test run.
@@ -137,7 +141,7 @@ sub transformExecuteValidate {
 					return STATUS_OK;
 				}
 				say("---------- TRANSFORM ISSUE ----------");
-				say("Transform ".ref($transformer)." failed with a syntactic or semantic error: ".$part_result->errstr().
+				say("Transform ".ref($transformer)." failed with a syntactic or semantic error: ".$part_result->err()." ".$part_result->errstr().
 					"; RQG Status: ".status2text($part_result->status())." (".$part_result->status().")");
 				say("Offending query is: $transformed_query_part;");
 				say("Original query is: $original_query;");
