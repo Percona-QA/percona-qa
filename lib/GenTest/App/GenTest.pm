@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -240,7 +240,18 @@ sub run {
                 or $self->config->validators->[$i] eq '';
         }
     }
+    ## Add the transformer validator if --transformers is
+    ## specified
+    if (defined $self->config->transformers and 
+        $#{$self->config->transformers} >= 0) {
+        
+        push @{$self->config->validators}, 'Transformer';
+    }
+
     say("Validators: ".($self->config->validators and $#{$self->config->validators} > -1 ? join(', ', @{$self->config->validators}) : "(none)"));
+    
+    say("Transformers: ".join(', ', @{$self->config->transformers})) 
+        if $self->config->transformers and $#{$self->config->transformers} > -1;
     
     my $filter_obj;
     
@@ -506,11 +517,12 @@ sub run {
         );
         
         $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $generator_obj;
-        
+
         my $mixer = GenTest::Mixer->new(
             generator => $generator_obj,
             executors => \@executors,
             validators => $self->config->validators,
+            transformers =>  $self->config->transformers,
             filters => defined $filter_obj ? [ $filter_obj ] : undef
             );
         
