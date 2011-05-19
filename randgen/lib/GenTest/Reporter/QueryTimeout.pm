@@ -31,9 +31,12 @@ use constant PROCESSLIST_PROCESS_TIME		=> 5;
 use constant PROCESSLIST_PROCESS_STATE		=> 6;
 use constant PROCESSLIST_PROCESS_INFO		=> 7;
 
-# Minimum lifetime for a query before it is killed
-use constant QUERY_LIFETIME_THRESHOLD		=> 20;	# Seconds
+# Default minimum lifetime for a query before it is killed
+use constant DEFAULT_QUERY_LIFETIME_THRESHOLD	=> 20;	# Seconds
 
+# The query lifetime threshold is configurable via properties.
+# We check this once and store the value (or the default) in this variable.
+my $q_l_t;
 
 sub monitor {
 	my $reporter = shift;
@@ -49,10 +52,13 @@ sub monitor {
 
 	my $processlist = $dbh->selectall_arrayref("SHOW FULL PROCESSLIST");
 
-    my $q_l_t = QUERY_LIFETIME_THRESHOLD;
-    $q_l_t = $reporter->properties->querytimeout 
-        if defined $reporter->properties->querytimeout;
-    say("GenTest::Reporter::QueryTimeout using query timeout threshold $q_l_t seconds");
+	if (not defined $q_l_t) {
+		# We only check the querytimeout option the first time the reporter runs
+		$q_l_t = DEFAULT_QUERY_LIFETIME_THRESHOLD;
+		$q_l_t = $reporter->properties->querytimeout 
+			if defined $reporter->properties->querytimeout;
+		say("GenTest::Reporter::QueryTimeout using query timeout threshold $q_l_t seconds");
+	}
 
 	foreach my $process (@$processlist) {
 		if ($process->[PROCESSLIST_PROCESS_INFO] ne '') {
