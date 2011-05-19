@@ -56,6 +56,7 @@ my $opt_result = GetOptions($options,
                             'rpl_mode=s',
                             'validators:s@',
                             'reporters:s@',
+                            'transformers:s@',
                             'report-xml-tt',
                             'report-xml-tt-type=s',
                             'report-xml-tt-dest=s',
@@ -97,6 +98,7 @@ my $config = GenTest::Properties->new(
               'rpl_mode',
               'validators',
               'reporters',
+              'transformers',
               'report-xml-tt',
               'report-xml-tt-type',
               'report-xml-tt-dest',
@@ -198,6 +200,12 @@ sub backwardCompatability {
         my $newreporters = [];
         map {push(@$newreporters,split(/,/,$_))} @{$options->{reporters}};
         $options->{reporters}=$newreporters ;
+    }
+
+    if (grep (/,/,@{$options->{transformers}})) {
+        my $newtransformers = [];
+        map {push(@$newtransformers,split(/,/,$_))} @{$options->{transformers}};
+        $options->{transformers}=$newtransformers ;
     }
 
     if (grep (/,/,@{$options->{validators}})) {

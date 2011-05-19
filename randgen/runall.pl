@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2008, 2010 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -57,7 +57,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $redefine_file, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views, $start_dirty,
     $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $notnull, $sqltrace, $lcov);
+    $report_xml_tt_dest, $notnull, $sqltrace, $lcov, $transformers);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -85,6 +85,7 @@ my $opt_result = GetOptions(
 	'help' => \$help,
 	'debug' => \$debug,
 	'validators:s@' => \$validators,
+    'transformers:s@' =>\$transformers,
 	'reporters:s@' => \$reporters,
 	'report-xml-tt' => \$report_xml_tt,
 	'report-xml-tt-type=s' => \$report_xml_tt_type,
@@ -114,6 +115,7 @@ $ENV{RQG_DEBUG} = 1 if defined $debug;
 
 $validators = join(',', @$validators) if defined $validators;
 $reporters = join(',', @$reporters) if defined $reporters;
+$transformers = join(',', @$transformers) if defined $transformers;
 
 if (!$opt_result) {
 	exit(1);
@@ -128,7 +130,7 @@ if (!$opt_result) {
 	exit(0);
 }
 
-say("Copyright (c) 2008-2009 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.");
+say("Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
 say("Please see http://forge.mysql.com/wiki/Category:RandomQueryGenerator for more information on this test framework.");
 say("Starting: $0 ".join(" ", @ARGV_saved));
 
@@ -357,6 +359,7 @@ push @gentest_options, "--engine=$engine" if defined $engine;
 push @gentest_options, "--rpl_mode=$rpl_mode" if defined $rpl_mode;
 push @gentest_options, map {'--validator='.$_} split(/,/,$validators) if defined $validators;
 push @gentest_options, map {'--reporter='.$_} split(/,/,$reporters) if defined $reporters;
+push @gentest_options, map {'--transformer='.$_} split(/,/,$transformers) if defined $transformers;
 push @gentest_options, "--threads=$threads" if defined $threads;
 push @gentest_options, "--queries=$queries" if defined $queries;
 push @gentest_options, "--duration=$duration" if defined $duration;
@@ -401,7 +404,7 @@ exit_test($gentest_result);
 sub help {
 
 	print <<EOF
-Copyright (c) 2008-2009 Sun Microsystems, Inc. All rights reserved. Use is subject to license terms.
+Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.
 
 $0 - Run a complete random query generation test, including server start with replication and master/slave verification
     
