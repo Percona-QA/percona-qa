@@ -57,7 +57,7 @@ sub monitor {
 		$q_l_t = DEFAULT_QUERY_LIFETIME_THRESHOLD;
 		$q_l_t = $reporter->properties->querytimeout 
 			if defined $reporter->properties->querytimeout;
-		say("GenTest::Reporter::QueryTimeout using query timeout threshold $q_l_t seconds");
+		say("QueryTimeout Reporter will use query timeout threshold of $q_l_t seconds");
 	}
 
 	foreach my $process (@$processlist) {
