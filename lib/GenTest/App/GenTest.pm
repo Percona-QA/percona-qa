@@ -208,7 +208,8 @@ sub run {
                     dsn			=> $self->config->dsn->[$i],
                     test_start	=> $test_start,
                     test_end	=> $test_end,
-                    test_duration	=> $self->config->duration
+                    test_duration	=> $self->config->duration,
+                    properties => $self->config
                                                                 } );
                 return $add_result if $add_result > STATUS_OK;
             }

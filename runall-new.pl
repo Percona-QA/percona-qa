@@ -59,7 +59,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
-    $notnull);
+    $notnull, $querytimeout);
 
 my $gendata=''; ## default simple gendata
 
@@ -112,7 +112,8 @@ my $opt_result = GetOptions(
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
-    'sqltrace' => \$sqltrace
+    'sqltrace' => \$sqltrace,
+    'querytimeout=i' => \$querytimeout
     );
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
@@ -320,6 +321,7 @@ my $gentestProps = GenTest::Properties->new(
               'valgrind-xml',
               'testname',
               'sqltrace',
+              'querytimeout',
               'report-xml-tt',
               'report-xml-tt-type',
               'report-xml-tt-dest']
@@ -369,6 +371,7 @@ $gentestProps->filter($filter) if defined $filter;
 $gentestProps->notnull($notnull) if defined $notnull;
 $gentestProps->valgrind(1) if $valgrind;
 $gentestProps->sqltrace(1) if $sqltrace;
+$gentestProps->querytimeout($querytimeout) if defined $querytimeout;
 $gentestProps->testname($testname) if $testname;
 $gentestProps->property('report-xml-tt', 1) if defined $report_xml_tt;
 $gentestProps->property('report-xml-tt-type', $report_xml_tt_type) if defined $report_xml_tt_type;

@@ -74,7 +74,8 @@ my $opt_result = GetOptions($options,
                             'valgrind',
                             'valgrind-xml',
                             'notnull',
-                            'debug');
+                            'debug',
+                            'querytimeout=i');
 backwardCompatability($options);
 my $config = GenTest::Properties->new(
     options => $options,
@@ -116,7 +117,8 @@ my $config = GenTest::Properties->new(
               'valgrind',
               'valgrind-xml',
               'sqltrace',
-              'notnull'],
+              'notnull',
+              'querytimeout'],
     help => \&help);
 
 help() if !$opt_result || $config->help;
