@@ -187,4 +187,8 @@ sub prng {
 	return $_[0]->[REPORTER_PRNG];
 }
 
+sub configure {
+    return 1;
+}
+
 1;
