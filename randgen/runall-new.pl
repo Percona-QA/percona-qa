@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights
-# reserved.
+# Copyright (c) 2010,2011 Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,7 +61,8 @@ my $database = 'test';
 my @dsns;
 
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
-    $engine, $help, $debug, @validators, @reporters, $grammar_file,
+    $engine, $help, $debug, @validators, @reporters, @transformers, 
+    $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
@@ -99,6 +100,7 @@ my $opt_result = GetOptions(
 	'debug' => \$debug,
 	'validators=s@' => \@validators,
 	'reporters=s@' => \@reporters,
+	'transformers=s@' => \@transformers,
 	'gendata:s' => \$gendata,
 	'notnull' => \$notnull,
 	'seed=s' => \$seed,
@@ -137,7 +139,7 @@ if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 	exit($help ? 0 : 1);
 }
 
-say("Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
+say("Copyright (c) 2010,2011 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
 say("Please see http://forge.mysql.com/wiki/Category:RandomQueryGenerator for more information on this test framework.");
 say("Starting \n# $0 \\ \n# ".join(" \\ \n# ", @ARGV_saved));
 
@@ -321,6 +323,8 @@ my $gentestProps = GenTest::Properties->new(
               'rpl_mode',
               'validators',
               'reporters',
+              'reporters',
+              'transformers',
               'seed',
               'mask',
               'mask-level',
@@ -355,6 +359,11 @@ if ($#reporters == 0 and $reporters[0] =~ m/,/) {
     @reporters = split(/,/,$reporters[0]);
 }
 
+## For backward compatability
+if ($#transformers == 0 and $transformers[0] =~ m/,/) {
+    @transformers = split(/,/,$transformers[0]);
+}
+
 $gentestProps->property('generator','FromGrammar') if not defined $gentestProps->property('generator');
 
 $gentestProps->property('start-dirty',1) if defined $start_dirty;
@@ -363,6 +372,7 @@ $gentestProps->engine($engine) if defined $engine;
 $gentestProps->rpl_mode($rpl_mode) if defined $rpl_mode;
 $gentestProps->validators(\@validators) if defined @validators;
 $gentestProps->reporters(\@reporters) if defined @reporters;
+$gentestProps->transformers(\@transformers) if defined @transformers;
 $gentestProps->threads($threads) if defined $threads;
 $gentestProps->queries($queries) if defined $queries;
 $gentestProps->duration($duration) if defined $duration;
@@ -450,7 +460,7 @@ sub stopServers {
 sub help {
     
 	print <<EOF
-Copyright (c) 2010 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.
+Copyright (c) 2010,2011 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.
 
 $0 - Run a complete random query generation test, including server start with replication and master/slave verification
     
@@ -482,6 +492,7 @@ $0 - Run a complete random query generation test, including server start with re
     --duration  : Duration of the test in seconds (default $default_duration seconds);
     --validator : The validators to use
     --reporter  : The reporters to use
+    --transformer: The transformers to use (if specified in --validators)
     --gendata   : Generate data option. Passed to gentest.pl
     --seed      : PRNG seed. Passed to gentest.pl
     --mask      : Grammar mask. Passed to gentest.pl

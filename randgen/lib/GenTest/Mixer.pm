@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@ use constant MIXER_GENERATOR	=> 0;
 use constant MIXER_EXECUTORS	=> 1;
 use constant MIXER_VALIDATORS	=> 2;
 use constant MIXER_FILTERS	=> 3;
+use constant MIXER_TRANSFORMERS	=> 4;
 
 my %rule_status;
 
@@ -43,6 +44,7 @@ sub new {
 		'generator'	=> MIXER_GENERATOR,
 		'executors'	=> MIXER_EXECUTORS,
 		'validators'	=> MIXER_VALIDATORS,
+		'transformers'	=> MIXER_TRANSFORMERS,
 		'filters'	=> MIXER_FILTERS
 	}, @_);
 
@@ -61,9 +63,13 @@ sub new {
 		my $validator = $validators[$i];
 		if (ref($validator) eq '') {
 			$validator = "GenTest::Validator::".$validator;
-#			say("Loading Validator $validator.");
+			say("Loading Validator $validator.");
 			eval "use $validator" or print $@;
 			$validators[$i] = $validator->new();
+            
+            if ($validator eq "GenTest::Validator::Transformer") {
+                $validators[$i]->initialize($mixer->transformers);
+            }
 		}
 		$validators{ref($validators[$i])}++;
 	}
@@ -184,6 +190,10 @@ sub executors {
 
 sub validators {
 	return $_[0]->[MIXER_VALIDATORS];
+}
+
+sub transformers {
+	return $_[0]->[MIXER_TRANSFORMERS];
 }
 
 sub filters {

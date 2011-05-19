@@ -1,4 +1,4 @@
-# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -31,39 +31,47 @@ use GenTest::Translator;
 use GenTest::Translator::Mysqldump2ANSI;
 use GenTest::Translator::Mysqldump2javadb;
 use GenTest::Translator::MysqlDML2ANSI;
+use Data::Dumper;
 
 my @transformer_names;
 my @transformers;
 my $database_created = 0;
 
 sub BEGIN {
-	@transformer_names = (
-		'DisableChosenPlan',
-		'ConvertSubqueriesToViews',
-		'Count',
-		'DisableIndexes',
-		'Distinct',
-		'ExecuteAsPreparedTwice',
-		'ExecuteAsSPTwice',
-		'ExecuteAsFunctionTwice',
-		'ExecuteAsView',
-		'ExecuteAsInsertSelect',
-		'ExecuteAsSelectItem',
-		'ExecuteAsUnion',
-		'ExecuteAsUpdateDelete',
-		'ExecuteAsWhereSubquery',
-		'ExecuteAsTrigger',
-		'FromSubquery',
-		'Having',
-		'InlineSubqueries',
-		'InlineVirtualColumns',
-		'LimitDecrease',
-		'LimitIncrease',
-		'OrderBy',
-		'RemoveIndexHints',
-		'StraightJoin',
-		'SelectOption'
-	);
+}
+sub initialize {
+    my ($self, $list) = @_;
+    if (defined $list and $#{$list} >= 0) {
+        @transformer_names = @$list;
+    } else {
+        @transformer_names = (
+            'DisableChosenPlan',
+            'ConvertSubqueriesToViews',
+            'Count',
+            'DisableIndexes',
+            'Distinct',
+            'ExecuteAsPreparedTwice',
+            'ExecuteAsSPTwice',
+            'ExecuteAsFunctionTwice',
+            'ExecuteAsView',
+            'ExecuteAsInsertSelect',
+            'ExecuteAsSelectItem',
+            'ExecuteAsUnion',
+            'ExecuteAsUpdateDelete',
+            'ExecuteAsWhereSubquery',
+            'ExecuteAsTrigger',
+            'FromSubquery',
+            'Having',
+            'InlineSubqueries',
+            'InlineVirtualColumns',
+            'LimitDecrease',
+            'LimitIncrease',
+            'OrderBy',
+            'RemoveIndexHints',
+            'StraightJoin',
+            'SelectOption'
+            );
+    }
 
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
 
