@@ -35,7 +35,12 @@ sub transform {
 	return STATUS_WONT_HANDLE if $#{$original_result->data()->[0]} != 0;
 
 	my $return_type = $original_result->columnTypes()->[0];
-	$return_type .= "(255)" if $return_type =~ m{char}sgio;
+	if ($return_type =~ m{varchar}sgio) {
+		# Though the maxium varchar lenght is 65K, we are using 16K to allow up to 4-byte character sets
+		$return_type .= "(16000)"
+	} elsif ($return_type =~ m{char}sgio) {
+		$return_type .= "(255)"
+	}
 
 	return [
 		"DROP FUNCTION IF EXISTS stored_func_$$",
