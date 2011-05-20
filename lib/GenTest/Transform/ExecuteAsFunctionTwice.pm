@@ -40,6 +40,9 @@ sub transform {
 		$return_type .= "(16000)"
 	} elsif ($return_type =~ m{char}sgio) {
 		$return_type .= "(255)"
+	} elsif ($return_type =~ m{decimal}sgio) {
+		# Change type to avoid false compare diffs due to an incorrect decimal type being used when MAX() (and likely other similar functions) is used in the original query. Knowing what is returning decimal type (DBD or MySQL) may allow further improvement.
+		$return_type =~ s{decimal}{char (255)}sio
 	}
 
 	return [
