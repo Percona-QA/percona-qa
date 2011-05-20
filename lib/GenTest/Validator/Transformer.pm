@@ -127,6 +127,12 @@ sub transform {
 			" This is likely an issue with the test configuration or the ".
 			$transformer->name()." transformer itself. See above for possible".
 			" errors caused by the transformed query.");
+		if ($transform_outcome == STATUS_UNKNOWN_ERROR) {
+			# We want to know about unknown errors returned by transformed queries.
+			say('ERROR: Unknown error from transformer, likely a test issue. '. 
+				'Raising status to STATUS_ENVIRONMENT_FAILURE');
+			return STATUS_ENVIRONMENT_FAILURE;
+		}
 		return $transform_outcome;
 	}
 
