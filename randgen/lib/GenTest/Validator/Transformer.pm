@@ -119,9 +119,17 @@ sub transform {
 	my ($transform_outcome, $transformed_queries, $transformed_results) = $transformer->transformExecuteValidate($original_query, $original_result, $executor);
 	return $transform_outcome if ($transform_outcome > STATUS_CRITICAL_FAILURE) || ($transform_outcome eq STATUS_OK);
 
-	say("---------- TRANSFORM ISSUE ----------");
+	say("---------- TRANSFORM ISSUE ----------") if defined $transformed_results;
 	say("Original query: $original_query failed transformation with Transformer ".$transformer->name().
-	    "; RQG Status: ".status2text($transform_outcome)." ($transform_outcome)");
+		"; RQG Status: ".status2text($transform_outcome)." ($transform_outcome)");
+	if (not defined $transformed_queries) {
+		say("WARNING: Transformer was unable to produce a transformed query.".
+			" This is likely an issue with the test configuration or the ".
+			$transformer->name()." transformer itself. See above for possible".
+			" errors caused by the transformed query.");
+		return $transform_outcome;
+	}
+
 	say("Transformed query: ".join('; ', @$transformed_queries));
 
 	say(GenTest::Comparator::dumpDiff($original_result, $transformed_results->[0]));

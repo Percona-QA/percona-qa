@@ -149,6 +149,9 @@ sub transformExecuteValidate {
 					". Raising severity to STATUS_ENVIRONMENT_FAILURE.");
 				return STATUS_ENVIRONMENT_FAILURE;
 			} elsif ($part_result->status() != STATUS_OK) {
+				say("---------- TRANSFORM ISSUE ----------");
+				say("Transform ".$transformer->name()." failed with an error: ".$part_result->err().'  '.$part_result->errstr());
+				say("Transformed query was: ".$transformed_query_part);
 				return $part_result->status();
 			} elsif (defined $part_result->data()) {
 				my $part_outcome = $transformer->validate($original_result, $part_result);
