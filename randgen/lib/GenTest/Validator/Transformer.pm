@@ -102,7 +102,13 @@ sub validate {
 	my $max_transformer_status; 
 	foreach my $transformer (@transformers) {
 		my $transformer_status = $validator->transform($transformer, $executor, $results);
-		$transformer_status = STATUS_OK if ($transformer_status == STATUS_CONTENT_MISMATCH) && ($original_query =~ m{LIMIT}sio);
+		if (($transformer_status == STATUS_CONTENT_MISMATCH) && ($original_query =~ m{LIMIT}sio)) {
+			# We avoid reporting bugs on content mismatch with LIMIT queries
+			say('WARNING: Got STATUS_CONTENT_MISMATCH from transformer. This is likely'.
+				' a FALSE POSITIVE given that there is a LIMIT clause but possibly'.
+				' no complete ORDER BY. Hence we return STATUS_OK. The previous transform issue can likely be ignored.');
+			$transformer_status = STATUS_OK     
+		}
 		return $transformer_status if $transformer_status > STATUS_CRITICAL_FAILURE;
 		$max_transformer_status = $transformer_status if $transformer_status > $max_transformer_status;
 	}
