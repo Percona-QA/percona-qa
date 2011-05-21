@@ -79,7 +79,7 @@ sub transformExecuteValidate {
 	my $transform_blocks;
 
 	if (
-		($transformer_output eq STATUS_OK) ||
+		($transformer_output == STATUS_OK) ||
 		($transformer_output == STATUS_WONT_HANDLE)
 	) {
 		return STATUS_OK;
