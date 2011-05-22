@@ -85,7 +85,8 @@ my $opt_result = GetOptions($options,
                             'debug',
                             'logfile=s',
                             'logconf=s',
-                            'report-tt-logdir=s');
+                            'report-tt-logdir=s',
+                            'querytimeout=i');
 backwardCompatability($options);
 my $config = GenTest::Properties->new(
     options => $options,
@@ -130,7 +131,8 @@ my $config = GenTest::Properties->new(
               'notnull',
               'logfile',
               'logconf',
-              'report-tt-logdir'],
+              'report-tt-logdir',
+              'querytimeout'],
     help => \&help);
 
 help() if !$opt_result || $config->help;

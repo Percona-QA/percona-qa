@@ -208,7 +208,8 @@ sub run {
                     dsn			=> $self->config->dsn->[$i],
                     test_start	=> $test_start,
                     test_end	=> $test_end,
-                    test_duration	=> $self->config->duration
+                    test_duration	=> $self->config->duration,
+                    properties => $self->config
                                                                 } );
                 return $add_result if $add_result > STATUS_OK;
             }
@@ -529,7 +530,7 @@ sub run {
             generator => $generator_obj,
             executors => \@executors,
             validators => $self->config->validators,
-            transformers =>  $self->config->transformers,
+            properties =>  $self->config,
             filters => defined $filter_obj ? [ $filter_obj ] : undef
             );
         

@@ -46,7 +46,7 @@ sub transform {
 
 	my ($select_list) = $orig_query =~ m{SELECT (.*?) FROM}sio;
 
-	if ($select_list =~ m{AVG|BIT|DISTINCT|GROUP|MAX|MIN|STD|SUM|VAR|STRAIGHT_JOIN|SQL_SMALL_RESULT}sio) {
+	if ($select_list =~ m{AVG|BIT|CONCAT|DISTINCT|GROUP|MAX|MIN|STD|SUM|VAR|STRAIGHT_JOIN|SQL_SMALL_RESULT}sio) {
 		return STATUS_WONT_HANDLE;
 	} elsif ($select_list =~ m{SELECT\s?\*}sio) {
 		# "SELECT *" was matched. Cannot have both * and COUNT(...) in SELECT list.

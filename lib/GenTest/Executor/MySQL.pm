@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -184,6 +184,8 @@ use constant	ER_NONUPDATEABLE_COLUMN		=> 1348;
 use constant	ER_TOO_BIG_SELECT		=> 1104;
 use constant	ER_CANT_USE_OPTION_HERE		=> 1234;
 use constant	ER_TOO_LONG_KEY			=> 1071;
+use constant	ER_TABLE_CANT_HANDLE_BLOB	=> 1163;
+use constant	ER_TOO_MANY_ROWS		=> 1172;
 
 use constant	ER_PARTITION_MGMT_ON_NONPARTITIONED	=> 1505;
 use constant	ER_DROP_PARTITION_NON_EXISTENT		=> 1507;
@@ -362,6 +364,8 @@ my %err2type = (
 	ER_VIEW_SELECT_TMPTABLE()	=> STATUS_SEMANTIC_ERROR,
 	ER_NONUPDATEABLE_COLUMN()	=> STATUS_SEMANTIC_ERROR,
 	ER_TOO_BIG_SELECT()		=> STATUS_SEMANTIC_ERROR,
+	ER_TABLE_CANT_HANDLE_BLOB()	=> STATUS_SEMANTIC_ERROR,
+	ER_TOO_MANY_ROWS()		=> STATUS_SEMANTIC_ERROR,
 
 	ER_PARTITION_MGMT_ON_NONPARTITIONED()	=> STATUS_SEMANTIC_ERROR,
 	ER_DROP_LAST_PARTITION()		=> STATUS_SEMANTIC_ERROR,

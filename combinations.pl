@@ -27,7 +27,7 @@ use Data::Dumper;
 
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $no_mask, $exhaustive, $debug);
+    $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug);
 
 my $combinations;
 my %results;
@@ -41,6 +41,7 @@ my $opt_result = GetOptions(
 	'trials=i' => \$trials,
 	'duration=i' => \$duration,
 	'seed=s' => \$seed,
+	'force' => \$force,
 	'no-mask' => \$no_mask,
 	'grammar=s' => \$grammar,
 	'gendata=s' => \$gendata,
@@ -183,7 +184,7 @@ sub doCombination {
 
 	$result = $result >> 8;
 	say("[$$] runall.pl exited with exit status $result");
-	exit($result) if ($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255);
+	exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 
 	if ($result > 0) {
 		$max_result = $result >> 8 if ($result >> 8) > $max_result;

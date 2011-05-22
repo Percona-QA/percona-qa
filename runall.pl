@@ -66,7 +66,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views,
     $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
     $report_xml_tt_type, $report_xml_tt_dest, $notnull, $sqltrace,
-    $lcov, $transformers, $logfile, $logconf, $report_tt_logdir);
+    $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -120,7 +120,8 @@ my $opt_result = GetOptions(
 	'lcov' => \$lcov,
     'logfile=s' => \$logfile,
     'logconf=s' => \$logconf,
-    'report-tt-logdir=s' => \$report_tt_logdir
+    'report-tt-logdir=s' => \$report_tt_logdir,
+    'querytimeout=i' => \$querytimeout
 );
 
 if (defined $logfile && defined $logger) {
@@ -407,6 +408,7 @@ push @gentest_options, "--sqltrace" if defined $sqltrace;
 push @gentest_options, "--logfile=$logfile" if defined $logfile;
 push @gentest_options, "--logconf=$logconf" if defined $logconf;
 push @gentest_options, "--report-tt-logdir=$report_tt_logdir" if defined $report_tt_logdir;
+push @gentest_options, "--querytimeout=$querytimeout" if defined $querytimeout;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
@@ -460,6 +462,8 @@ $0 - Run a complete random query generation test, including server start with re
     --duration  : Duration of the test in seconds (default $default_duration seconds);
     --validator : The validators to use
     --reporter  : The reporters to use
+    --transformer: The transformers to use (turns on --validator=transformer). Accepts comma separated list
+    --querytimeout: The timeout to use for the QueryTimeout reporter
     --gendata   : Generate data option. Passed to gentest.pl
     --seed      : PRNG seed. Passed to gentest.pl
     --mask      : Grammar mask. Passed to gentest.pl
@@ -470,14 +474,13 @@ $0 - Run a complete random query generation test, including server start with re
     --report-xml-tt: Passed to gentest.pl
     --report-xml-tt-type: Passed to gentest.pl
     --report-xml-tt-dest: Passed to gentest.pl
-    --testname  : Name of test, used for reporting purposes.
-    --sqltrace  : Print all generated SQL statements.
+    --testname  : Name of test, used for reporting purposes
+    --sqltrace  : Print all generated SQL statements
     --views     : Generate views. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
-    --mem       : Passed to mtr.
-    --mtr-build-thread: 
-                  Value used for MTR_BUILD_THREAD when servers are started and accessed.
+    --mem       : Passed to mtr
+    --mtr-build-thread: Value used for MTR_BUILD_THREAD when servers are started and accessed 
     --debug     : Debug mode
     --help      : This help message
 
