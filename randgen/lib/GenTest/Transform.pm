@@ -59,7 +59,11 @@ my %mysql_grouping_errors = (
 	1004 => 'ER_NON_GROUPING_FIELD_USED',
 	1055 => 'ER_WRONG_FIELD_WITH_GROUP',
 	1056 => 'ER_WRONG_GROUP_FIELD',
-	1140 => 'ER_MIX_OF_GROUP_FUNC_AND_FIELDS'
+	1140 => 'ER_MIX_OF_GROUP_FUNC_AND_FIELDS',
+	1317 => 'ER_QUERY_INTERRUPTED',
+	2013 => 'CR_SERVER_LOST',
+	2006 => 'CR_SERVER_GONE_ERROR',
+	1028 => 'ER_FILSORT_ABORT'
 );
 
 # List of encountered errors that we want to suppress later in the test run.
@@ -75,7 +79,7 @@ sub transformExecuteValidate {
 	my $transform_blocks;
 
 	if (
-		($transformer_output eq STATUS_OK) ||
+		($transformer_output == STATUS_OK) ||
 		($transformer_output == STATUS_WONT_HANDLE)
 	) {
 		return STATUS_OK;
@@ -137,7 +141,7 @@ sub transformExecuteValidate {
 					return STATUS_OK;
 				}
 				say("---------- TRANSFORM ISSUE ----------");
-				say("Transform ".ref($transformer)." failed with a syntactic or semantic error: ".$part_result->errstr().
+				say("Transform ".ref($transformer)." failed with a syntactic or semantic error: ".$part_result->err()." ".$part_result->errstr().
 					"; RQG Status: ".status2text($part_result->status())." (".$part_result->status().")");
 				say("Offending query is: $transformed_query_part;");
 				say("Original query is: $original_query;");
@@ -145,6 +149,9 @@ sub transformExecuteValidate {
 					". Raising severity to STATUS_ENVIRONMENT_FAILURE.");
 				return STATUS_ENVIRONMENT_FAILURE;
 			} elsif ($part_result->status() != STATUS_OK) {
+				say("---------- TRANSFORM ISSUE ----------");
+				say("Transform ".$transformer->name()." failed with an error: ".$part_result->err().'  '.$part_result->errstr());
+				say("Transformed query was: ".$transformed_query_part);
 				return $part_result->status();
 			} elsif (defined $part_result->data()) {
 				my $part_outcome = $transformer->validate($original_result, $part_result);

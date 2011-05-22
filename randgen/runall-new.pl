@@ -67,7 +67,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
-    $notnull, $logfile, $logconf, $report_tt_logdir);
+    $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout);
 
 my $gendata=''; ## default simple gendata
 
@@ -123,7 +123,8 @@ my $opt_result = GetOptions(
     'sqltrace' => \$sqltrace,
     'logfile=s' => \$logfile,
     'logconf=s' => \$logconf,
-    'report-tt-logdir=s' => \$report_tt_logdir
+    'report-tt-logdir=s' => \$report_tt_logdir,
+    'querytimeout=i' => \$querytimeout
     );
 
 if (defined $logfile && defined $logger) {
@@ -339,6 +340,7 @@ my $gentestProps = GenTest::Properties->new(
               'valgrind-xml',
               'testname',
               'sqltrace',
+              'querytimeout',
               'report-xml-tt',
               'report-xml-tt-type',
               'report-xml-tt-dest',
@@ -391,6 +393,7 @@ $gentestProps->filter($filter) if defined $filter;
 $gentestProps->notnull($notnull) if defined $notnull;
 $gentestProps->valgrind(1) if $valgrind;
 $gentestProps->sqltrace(1) if $sqltrace;
+$gentestProps->querytimeout($querytimeout) if defined $querytimeout;
 $gentestProps->testname($testname) if $testname;
 $gentestProps->logfile($logfile) if defined $logfile;
 $gentestProps->logconf($logconf) if defined $logconf;
@@ -492,22 +495,22 @@ $0 - Run a complete random query generation test, including server start with re
     --duration  : Duration of the test in seconds (default $default_duration seconds);
     --validator : The validators to use
     --reporter  : The reporters to use
-    --transformer: The transformers to use (if specified in --validators)
+    --transformer: The transformers to use (turns on --validator=transformer). Accepts comma separated list
+    --querytimeout: The timeout to use for the QueryTimeout reporter 
     --gendata   : Generate data option. Passed to gentest.pl
     --seed      : PRNG seed. Passed to gentest.pl
     --mask      : Grammar mask. Passed to gentest.pl
     --mask-level: Grammar mask level. Passed to gentest.pl
     --notnull   : Generate all fields with NOT NULL
     --rows      : No of rows. Passed to gentest.pl
-    --sqltrace  : Print all generated SQL statements.
+    --sqltrace  : Print all generated SQL statements
     --varchar-length: length of strings. passed to gentest.pl
     --xml-outputs: Passed to gentest.pl
     --views     : Generate views. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
-    --mem       : Passed to mtr.
-    --mtr-build-thread: 
-                  Value used for MTR_BUILD_THREAD when servers are started and accessed.
+    --mem       : Passed to mtr
+    --mtr-build-thread:  Value used for MTR_BUILD_THREAD when servers are started and accessed
     --debug     : Debug mode
     --help      : This help message
 

@@ -31,7 +31,7 @@ use constant MIXER_GENERATOR	=> 0;
 use constant MIXER_EXECUTORS	=> 1;
 use constant MIXER_VALIDATORS	=> 2;
 use constant MIXER_FILTERS	=> 3;
-use constant MIXER_TRANSFORMERS	=> 4;
+use constant MIXER_PROPERTIES	=> 4;
 
 my %rule_status;
 
@@ -44,7 +44,7 @@ sub new {
 		'generator'	=> MIXER_GENERATOR,
 		'executors'	=> MIXER_EXECUTORS,
 		'validators'	=> MIXER_VALIDATORS,
-		'transformers'	=> MIXER_TRANSFORMERS,
+		'properties'	=> MIXER_PROPERTIES,
 		'filters'	=> MIXER_FILTERS
 	}, @_);
 
@@ -67,9 +67,7 @@ sub new {
 			eval "use $validator" or print $@;
 			$validators[$i] = $validator->new();
             
-            if ($validator eq "GenTest::Validator::Transformer") {
-                $validators[$i]->initialize($mixer->transformers);
-            }
+            $validators[$i]->configure($mixer->properties);
 		}
 		$validators{ref($validators[$i])}++;
 	}
@@ -192,8 +190,8 @@ sub validators {
 	return $_[0]->[MIXER_VALIDATORS];
 }
 
-sub transformers {
-	return $_[0]->[MIXER_TRANSFORMERS];
+sub properties {
+	return $_[0]->[MIXER_PROPERTIES];
 }
 
 sub filters {

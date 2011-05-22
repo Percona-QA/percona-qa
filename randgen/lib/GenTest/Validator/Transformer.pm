@@ -37,10 +37,11 @@ my @transformer_names;
 my @transformers;
 my $database_created = 0;
 
-sub BEGIN {
-}
-sub initialize {
-    my ($self, $list) = @_;
+sub configure {
+    my ($self, $props) = @_;
+
+    my $list = $props->transformers;
+
     if (defined $list and $#{$list} >= 0) {
         @transformer_names = @$list;
     } else {
@@ -101,7 +102,13 @@ sub validate {
 	my $max_transformer_status; 
 	foreach my $transformer (@transformers) {
 		my $transformer_status = $validator->transform($transformer, $executor, $results);
-		$transformer_status = STATUS_OK if ($transformer_status == STATUS_CONTENT_MISMATCH) && ($original_query =~ m{LIMIT}sio);
+		if (($transformer_status == STATUS_CONTENT_MISMATCH) && ($original_query =~ m{LIMIT}sio)) {
+			# We avoid reporting bugs on content mismatch with LIMIT queries
+			say('WARNING: Got STATUS_CONTENT_MISMATCH from transformer. This is likely'.
+				' a FALSE POSITIVE given that there is a LIMIT clause but possibly'.
+				' no complete ORDER BY. Hence we return STATUS_OK. The previous transform issue can likely be ignored.');
+			$transformer_status = STATUS_OK     
+		}
 		return $transformer_status if $transformer_status > STATUS_CRITICAL_FAILURE;
 		$max_transformer_status = $transformer_status if $transformer_status > $max_transformer_status;
 	}
@@ -116,11 +123,25 @@ sub transform {
 	my $original_query = $original_result->query();
 
 	my ($transform_outcome, $transformed_queries, $transformed_results) = $transformer->transformExecuteValidate($original_query, $original_result, $executor);
-	return $transform_outcome if ($transform_outcome > STATUS_CRITICAL_FAILURE) || ($transform_outcome eq STATUS_OK);
+	return $transform_outcome if ($transform_outcome > STATUS_CRITICAL_FAILURE) || ($transform_outcome == STATUS_OK);
 
-	say("---------- TRANSFORM ISSUE ----------");
+	say("---------- TRANSFORM ISSUE ----------") if defined $transformed_results;
 	say("Original query: $original_query failed transformation with Transformer ".$transformer->name().
-	    "; RQG Status: ".status2text($transform_outcome)." ($transform_outcome)");
+		"; RQG Status: ".status2text($transform_outcome)." ($transform_outcome)");
+	if (not defined $transformed_queries) {
+		say("WARNING: Transformer was unable to produce a transformed query.".
+			" This is likely an issue with the test configuration or the ".
+			$transformer->name()." transformer itself. See above for possible".
+			" errors caused by the transformed query.");
+		if ($transform_outcome == STATUS_UNKNOWN_ERROR) {
+			# We want to know about unknown errors returned by transformed queries.
+			say('ERROR: Unknown error from transformer, likely a test issue. '. 
+				'Raising status to STATUS_ENVIRONMENT_FAILURE');
+			return STATUS_ENVIRONMENT_FAILURE;
+		}
+		return $transform_outcome;
+	}
+
 	say("Transformed query: ".join('; ', @$transformed_queries));
 
 	say(GenTest::Comparator::dumpDiff($original_result, $transformed_results->[0]));
