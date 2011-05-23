@@ -88,21 +88,24 @@ if (not defined $threads) {
     $logToStd = 0;
 }
 
+say("Using vardir=$vardir");
 
 foreach my $dir ($basedir, cwd()) {
 # calling bzr usually takes a few seconds...
-    my $bzrinfo = GenTest::BzrInfo->new(
-        dir => $dir
-        ); 
-    my $revno = $bzrinfo->bzrRevno();
-    my $revid = $bzrinfo->bzrRevisionId();
-    
-    if ((defined $revno) && (defined $revid)) {
-        say("$dir Revno: $revno");
-        say("$dir Revision-Id: $revid");
-    } else {
-        say($dir.' does not look like a bzr branch, cannot get revision info.');
-    } 
+    if (defined $dir) {
+        my $bzrinfo = GenTest::BzrInfo->new(
+            dir => $dir
+            ); 
+        my $revno = $bzrinfo->bzrRevno();
+        my $revid = $bzrinfo->bzrRevisionId();
+        
+        if ((defined $revno) && (defined $revid)) {
+            say("$dir Revno: $revno");
+            say("$dir Revision-Id: $revid");
+        } else {
+            say($dir.' does not look like a bzr branch, cannot get revision info.');
+        } 
+    }
 }
 
 my $comb_count = $#$combinations + 1;
