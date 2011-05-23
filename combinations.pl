@@ -26,6 +26,13 @@ use GenTest::Constants;
 use Getopt::Long;
 use Data::Dumper;
 
+$| = 1;
+my $ctrl_c = 0;
+    
+$SIG{INT} = sub { $ctrl_c = 1 };
+$SIG{TERM} = sub { exit(0) };
+$SIG{CHLD} = "IGNORE" if osWindows();
+
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, $threads);
