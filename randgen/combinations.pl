@@ -79,7 +79,13 @@ if ($exhaustive) {
         $total *= $#{$combinations->[$comb_id]}+1;
     }
     if (defined $trials) {
-        say("You have specified --run-all-combinations-once, but limited with --trials=$trials");
+        if ($trials < $total) {
+            say("You have specified --run-all-combinations-once gives $total combinations, but limited with --trials=$trials");
+        } else {
+            $trials = $total;
+        }
+    } else {
+        $trials = $total;
     }
     doExhaustive(0);
 } else {
@@ -117,11 +123,7 @@ sub doExhaustive {
 
         foreach my $alt (@alts) {
             push @idx, $alt;
-            if ($trials > 0) {
-                doExhaustive($level+1,@idx) if $trial_counter < $trials;
-            } else {
-                doExhaustive($level+1,@idx);
-            }
+            doExhaustive($level+1,@idx) if $trial_counter < $trials;
             pop @idx;
         }
     } else {
@@ -131,7 +133,7 @@ sub doExhaustive {
             push @comb, $combinations->[$i]->[$idx[$i]];
         }
         my $comb_str = join(' ', @comb);        
-        say("[$$] Running combination ".$trial_counter."/".($trials>0?$trials:$total));
+        say("[$$] Running combination ".$trial_counter."/".$trials);
         doCombination($trial_counter,$comb_str);
     }
 }
