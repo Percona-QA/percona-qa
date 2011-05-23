@@ -18,7 +18,8 @@
 use strict;
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
-use List::Util 'shuffle';
+use Carp;
+#use List::Util 'shuffle';
 use GenTest;
 use GenTest::Random;
 use GenTest::Constants;
@@ -35,12 +36,13 @@ eval
 
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug);
+    $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, $threads);
 
 my $combinations;
 my %results;
 my @commands;
 my $max_result = 0;
+my $thread_id = 0;
 
 my $opt_result = GetOptions(
 	'config=s' => \$config_file,
@@ -59,47 +61,108 @@ my $opt_result = GetOptions(
 	'report-xml-tt-type=s' => \$report_xml_tt_type,
 	'report-xml-tt-dest=s' => \$report_xml_tt_dest,
     'run-all-combinations-once' => \$exhaustive,
-    'debug' => \$debug
+    'debug' => \$debug,
+    'no-log' => \$noLog,
+    'parallel=i' => \$threads
 );
-
 
 my $prng = GenTest::Random->new(
 	seed => $seed eq 'time' ? time() : $seed
 );
 
-open(CONF, $config_file) or die "unable to open config file '$config_file': $!";
+open(CONF, $config_file) or croak "unable to open config file '$config_file': $!";
 read(CONF, my $config_text, -s $config_file);
 eval ($config_text);
 die "Unable to load $config_file: $@" if $@;
 
-mkdir($vardir);
+my $logToStd = !$noLog;
+
+
+if (not defined $threads) {
+    $threads=1;
+} else {
+    croak("Not meaningful to use --threads without --run-all-combinations-once") if not defined $exhaustive;
+    $logToStd = 0;
+}
+
 system("bzr version-info $basedir");
 system("bzr log --limit=1");
 
 my $comb_count = $#$combinations + 1;
 
 my $total = 1;
+my $thread_id;
 if ($exhaustive) {
     foreach my $comb_id (0..($comb_count-1)) {
         $total *= $#{$combinations->[$comb_id]}+1;
     }
     if (defined $trials) {
-        say("You have specified --run-all-combinations-once, but limited with --trials=$trials");
+        if ($trials < $total) {
+            say("You have specified --run-all-combinations-once gives $total combinations, but limited with --trials=$trials");
+        } else {
+            $trials = $total;
+        }
+    } else {
+        $trials = $total;
     }
-    doExhaustive(0);
+}
+
+my %pids;
+my $actual_vardir;
+for my $i (1..$threads) {
+    my $pid = fork();
+    if ($pid == 0) {
+        ## Child
+        $thread_id = $i;
+        if ($threads > 1) {
+            $actual_vardir = $vardir."_".$thread_id;
+        } else {
+            $actual_vardir = $vardir;
+        }
+
+        mkdir($vardir);
+        mkdir($actual_vardir);
+        
+        if ($exhaustive) {
+            doExhaustive(0);
+        } else {
+            doRandom();
+        }
+        ## Children does not continue this loop
+        last;
+    } else {
+        ##Parent
+        $thread_id = 0;
+        $pids{$pid}=$i;
+        say("Started thread [$i] pid=$pid");
+    }
+}
+
+if ($thread_id > 0) {
+    ## Child
+    ##say("[$thread_id] Summary of various interesting strings from the logs:");
+    ##say("[$thread_id] ". Dumper \%results);
+    foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
+        system("grep -i '$string' $actual_vardir/trial*log");
+    } 
+    
+    say("[$thread_id] will exit with exit status $max_result");
+    exit($max_result);
 } else {
-    doRandom();
+    ## Parent
+    my $total_status = 0;
+    while(1) {
+        my $child = wait();
+        last if $child == -1;
+        my $exit_status = $? > 0 ? ($? >> 8) : 0;
+        say("Thread $pids{$child} (pid=$child) exited with $exit_status");
+        $total_status = $exit_status if $exit_status > $total_status;
+    }
+    say("$0 will exit with exit status $total_status");
+    exit($total_status);
 }
 
 
-say("[$$] Summary of various interesting strings from the logs:");
-say(Dumper \%results);
-foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
-	system("grep -i '$string' $vardir/trial*log");
-} 
-
-say("[$$] $0 will exit with exit status $max_result");
-exit($max_result);
 
 ## ----------------------------------------------------
 
@@ -122,11 +185,7 @@ sub doExhaustive {
 
         foreach my $alt (@alts) {
             push @idx, $alt;
-            if ($trials > 0) {
-                doExhaustive($level+1,@idx) if $trial_counter < $trials;
-            } else {
-                doExhaustive($level+1,@idx);
-            }
+            doExhaustive($level+1,@idx) if $trial_counter < $trials;
             pop @idx;
         }
     } else {
@@ -136,8 +195,7 @@ sub doExhaustive {
             push @comb, $combinations->[$i]->[$idx[$i]];
         }
         my $comb_str = join(' ', @comb);        
-        say("Executing Combination ".$trial_counter."/".$total);
-        doCombination($trial_counter,$comb_str);
+        doCombination($trial_counter,$comb_str,"combination");
     }
 }
 
@@ -147,17 +205,20 @@ sub doRandom {
     foreach my $trial_id (1..$trials) {
         my @comb;
         foreach my $comb_id (0..($comb_count-1)) {
-            $comb[$comb_id] = $combinations->[$comb_id]->[$prng->uint16(0, $#{$combinations->[$comb_id]})];
+            my $n = $prng->uint16(0, $#{$combinations->[$comb_id]});
+            $comb[$comb_id] = $combinations->[$comb_id]->[$n];
         }
         my $comb_str = join(' ', @comb);        
-        doCombination($trial_id,$comb_str);
+        doCombination($trial_id,$comb_str,"random trial");
     }
 }
 
 ## ----------------------------------------------------
 sub doCombination {
-    my ($trial_id,$comb_str) = @_;
+    my ($trial_id,$comb_str,$comment) = @_;
 
+    return if (($trial_id -1) % $threads +1) != $thread_id;
+    say("[$thread_id] Running $comment ".$trial_id."/".$trials);
 	my $mask = $prng->uint16(0, 65535);
 
 	my $command = "
@@ -177,32 +238,38 @@ sub doCombination {
 	$command .= " --report-xml-tt-type=$report_xml_tt_type " if $report_xml_tt_type ne '';
 	$command .= " --report-xml-tt-dest=$report_xml_tt_dest " if $report_xml_tt_dest ne '';
 
-	$command .= " --vardir=$vardir/current " if $command !~ m{--mem}sio && $vardir ne '';
+	$command .= " --vardir=$actual_vardir/current " if $command !~ m{--mem}sio && $actual_vardir ne '';
 	$command =~ s{[\t\r\n]}{ }sgio;
-	$command .= " 2>&1 | tee $vardir/trial".$trial_id.'.log';
+    if ($logToStd) {
+        $command .= " 2>&1 | tee $actual_vardir/trial".$trial_id.'.log';
+    } else {
+        $command .= " 2>&1 > $actual_vardir/trial".$trial_id.'.log';
+    }
 
 	$commands[$trial_id] = $command;
 
 	$command =~ s{"}{\\"}sgio;
 	$command = 'bash -c "set -o pipefail; '.$command.'"';
 
-	say("[$$] $command");
+    if ($logToStd) {
+        say("[$thread_id] $command");
+    }
     my $result = 0;
     $result = system($command) if not $debug;
 
 	$result = $result >> 8;
-	say("[$$] runall.pl exited with exit status $result");
+	say("[$thread_id] runall.pl exited with exit status $result");
 	exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 
 	if ($result > 0) {
 		$max_result = $result >> 8 if ($result >> 8) > $max_result;
-		say("[$$] Copying vardir to $vardir/vardir".$trial_id);
+		say("[$thread_id] Copying $actual_vardir/current to $vardir/vardir".$trial_id);
 		if ($command =~ m{--mem}) {
 			system("cp -r /dev/shm/var $vardir/vardir".$trial_id);
 		} else {
-			system("cp -r $vardir/current $vardir/vardir".$trial_id);
+			system("cp -r $actual_vardir/current $vardir/vardir".$trial_id);
 		}
-		open(OUT, ">$vardir/vardir".$trial_id."/command");
+		open(OUT, ">$actual_vardir/vardir".$trial_id."/command");
 		print OUT $command;
 		close(OUT);
 	}

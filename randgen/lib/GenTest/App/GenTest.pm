@@ -90,7 +90,13 @@ sub run {
     my $seed = $self->config->seed;
     if ($seed eq 'time') {
         $seed = time();
-        say("Converting --seed=time to --seed=$seed");
+        say("Converting --seed=time to --seed=$seed"); }
+    elsif ($seed eq 'epoch5') {
+        $seed = time() % 100000;
+        say("Converting --seed=epoch5 to --seed=$seed"); 
+    } elsif ($seed eq 'random') {
+        $seed = int(rand(32767));
+        say("Converting --seed=random to --seed=$seed"); 
     }
     
     $ENV{RQG_DEBUG} = 1 if $self->config->debug;
