@@ -27,7 +27,7 @@ use Data::Dumper;
 
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug);
+    $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog);
 
 my $combinations;
 my %results;
@@ -51,8 +51,11 @@ my $opt_result = GetOptions(
 	'report-xml-tt-type=s' => \$report_xml_tt_type,
 	'report-xml-tt-dest=s' => \$report_xml_tt_dest,
     'run-all-combinations-once' => \$exhaustive,
-    'debug' => \$debug
+    'debug' => \$debug,
+    'no-log' => \$noLog
 );
+
+my $logToStd = !$noLog;
 
 
 my $prng = GenTest::Random->new(
@@ -128,7 +131,7 @@ sub doExhaustive {
             push @comb, $combinations->[$i]->[$idx[$i]];
         }
         my $comb_str = join(' ', @comb);        
-        say("Executing Combination ".$trial_counter."/".$total);
+        say("[$$] Running combination ".$trial_counter."/".($trials>0?$trials:$total));
         doCombination($trial_counter,$comb_str);
     }
 }
@@ -142,6 +145,7 @@ sub doRandom {
             $comb[$comb_id] = $combinations->[$comb_id]->[$prng->uint16(0, $#{$combinations->[$comb_id]})];
         }
         my $comb_str = join(' ', @comb);        
+        say("[$$] Running random trial ".$trial_id."/".$trials);
         doCombination($trial_id,$comb_str);
     }
 }
@@ -171,14 +175,20 @@ sub doCombination {
 
 	$command .= " --vardir=$vardir/current " if $command !~ m{--mem}sio && $vardir ne '';
 	$command =~ s{[\t\r\n]}{ }sgio;
-	$command .= " 2>&1 | tee $vardir/trial".$trial_id.'.log';
+    if ($logToStd) {
+        $command .= " 2>&1 | tee $vardir/trial".$trial_id.'.log';
+    } else {
+        $command .= " 2>&1 > $vardir/trial".$trial_id.'.log';
+    }
 
 	$commands[$trial_id] = $command;
 
 	$command =~ s{"}{\\"}sgio;
 	$command = 'bash -c "set -o pipefail; '.$command.'"';
 
-	say("[$$] $command");
+    if ($logToStd) {
+        say("[$$] $command");
+    }
     my $result = 0;
     $result = system($command) if not $debug;
 
