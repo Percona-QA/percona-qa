@@ -36,6 +36,8 @@ my @commands;
 my $max_result = 0;
 my $thread_id = 0;
 
+my $mtrbt = defined $ENV{MTR_BUILD_THREAD}?$ENV{MTR_BUILD_THREAD}:300;
+
 my $opt_result = GetOptions(
 	'config=s' => \$config_file,
 	'basedir=s' => \$basedir,
@@ -100,20 +102,12 @@ if ($exhaustive) {
 }
 
 my %pids;
-my $actual_vardir;
 for my $i (1..$threads) {
     my $pid = fork();
     if ($pid == 0) {
         ## Child
         $thread_id = $i;
-        if ($threads > 1) {
-            $actual_vardir = $vardir."_".$thread_id;
-        } else {
-            $actual_vardir = $vardir;
-        }
-
         mkdir($vardir);
-        mkdir($actual_vardir);
         
         if ($exhaustive) {
             doExhaustive(0);
@@ -135,10 +129,10 @@ if ($thread_id > 0) {
     ##say("[$thread_id] Summary of various interesting strings from the logs:");
     ##say("[$thread_id] ". Dumper \%results);
     foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
-        system("grep -i '$string' $actual_vardir/trial*log");
+        system("grep -i '$string' $vardir/trial*log");
     } 
     
-    say("[$thread_id] will exit with exit status $max_result");
+    say("[$thread_id] will exit with exit status $max_result:".status2text($max_result));
     exit($max_result);
 } else {
     ## Parent
@@ -150,7 +144,7 @@ if ($thread_id > 0) {
         say("Thread $pids{$child} (pid=$child) exited with $exit_status");
         $total_status = $exit_status if $exit_status > $total_status;
     }
-    say("$0 will exit with exit status $total_status");
+    say("$0 will exit with exit status $total_status:".status2text($total_status));
     exit($total_status);
 }
 
@@ -218,6 +212,7 @@ sub doCombination {
 		--queries=100000000
 	";
 
+    $command .= " --mtr-build-thread=".($mtrbt+($thread_id-1)*10);
 	$command .= " --mask=$mask" if not defined $no_mask;
 	$command .= " --duration=$duration" if $duration ne '';
 	$command .= " --basedir=$basedir " if $basedir ne '';
@@ -230,12 +225,12 @@ sub doCombination {
 	$command .= " --report-xml-tt-type=$report_xml_tt_type " if $report_xml_tt_type ne '';
 	$command .= " --report-xml-tt-dest=$report_xml_tt_dest " if $report_xml_tt_dest ne '';
 
-	$command .= " --vardir=$actual_vardir/current " if $command !~ m{--mem}sio && $actual_vardir ne '';
+	$command .= " --vardir=$vardir/current_$thread_id " if $command !~ m{--mem}sio && $vardir ne '';
 	$command =~ s{[\t\r\n]}{ }sgio;
     if ($logToStd) {
-        $command .= " 2>&1 | tee $actual_vardir/trial".$trial_id.'.log';
+        $command .= " 2>&1 | tee $vardir/trial".$trial_id.'.log';
     } else {
-        $command .= " 2>&1 > $actual_vardir/trial".$trial_id.'.log';
+        $command .= " 2>&1 > $vardir/trial".$trial_id.'.log';
     }
 
 	$commands[$trial_id] = $command;
@@ -250,18 +245,18 @@ sub doCombination {
     $result = system($command) if not $debug;
 
 	$result = $result >> 8;
-	say("[$thread_id] runall.pl exited with exit status $result");
+	say("[$thread_id] runall.pl exited with exit status $result:".status2text($result));
 	exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 
 	if ($result > 0) {
 		$max_result = $result >> 8 if ($result >> 8) > $max_result;
-		say("[$thread_id] Copying $actual_vardir/current to $vardir/vardir".$trial_id);
+		say("[$thread_id] Copying $vardir/current_$thread_id to $vardir/vardir".$trial_id);
 		if ($command =~ m{--mem}) {
 			system("cp -r /dev/shm/var $vardir/vardir".$trial_id);
 		} else {
-			system("cp -r $actual_vardir/current $vardir/vardir".$trial_id);
+			system("cp -r $vardir/current_$thread_id $vardir/vardir".$trial_id);
 		}
-		open(OUT, ">$actual_vardir/vardir".$trial_id."/command");
+		open(OUT, ">$vardir/vardir".$trial_id."/command");
 		print OUT $command;
 		close(OUT);
 	}
