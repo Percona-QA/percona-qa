@@ -20,10 +20,12 @@ use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use Carp;
 #use List::Util 'shuffle';
+use Cwd;
 use GenTest;
 use GenTest::Random;
 use GenTest::Constants;
 use Getopt::Long;
+use GenTest::BzrInfo; 
 use Data::Dumper;
 
 $| = 1;
@@ -86,8 +88,22 @@ if (not defined $threads) {
     $logToStd = 0;
 }
 
-system("bzr version-info $basedir");
-system("bzr log --limit=1");
+
+foreach my $dir ($basedir, cwd()) {
+# calling bzr usually takes a few seconds...
+    my $bzrinfo = GenTest::BzrInfo->new(
+        dir => $dir
+        ); 
+    my $revno = $bzrinfo->bzrRevno();
+    my $revid = $bzrinfo->bzrRevisionId();
+    
+    if ((defined $revno) && (defined $revid)) {
+        say("$dir Revno: $revno");
+        say("$dir Revision-Id: $revid");
+    } else {
+        say($dir.' does not look like a bzr branch, cannot get revision info.');
+    } 
+}
 
 my $comb_count = $#$combinations + 1;
 
@@ -139,7 +155,8 @@ if ($thread_id > 0) {
         system("grep -i '$string' $vardir/trial*log");
     } 
     
-    say("[$thread_id] will exit with exit status $max_result:".status2text($max_result));
+    say("[$thread_id] will exit with exit status ".status2text($max_result).
+        "($max_result)");
     exit($max_result);
 } else {
     ## Parent
@@ -148,10 +165,11 @@ if ($thread_id > 0) {
         my $child = wait();
         last if $child == -1;
         my $exit_status = $? > 0 ? ($? >> 8) : 0;
-        say("Thread $pids{$child} (pid=$child) exited with $exit_status");
+        #say("Thread $pids{$child} (pid=$child) exited with $exit_status");
         $total_status = $exit_status if $exit_status > $total_status;
     }
-    say("$0 will exit with exit status $total_status:".status2text($total_status));
+    say("$0 will exit with exit status ".status2text($total_status).
+        "($total_status)");
     exit($total_status);
 }
 
@@ -219,7 +237,7 @@ sub doCombination {
 		--queries=100000000
 	";
 
-    $command .= " --mtr-build-thread=".($mtrbt+($thread_id-1)*10);
+    $command .= " --mtr-build-thread=".($mtrbt+$thread_id-1);
 	$command .= " --mask=$mask" if not defined $no_mask;
 	$command .= " --duration=$duration" if $duration ne '';
 	$command .= " --basedir=$basedir " if $basedir ne '';
@@ -252,12 +270,13 @@ sub doCombination {
     $result = system($command) if not $debug;
 
 	$result = $result >> 8;
-	say("[$thread_id] runall.pl exited with exit status $result:".status2text($result));
+	say("[$thread_id] runall.pl exited with exit status ".status2text($result).
+        "($result), see $vardir/trial".$trial_id.'.log');
 	exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 
 	if ($result > 0) {
 		$max_result = $result >> 8 if ($result >> 8) > $max_result;
-		say("[$thread_id] Copying $vardir/current_$thread_id to $vardir/vardir".$trial_id);
+		say("[$thread_id] Copying $vardir/current_$thread_id to $vardir/vardir".$trial_id) if $logToStd;
 		if ($command =~ m{--mem}) {
 			system("cp -r /dev/shm/var $vardir/vardir".$trial_id);
 		} else {
