@@ -30,7 +30,7 @@ use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use strict;
 use GenTest;
-
+use GenTest::BzrInfo;
 $| = 1;
 if (osWindows()) {
 	$SIG{CHLD} = "IGNORE";
@@ -173,6 +173,25 @@ if (
 ) {
 	$basedirs[1] = $basedirs[0];	
 }
+
+foreach my $dir (cwd(), @basedirs) {
+# calling bzr usually takes a few seconds...
+    if (defined $dir) {
+        my $bzrinfo = GenTest::BzrInfo->new(
+            dir => $dir
+            ); 
+        my $revno = $bzrinfo->bzrRevno();
+        my $revid = $bzrinfo->bzrRevisionId();
+        
+        if ((defined $revno) && (defined $revid)) {
+            say("$dir Revno: $revno");
+            say("$dir Revision-Id: $revid");
+        } else {
+            say($dir.' does not look like a bzr branch, cannot get revision info.');
+        } 
+    }
+}
+
 
 
 if (
