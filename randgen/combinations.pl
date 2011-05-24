@@ -37,7 +37,8 @@ $SIG{CHLD} = "IGNORE" if osWindows();
 
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, $threads);
+    $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, 
+    $threads, $new);
 
 my $combinations;
 my %results;
@@ -66,7 +67,8 @@ my $opt_result = GetOptions(
     'run-all-combinations-once' => \$exhaustive,
     'debug' => \$debug,
     'no-log' => \$noLog,
-    'parallel=i' => \$threads
+    'parallel=i' => \$threads,
+    'new' => \$new
 );
 
 my $prng = GenTest::Random->new(
@@ -235,10 +237,10 @@ sub doCombination {
     say("[$thread_id] Running $comment ".$trial_id."/".$trials);
 	my $mask = $prng->uint16(0, 65535);
 
+    my $runall = $new?"runall-new.pl":"runall.pl";
+
 	my $command = "
-		perl ".(defined $ENV{RQG_HOME} ? $ENV{RQG_HOME}."/" : "" )."runall.pl $comb_str
-		--queries=100000000
-	";
+		perl ".(defined $ENV{RQG_HOME} ? $ENV{RQG_HOME}."/" : "" )."$runall --queries=100000000 $comb_str ";
 
     $command .= " --mtr-build-thread=".($mtrbt+$thread_id-1);
 	$command .= " --mask=$mask" if not defined $no_mask;
@@ -273,7 +275,7 @@ sub doCombination {
     $result = system($command) if not $debug;
 
 	$result = $result >> 8;
-	say("[$thread_id] runall.pl exited with exit status ".status2text($result).
+	say("[$thread_id] $runall exited with exit status ".status2text($result).
         "($result), see $vardir/trial".$trial_id.'.log');
 	exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 

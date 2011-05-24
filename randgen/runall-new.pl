@@ -59,7 +59,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
-    $notnull, $querytimeout);
+    $notnull, $querytimeout, $no_mask);
 
 my $gendata=''; ## default simple gendata
 
@@ -113,7 +113,8 @@ my $opt_result = GetOptions(
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
     'sqltrace' => \$sqltrace,
-    'querytimeout=i' => \$querytimeout
+    'querytimeout=i' => \$querytimeout,
+    'no-mask' => \$no_mask
     );
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
@@ -360,7 +361,7 @@ $gentestProps->dsn(\@dsns) if defined @dsns;
 $gentestProps->grammar($grammar_file);
 $gentestProps->redefine($redefine_file) if defined $redefine_file;
 $gentestProps->seed($seed) if defined $seed;
-$gentestProps->mask($mask) if defined $mask;
+$gentestProps->mask($mask) if (defined $mask) && (not defined $no_mask);
 $gentestProps->property('mask-level',$mask_level) if defined $mask_level;
 $gentestProps->rows($rows) if defined $rows;
 $gentestProps->views(1) if defined $views;
