@@ -185,6 +185,10 @@ sub prng {
 	return $_[0]->[REPORTER_PRNG];
 }
 
+sub testDuration {
+	return $_[0]->[REPORTER_TEST_DURATION];
+}
+
 sub properties {
 	return $_[0]->[REPORTER_PROPERTIES];
 }
