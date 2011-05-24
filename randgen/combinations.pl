@@ -86,7 +86,7 @@ eval ($config_text);
 croak "Unable to load $config_file: $@" if $@;
 
 if (!defined $servers) {
-    $servers = 1 if $basedirs[0] ne '';
+    $servers = 1;
     $servers = 2 if $basedirs[1] ne '';
 }
 
