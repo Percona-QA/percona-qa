@@ -35,11 +35,12 @@ $SIG{INT} = sub { $ctrl_c = 1 };
 $SIG{TERM} = sub { exit(0) };
 $SIG{CHLD} = "IGNORE" if osWindows();
 
-my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
+my ($config_file, $workdir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, 
-    $threads, $new);
+    $threads, $new, $servers);
 
+my @basedirs=('','');
 my $combinations;
 my %results;
 my @commands;
@@ -50,8 +51,11 @@ my $mtrbt = defined $ENV{MTR_BUILD_THREAD}?$ENV{MTR_BUILD_THREAD}:300;
 
 my $opt_result = GetOptions(
 	'config=s' => \$config_file,
-	'basedir=s' => \$basedir,
-	'vardir=s' => \$vardir,
+	'basedir=s' => \$basedirs[0],
+	'basedir1=s' => \$basedirs[0],
+	'basedir2=s' => \$basedirs[1],
+    'workdir=s' => \$workdir,
+    'vardir=s' => \$workdir,
 	'trials=i' => \$trials,
 	'duration=i' => \$duration,
 	'seed=s' => \$seed,
@@ -68,7 +72,8 @@ my $opt_result = GetOptions(
     'debug' => \$debug,
     'no-log' => \$noLog,
     'parallel=i' => \$threads,
-    'new' => \$new
+    'new' => \$new,
+    'servers=i' => \$servers
 );
 
 my $prng = GenTest::Random->new(
@@ -80,8 +85,27 @@ read(CONF, my $config_text, -s $config_file);
 eval ($config_text);
 croak "Unable to load $config_file: $@" if $@;
 
+if (!defined $servers) {
+    $servers = 1 if $basedirs[0] ne '';
+    $servers = 2 if $basedirs[1] ne '';
+}
+
+croak "--servers may only be 1 or 2" if !($servers == 1 or $servers == 2);
+
 my $logToStd = !$noLog;
 
+my $bzrinfo = GenTest::BzrInfo->new(
+    dir => cwd()
+    ); 
+my $revno = $bzrinfo->bzrRevno();
+my $revid = $bzrinfo->bzrRevisionId();
+
+if ((defined $revno) && (defined $revid)) {
+    say(cwd()." Revno: $revno");
+    say(cwd()." Revision-Id: $revid");
+} else {
+    say(cwd().' does not look like a bzr branch, cannot get revision info.');
+} 
 
 if (not defined $threads) {
     $threads=1;
@@ -90,25 +114,7 @@ if (not defined $threads) {
     $logToStd = 0;
 }
 
-say("Using vardir=$vardir");
-
-foreach my $dir ($basedir, cwd()) {
-# calling bzr usually takes a few seconds...
-    if (defined $dir) {
-        my $bzrinfo = GenTest::BzrInfo->new(
-            dir => $dir
-            ); 
-        my $revno = $bzrinfo->bzrRevno();
-        my $revid = $bzrinfo->bzrRevisionId();
-        
-        if ((defined $revno) && (defined $revid)) {
-            say("$dir Revno: $revno");
-            say("$dir Revision-Id: $revid");
-        } else {
-            say($dir.' does not look like a bzr branch, cannot get revision info.');
-        } 
-    }
-}
+say("Using workdir=".$workdir);
 
 my $comb_count = $#$combinations + 1;
 
@@ -135,7 +141,7 @@ for my $i (1..$threads) {
     if ($pid == 0) {
         ## Child
         $thread_id = $i;
-        mkdir($vardir);
+        mkdir($workdir);
         
         if ($exhaustive) {
             doExhaustive(0);
@@ -157,7 +163,7 @@ if ($thread_id > 0) {
     ##say("[$thread_id] Summary of various interesting strings from the logs:");
     ##say("[$thread_id] ". Dumper \%results);
     foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
-        system("grep -i '$string' $vardir/trial*log");
+        system("grep -i '$string' $workdir/trial*log");
     } 
     
     say("[$thread_id] will exit with exit status ".status2text($max_result).
@@ -242,10 +248,12 @@ sub doCombination {
 	my $command = "
 		perl ".(defined $ENV{RQG_HOME} ? $ENV{RQG_HOME}."/" : "" )."$runall --queries=100000000 $comb_str ";
 
-    $command .= " --mtr-build-thread=".($mtrbt+$thread_id-1);
+    $command .= " --mtr-build-thread=".($mtrbt+($thread_id-1)*2);
 	$command .= " --mask=$mask" if not defined $no_mask;
 	$command .= " --duration=$duration" if $duration ne '';
-	$command .= " --basedir=$basedir " if $basedir ne '';
+    foreach my $s (1..$servers) {
+        $command .= " --basedir".$s."=".$basedirs[$s-1]." " if $basedirs[$s-1] ne '';
+    }
 	$command .= " --gendata=$gendata " if $gendata ne '';
 	$command .= " --grammar=$grammar " if $grammar ne '';
 	$command .= " --seed=$seed " if $seed ne '';
@@ -255,12 +263,14 @@ sub doCombination {
 	$command .= " --report-xml-tt-type=$report_xml_tt_type " if $report_xml_tt_type ne '';
 	$command .= " --report-xml-tt-dest=$report_xml_tt_dest " if $report_xml_tt_dest ne '';
 
-	$command .= " --vardir=$vardir/current_$thread_id " if $command !~ m{--mem}sio && $vardir ne '';
+    foreach my $s (1..$servers) {
+        $command .= " --vardir".$s."=$workdir/current".$s."_$thread_id " if $command !~ m{--mem}sio && $workdir ne '';
+    }
 	$command =~ s{[\t\r\n]}{ }sgio;
     if ($logToStd) {
-        $command .= " 2>&1 | tee $vardir/trial".$trial_id.'.log';
+        $command .= " 2>&1 | tee $workdir/trial".$trial_id.'.log';
     } else {
-        $command .= " > $vardir/trial".$trial_id.'.log'. " 2>&1";
+        $command .= " > $workdir/trial".$trial_id.'.log'. " 2>&1";
     }
 
 	$commands[$trial_id] = $command;
@@ -276,20 +286,24 @@ sub doCombination {
 
 	$result = $result >> 8;
 	say("[$thread_id] $runall exited with exit status ".status2text($result).
-        "($result), see $vardir/trial".$trial_id.'.log');
+        "($result), see $workdir/trial".$trial_id.'.log');
 	exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 
 	if ($result > 0) {
-		$max_result = $result >> 8 if ($result >> 8) > $max_result;
-		say("[$thread_id] Copying $vardir/current_$thread_id to $vardir/vardir".$trial_id) if $logToStd;
-		if ($command =~ m{--mem}) {
-			system("cp -r /dev/shm/var $vardir/vardir".$trial_id);
-		} else {
-			system("cp -r $vardir/current_$thread_id $vardir/vardir".$trial_id);
-		}
-		open(OUT, ">$vardir/vardir".$trial_id."/command");
-		print OUT $command;
-		close(OUT);
+        foreach my $s (1..$servers) {
+            $max_result = $result >> 8 if ($result >> 8) > $max_result;
+            my $from = $workdir."/current".$s."_".$thread_id;
+            my $to = $workdir."/vardir".$s."_".$trial_id;
+            say("[$thread_id] Copying $from to $to") if $logToStd;
+            if ($command =~ m{--mem}) {
+                system("cp -r /dev/shm/var $to");
+            } else {
+                system("cp -r $from $to");
+            }
+            open(OUT, ">$to/command");
+            print OUT $command;
+            close(OUT);
+        }
 	}
 	$results{$result >> 8}++;
 }
