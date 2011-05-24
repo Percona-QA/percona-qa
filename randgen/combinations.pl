@@ -76,7 +76,7 @@ my $prng = GenTest::Random->new(
 open(CONF, $config_file) or croak "unable to open config file '$config_file': $!";
 read(CONF, my $config_text, -s $config_file);
 eval ($config_text);
-die "Unable to load $config_file: $@" if $@;
+croak "Unable to load $config_file: $@" if $@;
 
 my $logToStd = !$noLog;
 
@@ -258,7 +258,7 @@ sub doCombination {
     if ($logToStd) {
         $command .= " 2>&1 | tee $vardir/trial".$trial_id.'.log';
     } else {
-        $command .= " 2>&1 > $vardir/trial".$trial_id.'.log';
+        $command .= " > $vardir/trial".$trial_id.'.log'. " 2>&1";
     }
 
 	$commands[$trial_id] = $command;
