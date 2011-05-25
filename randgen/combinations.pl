@@ -38,7 +38,7 @@ $SIG{CHLD} = "IGNORE" if osWindows();
 my ($config_file, $workdir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, 
-    $threads, $new, $servers);
+    $threads, $new, $servers, $noshuffle);
 
 my @basedirs=('','');
 my $combinations;
@@ -73,7 +73,8 @@ my $opt_result = GetOptions(
     'no-log' => \$noLog,
     'parallel=i' => \$threads,
     'new' => \$new,
-    'servers=i' => \$servers
+    'servers=i' => \$servers,
+    'no-shuffle' => \$noshuffle
 );
 
 my $prng = GenTest::Random->new(
@@ -197,13 +198,15 @@ sub doExhaustive {
         foreach my $i (0..$#{$combinations->[$level]}) {
             push @alts, $i;
         }
-        ## Shuffle array
-        for (my $i= $#alts;$i>=0;$i--) {
-            my $j = $prng->uint16(0, $i);
-            my $t = $alts[$i];
-            $alts[$i] = $alts[$j];
-            $alts[$j] = $t;
-        }
+	if (!$noshuffle) {
+	    ## Shuffle array
+	    for (my $i= $#alts;$i>=0;$i--) {
+		my $j = $prng->uint16(0, $i);
+		my $t = $alts[$i];
+		$alts[$i] = $alts[$j];
+		$alts[$j] = $t;
+	    }
+	}
 
         foreach my $alt (@alts) {
             push @idx, $alt;
