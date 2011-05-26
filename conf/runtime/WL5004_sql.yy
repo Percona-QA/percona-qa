@@ -185,7 +185,8 @@ query_init:
 	# Variant 2:
 	#    Advantage: Better performance during bug hunt, test simplification etc. because objects are created at
 	#               one place (<object>_ddl) only and not also in "have_some_initial_objects".
-	init_basics1 ; init_basics2 ; init_namespaces ; init_executor_table ;
+	### Added "have_some_initial_objects" for execution of ddl's related to temp tables     
+	init_basics1 ; init_basics2 ; init_namespaces ; init_executor_table ; have_some_initial_objects ;
 
 init_executor_table:
 	# This table is used in kill_query_or_session.
@@ -756,7 +757,8 @@ ddl:
 handler:
 	handler_open  |
 	handler_read  |
-	handler_close ;
+	handler_close |
+	handler_sequence ;
 
 handler_open:
 	HANDLER table_no_view_item OPEN as handler_a ;
@@ -778,6 +780,17 @@ first_next_prev_last:
 	NEXT  |
 	PREV  |
 	LAST  ;
+
+handler_sequence :
+	CREATE TEMPORARY TABLE HAN_T1 SELECT 1 AS f1 ; HANDLER HAN_T1 OPEN; CREATE TEMPORARY TABLE IF NOT EXISTS HAN_T1 SELECT 1 AS f1 ; HANDLER HAN_T1 READ FIRST ; DROP TABLE HAN_T1 |
+        CREATE TEMPORARY TABLE HAN_T2 SELECT 1 AS f1 ; HANDLER HAN_T2 OPEN;  REPAIR TABLE HAN_T2 ; HANDLER HAN_T2 READ FIRST ; DROP TABLE HAN_T2 |
+        CREATE TEMPORARY TABLE HAN_T3 SELECT 1 AS f1 ; HANDLER HAN_T3 OPEN;  ANALYZE TABLE HAN_T3 ; HANDLER HAN_T3 READ FIRST ; DROP TABLE HAN_T3 |
+        CREATE TEMPORARY TABLE HAN_T4 SELECT 1 AS f1 ; HANDLER HAN_T4 OPEN;  OPTIMIZE TABLE HAN_T4 ; HANDLER HAN_T4 READ FIRST ; DROP TABLE HAN_T4 |
+        CREATE TEMPORARY TABLE HAN_T5 SELECT 1 AS f1 ; HANDLER HAN_T5 OPEN;  CHECK TABLE HAN_T5 ; HANDLER HAN_T5 READ FIRST  ; DROP TABLE HAN_T5 |
+        CREATE TEMPORARY TABLE HAN_T6 SELECT 1 AS f1 ; HANDLER HAN_T6 OPEN;  DROP TABLE HAN_T6 ; HANDLER HAN_T6 READ FIRST  |
+        CREATE TEMPORARY TABLE HAN_T7 SELECT 1 AS f1 ; HANDLER HAN_T7 OPEN;  ALTER TABLE HAN_T7 ADD COLUMN B1 INT ; HANDLER HAN_T7 READ FIRST  ; DROP TABLE HAN_T7 |
+        CREATE TEMPORARY TABLE HAN_T8 SELECT 1 AS f1 ; HANDLER HAN_T8 OPEN;  TRUNCATE TABLE HAN_T8 ; HANDLER HAN_T8 READ FIRST  ; DROP TABLE HAN_T8 |
+        CREATE TEMPORARY TABLE HAN_T9 (I1 INTEGER,J1 INTEGER) ; HANDLER HAN_T9 OPEN;  CREATE INDEX B ON HAN_T9(J1) ; HANDLER HAN_T9 READ FIRST  ; DROP TABLE HAN_T9;
 
 handler_close:
 	HANDLER handler_a CLOSE ;
@@ -809,7 +822,8 @@ table_show:
 	show_tables       | show_tables       |
 	show_table_status | show_table_status |
 	show_create_table | show_create_view  |
-	show_open_tables  | show_columns      ;
+	show_open_tables  | show_columns      |
+	show_keys ;
 
 show_tables:
 	SHOW TABLES ;
@@ -837,6 +851,9 @@ show_columns_part:
 	#            LIKE '%int%' does not work, because RQG expands it to something like LIKE '%822214656%'.
 	# FIXME: Add "WHERE"
 	| LIKE '%INT%' ;
+
+show_keys :
+       SHOW KEYS FROM table_item ;
 
 show_create_view:
 	SHOW CREATE VIEW view_table_item ;
@@ -984,6 +1001,9 @@ alter_base_temp_table_part:
 	#    As a consequence nerly all statements on the MERGE table will fail.
 	COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' |
 	COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' | COMMENT = 'UPDATED NOW()' |
+	# DISCARD TABLESPACE        |
+        ADD COLUMN F3 BIGINT      |
+        MODIFY _field BIGINT      |
 	ENGINE = engine           ;
 
 base_table_sequence:
@@ -996,6 +1016,7 @@ temp_table_ddl:
 	# Attention: temp_table_sequence is intentionally omitted, because no other session will be
 	#            able to use this table.
 	create_temp_table | create_temp_table | create_temp_table | create_temp_table | create_temp_table | create_temp_table |
+	create_temp_table ; alter_temp_table ; drop_temp_table |
 	drop_temp_table   | alter_temp_table  ;
 
 create_temp_table:
@@ -1255,7 +1276,6 @@ alter_function:
 function_sequence:
 	$sequence_begin CREATE FUNCTION function_item_s () RETURNS INTEGER RETURN ( SELECT MOD( COUNT( DISTINCT random_field_quoted1 ) , 10 ) FROM table_item_s ) ; COMMIT ; SELECT wait_short ; DROP FUNCTION $function_item_s $sequence_end ;
 
-
 ########## TRIGGER DDL ####################
 trigger_ddl:
 	create_trigger   | create_trigger |
@@ -1386,14 +1406,22 @@ where:
 	# - tables (DELETE) do not become permanent empty
 	# Please note that there are some cases where LIMIT cannot be used.
 	WHERE `pk` BETWEEN _digit[invariant] AND _digit[invariant] + 1 |
-	WHERE function_item () = _digit AND `pk` = _digit              ;
+	WHERE function_item () = _digit AND `pk` = _digit              |
+	WHERE A._field condition B._field                              ;
+
+condition:
+       < | > | = ;
 
 union:
 	UNION SELECT * FROM table_in_select as B ;
 
 join:
 	# Do not place a where condition here.
-	NATURAL JOIN table_item B ;
+	#NATURAL JOIN table_item B |
+	 LEFT JOIN table_item AS B |
+         RIGHT JOIN table_item AS B |
+         CROSS JOIN table_item AS B ;
+
 
 subquery:
 	correlated     |
