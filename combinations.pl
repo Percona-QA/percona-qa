@@ -198,16 +198,8 @@ sub doExhaustive {
         foreach my $i (0..$#{$combinations->[$level]}) {
             push @alts, $i;
         }
-	if (!$noshuffle) {
-	    ## Shuffle array
-	    for (my $i= $#alts;$i>=0;$i--) {
-		my $j = $prng->uint16(0, $i);
-		my $t = $alts[$i];
-		$alts[$i] = $alts[$j];
-		$alts[$j] = $t;
-	    }
-	}
-
+        $prng->shuffleArray(\@alts) if !$noshuffle;
+        
         foreach my $alt (@alts) {
             push @idx, $alt;
             doExhaustive($level+1,@idx) if $trial_counter < $trials;
