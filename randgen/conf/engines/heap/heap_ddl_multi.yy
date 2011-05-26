@@ -43,7 +43,7 @@ create_definition:
 		f4 column_def ,
 		f5 column_def ,
 		index_definition_list
-	) /*executor1 ENGINE=HEAP KEY_BLOCK_SIZE = key_block_size */ ;
+	) /*executor1 ENGINE=HEAP ROW_FORMAT=DYNAMIC KEY_BLOCK_SIZE = key_block_size */ ;
 
 temporary:
 	| | | | | | TEMPORARY ;
@@ -87,25 +87,41 @@ key_block_size:
 	512 | 1024 | 2048 | 3072 ;
 
 column_def:
-	varchar ( size_nonindex ) not_null default ;
-	#|
-#	blob not_null ;
+	VARCHAR ( size_varchar ) character_set not_null default |
+	VARCHAR ( size_varchar ) collation not_null default |
+	VARBINARY ( size_varchar ) |
+	blob not_null |
+	blob not_null |
+	blob not_null ;
 
+character_set:
+	| | | | | |
+	CHARACTER SET utf32 | CHARACTER SET _charset_name ;
+
+collation:
+	| | | | | |
+	| COLLATE utf32_bin | COLLATE _collation_name ;
 
 column_def_index:
-	varchar ( size_index ) not_null default ;
+	VARCHAR ( size_index ) character_set not_null default |
+	VARCHAR ( size_index ) collation not_null default ;
 
-size_nonindex:
+size_varchar:
 	32 | 128 | 512 | 1024  ;
 
 size_index:
 	32 | 128 ;
 
-varchar:
-	VARCHAR | VARBINARY ;
-
 blob:
-	BLOB | MEDIUMBLOB | TINYBLOB | LONGBLOB ;
+	BLOB | BLOB ( blob_size ) | MEDIUMBLOB | TINYBLOB | LONGBLOB |
+	TEXT character_set |
+	TEXT collation |
+	TEXT ( blob_size ) character_set  |
+	TEXT ( blob_size ) collation |
+	MEDIUMTEXT | TINYTEXT | LONGTEXT ;
+
+blob_size:
+	1024 | 65525 ;	
 
 not_null:
 	| NOT NULL ;
