@@ -16,18 +16,24 @@ create_definition_init:
 
 query:
 	create_drop |
+	select | select | select | select |
 	insert | insert | insert | insert |
 	insert | insert | insert | insert |
 	update | update | update | update |
 	delete | delete | delete | delete |
-	alter | truncate ;
+	alter |
+	truncate ;
 
 create_drop:
 	set_table_name DROP TABLE IF EXISTS { $table_name } ; create_definition ; create_definition ; create_definition |
 	set_table_name DROP TABLE IF EXISTS { $table_name } ; create_definition select_all ;
 
 alter:
-	ALTER TABLE table_name ENGINE = HEAP ;
+	ALTER TABLE table_name ENGINE = HEAP |
+	ALTER TABLE table_name enable_disable KEYS ;
+
+enable_disable:
+	ENABLE | DISABLE ;
 
 truncate:
 	TRUNCATE TABLE table_name ;
@@ -43,10 +49,14 @@ create_definition:
 		f4 column_def ,
 		f5 column_def ,
 		index_definition_list
-	) /*executor1 ENGINE=HEAP ROW_FORMAT=DYNAMIC KEY_BLOCK_SIZE = key_block_size */ ;
+	) ENGINE=HEAP /*executor1 ROW_FORMAT = dynamic_fixed KEY_BLOCK_SIZE = key_block_size */ ;
 
 temporary:
 	| | | | | | TEMPORARY ;
+
+dynamic_fixed:
+	DYNAMIC | DYNAMIC | DYNAMIC | DYNAMIC | DYNAMIC |
+	DYNAMIC | DYNAMIC | DYNAMIC | DYNAMIC | FIXED ;
 
 insert:
 	insert_multi | insert_multi | insert_select ;
@@ -69,16 +79,19 @@ index_definition_list:
 	index_definition , index_definition ;
 
 index_definition:
-	index_type ( index_column_list ) ;
+	index_type ( index_column_list ) USING btree_hash ;
+
+btree_hash:
+	BTREE | HASH ;
 
 index_type:
 	KEY | KEY | KEY | KEY | PRIMARY KEY ;
 
 index_column_list:
-	f1 /*  ( index_column_size ) */ |
-	f2 /*  ( index_column_size ) */ |
-	f1 /* ( index_column_size ) */ , f2 /* ( index_column_size ) */ ;	# bug 783366
-	f2 /* ( index_column_size ) */ , f1 /* ( index_column_size ) */ ;	# bug 783366
+	f1 | f2 | f1 , f2 | f2 , f1 |
+	f1 ( index_column_size ) | f2 ( index_column_size ) |
+	f1 ( index_column_size ) , f2 ( index_column_size ) |
+	f2 ( index_column_size ) , f1 ( index_column_size ) ;	
 
 index_column_size:
 	1 | 2 | 32 ;
@@ -95,12 +108,10 @@ column_def:
 	blob not_null ;
 
 character_set:
-	| | | | | |
-	CHARACTER SET utf32 | CHARACTER SET _charset_name ;
+	| CHARACTER SET utf8 ;
 
 collation:
-	| | | | | |
-	| COLLATE utf32_bin | COLLATE _collation_name ;
+	| COLLATE utf8_bin ;
 
 column_def_index:
 	VARCHAR ( size_index ) character_set not_null default |
@@ -138,19 +149,16 @@ table_name:
 	connection_specific_table |
 	connection_specific_table |
 	connection_specific_table |
-	connection_specific_table |
-	connection_specific_table |
-	connection_specific_table |
 	global_table ;
 
 connection_specific_table:
-	{ 'local_'.$generator->threadId().'_'.$prng->int(1,3) } ;
+	{ 'local_'.$generator->threadId().'_'.$prng->int(1,5) } ;
 
 global_table:
 	global_1 | global_2 | global_3 | global_4 | global_5 ;
 
 set_table_name:
-	{ $table_name = $prng->int(1,5) < 4 ? 'local_'.$generator->threadId().'_'.$prng->int(1,3) : 'global_'.$prng->int(1,5) ; return undef ; } ;
+	{ $table_name = $prng->int(1,5) <= 4 ? 'local_'.$generator->threadId().'_'.$prng->int(1,5) : 'global_'.$prng->int(1,5) ; return undef ; } ;
 
 value_list:
 	value , value |
@@ -165,6 +173,15 @@ short_value:
 long_value:
 	REPEAT( _varchar(128) , _digit ) | NULL | _data ;
 
+select:
+	SELECT field_name FROM table_name WHERE where order_by ;
+
+order_by:
+	ORDER BY field_name desc_asc ;
+
+desc_asc:
+	DESC | ASC ;
+
 update:
 	UPDATE table_name SET field_name = value WHERE where ;
 
@@ -175,8 +192,13 @@ field_name:
 	f1 | f2 | f3 | f4 | f5 ;
 
 where:
+	(field_name cmp_op value ) and_or where |
 	field_name cmp_op value |
-	field_name not IN ( value_list );
+	field_name not IN ( value_list ) |
+	field_name BETWEEN value AND value ;
+
+and_or:
+	AND | OR ;
 
 not:
 	| NOT ;
