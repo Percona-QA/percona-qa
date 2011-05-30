@@ -111,7 +111,7 @@ if ((defined $revno) && (defined $revid)) {
 if (not defined $threads) {
     $threads=1;
 } else {
-    croak("Not meaningful to use --threads without --run-all-combinations-once") if not defined $exhaustive;
+    croak("Not meaningful to use --parallel without --run-all-combinations-once") if not defined $exhaustive;
     $logToStd = 0;
 }
 
@@ -127,7 +127,7 @@ if ($exhaustive) {
     }
     if (defined $trials) {
         if ($trials < $total) {
-            say("You have specified --run-all-combinations-once gives $total combinations, but limited with --trials=$trials");
+            say("You have specified --run-all-combinations-once gives $total combinations, but limited the same with --trials=$trials");
         } else {
             $trials = $total;
         }
