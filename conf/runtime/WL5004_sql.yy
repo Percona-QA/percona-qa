@@ -20,16 +20,13 @@
 #            WL#5004 Comprehensive Locking Stress Test for Azalea
 #                    A few grammar rules were taken from other grammar files.
 # Last Modifications:
-#    2011-03 Matthias Leich
-#               Prevent the generation of SHOW PROCEDURE/FUNCTION CODE in case
-#               we do not have a server compiled with debug
+#    2011-05 Jon Olav Hauglid
+#               Updated lock_type: to reflect that WL#3561 Transactional
+#               LOCK TABLE has been cancelled.
 #
 # Attention:
 # 1. There are modified grammar rules because of open bugs.
 #    Please search case insensitive for "disable".
-# 2. Some locking statements will get an syntax error as long as
-#       WL#3561 transactional LOCK TABLE
-#    is not pushed.
 #
 # TODO:
 #   - Adjust grammar to new open and old fixed bugs
@@ -1584,15 +1581,7 @@ lock_item:
 	table_item AS _letter lock_type ;
 lock_type:
 	READ local_or_empty      |
-	low_priority WRITE       |
-	IN SHARE MODE nowait     |
-	IN SHARE MODE nowait     |
-	IN SHARE MODE nowait     |
-	IN EXCLUSIVE MODE nowait |
-	IN EXCLUSIVE MODE nowait |
-	IN EXCLUSIVE MODE nowait ;
-nowait:
-	NOWAIT | ;
+	low_priority WRITE       ;
 
 unlock:
 	UNLOCK TABLES ;
