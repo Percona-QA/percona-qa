@@ -1,4 +1,4 @@
-# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+w# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -279,6 +279,7 @@ use constant	ER_BACKUP_RUNNING	=> 1651;
 use constant	ER_RECORD_FILE_FULL     => 1114;
 use constant	ER_DISK_FULL            => 1021;
 use constant	ER_OUTOFMEMORY		=> 1037;
+use constant 	ER_OUTOFMEMORY2		=> 5;	# returned by some storage engines
 use constant	ER_CON_COUNT_ERROR	=> 1040;
 use constant	ER_OUT_OF_RESOURCES	=> 1041;
 use constant	ER_CANT_CREATE_THREAD	=> 1135;
@@ -447,6 +448,7 @@ my %err2type = (
 	ER_RECORD_FILE_FULL()   => STATUS_ENVIRONMENT_FAILURE,
 	ER_DISK_FULL()          => STATUS_ENVIRONMENT_FAILURE,
 	ER_OUTOFMEMORY()	=> STATUS_ENVIRONMENT_FAILURE,
+	ER_OUTOFMEMORY2()	=> STATUS_ENVIRONMENT_FAILURE,
 	ER_STACK_OVERRUN()	=> STATUS_ENVIRONMENT_FAILURE,
 	ER_UNKNOWN_STORAGE_ENGINE() => STATUS_ENVIRONMENT_FAILURE,
 	ER_BACKUP_NOT_ENABLED()	=> STATUS_ENVIRONMENT_FAILURE,
