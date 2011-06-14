@@ -414,7 +414,7 @@ _table:
      A | B | C | BB | CC | B | C | BB | CC | 
      C | C | C | C  | C  | C | C | C  | C  |
      CC | CC | CC | CC | CC | CC | CC | CC |
-     D ;
+     D | view ;
 
 ################################################################################
 # Add a possibility for 'view' to occur at the end of the previous '_table' rule
