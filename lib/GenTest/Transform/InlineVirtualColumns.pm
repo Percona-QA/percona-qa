@@ -55,7 +55,7 @@ sub transform {
 }
 
 DESTROY {
-	say("[Statistics]: InlineVirtualColumns Transformer inlined $global_inlines expressions");
+	say("[Statistics]: InlineVirtualColumns Transformer inlined $global_inlines expressions") if rqg_debug();
 }
 
 1;
