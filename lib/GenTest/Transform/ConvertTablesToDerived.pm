@@ -27,13 +27,39 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $orig_query, $executor) = @_;
 
-	# We replace AA with ( SELECT * FROM AA )
+	my $modified_query = $orig_query;
 
-	$orig_query =~ s{([ `])([A-Z])[ `]}{ ( SELECT * FROM $2 ) }sgo;
-	$orig_query =~ s{([ `])(([A-Z])\3)[ `]}{ ( SELECT * FROM $2 ) }sgo;
-	$orig_query =~ s{([ `])(([A-Z])\3\3)[ `]}{ ( SELECT * FROM $2 ) }sgo;
+	# Rplace AA with ( SELECT * FROM AA ) AS derived1; Add "AS derivedN" if there was no alias originally;
 
-	return [ $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */" ];
+	my $derived_count = 1;
+
+	$modified_query =~ s{([ `])([A-Z])([ `]|$)(\s*AS|)}{
+		if ($4 eq '') {
+			" ( SELECT * FROM $1$2$1 ) AS derived".$derived_count++." ";
+		} else {
+			" ( SELECT * FROM $1$2$1 ) AS ";
+		}
+	}sgoe;
+
+	$modified_query =~ s{([ `])([A-Z])\2([ `]|$)(\s*AS|)}{
+		if ($4 eq '') {
+			" ( SELECT * FROM $1$2$2$1 ) AS derived".$derived_count++." ";
+		} else {
+			" ( SELECT * FROM $1$2$2$1 ) AS ";
+		}
+	}sgoe;
+
+	$modified_query =~ s{([ `])([A-Z])\2\2([ `]|$)(\s*AS|)}{
+		if ($4 eq '') {
+			" ( SELECT * FROM $1$2$2$2$1 ) AS derived".$derived_count++." ";
+		} else {
+			" ( SELECT * FROM $1$2$2$2$1 ) AS ";
+		}
+	}sgoe;
+
+	if ($modified_query ne $orig_query) {
+		return [ $modified_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */" ];
+	} else {
+		return STATUS_WONT_HANDLE;
+	}
 }
-
-1;
