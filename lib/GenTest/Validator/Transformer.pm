@@ -49,6 +49,7 @@ sub configure {
         @transformer_names = (
             'DisableChosenPlan',
             'ConvertSubqueriesToViews',
+            'ConvertTablesToDerived',
             'Count',
             'DisableIndexes',
             'Distinct',
