@@ -733,7 +733,7 @@ existing_select_item:
 ################################################################################
 
 arithmetic_operator:
-	= | > | < | != | <> | <= | >= ;
+	= | > | < | != | <> | <= | >= | <=> ;
 
 
 membership_operator:
@@ -766,7 +766,7 @@ all_distinct:
 	
 value:
 	_digit | _digit | _digit | _digit | _tinyint_unsigned|
-        _char(2) | _char(2) | _char(2) | _char(2) | _char(2) ;
+        _char(1) | _char(1) | _char(1) | _char(2) | _char(2) ;
 
 _table:
      A | B | C | BB | CC | B | C | BB | CC | 
