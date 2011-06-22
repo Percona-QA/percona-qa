@@ -114,7 +114,10 @@ join_list:
 # too many mega-join conditions which take too long to run                     #
 ################################################################################
 	( new_table_item join_type new_table_item ON (join_condition_item ) ) |
-        ( new_table_item join_type ( ( new_table_item join_type new_table_item ON (join_condition_item ) ) ) ON (join_condition_item ) ) ;
+        ( new_table_item join_type ( ( new_table_item join_type new_table_item ON (join_condition_item ) ) ) ON (join_condition_item ) ) |
+	( new_table_item , new_table_item ) |
+        ( new_table_item , new_table_item , new_table_item ) ;
+
 
 join_list_disabled:
 ################################################################################
@@ -327,7 +330,8 @@ subquery_where_item:
    child_subquery ;
 
 subquery_join_list:
-    subquery_new_table_item  |  subquery_new_table_item  |
+   subquery_new_table_item  |  subquery_new_table_item  |
+   ( subquery_new_table_item , subquery_new_table_item ) |
    ( subquery_new_table_item join_type subquery_new_table_item ON (subquery_join_condition_item ) ) |
    ( subquery_new_table_item join_type subquery_new_table_item ON (subquery_join_condition_item ) ) |
    ( subquery_new_table_item join_type ( subquery_new_table_item join_type subquery_new_table_item ON (subquery_join_condition_item )  ) ON (subquery_join_condition_item ) ) ;
