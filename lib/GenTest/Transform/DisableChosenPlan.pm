@@ -50,9 +50,13 @@ my @explain2switch = (
 	[ 'incremental'		=> "optimizer_switch='join_cache_incremental=off'" ],
 	[ 'join buffer'		=> "join_cache_level=0" ],
 	[ 'join buffer'		=> "optimizer_join_cache_level=0" ],
-	[ 'mrr'			=> "optimizer_use_mrr='disable'" ],
-	[ 'index condition'	=> "optimizer_switch='index_condition_pushdown=off'" ]
+	[ 'mrr'			=> "optimizer_switch='mrr=off'" ],
+	[ 'index condition'	=> "optimizer_switch='index_condition_pushdown=off'" ],
+	[ qr{DERIVED}s		=> "optimizer_switch='derived_merge=on'" ],
+	[ qr{key[0-9]}		=> "optimizer_switch='derived_with_keys=off'" ]
 );
+
+my %explain2count;
 
 my $available_switches;
 
@@ -65,6 +69,7 @@ sub transform {
 		foreach my $optimizer_switch (@optimizer_switches) {
 			my ($switch_name, $switch_value) = split('=', $optimizer_switch);
 			$available_switches->{"optimizer_switch='$switch_name=off'"}++;
+			$available_switches->{"optimizer_switch='$switch_name=on'"}++;
 		}
 
 		if ($executor->dbh()->selectrow_array('SELECT @@optimizer_use_mrr')) {
@@ -97,6 +102,7 @@ sub transform {
 		my ($explain_fragment, $optimizer_switch) = ($explain2switch->[0], $explain2switch->[1]);
 		next if not exists $available_switches->{$optimizer_switch};
 		if ($original_explain_string =~ m{$explain_fragment}si) {
+			$explain2count{"$explain_fragment => $optimizer_switch"}++;
 			my ($switch_name) = $optimizer_switch =~ m{^(.*?)=}sgio;
 			push @transformed_queries, (
 				'SET @switch_saved = @@'.$switch_name.';',
@@ -111,6 +117,13 @@ sub transform {
 		return \@transformed_queries;
 	} else {
 		return STATUS_WONT_HANDLE;
+	}
+}
+
+sub DESTROY {
+	if (rqg_debug()) {
+		say("DisableChosenPlan statistics:");
+		print Dumper \%explain2count;
 	}
 }
 

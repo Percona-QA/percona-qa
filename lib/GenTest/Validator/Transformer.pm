@@ -22,6 +22,7 @@ require Exporter;
 
 use strict;
 
+use Carp;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Comparator;
@@ -48,6 +49,7 @@ sub configure {
         @transformer_names = (
             'DisableChosenPlan',
             'ConvertSubqueriesToViews',
+            'ConvertTablesToDerived',
             'Count',
             'DisableIndexes',
             'Distinct',
@@ -77,7 +79,7 @@ sub configure {
 	say("Transformer Validator will use the following Transformers: ".join(', ', @transformer_names));
 
 	foreach my $transformer_name (@transformer_names) {
-		eval ("require GenTest::Transform::'".$transformer_name) or die $@;
+		eval ("require GenTest::Transform::'".$transformer_name) or croak $@;
 		my $transformer = ('GenTest::Transform::'.$transformer_name)->new();
 		push @transformers, $transformer;
 	}

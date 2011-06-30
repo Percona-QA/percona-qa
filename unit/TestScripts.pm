@@ -109,4 +109,30 @@ sub test_runall_new {
     }
 }
 
+sub test_combinations {
+    my $self = shift;
+    ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
+    my $portbase = 10 + ($ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120);
+    my $pb = int(($portbase - 10000) / 10);
+
+    if ($ENV{RQG_MYSQL_BASE}) {
+        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
+        $ENV{MTR_BUILD_THREAD}=$pb;
+        my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/test.cc --trials=2 --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".cwd()."/unit/tmp2 --no-log");
+        $self->assert_equals(0, $status);
+        $self->assert(-e cwd()."/unit/tmp2/trial1.log");
+    }
+
+    if ($ENV{RQG_MYSQL_BASE}) {
+        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
+        $ENV{MTR_BUILD_THREAD}=$pb;
+        my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/test.cc --trials=2 --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".cwd()."/unit/tmp2 --run-all-combinations-once --no-log --parallel=2");
+        $self->assert_equals(0, $status);
+        $self->assert(-e cwd()."/unit/tmp2/trial1.log");
+        $self->assert(-e cwd()."/unit/tmp2/trial2.log");
+    }
+}
+
+
+
 1;

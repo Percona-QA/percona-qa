@@ -248,7 +248,9 @@ use constant	ER_CHECKREAD		=> 1020;
 use constant	ER_DUP_KEY		=> 1022;
 use constant	ER_DUP_ENTRY		=> 1062;
 use constant	ER_LOCK_OR_ACTIVE_TRANSACTION	=> 1192;
-# The table is already read locked by the same seeion.
+use constant	ER_TRANS_CACHE_FULL	=> 1197;
+
+# The table is already read locked by the same session.
 use constant  	ER_CANT_UPDATE_WITH_READLOCK => 1223 ;
 
 # Storage engine failures
@@ -279,6 +281,7 @@ use constant	ER_BACKUP_RUNNING	=> 1651;
 use constant	ER_RECORD_FILE_FULL     => 1114;
 use constant	ER_DISK_FULL            => 1021;
 use constant	ER_OUTOFMEMORY		=> 1037;
+use constant 	ER_OUTOFMEMORY2		=> 5;	# returned by some storage engines
 use constant	ER_CON_COUNT_ERROR	=> 1040;
 use constant	ER_OUT_OF_RESOURCES	=> 1041;
 use constant	ER_CANT_CREATE_THREAD	=> 1135;
@@ -426,6 +429,7 @@ my %err2type = (
 	ER_CHECKREAD()		=> STATUS_TRANSACTION_ERROR,
 	ER_DUP_KEY()		=> STATUS_TRANSACTION_ERROR,
 	ER_DUP_ENTRY()		=> STATUS_TRANSACTION_ERROR,
+	ER_TRANS_CACHE_FULL()	=> STATUS_TRANSACTION_ERROR,
 	
 	ER_NOT_KEYFILE()	=> STATUS_DATABASE_CORRUPTION,
 	ER_KEY_NOT_FOUND()	=> STATUS_DATABASE_CORRUPTION,
@@ -447,6 +451,7 @@ my %err2type = (
 	ER_RECORD_FILE_FULL()   => STATUS_ENVIRONMENT_FAILURE,
 	ER_DISK_FULL()          => STATUS_ENVIRONMENT_FAILURE,
 	ER_OUTOFMEMORY()	=> STATUS_ENVIRONMENT_FAILURE,
+	ER_OUTOFMEMORY2()	=> STATUS_ENVIRONMENT_FAILURE,
 	ER_STACK_OVERRUN()	=> STATUS_ENVIRONMENT_FAILURE,
 	ER_UNKNOWN_STORAGE_ENGINE() => STATUS_ENVIRONMENT_FAILURE,
 	ER_BACKUP_NOT_ENABLED()	=> STATUS_ENVIRONMENT_FAILURE,
