@@ -74,6 +74,11 @@ sub execute {
         query => $query, 
         status => STATUS_UNKNOWN_ERROR ) 
         if not defined $dbh;
+
+    # Filter out any /*executor */ comments that do not pertain to this particular Executor/DBI
+    my $executor_id = $self->id();
+    $query =~ s{/\*executor$executor_id (.*?) \*/}{$1}sg;
+    $query =~ s{/\*executor.*?\*/}{}sgo;
     
     $query = $self->preprocess($query);
     
@@ -192,6 +197,8 @@ sub findStatus {
 
     if ($state eq "22000") {
 	return STATUS_SERVER_CRASHED;
+    } elsif (($state eq '42000') || ($state eq '42601')) {
+	return STATUS_SYNTAX_ERROR;
     } else {
 	return $self->SUPER::findStatus(@_);
     }

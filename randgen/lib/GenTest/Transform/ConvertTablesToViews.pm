@@ -1,3 +1,4 @@
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License.
@@ -12,33 +13,27 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Transform::ExecuteAsUnion;
+package GenTest::Transform::ConvertTablesToViews;
 
 require Exporter;
 @ISA = qw(GenTest GenTest::Transform);
 
 use strict;
 use lib 'lib';
-
 use GenTest;
 use GenTest::Transform;
 use GenTest::Constants;
 
 sub transform {
-	my ($class, $original_query, $executor) = @_;
-	
-	return STATUS_WONT_HANDLE if $original_query !~ m{\s*SELECT}sio;
+	my ($class, $orig_query, $executor) = @_;
 
-	my $original_query_no_limit = $original_query;
-	$original_query_no_limit =~ s{LIMIT\s+\d+\s+OFFSET\s+\d+\s*$}{}sio;
-	$original_query_no_limit =~ s{LIMIT\s+\d+\s*$}{}sio;
+	# We replace AA with view_AA, keeping the exact quotes (or lack thereof) from the original query
 
-	return [
-		"( $original_query ) UNION ALL ( $original_query_no_limit LIMIT 0 ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"( $original_query_no_limit LIMIT 0 ) UNION ALL ( $original_query ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"( $original_query ) UNION DISTINCT ( $original_query ) /* TRANSFORM_OUTCOME_DISTINCT */",
-		"( $original_query ) UNION ALL ( $original_query ) /* TRANSFORM_OUTCOME_SUPERSET */"
-	];
+	$orig_query =~ s{([ `])([A-Z])[ `]}{$1view_$2$1}sgo;
+	$orig_query =~ s{([ `])(([A-Z])\3)[ `]}{$1view_$2$1}sgo;
+	$orig_query =~ s{([ `])(([A-Z])\3\3)[ `]}{$1view_$2$1}sgo;
+
+	return [ $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */" ];
 }
 
 1;

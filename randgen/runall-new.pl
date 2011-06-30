@@ -24,6 +24,7 @@ use lib "$ENV{RQG_HOME}/lib";
 use Carp;
 use strict;
 use GenTest;
+use GenTest::BzrInfo;
 use GenTest::Constants;
 use GenTest::Properties;
 use GenTest::App::GenTest;
@@ -67,7 +68,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
-    $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout);
+    $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask);
 
 my $gendata=''; ## default simple gendata
 
@@ -124,7 +125,8 @@ my $opt_result = GetOptions(
     'logfile=s' => \$logfile,
     'logconf=s' => \$logconf,
     'report-tt-logdir=s' => \$report_tt_logdir,
-    'querytimeout=i' => \$querytimeout
+    'querytimeout=i' => \$querytimeout,
+    'no-mask' => \$no_mask
     );
 
 if (defined $logfile && defined $logger) {
@@ -176,6 +178,25 @@ if (
 	($basedirs[1] eq '')
     ) {
 	$basedirs[1] = $basedirs[0];	
+}
+
+
+foreach my $dir (cwd(), @basedirs) {
+# calling bzr usually takes a few seconds...
+    if (defined $dir) {
+        my $bzrinfo = GenTest::BzrInfo->new(
+            dir => $dir
+            ); 
+        my $revno = $bzrinfo->bzrRevno();
+        my $revid = $bzrinfo->bzrRevisionId();
+        
+        if ((defined $revno) && (defined $revid)) {
+            say("$dir Revno: $revno");
+            say("$dir Revision-Id: $revid");
+        } else {
+            say($dir.' does not look like a bzr branch, cannot get revision info.');
+        } 
+    }
 }
 
 
@@ -382,7 +403,7 @@ $gentestProps->dsn(\@dsns) if defined @dsns;
 $gentestProps->grammar($grammar_file);
 $gentestProps->redefine($redefine_file) if defined $redefine_file;
 $gentestProps->seed($seed) if defined $seed;
-$gentestProps->mask($mask) if defined $mask;
+$gentestProps->mask($mask) if (defined $mask) && (not defined $no_mask);
 $gentestProps->property('mask-level',$mask_level) if defined $mask_level;
 $gentestProps->rows($rows) if defined $rows;
 $gentestProps->views(1) if defined $views;

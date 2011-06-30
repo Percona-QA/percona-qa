@@ -280,9 +280,15 @@ sub next {
 		} elsif ($_ eq '_collation') {
 			my $collations = $executors->[0]->metaCollations();
 			$_ = '_'.$prng->arrayElement($collations);
+		} elsif ($_ eq '_collation_name') {
+			my $collations = $executors->[0]->metaCollations();
+			$_ = $prng->arrayElement($collations);
 		} elsif ($_ eq '_charset') {
 			my $charsets = $executors->[0]->metaCharactersets();
 			$_ = '_'.$prng->arrayElement($charsets);
+		} elsif ($_ eq '_charset_name') {
+			my $charsets = $executors->[0]->metaCharactersets();
+			$_ = $prng->arrayElement($charsets);
 		} elsif ($_ eq '_data') {
 			$_ = $prng->file($cwd."/data");
 		} elsif (

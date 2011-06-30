@@ -247,12 +247,19 @@ sub run {
                 or $self->config->validators->[$i] eq '';
         }
     }
-    ## Add the transformer validator if --transformers is
-    ## specified
+    ## Add the transformer validator if --transformers is specified
+    ## and transformer validator not allready specified.
     if (defined $self->config->transformers and 
-        $#{$self->config->transformers} >= 0) {
-        
-        push @{$self->config->validators}, 'Transformer';
+        $#{$self->config->transformers} >= 0) 
+    {
+        my $hasTransformer = 0;
+        foreach my $t (@{$self->config->validators}) {
+            if ($t eq 'Transformer') {
+                $hasTransformer = 1;
+                last;
+            }
+        }
+        push @{$self->config->validators}, 'Transformer' if !$hasTransformer;
     }
 
     say("Validators: ".($self->config->validators and $#{$self->config->validators} > -1 ? join(', ', @{$self->config->validators}) : "(none)"));
