@@ -261,7 +261,9 @@ sub createMysqlBase  {
         my $bootlog = $self->vardir."/boot.log";
         system("$command < \"$boot\" > \"$bootlog\"");
     } else {
-        my $command = $self->generateCommand(["--no-defaults","--bootstrap","--loose-skip-innodb"],
+        my $boot_options = ["--no-defaults","--bootstrap"];
+        push(@$boot_options,"--loose-skip-innodb") if $self->_olderThan(5,6,3);
+        my $command = $self->generateCommand($boot_options,
                                              $self->[MYSQLD_STDOPTS]);
         my $bootlog = $self->vardir."/boot.log";
         system("cat \"$boot\" | $command > \"$bootlog\"  2>&1 ");
