@@ -23,6 +23,7 @@ use Cwd;
 use GenTest;
 use DBServer::MySQL::MySQLd;
 use GenTest::Executor;
+use GenTest::Properties;
 use GenTest::Reporter;
 use GenTest::Reporter::Backtrace;
 
@@ -146,7 +147,10 @@ sub test_crash_and_core {
         $self->assert(-f $vardir."/mysql.pid") if not osWindows();
         $self->assert(-f $vardir."/mysql.err");
         
-        my $backtrace = GenTest::Reporter::Backtrace->new(dsn => $server->dsn);
+        my $backtrace = GenTest::Reporter::Backtrace->new(
+            dsn => $server->dsn,
+            properties => GenTest::Properties->new()
+        );
         
         sleep(1);
         
