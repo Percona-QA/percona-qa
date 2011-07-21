@@ -101,6 +101,10 @@ sub descend {
 		
 		# Do not remove the AS from "table1 AS alias1"
 		next if $orig_child->print() =~ m{^\s*AS}so;
+
+		# Do not further simplify WHERE or ON expressions that are already simple equalities/inequalities
+		# This avoids generating unrealistic expressions containing only a single field, such as t1 JOIN t2 ON (t1.f1)
+		next if $orig_child->print() =~ m{^\s*[A-Z0-9_`' .]*\s*(=|>|<|!=|<>|<=>|<=|>=)\s*[A-Z0-9_`' .]*\s*$}sgio;
 		
 		# No not remove FORCE KEY. This is sometimes useful when simplifying optimizer bugs 
 		# that use InnoDB tables and have unstable query plans due to unstable InnoDB row estimates
