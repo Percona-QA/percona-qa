@@ -4,7 +4,7 @@ $combinations = [
 	['
 		--queries=10 --duration=120 --threads=2 --seed=time
 		--reporter=QueryTimeout,Deadlock,Backtrace,ErrorLog
-        --gendata
+		--gendata
 		--filter=conf/optimizer/mrr.ff
 		--no-mask
 		--mysqld=--sql_mode=ONLY_FULL_GROUP_BY
