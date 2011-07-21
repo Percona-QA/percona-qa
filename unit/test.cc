@@ -15,7 +15,6 @@ $combinations = [
 		'--mysqld=--init-file='.getcwd().'/init/no_mrr.opt'
 	],
 	['', '--notnull'],
-	['', '--views'],
 	[
 		'--engine=InnoDB',
 		'--engine=MyISAM',
@@ -24,7 +23,7 @@ $combinations = [
 		'--mysqld=--join_buffer_size=1',
 		'--mysqld=--join_buffer_size=100',
 	],[
-		'--grammar=conf/optimizer/optimizer_no_subquery.yy',
+		'--grammar=conf/optimizer/optimizer_no_subquery.yy --views',
 		'--grammar=conf/optimizer/outer_join.yy --gendata=conf/optimizer/outer_join.zz',
 		'--grammar=conf/optimizer/range_access.yy --gendata=conf/optimizer/range_access.zz',
 		'--grammar=conf/optimizer/range_access2.yy --gendata=conf/optimizer/range_access2.zz'
