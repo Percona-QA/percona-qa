@@ -41,10 +41,10 @@ my @explain2switch = (
 	[ 'intersect'		=> "optimizer_switch='index_merge_intersection=off'"],
 	[ 'firstmatch'		=> "optimizer_switch='firstmatch=off'" ],
 	[ '<expr_cache>'	=> "optimizer_switch='subquery_cache=off'" ],
-	[ 'materializ'		=> "optimizer_switch='materialization=off'" ],	# hypothetical
+	[ 'materializ'		=> "optimizer_switch='materialization=off,in_to_exists=on'" ],
 	[ 'semijoin'		=> "optimizer_switch='semijoin=off'" ],
 	[ 'loosescan'		=> "optimizer_switch='loosescan=off'" ],
-	[ '<exists>'		=> "optimizer_switch='in_to_exists=off'" ],
+	[ '<exists>'		=> "optimizer_switch='in_to_exists=off,materialization=on'" ],
 	[ qr{BNLH|BKAH}		=> "optimizer_switch='join_cache_hashed=off'" ],	
 	[ 'BKA'			=> "optimizer_switch='join_cache_bka=off'" ],
 	[ 'incremental'		=> "optimizer_switch='join_cache_incremental=off'" ],
@@ -64,24 +64,13 @@ sub transform {
 	my ($class, $original_query, $executor) = @_;
 
 	if (not defined $available_switches) {
-		my $optimizer_switches = $executor->dbh()->selectrow_array('SELECT @@optimizer_switch');
-		my @optimizer_switches = split(',', $optimizer_switches);
-		foreach my $optimizer_switch (@optimizer_switches) {
-			my ($switch_name, $switch_value) = split('=', $optimizer_switch);
-			$available_switches->{"optimizer_switch='$switch_name=off'"}++;
-			$available_switches->{"optimizer_switch='$switch_name=on'"}++;
-		}
-
-		if ($executor->dbh()->selectrow_array('SELECT @@optimizer_use_mrr')) {
-			$available_switches->{"optimizer_use_mrr='disable'"}++;
-		}
-
-		if ($executor->dbh()->selectrow_array('SELECT @@join_cache_level')) {
-			$available_switches->{"join_cache_level=0"}++;
-		}
-
-		if ($executor->dbh()->selectrow_array('SELECT @@optimizer_join_cache_level')) {
-			$available_switches->{"optimizer_join_cache_level=0"}++;
+		my $dbh_probe = DBI->connect($executor->dsn(), undef, undef, { PrintError => 0 } );
+		
+		foreach my $explain2switch (@explain2switch) {
+			my ($explain_fragment, $optimizer_switch) = ($explain2switch->[0], $explain2switch->[1]);
+			my $sth_probe = $dbh_probe->prepare("SET SESSION $optimizer_switch");
+			$sth_probe->execute();
+			$available_switches->{$optimizer_switch}++ if not defined $sth_probe->err();
 		}
 	}
 
