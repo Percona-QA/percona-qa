@@ -34,34 +34,34 @@ sub transform {
 	my ($class, $original_query, $executor) = @_;
 
 	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio;
-	my $original_explain = $executor->execute("EXPLAIN EXTENDED $original_query");
-
-	if ($original_explain->status() == STATUS_SERVER_CRASHED) {
-		return STATUS_SERVER_CRASHED;
-	} elsif ($original_explain->status() ne STATUS_OK) {
-		return STATUS_ENVIRONMENT_FAILURE;
-	}
-
-	my $original_explain_string = Dumper($original_explain->data())."\n".Dumper($original_explain->warnings());
+#	my $original_explain = $executor->execute("EXPLAIN EXTENDED $original_query");
+#
+#	if ($original_explain->status() == STATUS_SERVER_CRASHED) {
+#		return STATUS_SERVER_CRASHED;
+#	} elsif ($original_explain->status() ne STATUS_OK) {
+#		return STATUS_ENVIRONMENT_FAILURE;
+#	}
+#
+#	my $original_explain_string = Dumper($original_explain->data())."\n".Dumper($original_explain->warnings());
 	my $original_optimizer_switch = $executor->dbh()->selectrow_array('SELECT @@optimizer_switch');
 
-	return STATUS_WONT_HANDLE if $original_explain_string !~ m{material}sgio;
+#	return STATUS_WONT_HANDLE if $original_explain_string !~ m{material}sgio;
 
 	return [
 		[
-			"SET SESSION optimizer_switch='partial_match_rowid_merge=on,partial_match_table_scan=on';",
+			"SET SESSION optimizer_switch='in_to_exists=off,materialization=on,partial_match_rowid_merge=on,partial_match_table_scan=on';",
 			"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
 			"SET SESSION optimizer_switch='$original_optimizer_switch'"
 		], [
-			"SET SESSION optimizer_switch='partial_match_rowid_merge=on,partial_match_table_scan=off';",
+			"SET SESSION optimizer_switch='in_to_exists=off,materialization=on,partial_match_rowid_merge=on,partial_match_table_scan=off';",
 			"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
 			"SET SESSION optimizer_switch='$original_optimizer_switch'"
 		], [
-			"SET SESSION optimizer_switch='partial_match_rowid_merge=off,partial_match_table_scan=on';",
+			"SET SESSION optimizer_switch='in_to_exists=off,materialization=on,partial_match_rowid_merge=off,partial_match_table_scan=on';",
 			"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
 			"SET SESSION optimizer_switch='$original_optimizer_switch'"
 		], [
-			"SET SESSION optimizer_switch='partial_match_rowid_merge=off,partial_match_table_scan=off';",
+			"SET SESSION optimizer_switch='in_to_exists=off,materialization=on,partial_match_rowid_merge=off,partial_match_table_scan=off';",
 			"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
 			"SET SESSION optimizer_switch='$original_optimizer_switch'"
 		]
