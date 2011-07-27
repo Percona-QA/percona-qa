@@ -43,6 +43,7 @@ my @explain2switch = (
 	[ '<expr_cache>'	=> "optimizer_switch='subquery_cache=off'" ],
 	[ 'materializ'		=> "optimizer_switch='materialization=off,in_to_exists=on'" ],
 	[ 'semijoin'		=> "optimizer_switch='semijoin=off'" ],
+	[ 'Start temporary'     => "optimizer_switch='semijoin=off'" ],
 	[ 'loosescan'		=> "optimizer_switch='loosescan=off'" ],
 	[ '<exists>'		=> "optimizer_switch='in_to_exists=off,materialization=on'" ],
 	[ qr{BNLH|BKAH}		=> "optimizer_switch='join_cache_hashed=off'" ],	
