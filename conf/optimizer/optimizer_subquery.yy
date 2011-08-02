@@ -155,7 +155,9 @@ outer:
 	| OUTER ;
 
 where_clause:
-         WHERE ( where_subquery ) and_or where_list ;
+	WHERE where_subquery |
+ 	WHERE ( where_subquery ) and_or where_list |
+ 	WHERE ( where_subquery ) and_or where_list ;
 
 
 where_list:
