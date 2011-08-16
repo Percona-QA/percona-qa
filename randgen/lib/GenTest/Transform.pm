@@ -63,7 +63,8 @@ my %mysql_grouping_errors = (
 	1317 => 'ER_QUERY_INTERRUPTED',
 	2013 => 'CR_SERVER_LOST',
 	2006 => 'CR_SERVER_GONE_ERROR',
-	1028 => 'ER_FILSORT_ABORT'
+	1028 => 'ER_FILSORT_ABORT',
+	1615 => 'ER_NEED_REPREPARE'
 );
 
 # List of encountered errors that we want to suppress later in the test run.
