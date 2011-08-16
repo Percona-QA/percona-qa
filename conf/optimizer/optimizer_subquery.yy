@@ -155,7 +155,9 @@ outer:
 	| OUTER ;
 
 where_clause:
-         WHERE ( where_subquery ) and_or where_list ;
+	WHERE where_subquery |
+ 	WHERE ( where_subquery ) and_or where_list |
+ 	WHERE ( where_subquery ) and_or where_list ;
 
 
 where_list:
@@ -484,7 +486,7 @@ child_subquery_where_item:
    existing_child_subquery_table_item . char_field_name arithmetic_operator _char |
    existing_child_subquery_table_item . int_field_name arithmetic_operator existing_child_subquery_table_item . int_field_name |
    existing_child_subquery_table_item . char_field_name arithmetic_operator existing_child_subquery_table_item . char_field_name ;
-#|
+# |
 #   child_child_subquery ;
 
 child_subquery_join_list:
@@ -737,7 +739,7 @@ existing_select_item:
 ################################################################################
 
 arithmetic_operator:
-	= | > | < | != | <> | <= | >= | <=> ;
+	= | > | < | != | <> | <= | >= ;
 
 
 membership_operator:
