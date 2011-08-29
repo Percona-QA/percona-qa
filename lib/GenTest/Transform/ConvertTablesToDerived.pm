@@ -29,7 +29,7 @@ sub transform {
 
 	my $modified_query = $orig_query;
 
-	# Rplace AA with ( SELECT * FROM AA ) AS derived1; Add "AS derivedN" if there was no alias originally;
+	# Replace AA with ( SELECT * FROM AA ) AS derived1; Add "AS derivedN" if there was no alias originally;
 
 	my $derived_count = 1;
 
