@@ -556,7 +556,7 @@ range_predicate2_item:
         alias1 . `col_int_key` = _tinyint_unsigned |
         alias1 . `col_varchar_key` = _char |
         alias1 . int_indexed = _tinyint_unsigned |
-        alias1 . `col_varchar_key` = _char |
+        alias1 . `col_varchar_key` LIKE CONCAT( _char , '%') |
         alias1 . int_indexed = existing_table_item . int_indexed |
         alias1 . `col_varchar_key` = existing_table_item . `col_varchar_key` ;
 
@@ -567,8 +567,8 @@ range_predicate2_item:
 number_list:
         _tinyint_unsigned | number_list, _tinyint_unsigned ;
 
-char_list: 
-        _char | char_list, _char ;
+char_list:
+        _char | 'USA' | char_list , _char | char_list , 'USA' ;
 
 ################################################################################
 # We ensure that a GROUP BY statement includes all nonaggregates.              #
@@ -772,7 +772,7 @@ all_distinct:
 	
 value:
 	_digit | _digit | _digit | _digit | _tinyint_unsigned|
-        _char(1) | _char(1) | _char(1) | _char(2) | _char(2) ;
+        _char(1) | _char(1) | _char(1) | _char(2) | _char(2) | 'USA' ;
 
 _table:
      A | B | C | BB | CC | B | C | BB | CC | 
@@ -785,7 +785,7 @@ _table:
 ################################################################################
 
 view:
-    view_A | view_B | view_C | view_BB | view_CC ;
+    view_A | view_AA | view_B | view_BB | view_C | view_CC | view_C | view_CC | view_D ;
 
 _field:
     int_field_name | char_field_name ;
