@@ -360,7 +360,17 @@ sub kill {
     } else {
         if (defined $self->serverpid) {
             kill KILL => $self->serverpid;
-            say("Killed process ".$self->serverpid);
+            my $waits = 0;
+            while ($self->running && $waits < 100) {
+                print "....\n";
+                Time::HiRes::sleep(0.2);
+                $waits++;
+            }
+            if ($waits >= 100) {
+                croak("Unable to kill process ".$self->serverpid);
+            } else {
+                say("Killed process ".$self->serverpid);
+            }
         }
     }
     if (-e $self->socketfile) {
@@ -424,7 +434,7 @@ sub stopServer {
         my $r = $self->[MYSQLD_DBH]->func('shutdown','127.0.0.1','root','admin');
         my $waits = 0;
         if ($r) {
-            while (-f $self->pidfile && $waits < 100) {
+            while ($self->running && $waits < 100) {
                 Time::HiRes::sleep(0.2);
                 $waits++;
             }
@@ -437,6 +447,17 @@ sub stopServer {
         }
     } else {
         $self->kill;
+    }
+}
+
+sub running {
+    my($self) = @_;
+    if (osWindows()) {
+        ## Need better solution fir windows. This is actually the old
+        ## non-working solution for unix....
+        return -f $self->pidfile;
+    } else {
+        return kill 0, $self->serverpid;
     }
 }
 
