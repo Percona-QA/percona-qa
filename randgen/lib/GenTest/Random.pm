@@ -486,8 +486,8 @@ sub isFieldType {
 sub isDictionary {
 	my ($rand, $dict_name) = @_;
 
-	if ($dict_exists{$dict_name}) {
-		return 1;
+	if (exists $dict_exists{$dict_name}) {
+		return $dict_exists{$dict_name};
 	} else {
                 my $dict_file = $ENV{RQG_HOME} ne '' ? $ENV{RQG_HOME}."/dict/$dict_name.txt" : "dict/$dict_name.txt";
 
@@ -495,6 +495,7 @@ sub isDictionary {
 			$dict_exists{$dict_name} = 1;
 			return 1;
 		} else {
+			$dict_exists{$dict_name} = undef;
 			return undef;
 		}
 	}

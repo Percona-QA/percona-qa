@@ -46,7 +46,7 @@ $SIG{CHLD} = "IGNORE" if osWindows();
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, 
-    $threads, $new, $servers, $noshuffle);
+    $threads, $new, $servers, $noshuffle, $workdir);
 
 my @basedirs=('','');
 my $combinations;
