@@ -22,7 +22,7 @@ $tables = {
 };
 
 $fields = {
-        types => [ 'tinyblob', 'tinytext', 'blob', 'text', 'mediumblob', 'mediumtext' ],
+        types => [ 'tinyblob', 'tinytext', 'blob', 'text' ],
         indexes => [undef, 'key' ],
         null => [undef, 'null', 'not null'],
         default => [undef, 'default null'],
