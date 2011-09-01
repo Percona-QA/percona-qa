@@ -28,6 +28,14 @@ use Getopt::Long;
 use GenTest::BzrInfo; 
 use Data::Dumper;
 
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.gentest');
+};
+
 if (osWindows()) {
     croak("Sorry. $0 is not ported to Windows (yet)");
 }
@@ -39,10 +47,10 @@ $SIG{INT} = sub { $ctrl_c = 1 };
 $SIG{TERM} = sub { exit(0) };
 $SIG{CHLD} = "IGNORE" if osWindows();
 
-my ($config_file, $workdir, $trials, $duration, $grammar, $gendata, 
+my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, 
-    $threads, $new, $servers, $noshuffle);
+    $threads, $new, $servers, $noshuffle, $workdir);
 
 my @basedirs=('','');
 my $combinations;

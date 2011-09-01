@@ -169,15 +169,15 @@ sub run {
     my @executors;
     foreach my $i (0..2) {
         next if $self->config->dsn->[$i] eq '';
-	my $executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $channel);
+        my $executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $channel);
         $executor->sqltrace($self->config->sqltrace);
-	$executor->setId($i+1);
+        $executor->setId($i+1);
         push @executors, $executor;
-	if ($executor->type() == DB_MYSQL) {
-	    my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $channel);
-	    $metadata_executor->init();
-	    $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
-	}
+        if ($executor->type() == DB_MYSQL) {
+            my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $channel);
+            $metadata_executor->init();
+            $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
+        }
     }
     
     my $drizzle_only = $executors[0]->type == DB_DRIZZLE;
@@ -297,10 +297,13 @@ sub run {
             $test_suite_name = "rqg_no_name";
         }
     }
-    
+
+    my $logdir = $test_suite_name.isoUTCSimpleTimestamp;
+
     my $test = GenTest::XML::Test->new(
         id => time(),
         name => $test_suite_name,  # NOTE: Consider changing to test (or test case) name when suites are supported.
+        logdir => $self->config->property('report-tt-logdir').'/'.$logdir,
         attributes => {
             engine => $self->config->engine,
             gendata => $self->config->gendata,
@@ -495,6 +498,10 @@ sub run {
             if ($result != STATUS_OK) {
                 croak("Error from XML Transporter: $result");
             }
+            if (defined $self->config->logfile && defined 
+                $self->config->property('report-tt-logdir')) {
+                $self->copyLogFiles($logdir, \@executors);
+            }
         }
         
         if ($total_status == STATUS_OK) {
@@ -507,9 +514,9 @@ sub run {
     } elsif ($process_type == PROCESS_TYPE_PERIODIC) {
         ## Periodic does not use channel
         $channel->close();
-	my $killed = 0;
-	local $SIG{TERM} = sub { $killed = 1 };
-
+        my $killed = 0;
+        local $SIG{TERM} = sub { $killed = 1 };
+        
         while (1) {
             my $reporter_status = $reporter_manager->monitor(REPORTER_TYPE_PERIODIC);
             $self->stop_child($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
@@ -591,4 +598,39 @@ sub stop_child {
     }
 }
 
+sub copyLogFiles {
+    my ($self,$ld, $executors) = @_;
+    ## Won't copy log files on windows (yet)
+    ## And do this only when tt-logging is enabled
+    if (!osWindows() && -e $self->config->property('report-tt-logdir')) {
+        ## Only for unices
+        my $logdir =  $self->config->property('report-tt-logdir')."/".$ld;
+        mkdir $logdir if ! -e $logdir;
+    
+        foreach my $exe (@$executors) {
+            my $dbh = DBI->connect($exe->dsn(), undef, undef, {
+                PrintError => 1,
+                RaiseError => 0,
+                AutoCommit => 1,
+                mysql_multi_statements => 1
+                                   } );
+            my $sth = $dbh->prepare("show variables like '%log_file'");
+            $sth->execute();
+            while (my $row = $sth->fetchrow_arrayref()) {
+                copyFileToDir(@{$row}[1], $logdir) if -e @{$row}[1];
+            }
+        }
+        copyFileToDir($self->config->logfile,$logdir);
+    }
+}
+
+sub copyFileToDir {
+    ## Not ported to windows. But then again TT-reporing with scp does
+    ## not work on Windows either...
+    my ($from, $todir) = @_;
+    say("Copying '$from' to '$todir'");
+    system("cp ".$from." ".$todir);
+}
+
 1;
+

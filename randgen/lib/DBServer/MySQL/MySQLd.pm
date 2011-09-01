@@ -356,7 +356,6 @@ sub kill {
             kill KILL => $self->serverpid;
             my $waits = 0;
             while ($self->running && $waits < 100) {
-                print "....\n";
                 Time::HiRes::sleep(0.2);
                 $waits++;
             }
