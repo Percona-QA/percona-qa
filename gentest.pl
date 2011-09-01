@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
-# Use is subject to license terms.
+# Copyright (c) 2008, 2011, Oracle and/or its affiliates. All rights
+# reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,14 @@ use GenTest;
 use GenTest::Properties;
 use GenTest::Constants;
 use GenTest::App::GenTest;
+
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.gentest');
+};
 
 my $DEFAULT_THREADS = 10;
 my $DEFAULT_QUERIES = 1000;
@@ -75,6 +83,9 @@ my $opt_result = GetOptions($options,
                             'valgrind-xml',
                             'notnull',
                             'debug',
+                            'logfile=s',
+                            'logconf=s',
+                            'report-tt-logdir=s',
                             'querytimeout=i');
 backwardCompatability($options);
 my $config = GenTest::Properties->new(
@@ -118,10 +129,21 @@ my $config = GenTest::Properties->new(
               'valgrind-xml',
               'sqltrace',
               'notnull',
+              'logfile',
+              'logconf',
+              'report-tt-logdir',
               'querytimeout'],
     help => \&help);
 
 help() if !$opt_result || $config->help;
+
+if (defined $config->logfile && defined $logger) {
+    setLoggingToFile($config->logfile);
+} else {
+    if (defined $config->logconf && defined $logger) {
+        setLogConf($config->logconf);
+    }
+}
 
 say("Starting: $0 ".join(" ", @ARGV_saved));
 
