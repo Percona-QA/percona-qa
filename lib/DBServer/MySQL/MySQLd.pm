@@ -28,7 +28,7 @@ use strict;
 
 use Carp;
 use Data::Dumper;
-use File::Path qw(mkpath);
+use File::Path qw(mkpath rmtree);
 
 use constant MYSQLD_BASEDIR => 0;
 use constant MYSQLD_VARDIR => 1;
@@ -223,13 +223,7 @@ sub createMysqlBase  {
     
     ## 1. Clean old db if any
     if (-d $self->vardir) {
-        if (osWindows()) {
-            my $vardir = $self->vardir;
-            $vardir =~ s/\//\\/g;
-            system('rmdir /s /q "'.$vardir.'"');
-        } else {
-            system('rm -rf "'.$self->vardir.'"');
-        }
+        rmtree($self->vardir);
     }
 
     ## 2. Create database directory structure

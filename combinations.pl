@@ -28,6 +28,10 @@ use Getopt::Long;
 use GenTest::BzrInfo; 
 use Data::Dumper;
 
+if (osWindows()) {
+    croak("Sorry. $0 is not ported to Windows (yet)");
+}
+
 $| = 1;
 my $ctrl_c = 0;
     
