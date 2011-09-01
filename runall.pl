@@ -62,7 +62,7 @@ use Cwd;
 my $database = 'test';
 my @master_dsns;
 
-my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
+my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views,
@@ -102,6 +102,7 @@ my $opt_result = GetOptions(
 	'report-xml-tt-type=s' => \$report_xml_tt_type,
 	'report-xml-tt-dest=s' => \$report_xml_tt_dest,
 	'gendata:s' => \$gendata,
+	'skip-gendata' => \$skip_gendata,
 	'notnull' => \$notnull,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
@@ -293,6 +294,8 @@ foreach my $server_id (0..1) {
 	push @mtr_options, "--mysqld=--max-allowed-packet=16Mb";	# Allow loading bigger blobs
 	push @mtr_options, "--mysqld=--loose-innodb-status-file=1";
 	push @mtr_options, "--mysqld=--master-retry-count=65535";
+	push @mtr_options, "--mysqld=--loose-debug-assert-if-crashed-table";
+	push @mtr_options, "--mysqld=--loose-debug-assert-on-error";
 
 	push @mtr_options, "--start-dirty" if defined $start_dirty;
 	push @mtr_options, "--gcov" if $lcov;
@@ -396,7 +399,7 @@ if ($rpl_mode) {
 my @gentest_options;
 
 push @gentest_options, "--start-dirty" if defined $start_dirty;
-push @gentest_options, "--gendata=$gendata";
+push @gentest_options, "--gendata=$gendata" if not defined $skip_gendata;
 push @gentest_options, "--notnull" if defined $notnull;
 push @gentest_options, "--engine=$engine" if defined $engine;
 push @gentest_options, "--rpl_mode=$rpl_mode" if defined $rpl_mode;
