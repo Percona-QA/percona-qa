@@ -70,9 +70,9 @@ sub xml {
 
     $writer->xmlDecl('ISO-8859-1');
     $writer->startTag('report',
-        'xmlns'                 => "http://clustra.norway.sun.com/intraweb/organization/qa/cassiopeia",
+        'xmlns'                 => "http://regin.no.oracle.com/report/schema",
         'xmlns:xsi'             => "http://www.w3.org/2001/XMLSchema-instance",
-        'xsi:schemaLocation'    => "http://clustra.norway.sun.com/intraweb/organization/qa/cassiopeia http://clustra.norway.sun.com/intraweb/organization/qa/cassiopeia/testresult-schema-1-2.xsd",
+        'xsi:schemaLocation'    => "http://regin.no.oracle.com/report/schema/testresult-schema-1-2.xsd",
         'version'               => "1.2"
     );
 
