@@ -139,7 +139,9 @@ join_list:
 # too many mega-join conditions which take too long to run                     #
 ################################################################################
 	( new_table_item join_type new_table_item ON (join_condition_list ) ) |
-        ( new_table_item join_type ( ( new_table_item join_type new_table_item ON (join_condition_list ) ) ) ON (join_condition_list ) ) ;
+        ( new_table_item join_type ( ( new_table_item join_type new_table_item ON (join_condition_list ) ) ) ON (join_condition_list ) ) |
+	( new_table_item , new_table_item ) |
+	( new_table_item , ( new_table_item , new_table_item ) ) ;
 
 join_list_disabled:
 ################################################################################
