@@ -28,6 +28,18 @@ use Getopt::Long;
 use GenTest::BzrInfo; 
 use Data::Dumper;
 
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.gentest');
+};
+
+if (osWindows()) {
+    croak("Sorry. $0 is not ported to Windows (yet)");
+}
+
 $| = 1;
 my $ctrl_c = 0;
     
@@ -35,10 +47,10 @@ $SIG{INT} = sub { $ctrl_c = 1 };
 $SIG{TERM} = sub { exit(0) };
 $SIG{CHLD} = "IGNORE" if osWindows();
 
-my ($config_file, $workdir, $trials, $duration, $grammar, $gendata, 
+my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, 
-    $threads, $new, $servers, $noshuffle);
+    $threads, $new, $servers, $noshuffle, $workdir);
 
 my @basedirs=('','');
 my $combinations;
@@ -111,7 +123,9 @@ if ((defined $revno) && (defined $revid)) {
 if (not defined $threads) {
     $threads=1;
 } else {
-    croak("Not meaningful to use --parallel without --run-all-combinations-once") if not defined $exhaustive;
+    if ((not defined $trials) and (not defined $exhaustive)) {
+        croak("When using --parallel, also add either or both of these options: --run-all-combinations-once (exhaustive run) and/or --trials=x (random run).\n(Both options combined gives a non-random exhaustive run, yet limited by the number of trials.)");
+    }
     $logToStd = 0;
 }
 
@@ -127,7 +141,7 @@ if ($exhaustive) {
     }
     if (defined $trials) {
         if ($trials < $total) {
-            say("You have specified --run-all-combinations-once gives $total combinations, but limited the same with --trials=$trials");
+            say("You specified --run-all-combinations-once, which gives $total combinations, but then limited the same with --trials=$trials");
         } else {
             $trials = $total;
         }

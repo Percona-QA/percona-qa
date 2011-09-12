@@ -30,7 +30,17 @@ use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use strict;
 use GenTest;
+
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.gentest');
+};
+
 use GenTest::BzrInfo;
+
 $| = 1;
 if (osWindows()) {
 	$SIG{CHLD} = "IGNORE";
@@ -55,9 +65,10 @@ my @master_dsns;
 my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file,
     $redefine_file, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
-    $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views, $start_dirty,
-    $filter, $build_thread, $testname, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $notnull, $sqltrace, $lcov, $transformers, $querytimeout);
+    $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views,
+    $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
+    $report_xml_tt_type, $report_xml_tt_dest, $notnull, $sqltrace,
+    $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -110,8 +121,20 @@ my $opt_result = GetOptions(
     'mtr-build-thread=i' => \$build_thread,
     'testname=s' => \$testname,
 	'lcov' => \$lcov,
+    'logfile=s' => \$logfile,
+    'logconf=s' => \$logconf,
+    'report-tt-logdir=s' => \$report_tt_logdir,
     'querytimeout=i' => \$querytimeout
 );
+
+if (defined $logfile && defined $logger) {
+    setLoggingToFile($logfile);
+} else {
+    if (defined $logconf && defined $logger) {
+        setLogConf($logconf);
+    }
+}
+
 
 $ENV{RQG_DEBUG} = 1 if defined $debug;
 
@@ -406,6 +429,9 @@ push @gentest_options, "--valgrind" if defined $valgrind;
 push @gentest_options, "--valgrind-xml" if defined $valgrind_xml;
 push @gentest_options, "--testname=$testname" if defined $testname;
 push @gentest_options, "--sqltrace" if defined $sqltrace;
+push @gentest_options, "--logfile=$logfile" if defined $logfile;
+push @gentest_options, "--logconf=$logconf" if defined $logconf;
+push @gentest_options, "--report-tt-logdir=$report_tt_logdir" if defined $report_tt_logdir;
 push @gentest_options, "--querytimeout=$querytimeout" if defined $querytimeout;
 
 # Push the number of "worker" threads into the environment.
