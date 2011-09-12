@@ -714,12 +714,18 @@ sub explain {
 
 		push @explain_fragments, "partitions: ".$explain_row->{table}.":".$explain_row->{partitions} if defined $explain_row->{partitions};
 
+		push @explain_fragments, "ref: ".$explain_row->{ref};
+
 		foreach my $extra_item (split('; ', ($explain_row->{Extra} || '(empty)')) ) {
 			$extra_item =~ s{0x.*?\)}{%d\)}sgio;
 			$extra_item =~ s{PRIMARY|[a-z_]+_key|i_l_[a-z_]+}{%s}sgio;
 			push @explain_fragments, "extra: ".$extra_item;
 		}
 	}
+
+	$executor->dbh()->do("EXPLAIN EXTENDED $query");
+	my $explain_extended = $executor->dbh()->selectrow_arrayref("SHOW WARNINGS")->[2];
+	push @explain_fragments, $explain_extended =~ m{<[a-z_0-9\-]*?>}sgo;
 	
 	foreach my $explain_fragment (@explain_fragments) {
 		$executor->[EXECUTOR_EXPLAIN_COUNTS]->{$explain_fragment}++;
