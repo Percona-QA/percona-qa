@@ -21,6 +21,7 @@ use base qw(Test::Unit::TestCase);
 use lib 'lib','lib/DBServer';
 use Cwd;
 use GenTest;
+use DBServer::DBServer;
 use DBServer::MySQL::MySQLd;
 use GenTest::Executor;
 use GenTest::Properties;
@@ -28,6 +29,7 @@ use GenTest::Reporter;
 use GenTest::Reporter::Backtrace;
 
 use Data::Dumper;
+use File::Path qw(mkpath rmtree);
 
 sub new {
     my $self = shift()->SUPER::new(@_);
@@ -46,12 +48,11 @@ sub tear_down {
         foreach my $p (@pids) {
             Win32::Process::KillProcess($p,-1);
         }
-        system("rmdir /s /q unit\\tmp");
     } else {
         ## Need to ,kill leftover processes if there are some
         kill 9 => @pids;
-        # system("rm -rf unit/tmp");
     }
+    rmtree("unit/tmp");
 }
 
 sub test_create_server {
