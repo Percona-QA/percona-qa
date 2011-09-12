@@ -25,6 +25,7 @@ use DBServer::MySQL::ReplMySQLd;
 use GenTest::Executor;
 
 use Data::Dumper;
+use File::Path qw(mkpath rmtree);
 
 sub new {
     my $self = shift()->SUPER::new(@_);
@@ -43,15 +44,14 @@ sub tear_down {
         foreach my $p (@pids) {
             Win32::Process::KillProcess($p,-1);
         }
-        system("rmdir /s /q unit\\tmp1");
-        system("rmdir /s /q unit\\tmp2");
     } else {
         ## Need to ,kill leftover processes if there are some
         kill 9 => @pids;
-        system("rm -rf unit/tmp1");
-        system("rm -rf unit/tmp2");
     }
+    rmtree("unit/tmp1");
+    rmtree("unit/tmp2");
 }
+
 
 sub test_create_server {
     my $self = shift;

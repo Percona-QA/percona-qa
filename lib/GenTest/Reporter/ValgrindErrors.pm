@@ -28,8 +28,8 @@ use GenTest::Constants;
 use IO::File;
 
 # This reporter looks for valgrind messages in the server error log, and
-# prints the messages and returns a failure status if a LEAK SUMMARY or a number
-# of valgrind errors are found.
+# prints the messages and returns a failure status if any valgrind errors 
+# are found.
 #
 
 sub report {
@@ -53,23 +53,61 @@ sub report {
     my $LogFile = IO::File->new($error_log) 
         or say("ERROR: $0 could not read log file '$error_log': $!") 
             && return STATUS_ENVIRONMENT_FAILURE;
+
+    # We use a set of strings to look for valgrind errors. These are based on 
+    # the valgrind manual + code. We compose a regex of all the strings later.
+    #
+    # We also try to gather the number of reported errors. Note that not all
+    # issues reported by valgrind are "errors".
+    #
+    # These strings need to be matched as case insensitive. 
+    # Special characters will be escaped using quotemeta before regex matching.
+    my @valgrind_strings = (
+        'are definitely lost',
+        'are possibly lost',
+        'byte(s) found',
+        'bytes inside a block of size',
+        'conditional jump',
+        'during client check request',
+        'illegal memory pool address',
+        'invalid free',
+        'invalid read of size',
+        'invalid write of size',
+        'jump to the invalid address',
+        'mismatched free',
+        'on the next line',
+        'source and destination',
+        'syscall param',
+        'unaddressable byte',
+        'uninitialised byte',
+        'uninitialised value',
+    );
     
+    # The regular expression is composed as follows:
+    #   - sort: Sort strings in array @valgrind_strings by length in reversed order 
+    #     (to ensure correct matches in case of similar substrings).
+    #   - map{quotemeta}: Add escape characters to all non-letter, non-digit characters in the sorted strings, 
+    #     to avoid special regex interpretation of these characters.
+    #   - map("($_)"): Wrap each escaped sting inside a pair of parenthesis (for proper regex alternatives).
+    #   - join: Separate each block of parenthesis by the "or" operator (|).
+    #   - Add valgrind line prefix.
+    my $regex = "^==[0-9]+==\s+.*".
+        join('|', map("($_)", map{quotemeta} sort {length($b)<=>length($a)} (@valgrind_strings)));
+    $regex = qr/($regex)/i;  # quote and compile regex, case insensitive
     my @valgrind_lines;
     my $errorcount = 0;
-    my $leak_detected = 0;
+    my $issue_detected = 0;
     while (my $line = <$LogFile>) {
         push(@valgrind_lines, $line) if $line =~ m{^==[0-9]+==\s+\S};
         if ($line =~ m{^==[0-9]+==\s+ERROR SUMMARY: ([0-9]+) errors}) {
             $errorcount = $1;
-        } elsif ($line =~ m{^==[0-9]+==\s+LEAK SUMMARY:}) {
-            # we assume that LEAK SUMMARY may be present even without errors
-            say("Valgrind: Possible memory leak detected");
-            $leak_detected = 1;
+        } elsif ($line =~ m{$regex}) {
+            $issue_detected = 1;
         }
     }
 
-    if (($errorcount > 0) or $leak_detected) {
-        say("Valgrind: Issues detected (errors: $errorcount). Relevant messages from log file '$error_log':");
+    if (($errorcount > 0) or $issue_detected) {
+        say("Valgrind: Issues detected (error count: $errorcount). Relevant messages from log file '$error_log':");
         foreach my $line (@valgrind_lines) {
             say($line);
         }

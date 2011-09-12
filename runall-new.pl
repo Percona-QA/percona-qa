@@ -32,6 +32,14 @@ use DBServer::DBServer;
 use DBServer::MySQL::MySQLd;
 use DBServer::MySQL::ReplMySQLd;
 
+my $logger;
+eval
+{
+    require Log::Log4perl;
+    Log::Log4perl->import();
+    $logger = Log::Log4perl->get_logger('randgen.gentest');
+};
+
 $| = 1;
 if (osWindows()) {
 	$SIG{CHLD} = "IGNORE";
@@ -60,7 +68,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
-    $notnull, $querytimeout, $no_mask);
+    $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask);
 
 my $gendata=''; ## default simple gendata
 
@@ -114,9 +122,20 @@ my $opt_result = GetOptions(
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
     'sqltrace' => \$sqltrace,
+    'logfile=s' => \$logfile,
+    'logconf=s' => \$logconf,
+    'report-tt-logdir=s' => \$report_tt_logdir,
     'querytimeout=i' => \$querytimeout,
     'no-mask' => \$no_mask
     );
+
+if (defined $logfile && defined $logger) {
+    setLoggingToFile($logfile);
+} else {
+    if (defined $logconf && defined $logger) {
+        setLogConf($logconf);
+    }
+}
 
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 	help();
@@ -345,7 +364,10 @@ my $gentestProps = GenTest::Properties->new(
               'querytimeout',
               'report-xml-tt',
               'report-xml-tt-type',
-              'report-xml-tt-dest']
+              'report-xml-tt-dest',
+              'logfile',
+              'logconf',
+              'report-tt-logdir']
     );
 
 my @gentest_options;
@@ -394,6 +416,9 @@ $gentestProps->valgrind(1) if $valgrind;
 $gentestProps->sqltrace(1) if $sqltrace;
 $gentestProps->querytimeout($querytimeout) if defined $querytimeout;
 $gentestProps->testname($testname) if $testname;
+$gentestProps->logfile($logfile) if defined $logfile;
+$gentestProps->logconf($logconf) if defined $logconf;
+$gentestProps->property('report-tt-logdir',$report_tt_logdir) if defined $report_tt_logdir;
 $gentestProps->property('report-xml-tt', 1) if defined $report_xml_tt;
 $gentestProps->property('report-xml-tt-type', $report_xml_tt_type) if defined $report_xml_tt_type;
 $gentestProps->property('report-xml-tt-dest', $report_xml_tt_dest) if defined $report_xml_tt_dest;
