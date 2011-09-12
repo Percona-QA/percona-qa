@@ -89,7 +89,7 @@ sub newFromDBH {
 		my $new_column;
 		$new_column->[COLUMN_NAME] = $new_column->[COLUMN_ORIG_NAME] = $column_info->{'COLUMN_NAME'};
 		$new_column->[COLUMN_DEFAULT] = $column_info->{'COLUMN_DEFAULT'};
-		$new_column->[COLUMN_IS_NULLABLE] = $column_info->{'COLUMN_IS_NULLABLE'};
+		$new_column->[COLUMN_IS_NULLABLE] = $column_info->{'IS_NULLABLE'};
 		$new_column->[COLUMN_TYPE] = $column_info->{'COLUMN_TYPE'};
 		$new_column->[COLUMN_COLLATION] = $column_info->{'COLLATION_NAME'};
 		push @columns, $new_column;
@@ -138,6 +138,7 @@ sub toString {
 
 		my $column_string = $column->[COLUMN_NAME]." ".$column->[COLUMN_TYPE];
 		$column_string .= " COLLATE ".$column->[COLUMN_COLLATION] if defined $column->[COLUMN_COLLATION];
+		$column_string .= " NOT NULL " if $column->[COLUMN_IS_NULLABLE] eq 'NO';
 		push @column_strings, $column_string;
 	}
 
@@ -175,16 +176,20 @@ sub toString {
 			next if not defined $column->[COLUMN_NAME];
 			my $cell = $dbobject->[DBOBJECT_DATA]->[$row_id]->{$column->[COLUMN_NAME]} || $dbobject->[DBOBJECT_DATA]->[$row_id]->{$column->[COLUMN_ORIG_NAME]};
 			$cell =~ s{'}{\\'}sgio;
-			push @row_data, defined $cell ? "'".$cell."'" : 'NULL';
+			if (not defined $cell) {
+				push @row_data, 'NULL';
+			} elsif ($cell =~ m{^\d+$}sgio) {
+				push @row_data, $cell;
+			} else {
+				push @row_data, "'".$cell."'";
+			}
 		}
 		push @rows_data, "(".join(',', @row_data).")";
 	}
 
 	print "Object ".$dbobject->name()." has ".($#rows_data + 1)." rows\n";
 
-#	my $data_string = "ALTER TABLE ".$dbobject->name()." DISABLE KEYS;\n";
-	my $data_string .= "INSERT IGNORE INTO ".$dbobject->name()." VALUES ".join(',', @rows_data).";\n" if $#rows_data > -1;
-#	$data_string .= "ALTER TABLE ".$dbobject->name()." ENABLE KEYS;\n";
+	my $data_string .= "INSERT IGNORE INTO ".$dbobject->name()." VALUES ".join(',', @rows_data).";\n" if $#rows_data > -1 && $dbobject->[DBOBJECT_ENGINE] ne 'MRG_MYISAM';
 
 	return $create_string.$data_string;
 	
