@@ -46,6 +46,11 @@ sub validate {
 
 	return STATUS_WONT_HANDLE if $results->[0]->query() =~ m{EXPLAIN}sio;
 
+	if ( $results->[0]->err() != $results->[1]->err() ) {
+		say("Query: ".$results->[0]->query()."; failed: error code mismatch between servers ('".$results->[0]->errstr()."' vs. '".$results->[1]->errstr()."')");
+		return STATUS_ERROR_MISMATCH;
+	}
+
 	return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK;
 	return STATUS_WONT_HANDLE if $results->[1]->status() != STATUS_OK;
 
