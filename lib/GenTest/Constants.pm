@@ -127,9 +127,9 @@ use constant STATUS_BACKUP_FAILURE		=> 107;
 use constant STATUS_VALGRIND_FAILURE		=> 108;
 use constant STATUS_ALARM			=> 109; # A module, e.g. a Reporter, raises an alarm with critical severity
 
-use constant ORACLE_ISSUE_STILL_REPEATABLE	=> 1;
-use constant ORACLE_ISSUE_NO_LONGER_REPEATABLE	=> 0;
-use constant ORACLE_ISSUE_STATUS_UNKNOWN	=> 2;
+use constant ORACLE_ISSUE_STILL_REPEATABLE	=> 2;
+use constant ORACLE_ISSUE_NO_LONGER_REPEATABLE	=> 3;
+use constant ORACLE_ISSUE_STATUS_UNKNOWN	=> 4;
 
 use constant DB_UNKNOWN		=> 0;
 use constant DB_DUMMY        => 1;
