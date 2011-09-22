@@ -25,6 +25,7 @@ use strict;
 use lib 'lib';
 use GenTest;
 use GenTest::Constants;
+use GenTest::Executor::MySQL;
 use Data::Dumper;
 
 use constant TRANSFORMER_QUERIES_PROCESSED	=> 0;
