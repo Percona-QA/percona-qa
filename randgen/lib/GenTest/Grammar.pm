@@ -161,7 +161,7 @@ sub parseFromString {
 			# Split this so that each identifier is separated from all syntax elements
 			# The identifier can start with a lowercase letter or an underscore , plus quotes
 
-			$component_string =~ s{([_a-z0-9'"`\{\}\$\[\]]+)}{|$1|}sgo;
+			$component_string =~ s{([_a-z0-9'"`\{\}\$\[\]]+)}{|$1|}sgio;
 
 			# Revert overzealous splitting that splits things like _varchar(32) into several tokens
 		
