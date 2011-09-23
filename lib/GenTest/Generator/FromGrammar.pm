@@ -179,7 +179,7 @@ sub next {
 	}
 
 	# Once the SQL sentence has been constructed, iterate over it to replace variable items with their final values
-	
+
 	my $item_nodash;
 	my $orig_item;
 	foreach (@sentence) {
@@ -219,6 +219,7 @@ sub next {
 		}
 
 		next if $_ eq uc($_);				# Short-cut for UPPERCASE literals
+		next if $_ eq 'executor1' || $_ eq 'executor2' || $_ eq 'executor3' ;
 
 		if ( ($_ eq 'letter') || ($_ eq '_letter') ) {
 			$_ = $prng->letter();
