@@ -4,7 +4,7 @@
 
 use strict;
 
-print "
+print '
 /*
 
 @MISC{mayer2010osm,
@@ -16,16 +16,16 @@ print "
 
 Map data (c) OpenStreetMap contributors, CC-BY-SA
 
-*/";
+*/'."\n";
 
 print "DROP TABLE IF EXISTS linestring;\n";
 
 if ($ARGV[0] eq 'MySQL') {
-	print "CREATE TABLE linestring (pk INTEGER NOT NULL PRIMARY KEY, linestring_key LINESTRING NOT NULL, linestring_nokey LINESTRING NOT NULL) ENGINE=Aria TRANSACTIONAL=0;\n";
+	print "CREATE TABLE linestring (pk INTEGER NOT NULL PRIMARY KEY, linestring_key GEOMETRY NOT NULL, linestring_nokey GEOMETRY NOT NULL) ENGINE=Aria TRANSACTIONAL=0;\n";
 } elsif ($ARGV[0] eq 'PostGIS') {
-	print "CREATE TABLE lineSTRING (pk INTEGER NOT NULL PRIMARY KEY);\n";
-	print "SELECT AddGeometryColumn('linestring', 'linestring_key', -1, 'LINESTRING', 2 );\n";
-	print "SELECT AddGeometryColumn('linestring', 'linestring_nokey', -1, 'LINESTRING', 2 );\n";
+	print "CREATE TABLE linestring (pk INTEGER NOT NULL PRIMARY KEY);\n";
+	print "SELECT AddGeometryColumn('linestring', 'linestring_key', -1, 'GEOMETRY', 2 );\n";
+	print "SELECT AddGeometryColumn('linestring', 'linestring_nokey', -1, 'GEOMETRY', 2 );\n";
 }
 
 my $counter = 1;
