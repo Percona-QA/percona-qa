@@ -50,13 +50,17 @@ sub isGrammar {
 
 sub test_parse {
     my $self = shift;
+    @files = ();
     find(\&isGrammar, ("conf"));
+    my @filesToTest = sort(@files);
     if (defined $ENV{RQG_OTHER_GRAMMAR_DIR}) {
+	@files = ();
 	find(\&isGrammar, ($ENV{RQG_OTHER_GRAMMAR_DIR}));
+	@filesToTest = (@filesToTest, sort(@files));
     }
-    @files = sort((@files));
+    #@files = sort((@files));
 
-    foreach $f (@files) {
+    foreach $f (@filesToTest) {
         print "... $f\n";
         my $grammar = new GenTest::Grammar(grammar_file => $f);
         $self->assert_not_null($grammar, "Grammar was null: $f");
