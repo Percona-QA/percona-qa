@@ -23,6 +23,7 @@ package ParseAllGrammars;
 use base qw(Test::Unit::TestCase);
 use lib 'lib';
 use GenTest::Grammar;
+use File::Find;
 
 use Data::Dumper;
 
@@ -40,13 +41,20 @@ sub tear_down {
     # clean up after test
 }
 
+my @files;
+sub isGrammar {
+    if ($File::Find::name =~ m/\.yy$/) {
+	push(@files, $File::Find::name);
+    }
+}
+
 sub test_parse {
     my $self = shift;
-
-    @level1_files = <conf/*/*.yy>;      # ex: conf/examples/example.yy
-    @level2_files = <conf/*/*/*.yy>;    # ex: conf/engines/maria/maria_stress.yy
-    # Repeat for more levels (or do this in a better way)
-    @files = sort((@level1_files, @level2_files));
+    find(\&isGrammar, ("conf"));
+    if (defined $ENV{RQG_OTHER_GRAMMAR_DIR}) {
+	find(\&isGrammar, ($ENV{RQG_OTHER_GRAMMAR_DIR}));
+    }
+    @files = sort((@files));
 
     foreach $f (@files) {
         print "... $f\n";
