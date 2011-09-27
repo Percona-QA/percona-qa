@@ -28,6 +28,14 @@ use GenTest::Simplifier::Tables;
 use GenTest::Comparator;
 use GenTest::Constants;
 
+# Check if SQL::Beautify module is present for pretty printing.
+my $pretty_sql;
+eval
+{
+    require SQL::Beautify;
+    $pretty_sql = SQL::Beautify->new;
+};
+
 use constant SIMPLIFIER_EXECUTORS	=> 0;
 use constant SIMPLIFIER_QUERIES		=> 1;
 use constant SIMPLIFIER_RESULTS		=> 2;
@@ -140,6 +148,11 @@ sub simplify {
 	}
 
 	my $query_count = defined $queries ? $#$queries : $#$results;
+	
+	# Message to indicate pretty printing module is not present for use.
+	if (!defined $pretty_sql) {
+		say("INFO :: Could not find the module SQL::Beautify to pretty print the query.");
+	}	
 
 	foreach my $query_id (0..$query_count) {
 
@@ -181,21 +194,33 @@ sub simplify {
 			next if $_ =~ m{SET \@saved_cs_client}sio;
 			next if $_ =~ m{SET character_set_client}sio;
 			$test .= $_;
+			
 		}
 		close (MYSQLDUMP);
-
+		
 		$test .= "\n\n";
-
-		$rewritten_query =~ s{\s+}{ }sgio;
-		$rewritten_query =~ s{`}{}sgio;
-		$rewritten_query =~ s{\s+\.}{.}sgio;
-		$rewritten_query =~ s{\.\s+}{.}sgio;
-		$rewritten_query =~ s{(SELECT|LEFT|RIGHT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)}{\n$1}sgio;
-		$rewritten_query =~ s{\(}{\n(}sgio;	# Put each set of parenthesis on its own line 
-		$rewritten_query =~ s{\)}{)\n}sgio;	# 
-		$rewritten_query =~ s{[\r\n]+}{\n}sgio;
-		$test .= $rewritten_query.";\n\n";
-
+		
+		# If pretty printing module is available then use it to format the query
+		# otherwise use the existing regex pattern to format the query. 
+		if ( defined $pretty_sql) {
+			$rewritten_query =~ s{\s+}{ }sgio; # Remove extra spaces.
+			$rewritten_query =~ s{`}{}sgio; # Remove backquotes.
+			$pretty_sql->query($rewritten_query);
+			$test.= $pretty_sql->beautify;
+		} else {
+			$rewritten_query =~ s{\s+}{ }sgio;
+			$rewritten_query =~ s{`}{}sgio;
+			$rewritten_query =~ s{\s+\.}{.}sgio;
+			$rewritten_query =~ s{\.\s+}{.}sgio;
+			$rewritten_query =~ s{(SELECT|LEFT|RIGHT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)}{\n$1}sgio;
+			$rewritten_query =~ s{\(}{\n(}sgio;	# Put each set of parenthesis on its own line 
+			$rewritten_query =~ s{\)}{)\n}sgio;	# 
+			$rewritten_query =~ s{[\r\n]+}{\n}sgio;
+			$test .= $rewritten_query;
+		}
+		
+		$test .= "\n\n";
+		
 		if ($rewritten_query =~ m/^\s*SELECT/) {
 			foreach my $ex (0..1) {
 				if (defined $executors->[$ex]) {
