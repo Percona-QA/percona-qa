@@ -183,7 +183,7 @@ sub simplify {
 			$test .= "--enable_warnings\n\n"
 		}
 			
-		my $mysqldump_cmd = "mysqldump -uroot --net_buffer_length=4096 --max_allowed_packet=4096 --no-set-names --compact --force --protocol=tcp --port=$tcp_port $simplified_database ";
+		my $mysqldump_cmd = "mysqldump -uroot --net_buffer_length=4096 --max_allowed_packet=4096 --no-set-names --compact --skip_extended_insert --force --protocol=tcp --port=$tcp_port $simplified_database ";
 		$mysqldump_cmd .= join(' ', @$participating_tables) if $#$participating_tables > -1;
 		open (MYSQLDUMP, "$mysqldump_cmd|") or say("Unable to run $mysqldump_cmd: $!");
 		while (<MYSQLDUMP>) {
