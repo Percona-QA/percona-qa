@@ -27,6 +27,7 @@ use GenTest::Executor;
 use GenTest::Executor::Dummy;
 use GenTest::Generator::FromGrammar;
 use File::Find;
+use Digest::SHA1  qw(sha1_base64);
 
 use Data::Dumper;
 
@@ -96,6 +97,29 @@ sub test_parse {
             print ".*. $f\n";
         }
     }
+
+    sub test_generator_stability {
+        my ($self) = @_;
+        my $executor = GenTest::Executor->newFromDSN("dummy");
+        $self->assert_not_null($executor);
+        $executor->init();
+        $executor->cacheMetaData();
+        my $generator = GenTest::Generator::FromGrammar->new(
+            grammar_file => "conf/examples/example.yy",
+            seed => 0
+            );
+        
+        $self->assert_not_null($generator);
+        my $data;
+        foreach $i (1..1000) {
+            $data .= $generator->next([$executor,undef])->[0];
+        }
+        my $hash =sha1_base64($data);
+        my $orig = "B69h7uYBu9bbxJHHSTQcobYlEAc";
+        $self->assert_str_equals($hash,$orig,"'$hash' different from '$orig'. Generator changed");
+
+    }
+    
 }
 
 
