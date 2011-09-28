@@ -98,15 +98,15 @@ sub test_parse {
         }
     }
 
-    sub test_generator_stability {
-        my ($self) = @_;
+    sub isStable {
+        my ($self, $file, $hash) = @_;
         my $executor = GenTest::Executor->newFromDSN("dummy");
         $self->assert_not_null($executor);
         $executor->init();
         $executor->cacheMetaData();
         my $generator = GenTest::Generator::FromGrammar->new(
-            grammar_file => "conf/examples/example.yy",
-            seed => 0
+            grammar_file => $file,
+            seed => 2
             );
         
         $self->assert_not_null($generator);
@@ -114,12 +114,17 @@ sub test_parse {
         foreach $i (1..1000) {
             $data .= $generator->next([$executor,undef])->[0];
         }
-        my $hash =sha1_base64($data);
-        my $orig = "B69h7uYBu9bbxJHHSTQcobYlEAc";
-        $self->assert_str_equals($hash,$orig,"'$hash' different from '$orig'. Generator changed");
-
+        my $newhash =sha1_base64($data);
+        $self->assert_str_equals($newhash,$hash,"'$newhash' different from '$hash'. Generator or grammar changed for $file");
+        
     }
     
+    sub test_stability {
+        ## Test stability of selected grammars
+        my ($self) = @_;
+        $self->isStable("conf/examples/example.yy", 
+                        "GVRJcbOKijEUdJQjuor4upMdzDo");
+   } 
 }
 
 
