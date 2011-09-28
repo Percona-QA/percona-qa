@@ -33,7 +33,6 @@ use strict;
 use GenTest;
 use GenTest::Result;
 use GenTest::Random;
-use Cwd 'abs_path';
 use DBI;
 
 use constant REPORTER_PRNG		=> 0;
@@ -137,9 +136,10 @@ sub new {
 		"../log/mysqld1.err", # MTRv2 regular layout
 		"../mysql.err"        # DBServer::MySQL layout
 	) {
-		my $possible_path = abs_path($reporter->serverVariable('datadir').'/'.$errorlog_path);
+		my $possible_path = File::Spec->catfile($reporter->serverVariable('datadir'),$errorlog_path);
 		if (-e $possible_path) {
 			$reporter->[REPORTER_SERVER_INFO]->{'errorlog'} = $possible_path;
+			last;
 		}
 	}
 
