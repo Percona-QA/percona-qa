@@ -23,6 +23,9 @@ package ParseAllGrammars;
 use base qw(Test::Unit::TestCase);
 use lib 'lib';
 use GenTest::Grammar;
+use GenTest::Executor;
+use GenTest::Executor::Dummy;
+use GenTest::Generator::FromGrammar;
 use File::Find;
 
 use Data::Dumper;
@@ -61,7 +64,6 @@ sub test_parse {
     #@files = sort((@files));
 
     foreach $f (@filesToTest) {
-        print "... $f\n";
         my $grammar = new GenTest::Grammar(grammar_file => $f);
         $self->assert_not_null($grammar, "Grammar was null: $f");
 
@@ -72,9 +74,27 @@ sub test_parse {
         if ($f =~ m{_redefine\.}) {
             $redefine_file = 1;
         }
-        
-        my $startRule = $grammar->firstMatchingRule("query");
-        $self->assert_not_null($startRule, '"query" rule was null in '.$f) unless defined $redefine_file;
+
+        if (!defined $redefine_file) {
+            print "... $f\n";
+            my $startRule = $grammar->firstMatchingRule("query");
+            $self->assert_not_null($startRule, '"query" rule was null in '.$f);
+            my $executor = GenTest::Executor->newFromDSN("dummy");
+            $self->assert_not_null($executor);
+            $executor->init();
+            $executor->cacheMetaData();
+            my $generator = GenTest::Generator::FromGrammar->new(
+                grammar_file => $f,
+                seed => 0
+                );
+            $self->assert_not_null($generator);
+            foreach $i (1..100) {
+                $generator->next([$executor,undef]);
+            }
+
+        } else {
+            print ".*. $f\n";
+        }
     }
 }
 
