@@ -521,10 +521,6 @@ sub execute {
 	$query =~ s{/\*executor$executor_id (.*?) \*/}{$1}sg;
 	$query =~ s{/\*executor.*?\*/}{}sgo;
     
-    if ($executor->sqltrace) {
-        print "$query;\n";
-    }
-
 	my $dbh = $executor->dbh();
 
 	return GenTest::Result->new( query => $query, status => STATUS_UNKNOWN_ERROR ) if not defined $dbh;
@@ -572,6 +568,14 @@ sub execute {
 	my $err = $sth->err();
 	my $err_type = $err2type{$err} || STATUS_OK;
 	$executor->[EXECUTOR_STATUS_COUNTS]->{$err_type}++ if rqg_debug() && !$silent;
+
+	if ($executor->sqltrace) {
+	    if (defined $err) {
+	        print '# [sqltrace] ERROR '.$err.": $query;\n";
+	    } else {
+	        print "$query;\n";
+	    }
+	}
 
 	my $result;
 
