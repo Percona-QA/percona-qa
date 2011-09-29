@@ -79,11 +79,12 @@ sub test_gentest {
 }
 
 sub test_runall {
-    if ($ENV{TEST_OUT_OF_SOURCE}) {
-        ## runall does not work with out of source builds
-        say("test_runall skipped for out-of-source build");
-        return;
-    }
+    ##if ($ENV{TEST_OUT_OF_SOURCE}) {
+    ##    ## runall does not work with out of source builds
+    ##    say("test_runall skipped for out-of-source build");
+    ##    return;
+    ##}
+
     my $portbase = $ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120;
     my $pb = int(($portbase - 10000) / 10);
     my $self = shift;
