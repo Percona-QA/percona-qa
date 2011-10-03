@@ -52,7 +52,8 @@ use constant MYSQLD_VERSION => 18;
 use constant MYSQLD_DUMPER => 19;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
-use constant MYSQLD_LOG_FILE => "mysql.err";
+use constant MYSQLD_ERRORLOG_FILE => "mysql.err";
+use constant MYSQLD_LOG_FILE => "mysql.log";
 use constant MYSQLD_DEFAULT_PORT =>  19300;
 use constant MYSQLD_DEFAULT_DATABASE => "test";
 
@@ -196,6 +197,10 @@ sub logfile {
     return $_[0]->vardir."/".MYSQLD_LOG_FILE;
 }
 
+sub errorlog {
+    return $_[0]->vardir."/".MYSQLD_ERRORLOG_FILE;
+}
+
 sub libmysqldir {
     return $_[0]->[MYSQLD_LIBMYSQL];
 }
@@ -292,7 +297,7 @@ sub startServer {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
     }
     
-    my $serverlog = $self->vardir."/".MYSQLD_LOG_FILE;
+    my $errorlog = $self->vardir."/".MYSQLD_ERRORLOG_FILE;
     
     if (osWindows) {
         my $proc;
@@ -328,7 +333,7 @@ sub startServer {
                 $waits++;
             }
             if (!-f $self->pidfile) {
-                sayFile($self->logfile);
+                sayFile($self->errorlog);
                 croak("Could not start mysql server, waited ".($waits*$wait_time)." seconds for pid file");
             }
             my $pidfile = $self->pidfile;
@@ -336,7 +341,7 @@ sub startServer {
             $pid =~ m/([0-9]+)/;
             $self->[MYSQLD_SERVERPID] = int($1);
         } else {
-            exec("$command > \"$serverlog\"  2>&1") || croak("Could not start mysql server");
+            exec("$command > \"$errorlog\"  2>&1") || croak("Could not start mysql server");
         }
     }
     
