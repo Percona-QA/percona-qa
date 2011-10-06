@@ -50,6 +50,7 @@ use constant MYSQLD_VALGRIND => 16;
 use constant MYSQLD_VALGRIND_OPTIONS => 17;
 use constant MYSQLD_VERSION => 18;
 use constant MYSQLD_DUMPER => 19;
+use constant MYSQLD_SOURCEDIR => 20;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_ERRORLOG_FILE => "mysql.err";
@@ -63,6 +64,7 @@ sub new {
     my $class = shift;
     
     my $self = $class->SUPER::new({'basedir' => MYSQLD_BASEDIR,
+                                   'sourcedir' => MYSQLD_SOURCEDIR,
                                    'vardir' => MYSQLD_VARDIR,
                                    'port' => MYSQLD_PORT,
                                    'server_options' => MYSQLD_SERVER_OPTIONS,
@@ -101,14 +103,15 @@ sub new {
 
     ## Check for CMakestuff to get hold of source dir:
 
-    my $source;
-    if (-e $self->basedir."/CMakeCache.txt") {
-        open CACHE, $self->basedir."/CMakeCache.txt";
-        while (<CACHE>){
-            if (m/^MySQL_SOURCE_DIR:STATIC=(.*)$/) {
-                $source = $1;
-                say("Found source directory at $source");
-                last;
+    if (not defined $self->sourcedir) {
+        if (-e $self->basedir."/CMakeCache.txt") {
+            open CACHE, $self->basedir."/CMakeCache.txt";
+            while (<CACHE>){
+                if (m/^MySQL_SOURCE_DIR:STATIC=(.*)$/) {
+                    $self->[MYSQLD_SOURCEDIR] = $1;
+                    say("Found source directory at ".$self->[MYSQLD_SOURCEDIR]);
+                    last;
+                }
             }
         }
     }
@@ -118,16 +121,16 @@ sub new {
                       "mysql_test_data_timezone.sql",
                       "fill_help_tables.sql") {
         push(@{$self->[MYSQLD_BOOT_SQL]}, 
-             $self->_find(defined $source?[$self->basedir,$source]:[$self->basedir],
+             $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
                           ["scripts","share/mysql","share"], $file));
     }
     
     $self->[MYSQLD_MESSAGES] = 
-       $self->_findDir(defined $source?[$self->basedir,$source]:[$self->basedir], 
+       $self->_findDir(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir], 
                        ["sql/share","share/mysql","share"], "english/errmsg.sys");
 
     $self->[MYSQLD_CHARSETS] =
-        $self->_findDir(defined $source?[$self->basedir,$source]:[$self->basedir], 
+        $self->_findDir(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir], 
                         ["sql/share/charsets","share/mysql/charsets","share/charsets"], "Index.xml");
                          
     
@@ -155,6 +158,10 @@ sub new {
 
 sub basedir {
     return $_[0]->[MYSQLD_BASEDIR];
+}
+
+sub sourcedir {
+    return $_[0]->[MYSQLD_SOURCEDIR];
 }
 
 sub datadir {
