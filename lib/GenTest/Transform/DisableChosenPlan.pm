@@ -45,8 +45,9 @@ my @explain2switch = (
 	[ 'semijoin'		=> "optimizer_switch='semijoin=off'" ],
 	[ 'Start temporary'     => "optimizer_switch='semijoin=off'" ],
 	[ 'loosescan'		=> "optimizer_switch='loosescan=off'" ],
+	[ '<subquery'		=> "optimizer_switch='materialization=off,in_to_exists=on'" ],
 	[ '<exists>'		=> "optimizer_switch='in_to_exists=off,materialization=on'" ],
-	[ qr{BNLH|BKAH}		=> "optimizer_switch='join_cache_hashed=off'" ],	
+	[ qr{hash|BNLH|BKAH}	=> "optimizer_switch='join_cache_hashed=off'" ],	
 	[ 'BKA'			=> "optimizer_switch='join_cache_bka=off'" ],
 	[ 'incremental'		=> "optimizer_switch='join_cache_incremental=off'" ],
 	[ 'join buffer'		=> "join_cache_level=0" ],
@@ -54,7 +55,10 @@ my @explain2switch = (
 	[ 'mrr'			=> "optimizer_switch='mrr=off'" ],
 	[ 'index condition'	=> "optimizer_switch='index_condition_pushdown=off'" ],
 	[ qr{DERIVED}s		=> "optimizer_switch='derived_merge=on'" ],
-	[ qr{key[0-9]}		=> "optimizer_switch='derived_with_keys=off'" ]
+	[ qr{key[0-9]}		=> "optimizer_switch='derived_with_keys=off'" ],
+	[ 'Key-ordered'		=> "optimizer_switch='mrr_sort_keys=off'" ],
+	[ 'Key-ordered'		=> "optimizer_switch='mrr=off'" ],
+	[ 'Rowid-ordered'	=> "optimizer_switch='mrr=off'" ]
 );
 
 my %explain2count;
@@ -82,7 +86,8 @@ sub transform {
 	if ($original_explain->status() == STATUS_SERVER_CRASHED) {
 		return STATUS_SERVER_CRASHED;
 	} elsif ($original_explain->status() ne STATUS_OK) {
-		return STATUS_ENVIRONMENT_FAILURE;
+		say("Query: $original_query EXPLAIN failed: ".$original_explain->err()." ".$original_explain->errstr());
+		return $original_explain->status();
 	}
 
 	my $original_explain_string = Dumper($original_explain->data())."\n".Dumper($original_explain->warnings());
