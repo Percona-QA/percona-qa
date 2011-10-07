@@ -81,7 +81,7 @@ sub _comment {
     }
 }
 sub simplify {
-	my $simplifier = shift;
+	my ($simplifier,$show_index) = @_;
 
 	my $test;
 
@@ -199,6 +199,25 @@ sub simplify {
 		close (MYSQLDUMP);
 		
 		$test .= "\n\n";
+		
+		# If show_index variable holds a true value then show index is executed on the list of 
+		# participating tables and the output is printed within comments.
+		# This was a request from optimizer team, for them to understand under which circumstances a 
+		# query result difference or transformation has taken place.
+		if (defined $show_index) {
+	        	if ($#$participating_tables > -1) {
+	        		foreach my $tab (@$participating_tables) {
+	        			$test .= "/* # Output of `SHOW INDEX from $tab` for query $query_id:\n";
+	        			my $stmt = $executors->[0]->execute("SHOW INDEX from $simplified_database.$tab");
+	        			$test .= "# |".join("|",@{$stmt->columnNames()})."|\n";
+	        			foreach my $row (@{$stmt->data()}) {
+	        				$test .= "# |".join("|", @$row)."|\n";
+	        			}
+	        			$test .= "# */\n\n";
+	        		}
+	        	}
+	        }
+		
 		
 		# If pretty printing module is available then use it to format the query
 		# otherwise use the existing regex pattern to format the query. 
