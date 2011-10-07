@@ -76,6 +76,8 @@ require Exporter;
 
 	constant2text
 	status2text
+	false
+	true
 );
 
 use strict;
@@ -105,6 +107,9 @@ use constant STATUS_CONTENT_MISMATCH_SELECT		=> 28;	#
 use constant STATUS_ERROR_MISMATCH		=> 31;	# A DML statement caused those errors, and the test can not continue
 use constant STATUS_LENGTH_MISMATCH		=> 32;	# because the databases are in an unknown inconsistent state
 use constant STATUS_CONTENT_MISMATCH		=> 33;	#
+
+use constant false				=> 0;   # Support boolean true and false.
+use constant true				=> 1;   #
 
 # Higher-priority errors
 

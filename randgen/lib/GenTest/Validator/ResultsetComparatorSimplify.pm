@@ -141,8 +141,9 @@ sub validate {
 				executors	=> $executors,
 				results		=> [ $simplified_results , $results ]
 			);
-
-			my $simplified_test = $simplifier_test->simplify();
+			# Set show_index to true, for result difference queries its good to see the index details.
+			my $show_index = true;
+			my $simplified_test = $simplifier_test->simplify($show_index);
 
 			my $tmpfile = tmpdir().$$.time().".test";
 			say("Dumping .test to $tmpfile");

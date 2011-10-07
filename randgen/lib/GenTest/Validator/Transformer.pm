@@ -245,8 +245,10 @@ sub transform {
 			queries => [ $simplified_query, $simplified_transformed_queries_str ]
 		);
 	}
-
-	my $test = $simplifier_test->simplify();
+	
+	# Set show_index to true, for transformed queries its good to see the index details.
+	my $show_index = true;
+	my $test = $simplifier_test->simplify($show_index);
 
 	my $testfile = tmpdir()."/".time().".test";
 	open (TESTFILE , ">$testfile");
