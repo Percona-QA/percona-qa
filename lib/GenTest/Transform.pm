@@ -65,7 +65,10 @@ my %mysql_grouping_errors = (
 	2013 => 'CR_SERVER_LOST',
 	2006 => 'CR_SERVER_GONE_ERROR',
 	1028 => 'ER_FILSORT_ABORT',
-	1615 => 'ER_NEED_REPREPARE'
+	1111 => 'ER_INVALID_GROUP_FUNC_USE',
+	1615 => 'ER_NEED_REPREPARE',
+	1060 => 'DUPLICATE_COLUMN_NAME',
+	1104 => 'ER_TOO_BIG_SELECT'
 );
 
 # List of encountered errors that we want to suppress later in the test run.
@@ -111,7 +114,8 @@ sub transformExecuteValidate {
 			my $part_result = $executor->execute($transformed_query_part);
 			if (
 				($part_result->status() == STATUS_SYNTAX_ERROR) || 
-				($part_result->status() == STATUS_SEMANTIC_ERROR)
+				($part_result->status() == STATUS_SEMANTIC_ERROR) ||
+				($part_result->status() == STATUS_SERVER_CRASHED) 
 			) {
 				# We normally return a critical error when a transformer returns
 				# a semantic or syntactic error, because we want to detect any
