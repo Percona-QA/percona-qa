@@ -55,6 +55,7 @@ my @explain2switch = (
 	[ 'mrr'			=> "optimizer_switch='mrr=off'" ],
 	[ 'index condition'	=> "optimizer_switch='index_condition_pushdown=off'" ],
 	[ qr{DERIVED}s		=> "optimizer_switch='derived_merge=on'" ],
+	[ qr{(?!DERIVED)}s	=> "optimizer_switch='derived_merge=off'" ],
 	[ qr{key[0-9]}		=> "optimizer_switch='derived_with_keys=off'" ],
 	[ 'Key-ordered'		=> "optimizer_switch='mrr_sort_keys=off'" ],
 	[ 'Key-ordered'		=> "optimizer_switch='mrr=off'" ],
