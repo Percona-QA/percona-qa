@@ -100,12 +100,12 @@ sub transform {
 		if ($original_explain_string =~ m{$explain_fragment}si) {
 			$explain2count{"$explain_fragment => $optimizer_switch"}++;
 			my ($switch_name) = $optimizer_switch =~ m{^(.*?)=}sgio;
-			push @transformed_queries, (
+			push @transformed_queries, [
 				'SET @switch_saved = @@'.$switch_name.';',
 				"SET SESSION $optimizer_switch;",
 				"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
 				'SET SESSION '.$switch_name.'=@switch_saved'
-			);
+			];
 		}
 	}
 
