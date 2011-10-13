@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Transform::FromSubquery;
+package GenTest::Transform::ExecuteAsDerived;
 
 require Exporter;
 @ISA = qw(GenTest GenTest::Transform);
@@ -30,7 +30,7 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $orig_query) = @_;
 
-	$orig_query =~ s{SELECT (.*?) FROM (.*)}{SELECT * FROM ( SELECT $1 FROM $2 ) AS FROM_SUBQUERY }sio;
+	$orig_query =~ s{SELECT (.*?) FROM (.*)}{SELECT * FROM ( SELECT $1 FROM $2 ) AS DERIVED_TABLE }sio;
 	return $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
 
 }
