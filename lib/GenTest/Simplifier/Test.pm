@@ -207,7 +207,7 @@ sub simplify {
 		if (defined $show_index) {
 	        	if ($#$participating_tables > -1) {
 	        		foreach my $tab (@$participating_tables) {
-	        			$test .= "/* # Output of `SHOW INDEX from $tab` for query $query_id:\n";
+	        			$test .= "# /* Output of `SHOW INDEX from $tab` for query $query_id:\n";
 	        			my $stmt = $executors->[0]->execute("SHOW INDEX from $simplified_database.$tab");
 	        			$test .= "# |".join("|",@{$stmt->columnNames()})."|\n";
 	        			foreach my $row (@{$stmt->data()}) {
