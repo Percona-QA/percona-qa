@@ -112,8 +112,9 @@ sub simplifyTwo {
             executors   => \@executors ,
             results     => [ $simplified_results , \@results ]
             );
-        # Set show_index to true, for result difference queries its good to see the index details.    
-	my $show_index = true;
+        # show_index is enabled for result difference queries its good to see the index details,
+        # the value 1 is used to define if show_index is enabled, to disable dont assign a value.
+	my $show_index = 1;
         my $simplified_test = $simplifier_test->simplify($show_index);
 
         my $tmpfile = tmpdir().$$.time().".test";

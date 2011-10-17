@@ -200,7 +200,7 @@ sub simplify {
 		
 		$test .= "\n\n";
 		
-		# If show_index variable holds a true value then show index is executed on the list of 
+		# If show_index variable is defined then SHOW INDEX statement is executed on the list of 
 		# participating tables and the output is printed within comments.
 		# This was a request from optimizer team, for them to understand under which circumstances a 
 		# query result difference or transformation has taken place.
@@ -225,7 +225,8 @@ sub simplify {
 			$rewritten_query =~ s{\s+}{ }sgio; # Remove extra spaces.
 			$rewritten_query =~ s{`}{}sgio; # Remove backquotes.
 			$pretty_sql->query($rewritten_query);
-			$test.= $pretty_sql->beautify;
+			$test .= $pretty_sql->beautify;
+			$test .= $test.";\n\n"; # Include the query terminator.
 		} else {
 			$rewritten_query =~ s{\s+}{ }sgio;
 			$rewritten_query =~ s{`}{}sgio;
@@ -235,7 +236,7 @@ sub simplify {
 			$rewritten_query =~ s{\(}{\n(}sgio;	# Put each set of parenthesis on its own line 
 			$rewritten_query =~ s{\)}{)\n}sgio;	# 
 			$rewritten_query =~ s{[\r\n]+}{\n}sgio;
-			$test .= $rewritten_query;
+			$test .= $rewritten_query.";\n\n"; 		
 		}
 		
 		$test .= "\n\n";
