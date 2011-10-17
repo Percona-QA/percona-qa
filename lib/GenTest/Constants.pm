@@ -108,9 +108,6 @@ use constant STATUS_ERROR_MISMATCH		=> 31;	# A DML statement caused those errors
 use constant STATUS_LENGTH_MISMATCH		=> 32;	# because the databases are in an unknown inconsistent state
 use constant STATUS_CONTENT_MISMATCH		=> 33;	#
 
-use constant false				=> 0;   # Support boolean true and false.
-use constant true				=> 1;   #
-
 # Higher-priority errors
 
 use constant STATUS_CRITICAL_FAILURE		=> 100;	# Boundary between critical and non-critical errors
