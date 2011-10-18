@@ -46,8 +46,8 @@ sub transform {
 	return [
 		"DROP TABLE IF EXISTS $table_name",
 		"CREATE TABLE $table_name $original_query",
-		"SELECT * FROM $table_name WHERE (".join(', ', @{$original_result->columnNames()}).") IN ( $original_query ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"SELECT * FROM $table_name WHERE (".join(', ', @{$original_result->columnNames()}).") NOT IN ( $original_query ) /* TRANSFORM_OUTCOME_EMPTY_RESULT */",
+		"SELECT * FROM $table_name WHERE (".join(', ', map { "`$_`" } @{$original_result->columnNames()}).") IN ( $original_query ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"SELECT * FROM $table_name WHERE (".join(', ', map { "`$_`" } @{$original_result->columnNames()}).") NOT IN ( $original_query ) /* TRANSFORM_OUTCOME_EMPTY_RESULT */",
 		"DROP TABLE $table_name",
 	];
 }

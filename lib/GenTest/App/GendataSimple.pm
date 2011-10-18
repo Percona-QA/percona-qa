@@ -219,7 +219,11 @@ sub gen_table {
 	};
 
 	if (defined $views) {
-		$executor->execute('CREATE VIEW view_'.$name.' AS SELECT * FROM '.$name);
+		if ($views ne '') {
+			$executor->execute("CREATE ALGORITHM=$views VIEW view_".$name.' AS SELECT * FROM '.$name);
+		} else {
+			$executor->execute('CREATE VIEW view_'.$name.' AS SELECT * FROM '.$name);
+		}
 	}
 
 	my @values;
