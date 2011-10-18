@@ -24,6 +24,7 @@ use strict;
 use lib 'lib';
 
 use GenTest;
+use GenTest::Constants;
 use GenTest::Grammar;
 use GenTest::Grammar::Rule;
 
