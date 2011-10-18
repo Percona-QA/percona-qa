@@ -65,7 +65,7 @@ sub configure {
             'ExecuteAsUpdateDelete',
             'ExecuteAsWhereSubquery',
             'ExecuteAsTrigger',
-            'FromSubquery',
+            'ExecuteAsDerived',
             'Having',
             'InlineSubqueries',
             'InlineVirtualColumns',

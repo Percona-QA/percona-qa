@@ -114,7 +114,7 @@ my $opt_result = GetOptions(
 	'xml-output=s'	=> \$xml_output,
 	'valgrind'	=> \$valgrind,
 	'valgrind-xml'	=> \$valgrind_xml,
-	'views'		=> \$views,
+	'views:s'	=> \$views,
 	'sqltrace' => \$sqltrace,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
@@ -417,7 +417,7 @@ push @gentest_options, "--seed=$seed" if defined $seed;
 push @gentest_options, "--mask=$mask" if ((defined $mask) && (not defined $no_mask));
 push @gentest_options, "--mask-level=$mask_level" if defined $mask_level;
 push @gentest_options, "--rows=$rows" if defined $rows;
-push @gentest_options, "--views" if defined $views;
+push @gentest_options, "--views=$views" if defined $views;
 push @gentest_options, "--varchar-length=$varchar_len" if defined $varchar_len;
 push @gentest_options, "--xml-output=$xml_output" if defined $xml_output;
 push @gentest_options, "--report-xml-tt" if defined $report_xml_tt;

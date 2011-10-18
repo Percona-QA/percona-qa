@@ -202,7 +202,7 @@ sub run {
     $table_perms[TABLE_PK] = $tables->{pk} || $tables->{primary_key} || [ 'integer auto_increment' ];
     $table_perms[TABLE_ROW_FORMAT] = $tables->{row_formats} || [ undef ];
     
-    $table_perms[TABLE_VIEWS] = $tables->{views} || (defined $self->views() ? [ "" ] : undef );
+    $table_perms[TABLE_VIEWS] = $tables->{views} || (defined $self->views() ? [ $self->views() ] : undef );
     $table_perms[TABLE_MERGES] = $tables->{merges} || undef ;
     
     $table_perms[TABLE_NAMES] = $tables->{names} || [ ];
@@ -457,8 +457,18 @@ sub run {
         
         if (defined $table_perms[TABLE_VIEWS]) {
             foreach my $view_id (0..$#{$table_perms[TABLE_VIEWS]}) {
-                my $view_name = 'v'.$table->[TABLE_NAME]."_$view_id";
-                $executor->execute("CREATE OR REPLACE ".uc($table_perms[TABLE_VIEWS]->[$view_id])." VIEW `$view_name` AS SELECT * FROM `$table->[TABLE_NAME]`");
+		my $view_name;
+		if ($#{$table_perms[TABLE_VIEWS]} == 0) {
+		   $view_name = 'view_'.$table->[TABLE_NAME];
+		} else {
+		   $view_name = 'view_'.$table->[TABLE_NAME]."_$view_id";
+		}
+
+		if ($table_perms[TABLE_VIEWS]->[$view_id] ne '') {
+	                $executor->execute("CREATE OR REPLACE ALGORITHM=".uc($table_perms[TABLE_VIEWS]->[$view_id])." VIEW `$view_name` AS SELECT * FROM `$table->[TABLE_NAME]`");
+		} else {
+	                $executor->execute("CREATE OR REPLACE VIEW `$view_name` AS SELECT * FROM `$table->[TABLE_NAME]`");
+		}
             }
         }
         
