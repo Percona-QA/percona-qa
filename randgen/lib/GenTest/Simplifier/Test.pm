@@ -81,7 +81,7 @@ sub _comment {
     }
 }
 sub simplify {
-	my $simplifier = shift;
+	my ($simplifier,$show_index) = @_;
 
 	my $test;
 
@@ -200,13 +200,33 @@ sub simplify {
 		
 		$test .= "\n\n";
 		
+		# If show_index variable is defined then SHOW INDEX statement is executed on the list of 
+		# participating tables and the output is printed within comments.
+		# This was a request from optimizer team, for them to understand under which circumstances a 
+		# query result difference or transformation has taken place.
+		if (defined $show_index) {
+	        	if ($#$participating_tables > -1) {
+	        		foreach my $tab (@$participating_tables) {
+	        			$test .= "# /* Output of `SHOW INDEX from $tab` for query $query_id:\n";
+	        			my $stmt = $executors->[0]->execute("SHOW INDEX from $simplified_database.$tab");
+	        			$test .= "# |".join("|",@{$stmt->columnNames()})."|\n";
+	        			foreach my $row (@{$stmt->data()}) {
+	        				$test .= "# |".join("|", @$row)."|\n";
+	        			}
+	        			$test .= "# */\n\n";
+	        		}
+	        	}
+	        }
+		
+		
 		# If pretty printing module is available then use it to format the query
 		# otherwise use the existing regex pattern to format the query. 
 		if ( defined $pretty_sql) {
 			$rewritten_query =~ s{\s+}{ }sgio; # Remove extra spaces.
 			$rewritten_query =~ s{`}{}sgio; # Remove backquotes.
 			$pretty_sql->query($rewritten_query);
-			$test.= $pretty_sql->beautify;
+			$test .= $pretty_sql->beautify;
+			$test .= $test.";\n\n"; # Include the query terminator.
 		} else {
 			$rewritten_query =~ s{\s+}{ }sgio;
 			$rewritten_query =~ s{`}{}sgio;
@@ -216,7 +236,7 @@ sub simplify {
 			$rewritten_query =~ s{\(}{\n(}sgio;	# Put each set of parenthesis on its own line 
 			$rewritten_query =~ s{\)}{)\n}sgio;	# 
 			$rewritten_query =~ s{[\r\n]+}{\n}sgio;
-			$test .= $rewritten_query;
+			$test .= $rewritten_query.";\n\n"; 		
 		}
 		
 		$test .= "\n\n";
