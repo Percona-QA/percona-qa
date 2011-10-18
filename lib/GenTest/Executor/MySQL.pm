@@ -187,6 +187,8 @@ use constant	ER_CANT_USE_OPTION_HERE		=> 1234;
 use constant	ER_TOO_LONG_KEY			=> 1071;
 use constant	ER_TABLE_CANT_HANDLE_BLOB	=> 1163;
 use constant	ER_TOO_MANY_ROWS		=> 1172;
+use constant	ER_KEY_DOES_NOT_EXITS		=> 1176;
+use constant	ER_INVALID_GROUP_FUNC_USE	=> 1111;
 
 use constant	ER_PARTITION_MGMT_ON_NONPARTITIONED	=> 1505;
 use constant	ER_DROP_PARTITION_NON_EXISTENT		=> 1507;
@@ -219,6 +221,7 @@ use constant  	ER_VIEW_INVALID	=> 1356 ;
 
 use constant	ER_NO_SUCH_THREAD			=> 1094;
 use constant	ER_QUERY_INTERRUPTED			=> 1317;
+use constant	ER_FILSORT_ABORT			=> 1028;
 
 use constant	ER_UNKNOWN_TABLE			=> 1109;
 use constant	ER_FILE_NOT_FOUND			=> 1017;
@@ -371,6 +374,8 @@ my %err2type = (
 	ER_TOO_BIG_SELECT()		=> STATUS_SEMANTIC_ERROR,
 	ER_TABLE_CANT_HANDLE_BLOB()	=> STATUS_SEMANTIC_ERROR,
 	ER_TOO_MANY_ROWS()		=> STATUS_SEMANTIC_ERROR,
+	ER_KEY_DOES_NOT_EXITS()		=> STATUS_SEMANTIC_ERROR,
+	ER_INVALID_GROUP_FUNC_USE()	=> STATUS_SEMANTIC_ERROR,
 
 	ER_PARTITION_MGMT_ON_NONPARTITIONED()	=> STATUS_SEMANTIC_ERROR,
 	ER_DROP_LAST_PARTITION()		=> STATUS_SEMANTIC_ERROR,
@@ -400,6 +405,7 @@ my %err2type = (
 
 	ER_NO_SUCH_THREAD()			=> STATUS_SEMANTIC_ERROR,
 	ER_QUERY_INTERRUPTED()			=> STATUS_SEMANTIC_ERROR,
+	ER_FILSORT_ABORT()			=> STATUS_SEMANTIC_ERROR,
 
 	ER_UNKNOWN_TABLE()			=> STATUS_SEMANTIC_ERROR,
 	ER_FILE_NOT_FOUND()			=> STATUS_SEMANTIC_ERROR,
@@ -728,8 +734,10 @@ sub explain {
 	}
 
 	$executor->dbh()->do("EXPLAIN EXTENDED $query");
-	my $explain_extended = $executor->dbh()->selectrow_arrayref("SHOW WARNINGS")->[2];
-	push @explain_fragments, $explain_extended =~ m{<[a-z_0-9\-]*?>}sgo;
+	my $explain_extended = $executor->dbh()->selectrow_arrayref("SHOW WARNINGS");
+	if (defined $explain_extended) {
+		push @explain_fragments, $explain_extended->[2] =~ m{<[a-z_0-9\-]*?>}sgo;
+	}
 	
 	foreach my $explain_fragment (@explain_fragments) {
 		$executor->[EXECUTOR_EXPLAIN_COUNTS]->{$explain_fragment}++;
@@ -769,8 +777,8 @@ sub DESTROY {
 		print Dumper $executor->[EXECUTOR_EXPLAIN_COUNTS];
 		say("Errors:");
 		print Dumper $executor->[EXECUTOR_ERROR_COUNTS];
-		say("Rare EXPLAIN items:");
-		print Dumper $executor->[EXECUTOR_EXPLAIN_QUERIES];
+#		say("Rare EXPLAIN items:");
+#		print Dumper $executor->[EXECUTOR_EXPLAIN_QUERIES];
 		say("Statuses: ".join(', ', map { status2text($_).": ".$executor->[EXECUTOR_STATUS_COUNTS]->{$_}." queries" } keys %{$executor->[EXECUTOR_STATUS_COUNTS]}));
 	}
 }
