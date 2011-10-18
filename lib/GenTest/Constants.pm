@@ -76,6 +76,8 @@ require Exporter;
 
 	constant2text
 	status2text
+	false
+	true
 );
 
 use strict;

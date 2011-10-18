@@ -577,7 +577,10 @@ sub execute {
 
 	if ($executor->sqltrace) {
 	    if (defined $err) {
-	        print '# [sqltrace] ERROR '.$err.": $query;\n";
+	        # we need to prefix all lines of multi-line statements if there is an error
+	        my $trace_query = $query;
+	        $trace_query =~ s/\n/\n# [sqltrace]    /g;
+	        print '# [sqltrace] ERROR '.$err.": $trace_query;\n";
 	    } else {
 	        print "$query;\n";
 	    }
