@@ -96,7 +96,7 @@ sub test_create_server {
 
     $server->stopServer;
 
-    sayFile($server->logfile);
+    sayFile($server->errorlog);
 
     $server = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                            vardir => $vardir,
@@ -109,7 +109,7 @@ sub test_create_server {
     push @pids,$server->serverpid;
     $server->stopServer;
 
-    sayFile($server->logfile);
+    sayFile($server->errorlog);
 }
 
 sub test_crash_and_core {
@@ -159,7 +159,7 @@ sub test_crash_and_core {
         
         sleep(1);
 
-        sayFile($server->logfile);
+        sayFile($server->errorlog);
 
         say("Core: ". $server->corefile);
 

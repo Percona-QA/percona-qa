@@ -88,8 +88,8 @@ sub test_create_server {
     
     $server->stopServer;
     
-    sayFile($server->master->logfile);
-    sayFile($server->slave->logfile);
+    sayFile($server->master->errorlog);
+    sayFile($server->slave->errorlog);
 }
 
 sub test_create_repl {
@@ -134,8 +134,8 @@ sub test_create_repl {
     
     $server->stopServer;
     
-    sayFile($server->master->logfile);
-    sayFile($server->slave->logfile);
+    sayFile($server->master->errorlog);
+    sayFile($server->slave->errorlog);
 }
 
 1;
