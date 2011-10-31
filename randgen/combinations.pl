@@ -49,7 +49,7 @@ $SIG{CHLD} = "IGNORE" if osWindows();
 
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
-    $report_xml_tt_dest, $force, $no_mask, $exhaustive, $debug, $noLog, 
+    $report_xml_tt_dest, $force, $no_mask, $exhaustive, $start_combination, $debug, $noLog, 
     $threads, $new, $servers, $noshuffle, $workdir);
 
 my @basedirs=('','');
@@ -66,8 +66,8 @@ my $opt_result = GetOptions(
 	'basedir=s' => \$basedirs[0],
 	'basedir1=s' => \$basedirs[0],
 	'basedir2=s' => \$basedirs[1],
-    'workdir=s' => \$workdir,
-    'vardir=s' => \$workdir,
+	'workdir=s' => \$workdir,
+	'vardir=s' => \$workdir,
 	'trials=i' => \$trials,
 	'duration=i' => \$duration,
 	'seed=s' => \$seed,
@@ -81,6 +81,7 @@ my $opt_result = GetOptions(
 	'report-xml-tt-type=s' => \$report_xml_tt_type,
 	'report-xml-tt-dest=s' => \$report_xml_tt_dest,
     'run-all-combinations-once' => \$exhaustive,
+    'start-combination=i' => \$start_combination,
     'debug' => \$debug,
     'no-log' => \$noLog,
     'parallel=i' => \$threads,
@@ -225,7 +226,8 @@ sub doExhaustive {
         foreach my $i (0 .. $#idx) {
             push @comb, $combinations->[$i]->[$idx[$i]];
         }
-        my $comb_str = join(' ', @comb);        
+        my $comb_str = join(' ', @comb);
+        next if $trial_counter < $start_combination;
         doCombination($trial_counter,$comb_str,"combination");
     }
 }
