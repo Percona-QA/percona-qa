@@ -121,7 +121,7 @@ my $opt_result = GetOptions(
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
-    'sqltrace' => \$sqltrace,
+    'sqltrace:s' => \$sqltrace,
     'logfile=s' => \$logfile,
     'logconf=s' => \$logconf,
     'report-tt-logdir=s' => \$report_tt_logdir,
@@ -140,6 +140,29 @@ if (defined $logfile && defined $logger) {
 if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 	help();
 	exit($help ? 0 : 1);
+}
+
+if (defined $sqltrace) {
+    # --sqltrace may have a string value (optional). 
+    # Allowed values for --sqltrace:
+    my %sqltrace_legal_values = (
+        'MarkErrors'    => 1  # Prefixes invalid SQL statements for easier post-processing
+    );
+    
+    if (length($sqltrace) > 0) {
+        # A value is given, check if it is legal.
+        if (not exists $sqltrace_legal_values{$sqltrace}) {
+            say("Invalid value for --sqltrace option: '$sqltrace'");
+            say("Valid values are: ".join(', ', keys(%sqltrace_legal_values)));
+            say("No value means that default/plain sqltrace will be used.");
+            exit(STATUS_ENVIRONMENT_FAILURE);
+        }
+    } else {
+        # If no value is given, GetOpt will assign the value '' (empty string).
+        # We interpret this as plain tracing (no marking of errors, prefixing etc.).
+        # Better to use 1 instead of empty string for comparisons later.
+        $sqltrace = 1;
+    }
 }
 
 say("Copyright (c) 2010,2011 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
@@ -415,7 +438,7 @@ $gentestProps->debug(1) if defined $debug;
 $gentestProps->filter($filter) if defined $filter;
 $gentestProps->notnull($notnull) if defined $notnull;
 $gentestProps->valgrind(1) if $valgrind;
-$gentestProps->sqltrace(1) if $sqltrace;
+$gentestProps->sqltrace($sqltrace) if $sqltrace;
 $gentestProps->querytimeout($querytimeout) if defined $querytimeout;
 $gentestProps->testname($testname) if $testname;
 $gentestProps->logfile($logfile) if defined $logfile;
@@ -526,7 +549,8 @@ $0 - Run a complete random query generation test, including server start with re
     --mask-level: Grammar mask level. Passed to gentest.pl
     --notnull   : Generate all fields with NOT NULL
     --rows      : No of rows. Passed to gentest.pl
-    --sqltrace  : Print all generated SQL statements
+    --sqltrace  : Print all generated SQL statements. 
+                  Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
     --varchar-length: length of strings. passed to gentest.pl
     --xml-outputs: Passed to gentest.pl
     --views     : Generate views. Passed to gentest.pl
