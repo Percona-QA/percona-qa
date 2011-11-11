@@ -115,7 +115,7 @@ my $opt_result = GetOptions(
 	'valgrind'	=> \$valgrind,
 	'valgrind-xml'	=> \$valgrind_xml,
 	'views:s'	=> \$views,
-	'sqltrace' => \$sqltrace,
+	'sqltrace:s' => \$sqltrace,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
@@ -135,7 +135,6 @@ if (defined $logfile && defined $logger) {
     }
 }
 
-
 $ENV{RQG_DEBUG} = 1 if defined $debug;
 
 $validators = join(',', @$validators) if defined $validators;
@@ -153,6 +152,23 @@ if (!$opt_result) {
 } elsif (not defined $grammar_file) {
 	say("No grammar file provided via --grammar");
 	exit(0);
+}
+
+# --sqltrace may have a string value (optional). 
+# Allowed values for --sqltrace:
+my %sqltrace_legal_values = (
+    'MarkErrors' => 1 # Prefixes invalid SQL statements for easier post-processing
+);
+
+# If no value is given, GetOpt will assign the value '' (empty string).
+if (length($sqltrace) > 0) {
+    # A value is given, check if it is legal.
+    if (not exists $sqltrace_legal_values{$sqltrace}) {
+        say("Invalid value for --sqltrace option: '$sqltrace'");
+        say("Valid values are: ".join(', ', keys(%sqltrace_legal_values)));
+        say("No value means that default/plain sqltrace will be used.");
+        exit(STATUS_ENVIRONMENT_FAILURE);
+    }
 }
 
 say("Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
@@ -428,7 +444,7 @@ push @gentest_options, "--filter=$filter" if defined $filter;
 push @gentest_options, "--valgrind" if defined $valgrind;
 push @gentest_options, "--valgrind-xml" if defined $valgrind_xml;
 push @gentest_options, "--testname=$testname" if defined $testname;
-push @gentest_options, "--sqltrace" if defined $sqltrace;
+push @gentest_options, "--sqltrace".(length($sqltrace)>0 ? "=$sqltrace" : '' ) if defined $sqltrace;
 push @gentest_options, "--logfile=$logfile" if defined $logfile;
 push @gentest_options, "--logconf=$logconf" if defined $logconf;
 push @gentest_options, "--report-tt-logdir=$report_tt_logdir" if defined $report_tt_logdir;
@@ -499,7 +515,8 @@ $0 - Run a complete random query generation test, including server start with re
     --report-xml-tt-type: Passed to gentest.pl
     --report-xml-tt-dest: Passed to gentest.pl
     --testname  : Name of test, used for reporting purposes
-    --sqltrace  : Print all generated SQL statements
+    --sqltrace  : Print all generated SQL statements. 
+                  Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
     --views     : Generate views. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
