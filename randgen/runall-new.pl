@@ -142,25 +142,27 @@ if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
 	exit($help ? 0 : 1);
 }
 
-# --sqltrace may have a string value (optional). 
-# Allowed values for --sqltrace:
-my %sqltrace_legal_values = (
-    'MarkErrors'    => 1  # Prefixes invalid SQL statements for easier post-processing
-);
-
-if (length($sqltrace) > 0) {
-    # A value is given, check if it is legal.
-    if (not exists $sqltrace_legal_values{$sqltrace}) {
-        say("Invalid value for --sqltrace option: '$sqltrace'");
-        say("Valid values are: ".join(', ', keys(%sqltrace_legal_values)));
-        say("No value means that default/plain sqltrace will be used.");
-        exit(STATUS_ENVIRONMENT_FAILURE);
+if (defined $sqltrace) {
+    # --sqltrace may have a string value (optional). 
+    # Allowed values for --sqltrace:
+    my %sqltrace_legal_values = (
+        'MarkErrors'    => 1  # Prefixes invalid SQL statements for easier post-processing
+    );
+    
+    if (length($sqltrace) > 0) {
+        # A value is given, check if it is legal.
+        if (not exists $sqltrace_legal_values{$sqltrace}) {
+            say("Invalid value for --sqltrace option: '$sqltrace'");
+            say("Valid values are: ".join(', ', keys(%sqltrace_legal_values)));
+            say("No value means that default/plain sqltrace will be used.");
+            exit(STATUS_ENVIRONMENT_FAILURE);
+        }
+    } else {
+        # If no value is given, GetOpt will assign the value '' (empty string).
+        # We interpret this as plain tracing (no marking of errors, prefixing etc.).
+        # Better to use 1 instead of empty string for comparisons later.
+        $sqltrace = 1;
     }
-} else {
-    # If no value is given, GetOpt will assign the value '' (empty string).
-    # We interpret this as plain tracing (no marking of errors, prefixing etc.).
-    # Better to use 1 instead of empty string for comparisons later.
-    $sqltrace = 1;
 }
 
 say("Copyright (c) 2010,2011 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.");
