@@ -576,8 +576,9 @@ sub execute {
 	$executor->[EXECUTOR_STATUS_COUNTS]->{$err_type}++ if rqg_debug() && !$silent;
 
 	if ($executor->sqltrace) {
-	    if (defined $err) {
-	        # we need to prefix all lines of multi-line statements if there is an error
+	    if (defined $err && ($executor->sqltrace eq 'MarkErrors')) {
+	        # Mark invalid queries in the trace by prefixing each line.
+	        # We need to prefix all lines of multi-line statements.
 	        my $trace_query = $query;
 	        $trace_query =~ s/\n/\n# [sqltrace]    /g;
 	        print '# [sqltrace] ERROR '.$err.": $trace_query;\n";
