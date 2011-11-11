@@ -71,6 +71,64 @@ sub tear_down {
     unlink $self->{logfile};
 }
 
+sub test_sqltrace_disabled_runall {
+    my $self = shift;
+    ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
+    if ($ENV{RQG_MYSQL_BASE}) {
+        # We do *not* specify --sqltrace, so no statements should be traced.
+        my $cmd = $self->{rqg_command_runall}.' --mtr-build-thread='.$self->{pb}
+        .' > '.$self->{logfile}.' 2>&1';
+        $self->annotate("RQG command line: $cmd");
+        my $status = system($cmd);
+        my $expected = STATUS_OK;
+        my $actual = $status >> 8;
+        $self->assert_num_equals($expected, $actual, 
+            "Wrong exit status from runall.pl, expected $expected and got $actual");
+        
+        # Read log and count lines starting with "SELECT pk".
+        # We expect 0 lines on basis of test grammar and RQG settings.
+        my $expected = 0;
+        my $lines = 0;
+        open(LOGFILE, "<", $self->{logfile}) or $self->assert("Unable to read log file ".$self->{logfile});
+        while (my $line = <LOGFILE>) {
+            # we look for both prefixed and non-prefixed lines with "SELECT pk"
+            $lines++ if $line =~ m{^(# \[sqltrace\].*|)\s*SELECT pk};
+        }
+        close(LOGFILE);
+        $self->assert_num_equals($expected, $lines, 
+                "Unexpected number of traced statements: Expected $expected, got $lines");
+    }
+}
+
+sub test_sqltrace_disabled_runall_new {
+    my $self = shift;
+    ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
+    if ($ENV{RQG_MYSQL_BASE}) {
+        # We do *not* specify --sqltrace, so no statements should be traced.
+        my $cmd = $self->{rqg_command_runall_new}.' --mtr-build-thread='.$self->{pb}
+        .' > '.$self->{logfile}.' 2>&1';
+        $self->annotate("RQG command line: $cmd");
+        my $status = system($cmd);
+        my $expected = STATUS_OK;
+        my $actual = $status >> 8;
+        $self->assert_num_equals($expected, $actual, 
+            "Wrong exit status from runall-new.pl, expected $expected and got $actual");
+        
+        # Read log and count lines starting with "SELECT pk".
+        # We expect 0 lines on basis of test grammar and RQG settings.
+        my $expected = 0;
+        my $lines = 0;
+        open(LOGFILE, "<", $self->{logfile}) or $self->assert("Unable to read log file ".$self->{logfile});
+        while (my $line = <LOGFILE>) {
+            # we look for both prefixed and non-prefixed lines with "SELECT pk"
+            $lines++ if $line =~ m{^(# \[sqltrace\].*|)\s*SELECT pk};
+        }
+        close(LOGFILE);
+        $self->assert_num_equals($expected, $lines, 
+                "Unexpected number of traced statements: Expected $expected, got $lines");
+    }
+}
+
 sub test_sqltrace_default_runall {
     my $self = shift;
     ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
