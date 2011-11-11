@@ -45,6 +45,8 @@ sub transform {
 
 	# We skip LIMIT queries because LIMIT N can not be converted into LIMIT ( SELECT ... ) 
 	return STATUS_WONT_HANDLE if $orig_query =~ m{LIMIT}sio;
+	return STATUS_WONT_HANDLE if $orig_query =~ m{GROUP BY \d}sio;
+	return STATUS_WONT_HANDLE if $orig_query =~ m{ORDER BY \d}sio;
 
 	my @transformed_queries;
 
