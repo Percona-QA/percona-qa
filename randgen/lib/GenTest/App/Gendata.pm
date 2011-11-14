@@ -71,6 +71,7 @@ use constant GD_VARCHAR_LENGTH => 7;
 use constant GD_SERVER_ID => 8;
 use constant GD_SQLTRACE => 9;
 use constant GD_NOTNULL => 10;
+use constant GD_SHORT_COLUMN_NAMES => 11;
 
 sub new {
     my $class = shift;
@@ -85,6 +86,7 @@ sub new {
         'views' => GD_VIEWS,
         'varchar_length' => GD_VARCHAR_LENGTH,
         'notnull' => GD_NOTNULL,	
+        'short_column_names' => GD_SHORT_COLUMN_NAMES,	
         'server_id' => GD_SERVER_ID,
         'sqltrace' => GD_SQLTRACE},@_);
 
@@ -147,6 +149,9 @@ sub sqltrace {
     return $_[0]->[GD_SQLTRACE];
 }
 
+sub short_column_names {
+    return $_[0]->[GD_SHORT_COLUMN_NAMES];
+}
 
 
 sub run {
@@ -284,7 +289,7 @@ sub run {
     
 # If no fields were defined, continue with just the primary key.
     @fields = () if ($#fields == 0) && ($fields[0]->[FIELD_TYPE] eq '');
-    
+    my $field_no=0;
     foreach my $field_id (0..$#fields) {
         my $field = $fields[$field_id];
         next if not defined $field;
@@ -293,12 +298,16 @@ sub run {
 #	$field_copy[FIELD_INDEX] = 'nokey' if $field_copy[FIELD_INDEX] eq '';
         
         my $field_name;
-        $field_name = "col_".join('_', grep { $_ ne '' } @field_copy);
-        $field_name =~ s{[^A-Za-z0-9]}{_}sgio;
-        $field_name =~ s{ }{_}sgio;
-        $field_name =~ s{_+}{_}sgio;
-        $field_name =~ s{_+$}{}sgio;
-        
+        if ($self->[GD_SHORT_COLUMN_NAMES]) {
+            $field_name = 'c'.($field_no++);
+        } else {
+            $field_name = "col_".join('_', grep { $_ ne '' } @field_copy);
+            $field_name =~ s{[^A-Za-z0-9]}{_}sgio;
+            $field_name =~ s{ }{_}sgio;
+            $field_name =~ s{_+}{_}sgio;
+            $field_name =~ s{_+$}{}sgio;
+            
+        }
         $field->[FIELD_NAME] = $field_name;
         
         if (
@@ -387,7 +396,7 @@ sub run {
         
         $table->[TABLE_SQL] = join(' ' , grep { $_ ne '' } @table_copy);
     }	
-    
+
     foreach my $schema (@schema_perms) {
         $executor->execute("CREATE SCHEMA /*!IF NOT EXISTS*/ $schema");
         $executor->sqltrace($self->sqltrace);
