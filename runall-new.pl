@@ -68,7 +68,8 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
-    $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask);
+    $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
+    $short_column_names);
 
 my $gendata=''; ## default simple gendata
 
@@ -104,6 +105,7 @@ my $opt_result = GetOptions(
 	'transformers=s@' => \@transformers,
 	'gendata:s' => \$gendata,
 	'notnull' => \$notnull,
+	'short_column_names' => \$short_column_names,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
     'mask-level=i' => \$mask_level,
@@ -382,6 +384,7 @@ my $gentestProps = GenTest::Properties->new(
               'start-dirty',
               'filter',
               'notnull',
+              'short_column_names',
               'valgrind',
               'valgrind-xml',
               'testname',
@@ -437,6 +440,7 @@ $gentestProps->property('xml-output',$xml_output) if defined $xml_output;
 $gentestProps->debug(1) if defined $debug;
 $gentestProps->filter($filter) if defined $filter;
 $gentestProps->notnull($notnull) if defined $notnull;
+$gentestProps->short_coulmn_names($short_column_names) if defined $short_column_names;
 $gentestProps->valgrind(1) if $valgrind;
 $gentestProps->sqltrace($sqltrace) if $sqltrace;
 $gentestProps->querytimeout($querytimeout) if defined $querytimeout;
