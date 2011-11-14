@@ -178,9 +178,9 @@ if ($thread_id > 0) {
     ## Child
     ##say("[$thread_id] Summary of various interesting strings from the logs:");
     ##say("[$thread_id] ". Dumper \%results);
-    foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
-        system("grep -i '$string' $workdir/trial*log");
-    } 
+    #foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
+    #    system("grep -i '$string' $workdir/trial*log");
+    #} 
     
     say("[$thread_id] will exit with exit status ".status2text($max_result).
         "($max_result)");
