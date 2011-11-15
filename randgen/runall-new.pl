@@ -69,7 +69,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
-    $short_column_names);
+    $short_column_names, $strict_fields);
 
 my $gendata=''; ## default simple gendata
 
@@ -106,6 +106,7 @@ my $opt_result = GetOptions(
 	'gendata:s' => \$gendata,
 	'notnull' => \$notnull,
 	'short_column_names' => \$short_column_names,
+	'strict_fields' => \$strict_fields,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
     'mask-level=i' => \$mask_level,
@@ -385,6 +386,7 @@ my $gentestProps = GenTest::Properties->new(
               'filter',
               'notnull',
               'short_column_names',
+              'strict_fields',
               'valgrind',
               'valgrind-xml',
               'testname',
@@ -441,6 +443,7 @@ $gentestProps->debug(1) if defined $debug;
 $gentestProps->filter($filter) if defined $filter;
 $gentestProps->notnull($notnull) if defined $notnull;
 $gentestProps->short_coulmn_names($short_column_names) if defined $short_column_names;
+$gentestProps->strict_fields($strict_fields) if defined $strict_fields;
 $gentestProps->valgrind(1) if $valgrind;
 $gentestProps->sqltrace($sqltrace) if $sqltrace;
 $gentestProps->querytimeout($querytimeout) if defined $querytimeout;

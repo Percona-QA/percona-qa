@@ -130,7 +130,8 @@ sub run {
                                                       views => $self->config->views,
                                                       varchar_length => $self->config->property('varchar-length'),
                                                       sqltrace => $self->config->sqltrace,
-                                                      short_column_names=> $self->config->short_column_names,
+                                                      short_column_names => $self->config->short_column_names,
+                                                      strict_fields => $self->config->strict_fields,
                                                       notnull => $self->config->notnull);
             }
             $gendata_result = $datagen->run();
