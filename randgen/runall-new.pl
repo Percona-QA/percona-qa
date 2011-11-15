@@ -271,8 +271,6 @@ if ($rpl_mode ne '') {
     if (defined $mysqld_options[0]) {
         push @options, @{$mysqld_options[0]};
     }
-    push @options,"--general-log";
-    
     $rplsrv = DBServer::MySQL::ReplMySQLd->new(basedir => $basedirs[0],
                                                master_vardir => $vardirs[0],
                                                master_port => $ports[0],
@@ -282,6 +280,7 @@ if ($rpl_mode ne '') {
                                                server_options => \@options,
                                                valgrind => $valgrind,
                                                valgrind_options => \@valgrind_options,
+                                               general_log => 1,
                                                start_dirty => $start_dirty);
     
     my $status = $rplsrv->startServer();
@@ -318,15 +317,14 @@ if ($rpl_mode ne '') {
         if (defined $mysqld_options[$server_id]) {
             push @options, @{$mysqld_options[$server_id]};
         }
-        push @options,"--general-log";
-        
         $server[$server_id] = DBServer::MySQL::MySQLd->new(basedir => $basedirs[$server_id],
                                                            vardir => $vardirs[$server_id],
                                                            port => $ports[$server_id],
                                                            start_dirty => $start_dirty,
                                                            valgrind => $valgrind,
                                                            valgrind_options => \@valgrind_options,
-                                                           server_options => \@options);
+                                                           server_options => \@options,
+                                                           general_log => 1);
         
         my $status = $server[$server_id]->startServer;
         
