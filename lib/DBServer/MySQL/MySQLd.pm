@@ -51,6 +51,7 @@ use constant MYSQLD_VALGRIND_OPTIONS => 17;
 use constant MYSQLD_VERSION => 18;
 use constant MYSQLD_DUMPER => 19;
 use constant MYSQLD_SOURCEDIR => 20;
+use constant MYSQLD_GENERAL_LOG => 21;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_ERRORLOG_FILE => "mysql.err";
@@ -69,6 +70,7 @@ sub new {
                                    'port' => MYSQLD_PORT,
                                    'server_options' => MYSQLD_SERVER_OPTIONS,
                                    'start_dirty' => MYSQLD_START_DIRTY,
+                                   'general_log' => MYSQLD_GENERAL_LOG,
                                    'valgrind' => MYSQLD_VALGRIND,
                                    'valgrind_options' => MYSQLD_VALGRIND_OPTIONS},@_);
     
@@ -298,8 +300,8 @@ sub startServer {
                                           "--master-retry-count=65535",
                                           "--port=".$self->port,
                                           "--socket=".$self->socketfile,
-                                          "--pid-file=".$self->pidfile,
-                                          $self->_logOption]);
+                                          "--pid-file=".$self->pidfile],
+                                         $self->_logOptions);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
     }
@@ -597,13 +599,17 @@ sub _messages {
     }
 }
 
-sub _logOption {
+sub _logOptions {
     my ($self) = @_;
 
     if ($self->_olderThan(5,1,29)) {
-        return "--log=".$self->logfile; 
+        return ["--log=".$self->logfile]; 
     } else {
-        return "--general-log-file=".$self->logfile;
+        if ($self->[MYSQLD_GENERAL_LOG]) {
+            return ["--general-log", "--general-log-file=".$self->logfile]; 
+        } else {
+            return ["--general-log-file=".$self->logfile];
+        }
     }
 }
 
