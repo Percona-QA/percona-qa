@@ -39,6 +39,7 @@ use constant FIELD_AUTO_INCREMENT	=> 6;
 use constant FIELD_SQL			=> 7;
 use constant FIELD_INDEX_SQL		=> 8;
 use constant FIELD_NAME			=> 9;
+use constant FIELD_DEFAULT => 10;
 
 use constant TABLE_ROW		=> 0;
 use constant TABLE_ENGINE	=> 1;
@@ -72,6 +73,7 @@ use constant GD_SERVER_ID => 8;
 use constant GD_SQLTRACE => 9;
 use constant GD_NOTNULL => 10;
 use constant GD_SHORT_COLUMN_NAMES => 11;
+use constant GD_STRICT_FIELDS => 12;
 
 sub new {
     my $class = shift;
@@ -87,6 +89,7 @@ sub new {
         'varchar_length' => GD_VARCHAR_LENGTH,
         'notnull' => GD_NOTNULL,	
         'short_column_names' => GD_SHORT_COLUMN_NAMES,	
+        'strict_fields' => GD_STRICT_FIELDS,	
         'server_id' => GD_SERVER_ID,
         'sqltrace' => GD_SQLTRACE},@_);
 
@@ -151,6 +154,11 @@ sub sqltrace {
 
 sub short_column_names {
     return $_[0]->[GD_SHORT_COLUMN_NAMES];
+}
+
+
+sub strict_fields {
+    return $_[0]->[GD_STRICT_FIELDS];
 }
 
 
@@ -219,12 +227,22 @@ sub run {
             croak "Dates and times are severly broken. Cannot be used for other than MySQL/Drizzle";
         }
     }
-    $field_perms[FIELD_NULLABILITY] = $fields->{null} || $fields->{nullability} || [ (defined $self->[GD_NOTNULL] ? 'NOT NULL' : undef) ];
-    $field_perms[FIELD_SIGN] = $fields->{sign} || [ undef ];
-    $field_perms[FIELD_INDEX] = $fields->{indexes} || $fields->{keys} || [ undef, 'KEY' ];
-    $field_perms[FIELD_CHARSET] =  $fields->{charsets} || [ undef ];
-    $field_perms[FIELD_COLLATION] = $fields->{collations} || [ undef ];
+    if ($self->strict_fields) {
+        $field_perms[FIELD_NULLABILITY] = $fields->{null} || $fields->{nullability} || [ undef ];
+        $field_perms[FIELD_DEFAULT] = $fields->{default} || [ undef ];
+        $field_perms[FIELD_SIGN] = $fields->{sign} || [ undef ];
+        $field_perms[FIELD_INDEX] = $fields->{indexes} || $fields->{keys} || [ undef ];
+        $field_perms[FIELD_CHARSET] =  $fields->{charsets} || [ undef ];
+        $field_perms[FIELD_COLLATION] = $fields->{collations} || [ undef ];
+    } else {
+        $field_perms[FIELD_NULLABILITY] = $fields->{null} || $fields->{nullability} || [ (defined $self->[GD_NOTNULL] ? 'NOT NULL' : undef) ];
+        $field_perms[FIELD_SIGN] = $fields->{sign} || [ undef ];
+        $field_perms[FIELD_INDEX] = $fields->{indexes} || $fields->{keys} || [ undef, 'KEY' ];
+        $field_perms[FIELD_CHARSET] =  $fields->{charsets} || [ undef ];
+        $field_perms[FIELD_COLLATION] = $fields->{collations} || [ undef ];
+    }
     
+
     $data_perms[DATA_NUMBER] = $data->{numbers} || ['digit', 'digit', 'digit', 'digit', (defined $self->[GD_NOTNULL] ? 'digit' : 'null') ];	# 20% NULL values
     $data_perms[DATA_STRING] = $data->{strings} || ['letter', 'letter', 'letter', 'letter', (defined $self->[GD_NOTNULL] ? 'letter' : 'null') ];
     $data_perms[DATA_BLOB] = $data->{blobs} || [ 'data', 'data', 'data', 'data', (defined $self->[GD_NOTNULL] ? 'data' : 'null') ];
@@ -260,7 +278,7 @@ sub run {
     
     my @fields = (undef);
     
-    foreach my $cycle (FIELD_TYPE, FIELD_NULLABILITY, FIELD_SIGN, FIELD_INDEX, FIELD_CHARSET, FIELD_COLLATION) {
+    foreach my $cycle (FIELD_TYPE, FIELD_NULLABILITY, FIELD_DEFAULT, FIELD_SIGN, FIELD_INDEX, FIELD_CHARSET, FIELD_COLLATION) {
         @fields = map {
             my $old_field = $_;
             if (not defined $field_perms[$cycle]) {
@@ -298,7 +316,7 @@ sub run {
 #	$field_copy[FIELD_INDEX] = 'nokey' if $field_copy[FIELD_INDEX] eq '';
         
         my $field_name;
-        if ($self->[GD_SHORT_COLUMN_NAMES]) {
+        if ($self->short_column_names) {
             $field_name = 'c'.($field_no++);
         } else {
             $field_name = "col_".join('_', grep { $_ ne '' } @field_copy);
@@ -347,11 +365,11 @@ sub run {
         
         $fields[$field_id]->[FIELD_SQL] = "`$field_name` ". join(' ' , grep { $_ ne '' } @field_copy);
         
-        if ($field_copy[FIELD_TYPE] =~ m{timestamp}sio ) {
-	    if (defined $self->[GD_NOTNULL]) {
-               $field->[FIELD_SQL] .= ' NOT NULL';
+        if (!$self->strict_fields && $field_copy[FIELD_TYPE] =~ m{timestamp}sio ) {
+            if (defined $self->[GD_NOTNULL]) {
+                $field->[FIELD_SQL] .= ' NOT NULL';
             } else {
-	       $field->[FIELD_SQL] .= ' NULL DEFAULT 0';
+                $field->[FIELD_SQL] .= ' NULL DEFAULT 0';
             }
         }
     }
