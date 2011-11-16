@@ -283,7 +283,7 @@ foreach my $server_id (0..1) {
 	}
 
 	my @mtr_options;
-	push @mtr_options, lc("--mysqld=--$engine") if defined $engine && $engine !~ m{myisam|memory|heap}sio;
+	push @mtr_options, lc("--mysqld=--$engine") if defined $engine && $engine !~ m{myisam|memory|heap|aria}sio;
 
 	push @mtr_options, "--mem" if defined $mem;
 	if ((defined $valgrind) || (defined $valgrind_xml)) {
