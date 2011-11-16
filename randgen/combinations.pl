@@ -302,7 +302,7 @@ sub doCombination {
 
 	if ($result > 0) {
         foreach my $s (1..$servers) {
-            $max_result = $result >> 8 if ($result >> 8) > $max_result;
+            $max_result = $result if $result > $max_result;
             my $from = $workdir."/current".$s."_".$thread_id;
             my $to = $workdir."/vardir".$s."_".$trial_id;
             say("[$thread_id] Copying $from to $to") if $logToStd;
