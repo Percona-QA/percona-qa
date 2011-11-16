@@ -83,7 +83,7 @@ sub startServer {
 	my $basedir = $oracle->basedir();
 
 	chdir($basedir.'/mysql-test');
-	system("MTR_VERSION=1 perl mysql-test-run.pl --start-and-exit --mysqld=--skip-grant-tables --mysqld=--innodb --master_port=19300 --mysqld=--log-output=file 1st");
+	system("MTR_VERSION=1 perl mysql-test-run.pl --start-and-exit --mysqld=--skip-grant-tables --mysqld=--loose-skip-pbxt --mysqld=--innodb --master_port=19300 --mysqld=--log-output=file 1st");
 }
 
 1;
