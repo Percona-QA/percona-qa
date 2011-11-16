@@ -109,7 +109,7 @@ my $opt_result = GetOptions(
         'mask-level=i' => \$mask_level,
 	'no-mask' => \$no_mask,
 	'mem' => \$mem,
-	'rows=i' => \$rows,
+	'rows=s' => \$rows,
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s'	=> \$xml_output,
 	'valgrind'	=> \$valgrind,
