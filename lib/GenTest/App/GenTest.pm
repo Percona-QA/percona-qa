@@ -119,7 +119,8 @@ sub run {
                                                             views => $self->config->views,
                                                             engine => $self->config->engine,
                                                             sqltrace=> $self->config->sqltrace,
-                                                            notnull => $self->config->notnull);
+                                                            notnull => $self->config->notnull,
+                                                            rows => $self->config->rows);
             } else {
                 $datagen = GenTest::App::Gendata->new(spec_file => $self->config->gendata,
                                                       dsn => $dsn,
