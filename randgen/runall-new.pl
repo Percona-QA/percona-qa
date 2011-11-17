@@ -69,7 +69,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
-    $short_column_names, $strict_fields);
+    $short_column_names, $strict_fields, $freeze_time);
 
 my $gendata=''; ## default simple gendata
 
@@ -106,6 +106,7 @@ my $opt_result = GetOptions(
 	'gendata:s' => \$gendata,
 	'notnull' => \$notnull,
 	'short_column_names' => \$short_column_names,
+    'freeze_time' => \$freeze_time,
 	'strict_fields' => \$strict_fields,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
@@ -385,6 +386,7 @@ my $gentestProps = GenTest::Properties->new(
               'notnull',
               'short_column_names',
               'strict_fields',
+              'freeze_time',
               'valgrind',
               'valgrind-xml',
               'testname',
@@ -442,6 +444,7 @@ $gentestProps->filter($filter) if defined $filter;
 $gentestProps->notnull($notnull) if defined $notnull;
 $gentestProps->short_coulmn_names($short_column_names) if defined $short_column_names;
 $gentestProps->strict_fields($strict_fields) if defined $strict_fields;
+$gentestProps->freeze_time($freeze_time) if defined $freeze_time;
 $gentestProps->valgrind(1) if $valgrind;
 $gentestProps->sqltrace($sqltrace) if $sqltrace;
 $gentestProps->querytimeout($querytimeout) if defined $querytimeout;

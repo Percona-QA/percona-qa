@@ -69,7 +69,7 @@ my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
     $report_xml_tt_type, $report_xml_tt_dest, $notnull, $sqltrace,
     $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout,
-    $short_column_names, $strict_fields);
+    $short_column_names, $strict_fields, $freeze_time);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -107,9 +107,10 @@ my $opt_result = GetOptions(
 	'notnull' => \$notnull,
 	'short_column_names' => \$short_column_names,
 	'strict_fields' => \$strict_fields,
+	'freeze_time' => \$freeze_time,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
-        'mask-level=i' => \$mask_level,
+    'mask-level=i' => \$mask_level,
 	'no-mask' => \$no_mask,
 	'mem' => \$mem,
 	'rows=i' => \$rows,
@@ -422,6 +423,7 @@ push @gentest_options, "--gendata=$gendata" if not defined $skip_gendata;
 push @gentest_options, "--notnull" if defined $notnull;
 push @gentest_options, "--short_column_names" if defined $short_column_names;
 push @gentest_options, "--strict_fields" if defined $strict_fields;
+push @gentest_options, "--freeze_time" if defined $freeze_time;
 push @gentest_options, "--engine=$engine" if defined $engine;
 push @gentest_options, "--rpl_mode=$rpl_mode" if defined $rpl_mode;
 push @gentest_options, map {'--validator='.$_} split(/,/,$validators) if defined $validators;
