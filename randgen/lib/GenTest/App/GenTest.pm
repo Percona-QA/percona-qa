@@ -34,6 +34,7 @@ use GenTest::App::GendataSimple;
 use GenTest::IPC::Channel;
 use GenTest::IPC::Process;
 use GenTest::ErrorFilter;
+use GenTest::Grammar;
 
 use POSIX;
 use Time::HiRes;
@@ -151,7 +152,8 @@ sub run {
 
     if ($generator_name eq 'GenTest::Generator::FromGrammar') {
 	$grammar = GenTest::Grammar->new(
-	    grammar_file => $self->config->grammar
+ 	    grammar_file => $self->config->grammar,
+            grammar_flags => (defined $self->config->property('skip-recursive-rules') ? GRAMMAR_FLAG_SKIP_RECURSIVE_RULES : undef )
         ) if defined $self->config->grammar;
 
 	return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
