@@ -21,6 +21,7 @@ require Exporter;
 @ISA = qw(GenTest);
 @EXPORT = qw(
 	GRAMMAR_FLAG_COMPACT_RULES
+	GRAMMAR_FLAG_SKIP_RECURSIVE_RULES
 );
 
 use strict;
@@ -37,7 +38,8 @@ use constant GRAMMAR_FILE	=> 1;
 use constant GRAMMAR_STRING	=> 2;
 use constant GRAMMAR_FLAGS	=> 3;
 
-use constant GRAMMAR_FLAG_COMPACT_RULES	=> 1;
+use constant GRAMMAR_FLAG_COMPACT_RULES		=> 1;
+use constant GRAMMAR_FLAG_SKIP_RECURSIVE_RULES	=> 2;
 
 1;
 
@@ -181,6 +183,14 @@ sub parseFromString {
 			}
 
 			my @component_parts = split (m{\|}, $component_string);
+
+			if (
+				(grep { $_ eq $rule_name } @component_parts) &&
+				($grammar->[GRAMMAR_FLAGS] & GRAMMAR_FLAG_SKIP_RECURSIVE_RULES)
+			) {
+				say("Skipping recursive production in rule '$rule_name'.") if rqg_debug();
+				next;
+			}
 
 			#
 			# If this grammar rule contains Perl code, assemble it between the various
