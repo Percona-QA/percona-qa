@@ -163,11 +163,8 @@ sub next {
 				# Check if we just picked a grammar rule. If yes, then return its Rule object.	
 				# If not, use the original literal, stored in $_
 
-				if (exists $grammar_rules->{$_}) {
-					$grammar_rules->{$_};
-				} else {
-					$_;
-				}
+				$grammar_rules->{$_} || $_;
+
 			} @{$prng->arrayElement($sentence[$pos]->[GenTest::Grammar::Rule::RULE_COMPONENTS])});
 			if ($@ ne '') {
 				say("Internal grammar problem: $@");
@@ -183,12 +180,15 @@ sub next {
 	my $item_nodash;
 	my $orig_item;
 	foreach (@sentence) {
-		$orig_item = $_;
 		next if $_ eq ' ';
+		next if $_ eq uc($_);				# Short-cut for UPPERCASE literals
+		next if $_ eq 'executor1' || $_ eq 'executor2' || $_ eq 'executor3' ;
+
+		$orig_item = $_;
 
 		if (
-			($_ =~ m{^\{}so) &&
-			($_ =~ m{\}$}so)
+			(substr($_, 0, 1) eq '{') &&
+			(substr($_, -1, 1) eq '}')
 		) {
 			$_ = eval("no strict;\n".$_);		# Code
 
@@ -200,26 +200,28 @@ sub next {
 				return undef;
 			}
 			next;
-		} elsif ($_ =~ m{^\$}so) {
+		} elsif (substr($_, 0, 1) eq '$') {
 			$_ = eval("no strict;\n".$_.";\n");	# Variable
 			next;
 		}
 
-		my $modifier;
+		# Check for expressions such as _tinyint[invariant]
 
-		my $invariant_substitution=0;
-		if ($_ =~ m{^(_[a-z_]*?)\[(.*?)\]}sio) {
-			$modifier = $2;
-			if ($modifier eq 'invariant') {
-				$invariant_substitution=1;
-				$_ = exists $invariants{$orig_item} ? $invariants{$orig_item} : $1 ;
-			} else {
-				$_ = $1;
+		my $modifier;
+		if (index($_, '[') > -1) {
+			my $invariant_substitution = 0;
+			if ($_ =~ m{^(_[a-z_]*?)\[(.*?)\]}sio) {
+				$modifier = $2;
+				if ($modifier eq 'invariant') {
+					$invariant_substitution = 1;
+					$_ = exists $invariants{$orig_item} ? $invariants{$orig_item} : $1 ;
+				} else {
+					$_ = $1;
+				}
 			}
 		}
 
-		next if $_ eq uc($_);				# Short-cut for UPPERCASE literals
-		next if $_ eq 'executor1' || $_ eq 'executor2' || $_ eq 'executor3' ;
+		my $field_type = $prng->isFieldType($_);
 
 		if ( ($_ eq 'letter') || ($_ eq '_letter') ) {
 			$_ = $prng->letter();
@@ -293,24 +295,24 @@ sub next {
 		} elsif ($_ eq '_data') {
 			$_ = $prng->file($cwd."/data");
 		} elsif (
-			($prng->isFieldType($_) == FIELD_TYPE_NUMERIC) ||
-			($prng->isFieldType($_) == FIELD_TYPE_BLOB) 
+			($field_type == FIELD_TYPE_NUMERIC) ||
+			($field_type == FIELD_TYPE_BLOB) 
 		) {
 			$_ = $prng->fieldType($_);
-		} elsif ($prng->isFieldType($_)) {
+		} elsif ($field_type) {
 			$_ = $prng->fieldType($_);
-			if (($orig_item =~ m{`$}so) || ($_ =~ m{^(b'|0x)}so)) {
+			if ((substr($orig_item, -1) eq '`') || ($_ =~ m{^(b'|0x)}so)) {
 				# Do not quote, quotes are already present
-			} elsif ($_ =~ m{'}so) {
+			} elsif (index($_, "'") > -1) {
 				$_ = '"'.$_.'"';
 			} else {
 				$_ = "'".$_."'";
 			}
-		} elsif ($_ =~ m{^_(.*)}sio) {
-			$item_nodash = $1;
+		} elsif (substr($_, 0, 1) eq '_') {
+			$item_nodash = substr($_, 1);
 			if ($prng->isFieldType($item_nodash)) {
 				$_ = "'".$prng->fieldType($item_nodash)."'";
-				if ($_ =~ m{'}so) {
+				if (index($_, "'") > -1) {
 					$_ = '"'.$_.'"';
 				} else {
 					$_ = "'".$_."'";
@@ -322,8 +324,8 @@ sub next {
 		# The generation of constructs such as `table _digit` => `table 5`
 
 		if (
-			($orig_item =~ m{`$}so) && 
-			($_ !~ m{`}so)
+			(substr($orig_item, -1) eq '`') && 
+			(index($_, '`') == -1)
 		) {
 			$_ = $_.'`';
 		}
