@@ -470,8 +470,7 @@ sub isFieldType {
 	my ($rand, $field_def) = @_;
 	return undef if not defined $field_def;
 
-	$field_def =~ s{^_}{}o;
-	my ($field_name) = $field_def =~ m{^([A-Za-z]*)}o;
+	my ($field_name) = $field_def =~ m{^(?:_|)([A-Za-z]*)}o;
 
 	if (exists $name2type{$field_name}) {
 		return $name2type{$field_name};
