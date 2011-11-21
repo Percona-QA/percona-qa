@@ -30,6 +30,7 @@ use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use strict;
 use GenTest;
+use Carp;
 
 my $logger;
 eval
@@ -329,7 +330,7 @@ foreach my $server_id (0..1) {
 	}
 
 	my $mtr_path = $basedirs[$server_id].'/mysql-test/';
-	chdir($mtr_path) or die "unable to chdir() to $mtr_path: $!";
+	chdir($mtr_path) or croak "unable to chdir() to $mtr_path: $!";
 	
 	push @mtr_options, "--vardir=$vardirs[$server_id]" if defined $vardirs[$server_id];
 	push @mtr_options, "--master_port=".$master_ports[$server_id];
@@ -461,7 +462,8 @@ push @gentest_options, "--querytimeout=$querytimeout" if defined $querytimeout;
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
 $ENV{RQG_THREADS}= $threads;
 
-my $gentest_result = system("perl $ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_options)) >> 8;
+my $gentest_result = system("perl ".($Carp::Verbose?"-MCarp=verbose ":"").
+                            "$ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_options)) >> 8;
 say("gentest.pl exited with exit status ".status2text($gentest_result). " ($gentest_result)");
 
 if ($lcov) {

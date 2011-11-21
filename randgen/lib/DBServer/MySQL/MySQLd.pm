@@ -320,7 +320,7 @@ sub startServer {
                                $command,
                                0,
                                NORMAL_PRIORITY_CLASS(),
-                               ".") || die _reportError();	
+                               ".") || croak _reportError();	
         $self->[MYSQLD_WINDOWS_PROCESS]=$proc;
         $self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
     } else {
