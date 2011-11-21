@@ -95,13 +95,13 @@ sub participatingRules {
 sub next {
 	my ($generator, $executors) = @_;
     
-	my $grammar = $generator->grammar();
-	my $prng = $generator->prng();
-	my $mask = $generator->mask();
-	my $mask_level = $generator->maskLevel();
+	my $grammar = $generator->[GENERATOR_GRAMMAR];
+	my $prng = $generator->[GENERATOR_PRNG];
+	my $mask = $generator->[GENERATOR_MASK];
+	my $mask_level = $generator->[GENERATOR_MASK_LEVEL];
 
-    my $stack = GenTest::Stack::Stack->new();
-    my $global = $generator->globalFrame();
+	my $stack = GenTest::Stack::Stack->new();
+	my $global = $generator->globalFrame();
     
 	#
 	# If a temporary file has been left from a previous statement, unlink it.
@@ -113,24 +113,24 @@ sub next {
 	my $starting_rule;
 
 	# If this is our first query, we look for a rule named "threadN_init" or "query_init"
-	if ($generator->seqId() == 0) {
-		$starting_rule = 
-            $grammar->firstMatchingRule("thread".$generator->threadId()."_init",
-                                        "query_init");
+	if ($generator->[GENERATOR_SEQ_ID] == 0) {
+		$starting_rule = $grammar->firstMatchingRule(
+			"thread".$generator->threadId()."_init",
+                        "query_init"
+		);
+
+	        # Do not apply mask on _init rules.
 		$mask = 0 if defined $starting_rule;
-        # Do not apply mask on _init rules.
 	}
 
-    ## Apply mask if any
-	if (defined $generator->maskedGrammar()) {
-        $grammar = $generator->maskedGrammar();
-	}
+	## Apply mask if any
+	$grammar = $generator->[GENERATOR_MASKED_GRAMMAR] if defined $generator->[GENERATOR_MASKED_GRAMMAR];
 
 	# If no init starting rule, we look for rules named "threadN" or "query"
-	$starting_rule = 
-        $grammar->firstMatchingRule("thread".$generator->threadId(),
-                                    "query") 
-        if not defined $starting_rule;
+	$starting_rule = $grammar->firstMatchingRule(
+		"thread".$generator->threadId(),
+		"query"
+	) if not defined $starting_rule;
     
 	my @sentence = ($starting_rule);
 
@@ -146,28 +146,36 @@ sub next {
 
 	my $pos = 0;
 	while ($pos <= $#sentence) {
-		if ($#sentence > GENERATOR_MAX_LENGTH) {
-			say("Sentence is now longer than ".GENERATOR_MAX_LENGTH()." symbols. Possible endless loop in grammar. Aborting.");
-			return undef;
-		}
 		if (ref($sentence[$pos]) eq 'GenTest::Grammar::Rule') {
 			splice (@sentence, $pos, 1 , map {
+				if ($_ ne uc($_)) {
+					if (++$rule_counters{$_} > GENERATOR_MAX_OCCURRENCES) {
+						say("Rule $_ occured more than ".GENERATOR_MAX_OCCURRENCES()." times. Possible endless loop in grammar. Aborting.");
+						return undef;
+					}
 
-				$rule_counters{$_}++ if $_ ne uc($_);
+					# Check if we just picked a grammar rule. If yes, then return its Rule object.	
+					# If not, use the original literal, stored in $_
 
-				if ($rule_counters{$_} > GENERATOR_MAX_OCCURRENCES) {
-					say("Rule $_ occured more than ".GENERATOR_MAX_OCCURRENCES()." times. Possible endless loop in grammar. Aborting.");
-					return undef;
+					$grammar_rules->{$_} || $_;
+				} else {
+					$_;
 				}
+			} @{ $sentence[$pos]->[GenTest::Grammar::Rule::RULE_COMPONENTS]->[
+					$prng->uint16(
+						0,
+						$#{$sentence[$pos]->[GenTest::Grammar::Rule::RULE_COMPONENTS]}
+					)
+				]
+			});
 
-				# Check if we just picked a grammar rule. If yes, then return its Rule object.	
-				# If not, use the original literal, stored in $_
-
-				$grammar_rules->{$_} || $_;
-
-			} @{$prng->arrayElement($sentence[$pos]->[GenTest::Grammar::Rule::RULE_COMPONENTS])});
 			if ($@ ne '') {
 				say("Internal grammar problem: $@");
+				return undef;
+			}
+
+			if ($#sentence > GENERATOR_MAX_LENGTH) {
+				say("Sentence is now longer than ".GENERATOR_MAX_LENGTH()." symbols. Possible endless loop in grammar. Aborting.");
 				return undef;
 			}
 		} else {
@@ -192,12 +200,14 @@ sub next {
 		) {
 			$_ = eval("no strict;\n".$_);		# Code
 
-			if ($@ =~ m{at \(.*?\) line}o) {
-				say("Internal grammar error: $@");
-				return undef;			# Code called die()
-			} elsif ($@ ne '') {
-				warn("Syntax error in Perl snippet $orig_item : $@");
-				return undef;
+			if ($@ ne '') {
+				if ($@ =~ m{at .*? line}o) {
+					say("Internal grammar error: $@");
+					return undef;			# Code called die()
+				} else {
+					warn("Syntax error in Perl snippet $orig_item : $@");
+					return undef;
+				}
 			}
 			next;
 		} elsif (substr($_, 0, 1) eq '$') {
@@ -301,7 +311,11 @@ sub next {
 			$_ = $prng->fieldType($_);
 		} elsif ($field_type) {
 			$_ = $prng->fieldType($_);
-			if ((substr($orig_item, -1) eq '`') || ($_ =~ m{^(b'|0x)}so)) {
+			if (
+				(substr($orig_item, -1) eq '`') ||
+				(substr($orig_item, 0, 2) eq "b'") ||
+				(substr($orig_item, 0, 2) eq '0x')
+			) {
 				# Do not quote, quotes are already present
 			} elsif (index($_, "'") > -1) {
 				$_ = '"'.$_.'"';
@@ -344,11 +358,11 @@ sub next {
 	# can be examined
 
 	if (
-		($sentence =~ m{CREATE}sio) && 
-		($sentence =~ m{BEGIN|END}sio)
+		(index($sentence, 'CREATE') > -1 ) &&
+		(index($sentence, 'BEGIN') > -1 || index($sentence, 'END') > -1)
 	) {
 		return [ $sentence ];
-	} elsif ($sentence =~ m{;}) {
+	} elsif (index($sentence, ';') > -1) {
 		my @sentences = split (';', $sentence);
 		return \@sentences;
 	} else {
