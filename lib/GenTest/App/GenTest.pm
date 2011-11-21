@@ -591,7 +591,7 @@ sub run {
 sub stop_child {
     my ($self, $status) = @_;
 
-    die "calling stop_child() without a \$status" if not defined $status;
+    croak "calling stop_child() without a \$status" if not defined $status;
 
     if (osWindows()) {
         exit $status;

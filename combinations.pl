@@ -257,7 +257,9 @@ sub doCombination {
     my $runall = $new?"runall-new.pl":"runall.pl";
 
 	my $command = "
-		perl ".(defined $ENV{RQG_HOME} ? $ENV{RQG_HOME}."/" : "" )."$runall --queries=100000000 $comb_str ";
+		perl ".($Carp::Verbose?"-MCarp=verbose ":"").
+        (defined $ENV{RQG_HOME} ? $ENV{RQG_HOME}."/" : "" ).
+        "$runall --queries=100000000 $comb_str ";
 
     $command .= " --mtr-build-thread=".($mtrbt+($thread_id-1)*2);
 	$command .= " --mask=$mask" if not defined $no_mask;
