@@ -108,8 +108,8 @@ sub next {
     if ($mixer->properties->freeze_time) {
         foreach my $ex (@$executors) {
             if ($ex->type == DB_MYSQL) {
-                $ex->execute("SET TIMESTAMP 0");
-                $ex->execute("SET TIMESTAMP UNIX_TIMESTAMP(NOW())");
+                $ex->execute("SET TIMESTAMP=0");
+                $ex->execute("SET TIMESTAMP=UNIX_TIMESTAMP(NOW())");
             } else {
                 carp "Don't know how to freeze time for ".$ex->getName;
             }
