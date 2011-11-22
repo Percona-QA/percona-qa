@@ -11,7 +11,7 @@ $combinations = [
 		--mysqld=--optimizer_search_depth=6
 	'],
 	['',
-		'--mysqld=--optimizer_switch=index_condition_pushdown=off',
+#		'--mysqld=--optimizer_switch=index_condition_pushdown=off',
 		'--mysqld=--init-file='.getcwd().'/init/no_mrr.opt'
 	],
 	['', '--notnull'],

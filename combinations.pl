@@ -178,9 +178,9 @@ if ($thread_id > 0) {
     ## Child
     ##say("[$thread_id] Summary of various interesting strings from the logs:");
     ##say("[$thread_id] ". Dumper \%results);
-    foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
-        system("grep -i '$string' $workdir/trial*log");
-    } 
+    #foreach my $string ('text=', 'bugcheck', 'Error: assertion', 'mysqld got signal', 'Received signal', 'exception') {
+    #    system("grep -i '$string' $workdir/trial*log");
+    #} 
     
     say("[$thread_id] will exit with exit status ".status2text($max_result).
         "($max_result)");
@@ -257,7 +257,9 @@ sub doCombination {
     my $runall = $new?"runall-new.pl":"runall.pl";
 
 	my $command = "
-		perl ".(defined $ENV{RQG_HOME} ? $ENV{RQG_HOME}."/" : "" )."$runall --queries=100000000 $comb_str ";
+		perl ".($Carp::Verbose?"-MCarp=verbose ":"").
+        (defined $ENV{RQG_HOME} ? $ENV{RQG_HOME}."/" : "" ).
+        "$runall --queries=100000000 $comb_str ";
 
     $command .= " --mtr-build-thread=".($mtrbt+($thread_id-1)*2);
 	$command .= " --mask=$mask" if not defined $no_mask;
@@ -302,7 +304,7 @@ sub doCombination {
 
 	if ($result > 0) {
         foreach my $s (1..$servers) {
-            $max_result = $result >> 8 if ($result >> 8) > $max_result;
+            $max_result = $result if $result > $max_result;
             my $from = $workdir."/current".$s."_".$thread_id;
             my $to = $workdir."/vardir".$s."_".$trial_id;
             say("[$thread_id] Copying $from to $to") if $logToStd;

@@ -30,6 +30,7 @@ use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use strict;
 use GenTest;
+use Carp;
 
 my $logger;
 eval
@@ -68,7 +69,8 @@ my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views,
     $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
     $report_xml_tt_type, $report_xml_tt_dest, $notnull, $sqltrace,
-    $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout);
+    $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout,
+    $short_column_names, $strict_fields, $freeze_time);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -105,9 +107,12 @@ my $opt_result = GetOptions(
 	'gendata:s' => \$gendata,
 	'skip-gendata' => \$skip_gendata,
 	'notnull' => \$notnull,
+	'short_column_names' => \$short_column_names,
+	'strict_fields' => \$strict_fields,
+	'freeze_time' => \$freeze_time,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
-        'mask-level=i' => \$mask_level,
+    'mask-level=i' => \$mask_level,
 	'no-mask' => \$no_mask,
 	'mem' => \$mem,
 	'rows=s' => \$rows,
@@ -326,7 +331,7 @@ foreach my $server_id (0..1) {
 	}
 
 	my $mtr_path = $basedirs[$server_id].'/mysql-test/';
-	chdir($mtr_path) or die "unable to chdir() to $mtr_path: $!";
+	chdir($mtr_path) or croak "unable to chdir() to $mtr_path: $!";
 	
 	push @mtr_options, "--vardir=$vardirs[$server_id]" if defined $vardirs[$server_id];
 	push @mtr_options, "--master_port=".$master_ports[$server_id];
@@ -418,6 +423,9 @@ my @gentest_options;
 push @gentest_options, "--start-dirty" if defined $start_dirty;
 push @gentest_options, "--gendata=$gendata" if not defined $skip_gendata;
 push @gentest_options, "--notnull" if defined $notnull;
+push @gentest_options, "--short_column_names" if defined $short_column_names;
+push @gentest_options, "--strict_fields" if defined $strict_fields;
+push @gentest_options, "--freeze_time" if defined $freeze_time;
 push @gentest_options, "--engine=$engine" if defined $engine;
 push @gentest_options, "--rpl_mode=$rpl_mode" if defined $rpl_mode;
 push @gentest_options, map {'--validator='.$_} split(/,/,$validators) if defined $validators;
@@ -456,7 +464,8 @@ push @gentest_options, "--querytimeout=$querytimeout" if defined $querytimeout;
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
 $ENV{RQG_THREADS}= $threads;
 
-my $gentest_result = system("perl $ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_options)) >> 8;
+my $gentest_result = system("perl ".($Carp::Verbose?"-MCarp=verbose ":"").
+                            "$ENV{RQG_HOME}gentest.pl ".join(' ', @gentest_options)) >> 8;
 say("gentest.pl exited with exit status ".status2text($gentest_result). " ($gentest_result)");
 
 if ($lcov) {
