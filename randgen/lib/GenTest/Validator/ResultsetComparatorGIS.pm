@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Validator::ResultsetComparator;
+package GenTest::Validator::ResultsetComparatorGIS;
 
 require Exporter;
 @ISA = qw(GenTest GenTest::Validator);
@@ -40,6 +40,41 @@ sub validate {
 	return STATUS_WONT_HANDLE if $results->[0]->status() == STATUS_SYNTAX_ERROR || $results->[1]->status() == STATUS_SYNTAX_ERROR;
 	return STATUS_WONT_HANDLE if $results->[0]->query() =~ m{EXPLAIN}sio;
 
+	if ($results->[0]->rows() == 0 || $results->[1]->rows() == 0) {
+#		say("Problematic query: ".$results->[0]->query()."\n");
+		return STATUS_WONT_HANDLE;
+	}
+
+	my @geometries = (
+		$results->[0]->data()->[0]->[0],
+		$results->[1]->data()->[0]->[0]
+	);
+
+	my $area_queries = [];
+	my $area_results = [];
+	if (defined $geometries[0] && defined $geometries[1]) {
+		$geometries[0] =~ s{GEOMETRYCOLLECTION\(\)}{GEOMETRYCOLLECTION EMPTY}sgio;
+		$area_queries = [
+			"SELECT ST_LENGTH(ST_GEOMCOLLFROMTEXT(' $geometries[0] '))",
+			"SELECT ST_LENGTH(ST_GEOMCOLLFROMTEXT(' $geometries[1] '))"
+		];
+
+		$area_results = [
+			$executors->[0]->execute($area_queries->[0]),
+			$executors->[0]->execute($area_queries->[1])
+		];
+
+		if ($area_results->[0]->status() == STATUS_OK && $area_results->[1]->status() == STATUS_OK) {
+			my $compare_outcome_areas = GenTest::Comparator::compare($area_results->[0], $area_results->[1]);
+			if (abs($area_results->[0]->data()->[0]->[0] - $area_results->[1]->data()->[0]->[0]) < 10) {
+				$compare_outcome = STATUS_OK;
+			}
+		} else {
+			use Data::Dumper;
+			print Dumper $area_results;
+		}
+	}
+
 	if ( ($compare_outcome == STATUS_LENGTH_MISMATCH) ||
 	     ($compare_outcome == STATUS_CONTENT_MISMATCH) 
 	) {
@@ -56,6 +91,7 @@ sub validate {
 	} elsif ($compare_outcome == STATUS_CONTENT_MISMATCH) {
 		say("Query: ".$results->[0]->query()." failed: result content mismatch between servers.");
 		say(GenTest::Comparator::dumpDiff($results->[0], $results->[1]));
+		say(GenTest::Comparator::dumpDiff($area_results->[0], $area_results->[1])) if defined $area_results->[0] && defined $area_results->[1];
 	}
 
 	if ( ($compare_outcome == STATUS_LENGTH_MISMATCH) ||
