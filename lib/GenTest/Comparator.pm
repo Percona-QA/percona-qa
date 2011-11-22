@@ -56,7 +56,7 @@ sub compare {
 			my $data2 = $resultset2->data();
 			return STATUS_LENGTH_MISMATCH if $#$data1 != $#$data2;
 			my $data1_sorted = join('<row>', sort map { join('<col>', map { defined $_ ? ($_ != 0 ? sprintf("%.4f", $_) : $_) : 'NULL' } @$_) } @$data1);
-			my $data2_sorted = join('<row>', sort map { join('<col>', map { defined $_ ? ($_ != 0 ? sprintf("%.4f", $_) : $_): 'NULL'} @$_) } @$data2);
+			my $data2_sorted = join('<row>', sort map { join('<col>', map { defined $_ ? ($_ != 0 ? sprintf("%.4f", $_) : $_) : 'NULL' } @$_) } @$data2);
 			return STATUS_CONTENT_MISMATCH if $data1_sorted ne $data2_sorted;
 		}
 	}
