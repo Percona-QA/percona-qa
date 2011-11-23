@@ -64,7 +64,7 @@ my $database = 'test';
 my @master_dsns;
 
 my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
-    $engine, $help, $debug, $validators, $reporters, $grammar_file,
+    $engine, $help, $debug, $validators, $reporters, $grammar_file, $skip_recursive_rules,
     $redefine_file, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views,
     $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
@@ -91,6 +91,7 @@ my $opt_result = GetOptions(
 	'rpl_mode=s' => \$rpl_mode,
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
+	'skip-recursive-rules' => \$skip_recursive_rules,	
 	'redefine=s' => \$redefine_file,
 	'threads=i' => \$threads,
 	'queries=s' => \$queries,
@@ -114,7 +115,7 @@ my $opt_result = GetOptions(
     'mask-level=i' => \$mask_level,
 	'no-mask' => \$no_mask,
 	'mem' => \$mem,
-	'rows=i' => \$rows,
+	'rows=s' => \$rows,
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s'	=> \$xml_output,
 	'valgrind'	=> \$valgrind,
@@ -288,7 +289,7 @@ foreach my $server_id (0..1) {
 	}
 
 	my @mtr_options;
-	push @mtr_options, lc("--mysqld=--$engine") if defined $engine && $engine !~ m{myisam|memory|heap}sio;
+	push @mtr_options, lc("--mysqld=--$engine") if defined $engine && $engine !~ m{myisam|memory|heap|aria}sio;
 
 	push @mtr_options, "--mem" if defined $mem;
 	if ((defined $valgrind) || (defined $valgrind_xml)) {
@@ -436,6 +437,7 @@ push @gentest_options, "--duration=$duration" if defined $duration;
 push @gentest_options, "--dsn=$master_dsns[0]" if defined $master_dsns[0];
 push @gentest_options, "--dsn=$master_dsns[1]" if defined $master_dsns[1];
 push @gentest_options, "--grammar=$grammar_file";
+push @gentest_options, "--skip-recursive-rules" if defined $skip_recursive_rules;
 push @gentest_options, "--redefine=$redefine_file" if defined $redefine_file;
 push @gentest_options, "--seed=$seed" if defined $seed;
 push @gentest_options, "--mask=$mask" if ((defined $mask) && (not defined $no_mask));
