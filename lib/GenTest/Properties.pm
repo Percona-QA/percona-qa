@@ -199,7 +199,7 @@ sub property {
 ## Read properties from a given file
 sub _readProps {
     my ($file) = @_;
-    open(PFILE, $file) or die "Unable read properties file '$file': $!";
+    open(PFILE, $file) or croak "Unable read properties file '$file': $!";
     read(PFILE, my $propfile, -s $file);
     close PFILE;
     my $props = eval($propfile);

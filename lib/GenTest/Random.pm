@@ -43,6 +43,7 @@ require Exporter;
 
 use strict;
 
+use Carp;
 use GenTest;
 use Cwd;
 
@@ -440,7 +441,7 @@ sub fieldType {
 	} elsif ($field_type == FIELD_TYPE_BIT) {
 		return $rand->bit($field_length);
 	} else {
-		die ("unknown field type $field_def");
+		croak ("unknown field type $field_def");
 	}
 }
 
