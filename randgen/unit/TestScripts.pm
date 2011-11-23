@@ -1,4 +1,4 @@
-# Copyright (c) 2009,2010 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2009, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -116,6 +116,7 @@ sub test_combinations {
     my $portbase = 10 + ($ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120);
     my $pb = int(($portbase - 10000) / 10);
 
+    # Basic run
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         $ENV{MTR_BUILD_THREAD}=$pb;
@@ -124,6 +125,10 @@ sub test_combinations {
         $self->assert(-e cwd()."/unit/tmp2/trial1.log");
     }
 
+    # Test more options:
+    # --run-all-combinations-once + trials
+    # --force
+    # --parallel=2
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         $ENV{MTR_BUILD_THREAD}=$pb;
@@ -131,6 +136,39 @@ sub test_combinations {
         $self->assert_equals(0, $status);
         $self->assert(-e cwd()."/unit/tmp2/trial1.log");
         $self->assert(-e cwd()."/unit/tmp2/trial2.log");
+    }
+    
+    # Test with known failures and check that exit value is the largest of the 
+    # exit values of individual runs. Requires special .cc file and 
+    # --run-all-combinations-once and no small value for --trials.
+    # We use unix cp and sed for now, so avoid running on Windows.
+    if ($ENV{RQG_MYSQL_BASE} && not osWindows()) {
+        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
+        $pb = 20 + int(($portbase - 10000) / 10);
+        $ENV{MTR_BUILD_THREAD}=$pb;
+        
+        # First, we construct a custom "Alarm reporter" which should return STATUS_ALARM when run.
+        # This is done by looking for the string "Version:" in the server log.
+        my $custom_reporter = "lib/GenTest/Reporter/CustomAlarm.pm";
+        my $pre_status = system("cp lib/GenTest/Reporter/ErrorLogAlarm.pm $custom_reporter");
+        $self->annotate("Copying of ErrorLogAlarm.pm failed! $!") if $pre_status > 0;
+        $pre_status = 0;
+        $pre_status = system('sed -i -e \'s/my \$pattern = "\^ERROR"/my $pattern = "^Version:"/\' '.$custom_reporter);
+        $pre_status += system('sed -i \'s/package GenTest::Reporter::ErrorLogAlarm;/package GenTest::Reporter::CustomAlarm;/\' '.$custom_reporter);
+        $self->annotate("Modification of CustomAlarm.pm failed! $!") if $pre_status > 0;
+        # Using exit_status.cc we expect 4 runs, with the following exit statuses in random order:
+        #   STATUS_ENVIRONMENT_FAILURE (110)
+        #   STATUS_OK (0) (x2)
+        #   STATUS_ALARM (109)
+        # Total exit status should be the largest of these: 110
+        my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/exit_status.cc --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".cwd()."/unit/tmp2 --run-all-combinations-once --no-log --no-mask --parallel=2 --force");
+        $status = $status >> 8;
+        $self->assert_num_equals(110, $status, "Wrong exit status from combinations.pl: Expected STATUS_ENVIRONMENT_FAILURE (110), but got $status");
+        $self->assert(-e cwd()."/unit/tmp2/trial1.log");
+        $self->assert(-e cwd()."/unit/tmp2/trial2.log");
+        $self->assert(-e cwd()."/unit/tmp2/trial3.log");
+        $self->assert(-e cwd()."/unit/tmp2/trial4.log");
+        unlink($custom_reporter) or $self->assert(0, "Unable to delete $custom_reporter");
     }
 }
 
