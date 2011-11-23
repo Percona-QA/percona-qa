@@ -63,7 +63,7 @@ my @dsns;
 
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, @validators, @reporters, @transformers, 
-    $grammar_file,
+    $grammar_file, $skip_recursive_rules,
     $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
@@ -94,6 +94,7 @@ my $opt_result = GetOptions(
 	'rpl_mode=s' => \$rpl_mode,
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
+	'skip-recursive-rules' > \$skip_recursive_rules,
 	'redefine=s' => \$redefine_file,
 	'threads=i' => \$threads,
 	'queries=s' => \$queries,
@@ -359,6 +360,7 @@ if ($rpl_mode ne '') {
 
 my $gentestProps = GenTest::Properties->new(
     legal => ['grammar',
+              'skip-recursive-rules',
               'dsn',
               'engine',
               'gendata',
@@ -431,6 +433,7 @@ $gentestProps->queries($queries) if defined $queries;
 $gentestProps->duration($duration) if defined $duration;
 $gentestProps->dsn(\@dsns) if @dsns;
 $gentestProps->grammar($grammar_file);
+$gentestProps->property('skip-recursive-rules', $skip_recursive_rules);
 $gentestProps->redefine($redefine_file) if defined $redefine_file;
 $gentestProps->seed($seed) if defined $seed;
 $gentestProps->mask($mask) if (defined $mask) && (not defined $no_mask);
