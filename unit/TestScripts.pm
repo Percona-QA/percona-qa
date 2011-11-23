@@ -110,7 +110,7 @@ sub test_runall_new {
     }
 }
 
-sub test_combinations {
+sub test_combinations_basic {
     my $self = shift;
     ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
     my $portbase = 10 + ($ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120);
@@ -124,6 +124,13 @@ sub test_combinations {
         $self->assert_equals(0, $status);
         $self->assert(-e cwd()."/unit/tmp2/trial1.log");
     }
+}
+
+sub test_combinations_all_once_parallel {
+    my $self = shift;
+    ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
+    my $portbase = 10 + ($ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120);
+    my $pb = int(($portbase - 10000) / 10);
 
     # Test more options:
     # --run-all-combinations-once + trials
@@ -133,18 +140,24 @@ sub test_combinations {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         $ENV{MTR_BUILD_THREAD}=$pb;
         my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/test.cc --trials=2 --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".cwd()."/unit/tmp2 --run-all-combinations-once --no-log --parallel=2 --force");
-        $self->assert_equals(0, $status);
+        $self->assert_equals(0, $status >> 8);
         $self->assert(-e cwd()."/unit/tmp2/trial1.log");
         $self->assert(-e cwd()."/unit/tmp2/trial2.log");
     }
-    
+}
+
+sub test_combinations_exit_status {
+    my $self = shift;
+    ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
+    my $portbase = 10 + ($ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120);
+    my $pb = int(($portbase - 10000) / 10);
+
     # Test with known failures and check that exit value is the largest of the 
     # exit values of individual runs. Requires special .cc file and 
     # --run-all-combinations-once and no small value for --trials.
     # We use unix cp and sed for now, so avoid running on Windows.
     if ($ENV{RQG_MYSQL_BASE} && not osWindows()) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        $pb = 20 + int(($portbase - 10000) / 10);
         $ENV{MTR_BUILD_THREAD}=$pb;
         
         # First, we construct a custom "Alarm reporter" which should return STATUS_ALARM when run.
