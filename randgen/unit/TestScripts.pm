@@ -136,13 +136,30 @@ sub test_combinations_all_once_parallel {
     # --run-all-combinations-once + trials
     # --force
     # --parallel=2
+    my $expected_status = 0;    # expected exit status
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         $ENV{MTR_BUILD_THREAD}=$pb;
         my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/test.cc --trials=2 --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".cwd()."/unit/tmp2 --run-all-combinations-once --no-log --parallel=2 --force");
-        $self->assert_equals(0, $status >> 8);
-        $self->assert(-e cwd()."/unit/tmp2/trial1.log");
-        $self->assert(-e cwd()."/unit/tmp2/trial2.log");
+        $status = $status >> 8; # a perl system() thing we need to do
+        my $log1 = cwd()."/unit/tmp2/trial1.log";
+        my $log2 = cwd()."/unit/tmp2/trial2.log";
+        # In case the test fails, slurp and display trial logs for debugging.
+        # Using print instead of $self->annotate for log contents to keep end result summary tidy.
+        if ($status != $expected_status) {
+            open(LOG1, " < $log1") or $self->annotate("Unable to open trial log file $log1: $!");
+            my @log1_contents = <LOG1>;
+            close(LOG1);
+            print("--------------------\ntrial1 log contents: \n@log1_contents \n");
+            open(LOG2, " < $log2") or $self->annotate("Unable to open trial log file $log2: $!");;
+            my @log2_contents = <LOG2>;
+            close(LOG2);
+            print("--------------------\ntrial2 log contents: \n@log2_contents \n");
+            print("--------------------\nUnexpected exit status ($status) from combinations.pl. See above for details and trial log contents.\n");
+        }
+        $self->assert_equals($expected_status, $status);
+        $self->assert(-e $log1);
+        $self->assert(-e $log2);
     }
 }
 
