@@ -528,7 +528,7 @@ $0 - Run a complete random query generation test, including server start with re
     --testname  : Name of test, used for reporting purposes
     --sqltrace  : Print all generated SQL statements. 
                   Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
-    --views     : Generate views. Passed to gentest.pl
+    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr
