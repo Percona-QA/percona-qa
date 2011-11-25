@@ -149,6 +149,8 @@ sub next {
 				say("Server crash reported at dsn ".$executor->dsn());
 				last;
 			}
+			
+			next query if $execution_result->status() == STATUS_SKIP;
 		}
 		
 		foreach my $validator (@{$mixer->validators()}) {
