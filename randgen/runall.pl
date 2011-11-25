@@ -318,6 +318,7 @@ foreach my $server_id (0..1) {
 	push @mtr_options, "--mysqld=--master-retry-count=65535";
 	push @mtr_options, "--mysqld=--loose-debug-assert-if-crashed-table";
 	push @mtr_options, "--mysqld=--loose-debug-assert-on-error";
+	push @mtr_options, "--mysqld=--skip-name-resolve";
 
 	push @mtr_options, "--start-dirty" if defined $start_dirty;
 	push @mtr_options, "--gcov" if $lcov;
