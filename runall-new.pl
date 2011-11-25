@@ -122,7 +122,7 @@ my $opt_result = GetOptions(
 	'testname=s'		=> \$testname,
 	'valgrind!'	=> \$valgrind,
 	'valgrind_options=s@'	=> \@valgrind_options,
-	'views'		=> \$views,
+	'views:s'		=> \$views,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
@@ -439,7 +439,7 @@ $gentestProps->seed($seed) if defined $seed;
 $gentestProps->mask($mask) if (defined $mask) && (not defined $no_mask);
 $gentestProps->property('mask-level',$mask_level) if defined $mask_level;
 $gentestProps->rows($rows) if defined $rows;
-$gentestProps->views(1) if defined $views;
+$gentestProps->views($views) if defined $views;
 $gentestProps->property('varchar-length',$varchar_len) if defined $varchar_len;
 $gentestProps->property('xml-output',$xml_output) if defined $xml_output;
 $gentestProps->debug(1) if defined $debug;
@@ -564,7 +564,7 @@ $0 - Run a complete random query generation test, including server start with re
                   Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
     --varchar-length: length of strings. passed to gentest.pl
     --xml-outputs: Passed to gentest.pl
-    --views     : Generate views. Passed to gentest.pl
+    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr
