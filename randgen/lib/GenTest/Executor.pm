@@ -27,6 +27,10 @@ require Exporter;
 	EXECUTOR_EXPLAIN_QUERIES
 	EXECUTOR_ERROR_COUNTS
 	EXECUTOR_STATUS_COUNTS
+
+	FETCH_METHOD_AUTO
+	FETCH_METHOD_STORE_RESULT
+	FETCH_METHOD_USE_RESULT
 );
 
 use strict;
@@ -51,23 +55,32 @@ use constant EXECUTOR_META_CACHE		=> 12;
 use constant EXECUTOR_CHANNEL			=> 13;
 use constant EXECUTOR_SQLTRACE			=> 14;
 use constant EXECUTOR_NO_ERR_FILTER             => 15;
+use constant EXECUTOR_FETCH_METHOD		=> 16;
+use constant EXECUTOR_CONNECTION_ID		=> 17;
+
+use constant FETCH_METHOD_AUTO		=> 0;
+use constant FETCH_METHOD_STORE_RESULT	=> 1;
+use constant FETCH_METHOD_USE_RESULT	=> 2;
 
 my %global_schema_cache;
 
 1;
 
 sub new {
-    my $class = shift;
+	my $class = shift;
 	
 	my $executor = $class->SUPER::new({
 		'dsn'	=> EXECUTOR_DSN,
 		'dbh'	=> EXECUTOR_DBH,
-        'channel' => EXECUTOR_CHANNEL,
-        'sqltrace' => EXECUTOR_SQLTRACE,
-        'no-err-filter' => EXECUTOR_NO_ERR_FILTER
+		'channel' => EXECUTOR_CHANNEL,
+		'sqltrace' => EXECUTOR_SQLTRACE,
+		'no-err-filter' => EXECUTOR_NO_ERR_FILTER,
+		'fetch_method' => EXECUTOR_FETCH_METHOD
 	}, @_);
+
+	$executor->[EXECUTOR_FETCH_METHOD] = FETCH_METHOD_AUTO if not defined $executor->[EXECUTOR_FETCH_METHOD];
     
-    return $executor;
+	return $executor;
 }
 
 sub newFromDSN {
@@ -142,6 +155,18 @@ sub id {
 
 sub setId {
 	$_[0]->[EXECUTOR_ID] = $_[1];
+}
+
+sub fetchMethod {
+	return $_[0]->[EXECUTOR_FETCH_METHOD];
+}
+
+sub connectionId {
+	return $_[0]->[EXECUTOR_CONNECTION_ID];
+}
+
+sub setConnectionId {
+	$_[0]->[EXECUTOR_CONNECTION_ID] = $_[1];
 }
 
 sub type {

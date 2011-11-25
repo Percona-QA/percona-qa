@@ -30,6 +30,7 @@ use GenTest::Executor;
 use Time::HiRes;
 
 use constant RARE_QUERY_THRESHOLD	=> 5;
+use constant MAX_ROWS_THRESHOLD		=> 10000;
 
 my %reported_errors;
 
@@ -501,6 +502,19 @@ sub init {
 
 	$executor->defaultSchema($executor->currentSchema());
 
+	if (
+		($executor->fetchMethod() == FETCH_METHOD_AUTO) ||
+		($executor->fetchMethod() == FETCH_METHOD_USE_RESULT)
+	) {
+		say("Setting mysql_use_result to 1, so mysql_use_result() will be used.") if rqg_debug();
+		$dbh->{'mysql_use_result'} = 1;		
+	} elsif ($executor->fetchMethod() == FETCH_METHOD_STORE_RESULT) {
+		say("Setting mysql_use_result to 0, so mysql_store_result() will be used.") if rqg_debug();
+		$dbh->{'mysql_use_result'} = 0;
+	}
+
+	$executor->setConnectionId(@{$dbh->selectrow_arrayref("SELECT CONNECTION_ID()")}->[0]);
+
 #	say("Executor initialized. id: ".$executor->id()."; default schema: ".$executor->defaultSchema());
 
 	return STATUS_OK;
@@ -531,17 +545,19 @@ sub execute {
 
 	return GenTest::Result->new( query => $query, status => STATUS_UNKNOWN_ERROR ) if not defined $dbh;
 
-    $query = $executor->preprocess($query);
+	$query = $executor->preprocess($query);
 
 	if (
 		(not defined $executor->[EXECUTOR_MYSQL_AUTOCOMMIT]) &&
-		(
-			($query =~ m{^\s*start\s+transaction}io) ||
-			($query =~ m{^\s*begin}io) 
-		)
+		($query =~ m{^\s*(start\s+transaction|begin|commit|rollback)}io)
 	) {	
 		$dbh->do("SET AUTOCOMMIT=OFF");
 		$executor->[EXECUTOR_MYSQL_AUTOCOMMIT] = 0;
+
+		if ($executor->fetchMethod() == FETCH_METHOD_AUTO) {
+			say("Transactions detected. Setting mysql_use_result to 0, so mysql_store_result() will be used.") if rqg_debug();
+			$dbh->{'mysql_use_result'} = 0;
+		}
 	}
 
 	my $start_time = Time::HiRes::time();
@@ -651,21 +667,45 @@ sub execute {
 		# otherwise the entire @data array ends up referencing row #1 only
 		#
 		my @data;
-		while (my $row = $sth->fetchrow_arrayref()) {
-			my @row = @$row;
-			push @data, \@row;
-		}	
 
-		$result = GenTest::Result->new(
-			query		=> $query,
-			status		=> STATUS_OK,
-			affected_rows 	=> $affected_rows,
-			data		=> \@data,
-			start_time	=> $start_time,
-			end_time	=> $end_time,
-			column_names	=> $column_names,
-			column_types	=> $column_types
-		);
+		my $row_count = 0;
+
+		while (my @row = $sth->fetchrow_array()) {
+			push @data, \@row;
+			$row_count++;
+
+			if ($row_count > MAX_ROWS_THRESHOLD) {
+				say("Query: $query returned more than MAX_ROWS_THRESHOLD (".MAX_ROWS_THRESHOLD().") rows. Killing it ...");
+				$executor->[EXECUTOR_RETURNED_ROW_COUNTS]->{'>MAX_ROWS_THRESHOLD'}++;
+
+				my $kill_dbh = DBI->connect($executor->dsn(), undef, undef, { PrintError => 1 });
+				$kill_dbh->do("KILL QUERY ".$executor->connectionId()); 
+				$kill_dbh->disconnect();
+				$sth->finish();
+
+				$result = GenTest::Result->new(
+					query		=> $query,
+					status		=> STATUS_SKIP,
+					start_time	=> $start_time,
+					end_time	=> $end_time
+				);
+
+				last;
+			}
+		}
+
+		if (not defined $result) {
+			$result = GenTest::Result->new(
+				query		=> $query,
+				status		=> STATUS_OK,
+				affected_rows 	=> $affected_rows,
+				data		=> \@data,
+				start_time	=> $start_time,
+				end_time	=> $end_time,
+				column_names	=> $column_names,
+				column_types	=> $column_types
+			);
+		}
 
 		$executor->[EXECUTOR_ERROR_COUNTS]->{'(no error)'}++ if rqg_debug() && !$silent;
 	}
@@ -680,8 +720,11 @@ sub execute {
 	if ( (rqg_debug()) && (!$silent) ) {
 		if ($query =~ m{^\s*select}sio) {
 			$executor->explain($query);
-			my $row_group = $sth->rows() > 100 ? '>100' : ($sth->rows() > 10 ? ">10" : sprintf("%5d",$sth->rows()) );
-			$executor->[EXECUTOR_RETURNED_ROW_COUNTS]->{$row_group}++;
+
+			if ($result->status() != STATUS_SKIP) {
+				my $row_group = $result->rows() > 100 ? '>100' : ($result->rows() > 10 ? ">10" : sprintf("%5d",$sth->rows()) );
+				$executor->[EXECUTOR_RETURNED_ROW_COUNTS]->{$row_group}++;
+			}
 		} elsif ($query =~ m{^\s*(update|delete|insert|replace)}sio) {
 			my $row_group = $affected_rows > 100 ? '>100' : ($affected_rows > 10 ? ">10" : sprintf("%5d",$affected_rows) );
 			$executor->[EXECUTOR_AFFECTED_ROW_COUNTS]->{$row_group}++;
