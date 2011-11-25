@@ -22,19 +22,29 @@ use base qw(Test::Unit::TestCase);
 use lib 'lib';
 use GenTest;
 use Cwd;
+use File::Path qw(rmtree);
 
 sub new {
     my $self = shift()->SUPER::new(@_);
-    # your state for fixture here
+    # Set temporary working directory. Used for vardir, workdir etc. in tests. 
+    # Remove it in tear_down() to avoid interference between tests!
+    $self->{workdir} = cwd()."/unit/tmp2"; 
     return $self;
 }
 
 my $generator;
+
 sub set_up {
 }
 
 sub tear_down {
-    # clean up after test
+    my $self = shift;
+    # clean up after test:
+    
+    # Not all tests use the workdir, so we need to check if it exists.
+    if (-e $self->{workdir}) {
+        rmtree($self->{workdir}) or print("UNABLE TO REMOVE DIR ".$self->{workdir}.": $!\n");
+    }
 }
 
 sub test_gensql {
@@ -105,7 +115,7 @@ sub test_runall_new {
     
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmp");
+        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
         $self->assert_equals(0, $status);
     }
 }
@@ -120,9 +130,9 @@ sub test_combinations_basic {
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         $ENV{MTR_BUILD_THREAD}=$pb;
-        my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/test.cc --trials=2 --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".cwd()."/unit/tmp2 --no-log");
+        my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/test.cc --trials=2 --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".$self->{workdir}." --no-log");
         $self->assert_equals(0, $status);
-        $self->assert(-e cwd()."/unit/tmp2/trial1.log");
+        $self->assert(-e $self->{workdir}."/trial1.log");
     }
 }
 
@@ -140,10 +150,10 @@ sub test_combinations_all_once_parallel {
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         $ENV{MTR_BUILD_THREAD}=$pb;
-        my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/test.cc --trials=2 --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".cwd()."/unit/tmp2 --run-all-combinations-once --no-log --parallel=2 --force");
+        my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/test.cc --trials=2 --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".$self->{workdir}." --run-all-combinations-once --no-log --parallel=2 --force");
         $status = $status >> 8; # a perl system() thing we need to do
-        my $log1 = cwd()."/unit/tmp2/trial1.log";
-        my $log2 = cwd()."/unit/tmp2/trial2.log";
+        my $log1 = $self->{workdir}."/trial1.log";
+        my $log2 = $self->{workdir}."/trial2.log";
         # In case the test fails, slurp and display trial logs for debugging.
         # Using print instead of $self->annotate for log contents to keep end result summary tidy.
         if ($status != $expected_status) {
@@ -191,13 +201,13 @@ sub test_combinations_exit_status {
         #   STATUS_OK (0) (x2)
         #   STATUS_ALARM (109)
         # Total exit status should be the largest of these: 110
-        my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/exit_status.cc --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".cwd()."/unit/tmp2 --run-all-combinations-once --no-log --no-mask --parallel=2 --force");
+        my $status = system("perl -MCarp=verbose ./combinations.pl --new --config=unit/exit_status.cc --basedir=".$ENV{RQG_MYSQL_BASE}." --workdir=".$self->{workdir}." --run-all-combinations-once --no-log --no-mask --parallel=2 --force");
         $status = $status >> 8;
         $self->assert_num_equals(110, $status, "Wrong exit status from combinations.pl: Expected STATUS_ENVIRONMENT_FAILURE (110), but got $status");
-        $self->assert(-e cwd()."/unit/tmp2/trial1.log");
-        $self->assert(-e cwd()."/unit/tmp2/trial2.log");
-        $self->assert(-e cwd()."/unit/tmp2/trial3.log");
-        $self->assert(-e cwd()."/unit/tmp2/trial4.log");
+        $self->assert(-e $self->{workdir}."/trial1.log");
+        $self->assert(-e $self->{workdir}."/trial2.log");
+        $self->assert(-e $self->{workdir}."/trial3.log");
+        $self->assert(-e $self->{workdir}."/trial4.log");
         unlink($custom_reporter) or $self->assert(0, "Unable to delete $custom_reporter");
     }
 }
