@@ -227,8 +227,10 @@ sub preprocess {
     # Keep if match (+)
 
     # print "... $id before: $query \n";
-    
-    $query =~ s/\/\*\+[a-z:]*$id[a-z:]*:([^*]*)\*\//$1/gi;
+
+    if (index($query, '/*+') > -1) {
+        $query =~ s/\/\*\+[a-z:]*$id[a-z:]*:([^*]*)\*\//$1/gi;
+    }
 
     # print "... after: $query \n";
 
