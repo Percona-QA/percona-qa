@@ -115,8 +115,8 @@ sub descend {
 	 	say("Attempting to remove component ".join(' ', @$orig_component)." ...");
 
 		splice (@$orig_components, $component_id, 1);
-
-		if ($simplifier->oracle($grammar_obj->toString() != ORACLE_ISSUE_NO_LONGER_REPEATABLE)) {
+		
+		if ($simplifier->oracle($grammar_obj->toString()) != ORACLE_ISSUE_NO_LONGER_REPEATABLE) {
 		 	say("Outcome still repeatable after removing ".join(' ', @$orig_component).". Deleting component.");
 			next;
 		} else {
