@@ -541,9 +541,11 @@ sub execute {
 	$execution_flags = $execution_flags | $executor->flags();
 
 	# Filter out any /*executor */ comments that do not pertain to this particular Executor/DBI
-	my $executor_id = $executor->id();
-	$query =~ s{/\*executor$executor_id (.*?) \*/}{$1}sg;
-	$query =~ s{/\*executor.*?\*/}{}sgo;
+	if (index($query, 'executor') > -1) {
+		my $executor_id = $executor->id();
+		$query =~ s{/\*executor$executor_id (.*?) \*/}{$1}sg;
+		$query =~ s{/\*executor.*?\*/}{}sgo;
+	}
     
 	my $dbh = $executor->dbh();
 
@@ -868,7 +870,7 @@ sub normalizeError {
 	my ($executor, $errstr) = @_;
 
 	foreach my $i (0..$#errors) {
-		last if $errstr =~ s{$patterns[$i]}{$errors[$i]}si;
+		last if $errstr =~ s{$patterns[$i]}{$errors[$i]}s;
 	}
 
 	$errstr =~ s{\d+}{%d}sgio if $errstr !~ m{from storage engine}sio; # Make all errors involving numbers the same, e.g. duplicate key errors
