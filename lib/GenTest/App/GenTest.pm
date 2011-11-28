@@ -121,7 +121,8 @@ sub run {
                                                             engine => $self->config->engine,
                                                             sqltrace=> $self->config->sqltrace,
                                                             notnull => $self->config->notnull,
-                                                            rows => $self->config->rows);
+                                                            rows => $self->config->rows,
+                                                            varchar_length => $self->config->property('varchar-length'));
             } else {
                 $datagen = GenTest::App::Gendata->new(spec_file => $self->config->gendata,
                                                       dsn => $dsn,
