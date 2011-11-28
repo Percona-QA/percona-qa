@@ -203,6 +203,8 @@ $0 - Testing via random query generation. Options:
         --testname  : Name of test, used for reporting purposes.
         --valgrind  : ......
         --filter    : ......
+        --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
+        --short_column_names: use short column names in gendata (c<number>)
         --help      : This help message
         --debug     : Provide debug output
 EOF
