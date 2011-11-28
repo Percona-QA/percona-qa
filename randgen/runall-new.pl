@@ -570,6 +570,8 @@ $0 - Run a complete random query generation test, including server start with re
     --mem       : Passed to mtr
     --mtr-build-thread:  Value used for MTR_BUILD_THREAD when servers are started and accessed
     --debug     : Debug mode
+    --short_column_names: use short column names in gendata (c<number>)
+    --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
     --help      : This help message
 
     If you specify --basedir1 and --basedir2 or --vardir1 and --vardir2, two servers will be started and the results from the queries

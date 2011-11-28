@@ -526,13 +526,15 @@ $0 - Run a complete random query generation test, including server start with re
     --report-xml-tt-type: Passed to gentest.pl
     --report-xml-tt-dest: Passed to gentest.pl
     --testname  : Name of test, used for reporting purposes
-    --sqltrace  : Print all generated SQL statements. 
+    --sqltrace  : Print all generated SQL statements.
                   Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
     --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr
     --mtr-build-thread: Value used for MTR_BUILD_THREAD when servers are started and accessed 
+    --short_column_names: use short column names in gendata (c<number>)
+    --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
     --debug     : Debug mode
     --help      : This help message
 
