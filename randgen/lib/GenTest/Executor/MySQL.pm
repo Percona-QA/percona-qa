@@ -32,7 +32,7 @@ use Time::HiRes;
 use Digest::MD5;
 
 use constant RARE_QUERY_THRESHOLD	=> 5;
-use constant MAX_ROWS_THRESHOLD		=> 10000;
+use constant MAX_ROWS_THRESHOLD		=> 50000;
 
 my %reported_errors;
 
@@ -706,6 +706,7 @@ sub execute {
 			$kill_dbh->do("KILL QUERY ".$executor->connectionId()); 
 			$kill_dbh->disconnect();
 			$sth->finish();
+			@data = ();
 			$result_status = STATUS_SKIP;
 		} elsif ($execution_flags & EXECUTOR_FLAG_HASH_DATA) {
 			while (my ($key, $value) = each %data_hash) {
@@ -715,7 +716,7 @@ sub execute {
 
 		$result = GenTest::Result->new(
 			query		=> $query,
-			status		=> STATUS_OK,
+			status		=> $result_status,
 			affected_rows 	=> $affected_rows,
 			data		=> \@data,
 			start_time	=> $start_time,
