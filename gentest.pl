@@ -204,6 +204,7 @@ $0 - Testing via random query generation. Options:
         --valgrind  : ......
         --filter    : ......
         --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
+        --strict_fields: Disable all AI applied to columns defined in \$fields in the gendata file. Allows for very specific column definitions
         --short_column_names: use short column names in gendata (c<number>)
         --help      : This help message
         --debug     : Provide debug output

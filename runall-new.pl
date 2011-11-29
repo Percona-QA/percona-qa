@@ -571,6 +571,7 @@ $0 - Run a complete random query generation test, including server start with re
     --mtr-build-thread:  Value used for MTR_BUILD_THREAD when servers are started and accessed
     --debug     : Debug mode
     --short_column_names: use short column names in gendata (c<number>)
+    --strict_fields: Disable all AI applied to columns defined in \$fields in the gendata file. Allows for very specific column definitions
     --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
     --help      : This help message
 
