@@ -533,7 +533,8 @@ $0 - Run a complete random query generation test, including server start with re
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr
     --mtr-build-thread: Value used for MTR_BUILD_THREAD when servers are started and accessed 
-    --short_column_names: use short column names in gendata (c<number>)
+    --short_column_names: Use short column names in gendata (c<number>)
+    --strict_fields: Disable all AI applied to columns defined in $fields in the gendata file. Allows for very specific column definitions
     --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
     --debug     : Debug mode
     --help      : This help message
