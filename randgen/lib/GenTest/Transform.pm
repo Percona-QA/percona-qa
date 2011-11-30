@@ -111,7 +111,11 @@ sub transformExecuteValidate {
 
 		foreach my $transformed_query_part (@transformed_queries) {
 			my $part_result = $executor->execute($transformed_query_part);
-			if (
+
+			if ($part_result->status() == STATUS_SKIP) {
+				$transform_outcome = STATUS_OK;
+				next;
+			} elsif (
 				($part_result->status() == STATUS_SYNTAX_ERROR) || 
 				($part_result->status() == STATUS_SEMANTIC_ERROR) ||
 				($part_result->status() == STATUS_SERVER_CRASHED) 
