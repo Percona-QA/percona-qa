@@ -407,8 +407,8 @@ my %err2type = (
 	ER_VIEW_INVALID()			=> STATUS_SEMANTIC_ERROR,
 
 	ER_NO_SUCH_THREAD()			=> STATUS_SEMANTIC_ERROR,
-	ER_QUERY_INTERRUPTED()			=> STATUS_SEMANTIC_ERROR,
-	ER_FILSORT_ABORT()			=> STATUS_SEMANTIC_ERROR,
+	ER_QUERY_INTERRUPTED()			=> STATUS_SKIP,
+	ER_FILSORT_ABORT()			=> STATUS_SKIP,
 
 	ER_UNKNOWN_TABLE()			=> STATUS_SEMANTIC_ERROR,
 	ER_FILE_NOT_FOUND()			=> STATUS_SEMANTIC_ERROR,
@@ -698,7 +698,11 @@ sub execute {
 			last if ($row_count > MAX_ROWS_THRESHOLD);
 		}
 
-		if ($row_count > MAX_ROWS_THRESHOLD) {
+		# Do one extra check to catch 'query execution was interrupted' error
+		if (defined $sth->err()) {
+			$result_status = $err2type{$sth->err()};
+			@data = ();
+		} elsif ($row_count > MAX_ROWS_THRESHOLD) {
 			say("Query: $query returned more than MAX_ROWS_THRESHOLD (".MAX_ROWS_THRESHOLD().") rows. Killing it ...");
 			$executor->[EXECUTOR_RETURNED_ROW_COUNTS]->{'>MAX_ROWS_THRESHOLD'}++;
 

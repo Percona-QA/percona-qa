@@ -32,7 +32,6 @@ use GenTest::Translator;
 use GenTest::Translator::Mysqldump2ANSI;
 use GenTest::Translator::Mysqldump2javadb;
 use GenTest::Translator::MysqlDML2ANSI;
-use Data::Dumper;
 
 my @transformer_names;
 my @transformers;
@@ -127,7 +126,15 @@ sub transform {
 	my $original_query = $original_result->query();
 
 	my ($transform_outcome, $transformed_queries, $transformed_results) = $transformer->transformExecuteValidate($original_query, $original_result, $executor);
-	return $transform_outcome if ($transform_outcome > STATUS_CRITICAL_FAILURE) || ($transform_outcome == STATUS_OK);
+
+	if (
+		($transform_outcome > STATUS_CRITICAL_FAILURE) ||
+		($transform_outcome == STATUS_OK) ||
+		($transform_outcome == STATUS_SKIP) || 
+		($transform_outcome == STATUS_WONT_HANDLE)
+	) {
+		return $transform_outcome;
+	}
 
 	say("---------- TRANSFORM ISSUE ----------") if defined $transformed_results;
 	say("Original query: $original_query failed transformation with Transformer ".$transformer->name().
