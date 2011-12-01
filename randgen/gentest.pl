@@ -190,7 +190,7 @@ $0 - Testing via random query generation. Options:
         --mask-level: How many levels deep the mask is applied (default 1)
         --rows      : Number of rows to generate for each table in gendata.pl, unless specified in the ZZ file
         --varchar-length: maximum length of strings (deault 1) in gendata.pl
-        --views     : Pass --views to gendata-old.pl or gendata.pl
+        --views     : Pass --views to gendata-old.pl or gendata.pl. Optionally specify view type (algorithm) as option value. 
         --filter    : ......
         --sqltrace  : Print all generated SQL statements. 
                       Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
@@ -203,6 +203,9 @@ $0 - Testing via random query generation. Options:
         --testname  : Name of test, used for reporting purposes.
         --valgrind  : ......
         --filter    : ......
+        --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
+        --strict_fields: Disable all AI applied to columns defined in \$fields in the gendata file. Allows for very specific column definitions
+        --short_column_names: use short column names in gendata (c<number>)
         --help      : This help message
         --debug     : Provide debug output
 EOF
