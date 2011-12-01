@@ -49,19 +49,19 @@ sub transform {
 
 	return [
 		[
-			"SET SESSION optimizer_switch='in_to_exists=off,materialization=on,partial_match_rowid_merge=on,partial_match_table_scan=on';",
+			"SET SESSION optimizer_switch='semijoin=off,in_to_exists=off,materialization=on,partial_match_rowid_merge=on,partial_match_table_scan=on';",
 			"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
 			"SET SESSION optimizer_switch='$original_optimizer_switch'"
 		], [
-			"SET SESSION optimizer_switch='in_to_exists=off,materialization=on,partial_match_rowid_merge=on,partial_match_table_scan=off';",
+			"SET SESSION optimizer_switch='semijoin=off,in_to_exists=off,materialization=on,partial_match_rowid_merge=on,partial_match_table_scan=off';",
 			"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
 			"SET SESSION optimizer_switch='$original_optimizer_switch'"
 		], [
-			"SET SESSION optimizer_switch='in_to_exists=off,materialization=on,partial_match_rowid_merge=off,partial_match_table_scan=on';",
+			"SET SESSION optimizer_switch='semijoin=off,in_to_exists=off,materialization=on,partial_match_rowid_merge=off,partial_match_table_scan=on';",
 			"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
 			"SET SESSION optimizer_switch='$original_optimizer_switch'"
 		], [
-			"SET SESSION optimizer_switch='in_to_exists=off,materialization=on,partial_match_rowid_merge=off,partial_match_table_scan=off';",
+			"SET SESSION optimizer_switch='semijoin=off,in_to_exists=off,materialization=on,partial_match_rowid_merge=off,partial_match_table_scan=off';",
 			"$original_query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ;",
 			"SET SESSION optimizer_switch='$original_optimizer_switch'"
 		]

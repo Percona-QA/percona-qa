@@ -83,13 +83,12 @@ sub transformExecuteValidate {
 
 	my $transform_blocks;
 
-	if (
-		($transformer_output == STATUS_OK) ||
-		($transformer_output == STATUS_WONT_HANDLE)
-	) {
-		return STATUS_OK;
-	} elsif ($transformer_output =~ m{^\d+$}sgio) {
-		return $transformer_output;	# Error was returned and no queries
+	if ($transformer_output =~ m{^\d+$}sgio) {
+		if ($transformer_output == STATUS_WONT_HANDLE) {
+			return STATUS_OK;
+		} else {
+			return $transformer_output;     # Error was returned and no queries
+		}
 	} elsif (ref($transformer_output) eq 'ARRAY') {
 		if (ref($transformer_output->[0]) eq 'ARRAY') {
 			# Transformation produced more than one block of queries
@@ -112,7 +111,11 @@ sub transformExecuteValidate {
 
 		foreach my $transformed_query_part (@transformed_queries) {
 			my $part_result = $executor->execute($transformed_query_part);
-			if (
+
+			if ($part_result->status() == STATUS_SKIP) {
+				$transform_outcome = STATUS_OK;
+				next;
+			} elsif (
 				($part_result->status() == STATUS_SYNTAX_ERROR) || 
 				($part_result->status() == STATUS_SEMANTIC_ERROR) ||
 				($part_result->status() == STATUS_SERVER_CRASHED) 

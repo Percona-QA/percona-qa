@@ -34,6 +34,7 @@ use GenTest::App::GendataSimple;
 use GenTest::IPC::Channel;
 use GenTest::IPC::Process;
 use GenTest::ErrorFilter;
+use GenTest::Grammar;
 
 use POSIX;
 use Time::HiRes;
@@ -119,7 +120,9 @@ sub run {
                                                             views => $self->config->views,
                                                             engine => $self->config->engine,
                                                             sqltrace=> $self->config->sqltrace,
-                                                            notnull => $self->config->notnull);
+                                                            notnull => $self->config->notnull,
+                                                            rows => $self->config->rows,
+                                                            varchar_length => $self->config->property('varchar-length'));
             } else {
                 $datagen = GenTest::App::Gendata->new(spec_file => $self->config->gendata,
                                                       dsn => $dsn,
@@ -130,6 +133,8 @@ sub run {
                                                       views => $self->config->views,
                                                       varchar_length => $self->config->property('varchar-length'),
                                                       sqltrace => $self->config->sqltrace,
+                                                      short_column_names => $self->config->short_column_names,
+                                                      strict_fields => $self->config->strict_fields,
                                                       notnull => $self->config->notnull);
             }
             $gendata_result = $datagen->run();
@@ -150,7 +155,8 @@ sub run {
 
     if ($generator_name eq 'GenTest::Generator::FromGrammar') {
 	$grammar = GenTest::Grammar->new(
-	    grammar_file => $self->config->grammar
+ 	    grammar_file => $self->config->grammar,
+            grammar_flags => (defined $self->config->property('skip-recursive-rules') ? GRAMMAR_FLAG_SKIP_RECURSIVE_RULES : undef )
         ) if defined $self->config->grammar;
 
 	return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
@@ -589,7 +595,7 @@ sub run {
 sub stop_child {
     my ($self, $status) = @_;
 
-    die "calling stop_child() without a \$status" if not defined $status;
+    croak "calling stop_child() without a \$status" if not defined $status;
 
     if (osWindows()) {
         exit $status;
