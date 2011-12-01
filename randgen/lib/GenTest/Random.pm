@@ -464,27 +464,17 @@ sub isFieldType {
 
 	if (exists $name2type{$field_name}) {
 		return $name2type{$field_name};
-	} elsif ($rand->isDictionary($field_name)) {
-		$name2type{$field_name} = FIELD_TYPE_DICT;
-		return FIELD_TYPE_DICT;
+	} elsif (exists $dict_exists{$field_name}) {
+		return $dict_exists{$field_name};
 	} else {
-		return undef;
-	}
-}
-
-sub isDictionary {
-	my ($rand, $dict_name) = @_;
-
-	if (exists $dict_exists{$dict_name}) {
-		return $dict_exists{$dict_name};
-	} else {
-                my $dict_file = $ENV{RQG_HOME} ne '' ? $ENV{RQG_HOME}."/dict/$dict_name.txt" : "dict/$dict_name.txt";
+                my $dict_file = $ENV{RQG_HOME} ne '' ? $ENV{RQG_HOME}."/dict/$field_name.txt" : "dict/$field_name.txt";
 
                 if (-e $dict_file) {
-			$dict_exists{$dict_name} = 1;
-			return 1;
+			$dict_exists{$field_name} = FIELD_TYPE_DICT;
+			$name2type{$field_name} = FIELD_TYPE_DICT;
+			return FIELD_TYPE_DICT;
 		} else {
-			$dict_exists{$dict_name} = undef;
+			$dict_exists{$field_name} = undef;
 			return undef;
 		}
 	}

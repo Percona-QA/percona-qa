@@ -40,6 +40,9 @@ sub compare {
 
 	return STATUS_OK if $#resultsets == 0;
 
+	return STATUS_WONT_HANDLE if $resultsets[0]->status() == STATUS_WONT_HANDLE || $resultsets[1]->status() == STATUS_WONT_HANDLE;
+	return STATUS_SKIP if $resultsets[0]->status() == STATUS_SKIP || $resultsets[1]->status() == STATUS_SKIP;
+
 	foreach my $i (0..($#resultsets-1)) {
 
 		my $resultset1 = $resultsets[$i];

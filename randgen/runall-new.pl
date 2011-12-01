@@ -439,7 +439,13 @@ $gentestProps->seed($seed) if defined $seed;
 $gentestProps->mask($mask) if (defined $mask) && (not defined $no_mask);
 $gentestProps->property('mask-level',$mask_level) if defined $mask_level;
 $gentestProps->rows($rows) if defined $rows;
-$gentestProps->views($views) if defined $views;
+if (defined $views) {
+	if ($views eq '1') {
+		$gentestProps->property('views', 'UNDEFINED');
+	} else {
+		$gentestProps->property('views', $views);
+	}
+}
 $gentestProps->property('varchar-length',$varchar_len) if defined $varchar_len;
 $gentestProps->property('xml-output',$xml_output) if defined $xml_output;
 $gentestProps->debug(1) if defined $debug;
