@@ -35,6 +35,7 @@ IPC
 TestMySQLServer
 TestReplServer
 TestTT
+TestSqltrace
 ) }
 
 1;

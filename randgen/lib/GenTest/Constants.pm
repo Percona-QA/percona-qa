@@ -17,6 +17,8 @@
 
 package GenTest::Constants;
 
+use Carp;
+
 require Exporter;
 
 @ISA = qw(Exporter);
@@ -76,8 +78,6 @@ require Exporter;
 
 	constant2text
 	status2text
-	false
-	true
 );
 
 use strict;
@@ -154,7 +154,7 @@ sub BEGIN {
 	# What we do here is open the Constants.pm file and parse the 'use constant' lines from it
 	# The regexp is faily hairy in order to be more permissive.
 
-	open (CONSTFILE, __FILE__) or die "Unable to read constants from ".__FILE__;
+	open (CONSTFILE, __FILE__) or croak "Unable to read constants from ".__FILE__;
 	read(CONSTFILE, my $constants_text, -s __FILE__);
 	%text2value = $constants_text =~ m{^\s*use\s+constant\s+([A-Z_0-9]*?)\s*=>\s*(\d+)\s*;}mgio;
 }
@@ -165,7 +165,7 @@ sub constant2text {
 	foreach my $constant_text (keys %text2value) {
 		return $constant_text if $text2value{$constant_text} == $constant_value && $constant_text =~ m{^$prefix}si;
 	}
-	warn "Unable to obtain constant text for constant_value = $constant_value; prefix = $prefix";
+	carp "Unable to obtain constant text for constant_value = $constant_value; prefix = $prefix";
 	return undef;
 }
 

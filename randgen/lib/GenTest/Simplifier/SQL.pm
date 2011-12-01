@@ -67,6 +67,12 @@ sub simplify {
 	$simplifier->[SIMPLIFIER_CACHE] = {};
 
 	my $root = $query_obj->root();
+	
+	if (not defined $root) {
+		warn("Unable to parse query");
+		return undef;
+	}
+
 	my $root_shrunk = $root->shrink(MYPARSEPP_SHRINK_SINGLES | MYPARSEPP_SHRINK_CHILDREN);
 
 	$simplifier->[SIMPLIFIER_QUERY_ROOT] = $root_shrunk;
