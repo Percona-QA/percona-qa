@@ -49,7 +49,7 @@ sub tear_down {
         kill 9 => @pids;
     }
     rmtree("unit/tmp1");
-    rmtree("unit/tmp2");
+    rmtree("unit/tmp1_slave");
 }
 
 
