@@ -96,12 +96,18 @@ sub next {
 	my ($generator, $executors) = @_;
     
 	my $grammar = $generator->[GENERATOR_GRAMMAR];
+	my $grammar_rules = $grammar->rules();
+
 	my $prng = $generator->[GENERATOR_PRNG];
-	my $mask = $generator->[GENERATOR_MASK];
-	my $mask_level = $generator->[GENERATOR_MASK_LEVEL];
 
 	my $stack = GenTest::Stack::Stack->new();
 	my $global = $generator->globalFrame();
+
+	my %rule_counters;
+	my %invariants;
+
+	my $last_table;
+	my $last_database;
     
 	#
 	# If a temporary file has been left from a previous statement, unlink it.
@@ -114,79 +120,59 @@ sub next {
 
 	# If this is our first query, we look for a rule named "threadN_init" or "query_init"
 	if ($generator->[GENERATOR_SEQ_ID] == 0) {
-		$starting_rule = $grammar->firstMatchingRule(
-			"thread".$generator->threadId()."_init",
-                        "query_init"
-		);
-
-	        # Do not apply mask on _init rules.
-		$mask = 0 if defined $starting_rule;
+		if (exists $grammar_rules->{"thread".$generator->threadId()."_init"}) {
+			$starting_rule = "thread".$generator->threadId()."_init";
+		} elsif (exists $grammar_rules->{"query_init"}) {
+			$starting_rule = "query_init";
+		}
 	}
 
 	## Apply mask if any
 	$grammar = $generator->[GENERATOR_MASKED_GRAMMAR] if defined $generator->[GENERATOR_MASKED_GRAMMAR];
+	$grammar_rules = $grammar->rules();
 
 	# If no init starting rule, we look for rules named "threadN" or "query"
-	$starting_rule = $grammar->firstMatchingRule(
-		"thread".$generator->threadId(),
-		"query"
-	) if not defined $starting_rule;
+
+	if (not defined $starting_rule) {
+		if (exists $grammar_rules->{"thread".$generator->threadId()}) {
+			$starting_rule = $grammar_rules->{"thread".$generator->threadId()}
+		} else {
+			$starting_rule = "query";
+		}
+	}
     
 	my @sentence = ($starting_rule);
+        for (my $pos = 0; $pos <= $#sentence; $pos++) {
+		$_ = $sentence[$pos];
+		next if $_ eq ' ';
+		next if $_ eq uc($_);
+		next if not exists $grammar_rules->{$_};
 
-	my $grammar_rules = $grammar->rules();
-
-	# And we do multiple iterations, continuously expanding grammar rules and replacing the original rule with its expansion.
-	
-	my %rule_counters;
-	my %invariants;
-
-	my $last_table;
-	my $last_database;
-
-	my $pos = 0;
-	while ($pos <= $#sentence) {
-		if (ref($sentence[$pos]) eq 'GenTest::Grammar::Rule') {
-			splice (@sentence, $pos, 1 , map {
-				if ($_ ne uc($_)) {
-					if (++$rule_counters{$_} > GENERATOR_MAX_OCCURRENCES) {
-						say("Rule $_ occured more than ".GENERATOR_MAX_OCCURRENCES()." times. Possible endless loop in grammar. Aborting.");
-						return undef;
-					}
-
-					# Check if we just picked a grammar rule. If yes, then return its Rule object.	
-					# If not, use the original literal, stored in $_
-
-					$grammar_rules->{$_} || $_;
-				} else {
-					$_;
-				}
-			} @{ $sentence[$pos]->[GenTest::Grammar::Rule::RULE_COMPONENTS]->[
-					$prng->uint16(
-						0,
-						$#{$sentence[$pos]->[GenTest::Grammar::Rule::RULE_COMPONENTS]}
-					)
-				]
-			});
-
-			if ($@ ne '') {
-				say("Internal grammar problem: $@");
-				return undef;
-			}
-
-			if ($#sentence > GENERATOR_MAX_LENGTH) {
-				say("Sentence is now longer than ".GENERATOR_MAX_LENGTH()." symbols. Possible endless loop in grammar. Aborting.");
-				return undef;
-			}
-		} else {
-			$pos++;
+		if (++$rule_counters{$_} > GENERATOR_MAX_OCCURRENCES) {
+			say("Rule $_ occured more than ".GENERATOR_MAX_OCCURRENCES()." times. Possible endless loop in grammar. Aborting.");
+			return undef;
 		}
+
+		# Expand grammar rule into one of its productions
+
+		splice(@sentence, $pos, 1, @{$grammar_rules->{$_}->[GenTest::Grammar::Rule::RULE_COMPONENTS]->[
+			$prng->uint16(0, $#{$grammar_rules->{$_}->[GenTest::Grammar::Rule::RULE_COMPONENTS]})
+		]});
+
+		if ($#sentence > GENERATOR_MAX_LENGTH) {
+			say("Sentence is now longer than ".GENERATOR_MAX_LENGTH()." symbols. Possible endless loop in grammar. Aborting.");
+			return undef;
+		}
+		
+		# Process the current element of @sentence once more, as it was just expanded
+		redo;
 	}
 
 	# Once the SQL sentence has been constructed, iterate over it to replace variable items with their final values
 
 	my $item_nodash;
 	my $orig_item;
+
 	foreach (@sentence) {
 		next if $_ eq ' ';
 		next if $_ eq uc($_);				# Short-cut for UPPERCASE literals
@@ -235,10 +221,17 @@ sub next {
 
 		if ( ($_ eq 'letter') || ($_ eq '_letter') ) {
 			$_ = $prng->letter();
-		} elsif ($_ eq '_hex') {
-			$_ = $prng->hex();
 		} elsif ( ($_ eq 'digit')  || ($_ eq '_digit') ) {
 			$_ = $prng->digit();
+		} elsif ($_ eq '_table') {
+			my $tables = $executors->[0]->metaTables($last_database);
+			$last_table = $prng->arrayElement($tables);
+			$_ = '`'.$last_table.'`';
+		} elsif ($_ eq '_field') {
+			my $fields = $executors->[0]->metaColumns($last_table, $last_database);
+			$_ = '`'.$prng->arrayElement($fields).'`';
+		} elsif ($_ eq '_hex') {
+			$_ = $prng->hex();
 		} elsif ($_ eq '_cwd') {
 			$_ = "'".$cwd."'";
 		} elsif (

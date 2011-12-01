@@ -1,5 +1,5 @@
 query:
-	SELECT pk , AsText(linestring_nokey) FROM linestring /*executor1 FORCE KEY ( linestring_key ) */  WHERE where_cond AND ST_Length( linestring_nokey ) > 1;
+	SELECT AsText(linestring_nokey) FROM linestring /*executor1 FORCE KEY ( linestring_key ) */  WHERE where_cond AND ST_Length( linestring_nokey ) > 1;
 
 where_cond:
 	bool_cond |
