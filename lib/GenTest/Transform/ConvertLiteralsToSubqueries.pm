@@ -54,7 +54,9 @@ sub transform {
 		my $new_integer_query = $orig_query;
 		my @integer_literals;
 
-		$new_integer_query =~ s{\s+(\d+)}{
+		# We do not want to match "integers" in parts of dates, times, etc.
+		# Thus only using those that are followed by certain characters or space.
+		$new_integer_query =~ s{\s+(\d+)(\s|\)|,|;)}{
 			push @integer_literals, $1;
 			" (SELECT i1 FROM literals.integers WHERE i1 = $1 ) ";
 		}sgexi;
