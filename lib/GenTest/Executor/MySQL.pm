@@ -515,9 +515,9 @@ sub init {
 		$dbh->{'mysql_use_result'} = 0;
 	}
 
-	$executor->setConnectionId(@{$dbh->selectrow_arrayref("SELECT CONNECTION_ID()")}->[0]);
+	$executor->setConnectionId($dbh->selectrow_arrayref("SELECT CONNECTION_ID()")->[0]);
 
-#	say("Executor initialized. id: ".$executor->id()."; default schema: ".$executor->defaultSchema());
+	say("Executor initialized. id: ".$executor->id()."; default schema: ".$executor->defaultSchema()."; connection ID: ".$executor->connectionId()) if rqg_debug();
 
 	return STATUS_OK;
 }
