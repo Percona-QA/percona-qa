@@ -56,10 +56,12 @@ sub transform {
 
 		# We do not want to match "integers" in parts of dates, times, etc.
 		# Thus only using those that are followed by certain characters or space.
-		$new_integer_query =~ s{\s+(\d+)(\s|\)|,|;)}{
-			push @integer_literals, $1;
-			" (SELECT i1 FROM literals.integers WHERE i1 = $1 ) ";
-		}sgexi;
+		if ( $new_integer_query =~ m{\s+(\d+)(\s|\)|,|;)} ) {
+			$new_integer_query =~ s{\s+(\d+)}{
+				push @integer_literals, $1;
+				" (SELECT i1 FROM literals.integers WHERE i1 = $1 ) ";
+			}sgexi;
+		}
 
 		if ($new_integer_query ne $orig_query) {
 			push @transformed_queries, [

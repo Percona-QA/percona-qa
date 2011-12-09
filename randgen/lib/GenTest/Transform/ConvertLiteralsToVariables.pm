@@ -36,11 +36,13 @@ sub transform {
 	my @var_variables;
 
 	# Do not match partial dates, timestamps, etc.
-	$new_query =~ s{\s+(\d+)(\s|\)|,|;)}{
-		$var_counter++;
-		push @var_variables, '@var'.$var_counter." = $1";
-		' @var'.$var_counter.' ';
-	}sgexi;
+	if ($new_query =~ m{\s+(\d+)(\s|\)|,|;)}) {
+		$new_query =~ s{\s+(\d+)}{
+		    $var_counter++;
+		    push @var_variables, '@var'.$var_counter." = $1";
+		    ' @var'.$var_counter.' ';
+		}sgexi;
+	}
 
 	$new_query =~ s{\s+'(.+?)'}{
 		$var_counter++;
