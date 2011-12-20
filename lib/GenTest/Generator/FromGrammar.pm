@@ -135,7 +135,7 @@ sub next {
 
 	if (not defined $starting_rule) {
 		if (exists $grammar_rules->{"thread".$generator->threadId()}) {
-			$starting_rule = $grammar_rules->{"thread".$generator->threadId()}
+			$starting_rule = $grammar_rules->{"thread".$generator->threadId()}->name();
 		} else {
 			$starting_rule = "query";
 		}
