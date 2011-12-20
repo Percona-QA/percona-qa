@@ -78,7 +78,7 @@ sub execute {
     }
 
     if ($ENV{RQG_DEBUG} or $self->dsn() =~ m/print/) {
-        print "Executing $query\n";
+        print "Executing $query;\n";
     }
 
 	return new GenTest::Result(query => $query,
