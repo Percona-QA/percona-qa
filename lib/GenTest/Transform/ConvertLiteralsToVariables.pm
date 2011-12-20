@@ -35,11 +35,14 @@ sub transform {
 	my $var_counter = 0;
 	my @var_variables;
 
-	$new_query =~ s{\s+(\d+)}{
-		$var_counter++;
-		push @var_variables, '@var'.$var_counter." = $1";
-		' @var'.$var_counter.' ';
-	}sgexi;
+	# Do not match partial dates, timestamps, etc.
+	if ($new_query =~ m{\s+(\d+)(\s|\)|,|;)}) {
+		$new_query =~ s{\s+(\d+)}{
+		    $var_counter++;
+		    push @var_variables, '@var'.$var_counter." = $1";
+		    ' @var'.$var_counter.' ';
+		}sgexi;
+	}
 
 	$new_query =~ s{\s+'(.+?)'}{
 		$var_counter++;
@@ -50,7 +53,7 @@ sub transform {
 	if ($var_counter > 0) {
 		return [
 			"SET ".join(", ", @var_variables).";",
-			$new_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */"
+			$new_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */;"
 		];
 	} else {
 		return STATUS_WONT_HANDLE;
