@@ -111,4 +111,12 @@ sub maskedGrammar {
 	return $_[0]->[GENERATOR_MASKED_GRAMMAR];
 }
 
+sub setSeed {
+	$_[0]->[GENERATOR_SEED] = $_[1];
+}
+
+sub setThreadId {
+	$_[0]->[GENERATOR_THREAD_ID] = $_[1];
+}
+
 1;

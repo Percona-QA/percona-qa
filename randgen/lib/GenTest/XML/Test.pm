@@ -132,4 +132,8 @@ sub addIncident {
     push @{$test->[TEST_INCIDENTS]}, $incident;
 }
 
+sub logdir {
+    return $_[0]->[TEST_LOGDIR];
+}
+
 1;
