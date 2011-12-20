@@ -299,6 +299,8 @@ use constant	ER_SERVER_SHUTDOWN      => 1053;
 use constant	ER_FEATURE_DISABLED	=> 1289;
 use constant	ER_OPTION_PREVENTS_STATEMENT	=> 1290;
 
+use constant	CR_COMMANDS_OUT_OF_SYNC	=> 2014;	# Caused by old DBD::mysql
+
 my %err2type = (
 
 	ER_GET_ERRNO()		=> STATUS_DATABASE_CORRUPTION,
@@ -469,6 +471,7 @@ my %err2type = (
 	ER_BACKUP_NOT_ENABLED()	=> STATUS_ENVIRONMENT_FAILURE,
 	ER_FEATURE_DISABLED()	=> STATUS_ENVIRONMENT_FAILURE,
 	ER_OPTION_PREVENTS_STATEMENT() => STATUS_ENVIRONMENT_FAILURE,
+	CR_COMMANDS_OUT_OF_SYNC() => STATUS_ENVIRONMENT_FAILURE,
 
 	ER_SERVER_SHUTDOWN()    => STATUS_SERVER_KILLED
 );
@@ -515,9 +518,9 @@ sub init {
 		$dbh->{'mysql_use_result'} = 0;
 	}
 
-	$executor->setConnectionId(@{$dbh->selectrow_arrayref("SELECT CONNECTION_ID()")}->[0]);
+	$executor->setConnectionId($dbh->selectrow_arrayref("SELECT CONNECTION_ID()")->[0]);
 
-#	say("Executor initialized. id: ".$executor->id()."; default schema: ".$executor->defaultSchema());
+	say("Executor initialized. id: ".$executor->id()."; default schema: ".$executor->defaultSchema()."; connection ID: ".$executor->connectionId()) if rqg_debug();
 
 	return STATUS_OK;
 }
