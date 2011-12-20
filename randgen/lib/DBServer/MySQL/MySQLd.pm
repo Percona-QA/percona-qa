@@ -136,10 +136,10 @@ sub new {
                         ["sql/share/charsets","share/mysql/charsets","share/charsets"], "Index.xml");
                          
     
-    $self->[MYSQLD_LIBMYSQL] = 
-       $self->_findDir([$self->basedir], 
-                       osWindows()?["libmysql/Debug","libmysql/RelWithDebInfo","libmysql/Release","lib","lib/debug","lib/opt","bin"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
-                       osWindows()?"libmysql.dll":osMac()?"libmysqlclient.dylib":"libmysqlclient.so");
+    #$self->[MYSQLD_LIBMYSQL] = 
+    #   $self->_findDir([$self->basedir], 
+    #                   osWindows()?["libmysql/Debug","libmysql/RelWithDebInfo","libmysql/Release","lib","lib/debug","lib/opt","bin"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
+    #                   osWindows()?"libmysql.dll":osMac()?"libmysqlclient.dylib":"libmysqlclient.so");
     
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
@@ -210,9 +210,9 @@ sub errorlog {
     return $_[0]->vardir."/".MYSQLD_ERRORLOG_FILE;
 }
 
-sub libmysqldir {
-    return $_[0]->[MYSQLD_LIBMYSQL];
-}
+#sub libmysqldir {
+#    return $_[0]->[MYSQLD_LIBMYSQL];
+#}
 
 
 sub generateCommand {
