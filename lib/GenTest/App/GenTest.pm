@@ -62,6 +62,10 @@ use constant GT_ACTUAL_SEED => 1;
 use constant GT_EXECUTORS => 2;
 use constant GT_XML_TEST => 3;
 use constant GT_XML_REPORT => 4;
+use constant GT_CHANNEL => 5;
+
+use constant GT_GRAMMAR => 6;
+use constant GT_GENERATOR => 7;
 
 sub new {
     my $class = shift;
@@ -78,6 +82,13 @@ sub config {
     return $_[0]->[GT_CONFIG];
 }
 
+sub grammar {
+    return $_[0]->[GT_GRAMMAR];
+}
+
+sub generator {
+    return $_[0]->[GT_GENERATOR];
+}
 
 sub actualSeed {
     return $_[0]->[GT_ACTUAL_SEED];
@@ -93,6 +104,10 @@ sub XMLTest {
 
 sub XMLReport {
     return $_[0]->[GT_XML_REPORT];
+}
+
+sub channel {
+    return $_[0]->[GT_CHANNEL];
 }
 
 sub run {
@@ -169,41 +184,19 @@ sub run {
     my $test_start = time();
     my $test_end = $test_start + $self->config->duration;
 
-    my $generator_name = "GenTest::Generator::".$self->config->generator;
-    say("Loading Generator $generator_name.");
-    eval("use $generator_name");
-    croak($@) if $@;
+    $self->initGenerator();
 
-    my $grammar;
-
-    if ($generator_name eq 'GenTest::Generator::FromGrammar') {
-	$grammar = GenTest::Grammar->new(
- 	    grammar_file => $self->config->grammar,
-            grammar_flags => (defined $self->config->property('skip-recursive-rules') ? GRAMMAR_FLAG_SKIP_RECURSIVE_RULES : undef )
-        ) if defined $self->config->grammar;
-
-	return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
-
-        if (defined $self->config->redefine) {
-            my $patch_grammar = GenTest::Grammar->new(
-                grammar_file => $self->config->redefine);
-            $grammar = $grammar->patch($patch_grammar);
-        }
-
-        return STATUS_ENVIRONMENT_FAILURE if not defined $grammar;
-    }
-    
-    my $channel = GenTest::IPC::Channel->new();
+    $self->[GT_CHANNEL] = GenTest::IPC::Channel->new();
     
     my @executors;
     foreach my $i (0..2) {
         next if $self->config->dsn->[$i] eq '';
-        my $executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $channel);
+        my $executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
         $executor->sqltrace($self->config->sqltrace);
         $executor->setId($i+1);
         push @executors, $executor;
         if ($executor->type() == DB_MYSQL) {
-            my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $channel);
+            my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
             $metadata_executor->init();
             $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
         }
@@ -268,7 +261,7 @@ sub run {
             if (defined $self->config->valgrind) && ($mysql_only || $drizzle_only);
         
         push @{$self->config->validators}, 'QueryProperties' 
-            if defined $grammar && $grammar->hasProperties() && ($mysql_only || $drizzle_only);
+            if defined $self->grammar() && $self->grammar()->hasProperties() && ($mysql_only || $drizzle_only);
     } else {
         ## Remove the "None" validator
         foreach my $i (0..$#{$self->config->validators}) {
@@ -310,8 +303,8 @@ sub run {
     
     ### Start central reporting thread ####
     
-    my $errorfilter = GenTest::ErrorFilter->new(channel=>$channel);
-    my $errorfilter_p = GenTest::IPC::Process->new(object=>$errorfilter);
+    my $errorfilter = GenTest::ErrorFilter->new(channel => $self->channel());
+    my $errorfilter_p = GenTest::IPC::Process->new(object => $errorfilter);
     if (!osWindows()) {
         $errorfilter_p->start();
     }
@@ -331,7 +324,7 @@ sub run {
     } else {
         foreach my $i (1..$self->config->threads) {
             my $child_pid = fork();
-            $channel->writer;
+            $self->channel()->writer;
             if ($child_pid == 0) { # This is a child 
                 $process_type = PROCESS_TYPE_CHILD;
                 last;
@@ -364,7 +357,7 @@ sub run {
         my $periodic_died = 0;
         
         ## Parent thread does not use channel
-        $channel->close;
+        $self->channel()->close;
         
         while (1) {
             my $child_pid = wait();
@@ -448,7 +441,7 @@ sub run {
         }
     } elsif ($process_type == PROCESS_TYPE_PERIODIC) {
         ## Periodic does not use channel
-        $channel->close();
+        $self->channel()->close();
         my $killed = 0;
         local $SIG{TERM} = sub { $killed = 1 };
         
@@ -463,19 +456,11 @@ sub run {
 
         # We are a child process, execute the desired queries and terminate
 
-        my $generator_obj = $generator_name->new(
-            grammar => $grammar,
-            varchar_length => $self->config->property('varchar-length'),
-            seed => $self->actualSeed() + $id,
-            thread_id => $id,
-            mask => $self->config->mask,
-            mask_level => $self->config->property('mask-level')
-        );
-        
-        $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $generator_obj;
+        $self->generator()->setSeed($self->actualSeed() + $id);
+	$self->generator()->setThreadId($id);
 
         my $mixer = GenTest::Mixer->new(
-            generator => $generator_obj,
+            generator => $self->generator(),
             executors => \@executors,
             validators => $self->config->validators,
             properties =>  $self->config,
@@ -532,6 +517,41 @@ sub stop_child {
         safe_exit($status);
     }
 }
+
+
+sub initGenerator {
+    my $self = shift;
+
+    my $generator_name = "GenTest::Generator::".$self->config->generator;
+    say("Loading Generator $generator_name.") if rqg_debug();
+    eval("use $generator_name");
+    croak($@) if $@;
+
+    if ($generator_name eq 'GenTest::Generator::FromGrammar') {
+	$self->[GT_GRAMMAR] = GenTest::Grammar->new(
+ 	    grammar_file => $self->config->grammar,
+            grammar_flags => (defined $self->config->property('skip-recursive-rules') ? GRAMMAR_FLAG_SKIP_RECURSIVE_RULES : undef )
+        ) if defined $self->config->grammar;
+
+	return STATUS_ENVIRONMENT_FAILURE if not defined $self->grammar();
+
+        $self->[GT_GRAMMAR] = $self->[GT_GRAMMAR]->patch(
+            GenTest::Grammar->new( grammar_file => $self->config->redefine )
+        ) if defined $self->config->redefine;
+
+	return STATUS_ENVIRONMENT_FAILURE if not defined $self->grammar();
+    }
+
+    $self->[GT_GENERATOR] = $generator_name->new(
+        grammar => $self->grammar(),
+        varchar_length => $self->config->property('varchar-length'),
+        mask => $self->config->mask,
+        mask_level => $self->config->property('mask-level')
+    );
+
+    return STATUS_ENVIRONMENT_FAILURE if not defined $self->generator();
+}
+
 
 sub copyLogFiles {
     my ($self, $logdir, $executors) = @_;
