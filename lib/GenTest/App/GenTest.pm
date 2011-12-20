@@ -124,21 +124,9 @@ sub run {
         $ENV{RQG_HOME} = osWindows() ? $ENV{RQG_HOME}.'\\' : $ENV{RQG_HOME}.'/';
     }
     
-    my $actual_seed;
-    if ($self->config->seed() eq 'time') {
-        $actual_seed = time();
-        say("Converting --seed=time to --seed=$actual_seed"); }
-    elsif ($self->config->seed() eq 'epoch5') {
-        $actual_seed = time() % 100000;
-        say("Converting --seed=epoch5 to --seed=$actual_seed"); 
-    } elsif ($self->config->seed() eq 'random') {
-        $actual_seed = int(rand(32767));
-        say("Converting --seed=random to --seed=$actual_seed"); 
-    }
-    
-    $self->[GT_ACTUAL_SEED] = $actual_seed;
-    
     $ENV{RQG_DEBUG} = 1 if $self->config->debug;
+
+    $self->initSeed();
 
     my $queries = $self->config->queries;
     $queries =~ s{K}{000}so;
@@ -518,6 +506,24 @@ sub stop_child {
     }
 }
 
+sub initSeed {
+    my $self = shift;
+
+    if ($self->config->seed() eq 'time') {
+        $self->[GT_ACTUAL_SEED] = time();
+    } elsif ($self->config->seed() eq 'epoch5') {
+        $self->[GT_ACTUAL_SEED] = time() % 100000;
+    } elsif ($self->config->seed() eq 'random') {
+        $self->[GT_ACTUAL_SEED] = int(rand(32767));
+    } else {
+	$self->[GT_ACTUAL_SEED] = $self->config->seed();
+    }
+
+    if ($self->config->seed() ne $self->[GT_ACTUAL_SEED]) {
+        say("Converting --seed=".$self->config->seed()." to --seed=".$self->[GT_ACTUAL_SEED]); 
+    }
+
+}
 
 sub initGenerator {
     my $self = shift;
