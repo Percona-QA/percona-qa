@@ -135,46 +135,16 @@ sub run {
     say("-------------------------------\nConfiguration");
     $self->config->printProps;
 
-    if ((defined $self->config->gendata) && 
-        (not defined $self->config->property('start-dirty'))) {
-        foreach my $dsn (@{$self->config->dsn}) {
-            next if $dsn eq '';
-            my $gendata_result;
-            my $datagen;
-            if ($self->config->gendata eq '') {
-                $datagen = GenTest::App::GendataSimple->new(dsn => $dsn,
-                                                            views => $self->config->views,
-                                                            engine => $self->config->engine,
-                                                            sqltrace=> $self->config->sqltrace,
-                                                            notnull => $self->config->notnull,
-                                                            rows => $self->config->rows,
-                                                            varchar_length => $self->config->property('varchar-length'));
-            } else {
-                $datagen = GenTest::App::Gendata->new(spec_file => $self->config->gendata,
-                                                      dsn => $dsn,
-                                                      engine => $self->config->engine,
-                                                      seed => $self->actualSeed(),
-                                                      debug => $self->config->debug,
-                                                      rows => $self->config->rows,
-                                                      views => $self->config->views,
-                                                      varchar_length => $self->config->property('varchar-length'),
-                                                      sqltrace => $self->config->sqltrace,
-                                                      short_column_names => $self->config->short_column_names,
-                                                      strict_fields => $self->config->strict_fields,
-                                                      notnull => $self->config->notnull);
-            }
-            $gendata_result = $datagen->run();
-            
-            return $gendata_result if $gendata_result > STATUS_OK;
-        }
-    }
-    
+
+    my $gendata_result = $self->doGenData();
+    return $gendata_result if $gendata_result != STATUS_OK;
+
     my $test_start = time();
     my $test_end = $test_start + $self->config->duration;
 
-    $self->initGenerator();
-
     $self->[GT_CHANNEL] = GenTest::IPC::Channel->new();
+
+    $self->initGenerator();
     
     my @executors;
     foreach my $i (0..2) {
@@ -227,7 +197,7 @@ sub run {
                     test_end	=> $test_end,
                     test_duration	=> $self->config->duration,
                     properties => $self->config
-                                                                } );
+    } );
                 return $add_result if $add_result > STATUS_OK;
             }
         }
@@ -504,6 +474,48 @@ sub stop_child {
     } else {
         safe_exit($status);
     }
+}
+
+sub doGenData {
+    my $self = shift;
+
+    return STATUS_OK if not defined $self->config->gendata();
+    return STATUS_OK if defined $self->config->property('start-dirty');
+
+    foreach my $dsn (@{$self->config->dsn}) {
+        next if $dsn eq '';
+        my $gendata_result;
+        if ($self->config->gendata eq '') {
+            $gendata_result = GenTest::App::GendataSimple->new(
+               dsn => $dsn,
+               views => $self->config->views,
+               engine => $self->config->engine,
+               sqltrace=> $self->config->sqltrace,
+               notnull => $self->config->notnull,
+               rows => $self->config->rows,
+               varchar_length => $self->config->property('varchar-length')
+            )->run();
+        } else {
+            $gendata_result = GenTest::App::Gendata->new(
+               spec_file => $self->config->gendata,
+               dsn => $dsn,
+               engine => $self->config->engine,
+               seed => $self->actualSeed(),
+               debug => $self->config->debug,
+               rows => $self->config->rows,
+               views => $self->config->views,
+               varchar_length => $self->config->property('varchar-length'),
+               sqltrace => $self->config->sqltrace,
+               short_column_names => $self->config->short_column_names,
+               strict_fields => $self->config->strict_fields,
+               notnull => $self->config->notnull
+            )->run();
+        }
+            
+        return $gendata_result if $gendata_result > STATUS_OK;
+    }
+
+    return STATUS_OK;
 }
 
 sub initSeed {
