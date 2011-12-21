@@ -69,6 +69,7 @@ use constant GT_GENERATOR => 7;
 use constant GT_REPORTER_MANAGER => 8;
 use constant GT_TEST_START => 9;
 use constant GT_TEST_END => 10;
+use constant GT_FILTER => 11;
 
 sub new {
     my $class = shift;
@@ -117,15 +118,18 @@ sub reporterManager {
     return $_[0]->[GT_REPORTER_MANAGER];
 }
 
+sub filter {
+    return $_[0]->[GT_FILTER];
+}
+
 sub run {
-    my ($self) = @_;
+    my $self = shift;
 
     $| = 1;
-    my $ctrl_c = 0;
-    
-    $SIG{INT} = sub { $ctrl_c = 1 };
+
     $SIG{TERM} = sub { exit(0) };
     $SIG{CHLD} = "IGNORE" if osWindows();
+    $SIG{INT} = "IGNORE";
     
     if (defined $ENV{RQG_HOME}) {
         $ENV{RQG_HOME} = osWindows() ? $ENV{RQG_HOME}.'\\' : $ENV{RQG_HOME}.'/';
@@ -138,10 +142,10 @@ sub run {
     my $queries = $self->config->queries;
     $queries =~ s{K}{000}so;
     $queries =~ s{M}{000000}so;
+    $self->config->property('queries', $queries);
 
     say("-------------------------------\nConfiguration");
     $self->config->printProps;
-
 
     my $gendata_result = $self->doGenData();
     return $gendata_result if $gendata_result != STATUS_OK;
@@ -160,11 +164,12 @@ sub run {
 
     my $init_validators_result = $self->initValidators();
     return $init_validators_result if $init_validators_result != STATUS_OK;
-        
-    my $filter_obj;
-    
-    $filter_obj = GenTest::Filter::Regexp->new( file => $self->config->filter ) 
-        if defined $self->config->filter;
+
+    if (defined $self->config->filter) {
+       $self->[GT_FILTER] = GenTest::Filter::Regexp->new(
+           file => $self->config->filter
+       )
+    }
     
     say("Starting ".$self->config->threads." processes, ".
         $self->config->queries." queries each, duration ".
@@ -179,203 +184,121 @@ sub run {
     if (!osWindows()) {
         $errorfilter_p->start();
     }
-    
-    ### Start children ###
 
-    my $process_type;
-    my %child_pids;
-    my $id = 1;
+    my $reporter_pid = $self->reportingProcess();
     
-    my $periodic_pid = fork();
-    if ($periodic_pid == 0) {
-        Time::HiRes::sleep(($self->config->threads + 1) / 10);
-        say("Started periodic reporting process...");
-        $process_type = PROCESS_TYPE_PERIODIC;
-        $id = 0;
-    } else {
-        foreach my $i (1..$self->config->threads) {
-            my $child_pid = fork();
-            $self->channel()->writer;
-            if ($child_pid == 0) { # This is a child 
-                $process_type = PROCESS_TYPE_CHILD;
-                last;
-            } else {
-                $child_pids{$child_pid} = 1;
-                $process_type = PROCESS_TYPE_PARENT;
-                $self->[GT_ACTUAL_SEED]++;
-                $id++;
-                Time::HiRes::sleep(0.1);	# fork slowly for more predictability
-                next;
-            }
-        }
+    ### Start worker children ###
+
+    my %worker_pids;
+    
+    foreach my $worker_id (1..$self->config->threads) {
+        my $worker_pid = $self->workerProcess($worker_id);
+        $worker_pids{$worker_pid} = 1;
+        Time::HiRes::sleep(0.1); # fork slowly for more predictability
     }
 
-
-    ### Do the job
-
-    if ($process_type == PROCESS_TYPE_PARENT) {
+    ### Main process
         
-        ### Main process
+    if (osWindows()) {
+        ## Important that this is done here in the parent after the last
+        ## fork since on windows Process.pm uses threads
+        $errorfilter_p->start();
+    }
+
+    # We are the parent process, wait for for all spawned processes to terminate
+    my $total_status = STATUS_OK;
+    my $reporter_died = 0;
         
+    ## Parent thread does not use channel
+    $self->channel()->close;
+        
+    while (1) {
+        my $child_pid = wait();
+        my $child_exit_status = $? > 0 ? ($? >> 8) : 0;
+
+        $total_status = $child_exit_status if $child_exit_status > $total_status;
+            
+        if ($child_pid == $reporter_pid) {
+            $reporter_died = 1;
+            last;
+        } else {
+            delete $worker_pids{$child_pid};
+        }
+            
+        last if $child_exit_status >= STATUS_CRITICAL_FAILURE;
+        last if keys %worker_pids == 0;
+        last if $child_pid == -1;
+    }
+
+    foreach my $worker_pid (keys %worker_pids) {
+        say("Killing remaining worker process with pid $worker_pid...");
+        kill(15, $worker_pid);
+    }
+        
+    if ($reporter_died == 0) {
+        # Wait for periodic process to return the status of its last execution
+        Time::HiRes::sleep(1);
+        say("Killing periodic reporting process with pid $reporter_pid...");
+        kill(15, $reporter_pid);
+            
         if (osWindows()) {
-            ## Important that this is done here in the parent after the last
-            ## fork since on windows Process.pm uses threads
-            $errorfilter_p->start();
-        }
-        # We are the parent process, wait for for all spawned processes to terminate
-        my $children_died = 0;
-        my $total_status = STATUS_OK;
-        my $periodic_died = 0;
-        
-        ## Parent thread does not use channel
-        $self->channel()->close;
-        
-        while (1) {
-            my $child_pid = wait();
-            my $exit_status = $? > 0 ? ($? >> 8) : 0;
-
-            $total_status = $exit_status if $exit_status > $total_status;
-            
-            if ($child_pid == $periodic_pid) {
-                $periodic_died = 1;
-                last;
-            } else {
-                $children_died++;
-                delete $child_pids{$child_pid};
-            }
-            
-            last if $exit_status >= STATUS_CRITICAL_FAILURE;
-            last if $children_died == $self->config->threads;
-            last if $child_pid == -1;
-        }
-
-        foreach my $child_pid (keys %child_pids) {
-            say("Killing child process with pid $child_pid...");
-            kill(15, $child_pid);
-        }
-        
-        if ($periodic_died == 0) {
-            # Wait for periodic process to return the status of its last execution
+            # We use sleep() + non-blocking waitpid() due to a bug in ActiveState Perl
             Time::HiRes::sleep(1);
-            say("Killing periodic reporting process with pid $periodic_pid...");
-            kill(15, $periodic_pid);
+            waitpid($reporter_pid, &POSIX::WNOHANG() );
+        } else {
+            waitpid($reporter_pid, 0);
+        }
             
-            if (osWindows()) {
-                # We use sleep() + non-blocking waitpid() due to a bug in ActiveState Perl
-                Time::HiRes::sleep(1);
-                waitpid($periodic_pid, &POSIX::WNOHANG() );
-            } else {
-                waitpid($periodic_pid, 0);
-            }
-            
-            if ($? > -1 ) {
-                my $periodic_status = $? > 0 ? $? >> 8 : 0;
-                $total_status = $periodic_status if $periodic_status > $total_status;
-            }
+        if ($? > -1 ) {
+            my $reporter_status = $? > 0 ? $? >> 8 : 0;
+            $total_status = $reporter_status if $reporter_status > $total_status;
         }
-        
-        $errorfilter_p->kill();
-        
-        my $reporter_manager = $self->reporterManager();
-        my @report_results;
-        
-        if ($total_status == STATUS_OK) {
-            @report_results = $reporter_manager->report(REPORTER_TYPE_SUCCESS | REPORTER_TYPE_ALWAYS);
-        } elsif (
-            ($total_status == STATUS_LENGTH_MISMATCH) ||
-            ($total_status == STATUS_CONTENT_MISMATCH)
-            ) {
-            @report_results = $reporter_manager->report(REPORTER_TYPE_DATA | REPORTER_TYPE_ALWAYS);
-        } elsif ($total_status == STATUS_SERVER_CRASHED) {
-            say("Server crash reported, initiating post-crash analysis...");
-            @report_results = $reporter_manager->report(REPORTER_TYPE_CRASH | REPORTER_TYPE_ALWAYS);
-        } elsif ($total_status == STATUS_SERVER_DEADLOCKED) {
-            say("Server deadlock reported, initiating analysis...");
-            @report_results = $reporter_manager->report(REPORTER_TYPE_DEADLOCK | REPORTER_TYPE_ALWAYS);
-        } elsif ($total_status == STATUS_SERVER_KILLED) {
-            @report_results = $reporter_manager->report(REPORTER_TYPE_SERVER_KILLED | REPORTER_TYPE_ALWAYS);
-        } else {
-            @report_results = $reporter_manager->report(REPORTER_TYPE_ALWAYS);
-        }
-        
-        my $report_status = shift @report_results;
-        $total_status = $report_status if $report_status > $total_status;
-        $total_status = STATUS_OK if $total_status == STATUS_SERVER_KILLED;
-
-	$self->reportXMLIncidents($total_status, \@report_results);
-        
-        if ($total_status == STATUS_OK) {
-            say("Test completed successfully.");
-            return STATUS_OK;
-        } else {
-            say("Test completed with failure status ".status2text($total_status)." ($total_status)");
-            return $total_status;
-        }
-    } elsif ($process_type == PROCESS_TYPE_PERIODIC) {
-        ## Periodic does not use channel
-        $self->channel()->close();
-        my $killed = 0;
-        local $SIG{TERM} = sub { $killed = 1 };
-        
-        while (1) {
-            my $reporter_status = $self->reporterManager()->monitor(REPORTER_TYPE_PERIODIC);
-            $self->stop_child($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
-            last if $killed == 1;
-            sleep(10);
-        }
-        $self->stop_child(STATUS_OK);
-    } elsif ($process_type == PROCESS_TYPE_CHILD) {
-
-        # We are a child process, execute the desired queries and terminate
-
-        $self->generator()->setSeed($self->actualSeed() + $id);
-	$self->generator()->setThreadId($id);
-
-        my $mixer = GenTest::Mixer->new(
-            generator => $self->generator(),
-            executors => $self->executors(),
-            validators => $self->config->validators,
-            properties =>  $self->config,
-            filters => defined $filter_obj ? [ $filter_obj ] : undef
-        );
-        
-        $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
-        
-        my $max_result = 0;
-        
-        foreach my $i (1..$queries) {
-            my $result = $mixer->next();
-	    if ($result > STATUS_CRITICAL_FAILURE) {
-                undef $mixer;	# so that destructors are called
-                $self->stop_child($result);
-            }
-
-            $max_result = $result if $result > $max_result && $result > STATUS_TEST_FAILURE;
-            last if $result == STATUS_EOF;
-            last if $ctrl_c == 1;
-            last if time() > $self->[GT_TEST_END];
-        }
-        
-        foreach my $executor (@{$self->executors()}) {
-            $executor->disconnect;
-            undef $executor;
-        }
-
-	# Forcefully deallocate the Mixer so that Validator destructors are called
-	undef $mixer;
-	undef $filter_obj;
-        
-        if ($max_result > 0) {
-            say("Child process completed with error code $max_result.");
-            $self->stop_child($max_result);
-        } else {
-            say("Child process completed successfully.");
-            $self->stop_child(STATUS_OK);
-        }
-    } else {
-        croak ("Unknown process type $process_type");
     }
+        
+    $errorfilter_p->kill();
+   
+    return $self->reportResults($total_status);
 
+}
+
+sub reportResults {
+    my ($self, $total_status) = @_;
+      
+    my $reporter_manager = $self->reporterManager();
+    my @report_results;
+        
+    if ($total_status == STATUS_OK) {
+        @report_results = $reporter_manager->report(REPORTER_TYPE_SUCCESS | REPORTER_TYPE_ALWAYS);
+    } elsif (
+        ($total_status == STATUS_LENGTH_MISMATCH) ||
+        ($total_status == STATUS_CONTENT_MISMATCH)
+    ) {
+        @report_results = $reporter_manager->report(REPORTER_TYPE_DATA | REPORTER_TYPE_ALWAYS);
+    } elsif ($total_status == STATUS_SERVER_CRASHED) {
+        say("Server crash reported, initiating post-crash analysis...");
+        @report_results = $reporter_manager->report(REPORTER_TYPE_CRASH | REPORTER_TYPE_ALWAYS);
+    } elsif ($total_status == STATUS_SERVER_DEADLOCKED) {
+        say("Server deadlock reported, initiating analysis...");
+        @report_results = $reporter_manager->report(REPORTER_TYPE_DEADLOCK | REPORTER_TYPE_ALWAYS);
+    } elsif ($total_status == STATUS_SERVER_KILLED) {
+        @report_results = $reporter_manager->report(REPORTER_TYPE_SERVER_KILLED | REPORTER_TYPE_ALWAYS);
+    } else {
+        @report_results = $reporter_manager->report(REPORTER_TYPE_ALWAYS);
+    }
+        
+    my $report_status = shift @report_results;
+    $total_status = $report_status if $report_status > $total_status;
+    $total_status = STATUS_OK if $total_status == STATUS_SERVER_KILLED;
+
+    $self->reportXMLIncidents($total_status, \@report_results);
+        
+    if ($total_status == STATUS_OK) {
+        say("Test completed successfully.");
+        return STATUS_OK;
+    } else {
+        say("Test completed with failure status ".status2text($total_status)." ($total_status)");
+        return $total_status;
+    }
 }
 
 sub stop_child {
@@ -387,6 +310,94 @@ sub stop_child {
         exit $status;
     } else {
         safe_exit($status);
+    }
+}
+
+sub reportingProcess {
+    my $self = shift;
+
+    my $reporter_pid = fork();
+
+    if ($reporter_pid > 0) {
+        return $reporter_pid;
+    }
+
+    my $reporter_killed = 0;
+    local $SIG{TERM} = sub { $reporter_killed = 1 };
+
+    ## Reporter process does not use channel
+    $self->channel()->close();
+
+    Time::HiRes::sleep(($self->config->threads + 1) / 10);
+    say("Started periodic reporting process...");
+
+    while (1) {
+        my $reporter_status = $self->reporterManager()->monitor(REPORTER_TYPE_PERIODIC);
+        $self->stop_child($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
+        last if $reporter_killed == 1;
+        sleep(10);
+    }
+
+    $self->stop_child(STATUS_OK);
+}
+
+sub workerProcess {
+    my ($self, $worker_id) = @_;
+
+    my $worker_pid = fork();
+
+    if ($worker_pid > 0) {
+        return $worker_pid;
+    }
+
+    my $ctrl_c = 0;
+    local $SIG{INT} = sub { $ctrl_c = 1 };
+
+    $self->channel()->writer;
+
+    $self->generator()->setSeed($self->actualSeed() + $worker_id);
+    $self->generator()->setThreadId($worker_id);
+
+    my $mixer = GenTest::Mixer->new(
+        generator => $self->generator(),
+        executors => $self->executors(),
+        validators => $self->config->validators,
+        properties =>  $self->config,
+        filters => $self->filter()
+    );
+        
+    $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
+        
+    my $worker_result = 0;
+        
+    foreach my $i (1..$self->config->queries) {
+        my $query_result = $mixer->next();
+        if ($query_result > STATUS_CRITICAL_FAILURE) {
+            undef $mixer;	# so that destructors are called
+            $self->stop_child($query_result);
+        }
+
+        $worker_result = $query_result if $query_result > $worker_result && $query_result > STATUS_TEST_FAILURE;
+        last if $query_result == STATUS_EOF;
+        last if $ctrl_c == 1;
+        last if time() > $self->[GT_TEST_END];
+    }
+        
+    foreach my $executor (@{$self->executors()}) {
+        $executor->disconnect;
+        undef $executor;
+    }
+
+    # Forcefully deallocate the Mixer so that Validator destructors are called
+    undef $mixer;
+    undef $self->[GT_FILTER];
+        
+    if ($worker_result > 0) {
+        say("Child workerprocess completed with error code $worker_result.");
+        $self->stop_child($worker_result);
+    } else {
+        say("Child process completed successfully.");
+        $self->stop_child(STATUS_OK);
     }
 }
 
