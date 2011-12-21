@@ -115,8 +115,6 @@ sub queryFilters {
 sub run {
     my $self = shift;
 
-    $| = 1;
-
     $SIG{TERM} = sub { exit(0) };
     $SIG{CHLD} = "IGNORE" if osWindows();
     $SIG{INT} = "IGNORE";
@@ -319,7 +317,7 @@ sub reportingProcess {
 
     my $reporter_pid = fork();
 
-    if ($reporter_pid > 0) {
+    if ($reporter_pid != 0) {
         return $reporter_pid;
     }
 
@@ -347,7 +345,7 @@ sub workerProcess {
 
     my $worker_pid = fork();
 
-    if ($worker_pid > 0) {
+    if ($worker_pid != 0) {
         return $worker_pid;
     }
 
