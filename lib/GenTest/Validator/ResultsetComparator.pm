@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -37,7 +37,14 @@ sub validate {
 	my $compare_outcome = GenTest::Comparator::compare($results->[0], $results->[1]);
 
 	return STATUS_WONT_HANDLE if $results->[0]->status() == STATUS_SEMANTIC_ERROR || $results->[1]->status() == STATUS_SEMANTIC_ERROR;
+	return STATUS_WONT_HANDLE if $results->[0]->status() == STATUS_SYNTAX_ERROR || $results->[1]->status() == STATUS_SYNTAX_ERROR;
 	return STATUS_WONT_HANDLE if $results->[0]->query() =~ m{EXPLAIN}sio;
+
+	if ( ($compare_outcome == STATUS_LENGTH_MISMATCH) ||
+	     ($compare_outcome == STATUS_CONTENT_MISMATCH) 
+	) {
+		say("---------- RESULT COMPARISON ISSUE START ----------");
+	}
 
 	if ($compare_outcome == STATUS_LENGTH_MISMATCH) {
 		if ($query =~ m{^\s*select}io) {
@@ -49,6 +56,12 @@ sub validate {
 	} elsif ($compare_outcome == STATUS_CONTENT_MISMATCH) {
 		say("Query: ".$results->[0]->query()." failed: result content mismatch between servers.");
 		say(GenTest::Comparator::dumpDiff($results->[0], $results->[1]));
+	}
+
+	if ( ($compare_outcome == STATUS_LENGTH_MISMATCH) ||
+	     ($compare_outcome == STATUS_CONTENT_MISMATCH) 
+	) {
+		say("---------- RESULT COMPARISON ISSUE END ------------");
 	}
 
 	#

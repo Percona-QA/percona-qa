@@ -108,13 +108,17 @@ sub report
         my $drizzledump = $basedir.'/client/drizzledump' ;
         my $drizzle_client = $basedir.'/client/drizzle' ;
         my $transaction_reader; 
-        if (-e $basedir.'/drizzled/message/transaction_reader') 
+        if (exists $ENV{'DRIZZLE_TRX_READER'})
+        {
+            $transaction_reader = $ENV{'DRIZZLE_TRX_READER'}
+        } 
+        elsif (-e $basedir.'/drizzled/message/transaction_reader')
         {
             $transaction_reader = $basedir.'/drizzled/message/transaction_reader';
         }
         else 
         {
-            $transaction_reader = $basedir.'/plugin/transaction_log/utilities/transaction_reader' ;
+            $transaction_reader = $basedir.'/plugin/transaction_log/utilities/drizzletrx' ;
         }
 
         # transaction log location can vary depending on how we start the server
@@ -160,6 +164,7 @@ sub report
 		'--datadir="'.$datadir.'"',
                 '--basedir="'.$basedir.'"',
                 '--plugin-add=shutdown_function',
+                '--innodb.replication-log',
 		'--mysql-protocol.port='.$main_port,
 
 	);

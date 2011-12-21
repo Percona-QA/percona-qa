@@ -48,7 +48,7 @@ select:
 	SELECT distinct * FROM _table index_hint WHERE where order_by /* limit */ |
 	SELECT distinct * FROM _table index_hint WHERE where order_by /* limit */ |
 	SELECT aggregate int_key ) FROM _table index_hint WHERE where |
-	SELECT int_key , aggregate int_key ) FROM _table index_hint WHERE where GROUP BY int_key ;
+	SELECT int_key , aggregate int_key ) FROM _table index_hint WHERE where GROUP BY 1 ;
 
 alter_add:
 	ALTER TABLE _table ADD KEY key1 ( index_list ) ;
@@ -60,7 +60,7 @@ distinct:
 	| | DISTINCT ;
 
 order_by:
-	| | ORDER BY _field_indexed , `pk` ;
+	| | ORDER BY any_key , `pk` ;
 
 limit:
 	| | | | |
@@ -124,6 +124,9 @@ comparison_operator:
 not:
 	| | | | | | NOT ;
 
+any_key:
+	int_key | string_key ;
+
 int_key:
 	`pk` | `col_smallint_key` | `col_bigint_key` ;
 
@@ -142,5 +145,5 @@ index_length:
 	1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 ;
 
 index_hint:
-	|
+	| | | 
 	FORCE KEY ( PRIMARY , `col_smallint_key` , `col_bigint_key` ,  `col_varchar_10_key` , `col_varchar_64_key` );

@@ -38,6 +38,7 @@ sub transform {
 	} else {
 		$executor->execute("DROP VIEW transforms.view_".$$."_probe");
 		return [
+			"DROP VIEW IF EXISTS transforms.view_".$$."_merge , transforms.view_".$$."_temptable",
 			"CREATE OR REPLACE ALGORITHM=MERGE VIEW transforms.view_".$$."_merge AS $original_query",
 			"SELECT * FROM transforms.view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 			"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW transforms.view_".$$."_temptable AS $original_query",

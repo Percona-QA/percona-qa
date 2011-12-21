@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Transform::FromSubquery;
+package GenTest::Transform::ExecuteAsPreparedOnce;
 
 require Exporter;
 @ISA = qw(GenTest GenTest::Transform);
@@ -28,11 +28,17 @@ use GenTest::Transform;
 use GenTest::Constants;
 
 sub transform {
-	my ($class, $orig_query) = @_;
+	my ($class, $original_query, $executor) = @_;
 
-	$orig_query =~ s{SELECT (.*?) FROM (.*)}{SELECT * FROM ( SELECT $1 FROM $2 ) AS FROM_SUBQUERY }sio;
-	return $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
+	return STATUS_WONT_HANDLE if $original_query !~ m{SELECT|HANDLER}sio;
+	# Certain HANDLER statements can not be re-run as prepared because they advance a cursor
+	return STATUS_WONT_HANDLE if $original_query =~ m{PREPARE|OPEN|CLOSE|PREV|NEXT}sio;
 
+	return [
+		"PREPARE prep_stmt_$$ FROM ".$executor->dbh()->quote($original_query),
+		"EXECUTE prep_stmt_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"DEALLOCATE PREPARE prep_stmt_$$"
+	];
 }
 
 1;
