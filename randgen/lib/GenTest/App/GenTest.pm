@@ -350,6 +350,7 @@ sub workerProcess {
         return $worker_pid;
     }
 
+    $| = 1;
     my $ctrl_c = 0;
     local $SIG{INT} = sub { $ctrl_c = 1 };
 
@@ -464,6 +465,8 @@ sub initSeed {
         $new_seed = time() % 100000;
     } elsif ($self->config->seed() eq 'random') {
         $new_seed = int(rand(32767));
+    } else {
+        $new_seed = $orig_seed;
     }
 
     if ($new_seed ne $orig_seed) {
