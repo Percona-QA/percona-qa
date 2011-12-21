@@ -344,6 +344,7 @@ sub workerProcess {
     my ($self, $worker_id) = @_;
 
     my $worker_pid = fork();
+    $self->channel()->writer;
 
     if ($worker_pid != 0) {
         return $worker_pid;
@@ -351,8 +352,6 @@ sub workerProcess {
 
     my $ctrl_c = 0;
     local $SIG{INT} = sub { $ctrl_c = 1 };
-
-    $self->channel()->writer;
 
     $self->generator()->setSeed($self->config->seed() + $worker_id);
     $self->generator()->setThreadId($worker_id);
