@@ -58,8 +58,6 @@ use constant PROCESS_TYPE_PERIODIC	=> 1;
 use constant PROCESS_TYPE_CHILD		=> 2;
 
 use constant GT_CONFIG => 0;
-use constant GT_ACTUAL_SEED => 1;
-use constant GT_EXECUTORS => 2;
 use constant GT_XML_TEST => 3;
 use constant GT_XML_REPORT => 4;
 use constant GT_CHANNEL => 5;
@@ -69,7 +67,7 @@ use constant GT_GENERATOR => 7;
 use constant GT_REPORTER_MANAGER => 8;
 use constant GT_TEST_START => 9;
 use constant GT_TEST_END => 10;
-use constant GT_FILTER => 11;
+use constant GT_QUERY_FILTERS => 11;
 
 sub new {
     my $class = shift;
@@ -94,14 +92,6 @@ sub generator {
     return $_[0]->[GT_GENERATOR];
 }
 
-sub actualSeed {
-    return $_[0]->[GT_ACTUAL_SEED];
-}
-
-sub executors {
-    return $_[0]->[GT_EXECUTORS];
-}
-
 sub XMLTest {
     return $_[0]->[GT_XML_TEST];
 }
@@ -118,8 +108,8 @@ sub reporterManager {
     return $_[0]->[GT_REPORTER_MANAGER];
 }
 
-sub filter {
-    return $_[0]->[GT_FILTER];
+sub queryFilters {
+    return $_[0]->[GT_QUERY_FILTERS];
 }
 
 sub run {
@@ -155,9 +145,8 @@ sub run {
 
     $self->[GT_CHANNEL] = GenTest::IPC::Channel->new();
 
-    $self->initGenerator();
-
-    $self->initExecutors();
+    my $init_generator_result = $self->initGenerator();
+    return $init_generator_result if $init_generator_result != STATUS_OK;
 
     my $init_reporters_result = $self->initReporters();
     return $init_reporters_result if $init_reporters_result != STATUS_OK;
@@ -165,10 +154,20 @@ sub run {
     my $init_validators_result = $self->initValidators();
     return $init_validators_result if $init_validators_result != STATUS_OK;
 
+    foreach my $i (0..2) {
+        next if $self->config->dsn->[$i] eq '';
+        next if $self->config->dsn->[$i] !~ m{mysql}sio;
+        my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
+        $metadata_executor->init();
+        $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
+        $metadata_executor->disconnect();
+        undef $metadata_executor;
+    }
+
     if (defined $self->config->filter) {
-       $self->[GT_FILTER] = GenTest::Filter::Regexp->new(
+       $self->[GT_QUERY_FILTERS] = [ GenTest::Filter::Regexp->new(
            file => $self->config->filter
-       )
+       ) ];
     }
     
     say("Starting ".$self->config->threads." processes, ".
@@ -190,11 +189,13 @@ sub run {
     ### Start worker children ###
 
     my %worker_pids;
-    
-    foreach my $worker_id (1..$self->config->threads) {
-        my $worker_pid = $self->workerProcess($worker_id);
-        $worker_pids{$worker_pid} = 1;
-        Time::HiRes::sleep(0.1); # fork slowly for more predictability
+
+    if ($self->config->threads > 0) {
+        foreach my $worker_id (1..$self->config->threads) {
+            my $worker_pid = $self->workerProcess($worker_id);
+            $worker_pids{$worker_pid} = 1;
+            Time::HiRes::sleep(0.1); # fork slowly for more predictability
+        }
     }
 
     ### Main process
@@ -213,7 +214,7 @@ sub run {
     $self->channel()->close;
         
     while (1) {
-        my $child_pid = wait();
+        my $child_pid = waitpid(-1, 1);
         my $child_exit_status = $? > 0 ? ($? >> 8) : 0;
 
         $total_status = $child_exit_status if $child_exit_status > $total_status;
@@ -301,10 +302,10 @@ sub reportResults {
     }
 }
 
-sub stop_child {
+sub stopChild {
     my ($self, $status) = @_;
 
-    croak "calling stop_child() without a \$status" if not defined $status;
+    croak "calling stopChild() without a \$status" if not defined $status;
 
     if (osWindows()) {
         exit $status;
@@ -333,12 +334,12 @@ sub reportingProcess {
 
     while (1) {
         my $reporter_status = $self->reporterManager()->monitor(REPORTER_TYPE_PERIODIC);
-        $self->stop_child($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
+        $self->stopChild($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
         last if $reporter_killed == 1;
         sleep(10);
     }
 
-    $self->stop_child(STATUS_OK);
+    $self->stopChild(STATUS_OK);
 }
 
 sub workerProcess {
@@ -355,18 +356,27 @@ sub workerProcess {
 
     $self->channel()->writer;
 
-    $self->generator()->setSeed($self->actualSeed() + $worker_id);
+    $self->generator()->setSeed($self->config->seed() + $worker_id);
     $self->generator()->setThreadId($worker_id);
+
+    my @executors;
+    foreach my $i (0..2) {
+        next if $self->config->dsn->[$i] eq '';
+        my $executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
+        $executor->sqltrace($self->config->sqltrace);
+        $executor->setId($i+1);
+        push @executors, $executor;
+    }
 
     my $mixer = GenTest::Mixer->new(
         generator => $self->generator(),
-        executors => $self->executors(),
+        executors => \@executors,
         validators => $self->config->validators,
         properties =>  $self->config,
-        filters => $self->filter()
+        filters => $self->queryFilters()
     );
         
-    $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
+    $self->stopChild(STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
         
     my $worker_result = 0;
         
@@ -374,7 +384,7 @@ sub workerProcess {
         my $query_result = $mixer->next();
         if ($query_result > STATUS_CRITICAL_FAILURE) {
             undef $mixer;	# so that destructors are called
-            $self->stop_child($query_result);
+            $self->stopChild($query_result);
         }
 
         $worker_result = $query_result if $query_result > $worker_result && $query_result > STATUS_TEST_FAILURE;
@@ -383,21 +393,21 @@ sub workerProcess {
         last if time() > $self->[GT_TEST_END];
     }
         
-    foreach my $executor (@{$self->executors()}) {
+    foreach my $executor (@executors) {
         $executor->disconnect;
         undef $executor;
     }
 
     # Forcefully deallocate the Mixer so that Validator destructors are called
     undef $mixer;
-    undef $self->[GT_FILTER];
+    undef $self->[GT_QUERY_FILTERS];
         
     if ($worker_result > 0) {
-        say("Child workerprocess completed with error code $worker_result.");
-        $self->stop_child($worker_result);
+        say("Child worker process completed with error code $worker_result.");
+        $self->stopChild($worker_result);
     } else {
-        say("Child process completed successfully.");
-        $self->stop_child(STATUS_OK);
+        say("Child worker process completed successfully.");
+        $self->stopChild(STATUS_OK);
     }
 }
 
@@ -425,7 +435,7 @@ sub doGenData {
                spec_file => $self->config->gendata,
                dsn => $dsn,
                engine => $self->config->engine,
-               seed => $self->actualSeed(),
+               seed => $self->config->seed(),
                debug => $self->config->debug,
                rows => $self->config->rows,
                views => $self->config->views,
@@ -445,19 +455,23 @@ sub doGenData {
 
 sub initSeed {
     my $self = shift;
+ 
+    return if not defined $self->config->seed();
 
-    if ($self->config->seed() eq 'time') {
-        $self->[GT_ACTUAL_SEED] = time();
+    my $orig_seed = $self->config->seed();
+    my $new_seed;
+
+    if ($orig_seed eq 'time') {
+        $new_seed = time();
     } elsif ($self->config->seed() eq 'epoch5') {
-        $self->[GT_ACTUAL_SEED] = time() % 100000;
+        $new_seed = time() % 100000;
     } elsif ($self->config->seed() eq 'random') {
-        $self->[GT_ACTUAL_SEED] = int(rand(32767));
-    } else {
-	$self->[GT_ACTUAL_SEED] = $self->config->seed();
+        $new_seed = int(rand(32767));
     }
 
-    if ($self->config->seed() ne $self->[GT_ACTUAL_SEED]) {
-        say("Converting --seed=".$self->config->seed()." to --seed=".$self->[GT_ACTUAL_SEED]); 
+    if ($new_seed ne $orig_seed) {
+        say("Converting --seed=$orig_seed to --seed=$new_seed");
+        $self->config->property('seed', $new_seed);
     }
 }
 
@@ -470,6 +484,11 @@ sub initGenerator {
     croak($@) if $@;
 
     if ($generator_name eq 'GenTest::Generator::FromGrammar') {
+        if (not defined $self->config->grammar) {
+            say("--grammar not specified but Generator is $generator_name");
+            return STATUS_ENVIRONMENT_FAILURE;
+        }
+
 	$self->[GT_GRAMMAR] = GenTest::Grammar->new(
  	    grammar_file => $self->config->grammar,
             grammar_flags => (defined $self->config->property('skip-recursive-rules') ? GRAMMAR_FLAG_SKIP_RECURSIVE_RULES : undef )
@@ -494,38 +513,14 @@ sub initGenerator {
     return STATUS_ENVIRONMENT_FAILURE if not defined $self->generator();
 }
 
-sub initExecutors {
-    my $self = shift;
-
-    my @executors;
-    foreach my $i (0..2) {
-        next if $self->config->dsn->[$i] eq '';
-        my $executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
-        $executor->sqltrace($self->config->sqltrace);
-        $executor->setId($i+1);
-        push @executors, $executor;
-        if ($executor->type() == DB_MYSQL) {
-            my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
-            $metadata_executor->init();
-            $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
-        }
-    }
-
-    $self->[GT_EXECUTORS] = \@executors;
-}
-
 sub isMySQLCompatible {
     my $self = shift;
 
-    my $executors = $self->executors();
-
     my $is_mysql_compatible = 1;
 
-    foreach my $executor (@$executors) {
-        $is_mysql_compatible = 0 if (
-            ($executor->type() != DB_DRIZZLE) &&
-            ($executor->type() != DB_MYSQL)
-        );
+    foreach my $i (0..2) {
+        next if $self->config->dsn->[$i] eq '';
+        $is_mysql_compatible = 0 if ($self->config->dsn->[$i] !~ m{mysql|drizzle}sio);
     }
 
     return $is_mysql_compatible;
@@ -601,8 +596,10 @@ sub initValidators {
                 or $self->config->validators->[$i] eq '';
         }
     }
+
     ## Add the transformer validator if --transformers is specified
     ## and transformer validator not allready specified.
+
     if (defined $self->config->transformers and 
         $#{$self->config->transformers} >= 0) 
     {
@@ -616,24 +613,25 @@ sub initValidators {
         push @{$self->config->validators}, 'Transformer' if !$hasTransformer;
     }
 
-    say("Validators: ".($self->config->validators and $#{$self->config->validators} > -1 ? join(', ', @{$self->config->validators}) : "(none)"));
+    say("Validators: ".(defined $self->config->validators and $#{$self->config->validators} > -1 ? join(', ', @{$self->config->validators}) : "(none)"));
     
     say("Transformers: ".join(', ', @{$self->config->transformers})) 
-        if $self->config->transformers and $#{$self->config->transformers} > -1;
+        if defined $self->config->transformers and $#{$self->config->transformers} > -1;
 
     return STATUS_OK;
 }
 
 sub copyLogFiles {
-    my ($self, $logdir, $executors) = @_;
+    my ($self, $logdir, $dsns) = @_;
     ## Won't copy log files on windows (yet)
     ## And do this only when tt-logging is enabled
     if (!osWindows() && -e $self->config->property('report-tt-logdir')) {
         ## Only for unices
         mkdir $logdir if ! -e $logdir;
     
-        foreach my $exe (@$executors) {
-            my $dbh = DBI->connect($exe->dsn(), undef, undef, {
+        foreach my $dsn (@$dsns) {
+            next if $dsn eq '';
+            my $dbh = DBI->connect($dsn, undef, undef, {
                 PrintError => 1,
                 RaiseError => 0,
                 AutoCommit => 1,
@@ -695,7 +693,7 @@ sub initXMLReport {
             queries => $self->config->queries,
             validators => join (',', @{$self->config->validators}),
             reporters => join (',', @{$self->config->reporters}),
-            seed => $self->actualSeed(),
+            seed => $self->config->seed,
             mask => $self->config->mask,
             mask_level => $self->config->property('mask-level'),
             rows => $self->config->rows,
@@ -762,7 +760,7 @@ sub reportXMLIncidents {
 
         if (defined $self->config->logfile && defined 
             $self->config->property('report-tt-logdir')) {
-            $self->copyLogFiles($self->XMLTest->logdir(), $self->executors());
+            $self->copyLogFiles($self->XMLTest->logdir(), $self->config->dsn);
         }
     }
 }
