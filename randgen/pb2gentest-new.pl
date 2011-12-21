@@ -1,4 +1,4 @@
-# Copyright (c) 2010, Oracle and/or its affiliates. All rights reserved. 
+# Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved. 
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use lib 'randgen/lib';
+#use lib 'randgen-alt/lib';
 
 use strict;
 use Carp;
@@ -31,6 +32,13 @@ use POSIX;
 use Sys::Hostname;
 
 my ($basedir, $vardir, $tree, $test) = @ARGV;
+
+# Which randgen variant do we use?
+# When modifying this, remember to also modify the "use" statement above.
+# (and ENV{PATH} for windows below)
+my $randgen = 'randgen';
+#my $randgen = 'randgen-alt';
+
 
 #
 # For further details about tests and recommended RQG options, see
@@ -290,7 +298,7 @@ sub get_pb2_branch_id {
 		$branch_name=$1;
 	}
 
-	my $dsn_pb2 = 'dbi:mysql:host=trollheim.norway.sun.com:port=3306:user=readonly:database=pushbuild2';
+	my $dsn_pb2 = 'dbi:mysql:host=trollheim.no.oracle.com:port=3306:user=readonly:database=pushbuild2';
 	my $SQL_getBranchId = "SELECT branch_id FROM branches WHERE branch_name = '$branch_name'";
 
 	say("Using branch name $branch_name\n");
@@ -323,7 +331,7 @@ if (osLinux() || osSolaris()) {
     $username = $ENV{'USERNAME'};
 }
 
-chdir('randgen');
+chdir($randgen);
 
 say("Gathering info from the environment...");
 # calling bzr usually takes a few seconds...
@@ -735,7 +743,7 @@ if ($test =~ m{falcon_.*transactions}io ) {
         --grammar='.$conf.'/optimizer/optimizer_access_exp.yy
         --duration=1200
 	';
-} elsif ($test =~ m{^opt_no_subquery$}io ) {
+} elsif ($test =~ m{^opt_no_subquery(_trace)$}io ) {
 	$command = '
         --threads=1
         --queries=100K
@@ -929,6 +937,19 @@ if ($test =~ m{falcon_.*transactions}io ) {
 	POSIX::_exit ($exitCode);
 }
 
+# Additional tests that are variants of the above defined tests:
+#
+# 1. Optimizer trace - all tests which name ends with "_trace":
+#    Enable tracing and the OptimizerTraceParser validator.
+#    NOTE: For applicable tests, must make sure regex in if checks above
+#          will match the _trace suffix, otherwise the script will say
+#          that the test configuration is not defined.
+if ($test =~ m{.*_trace$}io ) {
+    $command = $command.' --mysqld=--optimizer_trace="enabled=on"';
+    $command = $command.' --validator=OptimizerTraceParser';
+}
+
+
 #
 # Look for a redefine file for the grammar used, and add it to the command line
 # if found. Also print special comments (e.g. about disabled parts) from the
@@ -936,7 +957,6 @@ if ($test =~ m{falcon_.*transactions}io ) {
 #
 $redefine_file = redefine_filename($command);
 $command = $command.' --redefine='.$redefine_file if defined $redefine_file;
-
 
 #
 # Specify some "default" Reporters if none have been specified already.
@@ -1080,7 +1100,7 @@ if (exists $report_xml_from_hosts{$hostname}) {
     # We assume SSH keys have been properly set up to enable seamless scp use.
     $command = $command.' --report-xml-tt-type=scp';
     # Specify destination for XML reports (not relying on defaults):
-    $command = $command.' --report-xml-tt-dest=regin.norway.sun.com:/raid/xml_results/TestTool/xml/';
+    $command = $command.' --report-xml-tt-dest=regin.no.oracle.com:/raid/xml_results/TestTool/xml/';
 }
 ### XML reporting setup END
 

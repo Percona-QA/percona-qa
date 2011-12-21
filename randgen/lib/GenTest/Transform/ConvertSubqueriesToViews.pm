@@ -44,14 +44,15 @@ $paren_rx = qr{
 sub transform {
 	my ($class, $query, $executor) = @_;
 
-	my @create_views;
+	my @view_ddl;
 	my $view_counter = 0;
 	$query =~ s{\((\s*SELECT\s+(??{$paren_rx}))\)}{
 		my $subquery = $1;
 		my $view_name = "view_".$$."_inline_".$view_counter;
+		my $drop_view = "DROP VIEW IF EXISTS $view_name",
 		my $create_view = "CREATE OR REPLACE VIEW $view_name AS $subquery;";
 		if ($executor->execute($create_view, 1)->err() == 0) {
-			push @create_views, $create_view;
+			push @view_ddl, $drop_view, $create_view;
 			$view_counter++;
 			"( SELECT * FROM $view_name )";
 		} else {
@@ -60,7 +61,7 @@ sub transform {
 	}sgexi;
 
 	if ($view_counter > 0) {
-		return [@create_views, "$query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */"];
+		return [@view_ddl, "$query /* TRANSFORM_OUTCOME_UNORDERED_MATCH */"];
 	} else {
 		return STATUS_WONT_HANDLE;
 	}

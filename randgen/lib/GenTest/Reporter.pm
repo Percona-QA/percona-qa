@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -43,6 +43,7 @@ use constant REPORTER_SERVER_PLUGINS	=> 4;
 use constant REPORTER_TEST_START	=> 5;
 use constant REPORTER_TEST_END		=> 6;
 use constant REPORTER_TEST_DURATION	=> 7;
+use constant REPORTER_PROPERTIES	=> 8;
 
 use constant REPORTER_TYPE_PERIODIC    	 => 2;
 use constant REPORTER_TYPE_DEADLOCK    	 => 4;
@@ -61,7 +62,8 @@ sub new {
 		dsn => REPORTER_SERVER_DSN,
 		test_start => REPORTER_TEST_START,
 		test_end => REPORTER_TEST_END,
-		test_duration => REPORTER_TEST_DURATION
+		test_duration => REPORTER_TEST_DURATION,
+		properties => REPORTER_PROPERTIES
 	}, @_);
 
 	my $dbh = DBI->connect($reporter->dsn(), undef, undef, { RaiseError => 0 , PrintError => 1 } );
@@ -76,10 +78,15 @@ sub new {
 
 	$sth->finish();
 
+	# SHOW SLAVE HOSTS may fail if user does not have the REPLICATION SLAVE privilege
+	$dbh->{PrintError} = 0;
 	my $slave_info = $dbh->selectrow_arrayref("SHOW SLAVE HOSTS");
-	$reporter->[REPORTER_SERVER_INFO]->{slave_host} = $slave_info->[1];
-	$reporter->[REPORTER_SERVER_INFO]->{slave_port} = $slave_info->[2];
-        
+	$dbh->{PrintError} = 1;
+	if (defined $slave_info) {
+		$reporter->[REPORTER_SERVER_INFO]->{slave_host} = $slave_info->[1];
+		$reporter->[REPORTER_SERVER_INFO]->{slave_port} = $slave_info->[2];
+	}
+
 	if ($reporter->serverVariable('version') !~ m{^5\.0}sgio) {
 		$reporter->[REPORTER_SERVER_PLUGINS] = $dbh->selectall_arrayref("
 	                SELECT PLUGIN_NAME, PLUGIN_LIBRARY
@@ -128,6 +135,19 @@ sub new {
 	        }
 	}
 
+	# look for error log relative to datadir
+	foreach my $errorlog_path (
+		"../log/master.err",  # MTRv1 regular layout
+		"../log/mysqld1.err", # MTRv2 regular layout
+		"../mysql.err"        # DBServer::MySQL layout
+	) {
+		my $possible_path = File::Spec->catfile($reporter->serverVariable('datadir'),$errorlog_path);
+		if (-e $possible_path) {
+			$reporter->[REPORTER_SERVER_INFO]->{'errorlog'} = $possible_path;
+			last;
+		}
+	}
+
 	my $prng = GenTest::Random->new( seed => 1 );
 	$reporter->[REPORTER_PRNG] = $prng;
 
@@ -166,12 +186,20 @@ sub testEnd {
 	return $_[0]->[REPORTER_TEST_END];
 }
 
+sub prng {
+	return $_[0]->[REPORTER_PRNG];
+}
+
 sub testDuration {
 	return $_[0]->[REPORTER_TEST_DURATION];
 }
 
-sub prng {
-	return $_[0]->[REPORTER_PRNG];
+sub properties {
+	return $_[0]->[REPORTER_PROPERTIES];
+}
+
+sub configure {
+    return 1;
 }
 
 1;

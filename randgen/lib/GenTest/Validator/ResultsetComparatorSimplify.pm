@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -46,6 +46,11 @@ sub validate {
 
 	return STATUS_WONT_HANDLE if $results->[0]->query() =~ m{EXPLAIN}sio;
 
+	if ( $results->[0]->err() != $results->[1]->err() ) {
+		say("Query: ".$results->[0]->query()."; failed: error code mismatch between servers ('".$results->[0]->errstr()."' vs. '".$results->[1]->errstr()."')");
+		return STATUS_ERROR_MISMATCH;
+	}
+
 	return STATUS_WONT_HANDLE if $results->[0]->status() != STATUS_OK;
 	return STATUS_WONT_HANDLE if $results->[1]->status() != STATUS_OK;
 
@@ -55,6 +60,12 @@ sub validate {
 	my $query = $results->[0]->query();
 	my $compare_outcome = GenTest::Comparator::compare($results->[0], $results->[1]);
 
+	if ( ($compare_outcome == STATUS_LENGTH_MISMATCH) ||
+	     ($compare_outcome == STATUS_CONTENT_MISMATCH) 
+	) {
+		say("---------- RESULT COMPARISON ISSUE START ----------");
+	}
+		
 	if ($compare_outcome == STATUS_LENGTH_MISMATCH) {
 		if ($query =~ m{^\s*select}io) {
 	                say("Query: $query; failed: result length mismatch between servers (".$results->[0]->rows()." vs. ".$results->[1]->rows().")");
@@ -130,8 +141,10 @@ sub validate {
 				executors	=> $executors,
 				results		=> [ $simplified_results , $results ]
 			);
-
-			my $simplified_test = $simplifier_test->simplify();
+			# show_index is enabled for result difference queries its good to see the index details,
+			# the value 1 is used to define if show_index is enabled, to disable dont assign a value.
+			my $show_index = 1;
+			my $simplified_test = $simplifier_test->simplify($show_index);
 
 			my $tmpfile = tmpdir().$$.time().".test";
 			say("Dumping .test to $tmpfile");
@@ -141,6 +154,12 @@ sub validate {
 		} else {
 			say("Could not simplify failure, appears to be sporadic.");
 		}
+	}
+
+	if ( ($compare_outcome == STATUS_LENGTH_MISMATCH) ||
+	     ($compare_outcome == STATUS_CONTENT_MISMATCH) 
+	) {
+		say("---------- RESULT COMPARISON ISSUE END ------------");
 	}
 
 	#

@@ -30,6 +30,7 @@ sub transform {
 	return STATUS_WONT_HANDLE if $original_query !~ m{\s*SELECT}sio || $original_query =~ m{LIMIT}sio;
 
 	return [
+		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$,
 		"CREATE TABLE IF NOT EXISTS trigger1".$$." (f1 INTEGER)",
 		"CREATE TABLE IF NOT EXISTS transforms.trigger2".$$." $original_query LIMIT 0",
 		"CREATE TRIGGER trigger1".$$." BEFORE INSERT ON trigger1".$$." FOR EACH ROW INSERT INTO transforms.trigger2".$$." $original_query;",

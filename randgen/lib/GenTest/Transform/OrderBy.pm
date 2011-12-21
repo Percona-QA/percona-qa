@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -34,6 +34,10 @@ sub transform {
        my @selects = $original_query =~ m{(SELECT)}sgio;
 
        if ($original_query =~ m{GROUP\s+BY}io) {
+		return STATUS_WONT_HANDLE;
+	} elsif ($original_query =~ m{ORDER\s+BY[^()]*CONCAT\s*\(}sio) {
+		# CONCAT() in ORDER BY requires more complex regexes below
+		# for correct behavior, so we skip this query.
 		return STATUS_WONT_HANDLE;
 	} else {
 		my $transform_outcome;

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@ require Exporter;
 @ISA = qw(GenTest);
 
 use strict;
+use Carp;
 use Data::Dumper;
 use GenTest;
 use GenTest::Constants;
@@ -31,6 +32,7 @@ use constant MIXER_GENERATOR	=> 0;
 use constant MIXER_EXECUTORS	=> 1;
 use constant MIXER_VALIDATORS	=> 2;
 use constant MIXER_FILTERS	=> 3;
+use constant MIXER_PROPERTIES	=> 4;
 
 my %rule_status;
 
@@ -43,13 +45,14 @@ sub new {
 		'generator'	=> MIXER_GENERATOR,
 		'executors'	=> MIXER_EXECUTORS,
 		'validators'	=> MIXER_VALIDATORS,
+		'properties'	=> MIXER_PROPERTIES,
 		'filters'	=> MIXER_FILTERS
 	}, @_);
 
 	foreach my $executor (@{$mixer->executors()}) {
 		my $init_result = $executor->init();
 		return undef if $init_result > STATUS_OK;
-        $executor->cacheMetaData();
+	        $executor->cacheMetaData();
 	}
 
 	my @validators = @{$mixer->validators()};
@@ -61,9 +64,11 @@ sub new {
 		my $validator = $validators[$i];
 		if (ref($validator) eq '') {
 			$validator = "GenTest::Validator::".$validator;
-#			say("Loading Validator $validator.");
+			say("Loading Validator $validator.");
 			eval "use $validator" or print $@;
 			$validators[$i] = $validator->new();
+            
+            $validators[$i]->configure($mixer->properties);
 		}
 		$validators{ref($validators[$i])}++;
 	}
@@ -100,6 +105,17 @@ sub next {
 	my $executors = $mixer->executors();
 	my $filters = $mixer->filters();
 
+    if ($mixer->properties->freeze_time) {
+        foreach my $ex (@$executors) {
+            if ($ex->type == DB_MYSQL) {
+                $ex->execute("SET TIMESTAMP=0");
+                $ex->execute("SET TIMESTAMP=UNIX_TIMESTAMP(NOW())");
+            } else {
+                carp "Don't know how to freeze time for ".$ex->getName;
+            }
+        }
+    }
+
 	my $queries = $mixer->generator()->next($executors);
 	if (not defined $queries) {
 		say("Internal grammar problem. Terminating.");
@@ -133,6 +149,8 @@ sub next {
 				say("Server crash reported at dsn ".$executor->dsn());
 				last;
 			}
+			
+			next query if $execution_result->status() == STATUS_SKIP;
 		}
 		
 		foreach my $validator (@{$mixer->validators()}) {
@@ -147,7 +165,7 @@ sub next {
 	# rules will be reported on DESTROY.
 	#
 
-	if (rqg_debug()) {
+	if ((rqg_debug()) && (ref($mixer->generator()) eq 'GenTest::Generator::FromGrammar')) {
 		my $participating_rules = $mixer->generator()->participatingRules();
 		foreach my $participating_rule (@$participating_rules) {
 			if (
@@ -184,6 +202,10 @@ sub executors {
 
 sub validators {
 	return $_[0]->[MIXER_VALIDATORS];
+}
+
+sub properties {
+	return $_[0]->[MIXER_PROPERTIES];
 }
 
 sub filters {
