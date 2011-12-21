@@ -66,6 +66,9 @@ use constant GT_CHANNEL => 5;
 
 use constant GT_GRAMMAR => 6;
 use constant GT_GENERATOR => 7;
+use constant GT_REPORTER_MANAGER => 8;
+use constant GT_TEST_START => 9;
+use constant GT_TEST_END => 10;
 
 sub new {
     my $class = shift;
@@ -110,6 +113,10 @@ sub channel {
     return $_[0]->[GT_CHANNEL];
 }
 
+sub reporterManager {
+    return $_[0]->[GT_REPORTER_MANAGER];
+}
+
 sub run {
     my ($self) = @_;
 
@@ -139,115 +146,21 @@ sub run {
     my $gendata_result = $self->doGenData();
     return $gendata_result if $gendata_result != STATUS_OK;
 
-    my $test_start = time();
-    my $test_end = $test_start + $self->config->duration;
+    $self->[GT_TEST_START] = time();
+    $self->[GT_TEST_END] = $self->[GT_TEST_START] + $self->config->duration;
 
     $self->[GT_CHANNEL] = GenTest::IPC::Channel->new();
 
     $self->initGenerator();
-    
-    my @executors;
-    foreach my $i (0..2) {
-        next if $self->config->dsn->[$i] eq '';
-        my $executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
-        $executor->sqltrace($self->config->sqltrace);
-        $executor->setId($i+1);
-        push @executors, $executor;
-        if ($executor->type() == DB_MYSQL) {
-            my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
-            $metadata_executor->init();
-            $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
-        }
-    }
-    
-    my $drizzle_only = $executors[0]->type == DB_DRIZZLE;
-    $drizzle_only = $drizzle_only && $executors[1]->type == DB_DRIZZLE if $#executors > 0;
-    
-    my $mysql_only = $executors[0]->type == DB_MYSQL;
-    $mysql_only = $mysql_only && $executors[1]->type == DB_MYSQL if $#executors > 0;
-    
-    if (not defined $self->config->reporters or $#{$self->config->reporters} < 0) {
-        $self->config->reporters([]);
-        if ($mysql_only || $drizzle_only) {
-            $self->config->reporters(['ErrorLog', 'Backtrace']);
-            push @{$self->config->reporters}, 'ValgrindXMLErrors' if (defined $self->config->property('valgrind-xml'));
-            push @{$self->config->reporters}, 'ReplicationConsistency' if $self->config->rpl_mode ne '';
-        }
-    } else {
-        ## Remove the "None" reporter
-        foreach my $i (0..$#{$self->config->reporters}) {
-            delete $self->config->reporters->[$i] 
-                if $self->config->reporters->[$i] eq "None" 
-                or $self->config->reporters->[$i] eq '';
-        }
-    }
-    $self->[GT_EXECUTORS] = \@executors;
-    
-    say("Reporters: ".($#{$self->config->reporters} > -1 ? join(', ', @{$self->config->reporters}) : "(none)"));
-    
-    my $reporter_manager = GenTest::ReporterManager->new();
-    
-    if ($mysql_only || $drizzle_only ) {
-        foreach my $i (0..2) {
-            next if $self->config->dsn->[$i] eq '';
-            foreach my $reporter (@{$self->config->reporters}) {
-                my $add_result = $reporter_manager->addReporter($reporter, {
-                    dsn			=> $self->config->dsn->[$i],
-                    test_start	=> $test_start,
-                    test_end	=> $test_end,
-                    test_duration	=> $self->config->duration,
-                    properties => $self->config
-    } );
-                return $add_result if $add_result > STATUS_OK;
-            }
-        }
-    }
 
-    if (not defined $self->config->validators or $#{$self->config->validators} < 0) {
-        $self->config->validators([]);
-        push(@{$self->config->validators}, 'ErrorMessageCorruption') 
-            if ($mysql_only || $drizzle_only);
-        if ($self->config->dsn->[2] ne '') {
-            push @{$self->config->validators}, 'ResultsetComparator3';
-        } elsif ($self->config->dsn->[1] ne '') {
-            push @{$self->config->validators}, 'ResultsetComparator';
-        }
-        
-        push @{$self->config->validators}, 'ReplicationSlaveStatus' 
-            if $self->config->rpl_mode ne '' && ($mysql_only || $drizzle_only);
-        push @{$self->config->validators}, 'MarkErrorLog' 
-            if (defined $self->config->valgrind) && ($mysql_only || $drizzle_only);
-        
-        push @{$self->config->validators}, 'QueryProperties' 
-            if defined $self->grammar() && $self->grammar()->hasProperties() && ($mysql_only || $drizzle_only);
-    } else {
-        ## Remove the "None" validator
-        foreach my $i (0..$#{$self->config->validators}) {
-            delete $self->config->validators->[$i] 
-                if $self->config->validators->[$i] eq "None"
-                or $self->config->validators->[$i] eq '';
-        }
-    }
-    ## Add the transformer validator if --transformers is specified
-    ## and transformer validator not allready specified.
-    if (defined $self->config->transformers and 
-        $#{$self->config->transformers} >= 0) 
-    {
-        my $hasTransformer = 0;
-        foreach my $t (@{$self->config->validators}) {
-            if ($t eq 'Transformer') {
-                $hasTransformer = 1;
-                last;
-            }
-        }
-        push @{$self->config->validators}, 'Transformer' if !$hasTransformer;
-    }
+    $self->initExecutors();
 
-    say("Validators: ".($self->config->validators and $#{$self->config->validators} > -1 ? join(', ', @{$self->config->validators}) : "(none)"));
-    
-    say("Transformers: ".join(', ', @{$self->config->transformers})) 
-        if $self->config->transformers and $#{$self->config->transformers} > -1;
-    
+    my $init_reporters_result = $self->initReporters();
+    return $init_reporters_result if $init_reporters_result != STATUS_OK;
+
+    my $init_validators_result = $self->initValidators();
+    return $init_validators_result if $init_validators_result != STATUS_OK;
+        
     my $filter_obj;
     
     $filter_obj = GenTest::Filter::Regexp->new( file => $self->config->filter ) 
@@ -363,6 +276,7 @@ sub run {
         
         $errorfilter_p->kill();
         
+        my $reporter_manager = $self->reporterManager();
         my @report_results;
         
         if ($total_status == STATUS_OK) {
@@ -404,7 +318,7 @@ sub run {
         local $SIG{TERM} = sub { $killed = 1 };
         
         while (1) {
-            my $reporter_status = $reporter_manager->monitor(REPORTER_TYPE_PERIODIC);
+            my $reporter_status = $self->reporterManager()->monitor(REPORTER_TYPE_PERIODIC);
             $self->stop_child($reporter_status) if $reporter_status > STATUS_CRITICAL_FAILURE;
             last if $killed == 1;
             sleep(10);
@@ -419,11 +333,11 @@ sub run {
 
         my $mixer = GenTest::Mixer->new(
             generator => $self->generator(),
-            executors => \@executors,
+            executors => $self->executors(),
             validators => $self->config->validators,
             properties =>  $self->config,
             filters => defined $filter_obj ? [ $filter_obj ] : undef
-            );
+        );
         
         $self->stop_child(STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
         
@@ -439,12 +353,12 @@ sub run {
             $max_result = $result if $result > $max_result && $result > STATUS_TEST_FAILURE;
             last if $result == STATUS_EOF;
             last if $ctrl_c == 1;
-            last if time() > $test_end;
+            last if time() > $self->[GT_TEST_END];
         }
         
-        for my $ex (@executors) {
-            $ex->disconnect;
-            undef $ex;
+        foreach my $executor (@{$self->executors()}) {
+            $executor->disconnect;
+            undef $executor;
         }
 
 	# Forcefully deallocate the Mixer so that Validator destructors are called
@@ -534,7 +448,6 @@ sub initSeed {
     if ($self->config->seed() ne $self->[GT_ACTUAL_SEED]) {
         say("Converting --seed=".$self->config->seed()." to --seed=".$self->[GT_ACTUAL_SEED]); 
     }
-
 }
 
 sub initGenerator {
@@ -570,6 +483,135 @@ sub initGenerator {
     return STATUS_ENVIRONMENT_FAILURE if not defined $self->generator();
 }
 
+sub initExecutors {
+    my $self = shift;
+
+    my @executors;
+    foreach my $i (0..2) {
+        next if $self->config->dsn->[$i] eq '';
+        my $executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
+        $executor->sqltrace($self->config->sqltrace);
+        $executor->setId($i+1);
+        push @executors, $executor;
+        if ($executor->type() == DB_MYSQL) {
+            my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
+            $metadata_executor->init();
+            $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
+        }
+    }
+
+    $self->[GT_EXECUTORS] = \@executors;
+}
+
+sub isMySQLCompatible {
+    my $self = shift;
+
+    my $executors = $self->executors();
+
+    my $is_mysql_compatible = 1;
+
+    foreach my $executor (@$executors) {
+        $is_mysql_compatible = 0 if (
+            ($executor->type() != DB_DRIZZLE) &&
+            ($executor->type() != DB_MYSQL)
+        );
+    }
+
+    return $is_mysql_compatible;
+}
+
+sub initReporters {
+    my $self = shift;
+
+    if (not defined $self->config->reporters or $#{$self->config->reporters} < 0) {
+        $self->config->reporters([]);
+        if ($self->isMySQLCompatible()) {
+            $self->config->reporters(['ErrorLog', 'Backtrace']);
+            push @{$self->config->reporters}, 'ValgrindXMLErrors' if (defined $self->config->property('valgrind-xml'));
+            push @{$self->config->reporters}, 'ReplicationConsistency' if $self->config->rpl_mode ne '';
+        }
+    } else {
+        ## Remove the "None" reporter
+        foreach my $i (0..$#{$self->config->reporters}) {
+            delete $self->config->reporters->[$i] 
+                if $self->config->reporters->[$i] eq "None" 
+                or $self->config->reporters->[$i] eq '';
+        }
+    }
+
+    say("Reporters: ".($#{$self->config->reporters} > -1 ? join(', ', @{$self->config->reporters}) : "(none)"));
+    
+    my $reporter_manager = GenTest::ReporterManager->new();
+    
+    foreach my $i (0..2) {
+        next if $self->config->dsn->[$i] eq '';
+        foreach my $reporter (@{$self->config->reporters}) {
+            my $add_result = $reporter_manager->addReporter($reporter, {
+                dsn => $self->config->dsn->[$i],
+                test_start => $self->[GT_TEST_START],
+                test_end => $self->[GT_TEST_END],
+                test_duration => $self->config->duration,
+                properties => $self->config
+            });
+
+            return $add_result if $add_result > STATUS_OK;
+        }
+    }
+
+    $self->[GT_REPORTER_MANAGER] = $reporter_manager;
+    return STATUS_OK;
+}
+
+sub initValidators {
+    my $self = shift;
+
+    if (not defined $self->config->validators or $#{$self->config->validators} < 0) {
+        $self->config->validators([]);
+        push(@{$self->config->validators}, 'ErrorMessageCorruption') 
+            if $self->isMySQLCompatible();
+        if ($self->config->dsn->[2] ne '') {
+            push @{$self->config->validators}, 'ResultsetComparator3';
+        } elsif ($self->config->dsn->[1] ne '') {
+            push @{$self->config->validators}, 'ResultsetComparator';
+        }
+        
+        push @{$self->config->validators}, 'ReplicationSlaveStatus' 
+            if $self->config->rpl_mode ne '' && $self->isMySQLCompatible();
+        push @{$self->config->validators}, 'MarkErrorLog' 
+            if (defined $self->config->valgrind) && $self->isMySQLCompatible();
+        
+        push @{$self->config->validators}, 'QueryProperties' 
+            if defined $self->grammar() && $self->grammar()->hasProperties() && $self->isMySQLCompatible();
+    } else {
+        ## Remove the "None" validator
+        foreach my $i (0..$#{$self->config->validators}) {
+            delete $self->config->validators->[$i] 
+                if $self->config->validators->[$i] eq "None"
+                or $self->config->validators->[$i] eq '';
+        }
+    }
+    ## Add the transformer validator if --transformers is specified
+    ## and transformer validator not allready specified.
+    if (defined $self->config->transformers and 
+        $#{$self->config->transformers} >= 0) 
+    {
+        my $hasTransformer = 0;
+        foreach my $t (@{$self->config->validators}) {
+            if ($t eq 'Transformer') {
+                $hasTransformer = 1;
+                last;
+            }
+        }
+        push @{$self->config->validators}, 'Transformer' if !$hasTransformer;
+    }
+
+    say("Validators: ".($self->config->validators and $#{$self->config->validators} > -1 ? join(', ', @{$self->config->validators}) : "(none)"));
+    
+    say("Transformers: ".join(', ', @{$self->config->transformers})) 
+        if $self->config->transformers and $#{$self->config->transformers} > -1;
+
+    return STATUS_OK;
+}
 
 sub copyLogFiles {
     my ($self, $logdir, $executors) = @_;
