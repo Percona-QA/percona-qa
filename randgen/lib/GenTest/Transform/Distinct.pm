@@ -32,8 +32,10 @@ sub transform {
 
 	# At this time we do not handle LIMIT because it may cause
 	# both duplicate elimination AND extra rows to appear
-
 	return STATUS_WONT_HANDLE if $orig_query =~ m{LIMIT}io;
+	# Skip SELECT COUNT(...) queries, as DISTINCT will just change a number,
+	# not cause the result to be a superset or distinct version of the original.
+	return STATUS_WONT_HANDLE if $orig_query =~ m{COUNT\s*\(}io;
 
 	if ($orig_query =~ m{SELECT\s+DISTINCT}io) {
 		$orig_query =~ s{SELECT\s+DISTINCT}{SELECT }io;
