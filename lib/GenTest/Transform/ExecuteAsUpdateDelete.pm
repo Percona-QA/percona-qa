@@ -60,7 +60,7 @@ sub transform {
 		),
 
 		# The queries above should not have updated any rows. Sometimes ROW_COUNT() returns -1 
-		"SELECT IF(ROW_COUNT() = 0 OR ROW_COUNT() = -1, 1, 0) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
+		"SELECT IF((ROW_COUNT() = 0 OR ROW_COUNT() = -1), 1, 0) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
 		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 
 		( $original_result->rows() == 1 ? 
@@ -69,12 +69,12 @@ sub transform {
 		),
 
 		# The queries above should have updated all rows
-		"SELECT IF(ROW_COUNT() = ".$original_result->rows()." OR ROW_COUNT() = -1, 1, 0) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
+		"SELECT IF((ROW_COUNT() = ".$original_result->rows()." OR ROW_COUNT() = -1), 1, 0) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
 		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 
 		# All rows should end up deleted
 		"DELETE FROM $table_name WHERE `$col_name` IN ( $original_query ) ",
-		"SELECT IF(ROW_COUNT() = ".$original_result->rows()." OR ROW_COUNT() = -1, 1, 0) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
+		"SELECT IF((ROW_COUNT() = ".$original_result->rows()." OR ROW_COUNT() = -1), 1, 0) /* TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE */",
 		"SELECT * FROM $table_name /* TRANSFORM_OUTCOME_EMPTY_RESULT */",
 		"DROP TABLE IF EXISTS $table_name",
 	];
