@@ -50,7 +50,8 @@ sub new {
         'views' => GDS_VIEWS,
         'sqltrace' => GDS_SQLTRACE,
 	'notnull' => GDS_NOTNULL,
-	'rows' => GDS_ROWS
+	'rows' => GDS_ROWS,
+        'varchar_length' => GDS_VARCHAR_LENGTH
     },@_);
 
     if (not defined $self->[GDS_DSN]) {
