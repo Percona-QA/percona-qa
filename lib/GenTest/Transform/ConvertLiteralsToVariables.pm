@@ -37,7 +37,7 @@ sub transform {
 
 	# Do not match partial dates, timestamps, etc.
 	if ($new_query =~ m{\s+(\d+)(\s|\)|,|;)}) {
-		$new_query =~ s{\s+(\d+)}{
+		$new_query =~ s{\s+(\d+)\s}{
 		    $var_counter++;
 		    push @var_variables, '@var'.$var_counter." = $1";
 		    ' @var'.$var_counter.' ';
@@ -49,7 +49,7 @@ sub transform {
 		push @var_variables, '@var'.$var_counter." = '$1'";
 		' @var'.$var_counter.' ';
 	}sgexi;
-
+	
 	if ($var_counter > 0) {
 		return [
 			"SET ".join(", ", @var_variables).";",
