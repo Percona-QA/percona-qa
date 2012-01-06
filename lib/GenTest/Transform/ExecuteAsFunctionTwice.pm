@@ -43,6 +43,10 @@ sub transform {
 	} elsif ($return_type =~ m{decimal}sgio) {
 		# Change type to avoid false compare diffs due to an incorrect decimal type being used when MAX() (and likely other similar functions) is used in the original query. Knowing what is returning decimal type (DBD or MySQL) may allow further improvement.
 		$return_type =~ s{decimal}{char (255)}sio
+	} elsif (($return_type =~ m{bigint}sgio) && ($original_query =~ m{BIT_AND\s*\(}sgio)) {
+		# BIT_AND returns max value of "unsigned bigint" if there is no match, 
+		# and this will not fit in (signed) bigint, which is the default return type. 
+		$return_type = "bigint unsigned";
 	}
 
 	return [
