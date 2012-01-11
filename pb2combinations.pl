@@ -15,6 +15,20 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
+################################################################################
+# DEPRECATION MESSAGE:
+#
+# This file is deprecated, and will not necessarily be updated anymore.
+# The functionality intended for this file is not generic enough to be 
+# shared, so alternative solutions need to be used instead.
+# This file will at some point in the near future be deleted from the randgen
+# repository.
+#
+# PLEASE DO NOT UPDATE THIS FILE, AS ANY UPDATES ARE LIKELY TO BE LOST.
+#
+# John Embretsen, 2012-01-11
+################################################################################
+
 use lib 'lib';
 use lib "$ENV{RQG_HOME}/lib";
 use lib 'randgen/lib';
