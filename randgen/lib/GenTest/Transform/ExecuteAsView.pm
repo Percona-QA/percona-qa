@@ -33,7 +33,8 @@ my $db_created;
 sub transform {
 	my ($class, $original_query, $executor) = @_;
 	
-	if ($executor->execute("CREATE OR REPLACE VIEW transforms.view_".$$."_probe AS $original_query", 1)->err() > 0) {
+	if ($executor->execute("CREATE OR REPLACE VIEW transforms.view_".$$."_probe AS $original_query", 1)->err() > 0 
+           || $original_query =~ m{(SYSDATE)\s*\(}sio) {
 		return STATUS_WONT_HANDLE;
 	} else {
 		$executor->execute("DROP VIEW transforms.view_".$$."_probe");
