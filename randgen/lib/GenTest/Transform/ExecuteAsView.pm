@@ -44,6 +44,7 @@ sub transform {
 			"SELECT * FROM transforms.view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 			"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW transforms.view_".$$."_temptable AS $original_query",
 			"SELECT * FROM transforms.view_".$$."_temptable /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+			"DROP VIEW transforms.view_".$$."_merge , transforms.view_".$$."_temptable"
 		];
 	}
 }
