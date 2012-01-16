@@ -31,18 +31,19 @@ my $db_created;
 
 
 sub transform {
-	my ($class, $original_query, $executor) = @_;
+	my ($class, $orig_query, $executor) = @_;
 	
-	if ($executor->execute("CREATE OR REPLACE VIEW transforms.view_".$$."_probe AS $original_query", 1)->err() > 0 
-           || $original_query =~ m{(SYSDATE)\s*\(}sio) {
+	if ($executor->execute("CREATE OR REPLACE VIEW transforms.view_".$$."_probe AS $orig_query", 1)->err() > 0 
+		|| $orig_query =~ m{(SYSDATE)\s*\(}sio) 
+		|| $orig_query =~ m{(OUTFILE|INFILE)}sio {
 		return STATUS_WONT_HANDLE;
 	} else {
 		$executor->execute("DROP VIEW transforms.view_".$$."_probe");
 		return [
 			"DROP VIEW IF EXISTS transforms.view_".$$."_merge , transforms.view_".$$."_temptable",
-			"CREATE OR REPLACE ALGORITHM=MERGE VIEW transforms.view_".$$."_merge AS $original_query",
+			"CREATE OR REPLACE ALGORITHM=MERGE VIEW transforms.view_".$$."_merge AS $orig_query",
 			"SELECT * FROM transforms.view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-			"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW transforms.view_".$$."_temptable AS $original_query",
+			"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW transforms.view_".$$."_temptable AS $orig_query",
 			"SELECT * FROM transforms.view_".$$."_temptable /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 			"DROP VIEW transforms.view_".$$."_merge , transforms.view_".$$."_temptable"
 		];

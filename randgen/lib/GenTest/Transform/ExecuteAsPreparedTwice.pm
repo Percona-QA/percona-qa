@@ -1,4 +1,4 @@
-# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -28,14 +28,16 @@ use GenTest::Transform;
 use GenTest::Constants;
 
 sub transform {
-	my ($class, $original_query, $executor) = @_;
+	my ($class, $orig_query, $executor) = @_;
 
-	return STATUS_WONT_HANDLE if $original_query !~ m{SELECT|HANDLER}sio;
-	# Certain HANDLER statements can not be re-run as prepared because they advance a cursor
-	return STATUS_WONT_HANDLE if $original_query =~ m{PREPARE|OPEN|CLOSE|PREV|NEXT}sio;
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	#          - Certain HANDLER statements: they can not be re-run as prepared because they advance a cursor
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+		|| $orig_query !~ m{SELECT|HANDLER}sio
+		|| $orig_query =~ m{PREPARE|OPEN|CLOSE|PREV|NEXT}sio;
 
 	return [
-		"PREPARE prep_stmt_$$ FROM ".$executor->dbh()->quote($original_query),
+		"PREPARE prep_stmt_$$ FROM ".$executor->dbh()->quote($orig_query),
 		"EXECUTE prep_stmt_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		"EXECUTE prep_stmt_$$ /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		"DEALLOCATE PREPARE prep_stmt_$$"
