@@ -1,3 +1,5 @@
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +31,9 @@ my $initialized = 0;
 sub transform {
 	my ($class, $orig_query, $executor) = @_;
 
-	return STATUS_WONT_HANDLE if $orig_query =~ m{LIMIT}sgio;
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $orig_query =~ m{LIMIT}sgio
+	         || $orig_query =~ m{(OUTFILE|INFILE)}sio;
 
 	my $new_query = $orig_query;
 	my $var_counter = 0;
