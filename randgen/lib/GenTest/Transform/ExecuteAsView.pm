@@ -32,22 +32,21 @@ my $db_created;
 
 sub transform {
 	my ($class, $orig_query, $executor) = @_;
-	
-	if ($executor->execute("CREATE OR REPLACE VIEW transforms.view_".$$."_probe AS $orig_query", 1)->err() > 0 
-		|| $orig_query =~ m{(SYSDATE)\s*\(}sio) 
-		|| $orig_query =~ m{(OUTFILE|INFILE)}sio {
-		return STATUS_WONT_HANDLE;
-	} else {
-		$executor->execute("DROP VIEW transforms.view_".$$."_probe");
-		return [
-			"DROP VIEW IF EXISTS transforms.view_".$$."_merge , transforms.view_".$$."_temptable",
-			"CREATE OR REPLACE ALGORITHM=MERGE VIEW transforms.view_".$$."_merge AS $orig_query",
-			"SELECT * FROM transforms.view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-			"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW transforms.view_".$$."_temptable AS $orig_query",
-			"SELECT * FROM transforms.view_".$$."_temptable /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-			"DROP VIEW transforms.view_".$$."_merge , transforms.view_".$$."_temptable"
-		];
-	}
+
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+		|| $orig_query =~ m{(SYSDATE)\s*\(}sio)
+		|| ($executor->execute("CREATE OR REPLACE VIEW transforms.view_".$$."_probe AS $orig_query", 1)->err() > 0;
+
+	$executor->execute("DROP VIEW transforms.view_".$$."_probe");
+	return [
+		"DROP VIEW IF EXISTS transforms.view_".$$."_merge , transforms.view_".$$."_temptable",
+		"CREATE OR REPLACE ALGORITHM=MERGE VIEW transforms.view_".$$."_merge AS $orig_query",
+		"SELECT * FROM transforms.view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW transforms.view_".$$."_temptable AS $orig_query",
+		"SELECT * FROM transforms.view_".$$."_temptable /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"DROP VIEW transforms.view_".$$."_merge , transforms.view_".$$."_temptable"
+	];
 }
 
 1;
