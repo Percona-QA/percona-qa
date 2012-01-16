@@ -1,4 +1,4 @@
-# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@ my $initialized = 0;
 sub transform {
 	
 	my ($class, $orig_query, $executor) = @_;
+
 	# Keep DDL's creation seperate for use in MTR testcase.
 	my $create_db="CREATE DATABASE IF NOT EXISTS literals";
 	my $create_tbl_integers="CREATE TABLE IF NOT EXISTS literals.integers (i1 INTEGER NOT NULL PRIMARY KEY)";
