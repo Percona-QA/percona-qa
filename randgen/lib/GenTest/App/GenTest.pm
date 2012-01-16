@@ -212,7 +212,7 @@ sub run {
     $self->channel()->close;
         
     while (1) {
-        my $child_pid = waitpid(-1, 1);
+        my $child_pid = waitpid(-1, 0);
         my $child_exit_status = $? > 0 ? ($? >> 8) : 0;
 
         $total_status = $child_exit_status if $child_exit_status > $total_status;
