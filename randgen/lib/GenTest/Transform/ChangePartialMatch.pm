@@ -1,3 +1,6 @@
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License.
@@ -33,7 +36,10 @@ use Data::Dumper;
 sub transform {
 	my ($class, $original_query, $executor) = @_;
 
-	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio;
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE)}sio
+		|| $original_query !~ m{^\s*SELECT}sio;
+
 #	my $original_explain = $executor->execute("EXPLAIN EXTENDED $original_query");
 #
 #	if ($original_explain->status() == STATUS_SERVER_CRASHED) {
