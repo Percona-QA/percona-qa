@@ -46,10 +46,12 @@ sub transform {
 		$initialized = 1;
 	}
 
-	# We skip LIMIT queries because LIMIT N can not be converted into LIMIT ( SELECT ... ) 
-	return STATUS_WONT_HANDLE if $orig_query =~ m{LIMIT}sio;
-	return STATUS_WONT_HANDLE if $orig_query =~ m{GROUP BY \d}sio;
-	return STATUS_WONT_HANDLE if $orig_query =~ m{ORDER BY \d}sio;
+
+	# We skip: - LIMIT queries because LIMIT N can not be converted into LIMIT ( SELECT ... ) 
+	#          - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $orig_query =~ m{LIMIT}sio
+		|| $orig_query =~ m{(OUTFILE|INFILE)}sio
+		|| $orig_query =~ m{(GROUP BY|ORDER BY) \d}sio;
 
 	my @transformed_queries;
 
