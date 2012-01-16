@@ -28,11 +28,11 @@ use GenTest::Transform;
 use GenTest::Constants;
 
 sub transform {
-	my ($class, $original_query, $executor) = @_;
+	my ($class, $orig_query, $executor) = @_;
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
 	# return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
-		|| $original_query !~ m{SELECT}io;
+		|| $orig_query !~ m{SELECT}io;
 
 	my $tables = $executor->metaTables();
 
@@ -41,7 +41,7 @@ sub transform {
 
 	return [
 		$alter_disable,
-		$original_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		$orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		$alter_enable
 	];
 }
