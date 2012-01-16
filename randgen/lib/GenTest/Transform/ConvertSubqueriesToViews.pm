@@ -1,3 +1,6 @@
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License.
@@ -46,6 +49,10 @@ sub transform {
 
 	my @view_ddl;
 	my $view_counter = 0;
+
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $query =~ m{(OUTFILE|INFILE)}sio;
+
 	$query =~ s{\((\s*SELECT\s+(??{$paren_rx}))\)}{
 		my $subquery = $1;
 		my $view_name = "view_".$$."_inline_".$view_counter;
