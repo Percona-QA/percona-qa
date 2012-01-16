@@ -35,7 +35,7 @@ sub transform {
 	#          - Certain aggregate functions, as DISTINCT will just change a number, 
 	#            not cause the result to be a superset or distinct version of the original.
 	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
-	        || $orig_query =~ m{LIMIT}io;
+	        || $orig_query =~ m{LIMIT}io
 		|| $orig_query =~ m{(COUNT|SUM|AVG|STD|STDDEV_POP|STDDEV_SAMP|STDDEV|SUM|VAR_POP|VAR_SAMP|VARIANCE)\s*\(}io;
 
 	if ($orig_query =~ m{SELECT\s+DISTINCT}io) {
