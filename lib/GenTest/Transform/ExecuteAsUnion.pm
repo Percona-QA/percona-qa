@@ -1,3 +1,6 @@
+# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License.
@@ -25,19 +28,21 @@ use GenTest::Transform;
 use GenTest::Constants;
 
 sub transform {
-	my ($class, $original_query, $executor) = @_;
+	my ($class, $orig_query, $executor) = @_;
 	
-	return STATUS_WONT_HANDLE if $original_query !~ m{\s*SELECT}sio;
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+		|| $orig_query !~ m{\s*SELECT}sio;
 
-	my $original_query_no_limit = $original_query;
-	$original_query_no_limit =~ s{LIMIT\s+\d+\s+OFFSET\s+\d+\s*$}{}sio;
-	$original_query_no_limit =~ s{LIMIT\s+\d+\s*$}{}sio;
+	my $orig_query_no_limit = $orig_query;
+	$orig_query_no_limit =~ s{LIMIT\s+\d+\s+OFFSET\s+\d+\s*$}{}sio;
+	$orig_query_no_limit =~ s{LIMIT\s+\d+\s*$}{}sio;
 
 	return [
-		"( $original_query ) UNION ALL ( $original_query_no_limit LIMIT 0 ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"( $original_query_no_limit LIMIT 0 ) UNION ALL ( $original_query ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"( $original_query ) UNION DISTINCT ( $original_query ) /* TRANSFORM_OUTCOME_DISTINCT */",
-		"( $original_query ) UNION ALL ( $original_query ) /* TRANSFORM_OUTCOME_SUPERSET */"
+		"( $orig_query ) UNION ALL ( $orig_query_no_limit LIMIT 0 ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"( $orig_query_no_limit LIMIT 0 ) UNION ALL ( $orig_query ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"( $orig_query ) UNION DISTINCT ( $orig_query ) /* TRANSFORM_OUTCOME_DISTINCT */",
+		"( $orig_query ) UNION ALL ( $orig_query ) /* TRANSFORM_OUTCOME_SUPERSET */"
 	];
 }
 
