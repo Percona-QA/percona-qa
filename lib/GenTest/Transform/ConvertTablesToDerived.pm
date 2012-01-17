@@ -32,7 +32,8 @@ sub transform {
 	my $modified_query = $orig_query;
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
-	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio;
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+		|| $orig_query =~ m{LIMIT}sio;
 
 	# Replace AA with ( SELECT * FROM AA ) AS derived1; Add "AS derivedN" if there was no alias originally;
 
