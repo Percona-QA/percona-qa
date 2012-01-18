@@ -30,6 +30,9 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $orig_query, $executor) = @_;
 
+	# This transformer could be improved to handle tables that do not accept DISABLE KEYS (like MEMORY for instance better)
+	# Currently this produces "Table storage engine for '<tablename>' doesn't have this option" when these engines are used
+
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
 	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
 		|| $orig_query !~ m{SELECT}io

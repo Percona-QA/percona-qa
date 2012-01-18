@@ -36,13 +36,15 @@ sub transform {
 		|| $orig_query =~ m{LIMIT}sio;
 
 	return [
+		"CREATE DATABASE IF NOT EXISTS transforms",
 		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$,
 		"CREATE TABLE IF NOT EXISTS trigger1".$$." (f1 INTEGER)",
 		"CREATE TABLE IF NOT EXISTS transforms.trigger2".$$." $orig_query LIMIT 0",
 		"CREATE TRIGGER trigger1".$$." BEFORE INSERT ON trigger1".$$." FOR EACH ROW INSERT INTO transforms.trigger2".$$." $orig_query;",
 		"INSERT INTO trigger1".$$." VALUES (1)",
 		"SELECT * FROM transforms.trigger2".$$." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$
+		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$,
+		"CREATE DATABASE IF EXISTS transforms"
 	];
 }
 
