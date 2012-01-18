@@ -44,7 +44,7 @@ sub transform {
 		"INSERT INTO trigger1".$$." VALUES (1)",
 		"SELECT * FROM transforms.trigger2".$$." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$,
-		"CREATE DATABASE IF EXISTS transforms"
+		"DROP DATABASE IF EXISTS transforms"
 	];
 }
 
