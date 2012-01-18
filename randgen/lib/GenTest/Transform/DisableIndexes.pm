@@ -32,7 +32,8 @@ sub transform {
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
 	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
-		|| $orig_query !~ m{SELECT}io;
+		|| $orig_query !~ m{SELECT}io
+		|| $orig_query =~ m{LIMIT}sio;
 
 	my $tables = $executor->metaTables();
 
