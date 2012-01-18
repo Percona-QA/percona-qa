@@ -112,6 +112,10 @@ sub simplify {
 	}
 	$test .= "\n";
 
+	$test .= "--disable_warnings\n";
+	$test .= "CREATE DATABASE /*! IF NOT EXISTS */ transforms;\n";
+	$test .= "--enable_warnings\n\n";
+
 	if (defined $executors->[1] and $executors->[0]->type() == DB_MYSQL and $executors->[1]->type() == DB_MYSQL) {
 		foreach my $optimizer_variable (@optimizer_variables) {
 			my @optimizer_values;
@@ -283,6 +287,8 @@ sub simplify {
 	
 		$test .= _comment("End of test case for query $query_id",$useHash)."\n\n";
 	}
+
+	$test .= "DROP DATABASE transforms;\n";
 
 	return $test;
 }
