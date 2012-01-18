@@ -47,7 +47,7 @@ sub transform {
 		"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW transforms.view_".$$."_temptable AS $orig_query",
 		"SELECT * FROM transforms.view_".$$."_temptable /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		"DROP VIEW transforms.view_".$$."_merge , transforms.view_".$$."_temptable",
-		"CREATE DATABASE IF EXISTS transforms"
+		"DROP DATABASE IF EXISTS transforms"
 	];
 }
 
