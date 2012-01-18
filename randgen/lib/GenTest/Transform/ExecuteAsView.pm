@@ -40,12 +40,14 @@ sub transform {
 
 	$executor->execute("DROP VIEW transforms.view_".$$."_probe");
 	return [
+		"CREATE DATABASE IF NOT EXISTS transforms",
 		"DROP VIEW IF EXISTS transforms.view_".$$."_merge , transforms.view_".$$."_temptable",
 		"CREATE OR REPLACE ALGORITHM=MERGE VIEW transforms.view_".$$."_merge AS $orig_query",
 		"SELECT * FROM transforms.view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
 		"CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW transforms.view_".$$."_temptable AS $orig_query",
 		"SELECT * FROM transforms.view_".$$."_temptable /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DROP VIEW transforms.view_".$$."_merge , transforms.view_".$$."_temptable"
+		"DROP VIEW transforms.view_".$$."_merge , transforms.view_".$$."_temptable",
+		"CREATE DATABASE IF EXISTS transforms"
 	];
 }
 
