@@ -77,6 +77,8 @@ sub simplify {
 	my $table_index = 0;
 
 	foreach my $participating_table (keys %participating_tables) {
+		# Skip if a view is encountered.
+		next if ( $participating_table =~ m{view_} );
 		my ($table_exists) = $dbh->selectrow_array("SHOW TABLES IN $orig_database LIKE '$participating_table'");
 		next if not defined $table_exists;
 
