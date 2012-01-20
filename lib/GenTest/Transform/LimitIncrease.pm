@@ -34,7 +34,7 @@ sub transform {
 	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
 		|| $orig_query =~ m{OFFSET}sio;
 
-	if ($orig_query =~ s{LIMIT \d+}{LIMIT 4294836225}sio) {
+	if ($orig_query =~ s{LIMIT\s+\d+}{LIMIT 4294836225}sio) {
 		return $orig_query." /* TRANSFORM_OUTCOME_SUPERSET */";
 	} else {
 		return $orig_query." LIMIT 4294836225 /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";
