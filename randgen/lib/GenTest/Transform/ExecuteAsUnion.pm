@@ -34,9 +34,13 @@ sub transform {
 	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
 		|| $orig_query !~ m{\s*SELECT}sio;
 
+	# We remove LIMIT/OFFSET if present in the (outer) query, because we are 
+	# using LIMIT 0 in some of the transformed queries. There can be comments
+	# like "/* 1 */" after the original LIMIT, hence the regex part 
+	# (\/\*\s*[a-zA-Z0-9 ]+\s*\*\/)*.
 	my $orig_query_no_limit = $orig_query;
-	$orig_query_no_limit =~ s{LIMIT\s+\d+\s+OFFSET\s+\d+\s*$}{}sio;
-	$orig_query_no_limit =~ s{LIMIT\s+\d+\s*$}{}sio;
+	$orig_query_no_limit =~ s{LIMIT\s+\d+\s+OFFSET\s+\d+\s*(\/\*\s*[a-zA-Z0-9 ]+\s*\*\/)*\s*$}{}sio;
+	$orig_query_no_limit =~ s{LIMIT\s+\d+\s*(\/\*\s*[a-zA-Z0-9 ]+\s*\*\/)*\s*$}{}sio;
 
 	return [
 		"( $orig_query ) UNION ALL ( $orig_query_no_limit LIMIT 0 ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",

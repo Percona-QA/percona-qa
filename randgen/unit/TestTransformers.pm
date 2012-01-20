@@ -46,7 +46,7 @@ sub set_up {
 sub tear_down {
     my $self = shift;
     # clean up after test
-    unlink $self->{logfile};
+    #unlink $self->{logfile};    # uncomment this if you need the log to debug after the fact
 }
 
 # Test that ExecuteAsFunctionTwice works with BIT_AND queries.
@@ -85,5 +85,40 @@ sub test_transformer_ExecuteAsFunctionTwice_BIT_AND {
     }
 }
 
+# Test that ExecuteAsUnion works with SELECT ... LIMIT queries that contain
+# comments after the LIMIT clause. Prior to a bugfix these were not
+# recognized as LIMIT queries and the transformed query would end up with
+# two LIMIT clauses, resulting in STATUS_ENVIRONMENT_FAILURE due to syntax
+# error.
+sub test_transformer_ExecuteAsUnion_LIMIT {
+    my $self = shift;
+    ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
+    if ($ENV{RQG_MYSQL_BASE}) {
+        # Use a grammar that produced a BIT_AND query which matches no rows.
+        my $grammar = 'unit/union_limit.yy';
+        open(FILE, "> $grammar") or assert("Unable to create grammar file");
+        print FILE "query:\n";
+        print FILE "    SELECT C.col_int_key AS field1 FROM C ORDER BY field1 LIMIT 10 /* 1 */;\n";
+        close FILE;
+        
+        my $rqg_opts = 
+             "--grammar=$grammar " 
+            .'--queries=1 '
+            .'--transformer=ExecuteAsUnion '
+            .'--threads=1 ' 
+            .'--basedir='.$ENV{RQG_MYSQL_BASE};
+            
+        my $cmd = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts
+            .' --reporter=Shutdown --mtr-build-thread='.$self->{portbase}
+            .' > '.$self->{logfile}.' 2>&1';
+        $self->annotate("RQG command line: $cmd");
+        my $status = system($cmd);
+        my $expected = STATUS_OK;
+        my $actual = $status >> 8;
+        $self->assert_num_equals($expected, $actual, 
+            "Wrong exit status from runall.pl, expected $expected and got $actual");
+        unlink $grammar;
+    }
+}
 
 1;
