@@ -25,17 +25,8 @@ use GenTest;
 use GenTest::Constants;
 use GenTest::Reporter;
 use GenTest::Incident;
-use GenTest::CallbackPlugin;
 
 sub report {
-    if (defined $ENV{RQG_CALLBACK}) {
-        return callbackReport(@_);
-    } else {
-        return nativeReport(@_);
-    }
-}
-
-sub nativeReport {
 	my $reporter = shift;
 
 	my $datadir = $reporter->serverVariable('datadir');
@@ -115,14 +106,6 @@ sub nativeReport {
     );
 
 	return STATUS_OK, $incident;
-}
-
-sub callbackReport {
-    my $output = GenTest::CallbackPlugin::run("Backtrace");
-    say("$output");
-    ## Need some incident interface here in the output from
-    ## the callback
-    return STATUS_OK, undef;
 }
 
 sub type {
