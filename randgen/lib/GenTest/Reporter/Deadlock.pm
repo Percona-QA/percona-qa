@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -217,6 +217,20 @@ sub dbh_thread {
 }
 
 sub report {
+    if (defined $ENV{RQG_CALLBACK}) {
+        return callbackReport(@_);
+    } else {
+        return nativeReport(@_);
+    }
+}
+
+sub callbackReport {
+    my ($reporter) = @_;
+    say("Deadlok not implemented");
+    return STATUS_OK;
+}
+
+sub nativeReport {
 
 	my $reporter = shift;
 	my $server_pid = $reporter->serverInfo('pid');

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -24,8 +24,18 @@ use strict;
 use GenTest;
 use GenTest::Reporter;
 use GenTest::Constants;
+use GenTest::CallbackPlugin;
 
 sub report {
+    if (defined $ENV{RQG_CALLBACK}) {
+        return callbackReport(@_);
+    } else {
+        return nativeReport(@_);
+    }
+}
+
+
+sub nativeReport {
 
 	my $reporter = shift;
 
@@ -49,6 +59,14 @@ sub report {
 	}
 	
 	return STATUS_OK;
+}
+
+sub callbackReport {
+    my $output = GenTest::CallbackPlugin::run("LastLogLines");
+    say("$output");
+    ## Need some incident interface here in the output from
+    ## javaPluginRunner
+    return STATUS_OK, undef;
 }
 
 sub type {
