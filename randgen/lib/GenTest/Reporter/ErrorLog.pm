@@ -24,18 +24,8 @@ use strict;
 use GenTest;
 use GenTest::Reporter;
 use GenTest::Constants;
-use GenTest::CallbackPlugin;
 
 sub report {
-    if (defined $ENV{RQG_CALLBACK}) {
-        return callbackReport(@_);
-    } else {
-        return nativeReport(@_);
-    }
-}
-
-
-sub nativeReport {
 
 	my $reporter = shift;
 
@@ -59,14 +49,6 @@ sub nativeReport {
 	}
 	
 	return STATUS_OK;
-}
-
-sub callbackReport {
-    my $output = GenTest::CallbackPlugin::run("LastLogLines");
-    say("$output");
-    ## Need some incident interface here in the output from
-    ## javaPluginRunner
-    return STATUS_OK, undef;
 }
 
 sub type {

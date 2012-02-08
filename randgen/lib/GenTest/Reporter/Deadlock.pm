@@ -217,20 +217,6 @@ sub dbh_thread {
 }
 
 sub report {
-    if (defined $ENV{RQG_CALLBACK}) {
-        return callbackReport(@_);
-    } else {
-        return nativeReport(@_);
-    }
-}
-
-sub callbackReport {
-    my ($reporter) = @_;
-    say("Deadlok not implemented");
-    return STATUS_OK;
-}
-
-sub nativeReport {
 
 	my $reporter = shift;
 	my $server_pid = $reporter->serverInfo('pid');
