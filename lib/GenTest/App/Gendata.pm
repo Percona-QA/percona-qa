@@ -386,6 +386,8 @@ sub run {
             $table_name =~ s{[^A-Za-z0-9]}{_}sgio;
             $table_name =~ s{ }{_}sgio;
             $table_name =~ s{_+}{_}sgio;
+            # Remove trailing underscore when fractional seconds are used.
+            $table_name =~ s{_$}{}so;
             $table_name =~ s{auto_increment}{autoinc}siog;
             $table_name =~ s{partition_by}{part_by}siog;
             $table_name =~ s{partition}{part}siog;
@@ -522,12 +524,17 @@ sub run {
                             $value = 'DEFAULT';
                         }
                     } else {
-			if ($field->[FIELD_TYPE] =~ m{datetime|timestamp}sgio) {
+                        if ($field->[FIELD_TYPE] =~ m{^(datetime|timestamp)$}sgio) {
 				$value = "FROM_UNIXTIME(UNIX_TIMESTAMP('2000-01-01') + $row_id)";
 			} elsif ($field->[FIELD_TYPE] =~ m{date}sgio) {
 				$value = "FROM_DAYS(TO_DAYS('2000-01-01') + $row_id)";
-			} elsif ($field->[FIELD_TYPE] =~ m{time}sgio) {
+			} elsif ($field->[FIELD_TYPE] =~ m{^time$}sgio) {
 				$value = "SEC_TO_TIME($row_id)";
+			# Support wider range for frastionl seconds precision with temporal datatypes.
+			} elsif ($field->[FIELD_TYPE] =~ m{^(timestamp|datetime|time)\((\d+)\)$}sgio) {
+				$value = "CURRENT_TIMESTAMP($2) + $row_id";
+			} elsif ($field->[FIELD_TYPE] =~ m{^(time)\((\d+)\)$}sgio) {
+				$value = "CURRENT_TIME($2) + $row_id";			
 			} else {
 	                        $value = $row_id;	# Otherwise, insert sequential numbers
 			}
