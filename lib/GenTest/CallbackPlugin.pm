@@ -1,13 +1,30 @@
+# Copyright (c) 2012, Oracle and/or its affiliates. All rights
+# reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+# USA
+
 package GenTest::CallbackPlugin;
 
 use strict;
 use Carp;
 use GenTest;
 
-## THis module is intended for plugins (Reporters, validators etc)
+## This module is intended for plugins (Reporters, validators etc)
 ## which need to call back to the framework that started RQG to
 ## perform certain tasks. E.g. if the db server is running another
-## blace in the network, Bactrace.pm can't be performed by RQ itself
+## blace in the network, Bactrace.pm can't be performed by RQG itself
 ## and then have to call back to the framework to get the task
 ## performed.
 
