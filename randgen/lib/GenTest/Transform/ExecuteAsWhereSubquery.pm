@@ -48,6 +48,8 @@ sub transform {
 	my $table_name = 'transforms.where_subselect_'.$$;
 
 	return [
+		#Include database transforms creation DDL so that it appears in the simplified testcase.
+		"CREATE DATABASE IF NOT EXISTS transforms",
 		"DROP TABLE IF EXISTS $table_name",
 		"CREATE TABLE $table_name $original_query",
 		"SELECT * FROM $table_name WHERE (".join(', ', map { "`$_`" } @{$original_result->columnNames()}).") IN ( $original_query ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
