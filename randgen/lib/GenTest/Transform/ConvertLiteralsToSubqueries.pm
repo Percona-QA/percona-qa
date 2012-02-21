@@ -32,9 +32,10 @@ sub transform {
 	
 	my ($class, $orig_query, $executor) = @_;
 
-	# Keep DDL's creation seperate for use in MTR testcase.
+	# Keep DDL's creation seperate for use in the simplified testcase.
 	my $create_db="CREATE DATABASE IF NOT EXISTS literals";
-	my $create_tbl_integers="CREATE TABLE IF NOT EXISTS literals.integers (i1 INTEGER NOT NULL PRIMARY KEY)";
+	# Modified integer column datatype to support BIGINT values.
+	my $create_tbl_integers="CREATE TABLE IF NOT EXISTS literals.integers (i1 BIGINT NOT NULL PRIMARY KEY)";
 	my $create_tbl_strings="CREATE TABLE IF NOT EXISTS literals.strings (s1 VARCHAR(255) NOT NULL PRIMARY KEY)";
 	
 	if ($initialized != 1) {
@@ -72,7 +73,7 @@ sub transform {
 		}
 
 		if ($new_integer_query ne $orig_query) {
-			# Pass the DDLs created to the transforms, so it appears in the MTR Testcase.
+			# Pass the DDLs created to the transforms, so it appears in the simplified Testcase.
 			push @transformed_queries, [$create_db, $create_tbl_integers,
 				"INSERT IGNORE INTO literals.integers VALUES ".join(",", map { "($_)" } @integer_literals).";",
 				$new_integer_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */"
@@ -90,7 +91,7 @@ sub transform {
 		}sgexi;
 	
 		if ($new_string_query ne $orig_query) {
-			# Pass the DDLs created to the transforms, so it appears in the MTR Testcase.
+			# Pass the DDLs created to the transforms, so it appears in the simplified Testcase.
 			push @transformed_queries, [$create_db, $create_tbl_strings,
 				"INSERT IGNORE INTO literals.strings VALUES ".join(",", map { "('$_')" } @string_literals).";",
 				$new_string_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */"
