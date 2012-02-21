@@ -36,6 +36,8 @@ sub transform {
 		|| $orig_query =~ m{LIMIT}sio;
 
 	return [
+		#Include database transforms creation DDL so that it appears in the simplified testcase.
+		"CREATE DATABASE IF NOT EXISTS transforms",
 		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$,
 		"CREATE TABLE IF NOT EXISTS trigger1".$$." (f1 INTEGER)",
 		"CREATE TABLE IF NOT EXISTS transforms.trigger2".$$." $orig_query LIMIT 0",
