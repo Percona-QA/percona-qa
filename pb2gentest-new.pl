@@ -1,4 +1,4 @@
-# Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved. 
+# Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved. 
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -46,6 +46,21 @@ use POSIX;
 use Sys::Hostname;
 
 my ($basedir, $vardir, $tree, $test) = @ARGV;
+
+# Print deprecation message and exit.
+# Oracle employees, see internal repository for similar functionality.
+say("################################################################");
+say("# $0 IS DEPRECATED!");
+say("#");
+say("# This file is deprecated and is no longer maintained."); 
+say("# Continued use is strongly discouraged. The file may be removed");
+say("# from this repository without further notice.");
+say("################################################################");
+
+POSIX::_exit(1);
+
+################################################################################
+    
 
 # Which randgen variant do we use?
 # When modifying this, remember to also modify the "use" statement above.
