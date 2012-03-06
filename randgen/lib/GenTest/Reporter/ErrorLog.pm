@@ -62,7 +62,7 @@ sub nativeReport {
 }
 
 sub callbackReport {
-    my $output = GenTest::CallbackPlugin::run("LastLogLines");
+    my $output = GenTest::CallbackPlugin::run("lastLogLines");
     say("$output");
     ## Need some incident interface here in the output from
     ## javaPluginRunner

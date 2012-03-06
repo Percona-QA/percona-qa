@@ -225,7 +225,7 @@ sub report {
 }
 
 sub callbackReport {
-    my $output = GenTest::CallbackPlugin::run("Deadlock");
+    my $output = GenTest::CallbackPlugin::run("deadlock");
     say("$output");
     return STATUS_OK;
 }
