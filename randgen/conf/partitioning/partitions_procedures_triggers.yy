@@ -76,8 +76,8 @@ partition:
 	PARTITION BY partition_hash_or_key;
 
 partition_hash_or_key:
-	HASH ( field_name ) partitions |
-	KEY ( field_name ) partitions ;
+	HASH ( field_name1 ) partitions |
+	KEY ( field_name1 ) partitions ;
 
 partitions:
 	PARTITIONS digit ;
@@ -93,6 +93,9 @@ table_name:
 
 view_name:
 	letter;
+
+field_name1:
+        `pk` ;
 
 field_name:
 	`pk` | `col_int` ;

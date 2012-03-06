@@ -38,6 +38,8 @@ sub transform {
 	my $table_name = 'transforms.insert_select_'.$$;
 
 	return [
+		#Include database transforms creation DDL so that it appears in the simplified testcase.
+		"CREATE DATABASE IF NOT EXISTS transforms",
 		"DROP TABLE IF EXISTS $table_name",
 
 		"CREATE TABLE $table_name $original_query",

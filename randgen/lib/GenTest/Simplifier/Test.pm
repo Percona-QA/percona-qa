@@ -112,10 +112,6 @@ sub simplify {
 	}
 	$test .= "\n";
 
-	$test .= "--disable_warnings\n";
-	$test .= "CREATE DATABASE /*! IF NOT EXISTS */ transforms;\n";
-	$test .= "--enable_warnings\n\n";
-
 	if (defined $executors->[1] and $executors->[0]->type() == DB_MYSQL and $executors->[1]->type() == DB_MYSQL) {
 		foreach my $optimizer_variable (@optimizer_variables) {
 			my @optimizer_values;
@@ -285,10 +281,17 @@ sub simplify {
 			}
 		}
 	
+		#Since cleanup of the databases used by transformers are required in the simplified testcase.
+		if ($rewritten_query =~ m{CREATE DATABASE IF NOT EXISTS transforms}sgio )
+		{
+			$test .= "DROP DATABASE IF EXISTS transforms;\n";
+		}elsif ( $rewritten_query =~ m{CREATE DATABASE IF NOT EXISTS literals}sgio )
+		{
+			$test .= "DROP DATABASE IF EXISTS literals;\n";
+		}
+	
 		$test .= _comment("End of test case for query $query_id",$useHash)."\n\n";
 	}
-
-	$test .= "DROP DATABASE transforms;\n";
 
 	return $test;
 }
