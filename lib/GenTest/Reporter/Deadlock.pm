@@ -225,8 +225,8 @@ sub report {
 }
 
 sub callbackReport {
-    my ($reporter) = @_;
-    say("Deadlok not implemented");
+    my $output = GenTest::CallbackPlugin::run("Deadlock");
+    say("$output");
     return STATUS_OK;
 }
 
