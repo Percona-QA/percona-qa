@@ -53,6 +53,8 @@ sub transform {
 	return STATUS_WONT_HANDLE if $col_name =~ m{`}sgio;
 
 	return [
+		#Include database transforms creation DDL so that it appears in the simplified testcase.
+		"CREATE DATABASE IF NOT EXISTS transforms",
 		"DROP TABLE IF EXISTS $table_name",
 		"CREATE TABLE $table_name $orig_query",
 

@@ -27,9 +27,6 @@ use GenTest;
 use GenTest::Transform;
 use GenTest::Constants;
 
-my $db_created;
-
-
 sub transform {
 	my ($class, $orig_query, $executor) = @_;
 
@@ -40,6 +37,8 @@ sub transform {
 
 	$executor->execute("DROP VIEW transforms.view_".$$."_probe");
 	return [
+		#Include database transforms creation DDL so that it appears in the simplified testcase.
+		"CREATE DATABASE IF NOT EXISTS transforms",
 		"DROP VIEW IF EXISTS transforms.view_".$$."_merge , transforms.view_".$$."_temptable",
 		"CREATE OR REPLACE ALGORITHM=MERGE VIEW transforms.view_".$$."_merge AS $orig_query",
 		"SELECT * FROM transforms.view_".$$."_merge /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
