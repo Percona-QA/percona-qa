@@ -118,7 +118,7 @@ sub nativeReport {
 }
 
 sub callbackReport {
-    my $output = GenTest::CallbackPlugin::run("Backtrace");
+    my $output = GenTest::CallbackPlugin::run("backtrace");
     say("$output");
     ## Need some incident interface here in the output from
     ## the callback
