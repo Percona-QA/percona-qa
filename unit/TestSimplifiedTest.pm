@@ -138,16 +138,16 @@ sub check_testcase {
 sub test_create_drop_database_transform_exists {
     my $self = shift;
     
-    my $result = $executor->execute("CREATE TABLE `t3` (`col_time_not_null_key` time NOT NULL,`col_time_1` time(1) DEFAULT NULL, `pk` datetime(1) NOT NULL DEFAULT '0000-00-00 00:00:00.0', `col_time_2_key` time(2) DEFAULT NULL, PRIMARY KEY (`pk`), KEY `col_time_not_null_key` (`col_time_not_null_key`), KEY `col_time_2_key` (`col_time_2_key`)) ENGINE=InnoDB DEFAULT CHARSET=latin1/*!50100 PARTITION BY KEY (pk) PARTITIONS 2 */;");
+    my $result = $executor->execute("CREATE TABLE `t1` (`col_time_not_null_key` time NOT NULL,`col_time_1` time DEFAULT NULL, `pk` datetime NOT NULL DEFAULT '0000-00-00 00:00:00', `col_time_2_key` time DEFAULT NULL, PRIMARY KEY (`pk`), KEY `col_time_not_null_key` (`col_time_not_null_key`), KEY `col_time_2_key` (`col_time_2_key`)) ENGINE=InnoDB DEFAULT CHARSET=latin1/*!50100 PARTITION BY KEY (pk) PARTITIONS 2 */;");
     
     $self->assert_not_null($result);
     $self->assert_equals($result->status, 0);
     
-    my $result = $executor->execute("INSERT INTO `t3` VALUES ('00:20:02','06:16:36.0','2011-09-09 21:37:45.2','19:15:37.02'),('18:00:14','00:20:04.0','2011-09-09 21:37:46.2','06:21:03.03');");
+    my $result = $executor->execute("INSERT INTO `t1` VALUES ('00:20:02','06:16:36','2011-09-09 21:37:45','19:15:37'),('18:00:14','00:20:04','2011-09-09 21:37:46','06:21:03');");
     $self->assert_not_null($result);
     $self->assert_equals($result->status, 0);
     
-    my $query = "SELECT `col_time_1` AS c1 FROM `t3` WHERE `col_time_2_key` > SUBTIME( '2006-07-16' , '05:05:02.040778' ) ORDER BY `col_time_2_key` , `col_time_1`";
+    my $query = "SELECT `col_time_1` AS c1 FROM `t1` WHERE `col_time_2_key` > SUBTIME( '2006-07-16' , '05:05:02.040778' ) ORDER BY `col_time_2_key` , `col_time_1`";
     
     my $result = $executor->execute($query);
     $self->assert_not_null($result);
@@ -181,12 +181,12 @@ sub test_create_drop_database_transform_exists {
 sub test_create_drop_database_transform_not_exists {
     my $self = shift;
     
-    my $result = $executor->execute("CREATE TABLE `t1` (`col_time_not_null_key` time NOT NULL,`col_time_1` time(1) DEFAULT NULL, `pk` datetime(1) NOT NULL DEFAULT '0000-00-00 00:00:00.0', `col_time_2_key` time(2) DEFAULT NULL, PRIMARY KEY (`pk`), KEY `col_time_not_null_key` (`col_time_not_null_key`), KEY `col_time_2_key` (`col_time_2_key`)) ENGINE=InnoDB DEFAULT CHARSET=latin1/*!50100 PARTITION BY KEY (pk) PARTITIONS 2 */;");
+    my $result = $executor->execute("CREATE TABLE `t1` (`col_time_not_null_key` time NOT NULL,`col_time_1` time DEFAULT NULL, `pk` datetime NOT NULL DEFAULT '0000-00-00 00:00:00', `col_time_2_key` time DEFAULT NULL, PRIMARY KEY (`pk`), KEY `col_time_not_null_key` (`col_time_not_null_key`), KEY `col_time_2_key` (`col_time_2_key`)) ENGINE=InnoDB DEFAULT CHARSET=latin1/*!50100 PARTITION BY KEY (pk) PARTITIONS 2 */;");
     
     $self->assert_not_null($result);
     $self->assert_equals($result->status, 0);
     
-    my $result = $executor->execute("INSERT INTO `t1` VALUES ('00:20:02','06:16:36.0','2011-09-09 21:37:45.2','19:15:37.02'),('18:00:14','00:20:04.0','2011-09-09 21:37:46.2','06:21:03.03');");
+    my $result = $executor->execute("INSERT INTO `t1` VALUES ('00:20:02','06:16:36','2011-09-09 21:37:45','19:15:37'),('18:00:14','00:20:04','2011-09-09 21:37:46','06:21:03');");
     $self->assert_not_null($result);
     $self->assert_equals($result->status, 0);
     
@@ -225,12 +225,12 @@ sub test_create_drop_database_transform_not_exists {
 sub test_create_drop_database_literals_exists {
     my $self = shift;
     
-    my $result = $executor->execute("CREATE TABLE `t1` (`col_time_not_null_key` time NOT NULL,`col_time_1` time(1) DEFAULT NULL, `pk` datetime(1) NOT NULL DEFAULT '0000-00-00 00:00:00.0', `col_time_2_key` time(2) DEFAULT NULL, PRIMARY KEY (`pk`), KEY `col_time_not_null_key` (`col_time_not_null_key`), KEY `col_time_2_key` (`col_time_2_key`)) ENGINE=InnoDB DEFAULT CHARSET=latin1/*!50100 PARTITION BY KEY (pk) PARTITIONS 2 */;");
-    
+    my $result = $executor->execute("CREATE TABLE `t1` (`col_time_not_null_key` time NOT NULL,`col_time_1` time DEFAULT NULL, `pk` datetime NOT NULL DEFAULT '0000-00-00 00:00:00', `col_time_2_key` time DEFAULT NULL, PRIMARY KEY (`pk`), KEY `col_time_not_null_key` (`col_time_not_null_key`), KEY `col_time_2_key` (`col_time_2_key`)) ENGINE=InnoDB DEFAULT CHARSET=latin1/*!50100 PARTITION BY KEY (pk) PARTITIONS 2 */;");
+
     $self->assert_not_null($result);
     $self->assert_equals($result->status, 0);
     
-    my $result = $executor->execute("INSERT INTO `t1` VALUES ('00:20:02','06:16:36.0','2011-09-09 21:37:45.2','19:15:37.02'),('18:00:14','00:20:04.0','2011-09-09 21:37:46.2','06:21:03.03');");
+    my $result = $executor->execute("INSERT INTO `t1` VALUES ('00:20:02','06:16:36','2011-09-09 21:37:45','19:15:37'),('18:00:14','00:20:04','2011-09-09 21:37:46','06:21:03');");
     $self->assert_not_null($result);
     $self->assert_equals($result->status, 0);
     
