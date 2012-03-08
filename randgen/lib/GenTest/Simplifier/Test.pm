@@ -224,7 +224,7 @@ sub simplify {
         $rewritten_query =~ s{(view_[a-zA-Z0-9_]+)}{lc($1)}esgio; # Lowercase view names.
         # Lowercase all occurances of ALIAS names appearing in the query.
         my $temp_query=$rewritten_query;
-        while ($copy_query =~ m{(\bAS\s+)(.+?)\s}sgi) {
+        while ($temp_query =~ m{(\bAS\s+)(.+?)\s}sgi) {
             my $alias_name=$2;
             $rewritten_query =~ s{($alias_name)}{lc($1)}esgi;
         }
