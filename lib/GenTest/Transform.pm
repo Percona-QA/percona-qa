@@ -1,4 +1,4 @@
-# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -183,6 +183,11 @@ sub transformExecuteValidate {
 
 		if ($transform_outcome != STATUS_OK) {
 			return ($transform_outcome, \@transformed_queries, \@transformed_results);
+		}
+		elsif ($transform_outcome == STATUS_OK) {
+			# To expose transformed queries when a transformation was successfull 
+                	# This is useful for unit tests of RQG.
+			return ($transform_outcome, @transformed_queries);
 		}
 	}
 	

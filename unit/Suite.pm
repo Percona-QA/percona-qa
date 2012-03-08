@@ -36,6 +36,7 @@ TestMySQLServer
 TestReplServer
 TestTransformers
 TestTT
+TestSimplifiedTest
 TestSqltrace
 ) }
 
