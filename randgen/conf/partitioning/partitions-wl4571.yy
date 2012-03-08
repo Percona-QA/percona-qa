@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (C) 2008, 2012, Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
+
+# The functionality provided by this grammar has already been covered by the grammar partitions.yy
+# Retaining this grammar as it could prove to be useful in the future.
 
 query:
 	select | select | select | select | select | select |
