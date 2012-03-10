@@ -225,8 +225,9 @@ sub report {
 }
 
 sub callbackReport {
-    my $output = GenTest::CallbackPlugin::run("deadlock");
-    say("$output");
+    #my $output = GenTest::CallbackPlugin::run("deadlock");
+    #say("$output");
+    say "Deadlock report not yet implemented for Callback environments";
     return STATUS_OK;
 }
 
