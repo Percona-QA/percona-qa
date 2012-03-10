@@ -1,4 +1,4 @@
-# Copyright (c) 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,7 +29,10 @@ my $pattern = "^ERROR"; # Modify this to look for other patterns in the error lo
 my $errorlog;           # Path to error log. Is assigned first time monitor() is called.
 
 sub monitor {
-
+    if (defined $ENV{RQG_CALLBACK}) {
+	say "ErrorLogAlarm monitor not yet implemented for Callback environments";
+	return STATUS_OK;
+    }
     my $reporter = shift;
 
     if (not defined $errorlog) {
