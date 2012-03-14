@@ -492,6 +492,11 @@ sub init {
 
 	$executor->setDbh($dbh);
 
+    my ($host) = $executor->dsn() =~ m/:host=([^:]+):/;
+    $executor->setHost($host);
+    my ($port) = $executor->dsn() =~ m/:port=([^:]+):/;
+    $executor->setPort($port);
+
 	# 
 	# Hack around bug 35676, optiimzer_switch must be set sesson-wide in order to have effect
 	# So we read it from the GLOBAL_VARIABLE table and set it locally to the session

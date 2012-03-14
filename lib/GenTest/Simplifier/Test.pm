@@ -90,7 +90,6 @@ sub simplify {
 
 	my $results = $self->results();
 	my $queries = $self->queries();
-	my ($foo, $tcp_port) = $executors->[0]->dbh()->selectrow_array("SHOW VARIABLES LIKE 'port'");
 
     ## We use Hash-comments in an pure MySQL environment due to MTR
     ## limitations
@@ -184,7 +183,9 @@ sub simplify {
 			$test .= "--enable_warnings\n\n"
 		}
 			
-		my $mysqldump_cmd = $self->findMysqlDump() . " -uroot --net_buffer_length=4096 --max_allowed_packet=4096 --no-set-names --compact --skip_extended_insert --force --protocol=tcp --port=$tcp_port $simplified_database ";
+		my $mysqldump_cmd = $self->generateMysqldumpCommand() .
+            " --net_buffer_length=4096 --max_allowed_packet=4096 --no-set-names --compact".
+            " --skip_extended_insert --force --protocol=tcp $simplified_database ";
 		$mysqldump_cmd .= join(' ', @$participating_tables) if $#$participating_tables > -1;
 		open (MYSQLDUMP, "$mysqldump_cmd|") or say("Unable to run $mysqldump_cmd: $!");
 		while (<MYSQLDUMP>) {
@@ -314,14 +315,19 @@ sub results {
 }
 
 ## TODO: Generalize this so that all other mysqldump usage may use it
-sub findMysqlDump {
+sub generateMysqldumpCommand {
+    my($self) = @_;
+    my $executors = $self->executors();
+    my $dumper = "mysqldump";
     if (defined $ENV{RQG_MYSQL_BASE}) {
-        return DBServer::MySQL::MySQLd::_find(undef,
-                                              [$ENV{RQG_MYSQL_BASE}],
-                                              osWindows()?["client/Debug","client/RelWithDebInfo","client/Release","bin"]:["client","bin"],
-                                              osWindows()?"mysqldump.exe":"mysqldump");
-    } else {
-        return "mysqldump";
+        $dumper = DBServer::MySQL::MySQLd::_find(undef,
+                                                 [$ENV{RQG_MYSQL_BASE}],
+                                                 osWindows()?["client/Debug","client/RelWithDebInfo","client/Release","bin"]:["client","bin"],
+                                                 osWindows()?"mysqldump.exe":"mysqldump");
     }
+    
+    return $dumper . 
+        " -uroot --host=".$executors->[0]->host().
+        " --port=".$executors->[0]->port()
 }
 1;
