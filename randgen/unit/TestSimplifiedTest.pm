@@ -110,12 +110,12 @@ sub transform {
 
 # Method for generating testcase for the queries passed.
 # Testcase file is also created under unit/ for debug
-sub check_testcase {
-    my ($self,$query,$transformed_queries)=@_;
+sub create_check_testcase {
+    my ($self,$query,$transformed_query)=@_;
     
     my $transform = GenTest::Simplifier::Test->new(
         executors => [ $executor ],
-        queries => [ $query , join(';',@$transformed_queries) ]
+        queries => [ $query , $transformed_query ]
         );
     $self->assert_not_null($transform);
     
@@ -139,7 +139,6 @@ sub test_create_drop_database_transform_exists {
     my $self = shift;
     
     my $result = $executor->execute("CREATE TABLE `t1` (`col_time_not_null_key` time NOT NULL,`col_time_1` time DEFAULT NULL, `pk` datetime NOT NULL DEFAULT '0000-00-00 00:00:00', `col_time_2_key` time DEFAULT NULL, PRIMARY KEY (`pk`), KEY `col_time_not_null_key` (`col_time_not_null_key`), KEY `col_time_2_key` (`col_time_2_key`)) ENGINE=InnoDB DEFAULT CHARSET=latin1/*!50100 PARTITION BY KEY (pk) PARTITIONS 2 */;");
-    
     $self->assert_not_null($result);
     $self->assert_equals($result->status, 0);
     
@@ -148,7 +147,6 @@ sub test_create_drop_database_transform_exists {
     $self->assert_equals($result->status, 0);
     
     my $query = "SELECT `col_time_1` AS c1 FROM `t1` WHERE `col_time_2_key` > SUBTIME( '2006-07-16' , '05:05:02.040778' ) ORDER BY `col_time_2_key` , `col_time_1`";
-    
     my $result = $executor->execute($query);
     $self->assert_not_null($result);
     $self->assert_equals($result->status, 0);
@@ -166,7 +164,8 @@ sub test_create_drop_database_transform_exists {
         my @transformed_queries=$self->transform($query,$result,$transformer_name);
         $self->assert_not_null(@transformed_queries);
         
-        my $testcase=$self->check_testcase($query,\@transformed_queries);
+        my $transformed_query=join(";",@transformed_queries);
+        my $testcase=$self->create_check_testcase($query,$transformed_query);
         foreach my $test_pattern (@test_patterns) {
             $self->assert_matches(qr/$test_pattern/si,$testcase);
         }
@@ -209,7 +208,8 @@ sub test_create_drop_database_transform_not_exists {
         my @transformed_queries=$self->transform($query,$result,$transformer_name);
         $self->assert_not_null(@transformed_queries);
         
-        my $testcase=$self->check_testcase($query,\@transformed_queries);
+        my $transformed_query=join(";",@transformed_queries);
+        my $testcase=$self->create_check_testcase($query,$transformed_query);
         foreach my $test_pattern (@test_patterns) {
             $self->assert_does_not_match(qr/$test_pattern/si,$testcase);
         }
@@ -226,7 +226,7 @@ sub test_create_drop_database_literals_exists {
     my $self = shift;
     
     my $result = $executor->execute("CREATE TABLE `t1` (`col_time_not_null_key` time NOT NULL,`col_time_1` time DEFAULT NULL, `pk` datetime NOT NULL DEFAULT '0000-00-00 00:00:00', `col_time_2_key` time DEFAULT NULL, PRIMARY KEY (`pk`), KEY `col_time_not_null_key` (`col_time_not_null_key`), KEY `col_time_2_key` (`col_time_2_key`)) ENGINE=InnoDB DEFAULT CHARSET=latin1/*!50100 PARTITION BY KEY (pk) PARTITIONS 2 */;");
-
+    
     $self->assert_not_null($result);
     $self->assert_equals($result->status, 0);
     
@@ -250,12 +250,90 @@ sub test_create_drop_database_literals_exists {
         my @transformed_queries=$self->transform($query,$result,$transformer_name);
         $self->assert_not_null(@transformed_queries);
         
-        my $testcase=$self->check_testcase($query,\@transformed_queries);
+        my $transformed_query=join(";",@transformed_queries);
+        my $testcase=$self->create_check_testcase($query,$transformed_query);
         foreach my $test_pattern (@test_patterns) {
             $self->assert_matches(qr/$test_pattern/si,$testcase);
         }
     }
 }
 
+#Testcase for Bug13692370
+sub test_lowercase_alias_view {
+    my $self = shift;
+    
+    my $result = $executor->execute("CREATE TABLE CC (  pk int(11) auto_increment,  col_int_nokey int(11),  col_int_key int(11),  col_date_key date,  col_time_key time,  col_varchar_key varchar(1),  col_varchar_nokey varchar(1),  PRIMARY KEY (pk),  KEY col_int_key (col_int_key),  KEY col_date_key (col_date_key),  KEY col_time_key (col_time_key),  KEY col_varchar_key (col_varchar_key,col_int_key))/*! engine=InnoDB */;");
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+    
+    my $result = $executor->execute("CREATE TABLE BB (  pk int(11) auto_increment,  col_int_nokey int(11),  col_int_key int(11),  col_date_key date,  col_time_key time,  col_varchar_key varchar(1),  col_varchar_nokey varchar(1),  PRIMARY KEY (pk),  KEY col_int_key (col_int_key),  KEY col_date_key (col_date_key),  KEY col_time_key (col_time_key),  KEY col_varchar_key (col_varchar_key,col_int_key))/*! engine=InnoDB */;");
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+    
+    my $result = $executor->execute("CREATE TABLE B (  pk int(11) auto_increment,  col_int_nokey int(11),  col_int_key int(11),  col_date_key date,  col_time_key time,  col_varchar_key varchar(1),  col_varchar_nokey varchar(1),  PRIMARY KEY (pk),  KEY col_int_key (col_int_key),  KEY col_date_key (col_date_key),  KEY col_time_key (col_time_key),  KEY col_varchar_key (col_varchar_key,col_int_key))/*! engine=InnoDB */;");
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+    
+    my $result = $executor->execute("CREATE TABLE C (  pk int(11) auto_increment,  col_int_nokey int(11),  col_int_key int(11),  col_date_key date,  col_time_key time,  col_varchar_key varchar(1),  col_varchar_nokey varchar(1),  PRIMARY KEY (pk),  KEY col_int_key (col_int_key),  KEY col_date_key (col_date_key),  KEY col_time_key (col_time_key),  KEY col_varchar_key (col_varchar_key,col_int_key))/*! engine=InnoDB */;");
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+    
+    my $result = $executor->execute("CREATE VIEW view_CC as select * from CC;");
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+    
+    my $query = "SELECT alias1 . `col_date_key` AS field1 FROM ( CC AS alias1 , view_CC AS alias2 , C AS alias3 ) WHERE (  ( alias3 . `col_varchar_nokey` , alias3 . `col_varchar_key` ) NOT IN ( SELECT   SQ1_alias1 . `col_varchar_key` AS SQ1_field1 , SQ1_alias1 . `col_varchar_nokey` AS SQ1_field2 FROM ( B AS SQ1_alias1 RIGHT OUTER JOIN ( CC AS SQ1_alias2 INNER JOIN C AS SQ1_alias3 ON (SQ1_alias3 . `pk` = SQ1_alias2 . `pk`  ) ) ON (SQ1_alias3 . `pk` = SQ1_alias2 . `pk`  ) )    ) ) OR ( alias1 . `col_int_key` = 241 AND alias1 . `col_int_key` = 7 ) AND ( alias1 . `col_varchar_nokey` <= 'f' AND  alias1 . `col_int_nokey`  IN ( SELECT   SQ2_alias1 . `pk` AS SQ2_field1 FROM ( BB AS SQ2_alias1 INNER JOIN ( B AS SQ2_alias2 INNER JOIN C AS SQ2_alias3 ON (SQ2_alias3 . `col_varchar_nokey` = SQ2_alias2 . `col_varchar_key`  ) ) ON (SQ2_alias3 . `col_int_key` = SQ2_alias2 . `col_int_nokey`  ) ) WHERE SQ2_alias3 . `col_varchar_key` >= alias3 . `col_varchar_nokey` AND SQ2_alias2 . `col_varchar_key` >= alias1 . `col_varchar_nokey` ) )   ORDER BY alias1 . `col_time_key` ASC, field1 ;";
+    
+    my $result = $executor->execute($query);
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+    
+    # List of patterns to be checked.
+    # pattern a) alias names appear in lowercase
+    # pattern b) view names appear in lowercase
+    # TODO find all occurances of alias names that are changed to lowercase
+    my @test_patterns=('\bAS\s+[a-z0-9_]+?\s','\bview_[a-z]+');
+    
+    my $testcase=$self->create_check_testcase($query,$query);
+    foreach my $test_pattern (@test_patterns) {
+        $self->assert_matches(qr/$test_pattern/s,$testcase);
+    }
+}
+
+#Testcase for Bug13625648
+sub test_datatype_bigint_literals_exists {
+    my $self = shift;
+    
+    my $result = $executor->execute("CREATE TABLE `t1` ( `I` BIGINT DEFAULT NULL ) ;");
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+    
+    my $result = $executor->execute("insert into `t1` values (6675460547669917696) ;");
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+    
+    my $query = "SELECT `i` FROM `t1` WHERE i <= 6675460547669917696 ;";
+    my $result = $executor->execute($query);
+    $self->assert_not_null($result);
+    $self->assert_equals($result->status, 0);
+    
+    # List of tranformers to be used.
+    my @transformer_names=qw(ConvertLiteralsToSubqueries);
+    
+    # List of patterns to be checked.
+    # Check for dataype created with BIGINT.
+    my @test_patterns=('literals\.integers(.*?)\(i1 BIGINT');
+    
+    foreach my $transformer_name (@transformer_names) {
+        my @transformed_queries=$self->transform($query,$result,$transformer_name);
+        $self->assert_not_null(@transformed_queries);
+        
+        my $transformed_query=join(";",@transformed_queries);
+        my $testcase=$self->create_check_testcase($query,$transformed_query);
+        foreach my $test_pattern (@test_patterns) {
+            $self->assert_matches(qr/$test_pattern/si,$testcase);
+        }
+    }
+}
 
 1;
