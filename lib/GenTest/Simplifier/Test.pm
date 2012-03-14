@@ -309,8 +309,7 @@ sub results {
 	return $_[0]->[SIMPLIFIER_RESULTS];
 }
 
-my $mysqldump;
-
+## TODO: Generalize this so that all other mysqldump usage may use it
 sub findMysqlDump {
     if (defined $ENV{RQG_MYSQL_BASE}) {
         return DBServer::MySQL::MySQLd::_find(undef,
