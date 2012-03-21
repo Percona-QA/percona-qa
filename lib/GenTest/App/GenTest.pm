@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -267,7 +267,9 @@ sub reportResults {
     my @report_results;
         
     if ($total_status == STATUS_OK) {
-        @report_results = $reporter_manager->report(REPORTER_TYPE_SUCCESS | REPORTER_TYPE_ALWAYS);
+        # For successfull completing tests check the reporters with report type REPORTER_TYPE_END.
+        # REPORTER_TYPE_END will only be triggered at the end of the test.
+        @report_results = $reporter_manager->report(REPORTER_TYPE_SUCCESS | REPORTER_TYPE_ALWAYS | REPORTER_TYPE_END);
     } elsif (
         ($total_status == STATUS_LENGTH_MISMATCH) ||
         ($total_status == STATUS_CONTENT_MISMATCH)
