@@ -1,5 +1,5 @@
-# Copyright (C) 2010 Sun Microsystems, Inc. All rights reserved.  Use
-# is subject to license terms.
+# Copyright (c) 2010,2012 Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -110,62 +110,6 @@ sub test_create_server {
     $server->stopServer;
 
     sayFile($server->errorlog);
-}
-
-sub test_crash_and_core {
-    if (not osWindows()) { ## crash is not yet implemented for windows
-        my $self = shift;
-
-        my $vardir= cwd()."/unit/tmp";
-        
-        my $portbase = 60 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
-        
-        $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
-        
-        my $server = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
-                                                  vardir => $vardir,
-                                                  port => $portbase);
-        $self->assert_not_null($server);
-        
-        $self->assert(-f $vardir."/data/mysql/db.MYD","No ".$vardir."/data/mysql/db.MYD");
-        
-        $server->startServer;
-        push @pids,$server->serverpid;
-        
-        my $dsn = $server->dsn("mysql");
-        $self->assert_not_null($dsn);
-        
-        my $executor = GenTest::Executor->newFromDSN($dsn);
-        $self->assert_not_null($executor);
-        $executor->init();
-    
-        my $result = $executor->execute("show tables");
-        $self->assert_not_null($result);
-        $self->assert_equals($result->status, 0);
-        
-        say(join(',',map{$_->[0]} @{$result->data}));
-        
-        $self->assert(-f $vardir."/mysql.pid") if not osWindows();
-        $self->assert(-f $vardir."/mysql.err");
-        
-        my $backtrace = GenTest::Reporter::Backtrace->new(
-            dsn => $server->dsn,
-            properties => GenTest::Properties->new()
-        );
-        
-        sleep(1);
-        
-        $server->crash;
-        
-        sleep(1);
-
-        sayFile($server->errorlog);
-
-        say("Core: ". $server->corefile);
-
-        $backtrace->report();
-    }
-        
 }
 
 1;

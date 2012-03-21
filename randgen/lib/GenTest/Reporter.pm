@@ -1,4 +1,4 @@
-# Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -27,6 +27,7 @@ require Exporter;
 	REPORTER_TYPE_SERVER_KILLED
 	REPORTER_TYPE_ALWAYS
 	REPORTER_TYPE_DATA
+	REPORTER_TYPE_END
 );
 
 use strict;
@@ -52,6 +53,8 @@ use constant REPORTER_TYPE_SUCCESS	 => 16;
 use constant REPORTER_TYPE_SERVER_KILLED => 32;
 use constant REPORTER_TYPE_ALWAYS	 => 64;
 use constant REPORTER_TYPE_DATA		 => 128;
+# New reporter type which can be used at the end of a successfull test.
+use constant REPORTER_TYPE_END		 => 256;
 
 1;
 
