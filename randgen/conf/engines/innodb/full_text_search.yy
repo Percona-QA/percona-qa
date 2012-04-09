@@ -61,40 +61,63 @@ select:
 # Type - Natural language Search queries with 
 # SELECT .. MATCH (<fields>) AGAING ( <string> IN NATURAL LANGUAGE MODE )
 natural_language_search:
-     SELECT * FROM _table natural_language_search_condition;
+     SELECT select_list FROM _table WHERE natural_language_search_condition expression | 
+     SELECT _field_indexed[invariant],natural_language_search_condition AS SCORE FROM _table WHERE natural_language_search_condition expression order_clause |
+     SELECT _field_indexed[invariant],natural_language_search_condition AS SCORE FROM _table order_clause limit_clause;
 
 natural_language_search_condition:
-     WHERE MATCH (_field_no_pk) AGAINST (_english IN NATURAL LANGUAGE MODE );
+     MATCH (_field_no_pk[invariant]) AGAINST (_english[invariant] IN NATURAL LANGUAGE MODE );
 
 # Type - Boolean Search queries with, 
 # SELECT .. MATCH (<fields>) AGAING ( <string> IN BOOLEAN MODE )
 boolean_search:
-     SELECT * FROM _table boolean_search_condition ;
+     SELECT select_list FROM _table WHERE boolean_search_condition expression | 
+     SELECT _field_indexed[invariant],boolean_search_condition AS SCORE FROM _table WHERE boolean_search_condition expression order_clause |
+     SELECT _field_indexed[invariant],boolean_search_condition AS SCORE FROM _table order_clause limit_clause;
 
 boolean_search_condition:
-     WHERE MATCH (_field_no_pk) AGAINST ( CONCAT( concatinate_strings ) IN BOOLEAN MODE);
+     MATCH (_field_no_pk[invariant]) AGAINST ( CONCAT( concatinate_strings ) IN BOOLEAN MODE);
 
 # Type - Query expansion mode , 
 # SELECT .. MATCH (<fields>) AGAING ( <string> WITH QUERY EXPANSION )
 query_expansion_search:
-     SELECT * FROM _table query_expansion_search_condition;
+     SELECT select_list FROM _table WHERE query_expansion_search_condition | 
+     SELECT _field_indexed[invariant],query_expansion_search_condition AS SCORE FROM _table WHERE query_expansion_search_condition expression order_clause |
+     SELECT _field_indexed[invariant],query_expansion_search_condition AS SCORE FROM _table order_clause limit_clause; 
 
 query_expansion_search_condition:
-     WHERE MATCH (_field_no_pk) AGAINST ( _english WITH QUERY EXPANSION );
+     MATCH (_field_no_pk[invariant]) AGAINST ( _english[invariant] WITH QUERY EXPANSION );
 
 # Type - Proximity search - Innodb Feature , Search done with Boolean Mode
 proximity_search:
-     SELECT * FROM _table proximity_search_condition;
+     SELECT select_list FROM _table WHERE proximity_search_condition expression | 
+     SELECT _field_indexed[invariant],proximity_search_condition AS SCORE FROM _table WHERE proximity_search_condition expression order_clause |
+     SELECT _field_indexed[invariant],proximity_search_condition AS SCORE FROM _table order_clause limit_clause;
 
 proximity_search_condition:
-     WHERE MATCH (_field_no_pk) AGAINST ( proximity_search_string IN BOOLEAN MODE);
+     MATCH (_field_no_pk[invariant]) AGAINST ( proximity_search_string IN BOOLEAN MODE);
 
 proximity_search_string:
      single_quote double_quote _englishnoquote double_quote {$val= "@".$prng->int(0,15)} single_quote 
      | single_quote double_quote _englishnoquote _englishnoquote double_quote {$val= "@".$prng->int(0,15)} single_quote;
 
+select_list:
+     count(*) | * ;
+
+expression:
+    > 0 | = 0 | > 1 | < 1 | != 0 | != 1 | | | | | | | | | | |;   
+
+order_clause:
+     ORDER BY SCORE order_type | ORDER BY {$prng->int(1,2)} order_type | | |;
+
+order_type:
+     DESC | DESC | DESC | DESC | ASC | |;
+
+limit_clause:
+     LIMIT {$prng->int(0,3)} | LIMIT {$prng->int(0,3)} | LIMIT {$prng->int(10,30)};
+
 get_string:
-     _english;
+     _english[invariant];
 
 concatinate_strings:
      get_string | str_with_operator 
@@ -131,8 +154,7 @@ insert :
     INSERT INTO _table ( _field_no_pk ) VALUES ( _english ) ;    
 
 update:
-    UPDATE _table SET _field_no_pk = _english condition ;
+    UPDATE _table SET _field_no_pk = _english WHERE condition ;
  
 delete:
-    DELETE FROM _table condition ;
-
+    DELETE FROM _table WHERE condition ;
