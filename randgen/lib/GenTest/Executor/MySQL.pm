@@ -713,6 +713,7 @@ sub execute {
 			$kill_dbh->do("KILL QUERY ".$executor->connectionId()); 
 			$kill_dbh->disconnect();
 			$sth->finish();
+			$dbh->do("SELECT 1 FROM DUAL /* Guard query so that the KILL QUERY we just issued does not affect future queries */;");
 			@data = ();
 			$result_status = STATUS_SKIP;
 		} elsif ($execution_flags & EXECUTOR_FLAG_HASH_DATA) {
