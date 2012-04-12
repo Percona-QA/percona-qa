@@ -34,7 +34,14 @@ sub report {
 
 	my $master_dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
 	my $master_port = $reporter->serverVariable('port');
-	my $slave_port = $master_port + 2;
+	my $slave_port;
+
+	my $slave_info = $master_dbh->selectrow_arrayref("SHOW SLAVE HOSTS");
+	if (defined $slave_info) {
+		$slave_port = $slave_info->[2];
+	} else {
+		$slave_port = $master_port + 2;
+	}
 
         my $slave_dsn = "dbi:mysql:host=127.0.0.1:port=".$slave_port.":user=root";
         my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { PrintError => 1 } );
