@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -31,10 +31,12 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $original_query, $executor, $original_result) = @_;
 
-	return STATUS_WONT_HANDLE if $original_query !~ m{^\s*SELECT}sio 
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE)}sio
+	        || $original_query !~ m{^\s*SELECT}sio
 	        || $original_query =~ m{LIMIT}sio
-	        || $original_query =~ m{(AVG|STD|STDDEV_POP|STDDEV_SAMP|STDDEV|SUM|VAR_POP|VAR_SAMP|VARIANCE)\s*\(}sio;
-	return STATUS_WONT_HANDLE if $original_result->rows() == 0;
+	        || $original_query =~ m{(AVG|STD|STDDEV_POP|STDDEV_SAMP|STDDEV|SUM|VAR_POP|VAR_SAMP|VARIANCE)\s*\(}sio
+		|| $original_result->rows() == 0;
 
 	# This transformation can not work if the result set contains NULLs
 	foreach my $orig_row (@{$original_result->data()}) {
@@ -46,6 +48,8 @@ sub transform {
 	my $table_name = 'transforms.where_subselect_'.$$;
 
 	return [
+		#Include database transforms creation DDL so that it appears in the simplified testcase.
+		"CREATE DATABASE IF NOT EXISTS transforms",
 		"DROP TABLE IF EXISTS $table_name",
 		"CREATE TABLE $table_name $original_query",
 		"SELECT * FROM $table_name WHERE (".join(', ', map { "`$_`" } @{$original_result->columnNames()}).") IN ( $original_query ) /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",

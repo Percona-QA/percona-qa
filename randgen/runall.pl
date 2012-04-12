@@ -66,7 +66,7 @@ my @master_dsns;
 my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file, $skip_recursive_rules,
     $redefine_file, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
-    $varchar_len, $xml_output, $valgrind, $valgrind_xml, $views,
+    $varchar_len, $xml_output, $valgrind, $valgrind_options, $valgrind_xml, $views,
     $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
     $report_xml_tt_type, $report_xml_tt_dest, $notnull, $sqltrace,
     $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout,
@@ -119,6 +119,7 @@ my $opt_result = GetOptions(
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s'	=> \$xml_output,
 	'valgrind'	=> \$valgrind,
+	'valgrind_options=s@'   => \$valgrind_options,
 	'valgrind-xml'	=> \$valgrind_xml,
 	'views:s'	=> \$views,
 	'sqltrace:s' => \$sqltrace,
@@ -294,6 +295,9 @@ foreach my $server_id (0..1) {
 	push @mtr_options, "--mem" if defined $mem;
 	if ((defined $valgrind) || (defined $valgrind_xml)) {
 		push @mtr_options, "--valgrind";
+		if (defined $valgrind_options) {
+			push @mtr_options, "--valgrind-option=".join(',', @$valgrind_options);
+		}
 		if (defined $valgrind_xml) {
 			push @mtr_options, "--valgrind-option='--xml=yes'";
 			if (defined $vardirs[$server_id]) {
@@ -531,6 +535,8 @@ $0 - Run a complete random query generation test, including server start with re
                   Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
     --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl
     --valgrind  : Passed to gentest.pl
+    --valgrind_options: The valgrind options to use
+    --valgrind-xml: Enables valgrind with --xml=yes and ValgrindXMLErrors reporter that processes the XML output and reports issues found
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr
     --mtr-build-thread: Value used for MTR_BUILD_THREAD when servers are started and accessed 

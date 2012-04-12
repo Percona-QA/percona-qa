@@ -226,7 +226,7 @@ sub transform {
 
 		say("Simplified transformed query: $simplified_transformed_queries_str");
 
-		if (defined $simplified_transformed_results->[0]->warnings()) {
+		if (defined $simplified_transformed_results->[0] && defined $simplified_transformed_results->[0]->warnings()) {
 			say("Simplified transformed query produced warnings.");
 	#		return STATUS_WONT_HANDLE;
 		}

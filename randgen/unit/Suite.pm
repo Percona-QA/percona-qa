@@ -34,7 +34,10 @@ Metadata
 IPC
 TestMySQLServer
 TestReplServer
+TestReporter
+TestTransformers
 TestTT
+TestSimplifiedTest
 TestSqltrace
 ) }
 

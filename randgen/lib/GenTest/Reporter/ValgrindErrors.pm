@@ -1,4 +1,4 @@
-# Copyright (c) 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -119,7 +119,8 @@ sub report {
 }
 
 sub type {
-    return REPORTER_TYPE_ALWAYS ;
+    # We use the reporter type REPORTER_TYPE_END since this will get triggered only at the end of a successfully executed test.
+    return REPORTER_TYPE_END ;
 }
 
 1;
