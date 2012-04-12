@@ -1,4 +1,4 @@
-# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -31,41 +31,40 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $original_query) = @_;
 
-       my @selects = $original_query =~ m{(SELECT)}sgio;
+	my @selects = $original_query =~ m{(SELECT)}sgio;
 
-       if ($original_query =~ m{GROUP\s+BY}io) {
-		return STATUS_WONT_HANDLE;
-	} elsif ($original_query =~ m{ORDER\s+BY[^()]*CONCAT\s*\(}sio) {
-		# CONCAT() in ORDER BY requires more complex regexes below
-		# for correct behavior, so we skip this query.
-		return STATUS_WONT_HANDLE;
-	} else {
-		my $transform_outcome;
-		if ($original_query =~ m{LIMIT[^()]*$}sio) {
-			$transform_outcome = "TRANSFORM_OUTCOME_SUPERSET";
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	#          - CONCAT() in ORDER BY queries, which require more complex regexes below for correct behavior
+	return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE)}sio
+		|| $original_query =~ m{GROUP\s+BY}io
+		|| $original_query =~ m{ORDER\s+BY[^()]*CONCAT\s*\(}sio;
+		
+	my $transform_outcome;
 
-			if ($original_query =~ s{ORDER\s+BY[^()]*$}{}sio) {
-				# Removing ORDER BY
-			} elsif ($#selects == 0) {
-				return STATUS_WONT_HANDLE if $original_query !~ s{LIMIT[^()]*$}{ORDER BY 1}sio;
-			} else {
-				return STATUS_WONT_HANDLE;
-			}
+	if ($original_query =~ m{LIMIT[^()]*$}sio) {
+		$transform_outcome = "TRANSFORM_OUTCOME_SUPERSET";
+
+		if ($original_query =~ s{ORDER\s+BY[^()]*$}{}sio) {
+			# Removing ORDER BY
+		} elsif ($#selects == 0) {
+			return STATUS_WONT_HANDLE if $original_query !~ s{LIMIT[^()]*$}{ORDER BY 1}sio;
 		} else {
-			$transform_outcome = "TRANSFORM_OUTCOME_UNORDERED_MATCH";
-
-			if ($original_query =~ s{ORDER\s+BY[^()]*$}{}sio) {
-				# Removing ORDER BY
-                       } elsif ($#selects == 0) {
-                               return STATUS_WONT_HANDLE if $original_query !~ s{$}{ ORDER BY 1}sio;
-				# Add ORDER BY 1 (no LIMIT)
-			} else {
-				return STATUS_WONT_HANDLE;
-			}
+			return STATUS_WONT_HANDLE;
 		}
+	} else {
+		$transform_outcome = "TRANSFORM_OUTCOME_UNORDERED_MATCH";
 
-		return $original_query." /* $transform_outcome */ ";
+		if ($original_query =~ s{ORDER\s+BY[^()]*$}{}sio) {
+			# Removing ORDER BY
+                     } elsif ($#selects == 0) {
+                              return STATUS_WONT_HANDLE if $original_query !~ s{$}{ ORDER BY 1}sio;
+			# Add ORDER BY 1 (no LIMIT)
+		} else {
+			return STATUS_WONT_HANDLE;
+		}
 	}
+
+	return $original_query." /* $transform_outcome */ ";
 }
 
 1;
