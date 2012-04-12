@@ -1,3 +1,5 @@
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,8 +30,10 @@ use GenTest::Constants;
 sub transform {
 	my ($class, $orig_query) = @_;
 
-	return STATUS_WONT_HANDLE if $orig_query !~ m{SELECT}io;
-	return STATUS_WONT_HANDLE if $orig_query =~ m{SQL_BIG_RESULT|SQL_SMALL_RESULT|SQL_BUFFER_RESULT}io;
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+		|| $orig_query !~ m{SELECT}io
+		|| $orig_query =~ m{SQL_BIG_RESULT|SQL_SMALL_RESULT|SQL_BUFFER_RESULT}io;
 
 	my $modified_queries = [
 		$orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */ ",

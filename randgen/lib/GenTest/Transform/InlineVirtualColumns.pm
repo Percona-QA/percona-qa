@@ -1,4 +1,4 @@
-# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -31,12 +31,14 @@ my $global_inlines = 0;
 sub transform {
 	my ($class, $query, $executor) = @_;
 
-	return STATUS_WONT_HANDLE if $query !~ m{\s*SELECT}sio;
-
 	my %virtual_columns;
 
 	my $dbh = $executor->dbh();
 	my ($table_name) = $query =~ m{FROM (.*?)[ ^]}sio;
+
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $query =~ m{(OUTFILE|INFILE)}sio
+		|| $query !~ m{\s*SELECT}sio;
 
 	my ($foo, $table_create) = $dbh->selectrow_array("SHOW CREATE TABLE $table_name");
 

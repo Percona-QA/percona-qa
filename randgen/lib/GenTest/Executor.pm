@@ -374,7 +374,7 @@ sub metaColumnsType {
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
         my $colref = $meta->{$schema}->{$table};
         my $cols = [sort grep {$colref->{$_} eq $type} keys %$colref];
-        croak "Table '$table' in schema '$schema' has no '$type' columns"  
+        croak "Table/view '$table' in schema '$schema' has no '$type' columns (Might be caused by use of --views option in combination with grammars containing _field_indexed)"  
             if not defined $cols or $#$cols < 0;
         $self->[EXECUTOR_META_CACHE]->{$cachekey} = $cols;
     }

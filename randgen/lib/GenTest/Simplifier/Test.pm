@@ -1,4 +1,4 @@
-# Copyright (c) 2008,2010 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -200,46 +200,50 @@ sub simplify {
 		
 		$test .= "\n\n";
 		
-		# If show_index variable is defined then SHOW INDEX statement is executed on the list of 
-		# participating tables and the output is printed within comments.
-		# This was a request from optimizer team, for them to understand under which circumstances a 
-		# query result difference or transformation has taken place.
-		if (defined $show_index) {
-	        	if ($#$participating_tables > -1) {
-	        		foreach my $tab (@$participating_tables) {
-	        			$test .= "# /* Output of `SHOW INDEX from $tab` for query $query_id:\n";
-	        			my $stmt = $executors->[0]->execute("SHOW INDEX from $simplified_database.$tab");
-	        			$test .= "# |".join("|",@{$stmt->columnNames()})."|\n";
-	        			foreach my $row (@{$stmt->data()}) {
-	        				$test .= "# |".join("|", @$row)."|\n";
-	        			}
-	        			$test .= "# */\n\n";
-	        		}
-	        	}
-	        }
-		
-		
-		# If pretty printing module is available then use it to format the query
-		# otherwise use the existing regex pattern to format the query. 
-		if ( defined $pretty_sql) {
-			$rewritten_query =~ s{\s+}{ }sgio; # Remove extra spaces.
-			$rewritten_query =~ s{`}{}sgio; # Remove backquotes.
-			$pretty_sql->query($rewritten_query);
-			$test .= $pretty_sql->beautify;
-			$test .= $test.";\n\n"; # Include the query terminator.
-		} else {
-			$rewritten_query =~ s{\s+}{ }sgio;
-			$rewritten_query =~ s{`}{}sgio;
-			$rewritten_query =~ s{\s+\.}{.}sgio;
-			$rewritten_query =~ s{\.\s+}{.}sgio;
-			$rewritten_query =~ s{(SELECT|LEFT|RIGHT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)}{\n$1}sgio;
-			$rewritten_query =~ s{\(}{\n(}sgio;	# Put each set of parenthesis on its own line 
-			$rewritten_query =~ s{\)}{)\n}sgio;	# 
-			$rewritten_query =~ s{[\r\n]+}{\n}sgio;
-			$test .= $rewritten_query.";\n\n"; 		
-		}
-		
-		$test .= "\n\n";
+        # If show_index variable is defined then SHOW INDEX statement is executed on the list of 
+        # participating tables and the output is printed within comments.
+        # This was a request from optimizer team, for them to understand under which circumstances a 
+        # query result difference or transformation has taken place.
+        if (defined $show_index) {
+            if ($#$participating_tables > -1) {
+                foreach my $tab (@$participating_tables) {
+                    $test .= "# /* Output of `SHOW INDEX from $tab` for query $query_id:\n";
+                    my $stmt = $executors->[0]->execute("SHOW INDEX from $simplified_database.$tab");
+                    $test .= "# |".join("|",@{$stmt->columnNames()})."|\n";
+                    foreach my $row (@{$stmt->data()}) {
+                        $test .= "# |".join("|", @$row)."|\n";
+                    }
+                    $test .= "# */\n\n";
+                }
+            }
+        }
+        
+        
+        $rewritten_query =~ s{\s+}{ }sgio; # Remove extra spaces.
+        $rewritten_query =~ s{`}{}sgio; # Remove backquotes.
+        $rewritten_query =~ s{(view_[a-zA-Z0-9_]+)}{lc($1)}esgio; # Lowercase view names.
+        # Lowercase all occurances of ALIAS names appearing in the query.
+        my $temp_query=$rewritten_query;
+        while ($temp_query =~ m{(\bAS\s+)(.+?)\s}sgi) {
+            my $alias_name=$2;
+            $rewritten_query =~ s{($alias_name)}{lc($1)}esgi;
+        }
+        # If pretty printing module is available then use it to format the query
+        # otherwise use the existing regex patterns to format the query. 
+        if ( defined $pretty_sql) {
+            $pretty_sql->query($temp_query);
+            $rewritten_query = $pretty_sql->beautify;
+        } else {
+            $rewritten_query =~ s{\s+\.}{.}sgio;
+            $rewritten_query =~ s{\.\s+}{.}sgio;
+            $rewritten_query =~ s{(SELECT|LEFT|RIGHT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)}{\n$1}sgio;
+            $rewritten_query =~ s{\(}{\n(}sgio; # Put each set of parenthesis on its own line 
+            $rewritten_query =~ s{\)}{)\n}sgio; # 
+            $rewritten_query =~ s{[\r\n]+}{\n}sgio;
+        }
+        $test .= $rewritten_query.";\n\n"; # The query terminator.
+        
+        $test .= "\n\n";
 		
 		if ($rewritten_query =~ m/^\s*SELECT/) {
 			foreach my $ex (0..1) {
@@ -279,6 +283,15 @@ sub simplify {
 			foreach my $tab (@$participating_tables) {
 				$test .= "DROP TABLE $tab;\n";
 			}
+		}
+	
+		#Since cleanup of the databases used by transformers are required in the simplified testcase.
+		if ($rewritten_query =~ m{CREATE DATABASE IF NOT EXISTS transforms}sgio )
+		{
+			$test .= "DROP DATABASE IF EXISTS transforms;\n";
+		}elsif ( $rewritten_query =~ m{CREATE DATABASE IF NOT EXISTS literals}sgio )
+		{
+			$test .= "DROP DATABASE IF EXISTS literals;\n";
 		}
 	
 		$test .= _comment("End of test case for query $query_id",$useHash)."\n\n";
