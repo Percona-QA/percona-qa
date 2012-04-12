@@ -1,5 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
-# Use is subject to license terms.
+# Copyright (C) 2008, 2012, Oracle and/or its affiliates. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -76,8 +75,8 @@ partition:
 	PARTITION BY partition_hash_or_key;
 
 partition_hash_or_key:
-	HASH ( field_name ) partitions |
-	KEY ( field_name ) partitions ;
+	HASH ( field_name1 ) partitions |
+	KEY ( field_name1 ) partitions ;
 
 partitions:
 	PARTITIONS digit ;
@@ -93,6 +92,9 @@ table_name:
 
 view_name:
 	letter;
+
+field_name1:
+        `pk` ;
 
 field_name:
 	`pk` | `col_int` ;

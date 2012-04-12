@@ -451,7 +451,7 @@ $gentestProps->property('xml-output',$xml_output) if defined $xml_output;
 $gentestProps->debug(1) if defined $debug;
 $gentestProps->filter($filter) if defined $filter;
 $gentestProps->notnull($notnull) if defined $notnull;
-$gentestProps->short_coulmn_names($short_column_names) if defined $short_column_names;
+$gentestProps->short_column_names($short_column_names) if defined $short_column_names;
 $gentestProps->strict_fields($strict_fields) if defined $strict_fields;
 $gentestProps->freeze_time($freeze_time) if defined $freeze_time;
 $gentestProps->valgrind(1) if $valgrind;

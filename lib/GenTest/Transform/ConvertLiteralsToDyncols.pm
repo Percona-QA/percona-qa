@@ -1,3 +1,5 @@
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,8 +32,10 @@ sub transform {
 	my ($class, $orig_query, $executor) = @_;
 
 
-	# We skip LIMIT queries because LIMIT N can not be converted into LIMIT COLUMN_GET( COLUMN_CREATE () ) 
-	return STATUS_WONT_HANDLE if $orig_query =~ m{LIMIT}sio;
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	#          - LIMIT queries because LIMIT N can not be converted into LIMIT COLUMN_GET( COLUMN_CREATE () ) 
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+        	|| $orig_query =~ m{LIMIT}sio;
 
 	my @transformed_queries;
 

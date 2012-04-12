@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -33,14 +33,13 @@ sub transform {
 	my @having = $orig_query =~ m{HAVING}sio;
 	my @selects = $orig_query =~ m{(SELECT)}sgio;
 	
-	if (($#having != 0) || ($#selects != 0)) {
-		return STATUS_WONT_HANDLE;
-	} elsif ($orig_query =~ m{HAVING[^()]*$}sio) {
-		$orig_query =~ s{HAVING.*(ORDER\s+BY|LIMIT|$)}{ $1}sio;
-		return $orig_query." /* TRANSFORM_OUTCOME_SUPERSET */";
-	} else {
-		return STATUS_WONT_HANDLE;
-	}
+	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+		|| (($#having != 0) || ($#selects != 0))
+		|| $orig_query !~ m{HAVING[^()]*$}sio;
+
+	$orig_query =~ s{HAVING.*(ORDER\s+BY|LIMIT|$)}{ $1}sio;
+	return $orig_query." /* TRANSFORM_OUTCOME_SUPERSET */";
 }
 
 1;
