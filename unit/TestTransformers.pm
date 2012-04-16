@@ -46,7 +46,7 @@ sub set_up {
 sub tear_down {
     my $self = shift;
     # clean up after test
-    #unlink $self->{logfile};    # uncomment this if you need the log to debug after the fact
+    #unlink $self->{logfile};    # comment this if you need the log to debug after the fact
 }
 
 # Test that ExecuteAsFunctionTwice works with BIT_AND queries.
@@ -120,5 +120,40 @@ sub test_transformer_ExecuteAsUnion_LIMIT {
         unlink $grammar;
     }
 }
+
+# Bug13720157
+# Fix for KILL QUERY when MAX_ROWS_THRESHOLD is > 500000 queries bug in MySQL.pm
+sub test_transformer_DISTINCT_MAX_ROWS_THRESHOLD {
+    my $self = shift;
+    my $query = "SELECT DISTINCT alias1 . `col_int_key` AS field1 FROM ( C AS alias1 , ( C AS alias2 , D AS alias3 ) ) ORDER BY field1, field1;";
+    ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
+    if ($ENV{RQG_MYSQL_BASE}) {
+        # Use a grammar that has a query with more than 500000 rows.
+        my $grammar = 'unit/distinct_max_rows_threshold.yy';
+        open(FILE, "> $grammar") or assert("Unable to create grammar file");
+        print FILE "query:\n";
+        print FILE "    $query\n";
+        close FILE;
+        
+        my $rqg_opts = 
+        "--grammar=$grammar " 
+        .'--queries=1 '
+        .'--transformer=Distinct,ExecuteAsPreparedTwice '
+        .'--threads=1 ' 
+        .'--basedir='.$ENV{RQG_MYSQL_BASE};
+        
+        my $cmd = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts
+        .' --reporter=Shutdown --mtr-build-thread='.$self->{portbase}
+        .' > '.$self->{logfile}.' 2>&1';
+        $self->annotate("RQG command line: $cmd");
+        my $status = system($cmd);
+        my $expected = STATUS_OK;
+        my $actual = $status >> 8;
+        $self->assert_num_equals($expected, $actual, 
+            "Wrong exit status from runall.pl, expected $expected and got $actual");
+        unlink $grammar;
+    }
+}
+
 
 1;
