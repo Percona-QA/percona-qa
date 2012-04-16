@@ -1,4 +1,4 @@
-# Copyright (c) 2008-2010,2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (C) 2008-2010 Sun Microsystems, Inc. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,32 +26,25 @@
 #
 # Therefore specialities like
 # 1. "Special" tables like partitioned, merged, views etc.
-# 2. Variation of the storage engine
+# 2. Varaition of the storage engine
 # make no sense.
 #
 # Please read conf/runtime/WL5004_sql.yy for more information.
 #
 
-# rows => [0, 1, 10, 100 ], might look nice but causes some significant growth
-# of data in vardir per server.
-# vardir in tmpfs + several parallel RQG runs becomes critical because of the
-# limited space in tmpfs. I got a crowd of rare or never seen + not good
-# reproducible crashes in various server components. It is till now not clear
-# if these crashes are caused by the shortage of free space in tmpfs at all.
-# But the likelihood of crashes drops drastic in case there is enough free space.
 $tables = {
-   rows => [0, 1, 10 ],
-   pk   => [ 'int' , 'int auto_increment' ]
+	rows => [0, 1, 10 ],
+	pk => [ 'int' , 'int auto_increment' ]
 };
 
 $fields = {
-   types   => [ 'int', 'varchar(64)', 'decimal', 'float', 'blob' ],
-   indexes => [ undef ]
+	types => [ 'int' ],
+	indexes => [ 'key', undef ]
 };
 
 $data = {
-   numbers   => [ 'digit', 'null', undef ],
-   strings   => [ 'letter', 'english' ],
-   blobs     => [ 'data' ],
-   temporals => [ 'date', 'year', 'null', undef ]
+	numbers => [ 'digit', 'null', undef ],
+	strings => [ 'letter', 'english' ],
+	blobs => [ 'data' ],
+	temporals => ['date', 'year', 'null', undef ]
 }

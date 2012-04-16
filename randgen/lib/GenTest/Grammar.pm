@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -38,8 +38,8 @@ use constant GRAMMAR_FILE	=> 1;
 use constant GRAMMAR_STRING	=> 2;
 use constant GRAMMAR_FLAGS	=> 3;
 
-use constant GRAMMAR_FLAG_COMPACT_RULES		=> 1;
-use constant GRAMMAR_FLAG_SKIP_RECURSIVE_RULES	=> 2;
+use constant GRAMMAR_FLAG_COMPACT_RULES         => 1;
+use constant GRAMMAR_FLAG_SKIP_RECURSIVE_RULES  => 2;
 
 1;
 
@@ -55,21 +55,21 @@ sub new {
 	}, @_);
 
 
-    if (defined $grammar->rules()) {
-        $grammar->[GRAMMAR_STRING] = $grammar->toString();
-    } else {
-        $grammar->[GRAMMAR_RULES] = {};
-        
-        if (defined $grammar->file()) {
-            my $parse_result = $grammar->parseFromFile($grammar->file());
-            return undef if $parse_result > STATUS_OK;
-        }
-        
-        if (defined $grammar->string()) {
-            my $parse_result = $grammar->parseFromString($grammar->string());
-            return undef if $parse_result > STATUS_OK;
-        }
-    }
+	if (defined $grammar->rules()) {
+		$grammar->[GRAMMAR_STRING] = $grammar->toString();
+	} else {
+		$grammar->[GRAMMAR_RULES] = {};
+
+		if (defined $grammar->file()) {
+			my $parse_result = $grammar->parseFromFile($grammar->file());
+			return undef if $parse_result > STATUS_OK;
+		}
+
+		if (defined $grammar->string()) {
+			my $parse_result = $grammar->parseFromString($grammar->string());
+			return undef if $parse_result > STATUS_OK;
+		}
+	}
 
 	return $grammar;
 }
@@ -105,7 +105,7 @@ sub parseFromString {
 	my ($grammar, $grammar_string) = @_;
 
 	#
-	# provide an #include directive 
+	# provide an #include directive
 	#
 
 	while ($grammar_string =~ s{#include [<"](.*?)[>"]$}{
@@ -117,7 +117,7 @@ sub parseFromString {
 			$include_string;
 	}}mie) {};
 
-	# Strip comments. Note that this is not Perl-code safe, since perl fragments 
+	# Strip comments. Note that this is not Perl-code safe, since perl fragments
 	# can contain both comments with # and the $# expression. A proper lexer will fix this
 	
 	$grammar_string =~ s{#.*$}{}iomg;
@@ -250,6 +250,33 @@ sub deleteRule {
 	delete $_[0]->[GRAMMAR_RULES]->{$_[1]};
 }
 
+sub cloneRule {
+	my ($grammar, $old_rule_name, $new_rule_name) = @_;
+
+	# Rule consists of
+	# rule_name
+	# pointer to array called components
+	#   An element of components is a pointer to an array of component_parts
+
+	my $components = $grammar->[GRAMMAR_RULES]->{$old_rule_name}->[1];
+
+	my @new_components;
+	for (my $idx=$#$components; $idx >= 0; $idx--) {
+		my $component = $components->[$idx];
+		my @new_component_parts = @$component;
+		# We go from the highest index to the lowest.
+		# So "push @new_components , \@new_component_parts ;" would give the wrong order
+		unshift @new_components , \@new_component_parts ;
+	}
+
+	my $new_rule = GenTest::Grammar::Rule->new(
+		name => $new_rule_name,
+		components => \@new_components
+	);
+	$grammar->[GRAMMAR_RULES]->{$new_rule_name} = $new_rule;
+
+}
+
 #
 # Check if the grammar is tagged with query properties such as RESULTSET_ or ERROR_1234
 #
@@ -304,7 +331,7 @@ sub topGrammarX {
                 foreach my $cp (@$c) {
                     push @subrules,$self->rule($cp) if defined $self->rule($cp);
                 }
-                my $componentrules = 
+                my $componentrules =
                     $self->topGrammarX($level + 1, $max -1,@subrules);
                 if (defined  $componentrules) {
                     foreach my $sr (keys %$componentrules) {
@@ -370,7 +397,7 @@ sub mask {
                 $mask = $prng->uint16(0,0x7fff);
             }
         }
-        
+
         my $newRule;
 
         ## If no components were chosen, we chose all to have a working
@@ -382,7 +409,7 @@ sub mask {
                                               components => \@newComponents);
         }
         $newRuleset{$rulename}= $newRule;
-        
+
     }
 
     return GenTest::Grammar->new(grammar_rules => \%newRuleset);

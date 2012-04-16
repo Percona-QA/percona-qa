@@ -69,10 +69,11 @@ sub xml {
     );
 
     $writer->xmlDecl('ISO-8859-1');
+    # The schemaLocation element now takes an additional URI, two URI's are needed.
     $writer->startTag('report',
         'xmlns'                 => "http://regin.no.oracle.com/report/schema",
         'xmlns:xsi'             => "http://www.w3.org/2001/XMLSchema-instance",
-        'xsi:schemaLocation'    => "http://regin.no.oracle.com/report/schema/testresult-schema-1-2.xsd",
+        'xsi:schemaLocation'    => "http://regin.no.oracle.com/report/schema http://regin.no.oracle.com/report/schema/testresult-schema-1-2.xsd",
         'version'               => "1.2"
     );
 
