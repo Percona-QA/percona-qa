@@ -24,7 +24,7 @@ use GenTest;
 ## This module is intended for plugins (Reporters, validators etc)
 ## which need to call back to the framework that started RQG to
 ## perform certain tasks. E.g. if the db server is running another
-## blace in the network, Bactrace.pm can't be performed by RQG itself
+## place in the network, Bactrace.pm can't be performed by RQG itself
 ## and then have to call back to the framework to get the task
 ## performed.
 
