@@ -50,10 +50,19 @@ sub monitor {
 
 	my $prng = $reporter->prng();
 
-	my $slave_host = $reporter->serverInfo('slave_host');
-	my $slave_port = $reporter->serverInfo('slave_port');
+    my $slave_host;
+    my $slave_port;
+    my $master_dsn;
+    if (defined $ENV{RQG_CALLBACK}) {
+        $slave_host = $ENV{RQG_SLAVE_HOST};
+        $slave_port = $ENV{RQG_SLAVE_PORT};
+        $master_dsn = 'dbi:mysql:host='.$ENV{RQG_MASTER_HOST}.':port='.$ENV{RQG_MASTER_PORT}.':user=root';
+    } else {
+        $slave_host = $reporter->serverInfo('slave_host');
+        $slave_port = $reporter->serverInfo('slave_port');
+        $master_dsn = $reporter->dsn();
+    }
 
-	my $master_dsn = $reporter->dsn();
 	my $slave_dsn = 'dbi:mysql:host='.$slave_host.':port='.$slave_port.':user=root';
 
 	my $slave_dbh = DBI->connect($slave_dsn);

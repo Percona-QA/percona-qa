@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -62,6 +62,8 @@ use constant EXECUTOR_NO_ERR_FILTER             => 15;
 use constant EXECUTOR_FETCH_METHOD		=> 16;
 use constant EXECUTOR_CONNECTION_ID		=> 17;
 use constant EXECUTOR_FLAGS			=> 18;
+use constant EXECUTOR_HOST          => 19;
+use constant EXECUTOR_PORT          => 20;
 
 use constant FETCH_METHOD_AUTO		=> 0;
 use constant FETCH_METHOD_STORE_RESULT	=> 1;
@@ -132,6 +134,22 @@ sub dbh {
 
 sub setDbh {
 	$_[0]->[EXECUTOR_DBH] = $_[1];
+}
+
+sub host {
+	return $_[0]->[EXECUTOR_HOST];
+}
+
+sub setHost {
+	$_[0]->[EXECUTOR_HOST] = $_[1];
+}
+
+sub port {
+	return $_[0]->[EXECUTOR_PORT];
+}
+
+sub setPort {
+	$_[0]->[EXECUTOR_PORT] = $_[1];
 }
 
 sub setDbh {

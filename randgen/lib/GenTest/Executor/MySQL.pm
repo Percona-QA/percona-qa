@@ -1,4 +1,4 @@
-# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -491,6 +491,11 @@ sub init {
 	}
 
 	$executor->setDbh($dbh);
+
+    my ($host) = $executor->dsn() =~ m/:host=([^:]+):/;
+    $executor->setHost($host);
+    my ($port) = $executor->dsn() =~ m/:port=([^:]+):/;
+    $executor->setPort($port);
 
 	# 
 	# Hack around bug 35676, optiimzer_switch must be set sesson-wide in order to have effect
