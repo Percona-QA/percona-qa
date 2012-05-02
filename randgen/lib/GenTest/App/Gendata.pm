@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (C) 2009, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -236,6 +236,7 @@ sub run {
         $field_perms[FIELD_COLLATION] = $fields->{collations} || [ undef ];
     } else {
         $field_perms[FIELD_NULLABILITY] = $fields->{null} || $fields->{nullability} || [ (defined $self->[GD_NOTNULL] ? 'NOT NULL' : undef) ];
+        $field_perms[FIELD_DEFAULT] = $fields->{default} || [ undef ];
         $field_perms[FIELD_SIGN] = $fields->{sign} || [ undef ];
         $field_perms[FIELD_INDEX] = $fields->{indexes} || $fields->{keys} || [ undef, 'KEY' ];
         $field_perms[FIELD_CHARSET] =  $fields->{charsets} || [ undef ];
