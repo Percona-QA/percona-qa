@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2010,2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -69,7 +69,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
-    $short_column_names, $strict_fields, $freeze_time);
+    $short_column_names, $strict_fields, $freeze_time, $wait_debugger);
 
 my $gendata=''; ## default simple gendata
 
@@ -123,6 +123,7 @@ my $opt_result = GetOptions(
 	'valgrind!'	=> \$valgrind,
 	'valgrind_options=s@'	=> \@valgrind_options,
 	'views:s'		=> \$views,
+	'wait-for-debugger' => \$wait_debugger,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
     'mtr-build-thread=i' => \$build_thread,
@@ -354,6 +355,26 @@ if ($rpl_mode ne '') {
     }
 }
 
+
+#
+# Wait for user interaction before continuing, allowing the user to attach 
+# a debugger to the server process(es).
+# Will print a message and ask the user to press a key to continue.
+# User is responsible for actually attaching the debugger if so desired.
+#
+if ($wait_debugger) {
+    say("Pausing test to allow attaching debuggers etc. to the server process.");
+    my @pids;   # there may be more than one server process
+    foreach my $server_id (0..$#server) {
+        $pids[$server_id] = $server[$server_id]->serverpid;
+    }
+    say('Number of servers started: '.($#server+1));
+    say('Server PID: '.join(', ', @pids));
+    say("Press ENTER to continue the test run...");
+    my $keypress = <STDIN>;
+}
+
+
 #
 # Run actual queries
 #
@@ -579,6 +600,7 @@ $0 - Run a complete random query generation test, including server start with re
     --short_column_names: use short column names in gendata (c<number>)
     --strict_fields: Disable all AI applied to columns defined in \$fields in the gendata file. Allows for very specific column definitions
     --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
+    --wait-for-debugger: Pause and wait for keypress after server startup to allow attaching a debugger to the server process.
     --help      : This help message
 
     If you specify --basedir1 and --basedir2 or --vardir1 and --vardir2, two servers will be started and the results from the queries
