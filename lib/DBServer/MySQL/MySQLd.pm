@@ -1,4 +1,4 @@
-# Copyright (c) 2010 Oracle and/or its affiliates. All rights reserved. 
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates. All rights reserved. 
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -52,13 +52,14 @@ use constant MYSQLD_VERSION => 18;
 use constant MYSQLD_DUMPER => 19;
 use constant MYSQLD_SOURCEDIR => 20;
 use constant MYSQLD_GENERAL_LOG => 21;
+use constant MYSQLD_WINDOWS_PROCESS_EXITCODE => 22;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_ERRORLOG_FILE => "mysql.err";
 use constant MYSQLD_LOG_FILE => "mysql.log";
 use constant MYSQLD_DEFAULT_PORT =>  19300;
 use constant MYSQLD_DEFAULT_DATABASE => "test";
-
+use constant MYSQLD_WINDOWS_PROCESS_STILLALIVE => 259;
 
 
 sub new {
@@ -320,9 +321,24 @@ sub startServer {
                                $command,
                                0,
                                NORMAL_PRIORITY_CLASS(),
-                               ".") || croak _reportError();	
+                               ".") || croak _reportError();
         $self->[MYSQLD_WINDOWS_PROCESS]=$proc;
         $self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
+        # Gather the exit code and check if server is running.
+        $proc->GetExitCode($self->[MYSQLD_WINDOWS_PROCESS_EXITCODE]);
+        if ($self->[MYSQLD_WINDOWS_PROCESS_EXITCODE] == MYSQLD_WINDOWS_PROCESS_STILLALIVE) {
+            ## Wait for the pid file to have been created
+            my $wait_time = 0.2;
+            my $waits = 0;
+            while (!-f $self->pidfile && $waits < 600) {
+                Time::HiRes::sleep($wait_time);
+                $waits++;
+            }
+            if (!-f $self->pidfile) {
+                sayFile($self->errorlog);
+                croak("Could not start mysql server, waited ".($waits*$wait_time)." seconds for pid file");
+            }
+        }
     } else {
         if ($self->[MYSQLD_VALGRIND]) {
             my $val_opt ="";
