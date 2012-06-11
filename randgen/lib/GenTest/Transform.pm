@@ -1,4 +1,4 @@
-# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -109,12 +109,15 @@ sub transformExecuteValidate {
 	
 		$transformed_queries[0] =  "/* ".ref($transformer)." */ ".$transformed_queries[0];
 
-		foreach my $transformed_query_part (@transformed_queries) {
-			my $part_result = $executor->execute($transformed_query_part);
-
-			if ($part_result->status() == STATUS_SKIP) {
-				$transform_outcome = STATUS_OK;
-				next;
+        foreach my $transformed_query_part (@transformed_queries) {
+            my $part_result = $executor->execute($transformed_query_part);
+            
+            if ($part_result->status() == STATUS_SKIP) {
+                # During query transformations skipping only some parts of the transformed queries
+                # due to errors leads to simplificatoin of such queries.
+                # Completely skipping such transformed queries is better.
+                $transform_outcome = STATUS_OK;
+                last;
 			} elsif (
 				($part_result->status() == STATUS_SYNTAX_ERROR) || 
 				($part_result->status() == STATUS_SEMANTIC_ERROR) ||
