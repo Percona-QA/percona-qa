@@ -1,4 +1,4 @@
-# Copyright (c) 2010, 2012 Oracle and/or its affiliates. All rights reserved. 
+# Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved. 
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -53,6 +53,7 @@ use constant MYSQLD_DUMPER => 19;
 use constant MYSQLD_SOURCEDIR => 20;
 use constant MYSQLD_GENERAL_LOG => 21;
 use constant MYSQLD_WINDOWS_PROCESS_EXITCODE => 22;
+use constant MYSQLD_DEBUG_SERVER => 22;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_ERRORLOG_FILE => "mysql.err";
@@ -68,6 +69,7 @@ sub new {
     my $self = $class->SUPER::new({'basedir' => MYSQLD_BASEDIR,
                                    'sourcedir' => MYSQLD_SOURCEDIR,
                                    'vardir' => MYSQLD_VARDIR,
+                                   'debug_server' => MYSQLD_DEBUG_SERVER,
                                    'port' => MYSQLD_PORT,
                                    'server_options' => MYSQLD_SERVER_OPTIONS,
                                    'start_dirty' => MYSQLD_START_DIRTY,
@@ -94,9 +96,17 @@ sub new {
     
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
-    $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
-                                          osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
-                                          osWindows()?"mysqld.exe":"mysqld");
+    # Use mysqld-debug server if --debug-server option used.
+    if ($self->[MYSQLD_DEBUG_SERVER]) {
+        $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
+                                              osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
+                                              osWindows()?"mysqld-debug.exe":"mysqld-debug");
+    }else {
+        $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
+                                              osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
+                                              osWindows()?"mysqld.exe":"mysqld");
+    }
+
     $self->[MYSQLD_BOOT_SQL] = [];
 
     $self->[MYSQLD_DUMPER] = $self->_find([$self->basedir],

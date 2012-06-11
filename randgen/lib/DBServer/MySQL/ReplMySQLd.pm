@@ -1,4 +1,4 @@
-# Copyright (c) 2010 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -42,6 +42,8 @@ use constant REPLMYSQLD_MASTER => 8;
 use constant REPLMYSQLD_SLAVE => 9;
 use constant REPLMYSQLD_VALGRIND => 10;
 use constant REPLMYSQLD_VALGRIND_OPTIONS => 11;
+use constant REPLMYSQLD_GENERAL_LOG => 12;
+use constant REPLMYSQLD_DEBUG_SERVER => 13;
 
 sub new {
     my $class = shift;
@@ -49,12 +51,14 @@ sub new {
     my $self = $class->SUPER::new({'master' => REPLMYSQLD_MASTER,
                                    'slave' => REPLMYSQLD_SLAVE,
                                    'basedir' => REPLMYSQLD_BASEDIR,
+                                   'debug_server' => REPLMYSQLD_DEBUG_SERVER,
                                    'master_vardir' => REPLMYSQLD_MASTER_VARDIR,
                                    'master_port' => REPLMYSQLD_MASTER_PORT,
                                    'slave_vardir' => REPLMYSQLD_SLAVE_VARDIR,
                                    'slave_port' => REPLMYSQLD_SLAVE_PORT,
                                    'mode' => REPLMYSQLD_MODE,
                                    'server_options' => REPLMYSQLD_SERVER_OPTIONS,
+                                   'general_log' => REPLMYSQLD_GENERAL_LOG,
                                    'start_dirty' => REPLMYSQLD_START_DIRTY,
                                    'valgrind' => REPLMYSQLD_VALGRIND,
                                    'valgrind_options', REPLMYSQLD_VALGRIND_OPTIONS},@_);
@@ -108,13 +112,15 @@ sub new {
         
         
         $self->[REPLMYSQLD_MASTER] = 
-            DBServer::MySQL::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
-                                         vardir => $self->[REPLMYSQLD_MASTER_VARDIR],
-                                         port => $self->[REPLMYSQLD_MASTER_PORT],
-                                         server_options => \@master_options,
-                                         start_dirty => $self->[REPLMYSQLD_START_DIRTY],
-                                         valgrind => $self->[REPLMYSQLD_VALGRIND],
-                                         valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
+        DBServer::MySQL::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
+                                     vardir => $self->[REPLMYSQLD_MASTER_VARDIR],
+                                     debug_server => $self->[REPLMYSQLD_DEBUG_SERVER],                
+                                     port => $self->[REPLMYSQLD_MASTER_PORT],
+                                     server_options => \@master_options,
+                                     general_log => $self->[REPLMYSQLD_GENERAL_LOG],
+                                     start_dirty => $self->[REPLMYSQLD_START_DIRTY],
+                                     valgrind => $self->[REPLMYSQLD_VALGRIND],
+                                     valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
         
         if (not defined $self->master) {
             croak("Could not create master");
@@ -132,13 +138,15 @@ sub new {
         
         
         $self->[REPLMYSQLD_SLAVE] = 
-            DBServer::MySQL::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
-                                         vardir => $self->[REPLMYSQLD_SLAVE_VARDIR],
-                                         port => $self->[REPLMYSQLD_SLAVE_PORT],
-                                         server_options => \@slave_options,
-                                         start_dirty => $self->[REPLMYSQLD_START_DIRTY],
-                                         valgrind => $self->[REPLMYSQLD_VALGRIND],
-                                         valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
+        DBServer::MySQL::MySQLd->new(basedir => $self->[REPLMYSQLD_BASEDIR],
+                                     vardir => $self->[REPLMYSQLD_SLAVE_VARDIR],
+                                     debug_server => $self->[REPLMYSQLD_DEBUG_SERVER],                
+                                     port => $self->[REPLMYSQLD_SLAVE_PORT],
+                                     server_options => \@slave_options,
+                                     general_log => $self->[REPLMYSQLD_GENERAL_LOG],
+                                     start_dirty => $self->[REPLMYSQLD_START_DIRTY],
+                                     valgrind => $self->[REPLMYSQLD_VALGRIND],
+                                     valgrind_options => $self->[REPLMYSQLD_VALGRIND_OPTIONS]);
         
         if (not defined $self->slave) {
             $self->master->stopServer;

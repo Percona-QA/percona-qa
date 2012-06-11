@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2010, 2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -69,7 +69,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
-    $short_column_names, $strict_fields, $freeze_time, $wait_debugger);
+    $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server);
 
 my $gendata=''; ## default simple gendata
 
@@ -83,13 +83,16 @@ my $opt_result = GetOptions(
 	'mysqld=s@' => \$mysqld_options[0],
 	'mysqld1=s@' => \$mysqld_options[0],
 	'mysqld2=s@' => \$mysqld_options[1],
-    'basedir=s' => \$basedirs[0],
-    'basedir1=s' => \$basedirs[0],
-    'basedir2=s' => \$basedirs[1],
+        'basedir=s' => \$basedirs[0],
+        'basedir1=s' => \$basedirs[0],
+        'basedir2=s' => \$basedirs[1],
 	#'basedir=s@' => \@basedirs,
-	'vardir=s' => \$vardirs[0],
-	'vardir1=s' => \$vardirs[0],
-	'vardir2=s' => \$vardirs[1],
+        'vardir=s' => \$vardirs[0],
+        'vardir1=s' => \$vardirs[0],
+        'vardir2=s' => \$vardirs[1],
+        'debug-server' => \$debug_server[0],
+        'debug-server1' => \$debug_server[0],
+        'debug-server2' => \$debug_server[1],
 	#'vardir=s@' => \@vardirs,
 	'rpl_mode=s' => \$rpl_mode,
 	'engine=s' => \$engine,
@@ -107,11 +110,11 @@ my $opt_result = GetOptions(
 	'gendata:s' => \$gendata,
 	'notnull' => \$notnull,
 	'short_column_names' => \$short_column_names,
-    'freeze_time' => \$freeze_time,
+        'freeze_time' => \$freeze_time,
 	'strict_fields' => \$strict_fields,
 	'seed=s' => \$seed,
 	'mask=i' => \$mask,
-    'mask-level=i' => \$mask_level,
+        'mask-level=i' => \$mask_level,
 	'mem' => \$mem,
 	'rows=i' => \$rows,
 	'varchar-length=i' => \$varchar_len,
@@ -126,13 +129,13 @@ my $opt_result = GetOptions(
 	'wait-for-debugger' => \$wait_debugger,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
-    'mtr-build-thread=i' => \$build_thread,
-    'sqltrace:s' => \$sqltrace,
-    'logfile=s' => \$logfile,
-    'logconf=s' => \$logconf,
-    'report-tt-logdir=s' => \$report_tt_logdir,
-    'querytimeout=i' => \$querytimeout,
-    'no-mask' => \$no_mask
+        'mtr-build-thread=i' => \$build_thread,
+        'sqltrace:s' => \$sqltrace,
+        'logfile=s' => \$logfile,
+        'logconf=s' => \$logconf,
+        'report-tt-logdir=s' => \$report_tt_logdir,
+        'querytimeout=i' => \$querytimeout,
+        'no-mask' => \$no_mask
     );
 
 if (defined $logfile && defined $logger) {
@@ -276,6 +279,7 @@ if ($rpl_mode ne '') {
     }
     $rplsrv = DBServer::MySQL::ReplMySQLd->new(basedir => $basedirs[0],
                                                master_vardir => $vardirs[0],
+                                               debug_server => $debug_server[0],
                                                master_port => $ports[0],
                                                slave_vardir => $vardirs[1],
                                                slave_port => $ports[1],
@@ -322,6 +326,7 @@ if ($rpl_mode ne '') {
         }
         $server[$server_id] = DBServer::MySQL::MySQLd->new(basedir => $basedirs[$server_id],
                                                            vardir => $vardirs[$server_id],
+                                                           debug_server => $debug_server[$server_id],
                                                            port => $ports[$server_id],
                                                            start_dirty => $start_dirty,
                                                            valgrind => $valgrind,
@@ -556,12 +561,15 @@ $0 - Run a complete random query generation test, including server start with re
     --basedir   : Specifies the base directory of the stand-alone MySQL installation;
     --mysqld    : Options passed to the MySQL server
     --vardir    : Optional. (default \$basedir/mysql-test/var);
+    --debug-server: Use mysqld-debug server
 
     Options related to two MySQL servers
 
     --basedir1  : Specifies the base directory of the first MySQL installation;
     --basedir2  : Specifies the base directory of the second MySQL installation;
     --mysqld1   : Options passed to the first MySQL server
+    --debug-server1: Use mysqld-debug server for MySQL server1
+    --debug-server2: Use mysqld-debug server for MySQL server2
     --mysqld2   : Options passed to the second MySQL server
     --vardir1   : Optional. (default \$basedir1/mysql-test/var);
     --vardir2   : Optional. (default \$basedir2/mysql-test/var);
