@@ -21,6 +21,8 @@ use base qw(Test::Unit::TestCase);
 use lib 'lib';
 use GenTest;
 use Cwd;
+use Net::Ping;
+use LWP::Simple;
 
 sub new {
     my $self = shift()->SUPER::new(@_);
@@ -38,23 +40,136 @@ sub tear_down {
     unlink "unit/test2.xml";
     unlink "unit/foo1.log";
     unlink "unit/foo2.log";
+    unlink "unit/testresult-schema-1-2.xsd";
     system("rm -r unit/example*");
+}
+
+
+# Check the schemalcoation URI's
+# and gather the xsd location for validating.
+sub validate_schema {
+    my ($self,$file)=@_;
+    
+    # If the Module XML::Path installed then
+    # use it for parsing the xml file.
+    my $nodes;
+    eval
+    {
+        require XML::XPath;
+        $nodes = XML::XPath->new($file);
+    };
+    
+    if ($nodes) {
+        my $nodeSet = $nodes->find("/");
+        $self->assert_not_null($nodeSet);
+        
+        # Find the report tag in the xml file.
+        my $rootNode = $nodeSet->get_node("/report");
+        $self->assert_not_null($rootNode, "Unable to find the report node");
+        
+        my $rootNodeString = $rootNode->toString();
+        $self->assert_not_null($rootNodeString);
+        
+        # Find the URI's with the schemalocation attribute.
+        my $schemaLocations;
+        my %schemaLocations;
+        if ($rootNodeString =~ /schemaLocation\s*=\s*"(.*?)"/i) { $schemaLocations = $1; }
+        $self->assert_not_null($schemaLocations,"Could not find schemaLocation in file $file");
+        
+        while ($schemaLocations =~ /\s*([^\s]+?)\s+([^\s]+)\s*/g) { $schemaLocations{$1} = 1; $schemaLocations{$2} = 1; }
+        
+        # Verify whether the two URI's are present.
+        my $num_schemata=0;  
+        my $xsd;
+        foreach my $uri (keys%schemaLocations) {
+            if ( exists $schemaLocations{$uri} ) {
+                $xsd=$uri if ( $uri =~ /xsd$/i );
+                $num_schemata++;
+            }
+        }
+        
+        # We are expecing 2 URI's.
+        $self->assert_equals(2,$num_schemata,"Schemalcoation does not contain two URI's");
+        
+        $self->assert_not_null($xsd,"Unable to get xsd URI in schemalocation attribute");
+        
+        # Return the xsd file location.
+        return $xsd;
+    }
+   
+}
+
+# Vlaidate the xml file with the xsd schema.
+sub validate_xml {
+    my ($self, $file)=@_;
+    my $status;
+    
+    # If the Module XML::LibXML is installed then
+    # use it for validating the xml file.
+    my $parser;
+    eval
+    {
+        require XML::LibXML;
+        $parser = XML::LibXML->new;
+    };
+    
+    if ($parser) {
+        my $host="regin.no.oracle.com";
+        
+        # Check if we can reach the host.
+        my $ping = Net::Ping->new();
+        $self->assert_not_null($ping);
+        
+        if ($ping->ping($host)) {
+            # Retrieve and validate the xsd file path from the xml.
+            my $xsd=$self->validate_schema($file);
+            
+            # Grab the page and store the content of the xsd.
+            my $content = get $xsd;
+            $self->assert_not_null($content,"Unable to grab the content from $xsd location");
+            $ping->close();
+           
+            # Write xsd to temporatry file.
+            open (FH, ">unit/testresult-schema-1-2.xsd") or die $!;
+            print FH $content;
+            close (FH);
+                        
+            # Load the schena xsd file.
+            my $schema = XML::LibXML::Schema->new(location => "unit/testresult-schema-1-2.xsd");
+            $self->assert_not_null($schema);
+            
+            # Validate the xml file with the xsd.
+        my $doc = $parser->parse_file($file);
+            $self->assert_not_null($doc);
+
+            eval { $status=$schema->validate($doc) };
+            say("$file validated successfully against schema $xsd") if not $@;
+            $self->assert_not_null($status,"XML Validation failed of $file with $xsd");
+        }else{
+            say("Unable to reach $host, will not be able to validate $file");
+        }
+    }
 }
 
 sub test_xml_runall {
     my $portbase = $ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120;
     my $pb = int(($portbase - 10000) / 10);
     my $self = shift;
+    my $file = "unit/test1.xml";
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none  --xml-output=unit/test1.xml --logfile=unit/foo1.log --report-tt-logdir=unit --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none  --xml-output=$file --logfile=unit/foo1.log --report-tt-logdir=unit --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
+        
+        # Validate the xml file.    
+        $self->validate_xml($file);
     }
 }
 
 sub test_xml_runall_new {
     my $self = shift;
+    my $file = "unit/test2.xml";
     ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
     my $portbase = 10 + ($ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120);
     my $pb = int(($portbase - 10000) / 10);
@@ -62,8 +177,11 @@ sub test_xml_runall_new {
     
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none --xml-output=unit/test2.xml --logfile=unit/foo2.log --report-tt-logdir=unit --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmp");
+        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none --xml-output=$file --logfile=unit/foo2.log --report-tt-logdir=unit --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmp");
         $self->assert_equals(0, $status);
+
+        # Validate the xml file.
+        $self->validate_xml($file);
     }
 }
 

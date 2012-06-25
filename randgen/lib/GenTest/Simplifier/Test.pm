@@ -27,6 +27,7 @@ use lib 'lib';
 use GenTest::Simplifier::Tables;
 use GenTest::Comparator;
 use GenTest::Constants;
+use DBServer::MySQL::MySQLd;
 
 # Check if SQL::Beautify module is present for pretty printing.
 my $pretty_sql;
@@ -81,15 +82,14 @@ sub _comment {
     }
 }
 sub simplify {
-	my ($simplifier,$show_index) = @_;
+	my ($self,$show_index) = @_;
 
 	my $test;
 
-	my $executors = $simplifier->executors();
+	my $executors = $self->executors();
 
-	my $results = $simplifier->results();
-	my $queries = $simplifier->queries();
-	my ($foo, $tcp_port) = $executors->[0]->dbh()->selectrow_array("SHOW VARIABLES LIKE 'port'");
+	my $results = $self->results();
+	my $queries = $self->queries();
 
     ## We use Hash-comments in an pure MySQL environment due to MTR
     ## limitations
@@ -183,7 +183,9 @@ sub simplify {
 			$test .= "--enable_warnings\n\n"
 		}
 			
-		my $mysqldump_cmd = "mysqldump -uroot --net_buffer_length=4096 --max_allowed_packet=4096 --no-set-names --compact --skip_extended_insert --force --protocol=tcp --port=$tcp_port $simplified_database ";
+		my $mysqldump_cmd = $self->generateMysqldumpCommand() .
+            " --net_buffer_length=4096 --max_allowed_packet=4096 --no-set-names --compact".
+            " --skip_extended_insert --force --protocol=tcp $simplified_database ";
 		$mysqldump_cmd .= join(' ', @$participating_tables) if $#$participating_tables > -1;
 		open (MYSQLDUMP, "$mysqldump_cmd|") or say("Unable to run $mysqldump_cmd: $!");
 		while (<MYSQLDUMP>) {
@@ -272,8 +274,8 @@ sub simplify {
 			$test .= _comment("Diff:",$useHash)."\n\n";
 
 			my $diff = GenTest::Comparator::dumpDiff(
-				$simplifier->results()->[$query_id]->[0],
-				$simplifier->results()->[$query_id]->[1]
+				$self->results()->[$query_id]->[0],
+				$self->results()->[$query_id]->[1]
 			);
 
 			$test .= _comment($diff,$useHash)."\n\n\n";
@@ -312,4 +314,20 @@ sub results {
 	return $_[0]->[SIMPLIFIER_RESULTS];
 }
 
+## TODO: Generalize this so that all other mysqldump usage may use it
+sub generateMysqldumpCommand {
+    my($self) = @_;
+    my $executors = $self->executors();
+    my $dumper = "mysqldump";
+    if (defined $ENV{RQG_MYSQL_BASE}) {
+        $dumper = DBServer::MySQL::MySQLd::_find(undef,
+                                                 [$ENV{RQG_MYSQL_BASE}],
+                                                 osWindows()?["client/Debug","client/RelWithDebInfo","client/Release","bin"]:["client","bin"],
+                                                 osWindows()?"mysqldump.exe":"mysqldump");
+    }
+    
+    return $dumper . 
+        " -uroot --host=".$executors->[0]->host().
+        " --port=".$executors->[0]->port()
+}
 1;
