@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@ use lib "$ENV{RQG_HOME}/lib";
 use strict;
 use GenTest;
 use Carp;
+use File::Spec;
 
 my $logger;
 eval
@@ -70,7 +71,7 @@ my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
     $report_xml_tt_type, $report_xml_tt_dest, $notnull, $sqltrace,
     $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout,
-    $short_column_names, $strict_fields, $freeze_time);
+    $short_column_names, $strict_fields, $freeze_time, $wait_debugger);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -131,7 +132,8 @@ my $opt_result = GetOptions(
     'logfile=s' => \$logfile,
     'logconf=s' => \$logconf,
     'report-tt-logdir=s' => \$report_tt_logdir,
-    'querytimeout=i' => \$querytimeout
+    'querytimeout=i' => \$querytimeout,
+    'wait-for-debugger' => \$wait_debugger
 );
 
 if (defined $logfile && defined $logger) {
@@ -420,6 +422,55 @@ if ($rpl_mode) {
 }
 
 #
+# Wait for user interaction before continuing, allowing the user to attach 
+# a debugger to the server process.
+# Will print a message and ask the user to press a key to continue.
+# User is responsible for actually attaching the debugger if so desired.
+#
+if ($wait_debugger) {
+    say("Pausing test to allow attaching debuggers etc. to the server process.");
+    my @pids;   # there may be more than one server process
+    my $server_count = 0;
+    foreach my $server_id (0..1) {
+        next if $basedirs[$server_id] eq '';
+        $server_count++;
+        my $vardir = $vardirs[$server_id] || $basedirs[$server_id].'/mysql-test/var';
+        # Relative vardir paths will be relative to the mysql-test directory, not cwd.
+        if (not File::Spec->file_name_is_absolute($vardir)) {
+            $vardir = File::Spec->rel2abs($vardir, $basedirs[$server_id].'/mysql-test');
+        }
+        # read pid from pid file created by MTR
+        my $master_pid_file = "$vardir/run/master.pid";
+        if(open(PIDFILE, $master_pid_file)) {
+            my $pid = <PIDFILE>;
+            chomp $pid;
+            close(PIDFILE) or carp("WARNING: Unable to close master.pid file: $!");
+            push(@pids, $pid);
+        } else {
+            carp("WARNING: Unable to read file $master_pid_file: $!");  
+        }
+        # Replication slave is not included in server_id list, so check it now.
+        if ($rpl_mode) {
+            $server_count++;
+            if(open(PIDFILE2, "$vardir/run/slave.pid")) {
+                my $slave_pid = <PIDFILE2>;
+                close(PIDFILE2) or carp("WARNING: Unable to close slave.pid file: $!");
+                chomp $slave_pid;
+                push(@pids, $slave_pid.' (slave)');
+            } else {
+              carp("WARNING: Unable to read slave.pid file: $!");
+            }
+            
+        }
+    }
+    
+    say('Number of servers started: '.$server_count);
+    say('Server PID: '.($#pids < 0 ? "Unknown" : join(', ', @pids)));
+    say("Press ENTER to continue the test run...");
+    my $keypress = <STDIN>;
+}
+
+#
 # Run actual queries
 #
 
@@ -537,6 +588,7 @@ $0 - Run a complete random query generation test, including server start with re
     --valgrind  : Passed to gentest.pl
     --valgrind_options: The valgrind options to use
     --valgrind-xml: Enables valgrind with --xml=yes and ValgrindXMLErrors reporter that processes the XML output and reports issues found
+    --wait-for-debugger: Pause and wait for keypress after server startup to allow attaching a debugger to the server process.
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr
     --mtr-build-thread: Value used for MTR_BUILD_THREAD when servers are started and accessed 

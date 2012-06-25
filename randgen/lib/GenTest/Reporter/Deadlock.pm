@@ -217,6 +217,20 @@ sub dbh_thread {
 }
 
 sub report {
+    if (defined $ENV{RQG_CALLBACK}) {
+        return callbackReport(@_);
+    } else {
+        return nativeReport(@_);
+    }
+}
+
+sub callbackReport {
+    my $output = GenTest::CallbackPlugin::run("deadlock");
+    say("$output");
+    return STATUS_OK;
+}
+
+sub nativeReport {
 
 	my $reporter = shift;
 	my $server_pid = $reporter->serverInfo('pid');

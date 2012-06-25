@@ -46,7 +46,7 @@ sub set_up {
 sub tear_down {
     my $self = shift;
     # clean up after test
-    #unlink $self->{logfile};    # uncomment this if you need the log to debug after the fact
+    #unlink $self->{logfile};    # comment this if you need the log to debug after the fact
 }
 
 # Test that ExecuteAsFunctionTwice works with BIT_AND queries.
@@ -111,6 +111,91 @@ sub test_transformer_ExecuteAsUnion_LIMIT {
         my $cmd = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts
             .' --reporter=Shutdown --mtr-build-thread='.$self->{portbase}
             .' > '.$self->{logfile}.' 2>&1';
+        $self->annotate("RQG command line: $cmd");
+        my $status = system($cmd);
+        my $expected = STATUS_OK;
+        my $actual = $status >> 8;
+        $self->assert_num_equals($expected, $actual, 
+            "Wrong exit status from runall.pl, expected $expected and got $actual");
+        unlink $grammar;
+    }
+}
+
+# Bug13720157
+# Fix for KILL QUERY when MAX_ROWS_THRESHOLD is > 500000 queries bug in MySQL.pm
+sub test_transformer_DISTINCT_MAX_ROWS_THRESHOLD {
+    my $self = shift;
+    my $query = "SELECT DISTINCT alias1 . `col_int_key` AS field1 FROM ( C AS alias1
+    , ( C AS alias2 , D AS alias3 ) ) ORDER BY field1, field1;";
+    ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
+    if ($ENV{RQG_MYSQL_BASE}) {
+        # Use a grammar that has a query with more than 500000 rows.
+        my $grammar = 'unit/distinct_max_rows_threshold.yy';
+        open(FILE, "> $grammar") or assert("Unable to create grammar file");
+        print FILE "query:\n";
+        print FILE "    $query\n";
+        close FILE;
+        
+        my $rqg_opts = 
+        "--grammar=$grammar " 
+        .'--queries=1 '
+        .'--transformer=Distinct,ExecuteAsPreparedTwice '
+        .'--threads=1 ' 
+        .'--basedir='.$ENV{RQG_MYSQL_BASE};
+        
+        my $cmd = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts
+        .' --reporter=Shutdown --mtr-build-thread='.$self->{portbase}
+        .' > '.$self->{logfile}.' 2>&1';
+        $self->annotate("RQG command line: $cmd");
+        my $status = system($cmd);
+        my $expected = STATUS_OK;
+        my $actual = $status >> 8;
+        $self->assert_num_equals($expected, $actual, 
+            "Wrong exit status from runall.pl, expected $expected and got $actual");
+        unlink $grammar;
+    }
+}
+
+# Bug14077376
+# Fix for transforamed queries which are affected by KILL QUERY
+sub test_transformer_ExecuteAsUpdateDelete_KILL_QUERY {
+    my $self = shift;
+    my $query = "SELECT STRAIGHT_JOIN CONCAT( table1.col_varchar_key ,
+    table2.col_varchar_nokey ) AS field1 FROM (( SELECT SUBQUERY1_t2.* FROM ( CC AS
+    SUBQUERY1_t1 STRAIGHT_JOIN ( C AS SUBQUERY1_t2 INNER JOIN D AS SUBQUERY1_t3 ON
+    (SUBQUERY1_t3.col_varchar_key = SUBQUERY1_t2.col_varchar_nokey )) ON
+    (SUBQUERY1_t3.col_varchar_key = SUBQUERY1_t2.col_varchar_key ))) AS table1 LEFT
+    JOIN D AS table2 ON (table2.col_varchar_key = table1.col_varchar_nokey )) WHERE
+    ( EXISTS ( SELECT SQL_SMALL_RESULT SUBQUERY2_t1.col_int_nokey AS
+    SUBQUERY2_field1 FROM ( CC AS SUBQUERY2_t1 STRAIGHT_JOIN ( CC AS SUBQUERY2_t2
+    STRAIGHT_JOIN C AS SUBQUERY2_t3 ON (SUBQUERY2_t3.col_varchar_key =
+    SUBQUERY2_t2.col_varchar_key )) ON (SUBQUERY2_t3.col_varchar_key =
+    SUBQUERY2_t2.col_varchar_key )) WHERE SUBQUERY2_t3.col_int_nokey =
+    table2.col_int_nokey OR SUBQUERY2_t3.col_int_nokey >= table2.col_int_key )) AND
+    ( table1.pk NOT IN (210) OR table1.col_int_key NOT IN (138, 199)) AND table1.pk
+    <> table1.col_int_nokey ORDER BY CONCAT( table2.col_varchar_key,
+    table2.col_varchar_key ), field1 ;";
+    ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
+    if ($ENV{RQG_MYSQL_BASE}) {
+        # Use a grammar that has a query with more than 500000 rows.
+        my $grammar = 'unit/executeasupdatedelete_kill_query.yy';
+        open(FILE, "> $grammar") or assert("Unable to create grammar file");
+        print FILE "query:\n";
+        print FILE "    $query\n";
+        close FILE;
+        
+        my $rqg_opts = 
+        "--grammar=$grammar " 
+        .'--queries=1 '
+        .'--transformer=ExecuteAsUpdateDelete '
+        .'--reporter=QueryTimeout '
+        .'--threads=1 ' 
+        .'--querytimeout=60 '
+        .'--basedir='.$ENV{RQG_MYSQL_BASE};
+        
+        my $cmd = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts
+        .' --reporter=Shutdown --mtr-build-thread='.$self->{portbase}
+        .' > '.$self->{logfile}.' 2>&1';
         $self->annotate("RQG command line: $cmd");
         my $status = system($cmd);
         my $expected = STATUS_OK;
