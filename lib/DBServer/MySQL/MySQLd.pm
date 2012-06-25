@@ -1,4 +1,4 @@
-# Copyright (c) 2010 Oracle and/or its affiliates. All rights reserved. 
+# Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved. 
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -52,13 +52,16 @@ use constant MYSQLD_VERSION => 18;
 use constant MYSQLD_DUMPER => 19;
 use constant MYSQLD_SOURCEDIR => 20;
 use constant MYSQLD_GENERAL_LOG => 21;
+use constant MYSQLD_WINDOWS_PROCESS_EXITCODE => 22;
+use constant MYSQLD_DEBUG_SERVER => 22;
+use constant MYSQLD_SERVER_TYPE => 23;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_ERRORLOG_FILE => "mysql.err";
 use constant MYSQLD_LOG_FILE => "mysql.log";
 use constant MYSQLD_DEFAULT_PORT =>  19300;
 use constant MYSQLD_DEFAULT_DATABASE => "test";
-
+use constant MYSQLD_WINDOWS_PROCESS_STILLALIVE => 259;
 
 
 sub new {
@@ -67,6 +70,7 @@ sub new {
     my $self = $class->SUPER::new({'basedir' => MYSQLD_BASEDIR,
                                    'sourcedir' => MYSQLD_SOURCEDIR,
                                    'vardir' => MYSQLD_VARDIR,
+                                   'debug_server' => MYSQLD_DEBUG_SERVER,
                                    'port' => MYSQLD_PORT,
                                    'server_options' => MYSQLD_SERVER_OPTIONS,
                                    'start_dirty' => MYSQLD_START_DIRTY,
@@ -93,9 +97,40 @@ sub new {
     
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
-    $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
-                                          osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
-                                          osWindows()?"mysqld.exe":"mysqld");
+    # Use mysqld-debug server if --debug-server option used.
+    if ($self->[MYSQLD_DEBUG_SERVER]) {
+        # Catch excpetion, dont exit contine search for other mysqld if debug.
+        eval{
+            $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
+                                                  osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
+                                                  osWindows()?"mysqld-debug.exe":"mysqld-debug");
+        };
+        # If mysqld-debug server is not found, use mysqld server if built as debug.        
+        if (!$self->[MYSQLD_MYSQLD]) {
+            $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
+                                                  osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
+                                                  osWindows()?"mysqld.exe":"mysqld");     
+            if ($self->[MYSQLD_MYSQLD] && $self->serverType($self->[MYSQLD_MYSQLD]) !~ /Debug/) {
+                croak "--debug-server needs a mysqld debug server, the server found is $self->[MYSQLD_SERVER_TYPE]"; 
+            }
+        }
+    }else {
+        # If mysqld server is found use it.
+        eval {
+            $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
+                                                  osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
+                                                  osWindows()?"mysqld.exe":"mysqld");
+        };
+        # If mysqld server is not found, use mysqld-debug server.
+        if (!$self->[MYSQLD_MYSQLD]) {
+            $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
+                                                  osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
+                                                  osWindows()?"mysqld-debug.exe":"mysqld-debug");
+        }
+        
+        $self->serverType($self->[MYSQLD_MYSQLD]);
+    }
+
     $self->[MYSQLD_BOOT_SQL] = [];
 
     $self->[MYSQLD_DUMPER] = $self->_find([$self->basedir],
@@ -214,6 +249,17 @@ sub errorlog {
 #    return $_[0]->[MYSQLD_LIBMYSQL];
 #}
 
+# Check the type of mysqld server.
+sub serverType {
+    my ($self, $mysqld) = @_;
+    $self->[MYSQLD_SERVER_TYPE] = "Release";
+    
+    my $command="$mysqld --version";
+    my $result=`$command 2>&1`;
+    
+    $self->[MYSQLD_SERVER_TYPE] = "Debug" if ($result =~ /debug/sig);
+    return $self->[MYSQLD_SERVER_TYPE];
+}
 
 sub generateCommand {
     my ($self, @opts) = @_;
@@ -314,15 +360,31 @@ sub startServer {
         my $vardir = $self->[MYSQLD_VARDIR];
         $exe =~ s/\//\\/g;
         $vardir =~ s/\//\\/g;
+        $self->printInfo();
         say("Starting MySQL ".$self->version.": $exe as $command on $vardir");
         Win32::Process::Create($proc,
                                $exe,
                                $command,
                                0,
                                NORMAL_PRIORITY_CLASS(),
-                               ".") || croak _reportError();	
+                               ".") || croak _reportError();
         $self->[MYSQLD_WINDOWS_PROCESS]=$proc;
         $self->[MYSQLD_SERVERPID]=$proc->GetProcessID();
+        # Gather the exit code and check if server is running.
+        $proc->GetExitCode($self->[MYSQLD_WINDOWS_PROCESS_EXITCODE]);
+        if ($self->[MYSQLD_WINDOWS_PROCESS_EXITCODE] == MYSQLD_WINDOWS_PROCESS_STILLALIVE) {
+            ## Wait for the pid file to have been created
+            my $wait_time = 0.2;
+            my $waits = 0;
+            while (!-f $self->pidfile && $waits < 600) {
+                Time::HiRes::sleep($wait_time);
+                $waits++;
+            }
+            if (!-f $self->pidfile) {
+                sayFile($self->errorlog);
+                croak("Could not start mysql server, waited ".($waits*$wait_time)." seconds for pid file");
+            }
+        }
     } else {
         if ($self->[MYSQLD_VALGRIND]) {
             my $val_opt ="";
@@ -331,6 +393,7 @@ sub startServer {
             }
             $command = "valgrind --time-stamp=yes ".$val_opt." ".$command;
         }
+        $self->printInfo;
         say("Starting MySQL ".$self->version.": $command");
         $self->[MYSQLD_AUXPID] = fork();
         if ($self->[MYSQLD_AUXPID]) {
@@ -572,9 +635,10 @@ sub version {
 
 sub printInfo {
     my($self) = @_;
-
-    say("MySQL ". $self->version);
+    
+    say("MySQL Version:". $self->version);
     say("Binary: ". $self->binary);
+    say("Type: ". $self->serverType);
     say("Datadir: ". $self->datadir);
     say("Corefile: " . $self->corefile);
 }

@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (C) 2009, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -236,6 +236,7 @@ sub run {
         $field_perms[FIELD_COLLATION] = $fields->{collations} || [ undef ];
     } else {
         $field_perms[FIELD_NULLABILITY] = $fields->{null} || $fields->{nullability} || [ (defined $self->[GD_NOTNULL] ? 'NOT NULL' : undef) ];
+        $field_perms[FIELD_DEFAULT] = $fields->{default} || [ undef ];
         $field_perms[FIELD_SIGN] = $fields->{sign} || [ undef ];
         $field_perms[FIELD_INDEX] = $fields->{indexes} || $fields->{keys} || [ undef, 'KEY' ];
         $field_perms[FIELD_CHARSET] =  $fields->{charsets} || [ undef ];
@@ -313,7 +314,16 @@ sub run {
         next if not defined $field;
         my @field_copy = @$field;
         
-#	$field_copy[FIELD_INDEX] = 'nokey' if $field_copy[FIELD_INDEX] eq '';
+        #   $field_copy[FIELD_INDEX] = 'nokey' if $field_copy[FIELD_INDEX] eq '';
+        
+        # Remove fields where default null and not null appear together, as its not valid.
+        if ( (($field_copy[FIELD_NULLABILITY] =~ m{not null}sio) || (defined $self->[GD_NOTNULL])) && ($field_copy[FIELD_DEFAULT]=~ m{default null}sio) )
+        {
+            # Remove the fields array structure and skip.
+	    # We dont want to keep this, becasue it causes duplicate coulmns to be created.
+            undef $fields[$field_id];
+            next;
+        }
         
         my $field_name;
         if ($self->short_column_names) {
@@ -454,9 +464,9 @@ sub run {
         $executor->execute("DROP TABLE /*! IF EXISTS*/ $table->[TABLE_NAME]");
         
         # Compose the CREATE TABLE statement by joining all fields and indexes and appending the table options
-        
-        my @field_sqls = join(",\n", map { $_->[FIELD_SQL] } @fields_copy);
-        
+        # Skip undefined fields. 
+        my @field_sqls = join(",\n", map { $_->[FIELD_SQL] } grep { $_->[FIELD_SQL] ne '' } @fields_copy);
+ 
         my @index_fields;
         if ($executor->type() == DB_MYSQL || $executor->type() == DB_DRIZZLE) {
             @index_fields = grep { $_->[FIELD_INDEX_SQL] ne '' } @fields_copy;
@@ -514,6 +524,8 @@ sub run {
         foreach my $row_id (1..$table->[TABLE_ROW]) {
             my @data;
             foreach my $field (@fields_copy) {
+                # Skip if no field type exists.
+                next if not defined $field->[FIELD_TYPE];
                 my $value;
                 my $quote = 0;
                 if ($field->[FIELD_INDEX] eq 'primary key') {
