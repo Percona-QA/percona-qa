@@ -636,11 +636,11 @@ sub version {
 sub printInfo {
     my($self) = @_;
     
-    say("MySQL Version:". $self->version);
-    say("Binary: ". $self->binary);
-    say("Type: ". $self->serverType($self->binary));
-    say("Datadir: ". $self->datadir);
-    say("Corefile: " . $self->corefile);
+    say("MySQL Version: ". $self->version);
+    say("Binary:        ". $self->binary);
+    say("Type:          ". $self->serverType($self->binary));
+    say("Datadir:       ". $self->datadir);
+    say("Corefile:      ". $self->corefile);
 }
 
 sub versionNumbers {
