@@ -638,7 +638,7 @@ sub printInfo {
     
     say("MySQL Version:". $self->version);
     say("Binary: ". $self->binary);
-    say("Type: ". $self->serverType);
+    say("Type: ". $self->serverType($self->binary));
     say("Datadir: ". $self->datadir);
     say("Corefile: " . $self->corefile);
 }
