@@ -23,6 +23,7 @@ use DBI;
 use DBServer::DBServer;
 use if osWindows(), Win32::Process;
 use Time::HiRes;
+use POSIX ":sys_wait_h";
 
 use strict;
 
@@ -527,7 +528,9 @@ sub running {
         ## non-working solution for unix....
         return -f $self->pidfile;
     } else {
-        return kill 0, $self->serverpid;
+        ## Check if the child process is active.
+        my $child_status = waitpid($self->serverpid,WNOHANG);
+        return $child_status != -1;
     }
 }
 
@@ -638,7 +641,7 @@ sub printInfo {
     
     say("MySQL Version:". $self->version);
     say("Binary: ". $self->binary);
-    say("Type: ". $self->serverType);
+    say("Type: ". $self->serverType($self->binary));
     say("Datadir: ". $self->datadir);
     say("Corefile: " . $self->corefile);
 }
