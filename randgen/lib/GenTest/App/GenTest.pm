@@ -68,6 +68,7 @@ use constant GT_REPORTER_MANAGER => 8;
 use constant GT_TEST_START => 9;
 use constant GT_TEST_END => 10;
 use constant GT_QUERY_FILTERS => 11;
+use constant GT_LOG_FILES_TO_REPORT => 12;
 
 sub new {
     my $class = shift;
@@ -112,6 +113,10 @@ sub queryFilters {
     return $_[0]->[GT_QUERY_FILTERS];
 }
 
+sub logFilesToReport {
+    return @{$_[0]->[GT_LOG_FILES_TO_REPORT]};
+}
+
 sub run {
     my $self = shift;
 
@@ -152,15 +157,23 @@ sub run {
     my $init_validators_result = $self->initValidators();
     return $init_validators_result if $init_validators_result != STATUS_OK;
 
+    my @log_files_to_report;
     foreach my $i (0..2) {
         next if $self->config->dsn->[$i] eq '';
         next if $self->config->dsn->[$i] !~ m{mysql}sio;
         my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
         $metadata_executor->init();
         $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
+        
+        # Cache log file names needed for result reporting at end-of-test
+        my $logfile_result = $metadata_executor->execute("SHOW VARIABLES LIKE 'general_log_file'");
+        push(@log_files_to_report, $logfile_result->data()->[0]->[1]);
+        
         $metadata_executor->disconnect();
         undef $metadata_executor;
     }
+
+    $self->[GT_LOG_FILES_TO_REPORT] = \@log_files_to_report;
 
     if (defined $self->config->filter) {
        $self->[GT_QUERY_FILTERS] = [ GenTest::Filter::Regexp->new(
@@ -631,21 +644,10 @@ sub copyLogFiles {
         ## Only for unices
         mkdir $logdir if ! -e $logdir;
     
-        foreach my $dsn (@$dsns) {
-            next if $dsn eq '';
-            my $dbh = DBI->connect($dsn, undef, undef, {
-                PrintError => 1,
-                RaiseError => 0,
-                AutoCommit => 1,
-                mysql_multi_statements => 1
-                                   } );
-            my $sth = $dbh->prepare("show variables like '%log_file'");
-            $sth->execute();
-            while (my $row = $sth->fetchrow_arrayref()) {
-                copyFileToDir(@{$row}[1], $logdir) if -e @{$row}[1];
-            }
+        foreach my $filename ($self->logFilesToReport()) {
+            copyFileToDir($filename, $logdir);
         }
-        copyFileToDir($self->config->logfile,$logdir);
+        copyFileToDir($self->config->logfile, $logdir);
     }
 }
 
