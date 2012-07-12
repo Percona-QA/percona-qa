@@ -27,6 +27,7 @@ use Data::Dumper;
 use File::Basename;
 use File::Path 'make_path';
 use File::Copy;
+use File::Spec;
 
 use GenTest;
 use GenTest::Properties;
@@ -159,6 +160,7 @@ sub run {
     my $init_validators_result = $self->initValidators();
     return $init_validators_result if $init_validators_result != STATUS_OK;
 
+    # Cache metadata and other info that may be needed later
     my @log_files_to_report;
     foreach my $i (0..2) {
         next if $self->config->dsn->[$i] eq '';
@@ -170,6 +172,21 @@ sub run {
         # Cache log file names needed for result reporting at end-of-test
         my $logfile_result = $metadata_executor->execute("SHOW VARIABLES LIKE 'general_log_file'");
         push(@log_files_to_report, $logfile_result->data()->[0]->[1]);
+        # Guessing the error log file name relative to datadir (lacking safer methods).
+        my $datadir_result = $metadata_executor->execute("SHOW VARIABLES LIKE 'datadir'");
+        my $errorlog;
+        foreach my $errorlog_path (
+            "../log/master.err",  # MTRv1 regular layout
+            "../log/mysqld1.err", # MTRv2 regular layout
+            "../mysql.err"        # DBServer::MySQL layout
+        ) {
+            my $possible_path = File::Spec->catfile($datadir_result->data()->[0]->[1], $errorlog_path);
+            if (-e $possible_path) {
+                $errorlog = $possible_path;
+                last;
+            }
+        }
+        push(@log_files_to_report, $errorlog) if defined $errorlog;
         
         $metadata_executor->disconnect();
         undef $metadata_executor;
