@@ -25,6 +25,8 @@ use strict;
 use Carp;
 use Data::Dumper;
 use File::Basename;
+use File::Path 'make_path';
+use File::Copy;
 
 use GenTest;
 use GenTest::Properties;
@@ -638,25 +640,23 @@ sub initValidators {
 
 sub copyLogFiles {
     my ($self, $logdir, $dsns) = @_;
-    ## Won't copy log files on windows (yet)
-    ## And do this only when tt-logging is enabled
-    if (!osWindows() && -e $self->config->property('report-tt-logdir')) {
-        ## Only for unices
-        mkdir $logdir if ! -e $logdir;
-    
+    ## Do this only when tt-logging is enabled
+    if (-e $self->config->property('report-tt-logdir')) {
+        make_path($logdir) if ! -e $logdir;
+
+        # copy database logs
         foreach my $filename ($self->logFilesToReport()) {
             copyFileToDir($filename, $logdir);
         }
+        # copy RQG log
         copyFileToDir($self->config->logfile, $logdir);
     }
 }
 
 sub copyFileToDir {
-    ## Not ported to windows. But then again TT-reporing with scp does
-    ## not work on Windows either...
     my ($from, $todir) = @_;
     say("Copying '$from' to '$todir'");
-    system("cp ".$from." ".$todir);
+    copy($from, $todir);
 }
 
 
