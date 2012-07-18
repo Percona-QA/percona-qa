@@ -170,8 +170,11 @@ sub run {
         $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
         
         # Cache log file names needed for result reporting at end-of-test
-        my $logfile_result = $metadata_executor->execute("SHOW VARIABLES LIKE 'general_log_file'");
-        push(@log_files_to_report, $logfile_result->data()->[0]->[1]);
+        
+        # We do not copy the general log, as it may grow very large for some tests.
+        #my $logfile_result = $metadata_executor->execute("SHOW VARIABLES LIKE 'general_log_file'");
+        #push(@log_files_to_report, $logfile_result->data()->[0]->[1]);
+        
         # Guessing the error log file name relative to datadir (lacking safer methods).
         my $datadir_result = $metadata_executor->execute("SHOW VARIABLES LIKE 'datadir'");
         my $errorlog;
