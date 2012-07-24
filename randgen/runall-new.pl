@@ -400,7 +400,6 @@ my $gentestProps = GenTest::Properties->new(
               'rpl_mode',
               'validators',
               'reporters',
-              'reporters',
               'transformers',
               'seed',
               'mask',
@@ -425,6 +424,7 @@ my $gentestProps = GenTest::Properties->new(
               'report-xml-tt-dest',
               'logfile',
               'logconf',
+              'debug_server',
               'report-tt-logdir']
     );
 
@@ -490,6 +490,8 @@ $gentestProps->property('report-tt-logdir',$report_tt_logdir) if defined $report
 $gentestProps->property('report-xml-tt', 1) if defined $report_xml_tt;
 $gentestProps->property('report-xml-tt-type', $report_xml_tt_type) if defined $report_xml_tt_type;
 $gentestProps->property('report-xml-tt-dest', $report_xml_tt_dest) if defined $report_xml_tt_dest;
+# Pass debug server if used.
+$gentestProps->debug_server(\@debug_server) if @debug_server;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
