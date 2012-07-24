@@ -1,4 +1,4 @@
-# Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
+ Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,7 +26,7 @@ use GenTest::Constants;
 use GenTest::Reporter;
 use GenTest::Incident;
 use GenTest::CallbackPlugin;
-use Data::Dumper;
+
 sub report {
     if (defined $ENV{RQG_CALLBACK}) {
         return callbackReport(@_);
@@ -38,8 +38,6 @@ sub report {
 sub nativeReport {
 	my $reporter = shift;
 
-	print Dumper($reporter);
-	
 	my $datadir = $reporter->serverVariable('datadir');
 	say("datadir is $datadir");
 
