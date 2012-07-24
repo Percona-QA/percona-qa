@@ -551,6 +551,7 @@ sub initReporters {
     
     my $reporter_manager = GenTest::ReporterManager->new();
     
+    # pass option debug server to the reporter, for detecting the binary type.
     foreach my $i (0..2) {
         next if $self->config->dsn->[$i] eq '';
         foreach my $reporter (@{$self->config->reporters}) {
@@ -559,6 +560,7 @@ sub initReporters {
                 test_start => $self->[GT_TEST_START],
                 test_end => $self->[GT_TEST_END],
                 test_duration => $self->config->duration,
+                debug_server => $self->config->debug_server->[$i],
                 properties => $self->config
             });
 
