@@ -133,7 +133,7 @@ sub new {
             # Identify if server is debug.
             my $command = $binary.' --version';
             my $result=`$command 2>&1`;
-            undef $file if ($result !~ /debug/sig);
+            undef $binary if ($result !~ /debug/sig);
             
             if ((-e $binary)) {
                 $reporter->[REPORTER_SERVER_INFO]->{bindir} = $bindir;
