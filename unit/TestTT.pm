@@ -152,6 +152,10 @@ sub validate_xml {
 }
 
 sub test_xml_runall {
+    if ($ENV{TEST_SKIP_RUNALL}) {
+        say((caller(0))[3].": Skipping runall.pl test");
+        return;
+    }
     my $portbase = $ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120;
     my $pb = int(($portbase - 10000) / 10);
     my $self = shift;
