@@ -592,6 +592,7 @@ $0 - Run a complete random query generation test, including server start with re
     --transformer: The transformers to use (turns on --validator=transformer). Accepts comma separated list
     --querytimeout: The timeout to use for the QueryTimeout reporter 
     --gendata   : Generate data option. Passed to gentest.pl
+    --logfile   : Generates rqg output log at the path specified.(Requires the module Log4Perl)
     --seed      : PRNG seed. Passed to gentest.pl
     --mask      : Grammar mask. Passed to gentest.pl
     --mask-level: Grammar mask level. Passed to gentest.pl
