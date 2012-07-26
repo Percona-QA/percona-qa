@@ -25,6 +25,9 @@ use strict;
 use Carp;
 use Data::Dumper;
 use File::Basename;
+use File::Path 'make_path';
+use File::Copy;
+use File::Spec;
 
 use GenTest;
 use GenTest::Properties;
@@ -68,6 +71,7 @@ use constant GT_REPORTER_MANAGER => 8;
 use constant GT_TEST_START => 9;
 use constant GT_TEST_END => 10;
 use constant GT_QUERY_FILTERS => 11;
+use constant GT_LOG_FILES_TO_REPORT => 12;
 
 sub new {
     my $class = shift;
@@ -112,6 +116,10 @@ sub queryFilters {
     return $_[0]->[GT_QUERY_FILTERS];
 }
 
+sub logFilesToReport {
+    return @{$_[0]->[GT_LOG_FILES_TO_REPORT]};
+}
+
 sub run {
     my $self = shift;
 
@@ -152,15 +160,42 @@ sub run {
     my $init_validators_result = $self->initValidators();
     return $init_validators_result if $init_validators_result != STATUS_OK;
 
+    # Cache metadata and other info that may be needed later
+    my @log_files_to_report;
     foreach my $i (0..2) {
         next if $self->config->dsn->[$i] eq '';
         next if $self->config->dsn->[$i] !~ m{mysql}sio;
         my $metadata_executor = GenTest::Executor->newFromDSN($self->config->dsn->[$i], osWindows() ? undef : $self->channel());
         $metadata_executor->init();
         $metadata_executor->cacheMetaData() if defined $metadata_executor->dbh();
+        
+        # Cache log file names needed for result reporting at end-of-test
+        
+        # We do not copy the general log, as it may grow very large for some tests.
+        #my $logfile_result = $metadata_executor->execute("SHOW VARIABLES LIKE 'general_log_file'");
+        #push(@log_files_to_report, $logfile_result->data()->[0]->[1]);
+        
+        # Guessing the error log file name relative to datadir (lacking safer methods).
+        my $datadir_result = $metadata_executor->execute("SHOW VARIABLES LIKE 'datadir'");
+        my $errorlog;
+        foreach my $errorlog_path (
+            "../log/master.err",  # MTRv1 regular layout
+            "../log/mysqld1.err", # MTRv2 regular layout
+            "../mysql.err"        # DBServer::MySQL layout
+        ) {
+            my $possible_path = File::Spec->catfile($datadir_result->data()->[0]->[1], $errorlog_path);
+            if (-e $possible_path) {
+                $errorlog = $possible_path;
+                last;
+            }
+        }
+        push(@log_files_to_report, $errorlog) if defined $errorlog;
+        
         $metadata_executor->disconnect();
         undef $metadata_executor;
     }
+
+    $self->[GT_LOG_FILES_TO_REPORT] = \@log_files_to_report;
 
     if (defined $self->config->filter) {
        $self->[GT_QUERY_FILTERS] = [ GenTest::Filter::Regexp->new(
@@ -627,36 +662,23 @@ sub initValidators {
 
 sub copyLogFiles {
     my ($self, $logdir, $dsns) = @_;
-    ## Won't copy log files on windows (yet)
-    ## And do this only when tt-logging is enabled
-    if (!osWindows() && -e $self->config->property('report-tt-logdir')) {
-        ## Only for unices
-        mkdir $logdir if ! -e $logdir;
-    
-        foreach my $dsn (@$dsns) {
-            next if $dsn eq '';
-            my $dbh = DBI->connect($dsn, undef, undef, {
-                PrintError => 1,
-                RaiseError => 0,
-                AutoCommit => 1,
-                mysql_multi_statements => 1
-                                   } );
-            my $sth = $dbh->prepare("show variables like '%log_file'");
-            $sth->execute();
-            while (my $row = $sth->fetchrow_arrayref()) {
-                copyFileToDir(@{$row}[1], $logdir) if -e @{$row}[1];
-            }
+    ## Do this only when tt-logging is enabled
+    if (-e $self->config->property('report-tt-logdir')) {
+        make_path($logdir) if ! -e $logdir;
+
+        # copy database logs
+        foreach my $filename ($self->logFilesToReport()) {
+            copyFileToDir($filename, $logdir);
         }
-        copyFileToDir($self->config->logfile,$logdir);
+        # copy RQG log
+        copyFileToDir($self->config->logfile, $logdir);
     }
 }
 
 sub copyFileToDir {
-    ## Not ported to windows. But then again TT-reporing with scp does
-    ## not work on Windows either...
     my ($from, $todir) = @_;
     say("Copying '$from' to '$todir'");
-    system("cp ".$from." ".$todir);
+    copy($from, $todir);
 }
 
 
