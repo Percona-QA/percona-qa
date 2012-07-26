@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2008, 2011, Oracle and/or its affiliates. All rights
+# Copyright (c) 2008, 2012, Oracle and/or its affiliates. All rights
 # reserved.
 #
 # This program is free software; you can redistribute it and/or modify
