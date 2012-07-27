@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2008, 2011, Oracle and/or its affiliates. All rights
+# Copyright (c) 2008, 2012, Oracle and/or its affiliates. All rights
 # reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -40,6 +40,7 @@ my $DEFAULT_THREADS = 10;
 my $DEFAULT_QUERIES = 1000;
 my $DEFAULT_DURATION = 3600;
 my $DEFAULT_DSN = 'dbi:mysql:host=127.0.0.1:port=9306:user=root:database=test';
+my @debug_server;
 
 my @ARGV_saved = @ARGV;
 
@@ -87,6 +88,7 @@ my $opt_result = GetOptions($options,
                             'strict_fields',
                             'freeze_time',
                             'debug',
+                            'debug-server',
                             'logfile=s',
                             'logconf=s',
                             'report-tt-logdir=s',
@@ -140,6 +142,7 @@ my $config = GenTest::Properties->new(
               'logfile',
               'logconf',
               'report-tt-logdir',
+              'debug_server',
               'querytimeout'],
     help => \&help);
 
@@ -155,6 +158,8 @@ if (defined $config->logfile && defined $logger) {
 
 say("Starting: $0 ".join(" ", @ARGV_saved));
 
+# Pass debug server.
+$config->debug_server(\@debug_server) if @debug_server;
 $ENV{RQG_DEBUG} = 1 if defined $config->debug;
 my $gentest = GenTest::App::GenTest->new(config => $config);
 
@@ -170,6 +175,7 @@ $0 - Testing via random query generation. Options:
         --dsn      : DBI resources to connect to (default $DEFAULT_DSN).
                       Supported databases are MySQL, Drizzle, PostgreSQL, JavaDB
                       first --dsn must be to MySQL or Drizzle
+        --debug-server: Use mysqld-debug server
         --gendata   : Execute gendata-old.pl in order to populate tables with simple data (default NO)
         --gendata=s : Execute gendata.pl in order to populate tables with data 
                       using the argument as specification file to gendata.pl
@@ -231,7 +237,15 @@ sub backwardCompatability {
         }
         $options->{dsn} = \@dsns;
     }
-        
+    
+    # debug server options array is constructed. 
+    if (defined $options->{debug_server}) {
+        push (@debug_server,1);
+    } else {
+        # hack to workaround, Getopt seems to undef not defined values.
+        push (@debug_server,undef);
+    }    
+    
     if (grep (/,/,@{$options->{reporters}})) {
         my $newreporters = [];
         map {push(@$newreporters,split(/,/,$_))} @{$options->{reporters}};
