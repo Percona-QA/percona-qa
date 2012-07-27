@@ -52,13 +52,13 @@ sub tear_down {
         ## Need to ,kill leftover processes if there are some
         kill 9 => @pids;
     }
-    rmtree("unit/tmp");
+    rmtree("unit/tmpwd");
 }
 
 sub test_create_server {
     my $self = shift;
 
-    my $vardir= cwd()."/unit/tmp";
+    my $vardir= cwd()."/unit/tmpwd";
 
     my $portbase = 20 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
 
