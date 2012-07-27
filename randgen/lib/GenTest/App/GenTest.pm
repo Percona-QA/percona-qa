@@ -25,7 +25,7 @@ use strict;
 use Carp;
 use Data::Dumper;
 use File::Basename;
-use File::Path 'make_path';
+use File::Path 'mkpath';
 use File::Copy;
 use File::Spec;
 
@@ -664,7 +664,7 @@ sub copyLogFiles {
     my ($self, $logdir, $dsns) = @_;
     ## Do this only when tt-logging is enabled
     if (-e $self->config->property('report-tt-logdir')) {
-        make_path($logdir) if ! -e $logdir;
+        mkpath($logdir) if ! -e $logdir;
 
         # copy database logs
         foreach my $filename ($self->logFilesToReport()) {

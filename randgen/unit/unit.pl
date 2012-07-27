@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2009 Sun Microsystems, Inc. All rights reserved.  Use
-# is subject to license terms.
+# Copyright (c) 2009, 2012 Oracle and/or its affiliates. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +25,11 @@ use Test::Unit::TestRunner;
 use RQGRunner;
 
 use Time::HiRes;
+use File::Path qw(mkpath rmtree);
+
+## Clean tmp directory
+rmtree "unit/tmp";
+mkpath "unit/tmp";
 
 # Uncomment and edit to debug individual packages.
 # debug_pkgs(qw/Test::Unit::TestCase/);
@@ -36,6 +40,7 @@ my $testrunner = RQGRunner->new();
 my $result = $testrunner->start(@ARGV);
 
 my $stop_time = Time::HiRes::time();
+
 
 open TM,">unit/totaltime.dat";
 print TM "YVALUE = ".($stop_time - $start_time)."\n";

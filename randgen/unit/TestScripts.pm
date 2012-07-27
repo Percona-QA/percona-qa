@@ -28,7 +28,7 @@ sub new {
     my $self = shift()->SUPER::new(@_);
     # Set temporary working directory. Used for vardir, workdir etc. in tests. 
     # Remove it in tear_down() to avoid interference between tests!
-    $self->{workdir} = cwd()."/unit/tmp2"; 
+    $self->{workdir} = cwd()."/unit/tmpwd2"; 
     return $self;
 }
 
