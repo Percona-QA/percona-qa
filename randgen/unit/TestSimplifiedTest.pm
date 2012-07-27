@@ -46,7 +46,7 @@ my @pids;
 sub set_up {
     my $self=shift;
     
-    my $vardir= cwd()."/unit/tmp";
+    my $vardir= cwd()."/unit/tmpwd";
     
     my $portbase = 20 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
     
@@ -85,11 +85,11 @@ sub tear_down {
         foreach my $p (@pids) {
             Win32::Process::KillProcess($p,-1);
         }
-        system("rmdir /s /q unit\\tmp");
+        system("rmdir /s /q unit\\tmpwd");
     } else {
         ## Need to ,kill leftover processes if there are some
         kill 9 => @pids;
-        # system("rm -rf unit/tmp");
+        # system("rm -rf unit/tmpwd");
     }
 }
 
@@ -122,7 +122,7 @@ sub create_check_testcase {
     my $test = $transform->simplify();
     $self->assert_not_null($test);
     
-    my $testfile = "unit"."/".time().".test";
+    my $testfile = "unit"."/tmp/".time().".test";
     open (TESTFILE , ">$testfile");
     print TESTFILE $test;
     close (TESTFILE);
