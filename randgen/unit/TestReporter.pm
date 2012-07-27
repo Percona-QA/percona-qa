@@ -51,7 +51,7 @@ sub set_up {
         
         my $portbase = 40 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
         
-        $vardir= cwd()."/unit/tmp";
+        $vardir= cwd()."/unit/tmpwd";
         
         $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
         
@@ -93,7 +93,7 @@ sub tear_down {
         ## Need to ,kill leftover processes if there are some
         kill 9 => @pids;
     }
-    rmtree("unit/tmp");
+    rmtree("unit/tmpwd");
 }
 
 # Routine to initilaize reporter.

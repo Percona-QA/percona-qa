@@ -36,7 +36,7 @@ sub new {
 sub set_up {
     my $self = shift;
     $counter++;
-    $self->{logfile} = 'unit/transformer'.$counter.'.log';
+    $self->{logfile} = 'unit/tmp/transformer'.$counter.'.log';
     # --mtr-build-thread : Should differ between testcases due to possible
     # parallelism. We use a "unique" portbase for this.
     my $portbase = ($counter*10) + ($ENV{TEST_PORTBASE}>0 ? int($ENV{TEST_PORTBASE}) : 22120);
@@ -59,7 +59,7 @@ sub test_transformer_ExecuteAsFunctionTwice_BIT_AND {
     ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
     if ($ENV{RQG_MYSQL_BASE}) {
         # Use a grammar that produced a BIT_AND query which matches no rows.
-        my $grammar = 'unit/bit_and.yy';
+        my $grammar = 'unit/tmp/bit_and.yy';
         open(FILE, "> $grammar") or assert("Unable to create grammar file");
         print FILE "query:\n";
         print FILE "    SELECT BIT_AND(col_int_key) FROM BB WHERE pk < 0 ;\n";
@@ -95,7 +95,7 @@ sub test_transformer_ExecuteAsUnion_LIMIT {
     ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
     if ($ENV{RQG_MYSQL_BASE}) {
         # Use a grammar that produced a BIT_AND query which matches no rows.
-        my $grammar = 'unit/union_limit.yy';
+        my $grammar = 'unit/tmp/union_limit.yy';
         open(FILE, "> $grammar") or assert("Unable to create grammar file");
         print FILE "query:\n";
         print FILE "    SELECT C.col_int_key AS field1 FROM C ORDER BY field1 LIMIT 10 /* 1 */;\n";
@@ -130,7 +130,7 @@ sub test_transformer_DISTINCT_MAX_ROWS_THRESHOLD {
     ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
     if ($ENV{RQG_MYSQL_BASE}) {
         # Use a grammar that has a query with more than 500000 rows.
-        my $grammar = 'unit/distinct_max_rows_threshold.yy';
+        my $grammar = 'unit/tmp/distinct_max_rows_threshold.yy';
         open(FILE, "> $grammar") or assert("Unable to create grammar file");
         print FILE "query:\n";
         print FILE "    $query\n";
@@ -178,7 +178,7 @@ sub test_transformer_ExecuteAsUpdateDelete_KILL_QUERY {
     ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
     if ($ENV{RQG_MYSQL_BASE}) {
         # Use a grammar that has a query with more than 500000 rows.
-        my $grammar = 'unit/executeasupdatedelete_kill_query.yy';
+        my $grammar = 'unit/tmp/executeasupdatedelete_kill_query.yy';
         open(FILE, "> $grammar") or assert("Unable to create grammar file");
         print FILE "query:\n";
         print FILE "    $query\n";
