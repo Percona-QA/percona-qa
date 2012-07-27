@@ -1,5 +1,5 @@
-# Copyright (C) 2010 Sun Microsystems, Inc. All rights reserved.  Use
-# is subject to license terms.
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,8 +48,8 @@ sub tear_down {
         ## Need to ,kill leftover processes if there are some
         kill 9 => @pids;
     }
-    rmtree("unit/tmp1");
-    rmtree("unit/tmp1_slave");
+    rmtree("unit/tmpwd1");
+    rmtree("unit/tmpwd1_slave");
 }
 
 
@@ -58,8 +58,8 @@ sub test_create_server {
     
     my $portbase = 30 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
 
-    my $master_vardir= cwd()."/unit/tmp1/";
-    my $slave_vardir= cwd()."/unit/tmp1_slave";
+    my $master_vardir= cwd()."/unit/tmpwd1/";
+    my $slave_vardir= cwd()."/unit/tmpwd1_slave";
     
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
     
@@ -97,8 +97,8 @@ sub test_create_repl {
     
     my $portbase = 30 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
 
-    my $master_vardir= cwd()."/unit/tmp1/";
-    my $slave_vardir= cwd()."/unit/tmp1_slave";
+    my $master_vardir= cwd()."/unit/tmpwd1/";
+    my $slave_vardir= cwd()."/unit/tmpwd1_slave";
     
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
     

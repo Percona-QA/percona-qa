@@ -36,12 +36,12 @@ sub set_up {
 
 sub tear_down {
     # clean up after test
-    unlink "unit/test1.xml";
-    unlink "unit/test2.xml";
-    unlink "unit/foo1.log";
-    unlink "unit/foo2.log";
-    unlink "unit/testresult-schema-1-2.xsd";
-    system("rm -r unit/example*");
+    unlink "unit/tmp/test1.xml";
+    unlink "unit/tmp/test2.xml";
+    unlink "unit/tmp/foo1.log";
+    unlink "unit/tmp/foo2.log";
+    unlink "unit/tmp/testresult-schema-1-2.xsd";
+    system("rm -r unit/tmp/example*");
 }
 
 
@@ -130,12 +130,12 @@ sub validate_xml {
             $ping->close();
            
             # Write xsd to temporatry file.
-            open (FH, ">unit/testresult-schema-1-2.xsd") or die $!;
+            open (FH, ">unit/tmp/testresult-schema-1-2.xsd") or die $!;
             print FH $content;
             close (FH);
                         
             # Load the schena xsd file.
-            my $schema = XML::LibXML::Schema->new(location => "unit/testresult-schema-1-2.xsd");
+            my $schema = XML::LibXML::Schema->new(location => "unit/tmp/testresult-schema-1-2.xsd");
             $self->assert_not_null($schema);
             
             # Validate the xml file with the xsd.
@@ -159,15 +159,15 @@ sub test_xml_runall {
     my $portbase = $ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120;
     my $pb = int(($portbase - 10000) / 10);
     my $self = shift;
-    my $file = "unit/test1.xml";
+    my $file = "unit/tmp/test1.xml";
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none  --xml-output=$file --logfile=unit/foo1.log --report-tt-logdir=unit --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none  --xml-output=$file --logfile=unit/tmp/foo1.log --report-tt-logdir=unit/tmp --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
        
         # Check whether the logfile gets created
-        $self->assert(-e 'unit/foo1.log',"RQG log file does not exist.");
+        $self->assert(-e 'unit/tmp/foo1.log',"RQG log file does not exist.");
  
         # Validate the xml file.    
         $self->validate_xml($file);
@@ -176,7 +176,7 @@ sub test_xml_runall {
 
 sub test_xml_runall_new {
     my $self = shift;
-    my $file = "unit/test2.xml";
+    my $file = "unit/tmp/test2.xml";
     ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
     my $portbase = 10 + ($ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120);
     my $pb = int(($portbase - 10000) / 10);
@@ -184,11 +184,11 @@ sub test_xml_runall_new {
     
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none --xml-output=$file --logfile=unit/foo2.log --report-tt-logdir=unit --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmp");
+        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none --xml-output=$file --logfile=unit/tmp/foo2.log --report-tt-logdir=unit/tmp --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmpwd");
         $self->assert_equals(0, $status);
 
         # Check whether the logfile gets created
-        $self->assert(-e 'unit/foo2.log',"RQG log file does not exist.");
+        $self->assert(-e 'unit/tmp/foo2.log',"RQG log file does not exist.");
 
         # Validate the xml file.
         $self->validate_xml($file);
