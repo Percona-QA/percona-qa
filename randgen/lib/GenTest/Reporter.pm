@@ -35,26 +35,30 @@ use GenTest;
 use GenTest::Result;
 use GenTest::Random;
 use DBI;
+use File::Find;
+use File::Spec;
+use Carp;
 
-use constant REPORTER_PRNG		=> 0;
-use constant REPORTER_SERVER_DSN	=> 1;
-use constant REPORTER_SERVER_VARIABLES	=> 2;
-use constant REPORTER_SERVER_INFO	=> 3;
-use constant REPORTER_SERVER_PLUGINS	=> 4;
-use constant REPORTER_TEST_START	=> 5;
-use constant REPORTER_TEST_END		=> 6;
-use constant REPORTER_TEST_DURATION	=> 7;
-use constant REPORTER_PROPERTIES	=> 8;
+use constant REPORTER_PRNG              => 0;
+use constant REPORTER_SERVER_DSN        => 1;
+use constant REPORTER_SERVER_VARIABLES  => 2;
+use constant REPORTER_SERVER_INFO       => 3;
+use constant REPORTER_SERVER_PLUGINS    => 4;
+use constant REPORTER_TEST_START        => 5;
+use constant REPORTER_TEST_END          => 6;
+use constant REPORTER_TEST_DURATION     => 7;
+use constant REPORTER_PROPERTIES        => 8;
+use constant REPORTER_SERVER_DEBUG      => 9;
 
-use constant REPORTER_TYPE_PERIODIC    	 => 2;
-use constant REPORTER_TYPE_DEADLOCK    	 => 4;
-use constant REPORTER_TYPE_CRASH       	 => 8;
-use constant REPORTER_TYPE_SUCCESS	 => 16;
-use constant REPORTER_TYPE_SERVER_KILLED => 32;
-use constant REPORTER_TYPE_ALWAYS	 => 64;
-use constant REPORTER_TYPE_DATA		 => 128;
+use constant REPORTER_TYPE_PERIODIC     => 2;
+use constant REPORTER_TYPE_DEADLOCK     => 4;
+use constant REPORTER_TYPE_CRASH        => 8;
+use constant REPORTER_TYPE_SUCCESS      => 16;
+use constant REPORTER_TYPE_SERVER_KILLED    => 32;
+use constant REPORTER_TYPE_ALWAYS       => 64;
+use constant REPORTER_TYPE_DATA         => 128;
 # New reporter type which can be used at the end of a successfull test.
-use constant REPORTER_TYPE_END		 => 256;
+use constant REPORTER_TYPE_END          => 256;
 
 1;
 
@@ -66,6 +70,7 @@ sub new {
 		test_start => REPORTER_TEST_START,
 		test_end => REPORTER_TEST_END,
 		test_duration => REPORTER_TEST_DURATION,
+		debug_server => REPORTER_SERVER_DEBUG,
 		properties => REPORTER_PROPERTIES
 	}, @_);
 
@@ -110,23 +115,48 @@ sub new {
 
 	$reporter->[REPORTER_SERVER_INFO]->{pid} = $pid;
 
-	foreach my $server_path (
-			'bin', 'sbin', 'sql', 'libexec',
-			'../bin', '../sbin', '../sql', '../libexec',
-			'../sql/RelWithDebInfo', '../sql/Debug',
-		) {
-		my $binary_unix = $reporter->serverVariable('basedir').'/'.$server_path."/mysqld";
-		my $binary_windows = $reporter->serverVariable('basedir').'/'.$server_path."/mysqld.exe";
-
-		if (
-			(-e $binary_unix) ||
-			(-e $binary_windows)
-		) {
-			$reporter->[REPORTER_SERVER_INFO]->{bindir} = $reporter->serverVariable('basedir').'/'.$server_path;
-			$reporter->[REPORTER_SERVER_INFO]->{binary} = $binary_unix if -e $binary_unix;
-			$reporter->[REPORTER_SERVER_INFO]->{binary} = $binary_windows if -e $binary_windows;
-		}
-	}
+    my $binary;
+    my $bindir;
+    my $binname;
+    # Use debug server, mysqld_debug.
+    if ($reporter->serverDebug){
+        $binname = osWindows() ? 'mysqld-debug.exe' : 'mysqld-debug';
+        ($bindir,$binary)=$reporter->findMySQLD($binname);
+        if ((-e $binary)) {
+            $reporter->[REPORTER_SERVER_INFO]->{bindir} = $bindir;
+            $reporter->[REPORTER_SERVER_INFO]->{binary} = $binary;
+        } else {
+            # If mysqld_debug server is not present use mysqld.
+            $binname = osWindows() ? 'mysqld.exe' : 'mysqld';
+            ($bindir,$binary)=$reporter->findMySQLD($binname);
+            
+            # Identify if server is debug.
+            my $command = $binary.' --version';
+            my $result=`$command 2>&1`;
+            undef $binary if ($result !~ /debug/sig);
+            
+            if ((-e $binary)) {
+                $reporter->[REPORTER_SERVER_INFO]->{bindir} = $bindir;
+                $reporter->[REPORTER_SERVER_INFO]->{binary} = $binary;
+            }
+        }
+    } else {
+        # Use non-debug serever.
+        $binname = osWindows() ? 'mysqld.exe' : 'mysqld';
+        ($bindir,$binary)=$reporter->findMySQLD($binname);
+        if ((-e $binary)) {
+            $reporter->[REPORTER_SERVER_INFO]->{bindir} = $bindir;
+            $reporter->[REPORTER_SERVER_INFO]->{binary} = $binary;
+        }else {
+            # If we dont find non-debug server use debug(mysqld_debug) server.
+            $binname = osWindows() ? 'mysqld-debug.exe' : 'mysqld-debug';
+            ($bindir,$binary)=$reporter->findMySQLD($binname);
+            if ((-e $binary)) {
+                $reporter->[REPORTER_SERVER_INFO]->{bindir} = $bindir;
+                $reporter->[REPORTER_SERVER_INFO]->{binary} = $binary;
+            }
+        }
+    }
 
 	foreach my $client_path (
 		"client/RelWithDebInfo", "client/Debug",
@@ -201,8 +231,24 @@ sub properties {
 	return $_[0]->[REPORTER_PROPERTIES];
 }
 
+sub serverDebug {
+    return $_[0]->[REPORTER_SERVER_DEBUG];
+}
+
 sub configure {
     return 1;
+}
+
+# Input : For given binary either mysqld/mysqld_debug
+# Output: Return bindir and absolute path of the binary file.
+sub findMySQLD {
+    my ($reporter,$binname)=@_;
+    my $bindir;
+    find(sub {
+            $bindir=$File::Find::dir if $_ eq $binname;
+    }, $reporter->serverVariable('basedir'));
+    my $binary = File::Spec->catfile($bindir, $binname);
+    return ($bindir,$binary);
 }
 
 1;
