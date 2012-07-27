@@ -1,4 +1,5 @@
-# Copyright (c) 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+# Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,6 +74,12 @@ sub tear_down {
 
 sub test_sqltrace_disabled_runall {
     my $self = shift;
+
+    if ($ENV{TEST_SKIP_RUNALL}) {
+        say((caller(0))[3].": Skipping runall.pl test");
+        return;
+    }
+
     ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
     if ($ENV{RQG_MYSQL_BASE}) {
         # We do *not* specify --sqltrace, so no statements should be traced.
@@ -131,6 +138,12 @@ sub test_sqltrace_disabled_runall_new {
 
 sub test_sqltrace_default_runall {
     my $self = shift;
+
+    if ($ENV{TEST_SKIP_RUNALL}) {
+        say((caller(0))[3].": Skipping runall.pl test");
+        return;
+    }
+
     ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
     if ($ENV{RQG_MYSQL_BASE}) {
         # We specify --sqltrace without a value. This should result in all statements
@@ -191,6 +204,12 @@ sub test_sqltrace_default_runall_new {
 
 sub test_sqltrace_markerrors_runall {
     my $self = shift;
+
+    if ($ENV{TEST_SKIP_RUNALL}) {
+        say((caller(0))[3].": Skipping runall.pl test");
+        return;
+    }
+
     ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
     if ($ENV{RQG_MYSQL_BASE}) {
         my $cmd = $self->{rqg_command_runall}.' --mtr-build-thread='.$self->{pb}
@@ -263,6 +282,12 @@ sub test_sqltrace_markerrors_runall_new {
 
 sub test_sqltrace_invalid_value_runall {
     my $self = shift;
+
+    if ($ENV{TEST_SKIP_RUNALL}) {
+        say((caller(0))[3].": Skipping runall.pl test");
+        return;
+    }
+
     ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
     if ($ENV{RQG_MYSQL_BASE}) {
         my $cmd = $self->{rqg_command_runall}.' --mtr-build-thread='.$self->{pb}

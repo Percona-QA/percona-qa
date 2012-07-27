@@ -72,15 +72,15 @@ sub test_transformer_ExecuteAsFunctionTwice_BIT_AND {
             .'--threads=1 ' 
             .'--basedir='.$ENV{RQG_MYSQL_BASE};
             
-        my $cmd = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts
-            .' --reporter=Shutdown --mtr-build-thread='.$self->{portbase}
+        my $cmd = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts
+            .' --mtr-build-thread='.$self->{portbase}
             .' > '.$self->{logfile}.' 2>&1';
         $self->annotate("RQG command line: $cmd");
         my $status = system($cmd);
         my $expected = STATUS_OK;
         my $actual = $status >> 8;
         $self->assert_num_equals($expected, $actual, 
-            "Wrong exit status from runall.pl, expected $expected and got $actual");
+            "Wrong exit status from runall-new.pl, expected $expected and got $actual");
         unlink $grammar;
     }
 }
@@ -108,15 +108,15 @@ sub test_transformer_ExecuteAsUnion_LIMIT {
             .'--threads=1 ' 
             .'--basedir='.$ENV{RQG_MYSQL_BASE};
             
-        my $cmd = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts
-            .' --reporter=Shutdown --mtr-build-thread='.$self->{portbase}
+        my $cmd = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts
+            .' --mtr-build-thread='.$self->{portbase}
             .' > '.$self->{logfile}.' 2>&1';
         $self->annotate("RQG command line: $cmd");
         my $status = system($cmd);
         my $expected = STATUS_OK;
         my $actual = $status >> 8;
         $self->assert_num_equals($expected, $actual, 
-            "Wrong exit status from runall.pl, expected $expected and got $actual");
+            "Wrong exit status from runall-new.pl, expected $expected and got $actual");
         unlink $grammar;
     }
 }
@@ -143,15 +143,15 @@ sub test_transformer_DISTINCT_MAX_ROWS_THRESHOLD {
         .'--threads=1 ' 
         .'--basedir='.$ENV{RQG_MYSQL_BASE};
         
-        my $cmd = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts
-        .' --reporter=Shutdown --mtr-build-thread='.$self->{portbase}
+        my $cmd = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts
+        .' --mtr-build-thread='.$self->{portbase}
         .' > '.$self->{logfile}.' 2>&1';
         $self->annotate("RQG command line: $cmd");
         my $status = system($cmd);
         my $expected = STATUS_OK;
         my $actual = $status >> 8;
         $self->assert_num_equals($expected, $actual, 
-            "Wrong exit status from runall.pl, expected $expected and got $actual");
+            "Wrong exit status from runall-new.pl, expected $expected and got $actual");
         unlink $grammar;
     }
 }
@@ -193,15 +193,15 @@ sub test_transformer_ExecuteAsUpdateDelete_KILL_QUERY {
         .'--querytimeout=60 '
         .'--basedir='.$ENV{RQG_MYSQL_BASE};
         
-        my $cmd = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts
-        .' --reporter=Shutdown --mtr-build-thread='.$self->{portbase}
+        my $cmd = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts
+        .' --mtr-build-thread='.$self->{portbase}
         .' > '.$self->{logfile}.' 2>&1';
         $self->annotate("RQG command line: $cmd");
         my $status = system($cmd);
         my $expected = STATUS_OK;
         my $actual = $status >> 8;
         $self->assert_num_equals($expected, $actual, 
-            "Wrong exit status from runall.pl, expected $expected and got $actual");
+            "Wrong exit status from runall-new.pl, expected $expected and got $actual");
         unlink $grammar;
     }
 }

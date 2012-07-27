@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2009, 2012 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -94,6 +94,11 @@ sub test_runall {
     ##    say("test_runall skipped for out-of-source build");
     ##    return;
     ##}
+
+    if ($ENV{TEST_SKIP_RUNALL}) {
+        say((caller(0))[3].": Skipping runall.pl test");
+        return;
+    }
 
     my $portbase = $ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120;
     my $pb = int(($portbase - 10000) / 10);
