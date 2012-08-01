@@ -185,7 +185,7 @@ sub new {
                                "--log-warnings=0"];    
 
     if ($self->[MYSQLD_START_DIRTY]) {
-        say("Using existing data for MySQL " .$self->version ." at ".$self->datadir)
+        say("Using existing data for MySQL " .$self->version ." at ".$self->datadir);
     } else {
         say("Creating MySQL " . $self->version . " database at ".$self->datadir);
         $self->createMysqlBase;
@@ -444,9 +444,10 @@ sub kill {
             }
         }
     }
-    if (-e $self->socketfile) {
-        unlink $self->socketfile;
-    }
+
+    # clean up when the server is not alive.
+    unlink $self->socketfile if -e $self->socketfile;
+    unlink $self->pidfile if -e $self->pidfile;
 }
 
 sub crash {
@@ -461,9 +462,11 @@ sub crash {
             say("Crashed process ".$self->serverpid);
         }
     }
-    if (-e $self->socketfile) {
-        unlink $self->socketfile;
-    }
+
+    # clean up when the server is not alive.
+    unlink $self->socketfile if -e $self->socketfile;
+    unlink $self->pidfile if -e $self->pidfile;
+ 
 }
 
 sub corefile {
@@ -514,7 +517,9 @@ sub stopServer {
             say("Server would not shut down properly");
             $self->kill;
         } else {
-            unlink $self->socketfile;
+            # clean up when server is not alive.
+            unlink $self->socketfile if -e $self->socketfile;
+            unlink $self->pidfile if -e $self->pidfile;
         }
     } else {
         $self->kill;
