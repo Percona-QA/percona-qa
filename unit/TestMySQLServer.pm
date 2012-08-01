@@ -105,7 +105,9 @@ sub test_create_server {
     
     $self->assert_not_null($server);
 
-    $server->startServer;
+    my $status=$server->startServer;
+    $self->assert_not_null($status);
+
     push @pids,$server->serverpid;
     $server->stopServer;
 
