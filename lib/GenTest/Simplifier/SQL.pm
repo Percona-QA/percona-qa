@@ -58,7 +58,7 @@ sub simplify {
 	return $initial_query if $initial_query =~ m{^\s*$}sio;
 
 	if ($simplifier->oracle($initial_query) != ORACLE_ISSUE_STILL_REPEATABLE) {
-		warn("Initial query $initial_query failed oracle check.");
+		warn("Initial query $initial_query failed to reproduce the same issue.");
 		return undef;
 	}
 
@@ -83,7 +83,7 @@ sub simplify {
 	my $final_query = $root_shrunk->toString();
 
 	if ($simplifier->oracle($final_query) != ORACLE_ISSUE_STILL_REPEATABLE) {
-		warn("Final query $final_query failed oracle check");
+		warn("Final query $final_query failed to reproduce the same issue.");
 		return undef;
 	} else {
 		return $final_query;
