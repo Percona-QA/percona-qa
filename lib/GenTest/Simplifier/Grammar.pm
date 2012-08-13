@@ -51,14 +51,15 @@ sub simplify {
 	my ($simplifier, $initial_grammar_string) = @_;
 
 	if ($simplifier->oracle($initial_grammar_string) == ORACLE_ISSUE_NO_LONGER_REPEATABLE) {
-		warn("Initial grammar failed to reproduce the same issue.");
-		warn("This may be a configuration issue or a non-repeatability issue.");
-		warn("Configuration Issue: check the run output log above; it may highlight a problem.");
-		warn("If the configuration is correct, then check these suggestions for non-repeatability:");
-		warn("* Increase the duration of the run ('duration')");
-		warn("* Increase the number of trials ('trials'): this helps for sporadic issues");
-		warn("* Double check the seed and mask values ('seed' and 'mask')");
-		warn("* Vary the seed value ('seed')");
+		warn("Initial grammar failed to reproduce the same issue.
+		This may be a configuration issue or a non-repeatability issue.
+		Configuration Issue: check the run output log above; it may highlight a problem.
+		If the configuration is correct, then check these suggestions for non-repeatability:
+		* Increase the duration of the run ('duration')
+		* Increase the number of trials ('trials'): this helps for sporadic issues
+		* Double check the seed and mask values ('seed' and 'mask')
+		* Vary the seed value ('seed')
+		");
 		return undef;
 	}
 	
