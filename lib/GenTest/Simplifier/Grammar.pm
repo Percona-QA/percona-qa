@@ -51,14 +51,16 @@ sub simplify {
 	my ($simplifier, $initial_grammar_string) = @_;
 
 	if ($simplifier->oracle($initial_grammar_string) == ORACLE_ISSUE_NO_LONGER_REPEATABLE) {
-		warn("Initial grammar failed to reproduce the same issue.
+		warn("Error: Initial grammar failed to reproduce the same issue.
 		This may be a configuration issue or a non-repeatability issue.
-		Configuration Issue: check the run output log above; it may highlight a problem.
+		Configuration issue: check the run output log above; it may highlight a problem.
 		If the configuration is correct, then check these suggestions for non-repeatability:
 		* Increase the duration of the run ('duration')
 		* Increase the number of trials ('trials'): this helps for sporadic issues
 		* Double check the seed and mask values ('seed' and 'mask')
 		* Vary the seed value ('seed')
+		Finally, besides various configuration (simplifier setup, grammar, ...) and non-repeatability issues, 
+		certain result statuses, like for example STATUS_ENVIRONMENT_FAILURE(110), may also result in this error.
 		");
 		return undef;
 	}
