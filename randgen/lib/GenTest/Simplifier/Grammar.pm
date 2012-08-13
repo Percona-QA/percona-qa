@@ -51,8 +51,14 @@ sub simplify {
 	my ($simplifier, $initial_grammar_string) = @_;
 
 	if ($simplifier->oracle($initial_grammar_string) == ORACLE_ISSUE_NO_LONGER_REPEATABLE) {
-		warn("Initial grammar failed oracle check.");
-		warn("Are duration and/or trials too small or is a different value for seed required?");
+		warn("Initial grammar failed to reproduce the same issue.");
+		warn("This may be a configuration issue or a non-repeatability issue.");
+		warn("Configuration Issue: check the run output log above; it may highlight a problem.");
+		warn("If the configuration is correct, then check these suggestions for non-repeatability:");
+		warn("* Increase the duration of the run ('duration')");
+		warn("* Increase the number of trials ('trials'): this helps for sporadic issues");
+		warn("* Double check the seed and mask values ('seed' and 'mask')");
+		warn("* Vary the seed value ('seed')");
 		return undef;
 	}
 	
@@ -87,7 +93,7 @@ sub simplify {
 	}
 	
 	if ($simplifier->oracle($grammar_string) == ORACLE_ISSUE_NO_LONGER_REPEATABLE) {
-		warn("Final grammar failed oracle check.");
+		warn("Final grammar failed to reproduce the same issue.");
 		return undef;
 	} else {
 		return $grammar_string;
