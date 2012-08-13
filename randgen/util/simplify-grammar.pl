@@ -1,3 +1,5 @@
+#!/usr/bin/perl
+
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
 # Use is subject to license terms.
 #
@@ -131,6 +133,7 @@ push my @mtr_options, "--vardir=$vardir";
 if ( ! -d $config->storage_prefix) {
    croak("storage_prefix '" . $config->storage_prefix . "' is not an existing directory");
 }
+
 my $storage = $config->storage_prefix.'/'.$run_id;
 say "Storage is $storage";
 mkdir ($storage);
