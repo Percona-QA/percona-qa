@@ -62,6 +62,8 @@ use Time::HiRes;
 
 # get configuration
 
+my $mtrbt = defined $ENV{MTR_BUILD_THREAD}?$ENV{MTR_BUILD_THREAD}:400;
+
 my $options = {};
 GetOptions($options, 'config=s', 'trials=i','storage_prefix=s','expected_output=s@');
 my $config = GenTest::Properties->new(
@@ -192,9 +194,11 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
             #    required, but it will not make the conditions worse.
 
             my $rqgcmd =
+
                 "perl runall.pl $rqgoptions $mysqlopt ".
                 "--grammar=$current_grammar ".
                 "--vardir=$vardir ".
+                "--mtr-build-thread=".$mtrbt." ".
                 "--seed=$current_seed >$current_rqg_log 2>&1";
 
             say($rqgcmd);
