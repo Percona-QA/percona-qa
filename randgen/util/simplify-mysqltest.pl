@@ -33,7 +33,7 @@ use GenTest::Constants;
 use GenTest::Simplifier::Mysqltest;
 
 
-# NOTE: oracle function behaves differently if basedir2 is specified in addition
+# NOTE: "oracle" function behaves differently if basedir2 is specified in addition
 #       to basedir. In this case expected_mtr_output is ignored, and result
 #       comparison between servers is performed instead.
 
