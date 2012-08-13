@@ -59,8 +59,11 @@ sub simplify {
 		* Increase the number of trials ('trials'): this helps for sporadic issues
 		* Double check the seed and mask values ('seed' and 'mask')
 		* Vary the seed value ('seed')
-		Finally, besides various configuration (simplifier setup, grammar, ...) and non-repeatability issues, 
+		Note that besides various configuration (simplifier setup, grammar, ...) and non-repeatability issues, 
 		certain result statuses, like for example STATUS_ENVIRONMENT_FAILURE(110), may also result in this error.
+		Finally, check the grammar for the existence of 'thread1:' clauses (besides 'query:'). At the moment,
+		simplify-grammar.pl is unable to deal with these type of clauses. It may thus help to move any rules 
+		from such a 'thread1:' clause to the 'query:' clause, and see if the issue is still repeatable.
 		");
 		return undef;
 	}
