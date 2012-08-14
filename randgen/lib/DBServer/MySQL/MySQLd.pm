@@ -450,6 +450,34 @@ sub kill {
     unlink $self->pidfile if -e $self->pidfile;
 }
 
+sub term {
+    my ($self) = @_;
+    
+    if (osWindows()) {
+        ### Not for windows
+        say("Don't know how to do SIGTERM on Windows");
+        $self->kill;
+    } else {
+        if (defined $self->serverpid) {
+            kill TERM => $self->serverpid;
+            my $waits = 0;
+            while ($self->running && $waits < 100) {
+                Time::HiRes::sleep(0.2);
+                $waits++;
+            }
+            if ($waits >= 100) {
+                croak("Unable to terminate process ".$self->serverpid." Trying kill");
+                $self->kill;
+            } else {
+                say("Terminated process ".$self->serverpid);
+            }
+        }
+    }
+    if (-e $self->socketfile) {
+        unlink $self->socketfile;
+    }
+}
+
 sub crash {
     my ($self) = @_;
     
@@ -505,17 +533,23 @@ sub stopServer {
     
     if (defined $self->[MYSQLD_DBH]) {
         say("Stopping server on port ".$self->port);
-        my $r = $self->[MYSQLD_DBH]->func('shutdown','127.0.0.1','root','admin');
+        ## Use dbh routine to ensure reconnect in case connection is
+        ## stale (happens i.e. with mdl_stability/valgrind runs)
+        my $r = $self->dbh->func('shutdown','127.0.0.1','root','admin');
         my $waits = 0;
         if ($r) {
             while ($self->running && $waits < 100) {
                 Time::HiRes::sleep(0.2);
                 $waits++;
             }
+        } else {
+            ## If shutdown fails, we want to know why:
+            say("Shutdown failed due to ".$self->dbh->err.":".$self->dbh->errstr);
         }
         if (!$r or $waits >= 100) {
-            say("Server would not shut down properly");
-            $self->kill;
+            # Terminate process
+            say("Server would not shut down properly. Terminate it");
+            $self->term;
         } else {
             # clean up when server is not alive.
             unlink $self->socketfile if -e $self->socketfile;
@@ -567,6 +601,7 @@ sub dbh {
     my ($self) = @_;
     if (defined $self->[MYSQLD_DBH]) {
         if (!$self->[MYSQLD_DBH]->ping) {
+            say("Stale connection. Reconnecting");
             $self->[MYSQLD_DBH] = DBI->connect($self->dsn("mysql"),
                                                undef,
                                                undef,
