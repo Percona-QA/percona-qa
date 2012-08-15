@@ -21,6 +21,7 @@ require Exporter;
 @ISA = qw(GenTest);
 
 use strict;
+use Carp;
 use lib 'lib';
 
 use GenTest;
@@ -51,7 +52,7 @@ sub simplify {
 	my ($simplifier, $initial_grammar_string) = @_;
 
 	if ($simplifier->oracle($initial_grammar_string) == ORACLE_ISSUE_NO_LONGER_REPEATABLE) {
-		warn("Error: Initial grammar failed to reproduce the same issue.
+		carp("Error: Initial grammar failed to reproduce the same issue.
 		This may be a configuration issue or a non-repeatability issue.
 		Configuration issue: check the run output log above; it may highlight a problem.
 		If the configuration is correct, then check these suggestions for non-repeatability:
@@ -99,7 +100,7 @@ sub simplify {
 	}
 	
 	if ($simplifier->oracle($grammar_string) == ORACLE_ISSUE_NO_LONGER_REPEATABLE) {
-		warn("Final grammar failed to reproduce the same issue.");
+		carp("Final grammar failed to reproduce the same issue.");
 		return undef;
 	} else {
 		return $grammar_string;

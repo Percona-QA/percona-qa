@@ -22,6 +22,7 @@ use GenTest;
 @ISA = qw(GenTest);
 
 use strict;
+use Carp;
 use lib 'lib';
 use GenTest;
 use GenTest::Constants;
@@ -67,7 +68,7 @@ sub simplify {
         say(($#queries_filtered + 1)." queries remain after filtering.");
 
 	if ($simplifier->oracle(join("\n", @queries_filtered)."\n") == ORACLE_ISSUE_NO_LONGER_REPEATABLE) {
-		warn("Initial mysqltest (after filtering) failed to reproduce the same issue.");
+		carp("Initial mysqltest (after filtering) failed to reproduce the same issue.");
 		return undef;
         }
 
@@ -75,7 +76,7 @@ sub simplify {
 	my $final_mysqltest = join("\n", @$ddmin_outcome)."\n";
 
 	if ($simplifier->oracle($final_mysqltest) == ORACLE_ISSUE_NO_LONGER_REPEATABLE) {
-		warn("Final mysqltest failed to reproduce the same issue.");
+		carp("Final mysqltest failed to reproduce the same issue.");
 		return undef;
 	} else {
 		return $final_mysqltest;
