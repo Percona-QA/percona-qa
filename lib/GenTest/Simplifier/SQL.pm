@@ -22,7 +22,7 @@ use GenTest;
 @ISA = qw(GenTest);
 
 use strict;
-
+use Carp;
 use lib 'lib';
 use DBIx::MyParsePP;
 use DBIx::MyParsePP::Rule;
@@ -58,7 +58,7 @@ sub simplify {
 	return $initial_query if $initial_query =~ m{^\s*$}sio;
 
 	if ($simplifier->oracle($initial_query) != ORACLE_ISSUE_STILL_REPEATABLE) {
-		warn("Initial query $initial_query failed to reproduce the same issue.");
+		carp("Initial query $initial_query failed to reproduce the same issue.");
 		return undef;
 	}
 
@@ -69,7 +69,7 @@ sub simplify {
 	my $root = $query_obj->root();
 	
 	if (not defined $root) {
-		warn("Unable to parse query");
+		carp("Unable to parse query");
 		return undef;
 	}
 
