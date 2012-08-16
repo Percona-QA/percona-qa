@@ -535,18 +535,23 @@ sub stopServer {
         say("Stopping server on port ".$self->port);
         ## Use dbh routine to ensure reconnect in case connection is
         ## stale (happens i.e. with mdl_stability/valgrind runs)
-        my $r = $self->dbh->func('shutdown','127.0.0.1','root','admin');
+        my $dbh = $self->dbh();
+        my $res;
         my $waits = 0;
-        if ($r) {
-            while ($self->running && $waits < 100) {
-                Time::HiRes::sleep(0.2);
-                $waits++;
+        # Need to check if $dbh is defined, in case the server has crashed
+        if (defined $dbh) {
+            $res = $dbh->func('shutdown','127.0.0.1','root','admin');
+            if ($res) {
+                while ($self->running && $waits < 100) {
+                    Time::HiRes::sleep(0.2);
+                    $waits++;
+                }
+            } else {
+                ## If shutdown fails, we want to know why:
+                say("Shutdown failed due to ".$dbh->err.":".$dbh->errstr);
             }
-        } else {
-            ## If shutdown fails, we want to know why:
-            say("Shutdown failed due to ".$self->dbh->err.":".$self->dbh->errstr);
         }
-        if (!$r or $waits >= 100) {
+        if (!$res or $waits >= 100) {
             # Terminate process
             say("Server would not shut down properly. Terminate it");
             $self->term;
@@ -605,9 +610,12 @@ sub dbh {
             $self->[MYSQLD_DBH] = DBI->connect($self->dsn("mysql"),
                                                undef,
                                                undef,
-                                               {PrintError => 1,
+                                               {PrintError => 0,
                                                 RaiseError => 0,
                                                 AutoCommit => 1});
+            if(!defined $self->[MYSQLD_DBH]) {
+                say("Reconnect failed due to ".$DBI::err.":".$DBI::errstr);
+            }
         }
     } else {
         $self->[MYSQLD_DBH] = DBI->connect($self->dsn("mysql"),
