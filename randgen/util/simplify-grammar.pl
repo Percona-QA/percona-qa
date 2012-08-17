@@ -1,3 +1,5 @@
+#!/usr/bin/perl
+
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
 # Use is subject to license terms.
 #
@@ -30,31 +32,37 @@ use GenTest::Properties;
 use GenTest::Simplifier::Grammar;
 use Time::HiRes;
 
+# Overview
+# ========
+# This script can be used to simplify grammar files to the smallest form
+# which will still reproduce a desired outcome.
 #
-# RQG grammar simplification with an oracle() function based on
+# More information
+# ================
+# https://github.com/RQG/RQG-Documentation/wiki/RandomQueryGeneratorSimplification
+#
+# Usage
+# =====
+# To adjust parameters to your use case and environment:
+# 
+# 1. Copy simplify-grammar_template.cfg to for example 1.cfg
+# 2. Adjust the settings in 1.cfg
+# 3. Execute: perl util/simplify-grammar.pl --config 1.cfg
+#
+# Technical information
+# =====================
+# The GenTest::Simplifier::Grammar module provides progressively simpler grammars.
+# We define an "oracle" function which runs those grammars through RQG, and we
+# report if RQG returns the desired status code (for example STATUS_SERVER_CRASHED)
+# 
+# IOW, RQG grammar simplification with an "oracle" function based on:
 # 1. RQG exit status codes (-> desired_status_codes)
 # 2. expected RQG protocol output (-> expected_output)
-# Hint: 2. will be not checked if 1. already failed
-#
-# You need to adjust parameters to your use case and environment.
-# 1. Copy simplify-grammar_template.cfg to for example 1.cfg
-# 2. Adjust the settings
-# 2. perl util/simplify-grammar.pl --config 1.cfg
-#
-# This script is used to simplify grammar files to the smallest form
-# that will still reproduce the desired outcome
-# For the purpose, the GenTest::Simplifier::Grammar module provides
-# progressively simple grammars, and we define an oracle() function
-# that runs those grammars with the RQG and reports if the RQG returns
-# the desired status code (usually something like
-# STATUS_SERVER_CRASHED
-#
-# For more information, please see:
-#
-# http://forge.mysql.com/wiki/RandomQueryGeneratorSimplification
-#
+# Hint: 2 will be not checked if 1 failed already
 
 # get configuration
+
+my $mtrbt = defined $ENV{MTR_BUILD_THREAD}?$ENV{MTR_BUILD_THREAD}:400;
 
 my $options = {};
 GetOptions($options, 'config=s', 'trials=i','storage_prefix=s','expected_output=s@');
@@ -127,6 +135,7 @@ push my @mtr_options, "--vardir=$vardir";
 if ( ! -d $config->storage_prefix) {
    croak("storage_prefix '" . $config->storage_prefix . "' is not an existing directory");
 }
+
 my $storage = $config->storage_prefix.'/'.$run_id;
 say "Storage is $storage";
 mkdir ($storage);
@@ -157,7 +166,7 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
             # seed value.
             # 1. Run the first trial on the initial grammar with
             #    $config->initial_seed .  This should raise the chance
-            #    that the initial oracle check passes.
+            #    that the initial "oracle" check passes.
             # 2. Run the first trial on a just simplified grammar with the
             #    last successfull seed value. In case the last
             #    simplification did remove some random determined we
@@ -185,9 +194,11 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
             #    required, but it will not make the conditions worse.
 
             my $rqgcmd =
+
                 "perl runall.pl $rqgoptions $mysqlopt ".
                 "--grammar=$current_grammar ".
                 "--vardir=$vardir ".
+                "--mtr-build-thread=".$mtrbt." ".
                 "--seed=$current_seed >$current_rqg_log 2>&1";
 
             say($rqgcmd);
