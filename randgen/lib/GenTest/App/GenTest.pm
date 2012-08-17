@@ -245,23 +245,29 @@ sub run {
         
     ## Parent thread does not use channel
     $self->channel()->close;
-        
-    while (1) {
-        my $child_pid = waitpid(-1, 0);
-        my $child_exit_status = $? > 0 ? ($? >> 8) : 0;
 
-        $total_status = $child_exit_status if $child_exit_status > $total_status;
+    # Worker & Reporter processes that were spawned.
+    my @spawned_pids = (keys %worker_pids, $reporter_pid);
+    
+    OUTER: while (1) {
+        # Wait for processes to complete, i.e only processes spawned by workers & reporters. 
+        foreach my $spawned_pid (@spawned_pids) {
+            my $child_pid = waitpid($spawned_pid, 0);
+            my $child_exit_status = $? > 0 ? ($? >> 8) : 0;
             
-        if ($child_pid == $reporter_pid) {
-            $reporter_died = 1;
-            last;
-        } else {
-            delete $worker_pids{$child_pid};
+            $total_status = $child_exit_status if $child_exit_status > $total_status;
+            
+            if ($child_pid == $reporter_pid) {
+                $reporter_died = 1;
+                last OUTER;
+            } else {
+                delete $worker_pids{$child_pid};
+            }
+            
+            last OUTER if $child_exit_status >= STATUS_CRITICAL_FAILURE;
+            last OUTER if keys %worker_pids == 0;
+            last OUTER if $child_pid == -1;
         }
-            
-        last if $child_exit_status >= STATUS_CRITICAL_FAILURE;
-        last if keys %worker_pids == 0;
-        last if $child_pid == -1;
     }
 
     foreach my $worker_pid (keys %worker_pids) {
