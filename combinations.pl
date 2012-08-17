@@ -1,3 +1,5 @@
+#!/usr/bin/perl
+
 # Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
 #
