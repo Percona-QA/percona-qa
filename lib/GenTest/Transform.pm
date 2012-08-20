@@ -123,11 +123,20 @@ sub transformExecuteValidate {
 				($part_result->status() == STATUS_SEMANTIC_ERROR) ||
 				($part_result->status() == STATUS_SERVER_CRASHED) 
 			) {
-				# We normally return a critical error when a transformer returns
-				# a semantic or syntactic error, because we want to detect any
-				# faulty transformers, e.g. those which do not produce valid 
-				# queries. However, some errors may need to be accepted in
-				# certain situations.
+				# We return an error when a transformer returns a semantic
+				# or syntactic error, which allows for detecting any faulty
+				# transformers, e.g. those which do not produce valid queries. 
+				#
+				# Most often the only subsequent change required to these 
+				# transformers is to exclude the failing query by using 
+				# STATUS_WONT_HANDLE within the transformer.
+				#
+				# As such, we now return STATUS_WONT_HANDLE here, which allows
+				# the run to continue without aborting, while covering almost
+				# all situations (i.e. STATUS_WONT_HANDLE) correctly already.
+				#
+				# Additionally, some errors may need to be accepted in certain
+				# situations.
 				#
 				# For example, with MySQL's ONLY_FULL_GROUP_BY sql mode, some
 				# queries return grouping related errors, whereas they would
