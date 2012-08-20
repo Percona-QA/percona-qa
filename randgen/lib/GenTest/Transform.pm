@@ -158,8 +158,8 @@ sub transformExecuteValidate {
 				say("Offending query is: $transformed_query_part;");
 				say("Original query is: $original_query;");
 				say("ERROR: Possible syntax or semantic error caused by code in transformer ".ref($transformer).
-					". Raising severity to STATUS_ENVIRONMENT_FAILURE.");
-				return STATUS_ENVIRONMENT_FAILURE;
+					". Not handling this particular transform any further: Please fix the transformer code so as to handle the query shown above correctly.");
+				return STATUS_WONT_HANDLE;
 			} elsif ($part_result->status() != STATUS_OK) {
 				say("---------- TRANSFORM ISSUE ----------");
 				say("Transform ".$transformer->name()." failed with an error: ".$part_result->err().'  '.$part_result->errstr());
