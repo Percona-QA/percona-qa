@@ -466,7 +466,7 @@ sub term {
                 $waits++;
             }
             if ($waits >= 100) {
-                croak("Unable to terminate process ".$self->serverpid." Trying kill");
+                say("Unable to terminate process ".$self->serverpid." Trying kill");
                 $self->kill;
             } else {
                 say("Terminated process ".$self->serverpid);
