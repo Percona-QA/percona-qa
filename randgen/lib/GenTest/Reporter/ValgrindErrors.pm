@@ -119,7 +119,7 @@ sub report {
 }
 
 sub type {
-    # We use the reporter type REPORTER_TYPE_END since this will get triggered only at the end of a successfully executed test.
+    # Use the reporter type REPORTER_TYPE_END, as this reporter will be triggered only at the end of a test.
     return REPORTER_TYPE_END ;
 }
 
