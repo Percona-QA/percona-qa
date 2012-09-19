@@ -23,23 +23,14 @@ $combinations=
   '--seed=random',
   '--seed=epoch5'
  ],['
-  --duration=1200 --querytimeout=60
+  --duration=300 --querytimeout=60
   --short_column_names --sqltrace
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
-  --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY'
+  --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
+  --grammar=conf/percona_qa/percona_qa.yy --gendata=conf/percona_qa/percona_qa.zz'
  ],[
-  '',
-  '--mysqld=--slow_query_log'
- ],[
-  '',
-  '--mysqld=--userstat'
- ],[
-  '',
-  '--mysqld=--innodb_lazy_drop_table=1'
- ],[
-  '',
-  '--mysqld=--innodb_file_per_table=1',
-  '--mysqld=--innodb_file_per_table=1 --innodb-file-format=barracuda'
+  '--basedir=/Percona-Server',
+  '--basedir=/Percona-Server --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
  ],[
   '--threads=1',
   '--threads=10',
@@ -53,9 +44,17 @@ $combinations=
   '--notnull --validator=Transformer',
   '--views --notnull --validator=Transformer'
  ],[
-  '--basedir=/percona-server/Percona-Server-5.5.27-rel28.0-288.Linux.x86_64',
-  '--basedir=/percona-server/Percona-Server-5.5.27-rel28.0-288.Linux.x86_64 --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
+  '',
+  '--mysqld=--slow_query_log'
  ],[
-  '--grammar=conf/percona_qa/percona_qa.yy --gendata=conf/percona_qa/percona_qa.zz',
+  '',
+  '--mysqld=--userstat'
+ ],[
+  '',
+  '--mysqld=--innodb_lazy_drop_table=1'
+ ],[
+  '',
+  '--mysqld=--innodb_file_per_table=1',
+  '--mysqld=--innodb_file_per_table=1 --innodb-file-format=barracuda'
  ]
 ]

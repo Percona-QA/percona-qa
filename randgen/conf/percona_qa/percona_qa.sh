@@ -1,6 +1,6 @@
 # User settings
-WORKDIR=/ssd
-RQG_DIR=/randgen
+WORKDIR=/data/ssd/qa
+RQG_DIR=/data/ssd/qa/randgen
 
 # Internal settings
 MTR_BT=$[$RANDOM % 300 + 1]
