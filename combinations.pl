@@ -314,11 +314,10 @@ sub doCombination {
             if ($command =~ m{--mem}) {
                 system("cp -r /dev/shm/var $to");
             } else {
+                system("cp -r $from $to");
                 if (defined $clean) {
                     # Clean mode: archive STATUS > 0 logs
-                    system("tar -zhcf $to.tar.gz $from");
-                } else {
-                    system("cp -r $from $to");
+                    system('tar -zhcf vardir'.$s.'_'.$trial_id.'.tar.gz ./vardir'.$s.'_'.$trial_id);
                 }
             }
             open(OUT, ">$to/command");
