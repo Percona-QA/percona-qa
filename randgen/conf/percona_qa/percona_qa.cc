@@ -55,6 +55,6 @@ $combinations=
  ],[
   '',
   '--mysqld=--innodb_file_per_table=1',
-  '--mysqld=--innodb_file_per_table=1 --innodb_file_format=barracuda'
+  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda'
  ]
 ]
