@@ -52,7 +52,7 @@ $SIG{CHLD} = "IGNORE" if osWindows();
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $force, $no_mask, $exhaustive, $start_combination, $debug, $noLog, 
-    $threads, $new, $servers, $noshuffle, $workdir);
+    $threads, $new, $servers, $noshuffle, $clean, $workdir);
 
 my @basedirs=('','');
 my $combinations;
@@ -89,7 +89,8 @@ my $opt_result = GetOptions(
     'parallel=i' => \$threads,
     'new' => \$new,
     'servers=i' => \$servers,
-    'no-shuffle' => \$noshuffle
+    'no-shuffle' => \$noshuffle,
+    'clean' => \$clean
 );
 
 my $prng = GenTest::Random->new(
@@ -299,12 +300,12 @@ sub doCombination {
     my $result = 0;
     $result = system($command) if not $debug;
 
-	$result = $result >> 8;
-	say("[$thread_id] $runall exited with exit status ".status2text($result).
-        "($result), see $workdir/trial".$trial_id.'.log');
-	exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
+    $result = $result >> 8;
+    my $tl = $workdir/trial".$trial_id.'.log';
+    say("[$thread_id] $runall exited with exit status ".status2text($result)."($result), see $tl");
+    exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 
-	if ($result > 0) {
+    if ($result > 0) {
         foreach my $s (1..$servers) {
             $max_result = $result if $result > $max_result;
             my $from = $workdir."/current".$s."_".$thread_id;
@@ -313,12 +314,20 @@ sub doCombination {
             if ($command =~ m{--mem}) {
                 system("cp -r /dev/shm/var $to");
             } else {
-                system("cp -r $from $to");
+                if (defined $clean) {
+                    # Clean mode: archive STATUS > 0 logs
+                    system("tar -zhcf $to.tar.gz $from");
+                } else {
+                    system("cp -r $from $to");
+                }
             }
             open(OUT, ">$to/command");
             print OUT $command;
             close(OUT);
         }
-	}
-	$results{$result >> 8}++;
+    } else {
+       # Clean mode: remove STATUS_OK logs
+       system("rm -f $tl) if (defined $clean);
+    }
+    $results{$result >> 8}++;
 }
