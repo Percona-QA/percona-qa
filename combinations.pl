@@ -301,7 +301,7 @@ sub doCombination {
     $result = system($command) if not $debug;
 
     $result = $result >> 8;
-    my $tl = $workdir/trial".$trial_id.'.log';
+    my $tl = "$workdir/trial".$trial_id.'.log';
     say("[$thread_id] $runall exited with exit status ".status2text($result)."($result), see $tl");
     exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 
