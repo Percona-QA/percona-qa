@@ -322,7 +322,7 @@ sub doCombination {
                 system("cp -r $from $to");
                 if (defined $clean) {
                     say("[$thread_id] Clean mode active & failed run (".status2text($result)."): Archiving this vardir");
-                    system('tar -zhcf vardir'.$s.'_'.$trial_id.'.tar.gz '.$workdir.'/vardir'.$s.'_'.$trial_id);
+                    system('tar zhcf vardir'.$s.'_'.$trial_id.'.tar.gz '.$workdir.'/vardir'.$s.'_'.$trial_id);
                 }
             }
             open(OUT, ">$to/command");
