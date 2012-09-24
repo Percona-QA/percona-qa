@@ -13,9 +13,10 @@ else
   mkdir $WORKDIR/$RAND
   cd $RQG_DIR
   MTR_BUILD_THREAD=$MTR_BT; perl ./combinations.pl \
+  --clean \
+  --force \
   --parallel=8 \
   --run-all-combinations-once \
-  --force \
   --workdir=$WORKDIR/$RAND \
   --config=$RQG_DIR/conf/percona_qa/percona_qa.cc
 fi
