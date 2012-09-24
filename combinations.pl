@@ -301,15 +301,15 @@ sub doCombination {
     $result = system($command) if not $debug;
 
     $result = $result >> 8;
-    my $tl = "$workdir/trial".$trial_id.'.log';
+    my $tl = $workdir.'/trial'.$trial_id.'.log';
     say("[$thread_id] $runall exited with exit status ".status2text($result)."($result), see $tl");
     exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 
     if ($result > 0) {
         foreach my $s (1..$servers) {
             $max_result = $result if $result > $max_result;
-            my $from = $workdir."/current".$s."_".$thread_id;
-            my $to = $workdir."/vardir".$s."_".$trial_id;
+            my $from = $workdir.'/current'.$s.'_'.$thread_id;
+            my $to = $workdir.'/vardir'.$s.'_'.$trial_id;
             say("[$thread_id] Copying $from to $to") if $logToStd;
             if ($command =~ m{--mem}) {
                 system("cp -r /dev/shm/var $to");
@@ -327,7 +327,7 @@ sub doCombination {
         }
     } else {
        # Clean mode: remove STATUS_OK logs
-       system("rm -f $tl) if (defined $clean);
+       system("rm -f $tl") if (defined $clean);
     }
     $results{$result >> 8}++;
 }
