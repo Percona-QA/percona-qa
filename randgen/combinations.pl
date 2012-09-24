@@ -302,7 +302,12 @@ sub doCombination {
 
     $result = $result >> 8;
     my $tl = $workdir.'/trial'.$trial_id.'.log';
-    say("[$thread_id] $runall exited with exit status ".status2text($result)."($result), see $tl");
+    if (defined $clean && $result == 0) {
+        say("[$thread_id] $runall exited with exit status ".status2text($result)."($result). Clean mode active: deleting this OK log");
+        system("rm -f $tl");
+    } else {
+        say("[$thread_id] $runall exited with exit status ".status2text($result)."($result), see $tl");
+    }
     exit($result) if (($result == STATUS_ENVIRONMENT_FAILURE) || ($result == 255)) && (not defined $force);
 
     if ($result > 0) {
@@ -316,7 +321,7 @@ sub doCombination {
             } else {
                 system("cp -r $from $to");
                 if (defined $clean) {
-                    # Clean mode: archive STATUS > 0 logs
+                    say("[$thread_id] Clean mode active & failed run (".status2text($result)."): Archiving this vardir");
                     system('tar -zhcf vardir'.$s.'_'.$trial_id.'.tar.gz ./vardir'.$s.'_'.$trial_id);
                 }
             }
@@ -324,9 +329,6 @@ sub doCombination {
             print OUT $command;
             close(OUT);
         }
-    } else {
-       # Clean mode: remove STATUS_OK logs
-       system("rm -f $tl") if (defined $clean);
     }
     $results{$result >> 8}++;
 }
