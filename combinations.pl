@@ -318,16 +318,20 @@ sub doCombination {
             say("[$thread_id] Copying $from to $to") if $logToStd;
             if ($command =~ m{--mem}) {
                 system("cp -r /dev/shm/var $to");
+                open(OUT, ">$to/command");
+                print OUT $command;
+                close(OUT);
             } else {
                 system("cp -r $from $to");
+                open(OUT, ">$to/command");
+                print OUT $command;
+                close(OUT);
                 if (defined $clean) {
                     say("[$thread_id] Clean mode active & failed run (".status2text($result)."): Archiving this vardir");
                     system('tar zhcf '.$workdir.'/vardir'.$s.'_'.$trial_id.'.tar.gz -C '.$workdir.' ./vardir'.$s.'_'.$trial_id);
+                    system("rm -Rf $to");
                 }
             }
-            open(OUT, ">$to/command");
-            print OUT $command;
-            close(OUT);
         }
     }
     $results{$result >> 8}++;
