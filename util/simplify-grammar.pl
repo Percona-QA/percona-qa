@@ -211,7 +211,8 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
             say("rqg_status = $rqg_status; duration = $duration");
 
             return ORACLE_ISSUE_NO_LONGER_REPEATABLE
-                if $rqg_status == STATUS_ENVIRONMENT_FAILURE;
+                if ($rqg_status == STATUS_ENVIRONMENT_FAILURE && 
+                    $desired_status_code != STATUS_ENVIRONMENT_FAILURE);
 
             foreach my $desired_status_code (@{$config->desired_status_codes}) {
                 if (($rqg_status == $desired_status_code) ||
