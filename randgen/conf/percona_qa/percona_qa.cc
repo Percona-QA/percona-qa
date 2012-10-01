@@ -19,11 +19,8 @@
 
 $combinations=
 [
- [
-  '--seed=random',
-  '--seed=epoch5'
- ],['
-  --duration=300 --querytimeout=60
+ ['
+  --seed=random --duration=600 --querytimeout=60
   --short_column_names --sqltrace
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
@@ -33,15 +30,13 @@ $combinations=
   '--basedir=/Percona-Server --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
  ],[
   '--threads=1',
-  '--threads=10',
-  '--threads=20'
+  '--threads=25'
  ],[
-  '',
   '--views',
-  '--notnull',
   '--views --notnull',
   '--validator=Transformer',
   '--notnull --validator=Transformer',
+  '--views --validator=Transformer'
   '--views --notnull --validator=Transformer'
  ],[
   '',
