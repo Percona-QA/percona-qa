@@ -29,10 +29,16 @@
 
 query:
 	select | insert | insert | insert | delete | replace | update | transaction | alter | views | set |
-	proc_func | outfile_infile | update_multi | percona_query | percona_query | percona_query ; 
+	proc_func | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query ; 
 
-percona_query:
-	drop_create_table | user_stats | ext_slow_query_log | resp_time_dist ;
+p_query:
+	ext_slow_query_log | resp_time_dist | user_stats | drop_create_table ;
+
+p_l_query:
+	SET GLOBAL innodb_kill_idle_transaction = kit_list ;
+
+kit_list:
+	0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 20 | 60 ;
 
 scope:
 	GLOBAL | SESSION ;
