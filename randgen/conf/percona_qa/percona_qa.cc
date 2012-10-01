@@ -36,7 +36,7 @@ $combinations=
   '--views --notnull',
   '--validator=Transformer',
   '--notnull --validator=Transformer',
-  '--views --validator=Transformer'
+  '--views --validator=Transformer',
   '--views --notnull --validator=Transformer'
  ],[
   '',
