@@ -29,7 +29,7 @@
 
 query:
 	select | insert | insert | insert | delete | replace | update | transaction | alter | views | set |
-	proc_func | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query ; 
+	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query ; 
 
 p_query:
 	ext_slow_query_log | resp_time_dist | user_stats | drop_create_table ;
@@ -133,7 +133,7 @@ set:
 	SET scope INNODB_STRICT_MODE = 0 ;
 
 transaction:
-	| | START TRANSACTION | COMMIT | ROLLBACK | SAVEPOINT A | ROLLBACK TO SAVEPOINT A | FLUSH TABLES ;
+	| | START TRANSACTION | COMMIT | ROLLBACK | SAVEPOINT A | ROLLBACK TO SAVEPOINT A ;
 
 select:
 	SELECT select_item FROM _table where order_by limit ;
@@ -215,6 +215,9 @@ alter:
 proc_func:
 	DROP PROCEDURE IF EXISTS _letter[invariant] ; CREATE PROCEDURE _letter[invariant] ( proc_param ) BEGIN SELECT COUNT( _field ) INTO @a FROM _table ; END ; CALL _letter[invariant](@a); |
 	DROP FUNCTION IF EXISTS _letter[invariant] ; CREATE FUNCTION _letter[invariant] ( func_param ) RETURNS type DETERMINISTIC READS SQL DATA BEGIN DECLARE out1 type ; SELECT _table._field INTO out1 FROM _table ; RETURN out1 ;
+
+flush:
+	FLUSH TABLES | FLUSH QUERY CACHE ;
 		
 proc_param:
 	IN _letter type | OUT _letter type | IN _letter type , proc_param | OUT _letter type , proc_param ;
