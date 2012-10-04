@@ -210,29 +210,34 @@ my $simplifier = GenTest::Simplifier::Grammar->new(
 
             say("rqg_status = $rqg_status; duration = $duration");
 
-            return ORACLE_ISSUE_NO_LONGER_REPEATABLE
-                if $rqg_status == STATUS_ENVIRONMENT_FAILURE;
+            foreach my $desired_status_code (@{$config->desired_status_codes}) {
+                return ORACLE_ISSUE_NO_LONGER_REPEATABLE
+                    if ($rqg_status == STATUS_ENVIRONMENT_FAILURE && 
+                        $desired_status_code != STATUS_ENVIRONMENT_FAILURE);
+            }
 
             foreach my $desired_status_code (@{$config->desired_status_codes}) {
                 if (($rqg_status == $desired_status_code) ||
                     (($rqg_status != 0) && ($desired_status_code == STATUS_ANY_ERROR))) {
-                    # "backtrace" output (independend of server crash
-                    # or RQG kills the server) is in $current_rqg_log
+                    # The current log (to be scanned for @expected_output) is in $current_rqg_log 
+                    # Note: "crash backtrace" output is also present in $current_rqg_log (and this 
+                    # is so independent of whetter the server crashed, or if RQG killed the server)
                     open (my $my_logfile,'<'.$current_rqg_log)
                         or croak "unable to open $current_rqg_log : $!";
-                    # If open (above) did not fail than size
-                    # determination must be successful.
+                    # If open (above) did not fail than size determination must be successful.
                     my @filestats = stat($current_rqg_log);
                     my $filesize = $filestats[7];
-                    my $offset = $filesize - $config->search_var_size;
-                    # Of course read fails if $offset < 0
-                    $offset = 0 if $offset < 0;
-                    read($my_logfile, my $rqgtest_output, $config->search_var_size, $offset );
-                    close ($my_logfile);
-                    # Debug print("$rqgtest_output");
+                    my $offset = $config->property('search_var_size');
+                    croak "Option search_var_size (set to $offset) cannot be a negative value" if $offset < 0;
+                    $offset = $filesize if $offset > $filesize;
+                    seek($my_logfile, -$offset, 2) or croak "Could not seek $offset bytes backwards from the 
+                    end of the file '$current_rqg_log' (which is $filesize bytes long). Error: $!\n";
+                    read($my_logfile, my $rqgtest_output, $offset);
 
-                    # Every element of @expected_output must be found
-                    # in $rqgtest_output.
+                    close ($my_logfile);
+                    # Debug print("\n---$offset\n$rqgtest_output\n---\n");
+
+                    # Every element of @expected_output must be found in $rqgtest_output.
                     my $success = 1;
                     foreach my $expected_output (@{$config->expected_output}) {
                         if ($rqgtest_output =~ m{$expected_output}sio) {
