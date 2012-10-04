@@ -307,25 +307,24 @@ sub reportResults {
     my $reporter_manager = $self->reporterManager();
     my @report_results;
         
+    # New report type REPORTER_TYPE_END, used with reporter's that processes information at the end of a test.
     if ($total_status == STATUS_OK) {
-        # For successfull completing tests check the reporters with report type REPORTER_TYPE_END.
-        # REPORTER_TYPE_END will only be triggered at the end of the test.
         @report_results = $reporter_manager->report(REPORTER_TYPE_SUCCESS | REPORTER_TYPE_ALWAYS | REPORTER_TYPE_END);
     } elsif (
         ($total_status == STATUS_LENGTH_MISMATCH) ||
         ($total_status == STATUS_CONTENT_MISMATCH)
     ) {
-        @report_results = $reporter_manager->report(REPORTER_TYPE_DATA | REPORTER_TYPE_ALWAYS);
+        @report_results = $reporter_manager->report(REPORTER_TYPE_DATA | REPORTER_TYPE_ALWAYS | REPORTER_TYPE_END);
     } elsif ($total_status == STATUS_SERVER_CRASHED) {
         say("Server crash reported, initiating post-crash analysis...");
         @report_results = $reporter_manager->report(REPORTER_TYPE_CRASH | REPORTER_TYPE_ALWAYS);
     } elsif ($total_status == STATUS_SERVER_DEADLOCKED) {
         say("Server deadlock reported, initiating analysis...");
-        @report_results = $reporter_manager->report(REPORTER_TYPE_DEADLOCK | REPORTER_TYPE_ALWAYS);
+        @report_results = $reporter_manager->report(REPORTER_TYPE_DEADLOCK | REPORTER_TYPE_ALWAYS | REPORTER_TYPE_END);
     } elsif ($total_status == STATUS_SERVER_KILLED) {
-        @report_results = $reporter_manager->report(REPORTER_TYPE_SERVER_KILLED | REPORTER_TYPE_ALWAYS);
+        @report_results = $reporter_manager->report(REPORTER_TYPE_SERVER_KILLED | REPORTER_TYPE_ALWAYS | REPORTER_TYPE_END);
     } else {
-        @report_results = $reporter_manager->report(REPORTER_TYPE_ALWAYS);
+        @report_results = $reporter_manager->report(REPORTER_TYPE_ALWAYS | REPORTER_TYPE_END);
     }
         
     my $report_status = shift @report_results;
