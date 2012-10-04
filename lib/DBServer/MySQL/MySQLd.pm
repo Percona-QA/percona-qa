@@ -56,6 +56,7 @@ use constant MYSQLD_GENERAL_LOG => 21;
 use constant MYSQLD_WINDOWS_PROCESS_EXITCODE => 22;
 use constant MYSQLD_DEBUG_SERVER => 22;
 use constant MYSQLD_SERVER_TYPE => 23;
+use constant MYSQLD_VALGRIND_SUPPRESSION_FILE => 24;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_ERRORLOG_FILE => "mysql.err";
@@ -153,6 +154,11 @@ sub new {
             }
         }
     }
+   
+    ## Use valgrind suppression file available in mysql-test path. 
+    $self->[MYSQLD_VALGRIND_SUPPRESSION_FILE] = $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
+                                                             osWindows()?["share/mysql-test","mysql-test"]:["share/mysql-test","mysql-test"],
+                                                             "valgrind.supp");
     
     foreach my $file ("mysql_system_tables.sql", 
                       "mysql_system_tables_data.sql", 
@@ -244,6 +250,10 @@ sub logfile {
 
 sub errorlog {
     return $_[0]->vardir."/".MYSQLD_ERRORLOG_FILE;
+}
+
+sub valgrind_suppressionfile {
+    return $_[0]->[MYSQLD_VALGRIND_SUPPRESSION_FILE] ;
 }
 
 #sub libmysqldir {
@@ -392,7 +402,7 @@ sub startServer {
             if (defined $self->[MYSQLD_VALGRIND_OPTIONS]) {
                 $val_opt = join(' ',@{$self->[MYSQLD_VALGRIND_OPTIONS]});
             }
-            $command = "valgrind --time-stamp=yes ".$val_opt." ".$command;
+            $command = "valgrind --time-stamp=yes --leak-check=yes --suppressions=".$self->valgrind_suppressionfile." ".$val_opt." ".$command;
         }
         $self->printInfo;
         say("Starting MySQL ".$self->version.": $command");
@@ -466,7 +476,7 @@ sub term {
                 $waits++;
             }
             if ($waits >= 100) {
-                croak("Unable to terminate process ".$self->serverpid." Trying kill");
+                say("Unable to terminate process ".$self->serverpid." Trying kill");
                 $self->kill;
             } else {
                 say("Terminated process ".$self->serverpid);
