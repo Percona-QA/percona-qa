@@ -91,16 +91,22 @@ sub report {
     #   - map("($_)"): Wrap each escaped sting inside a pair of parenthesis (for proper regex alternatives).
     #   - join: Separate each block of parenthesis by the "or" operator (|).
     #   - Add valgrind line prefix.
-    my $regex = "^==[0-9]+==\s+.*".
+    # Account for both with and without timestamp in valgrind line prefix.
+    my $valgrind_prefix = '^==([0-9:\.]+ |)[0-9]+==\s+';
+    my $regex = $valgrind_prefix.".*".
         join('|', map("($_)", map{quotemeta} sort {length($b)<=>length($a)} (@valgrind_strings)));
-    $regex = qr/($regex)/i;  # quote and compile regex, case insensitive
+    $regex = qr/($regex)/i;  # quote and compile regex, case insensitive                                             
+    $valgrind_prefix = qr/$valgrind_prefix/; # also compile the prefix, used several times below.                    
     my @valgrind_lines;
     my $errorcount = 0;
     my $issue_detected = 0;
     while (my $line = <$LogFile>) {
-        push(@valgrind_lines, $line) if $line =~ m{^==[0-9]+==\s+\S};
-        if ($line =~ m{^==[0-9]+==\s+ERROR SUMMARY: ([0-9]+) errors}) {
-            $errorcount = $1;
+        chomp($line); # remove extra line endings                                                                    
+        if ($line =~ m{($valgrind_prefix)}) {
+            push(@valgrind_lines, $line);
+        }
+        if ($line =~ m{($valgrind_prefix)ERROR SUMMARY: ([0-9]+) errors}) {
+            $errorcount = $3;
         } elsif ($line =~ m{$regex}) {
             $issue_detected = 1;
         }
@@ -119,7 +125,7 @@ sub report {
 }
 
 sub type {
-    # We use the reporter type REPORTER_TYPE_END since this will get triggered only at the end of a successfully executed test.
+    # Use the reporter type REPORTER_TYPE_END, as this reporter will be triggered only at the end of a test.
     return REPORTER_TYPE_END ;
 }
 

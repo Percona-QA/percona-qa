@@ -270,7 +270,7 @@ my $rplsrv;
 
 if ($rpl_mode ne '') {
     my @options;
-    push @options, lc("--$engine") if defined $engine && lc($engine) ne lc('myisam');
+    push @options, lc("--$engine") if defined $engine && (lc($engine) ne lc('myisam') && lc($engine) ne lc('memory'));
     
     push @options, "--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
     
@@ -317,7 +317,7 @@ if ($rpl_mode ne '') {
         next if $basedirs[$server_id] eq '';
         
         my @options;
-        push @options, lc("--$engine") if defined $engine && lc($engine) ne lc('myisam');
+        push @options, lc("--$engine") if defined $engine && (lc($engine) ne lc('myisam') && lc($engine) ne lc('memory'));
         
         push @options, "--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
         
