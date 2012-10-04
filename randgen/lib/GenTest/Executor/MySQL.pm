@@ -214,12 +214,16 @@ use constant 	ER_CANT_CHANGE_TX_ISOLATION		=> 1568;
 use constant	ER_MIX_OF_GROUP_FUNC_AND_FIELDS		=> 1140;
 
 # The PREPARE already failed
+
 use constant  	ER_UNKNOWN_STMT_HANDLER => 1243 ;
 use constant	ER_NEED_REPREPARE	=> 1615 ;
 
 # Table mentioned more than once in statement processing a table list.
+
 use constant  	ER_NONUNIQ_TABLE	=> 1066 ;
+
 # Base table of a view was modified or dropped or ..
+
 use constant  	ER_VIEW_INVALID	=> 1356 ;
 
 use constant	ER_NO_SUCH_THREAD			=> 1094;
@@ -258,6 +262,7 @@ use constant	ER_LOCK_OR_ACTIVE_TRANSACTION	=> 1192;
 use constant	ER_TRANS_CACHE_FULL	=> 1197;
 
 # The table is already read locked by the same session.
+
 use constant  	ER_CANT_UPDATE_WITH_READLOCK => 1223 ;
 
 # Storage engine failures
@@ -275,6 +280,7 @@ use constant	ER_CRASHED_ON_USAGE	=> 1194;
 use constant	ER_NOT_KEYFILE		=> 1034;
 use constant	ER_UNEXPECTED_EOF	=> 1039;
 use constant	ER_SP_PROC_TABLE_CORRUPT=> 1457;
+
 # Backup
 
 use constant	ER_BACKUP_NOT_ENABLED	=> 1789;
@@ -476,6 +482,14 @@ my %err2type = (
 	ER_SERVER_SHUTDOWN()    => STATUS_SERVER_KILLED
 );
 
+# Sub-error numbers (<nr>) from storage engine failures (ER_GET_ERRNO);
+# "1030 Got error <nr> from storage engine", which should not lead to 
+# STATUS_DATABASE_CORRUPTION, as they are acceptable runtime errors.
+
+my %acceptable_se_errors = (
+        139                     => "TOO_BIG_ROW"
+);
+
 sub init {
 	my $executor = shift;
 	my $dbh = DBI->connect($executor->dsn(), undef, undef, {
@@ -607,6 +621,10 @@ sub execute {
 	my $err = $sth->err();
 	my $errstr = $executor->normalizeError($sth->errstr()) if defined $sth->errstr();
 	my $err_type = $err2type{$err} || STATUS_OK;
+	if ($err == ER_GET_ERRNO) {
+		my ($se_err) = $sth->errstr() =~ m{^Got error\s+(\d+)\s+from storage engine}sgio;
+		$err_type = STATUS_OK if (defined $acceptable_se_errors{$se_err});
+	}
 	$executor->[EXECUTOR_STATUS_COUNTS]->{$err_type}++ if not ($execution_flags & EXECUTOR_FLAG_SILENT);
 	my $mysql_info = $dbh->{'mysql_info'};
 	my ($matched_rows, $changed_rows) = $mysql_info =~ m{^Rows matched:\s+(\d+)\s+Changed:\s+(\d+)}sgio;
