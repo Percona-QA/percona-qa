@@ -230,7 +230,7 @@ if ($rpl_mode ne '') {
             }
             
             if ((defined $dsns[$server_id]) && (defined $engine)) {
-                my $dbh = DBI->connect($dsns[$server_id], undef, undef, { RaiseError => 1 } );
+                my $dbh = DBI->connect($dsns[$server_id], undef, undef, { mysql_multi_statements => 1, RaiseError => 1 } );
                 $dbh->do("SET GLOBAL storage_engine = '$engine'");
             }
         }
