@@ -220,8 +220,8 @@ flush:
 	FLUSH TABLES | FLUSH QUERY CACHE ;
 		
 proc_param:
-	IN _letter type | OUT _letter type | IN _letter type , proc_param | OUT _letter type , proc_param ;
-	
+	IN _letter type | OUT _letter type ;
+
 func_param:
 	_letter type | _letter type , func_param ;
 	
