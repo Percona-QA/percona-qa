@@ -239,14 +239,16 @@ sub configure {
     return 1;
 }
 
-# Input : For given binary either mysqld/mysqld_debug
+# Input : For given binary either mysqld/mysqld-debug
 # Output: Return bindir and absolute path of the binary file.
 sub findMySQLD {
     my ($reporter,$binname)=@_;
     my $bindir;
+    # Handling general basedirs and MTRv1 style basedir.
+    my @basedirs=($reporter->serverVariable('basedir'),File::Spec->catfile($reporter->serverVariable('basedir'),'..'));
     find(sub {
             $bindir=$File::Find::dir if $_ eq $binname;
-    }, $reporter->serverVariable('basedir'));
+    }, @basedirs);
     my $binary = File::Spec->catfile($bindir, $binname);
     return ($bindir,$binary);
 }
