@@ -42,7 +42,7 @@ my $query = " SELECT * FROM A ";
 my $trials = 1000;
 
 my $dsn = 'dbi:mysql:host=127.0.0.1:port=19306:user=root:database=test';
-my $dbh = DBI->connect($dsn);
+my $dbh = DBI->connect($dsn, undef, undef, { mysql_multi_statements => 1, RaiseError => 1 });
 
 my $simplifier = GenTest::Simplifier::SQL->new(
 	oracle => sub {
