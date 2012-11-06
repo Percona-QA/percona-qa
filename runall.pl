@@ -385,18 +385,18 @@ foreach my $server_id (0..1) {
 #	unlink($out_file);
 	
 	if ((defined $master_dsns[$server_id]) && (defined $engine)) {
-		my $dbh = DBI->connect($master_dsns[$server_id], undef, undef, { RaiseError => 1 } );
+		my $dbh = DBI->connect($master_dsns[$server_id], undef, undef, { mysql_multi_statements => 1, RaiseError => 1 } );
 		$dbh->do("SET GLOBAL storage_engine = '$engine'");
 	}
 }
 
 chdir($cwd);
 
-my $master_dbh = DBI->connect($master_dsns[0], undef, undef, { RaiseError => 1 } );
+my $master_dbh = DBI->connect($master_dsns[0], undef, undef, { mysql_multi_statements => 1, RaiseError => 1 } );
 
 if ($rpl_mode) {
 	my $slave_dsn = "dbi:mysql:host=127.0.0.1:port=".$slave_port.":user=root:database=".$database;
-	my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { RaiseError => 1 } );
+	my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { mysql_multi_statements => 1, RaiseError => 1 } );
 
 	say("Establishing replication, mode $rpl_mode ...");
 
