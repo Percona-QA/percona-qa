@@ -74,7 +74,7 @@ sub new {
 		properties => REPORTER_PROPERTIES
 	}, @_);
 
-	my $dbh = DBI->connect($reporter->dsn(), undef, undef, { RaiseError => 0 , PrintError => 1 } );
+	my $dbh = DBI->connect($reporter->dsn(), undef, undef, { mysql_multi_statements => 1, RaiseError => 0 , PrintError => 1 } );
 	return undef if not defined $dbh;
 	my $sth = $dbh->prepare("SHOW VARIABLES");
 
