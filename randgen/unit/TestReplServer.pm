@@ -53,8 +53,8 @@ sub tear_down {
 }
 
 
-sub test_create_server {
-    my $self = shift;
+sub create_repl_server1 {
+    my ($self, $debug_server) = @_;
     
     my $portbase = 30 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
 
@@ -64,6 +64,7 @@ sub test_create_server {
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
     
     my $server = DBServer::MySQL::ReplMySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                                  debug_server => $debug_server,
                                                   master_vardir => $master_vardir,
                                                   mode => 'statement',
                                                   master_port => $portbase);
@@ -92,8 +93,8 @@ sub test_create_server {
     sayFile($server->slave->errorlog);
 }
 
-sub test_create_repl {
-    my $self = shift;
+sub create_repl_server2 {
+    my ($self, $debug_server) = @_;
     
     my $portbase = 30 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
 
@@ -103,9 +104,11 @@ sub test_create_repl {
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
     
     my $master = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                              debug_server => $debug_server,
                                               vardir => $master_vardir,
                                               port => $portbase);
     my $slave = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                             debug_server => $debug_server,
                                              vardir => $slave_vardir,
                                              port => $portbase+2);
     
@@ -136,6 +139,32 @@ sub test_create_repl {
     
     sayFile($server->master->errorlog);
     sayFile($server->slave->errorlog);
+}
+
+# Start replication server1
+sub test_create_rpl_server1 {
+    my $self=shift;
+    $self->create_repl_server1(); 
+}
+
+# Start replication server2
+sub test_create_repl_server2 {
+    my $self=shift;
+    $self->create_repl_server2(); 
+}
+
+# Start a debug type replication server.
+# Bug:14155724
+sub test_create_rpl_debug_server1 {
+    my $self=shift;
+    $self->create_repl_server1(1); 
+}
+
+# Start a debug type replication server.
+# Bug:14155724
+sub test_create_repl_debug_server2 {
+    my $self=shift;
+    $self->create_repl_server2(1); 
 }
 
 1;
