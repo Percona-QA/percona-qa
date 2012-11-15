@@ -31,6 +31,7 @@ use GenTest::Constants;
 use GenTest::Reporter;
 use GenTest::ReporterManager;
 use GenTest::Reporter::Backtrace;
+use File::Basename;
 
 use File::Path qw(mkpath rmtree);
 
@@ -56,8 +57,8 @@ sub set_up {
         $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
         
         $server = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
-            vardir => $vardir,
-            port => $portbase);
+                                               vardir => $vardir,
+                                               port => $portbase);
         $self->assert_not_null($server);
         
         $self->assert(-f $vardir."/data/mysql/db.MYD","No ".$vardir."/data/mysql/db.MYD");
@@ -104,10 +105,10 @@ sub init_reporter {
     my $reporter_manager = GenTest::ReporterManager->new();
     $self->assert_not_null($reporter_manager);
     
-    $reporter_manager->addReporter($reporter, {
-            dsn => $server->dsn,
-            properties =>  GenTest::Properties->new()
+    $reporter_manager->addReporter($reporter, { dsn => $server->dsn,
+                                                properties =>  GenTest::Properties->new()
     });
+
     $self->assert_not_null($reporter_manager);
     
     return $reporter_manager;
@@ -189,5 +190,65 @@ sub test_crash_and_valgrind_reporter {
     $self->assert_equals($status,$total_status);
 }
 
+
+# Check the type of binary mysqld or mysqld-debug
+sub check_binary_type {
+    my ($self,$reporter)=@_;
+    my $binary;
+    my $file_name;
+    
+    $binary=$reporter->serverInfo('binary');
+    # If the server binary is debug
+    if ($reporter->serverDebug) {
+        $binary=$reporter->serverInfo('binary');
+        $self->assert_not_null($binary);
+        
+        $file_name=basename($binary);
+        $self->assert_not_null($file_name);
+        
+        # type should be mysqld-debug
+        if ($file_name eq 'mysqld-debug') {
+            $self->assert_equals($file_name,'mysqld-debug');
+        } else {
+        	# debug binaries can be mysqld too
+            $self->assert_equals($file_name,'mysqld');  
+        }
+    } else {
+        # if the server is non-debug
+        $binary=$reporter->serverInfo('binary');
+        $self->assert_not_null($binary);
+        
+        $file_name=basename($binary);
+        $self->assert_not_null($file_name);
+        
+        # sever binary type should be mysqld
+        if ( $file_name eq 'mysqld') {
+            $self->assert_equals($file_name,'mysqld');
+        } else {
+        	# in case we have a mysqld-debug binary
+            $self->assert_equals($file_name,'mysqld-debug');    
+        }
+    }
+}
+
+# Bug:14328581 
+# To test mysqld/mysqld-debug binary type servers.
+sub test_mysqld_debug_and_nondebug_server_with_reporter {
+    my $self = shift;
+    
+    # Intialize the reporters.
+    my $reporter1 = GenTest::Reporter->new(dsn => $server->dsn,
+                                           debug_server => 1,
+                                           properties =>  GenTest::Properties->new());
+    $self->assert_not_null($reporter1);
+    
+    my $reporter2 = GenTest::Reporter->new(dsn => $server->dsn,
+                                           properties =>  GenTest::Properties->new());
+    $self->assert_not_null($reporter2);
+    
+    # Check if the correct type of binary is picked.
+    $self->check_binary_type($reporter1);
+    $self->check_binary_type($reporter2);
+}
 
 1;
