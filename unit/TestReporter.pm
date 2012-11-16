@@ -237,17 +237,19 @@ sub test_mysqld_debug_and_nondebug_server_with_reporter {
     my $self = shift;
     
     # Intialize the reporters.
-    my $reporter1 = GenTest::Reporter->new(dsn => $server->dsn,
-                                           debug_server => 1,
-                                           properties =>  GenTest::Properties->new());
-    $self->assert_not_null($reporter1);
+    
+    #my $reporter1 = GenTest::Reporter->new(dsn => $server->dsn,
+    #                                       debug_server => 1,
+    #                                       properties =>  GenTest::Properties->new());
+    #$self->assert_not_null($reporter1);
     
     my $reporter2 = GenTest::Reporter->new(dsn => $server->dsn,
-                                           properties =>  GenTest::Properties->new());
+        properties =>  GenTest::Properties->new());
     $self->assert_not_null($reporter2);
     
     # Check if the correct type of binary is picked.
-    $self->check_binary_type($reporter1);
+    
+    #$self->check_binary_type($reporter1);
     $self->check_binary_type($reporter2);
 }
 

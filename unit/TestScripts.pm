@@ -31,16 +31,16 @@ sub new {
 }
 
 my $generator;  
-my $counter; # to avoid port clashes.
+my $counter=0; # to avoid port clashes.
 
 sub set_up {
     my $self=shift;
     # Set temporary working directory. Used for vardir, workdir etc. in tests. 
     # Remove it in tear_down() to avoid interference between tests!
     $self->{workdir} = cwd()."/unit/tmpwd2"; 
-    $counter++;
     my $portbase = ($counter*10) + ($ENV{TEST_PORTBASE}>0 ? int($ENV{TEST_PORTBASE}) : 22120);
     $self->{portbase} = int(($portbase - 10000) / 10);
+    $counter++;
 }
 
 sub tear_down {
