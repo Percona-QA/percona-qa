@@ -39,7 +39,7 @@ sub set_up {
     $self->{logfile} = 'unit/tmp/transformer'.$counter.'.log';
     # --mtr-build-thread : Should differ between testcases due to possible
     # parallelism. We use a "unique" portbase for this.
-    my $portbase = ($counter*10) + ($ENV{TEST_PORTBASE}>0 ? int($ENV{TEST_PORTBASE}) : 22120);
+    my $portbase = ($counter*20) + ($ENV{TEST_PORTBASE}>0 ? int($ENV{TEST_PORTBASE}) : 22120);
     $self->{portbase} = int(($portbase - 10000) / 10);
 }
 

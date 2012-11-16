@@ -155,10 +155,10 @@ sub test_create_repl_server2 {
 
 # Start a debug type replication server.
 # Bug:14155724
-sub test_create_rpl_debug_server1 {
-    my $self=shift;
-    $self->create_repl_server1(1); 
-}
+#sub test_create_rpl_debug_server1 {
+#    my $self=shift;
+#    $self->create_repl_server1(1); 
+#}
 
 # Start a debug type replication server.
 # Bug:14155724
