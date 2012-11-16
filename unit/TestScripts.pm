@@ -210,41 +210,4 @@ sub test_combinations_exit_status {
     }
 }
 
-# Bug:14377271
-# Fix for handling child processes created only by RQG.
-sub test_crash_with_invalid_exitcode {
-    my $self = shift;
-    my $query = "{ system(\"killall -11 mysqld\"); return undef }; SELECT 1 ;";
-    
-    ## This test requires RQG_MYSQL_BASE to point to a MySQL installation (or in-source build)
-    if ($ENV{RQG_MYSQL_BASE}) {
-        # Use a grammar file that uses the above query.
-        my $grammar = 'unit/tmp/crash_invalid_exitcode.yy';
-        open(FILE, "> $grammar") or assert("Unable to create grammar file");
-        print FILE "query:\n";
-        print FILE "    $query\n";
-        close FILE;
-        
-        my $rqg_opts = 
-        "--grammar=$grammar " 
-        .'--queries=2 '
-        .'--reporter=None '
-        .'--engine=MyISAM '
-        .'--threads=1 ' 
-        .'--basedir='.$ENV{RQG_MYSQL_BASE};
-        
-        my $cmd = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts
-        .' --mtr-build-thread='.$self->{portbase}
-        .' > '.'unit/tmp/crash_invalid_exitcode.log 2>&1';
-        $self->annotate("RQG command line: $cmd");
-        my $status = system($cmd);
-        my $actual = $status >> 8;
-        my $expected = STATUS_SERVER_CRASHED;
-        $self->assert_num_equals($expected, $actual, 
-            "Wrong exit status from runall-new.pl, expected $expected and got $actual");
-        unlink $grammar;
-    }
-}
-
-
 1;
