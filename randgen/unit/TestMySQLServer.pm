@@ -124,9 +124,9 @@ sub test_create_server {
 
 # Start a debug type server.
 # Bug: 14155724 
-sub test_create_debug_server {
-    my $self = shift;
-    $self->create_server(1);
-}
+#sub test_create_debug_server {
+#    my $self = shift;
+#    $self->create_server(1);
+#}
 
 1;
