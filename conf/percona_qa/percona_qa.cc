@@ -20,7 +20,7 @@
 $combinations=
 [
  ['
-  --seed=random --duration=600 --querytimeout=60
+  --seed=random --duration=300 --querytimeout=60
   --short_column_names --sqltrace
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
@@ -47,6 +47,9 @@ $combinations=
  ],[
   '',
   '--mysqld=--innodb_lazy_drop_table=1'
+ ],[
+  '',
+  '--innodb_track_changed_pages=1'
  ],[
   '',
   '--mysqld=--innodb_file_per_table=1',
