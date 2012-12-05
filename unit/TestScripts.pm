@@ -51,6 +51,10 @@ sub tear_down {
     if (-e $self->{workdir}) {
         rmtree($self->{workdir}) or print("UNABLE TO REMOVE DIR ".$self->{workdir}.": $!\n");
     }
+    # Remove replication slave wordir, if it exists.
+    if (-e $self->{workdir}."_slave") {
+        rmtree($self->{workdir}."_slave") or print("UNABLE TO REMOVE DIR ".$self->{workdir}."_slave".": $!\n");
+    }
 }
 
 sub test_gensql {
@@ -123,6 +127,70 @@ sub test_runall_new {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         $ENV{MTR_BUILD_THREAD}=$self->{portbase};
         my $status = system("perl -MCarp=verbose ./runall-new.pl --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
+        $self->assert_equals(0, $status);
+    }
+}
+
+sub test_runall_replication {
+    my $self = shift;
+    if ($ENV{TEST_SKIP_RUNALL}) {
+        say((caller(0))[3].": Skipping runall.pl test");
+        return;
+    }
+    
+    my $pb = $self->{portbase};
+    ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
+    if ($ENV{RQG_MYSQL_BASE}) {
+        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
+        my $status = system("perl -MCarp=verbose ./runall.pl --rpl_mode=default --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --basedir=".$ENV{RQG_MYSQL_BASE});
+        $self->assert_equals(0, $status);
+    }
+}
+
+sub test_runall_new_replication {
+    my $self = shift;
+    ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
+    my $pb = $self->{portbase};
+    
+    
+    if ($ENV{RQG_MYSQL_BASE}) {
+        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
+        my $status = system("perl -MCarp=verbose ./runall-new.pl --rpl_mode=default --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
+        $self->assert_equals(0, $status);
+    }
+}
+
+sub test_runall_comparison {
+    my $self = shift;
+    ##if ($ENV{TEST_OUT_OF_SOURCE}) {
+    ##    ## runall does not work with out of source builds
+    ##    say("test_runall skipped for out-of-source build");
+    ##    return;
+    ##}
+    
+    if ($ENV{TEST_SKIP_RUNALL}) {
+        say((caller(0))[3].": Skipping runall.pl test");
+        return;
+    }
+    
+    my $pb = $self->{portbase};
+    ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
+    if ($ENV{RQG_MYSQL_BASE}) {
+        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
+        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --basedir1=".$ENV{RQG_MYSQL_BASE}." --basedir2=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
+        $self->assert_equals(0, $status);
+    }
+}
+
+sub test_runall_new_comparison {
+    my $self = shift;
+    ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
+    my $pb = $self->{portbase};
+    
+    
+    if ($ENV{RQG_MYSQL_BASE}) {
+        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
+        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --basedir1=".$ENV{RQG_MYSQL_BASE}." --basedir2=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
         $self->assert_equals(0, $status);
     }
 }
