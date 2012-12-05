@@ -500,43 +500,47 @@ $ENV{RQG_THREADS}= $threads;
 my $gentest = GenTest::App::GenTest->new(config => $gentestProps);
 my $gentest_result = $gentest->run();
 say("GenTest exited with exit status ".status2text($gentest_result)." ($gentest_result)");
-exit_test($gentest_result) if $gentest_result > 0;
 
-#
-# Compare master and slave, or two masters
-#
-
-if ($rpl_mode || (defined $basedirs[1])) {
-    if ($rpl_mode ne '') {
-        $rplsrv->waitForSlaveSync;
-    }
-
-    my @dump_files;
-    
-	foreach my $i (0..$#server) {
-		$dump_files[$i] = tmpdir()."server_".$$."_".$i.".dump";
+# If Gentest produced any failure then exit with its failure code,
+# otherwise if the test is replication/with two servers compare the 
+# server dumps for any differences else if there are no failures exit with success.
+if ( $gentest_result != 0 ) {
+    exit_test($gentest_result);
+} else {
+    #
+    # Compare master and slave, or two masters
+    #
+    if ($rpl_mode || (defined $basedirs[1])) {
+        if ($rpl_mode ne '') {
+            $rplsrv->waitForSlaveSync;
+        }
         
-		my $dump_result = $server[$i]->dumpdb($database,$dump_files[$i]);
-		exit_test($dump_result >> 8) if $dump_result > 0;
-	}
-    
-	say("Comparing SQL dumps...");
-	my $diff_result = system("diff -u $dump_files[0] $dump_files[1]");
-	$diff_result = $diff_result >> 8;
-    
-	if ($diff_result == 0) {
-		say("No differences were found between servers.");
-	}
-    
-	foreach my $dump_file (@dump_files) {
-		unlink($dump_file);
-	}
-    
-	exit_test($diff_result);
+        my @dump_files;
+        
+        foreach my $i (0..$#server) {
+            $dump_files[$i] = tmpdir()."server_".$$."_".$i.".dump";
+            
+            my $dump_result = $server[$i]->dumpdb($database,$dump_files[$i]);
+            exit_test($dump_result >> 8) if $dump_result > 0;
+        }
+        
+        say("Comparing SQL dumps...");
+        my $diff_result = system("diff -u $dump_files[0] $dump_files[1]");
+        $diff_result = $diff_result >> 8;
+        
+        if ($diff_result == 0) {
+            say("No differences were found between servers.");
+        }
+        
+        foreach my $dump_file (@dump_files) {
+            unlink($dump_file);
+        }
+        exit_test($diff_result);
+    } else {
+        # If test was sucessfull and not rpl/two servers.
+        exit_test($gentest_result);
+    }
 }
-
-
-stopServers();
 
 sub stopServers {
     if ($rpl_mode ne '') {
