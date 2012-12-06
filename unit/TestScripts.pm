@@ -115,7 +115,7 @@ sub test_runall {
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         $ENV{MTR_BUILD_THREAD}=$self->{portbase};
-        my $status = system("perl -MCarp=verbose ./runall.pl --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl -MCarp=verbose ./runall.pl --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --reporter=Shutdown --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
     }
 }
@@ -126,7 +126,7 @@ sub test_runall_new {
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
         $ENV{MTR_BUILD_THREAD}=$self->{portbase};
-        my $status = system("perl -MCarp=verbose ./runall-new.pl --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
+        my $status = system("perl -MCarp=verbose ./runall-new.pl --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --reporter=Shutdown --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
         $self->assert_equals(0, $status);
     }
 }
@@ -142,7 +142,7 @@ sub test_runall_replication {
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall.pl --rpl_mode=default --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl -MCarp=verbose ./runall.pl --rpl_mode=default --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --reporter=Shutdown --basedir=".$ENV{RQG_MYSQL_BASE});
         $self->assert_equals(0, $status);
     }
 }
@@ -177,7 +177,7 @@ sub test_runall_comparison {
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --basedir1=".$ENV{RQG_MYSQL_BASE}." --basedir2=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
+        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --reporter=Shutdown --basedir1=".$ENV{RQG_MYSQL_BASE}." --basedir2=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
         $self->assert_equals(0, $status);
     }
 }
