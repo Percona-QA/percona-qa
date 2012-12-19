@@ -57,6 +57,7 @@ use constant MYSQLD_WINDOWS_PROCESS_EXITCODE => 22;
 use constant MYSQLD_DEBUG_SERVER => 22;
 use constant MYSQLD_SERVER_TYPE => 23;
 use constant MYSQLD_VALGRIND_SUPPRESSION_FILE => 24;
+use constant MYSQLD_TMPDIR => 25;
 
 use constant MYSQLD_PID_FILE => "mysql.pid";
 use constant MYSQLD_ERRORLOG_FILE => "mysql.err";
@@ -97,6 +98,9 @@ sub new {
         $self->[MYSQLD_VARDIR] = $self->basedir."/".$self->vardir;
     }
     
+    # Default tmpdir for server.
+    $self->[MYSQLD_TMPDIR] = $self->vardir."/tmp";
+
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
     
     # Use mysqld-debug server if --debug-server option used.
@@ -216,6 +220,10 @@ sub vardir {
     return $_[0]->[MYSQLD_VARDIR];
 }
 
+sub tmpdir {
+    return $_[0]->[MYSQLD_TMPDIR];
+}
+
 sub port {
     my ($self) = @_;
     
@@ -299,6 +307,7 @@ sub createMysqlBase  {
 
     ## 2. Create database directory structure
     mkpath($self->vardir);
+    mkpath($self->tmpdir);
     mkpath($self->datadir);
     mkpath($self->datadir."/mysql");
     mkpath($self->datadir."/test");
@@ -357,7 +366,8 @@ sub startServer {
                                           "--master-retry-count=65535",
                                           "--port=".$self->port,
                                           "--socket=".$self->socketfile,
-                                          "--pid-file=".$self->pidfile],
+                                          "--pid-file=".$self->pidfile,
+                                          "--tmpdir=".$self->tmpdir],
                                          $self->_logOptions);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
@@ -696,11 +706,12 @@ sub version {
 
 sub printInfo {
     my($self) = @_;
-    
+
     say("MySQL Version:". $self->version);
     say("Binary: ". $self->binary);
     say("Type: ". $self->serverType($self->binary));
     say("Datadir: ". $self->datadir);
+    say("Tmpdir: ". $self->tmpdir);
     say("Corefile: " . $self->corefile);
 }
 
