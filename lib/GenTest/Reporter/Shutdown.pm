@@ -31,54 +31,54 @@ use IPC::Open3;
 
 sub report {
     if (defined $ENV{RQG_CALLBACK}) {
-	say "Shutdown reporter should not be used in callback environments (E.g. JET)";
-	return STATUS_OK;
+        say "Shutdown reporter should not be used in callback environments (E.g. JET)";
+        return STATUS_OK;
     }
     my $reporter = shift;
-
+    
     my $primary_port = $reporter->serverVariable('port');
-
+    
     foreach my $port ($primary_port + 4, $primary_port + 2, $primary_port) {
-	my $dsn = "dbi:mysql:host=127.0.0.1:port=".$port.":user=root";
-	my $dbh = DBI->connect($dsn, undef, undef, { PrintError => 0 } );
-	
-	my $pid;
-	if ($port == $primary_port) {
-	    $pid = $reporter->serverInfo('pid');
-	} elsif (defined $dbh) {
-	    my ($pid_file) = $dbh->selectrow_array('SELECT @@pid_file');
-	    if (open (PF, $pid_file)) {
-            read (PF, $pid, -s $pid_file);
-            close (PF);
-            $pid =~ s{[\r\n]}{}sio;
-        } else {
-            say("Unable to obtain pid: $!");
+        my $dsn = "dbi:mysql:host=127.0.0.1:port=".$port.":user=root";
+        my $dbh = DBI->connect($dsn, undef, undef, { PrintError => 0 } );
+        
+        my $pid;
+        if ($port == $primary_port) {
+            $pid = $reporter->serverInfo('pid');
+        } elsif (defined $dbh) {
+            my ($pid_file) = $dbh->selectrow_array('SELECT @@pid_file');
+            if (open (PF, $pid_file)) {
+                read (PF, $pid, -s $pid_file);
+                close (PF);
+                $pid =~ s{[\r\n]}{}sio;
+            } else {
+                say("Unable to obtain pid: $!");
+            }
         }
-	}
-	
-	if (defined $dbh) {
-	    say("Shutting down server on port $port via DBI...");
-	    $dbh->func('shutdown', 'admin');
-	}
-	
-	if (defined $pid) {
-	    say("Shutting down server with pid $pid with SIGTERM...");
-	    kill(15, $pid);
-	    
-	    if (!osWindows()) {
-		say("Waiting for mysqld with pid $pid to terminate...");
-		foreach my $i (1..60) {
-		    if (! -e "/proc/$pid") {
-			print "\n";
-			last;
-		    }
-		    sleep(1);
-		    print "+";
-		}
-		say("... waiting complete. Just in case, killing server with pid $pid with SIGKILL ...");
-		kill(9, $pid);
-	    }
-	}
+        
+        if (defined $dbh) {
+            say("Shutting down server on port $port via DBI...");
+            $dbh->func('shutdown', 'admin');
+        }
+        
+        if (defined $pid) {
+            say("Shutting down server with pid $pid with SIGTERM...");
+            kill(15, $pid);
+            
+            if (!osWindows()) {
+                say("Waiting for mysqld with pid $pid to terminate...");
+                foreach my $i (1..60) {
+                    if (! -e "/proc/$pid") {
+                        print "\n";
+                        last;
+                    }
+                    sleep(1);
+                    print "+";
+                }
+                say("... waiting complete. Just in case, killing server with pid $pid with SIGKILL ...");
+                kill(9, $pid);
+            }
+        }
     }	
     return STATUS_OK;
 }
