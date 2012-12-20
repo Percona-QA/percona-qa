@@ -47,10 +47,13 @@ sub report {
 	    $pid = $reporter->serverInfo('pid');
 	} elsif (defined $dbh) {
 	    my ($pid_file) = $dbh->selectrow_array('SELECT @@pid_file');
-	    open (PF, $pid_file) or say("Unable to obtain pid: $!");
-	    read (PF, $pid, -s $pid_file);
-	    close (PF);
-	    $pid =~ s{[\r\n]}{}sio;
+	    if (open (PF, $pid_file)) {
+            read (PF, $pid, -s $pid_file);
+            close (PF);
+            $pid =~ s{[\r\n]}{}sio;
+        } else {
+            say("Unable to obtain pid: $!");
+        }
 	}
 	
 	if (defined $dbh) {
