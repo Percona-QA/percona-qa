@@ -244,8 +244,11 @@ sub forkpid {
 
 sub socketfile {
     my ($self) = @_;
-
-    return "/tmp/RQGmysql.".$self->port.".sock";
+    my $socketFileName = $_[0]->vardir."/mysql.sock";
+    if (length($socketFileName) >= 100) {
+	$socketFileName = "/tmp/RQGmysql.".$self->port.".sock";
+    }
+    return $socketFileName;
 }
 
 sub pidfile {
