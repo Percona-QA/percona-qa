@@ -48,6 +48,7 @@ sub new {
     #   --mtr-build-thread : Should differ between testcases due to parallelism.
     #   runall.pl or runall-new.pl : We need to test both.
     #   Output redirection.
+    $self->{workdir} = cwd()."/unit/tmpwd3"; 
     my $rqg_opts = "--grammar=$grammar " 
             .'--queries=2 ' 
             .'--threads=1 ' 
@@ -66,7 +67,6 @@ sub set_up {
     $self->{logfile} = 'unit/sqltrace'.$counter.'.log';
     my $portbase = ($counter*10) + ($ENV{TEST_PORTBASE}>0 ? int($ENV{TEST_PORTBASE}) : 22120);
     $self->{pb} = int(($portbase - 10000) / 10);
-    $self->{workdir} = cwd()."/unit/tmpwd3"; 
 }
 
 sub tear_down {
