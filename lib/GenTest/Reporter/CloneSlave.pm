@@ -136,14 +136,14 @@ sub monitor {
 
 	my $dump_file = $slave_datadir.'/'.time().'.dump';
 	say("Dumping master to $dump_file ...");
-	my $mysqldump_command = $client_basedir.'/mysqldump --max_allowed_packet=25M --net_buffer_length=1M -uroot --protocol=tcp --port='.$master_port.' --single-transaction --master-data --skip-tz-utc --databases '.$databases_string.' > '.$dump_file;
+	my $mysqldump_command = $client_basedir.'/mysqldump --max_allowed_packet=25M --net_buffer_length=1M -uroot --password='' --protocol=tcp --port='.$master_port.' --single-transaction --master-data --skip-tz-utc --databases '.$databases_string.' > '.$dump_file;
 	say($mysqldump_command);
 	system($mysqldump_command);
 	return STATUS_ENVIRONMENT_FAILURE if $? != 0;
 	say("Mysqldump done.");
 
 	say("Loading dump from $dump_file into cloned slave ...");
-	my $mysql_command = $client_basedir.'/mysql -uroot --max_allowed_packet=30M --protocol=tcp --port='.$slave_port.' < '.$dump_file;
+	my $mysql_command = $client_basedir.'/mysql -uroot --password='' --max_allowed_packet=30M --protocol=tcp --port='.$slave_port.' < '.$dump_file;
 	say($mysql_command);
 	system($mysql_command);
 	return STATUS_ENVIRONMENT_FAILURE if $? != 0;
@@ -229,7 +229,7 @@ sub report {
                 say("Dumping server on port $dump_ports[$i]...");
 		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
 
-		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root --databases $databases_string | sort > $dump_files[$i]") >> 8;
+		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root --password='' --databases $databases_string | sort > $dump_files[$i]") >> 8;
 		return STATUS_ENVIRONMENT_FAILURE if $dump_result > 0;
         }
 
