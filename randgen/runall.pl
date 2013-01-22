@@ -317,7 +317,7 @@ foreach my $server_id (0..1) {
 	push @mtr_options, "--mysqld=--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
 	push @mtr_options, "--mysqld=--relay-log=slave-relay-bin";
 	push @mtr_options, "--mysqld=--loose-innodb";
-	push @mtr_options, "--mysqld=--loose-falcon-debug-mask=2";
+      #	push @mtr_options, "--mysqld=--loose-falcon-debug-mask=2";	# No longer used, really
 	push @mtr_options, "--mysqld=--secure-file-priv=";		# Disable secure-file-priv that mtr enables.
 	push @mtr_options, "--mysqld=--max-allowed-packet=16Mb";	# Allow loading bigger blobs
 	push @mtr_options, "--mysqld=--loose-innodb-status-file=1";
