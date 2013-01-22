@@ -30,6 +30,7 @@ use lib 'lib';
 use GenTest;
 use Cwd;
 use GenTest::Constants;
+use File::Path qw(rmtree);
 
 my $counter;    # something to distinguish test cases to avoid port conflicts etc.
 
@@ -50,7 +51,8 @@ sub new {
     my $rqg_opts = "--grammar=$grammar " 
             .'--queries=2 ' 
             .'--threads=1 ' 
-            .'--basedir='.$ENV{RQG_MYSQL_BASE};
+            .'--basedir='.$ENV{RQG_MYSQL_BASE}.' '
+            .'--vardir='.$self->{workdir};
     $self->{rqg_command_runall} = 'perl -MCarp=verbose ./runall.pl '.$rqg_opts.' --reporter=Shutdown'; 
     $self->{rqg_command_runall_new} = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts;
     # Pattern to look for in rqg output / logfile.
@@ -64,11 +66,16 @@ sub set_up {
     $self->{logfile} = 'unit/sqltrace'.$counter.'.log';
     my $portbase = ($counter*10) + ($ENV{TEST_PORTBASE}>0 ? int($ENV{TEST_PORTBASE}) : 22120);
     $self->{pb} = int(($portbase - 10000) / 10);
+    $self->{workdir} = cwd()."/unit/tmpwd3"; 
 }
 
 sub tear_down {
     my $self = shift;
     # clean up after test
+    # Not all tests use the workdir, so we need to check if it exists.
+    if (-e $self->{workdir}) {
+        rmtree($self->{workdir}) or print("UNABLE TO REMOVE DIR ".$self->{workdir}.": $!\n");
+    }
     unlink $self->{logfile};
 }
 
