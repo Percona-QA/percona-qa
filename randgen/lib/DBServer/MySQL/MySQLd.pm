@@ -192,7 +192,8 @@ sub new {
                                $self->_messages,
                                "--character-sets-dir=".$self->[MYSQLD_CHARSETS],
                                "--default-storage-engine=myisam",
-                               "--log-warnings=0"];    
+                               "--log-warnings=0",
+                               "--tmpdir=".$self->tmpdir];    
 
     if ($self->[MYSQLD_START_DIRTY]) {
         say("Using existing data for MySQL " .$self->version ." at ".$self->datadir);
@@ -369,8 +370,7 @@ sub startServer {
                                           "--master-retry-count=65535",
                                           "--port=".$self->port,
                                           "--socket=".$self->socketfile,
-                                          "--pid-file=".$self->pidfile,
-                                          "--tmpdir=".$self->tmpdir],
+                                          "--pid-file=".$self->pidfile],
                                          $self->_logOptions);
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
