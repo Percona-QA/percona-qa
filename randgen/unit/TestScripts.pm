@@ -131,21 +131,33 @@ sub test_runall_new {
     }
 }
 
-sub test_runall_replication {
-    my $self = shift;
-    if ($ENV{TEST_SKIP_RUNALL}) {
-        say((caller(0))[3].": Skipping runall.pl test");
-        return;
-    }
-    
-    my $pb = $self->{portbase};
-    ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
-    if ($ENV{RQG_MYSQL_BASE}) {
-        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall.pl --rpl_mode=default --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --reporter=Shutdown --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
-        $self->assert_equals(0, $status);
-    }
-}
+## This test is no longer working. Reason:
+## MTR v1 gives the same tmp directory for both master and slave
+## When 5399
+## revid:krunal.bauskar@oracle.com-20130121052701-c57rsp1jsu4u96uw  
+## was pushed to trunk, the file $TMPDIR/ibtmp1 is used from both
+## slave and master (because they have the same tmp dir), end the
+## slave stops due to 
+## 2013-01-23 12:51:23 7544 [ERROR] InnoDB: Unable to lock ..../tmp/ibtmp1, error: 11
+## Since MTR v1 is no longer maintained, this has no easy fix. And
+## since MTR v2 has diverged too much to be a plugin replacement of
+## MTR v1. runall.pl no longer supports replication. Note that this
+## test may succeed on some computers sincde this is timing related.
+# sub test_runall_replication {
+#    my $self = shift;
+#    if ($ENV{TEST_SKIP_RUNALL}) {
+#        say((caller(0))[3].": Skipping runall.pl test");
+#        return;
+#    }
+#    
+#    my $pb = $self->{portbase};
+#    ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
+#    if ($ENV{RQG_MYSQL_BASE}) {
+#        $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
+#        my $status = system("perl -MCarp=verbose ./runall.pl --rpl_mode=default --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=2 --reporter=Shutdown --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
+#        $self->assert_equals(0, $status);
+#    }
+#}
 
 sub test_runall_new_replication {
     my $self = shift;
