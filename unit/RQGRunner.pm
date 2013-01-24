@@ -16,6 +16,7 @@ use Test::Unit::Loader;
 use Test::Unit::Result;
 
 use Data::Dumper;
+use Time::HiRes;
 
 use Benchmark;
 
@@ -224,8 +225,9 @@ my %testng_start;
 my %testng_end;
 
 sub isoTs {
-	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime();
-	return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
+    my ($arg) = @_;
+    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime(int($arg));
+    return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
 
 }
 sub testngReport {
@@ -237,38 +239,38 @@ sub testngReport {
 sub testngStart() {
     my ($test) = @_;
     my $tn = ref $test;
-    $testng_start{$tn."::".$test->name()}=isoTs();
+    $testng_start{$tn."::".$test->name()}=Time::HiRes::time();
 }
 
 sub testngEnd() {
     my ($test) = @_;
     my $tn = ref $test;
-    $testng_end{$tn."::".$test->name()}=isoTs();
+    $testng_end{$tn."::".$test->name()}=Time::HiRes::time();
 }
 
 sub testngOutput {
     my ($file) = @_;
     open TESTNG,">$file";
-    print TESTNG '
-<?xml version="1.0" encoding="UTF-8"?>
-<testng-results>
-';
+    print TESTNG "<testng-results>\n";
     print TESTNG "  <test name=\"RQGunit\">\n";
     foreach my $c (keys %testng_class) {
-        print TESTNG "    <class name=\"$c\">\n";
+        print TESTNG "    <class name=\"RQG.unit.$c\">\n";
         foreach my $x (keys %testng_method) {
             my ($class,$method) = $x =~ m/(.*)::(.*)/;
+	    my $dur = int(($testng_end{$x}-$testng_start{$x})*1000);
             if ($class eq $c) {
                 print TESTNG "      <test-method name=\"$method\" status=\"$testng_method{$x}\"\n";
-                print TESTNG "                   started-at=\"".$testng_start{$x}."\"\n";
-                print TESTNG "                   finished-at=\"".$testng_end{$x}."\">\n";
+                print TESTNG "                   signature=\"".$method."()\"\n";
+		print TESTNG "                   duration-ms=\"$dur\"\n";
+                print TESTNG "                   started-at=\"".isoTs($testng_start{$x})."\"\n";
+                print TESTNG "                   finished-at=\"".isoTs($testng_end{$x})."\">\n";
                 print TESTNG "      </test-method>\n";
             }
         }
         print TESTNG "    </class>\n";
     }
     print TESTNG "  </test>\n";
-    print TESTNG "<testng-results>\n";
+    print TESTNG "</testng-results>\n";
     close TESTNG;
 }
 1;
