@@ -16,6 +16,7 @@ use Test::Unit::Loader;
 use Test::Unit::Result;
 
 use Data::Dumper;
+use Time::HiRes;
 
 use Benchmark;
 
@@ -45,6 +46,7 @@ sub add_error {
     my ($test, $exception) = @_; 
     my $tn = ref $test;
     $self->_print("Error: ".$tn."::".$test->name()."\n");
+    testngReport($tn,$test->name(),"ERROR");
 }
 	
 sub add_failure {
@@ -52,13 +54,15 @@ sub add_failure {
     my ($test, $exception) = @_;
     my $tn = ref $test;
     $self->_print("Failure: ".$tn."::".$test->name()."\n");
+    testngReport($tn,$test->name(),"FAIL");
 }
 
 sub add_pass {
     my $self = shift;
-    my ($test, $exception) = @_;    my $tn = ref $test;
+    my ($test, $exception) = @_;
     my $tn = ref $test;
     $self->_print("Success: ".$tn."::".$test->name()."\n");
+    testngReport($tn,$test->name(),"PASS");
 }
 
 sub do_run {
@@ -84,6 +88,9 @@ sub do_run {
 }
 
 sub end_test {
+    my $self = shift;
+    my ($test) = @_;
+    testngEnd($test);
 }
 
 sub main {
@@ -102,6 +109,10 @@ sub print_result {
     $self->print_header($result);
     $self->print_errors($result);
     $self->print_failures($result);
+
+    if (defined $ENV{RQG_TESTNG_REPORT}) {
+        testngOutput($ENV{RQG_TESTNG_REPORT});
+    }
 }
 
 sub print_errors {
@@ -205,8 +216,63 @@ sub start {
 sub start_test {
     my $self = shift;
     my ($test) = @_;
+    testngStart($test);
 }
 
+my %testng_method;
+my %testng_class;
+my %testng_start;
+my %testng_end;
+
+sub isoTs {
+    my ($arg) = @_;
+    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime(int($arg));
+    return sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year+1900, $mon+1 ,$mday ,$hour, $min, $sec);
+
+}
+sub testngReport {
+    my ($class,$method,$result) = @_;
+    $testng_method{$class."::".$method} = $result;
+    $testng_class{$class}=1;
+}
+
+sub testngStart() {
+    my ($test) = @_;
+    my $tn = ref $test;
+    $testng_start{$tn."::".$test->name()}=Time::HiRes::time();
+}
+
+sub testngEnd() {
+    my ($test) = @_;
+    my $tn = ref $test;
+    $testng_end{$tn."::".$test->name()}=Time::HiRes::time();
+}
+
+sub testngOutput {
+    my ($file) = @_;
+    open TESTNG,">$file";
+    print TESTNG "<testng-results>\n";
+    print TESTNG "  <test name=\"RQGunit\">\n";
+    foreach my $c (keys %testng_class) {
+        print TESTNG "    <class name=\"RQG.unit.$c\">\n";
+        foreach my $x (keys %testng_method) {
+            my ($class,$method) = $x =~ m/(.*)::(.*)/;
+	    my $dur = int(($testng_end{$x}-$testng_start{$x})*1000);
+            if ($class eq $c) {
+                print TESTNG "      <test-method name=\"$method\" status=\"$testng_method{$x}\"\n";
+                print TESTNG "                   signature=\"".$method."()\"\n";
+		print TESTNG "                   duration-ms=\"$dur\"\n";
+                print TESTNG "                   started-at=\"".isoTs($testng_start{$x})."\"\n";
+                print TESTNG "                   finished-at=\"".isoTs($testng_end{$x})."\">\n";
+                print TESTNG "      </test-method>\n";
+            }
+        }
+        print TESTNG "    </class>\n";
+    }
+    print TESTNG "  </test>\n";
+    print TESTNG "</testng-results>\n";
+    close TESTNG;
+}
 1;
 __END__
 

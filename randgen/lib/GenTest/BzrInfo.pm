@@ -111,7 +111,6 @@ sub _getVersionInfo {
         # We keep values as undef to indicate that.
         say("BzrInfo: Unable to get version-information from bzr at ".
             $self->[BZRINFO_DIR].'. Not a bzr branch?') if rqg_debug();
-        return;
     } else {
         open(BZROUT, $bzr_output_file) or
             say("BzrInfo: Unable to open temporary file ".$bzr_output_file.": $!");

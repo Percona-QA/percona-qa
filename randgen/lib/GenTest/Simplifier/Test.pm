@@ -327,7 +327,7 @@ sub generateMysqldumpCommand {
     }
     
     return $dumper . 
-        " -uroot --host=".$executors->[0]->host().
+        " -uroot --password='' --host=".$executors->[0]->host().
         " --port=".$executors->[0]->port()
 }
 1;

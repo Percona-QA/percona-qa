@@ -55,9 +55,9 @@ sub tear_down {
     rmtree("unit/tmpwd");
 }
 
-sub test_create_server {
-    my $self = shift;
-
+sub create_server {
+    my ($self, $debug_server) = @_;
+    
     my $vardir= cwd()."/unit/tmpwd";
 
     my $portbase = 20 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
@@ -65,6 +65,7 @@ sub test_create_server {
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
 
     my $server = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+                                              debug_server => $debug_server,
                                               vardir => $vardir,
                                               port => $portbase);
     $self->assert_not_null($server);
@@ -100,18 +101,34 @@ sub test_create_server {
 
     $server = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                            vardir => $vardir,
+                                           debug_server => $debug_server,
                                            port => $portbase,
                                            start_dirty => 1);
     
     $self->assert_not_null($server);
 
     my $status=$server->startServer;
-    $self->assert_not_null($status);
+    $self->assert_not_null($status);   
 
     push @pids,$server->serverpid;
     $server->stopServer;
 
     sayFile($server->errorlog);
+}
+
+# Start server
+sub test_create_server {
+    my $self=shift;
+    $self->create_server();
+}
+
+# Start a debug type server.
+# Bug: 14155724 
+sub test_create_debug_server {
+    if (defined $ENV{RQG_TEST_DEBUG_SERVER}) {
+        my $self = shift;
+        $self->create_server(1);
+    }
 }
 
 1;

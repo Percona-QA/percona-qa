@@ -24,6 +24,7 @@ use lib 'lib';
 use GenTest;
 use Cwd;
 use GenTest::Constants;
+use File::Path qw(rmtree);
 
 my $counter;    # something to distinguish test cases to avoid port conflicts etc.
 
@@ -39,12 +40,17 @@ sub set_up {
     $self->{logfile} = 'unit/tmp/transformer'.$counter.'.log';
     # --mtr-build-thread : Should differ between testcases due to possible
     # parallelism. We use a "unique" portbase for this.
-    my $portbase = ($counter*10) + ($ENV{TEST_PORTBASE}>0 ? int($ENV{TEST_PORTBASE}) : 22120);
+    my $portbase = ($counter*20) + ($ENV{TEST_PORTBASE}>0 ? int($ENV{TEST_PORTBASE}) : 22120);
     $self->{portbase} = int(($portbase - 10000) / 10);
+    $self->{workdir} = cwd()."/unit/tmpwd4"; 
 }
 
 sub tear_down {
     my $self = shift;
+    # Not all tests use the workdir, so we need to check if it exists.
+    if (-e $self->{workdir}) {
+        rmtree($self->{workdir}) or print("UNABLE TO REMOVE DIR ".$self->{workdir}.": $!\n");
+    }
     # clean up after test
     #unlink $self->{logfile};    # comment this if you need the log to debug after the fact
 }
@@ -70,7 +76,8 @@ sub test_transformer_ExecuteAsFunctionTwice_BIT_AND {
             .'--queries=1 --sqltrace '
             .'--transformer=ExecuteAsFunctionTwice '
             .'--threads=1 ' 
-            .'--basedir='.$ENV{RQG_MYSQL_BASE};
+            .'--basedir='.$ENV{RQG_MYSQL_BASE}.' '
+            .'--vardir='.$self->{workdir};
             
         my $cmd = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts
             .' --mtr-build-thread='.$self->{portbase}
@@ -106,7 +113,8 @@ sub test_transformer_ExecuteAsUnion_LIMIT {
             .'--queries=1 '
             .'--transformer=ExecuteAsUnion '
             .'--threads=1 ' 
-            .'--basedir='.$ENV{RQG_MYSQL_BASE};
+            .'--basedir='.$ENV{RQG_MYSQL_BASE}.' '
+            .'--vardir='.$self->{workdir};
             
         my $cmd = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts
             .' --mtr-build-thread='.$self->{portbase}
@@ -141,7 +149,8 @@ sub test_transformer_DISTINCT_MAX_ROWS_THRESHOLD {
         .'--queries=1 '
         .'--transformer=Distinct,ExecuteAsPreparedTwice '
         .'--threads=1 ' 
-        .'--basedir='.$ENV{RQG_MYSQL_BASE};
+        .'--basedir='.$ENV{RQG_MYSQL_BASE}.' '
+        .'--vardir='.$self->{workdir};
         
         my $cmd = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts
         .' --mtr-build-thread='.$self->{portbase}
@@ -191,7 +200,8 @@ sub test_transformer_ExecuteAsUpdateDelete_KILL_QUERY {
         .'--reporter=QueryTimeout '
         .'--threads=1 ' 
         .'--querytimeout=60 '
-        .'--basedir='.$ENV{RQG_MYSQL_BASE};
+        .'--basedir='.$ENV{RQG_MYSQL_BASE}.' '
+        .'--vardir='.$self->{workdir};
         
         my $cmd = 'perl -MCarp=verbose ./runall-new.pl '.$rqg_opts
         .' --mtr-build-thread='.$self->{portbase}
