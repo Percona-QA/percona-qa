@@ -32,6 +32,7 @@ query:
 	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query ; 
 
 p_query:
+# 5.1	ext_slow_query_log | resp_time_dist | user_stats | changed_page_tracking | drop_create_table ;
 	ext_slow_query_log | resp_time_dist | user_stats | drop_create_table ;
 
 p_l_query:
@@ -127,6 +128,10 @@ flush_user_stats:
 
 show_user_stats:
 	SHOW CLIENT_STATISTICS  | SHOW INDEX_STATISTICS  | SHOW TABLE_STATISTICS  | SHOW THREAD_STATISTICS  | SHOW USER_STATISTICS  ;
+
+changed_page_tracking:
+	SHOW ENGINE INNODB STATUS |
+	SELECT start_lsn, end_lsn, space_id, page_id FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES LIMIT _digit ;
 
 set:
 	SET scope INNODB_STRICT_MODE = 1 |
