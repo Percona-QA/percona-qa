@@ -330,6 +330,8 @@ foreach my $server_id (0..1) {
 	push @mtr_options, "--gcov" if $lcov;
 
 	if (($rpl_mode ne '') && ($server_id != 0)) {
+        say("****** NBNBNB: Due to changes in innodb and the use of MTRv1 which gives both slave and master the same tmp dir. Replication is no longer reliable with runall.pl. Use runall-new.pl instead");
+
 		# If we are running in replication, and we start the slave separately (because it is a different binary)
 		# add a few options that allow the slave and the master to be distinguished and SHOW SLAVE HOSTS to work
 		push @mtr_options, "--mysqld=--server-id=".($server_id + 1);

@@ -30,8 +30,17 @@ sub new {
     return $self;
 }
 
-my $generator;
+my $generator;  
+my $counter=0; # to avoid port clashes.
+
 sub set_up {
+    my $self=shift;
+    # Set temporary working directory. Used for vardir, workdir etc. in tests. 
+    # Remove it in tear_down() to avoid interference between tests!
+    $self->{workdir} = cwd()."/unit/tmpwd2"; 
+    my $portbase = ($counter*10) + ($ENV{TEST_PORTBASE}>0 ? int($ENV{TEST_PORTBASE}) : 22120);
+    $self->{portbase} = int(($portbase - 10000) / 10);
+    $counter++;
 }
 
 sub tear_down {
@@ -42,6 +51,11 @@ sub tear_down {
     unlink "unit/tmp/foo2.log";
     unlink "unit/tmp/testresult-schema-1-2.xsd";
     system("rm -r unit/tmp/example*");
+    
+    # Not all tests use the workdir, so we need to check if it exists.
+    if (-e $self->{workdir}) {
+        rmtree($self->{workdir}) or print("UNABLE TO REMOVE DIR ".$self->{workdir}.": $!\n");
+    }
 }
 
 
@@ -156,19 +170,18 @@ sub test_xml_runall {
         say((caller(0))[3].": Skipping runall.pl test");
         return;
     }
-    my $portbase = $ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120;
-    my $pb = int(($portbase - 10000) / 10);
     my $self = shift;
+    my $pb = $self->{portbase};
     my $file = "unit/tmp/test1.xml";
     ## This test requires RQG_MYSQL_BASE to point to a in source Mysql database
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none  --xml-output=$file --logfile=unit/tmp/foo1.log --report-tt-logdir=unit/tmp --basedir=".$ENV{RQG_MYSQL_BASE});
+        my $status = system("perl -MCarp=verbose ./runall.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none  --xml-output=$file --logfile=unit/tmp/foo1.log --report-tt-logdir=unit/tmp --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
         $self->assert_equals(0, $status);
-       
+        
         # Check whether the logfile gets created
         $self->assert(-e 'unit/tmp/foo1.log',"RQG log file does not exist.");
- 
+        
         # Validate the xml file.    
         $self->validate_xml($file);
     }
@@ -178,18 +191,17 @@ sub test_xml_runall_new {
     my $self = shift;
     my $file = "unit/tmp/test2.xml";
     ## This test requires RQG_MYSQL_BASE to point to a Mysql database (in source, out of source or installed)
-    my $portbase = 10 + ($ENV{TEST_PORTBASE}>0?int($ENV{TEST_PORTBASE}):22120);
-    my $pb = int(($portbase - 10000) / 10);
-
+    my $pb = $self->{portbase};
+    
     
     if ($ENV{RQG_MYSQL_BASE}) {
         $ENV{LD_LIBRARY_PATH}=join(":",map{"$ENV{RQG_MYSQL_BASE}".$_}("/libmysql/.libs","/libmysql","/lib/mysql"));
-        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none --xml-output=$file --logfile=unit/tmp/foo2.log --report-tt-logdir=unit/tmp --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".cwd()."/unit/tmpwd");
+        my $status = system("perl -MCarp=verbose ./runall-new.pl --mtr-build-thread=$pb --grammar=conf/examples/example.yy --gendata=conf/examples/example.zz --queries=3 --threads=3 --report-xml-tt --report-xml-tt-type=none --xml-output=$file --logfile=unit/tmp/foo2.log --report-tt-logdir=unit/tmp --basedir=".$ENV{RQG_MYSQL_BASE}." --vardir=".$self->{workdir});
         $self->assert_equals(0, $status);
-
+        
         # Check whether the logfile gets created
         $self->assert(-e 'unit/tmp/foo2.log',"RQG log file does not exist.");
-
+        
         # Validate the xml file.
         $self->validate_xml($file);
     }
