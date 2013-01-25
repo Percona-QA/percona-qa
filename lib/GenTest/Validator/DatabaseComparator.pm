@@ -41,7 +41,7 @@ sub validate {
 
 	foreach my $port_id (0..1) {
 		$files[$port_id] = tmpdir()."/dump_".$$."_".$ports[$port_id].".sql";
-		my $mysqldump_result = system("mysqldump --compact --order-by-primary --skip-triggers --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$ports[$port_id] --user=root $database | sort > $files[$port_id]");
+		my $mysqldump_result = system("mysqldump --compact --order-by-primary --skip-triggers --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$ports[$port_id] --user=root --password='' $database | sort > $files[$port_id]");
 		return STATUS_UNKNOWN_ERROR if $mysqldump_result > 0;
 	}
 

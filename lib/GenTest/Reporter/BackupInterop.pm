@@ -87,7 +87,7 @@ sub report
 our $database = 'db1';
 my $file_bak =  '/tmp/db1_dump.bak';
 my $file_res= '/tmp/db1_dump_res.bak';
-my $mysqldump_result = system("mysqldump --compact --order-by-primary --skip-triggers --skip-extended-insert --no-create-info --host=127.0.0.1 --port=13000 --user=root $database | sort > $file_bak");
+my $mysqldump_result = system("mysqldump --compact --order-by-primary --skip-triggers --skip-extended-insert --no-create-info --host=127.0.0.1 --port=13000 --user=root --password='' $database | sort > $file_bak");
  return STATUS_UNKNOWN_ERROR if $mysqldump_result > 0;
   
 # PERFORM RESTORE
@@ -104,7 +104,7 @@ my $mysqldump_result = system("mysqldump --compact --order-by-primary --skip-tri
   return STATUS_OK;
   }
 
-  my $mysqldump_result = system("mysqldump --compact --order-by-primary --skip-triggers --skip-extended-insert --no-create-info --host=localhost --port=13000 --user=root $database | sort > $file_res");
+  my $mysqldump_result = system("mysqldump --compact --order-by-primary --skip-triggers --skip-extended-insert --no-create-info --host=localhost --port=13000 --user=root --password='' $database | sort > $file_res");
  return STATUS_UNKNOWN_ERROR if $mysqldump_result > 0;
 
   my $diff_result = system("diff --unified $file_bak $file_res");
