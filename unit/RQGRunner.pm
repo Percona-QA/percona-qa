@@ -110,9 +110,7 @@ sub print_result {
     $self->print_errors($result);
     $self->print_failures($result);
 
-    if (defined $ENV{RQG_TESTNG_REPORT}) {
-        testngOutput($ENV{RQG_TESTNG_REPORT});
-    }
+    testngOutput();
 }
 
 sub print_errors {
@@ -249,8 +247,7 @@ sub testngEnd() {
 }
 
 sub testngOutput {
-    my ($file) = @_;
-    open TESTNG,">$file";
+    open TESTNG,">unit/rqg.testng.xml";
     print TESTNG "<testng-results>\n";
     print TESTNG "  <test name=\"RQGunit\">\n";
     foreach my $c (keys %testng_class) {
