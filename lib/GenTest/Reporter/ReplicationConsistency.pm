@@ -91,7 +91,7 @@ sub report {
 	foreach my $i (0..$#dump_ports) {
 		say("Dumping server on port $dump_ports[$i]...");
 		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
-		my $dump_result = system('"'.$reporter->serverInfo('client_bindir')."/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root --databases $databases_string | sort > $dump_files[$i]");
+		my $dump_result = system('"'.$reporter->serverInfo('client_bindir')."/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root --password='' --databases $databases_string | sort > $dump_files[$i]");
 		return STATUS_ENVIRONMENT_FAILURE if $dump_result > 0;
 	}
 
