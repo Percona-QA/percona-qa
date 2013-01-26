@@ -21,7 +21,7 @@ else
   MTR_BUILD_THREAD=$MTR_BT; perl ./combinations.pl \
   --clean \
   --force \
-  --parallel=4 \
+  --parallel=6 \
   --run-all-combinations-once \
   --workdir=$WORKDIR/$WORKDIRSUB \
   --config=$RQG_DIR/conf/percona_qa/BT-16724/BT-16724.cc

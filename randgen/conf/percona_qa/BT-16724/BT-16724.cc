@@ -17,7 +17,7 @@
 
 # Certain parts (c) Percona Inc
 
-#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416-optimized.Linux.x86_64'
+#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416.Linux.x86_64'
 #  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416-debug-valgrind.Linux.x86_64
 #    --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
 
@@ -52,9 +52,9 @@ $combinations=
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=10 
     --mysqld=--innodb_log_buffer_size=10485761 --mysqld=--innodb_log_block_size=1229',
   '--mysqld=--innodb_log_file_size=10485761 --mysqld=--innodb_log_files_in_group=3 
-    --mysqld=--innodb_log_buffer_size=1048577 --mysqld=--innodb_log_block_size=4093'
+    --mysqld=--innodb_log_buffer_size=1048577 --mysqld=--innodb_log_block_size=4093
     --mysqld=--innodb_fast_shutdown=0 --mysqld=--innodb_adaptive_flushing_method=keep_average
-    --mysqld=--skip-innodb_doublewrite --mysqld=--userstat'
+    --mysqld=--skip-innodb_doublewrite --mysqld=--userstat',
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=2 
     --mysqld=--innodb_log_buffer_size=1048576 --mysqld=--innodb_log_block_size=512
     --mysqld=--innodb_fast_shutdown=2 --mysqld=--innodb_adaptive_flushing_method=native
@@ -64,7 +64,7 @@ $combinations=
   '--mysqld=--innodb-changed-pages=OFF --mysqld=--innodb_flush_method=O_DSYNC',
   '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=0
     --mysqld=--innodb_flush_method=O_DIRECT',
-  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=100',
+  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=100
     --mysqld=--innodb_flush_method=O_DSYNC',
   '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=1000000',
   '--mysqld=--innodb-changed-pages=FORCE --mysqld=--innodb-changed-pages-limit=0
