@@ -53,6 +53,3 @@ $combinations=
   '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda'
  ]
 ]
-
-# 5.1 only ftm:
-#  '--innodb_track_changed_pages=1'
