@@ -28,8 +28,13 @@ use GenTest::Constants;
 # Modify this to look for other patterns in the error log. Do not modify $pattern to be
 # defined using double quotes (") but leave as single quotes (') as double quotes require
 # a different escaping sequence for "[" (namely "\\[" it seems)
-my $pattern = '^ERROR| \[ERROR\] |InnoDB: Error:|InnoDB: Operating system error|Error while setting value'; 
-my $errorlog;           # Path to error log. Is assigned first time monitor() is called.
+my $pattern = '^ERROR| \[ERROR\] |InnoDB: Error:|InnoDB: Operating system error|Error while setting value';
+
+# Modify this to filter out false positive patern matches (will improve over time)
+my $reject_pattern = 'Lock wait timeout exceeded';
+
+# Path to error log. Is assigned first time monitor() is called.
+my $errorlog;
 
 sub monitor {
     if (defined $ENV{RQG_CALLBACK}) {
@@ -53,7 +58,7 @@ sub monitor {
     if ((-e $errorlog) && (-s $errorlog > 0)) {
         open(LOG, $errorlog);
         while(my $line = <LOG>) { 
-            if($line =~ m{$pattern}) {
+            if(($line =~ m{$pattern}) && ($line !=~ m{reject_pattern})) {
                 say("ALARM from ErrorLogAlarm reporter: Pattern '$pattern' was".
                     " found in error log. Matching line was:");
                 print($line);
