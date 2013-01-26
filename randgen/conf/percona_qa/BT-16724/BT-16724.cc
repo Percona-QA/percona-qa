@@ -17,9 +17,19 @@
 
 # Certain parts (c) Percona Inc
 
+# Other run options
 #  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416.Linux.x86_64'
 #  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416-debug-valgrind.Linux.x86_64
 #    --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
+
+# Temporary disabled due to bug #1105726
+# ],[
+#  '--mysqld=--innodb-changed-pages=OFF',
+#  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=0',
+#  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=100',
+#  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=1000000',
+#  '--mysqld=--innodb-changed-pages=FORCE --mysqld=--innodb-changed-pages-limit=0',
+#  '--mysqld=--innodb-changed-pages=FORCE --mysqld=--innodb-changed-pages-limit=1000'
 
 $combinations=
 [
@@ -61,15 +71,8 @@ $combinations=
     --mysqld=--innodb_use_global_flush_log_at_trx_commit=0 --mysqld=--userstat'
  ],[
   '',
-  '--mysqld=--innodb-changed-pages=OFF --mysqld=--innodb_flush_method=O_DSYNC',
-  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=0
-    --mysqld=--innodb_flush_method=O_DIRECT',
-  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=100
-    --mysqld=--innodb_flush_method=O_DSYNC',
-  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=1000000',
-  '--mysqld=--innodb-changed-pages=FORCE --mysqld=--innodb-changed-pages-limit=0
-    --mysqld=--innodb_flush_method=O_DIRECT',
-  '--mysqld=--innodb-changed-pages=FORCE --mysqld=--innodb-changed-pages-limit=1000'
+  '--mysqld=--innodb_flush_method=O_DSYNC',
+  '--mysqld=--innodb_flush_method=O_DIRECT'
  ],[
   '',
   '--mysqld=--innodb_file_per_table=1',
