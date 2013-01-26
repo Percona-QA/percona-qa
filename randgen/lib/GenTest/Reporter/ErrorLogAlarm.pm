@@ -25,7 +25,10 @@ use GenTest;
 use GenTest::Reporter;
 use GenTest::Constants;
 
-my $pattern = "^ERROR"; # Modify this to look for other patterns in the error log
+# Modify this to look for other patterns in the error log. Do not modify $pattern to be
+# defined using double quotes (") but leave as single quotes (') as double quotes require
+# a different escaping sequence for "[" (namely "\\[" it seems)
+my $pattern = '^ERROR| \[ERROR\] |InnoDB: Error:|InnoDB: Operating system error|Error while setting value'; 
 my $errorlog;           # Path to error log. Is assigned first time monitor() is called.
 
 sub monitor {
