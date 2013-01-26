@@ -58,7 +58,7 @@ sub monitor {
     if ((-e $errorlog) && (-s $errorlog > 0)) {
         open(LOG, $errorlog);
         while(my $line = <LOG>) { 
-            if(($line =~ m{$pattern}) && ($line !=~ m{reject_pattern})) {
+            if(($line =~ m{$pattern}) && ($line !=~ m{$reject_pattern})) {
                 say("ALARM from ErrorLogAlarm reporter: Pattern '$pattern' was".
                     " found in error log. Matching line was:");
                 print($line);
