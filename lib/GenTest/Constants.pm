@@ -25,6 +25,7 @@ require Exporter;
 
 @EXPORT = qw(
 	STATUS_OK
+	STATUS_INTERNAL_ERROR
 	STATUS_UNKNOWN_ERROR
 	STATUS_ANY_ERROR
 
@@ -83,6 +84,7 @@ require Exporter;
 use strict;
 
 use constant STATUS_OK				=> 0; ## Suitable for exit code
+use constant STATUS_INTERNAL_ERROR		=> 1;   # Apparently seen with certain Perl coding errors; check RQG log carefully for exact error
 use constant STATUS_UNKNOWN_ERROR		=> 2;
 
 use constant STATUS_ANY_ERROR			=> 3;	# Used in util/simplify* to not differentiate based on error code
