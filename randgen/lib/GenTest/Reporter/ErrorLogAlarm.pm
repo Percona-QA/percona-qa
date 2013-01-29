@@ -63,7 +63,7 @@ sub monitor {
             if(($line =~ m{$pattern}i) && ($line !~ m{$reject_pattern}i)) {
                 say("ALARM from ErrorLogAlarm reporter: Pattern '$pattern' was".
                     " found in error log. Matching line was:");
-                print($line);
+                say($line);
                 close LOG;
                 return STATUS_ALARM;
             }
