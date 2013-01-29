@@ -28,7 +28,7 @@ use GenTest::Constants;
 # Modify this to look for other patterns in the error log. 
 # Note: do not modify $pattern to be defined using double quotes (") but leave as single quotes (') 
 # as double quotes require a different escaping sequence for "[" (namely "\\[" it seems)
-my $pattern = '^ERROR| \[ERROR\] |InnoDB: Error:|InnoDB: Operating system error|Error while setting value';
+my $pattern = '^Error:|^ERROR|\[ERROR\]|allocated at line|missing DBUG_RETURN|^safe_mutex:|InnoDB: Warning|InnoDB: Error:|InnoDB: Operating system error|Error while setting value';
 
 # Modify this to filter out false positive patern matches (will improve over time)
 my $reject_pattern = 'Lock wait timeout exceeded|Deadlock found when trying to get lock';
