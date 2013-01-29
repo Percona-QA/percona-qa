@@ -18,7 +18,7 @@
 # Certain parts (c) Percona Inc
 
 # Other run options
-#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416.Linux.x86_64'
+#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416-debug.Linux.x86_64'
 #  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416-debug-valgrind.Linux.x86_64
 #    --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
 
@@ -40,7 +40,7 @@ $combinations=
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
   --grammar=conf/percona_qa/percona_qa.yy --gendata=conf/percona_qa/percona_qa.zz'
  ],[
-  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416-debug.Linux.x86_64'
+  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416.Linux.x86_64'
  ],[
   '--threads=1',
   '--threads=25'
