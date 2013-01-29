@@ -57,8 +57,10 @@ sub monitor {
 
     if ((-e $errorlog) && (-s $errorlog > 0)) {
         open(LOG, $errorlog);
-        while(my $line = <LOG>) { 
-            if(($line =~ m{$pattern}) && ($line !~ m{$reject_pattern})) {
+        while(my $line = <LOG>) {
+            # Case insensitive search required for (observed) programming 
+            # incosistencies like "InnoDB: ERROR:" instead of "InnoDB: Error:"
+            if(($line =~ m{$pattern}i) && ($line !~ m{$reject_pattern}i)) {
                 say("ALARM from ErrorLogAlarm reporter: Pattern '$pattern' was".
                     " found in error log. Matching line was:");
                 print($line);
