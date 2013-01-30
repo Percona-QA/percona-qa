@@ -645,7 +645,11 @@ sub execute {
 	        $trace_query =~ s/\n/\n# [sqltrace]    /g;
 	        print '# [sqltrace] ERROR '.$err.": $trace_query;\n";
 	    } else {
-	        print "$query;\n";
+		if ($query =~ m{(procedure|function)}sgio) {
+			print "DELIMITER |\n$query|\nDELIMITER ;\n";
+		} else {
+			print "$query;\n";
+		}
 	    }
 	}
 
