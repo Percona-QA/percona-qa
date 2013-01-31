@@ -60,9 +60,9 @@ $combinations=
  ],[
   '',
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=10 
-    --mysqld=--innodb_log_buffer_size=10485761 --mysqld=--innodb_log_block_size=1229',
+    --mysqld=--innodb_log_buffer_size=10485761 --mysqld=--innodb_log_block_size=16384',
   '--mysqld=--innodb_log_file_size=10485761 --mysqld=--innodb_log_files_in_group=3 
-    --mysqld=--innodb_log_buffer_size=1048577 --mysqld=--innodb_log_block_size=4093
+    --mysqld=--innodb_log_buffer_size=1048577 --mysqld=--innodb_log_block_size=8192
     --mysqld=--innodb_fast_shutdown=0 --mysqld=--innodb_adaptive_flushing_method=keep_average
     --mysqld=--skip-innodb_doublewrite --mysqld=--userstat',
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=2 
