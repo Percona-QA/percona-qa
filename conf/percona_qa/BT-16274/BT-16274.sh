@@ -24,5 +24,5 @@ else
   --parallel=6 \
   --run-all-combinations-once \
   --workdir=$WORKDIR/$WORKDIRSUB \
-  --config=$RQG_DIR/conf/percona_qa/BT-16724/BT-16724.cc
+  --config=$RQG_DIR/conf/percona_qa/BT-16274/BT-16274.cc
 fi

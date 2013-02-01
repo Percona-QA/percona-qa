@@ -18,29 +18,19 @@
 # Certain parts (c) Percona Inc
 
 # Other run options
-#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416-debug.Linux.x86_64'
-#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416-debug-valgrind.Linux.x86_64
+#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-422.Linux.x86_64'
+#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-422-debug-valgrind.Linux.x86_64'
 #    --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
-
-# Temporary disabled due to bug #1105726
-# ],[
-#  '--mysqld=--innodb-changed-pages=OFF',
-#  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=0',
-#  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=100',
-#  '--mysqld=--innodb-changed-pages=ON --mysqld=--innodb-changed-pages-limit=1000000',
-#  '--mysqld=--innodb-changed-pages=FORCE --mysqld=--innodb-changed-pages-limit=0',
-#  '--mysqld=--innodb-changed-pages=FORCE --mysqld=--innodb-changed-pages-limit=1000'
 
 $combinations=
 [
  ['
-  --seed=random --duration=180 --querytimeout=60
-  --short_column_names --sqltrace
+  --seed=random --duration=200 --querytimeout=60 --short_column_names
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
   --grammar=conf/percona_qa/percona_qa.yy --gendata=conf/percona_qa/percona_qa.zz'
  ],[
-  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-416.Linux.x86_64'
+  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-422-debug.Linux.x86_64'
  ],[
   '--threads=1',
   '--threads=25'
@@ -57,6 +47,13 @@ $combinations=
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=4096',
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=1048576',
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=18446744073709551615'
+ ],[
+  '--mysqld=--innodb_changed_pages=OFF',
+  '--mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=0',
+  '--mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=100',
+  '--mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=2000000',
+  '--mysqld=--innodb_changed_pages=FORCE --mysqld=--innodb_max_changed_pages=0',
+  '--mysqld=--innodb_changed_pages=FORCE --mysqld=--innodb_max_changed_pages=1000'
  ],[
   '',
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=10 
