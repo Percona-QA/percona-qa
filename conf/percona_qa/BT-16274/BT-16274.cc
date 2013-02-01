@@ -45,12 +45,10 @@ $combinations=
   '--mysqld=--innodb_track_changed_pages=0',
   '--mysqld=--innodb_track_changed_pages=1',
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=4096',
-  '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=1048576',
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=18446744073709551615'
  ],[
   '--mysqld=--innodb_changed_pages=OFF',
   '--mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=0',
-  '--mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=100',
   '--mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=2000000',
   '--mysqld=--innodb_changed_pages=FORCE --mysqld=--innodb_max_changed_pages=0',
   '--mysqld=--innodb_changed_pages=FORCE --mysqld=--innodb_max_changed_pages=1000'
