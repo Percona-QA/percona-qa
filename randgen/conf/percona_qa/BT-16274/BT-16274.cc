@@ -19,7 +19,7 @@
 
 # Other run options
 #  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-422.Linux.x86_64'
-#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-422-debug-valgrind.Linux.x86_64'
+#  '--basedir=/ssd/Percona-Server-5.5.28-rel29.3-422-debug-valgrind.Linux.x86_64
 #    --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
 
 $combinations=
