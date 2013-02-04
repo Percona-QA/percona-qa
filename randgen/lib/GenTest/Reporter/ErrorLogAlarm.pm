@@ -31,7 +31,7 @@ use GenTest::Constants;
 my $pattern = '^Error:|^ERROR|\[ERROR\]|allocated at line|missing DBUG_RETURN|^safe_mutex:|InnoDB: Warning|InnoDB: Error:|InnoDB: Operating system error|Error while setting value';
 
 # Modify this to filter out false positive patern matches (will improve over time)
-my $reject_pattern = 'Lock wait timeout exceeded|Deadlock found when trying to get lock|innodb_log_block_size has been changed';
+my $reject_pattern = 'Lock wait timeout exceeded|Deadlock found when trying to get lock|innodb_log_block_size has been changed|Sort aborted:';
 
 # Path to error log. Is assigned first time monitor() is called.
 my $errorlog;
