@@ -21,7 +21,7 @@ $combinations=
 [
  ['
   --seed=random --duration=300 --querytimeout=60
-  --short_column_names --sqltrace
+  --short_column_names
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
   --grammar=conf/percona_qa/percona_qa.yy --gendata=conf/percona_qa/percona_qa.zz'
