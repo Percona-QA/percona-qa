@@ -17,7 +17,8 @@
 
 # Certain parts (c) Percona Inc
 
-# Other run options
+# All 3 run options (opt,dbg,val)
+#  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313.Linux.x86_64'
 #  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313-debug.Linux.x86_64'
 #  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313-valgrind.Linux.x86_64
 #    --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
@@ -30,25 +31,26 @@
 # --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
 # --mysqld=--userstat
 
+# Other options to test later
+#  '--mysqld=--innodb_log_arch_expire_sec=99999999'
+
 $combinations=
 [
  ['
-  --seed=random --duration=30 --querytimeout=60 --short_column_names
+  --seed=random --duration=120 --querytimeout=60 --short_column_names
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
   --grammar=conf/percona_qa/percona_qa.yy --gendata=conf/percona_qa/percona_qa.zz'
  ],[
-  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313.Linux.x86_64'
+  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313-debug.Linux.x86_64'
  ],[
   '--threads=1',
   '--threads=25'
  ],[
-  '--views',
+  '',
   '--views --notnull',
   '--validator=Transformer',
-  '--notnull --validator=Transformer',
-  '--views --validator=Transformer',
-  '--views --notnull --validator=Transformer'
+  '--validator=Transformer --views --notnull'
  ],[
   '',
   '--mysqld=--innodb_log_archive=0',
@@ -72,7 +74,6 @@ $combinations=
   '--mysqld=--innodb_log_arch_expire_sec=0',
   '--mysqld=--innodb_log_arch_expire_sec=1',
   '--mysqld=--innodb_log_arch_expire_sec=10',
-  '--mysqld=--innodb_log_arch_expire_sec=99999999'
  ],[
   '',
   '--mysqld=--innodb_flush_log_at_trx_commit=0',
@@ -85,12 +86,10 @@ $combinations=
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=10 
     --mysqld=--innodb_log_buffer_size=10485761',
   '--mysqld=--innodb_log_file_size=10485761 --mysqld=--innodb_log_files_in_group=3 
-    --mysqld=--innodb_log_buffer_size=1048577 
-    --mysqld=--innodb_fast_shutdown=0 
+    --mysqld=--innodb_log_buffer_size=1048577 --mysqld=--innodb_fast_shutdown=0 
     --mysqld=--skip-innodb_doublewrite',
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=2 
-    --mysqld=--innodb_log_buffer_size=262144 
-    --mysqld=--innodb_fast_shutdown=2'
+    --mysqld=--innodb_log_buffer_size=262144 --mysqld=--innodb_fast_shutdown=2'
  ],[
   '',
   '--mysqld=--innodb_flush_method=O_DSYNC',
