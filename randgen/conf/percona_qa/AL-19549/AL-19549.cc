@@ -44,43 +44,43 @@ $combinations=
  ],[
   '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313-debug.Linux.x86_64'
  ],[
-  '--threads=1',
-  '--threads=25'
+  '--threads=25',
+  '--threads=1'
  ],[
-  '',
-  '--views --notnull',
+  '--validator=Transformer --views --notnull',
   '--validator=Transformer',
-  '--validator=Transformer --views --notnull'
+  '--views --notnull',
+  ''
  ],[
-  '',
+  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`',
+  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`',
+  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`
+   --mysqld=--innodb_log_group_home_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`',
+  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`
+   --mysqld=--innodb_log_group_home_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`',
+  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`
+   --mysqld=--innodb_log_group_home_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`',
+  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`
+   --mysqld=--innodb_log_group_home_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`',
+  '--mysqld=--innodb_log_archive=1
+   --mysqld=--innodb_log_group_home_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`',
+  '--mysqld=--innodb_log_archive=1
+   --mysqld=--innodb_log_group_home_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`',
   '--mysqld=--innodb_log_archive=0',
   '--mysqld=--innodb_log_archive=1',
-  '--mysqld=--innodb_log_archive=1
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp',
-  '--mysqld=--innodb_log_archive=1
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp2',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp2',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp2',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp2
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp2
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp2'
+  ''
  ],[
-  '',
+  '--mysqld=--innodb_log_arch_expire_sec=10',
   '--mysqld=--innodb_log_arch_expire_sec=0',
   '--mysqld=--innodb_log_arch_expire_sec=1',
-  '--mysqld=--innodb_log_arch_expire_sec=10',
+  ''
  ],[
-  '',
-  '--mysqld=--innodb_flush_log_at_trx_commit=0',
-  '--mysqld=--innodb_flush_log_at_trx_commit=1',
   '--mysqld=--innodb_flush_log_at_trx_commit=2 --mysqld=--innodb_flush_log_at_timeout=0',
   '--mysqld=--innodb_flush_log_at_trx_commit=2 --mysqld=--innodb_flush_log_at_timeout=1',
-  '--mysqld=--innodb_flush_log_at_trx_commit=2 --mysqld=--innodb_flush_log_at_timeout=27000'
+  '--mysqld=--innodb_flush_log_at_trx_commit=0',
+  '--mysqld=--innodb_flush_log_at_trx_commit=1',
+  '--mysqld=--innodb_flush_log_at_trx_commit=2 --mysqld=--innodb_flush_log_at_timeout=27000',
+  ''
  ],[
   '',
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=10 
@@ -91,12 +91,12 @@ $combinations=
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=2 
     --mysqld=--innodb_log_buffer_size=262144 --mysqld=--innodb_fast_shutdown=2'
  ],[
-  '',
   '--mysqld=--innodb_flush_method=O_DSYNC',
-  '--mysqld=--innodb_flush_method=O_DIRECT'
+  '--mysqld=--innodb_flush_method=O_DIRECT',
+  ''
  ],[
-  '',
+  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda',
   '--mysqld=--innodb_file_per_table=1',
-  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda'
+  '',
  ]
 ]
