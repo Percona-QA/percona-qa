@@ -52,22 +52,11 @@ $combinations=
   '--views --notnull',
   ''
  ],[
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`',
-  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`',
-  '--mysqld=--innodb_log_archive=1
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp/`date -u "+%s%N" | tr -d "\n"`',
-  '--mysqld=--innodb_log_archive=1
-   --mysqld=--innodb_log_group_home_dir=/ssd/tmp2/`date -u "+%s%N" | tr -d "\n"`',
-  '--mysqld=--innodb_log_archive=0',
+  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=_epoch',
+  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_arch_dir=_epoch --mysqld=--innodb_log_group_home_dir=_epoch',
+  '--mysqld=--innodb_log_archive=1 --mysqld=--innodb_log_group_home_dir=_epoch',
   '--mysqld=--innodb_log_archive=1',
+  '--mysqld=--innodb_log_archive=0',
   ''
  ],[
   '--mysqld=--innodb_log_arch_expire_sec=10',
