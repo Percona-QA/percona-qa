@@ -299,7 +299,7 @@ sub doCombination {
 		my $epochdir = defined $ENV{EPOCH_DIR}?$ENV{EPOCH_DIR}:'/tmp';
 		my $epochcreadir=$epochdir.'/'.$epoch;
 		mkdir $epochcreadir or croak "unable to create directory '$epochcreadir': $!";
-		say ("[$thread_id] '_epoch' detected in command line. Created directory: $epochcreadir" and substituted '_epoch' to it.);
+		say ("[$thread_id] '_epoch' detected in command line. Created directory: $epochcreadir and substituted '_epoch' to it.");
 		$command =~ s/_epoch/$epochcreadir/sgo;	
 	}
 
