@@ -46,9 +46,6 @@ $combinations=
   '--mysqld=--userstat'
  ],[
   '',
-  '--mysqld=--innodb_lazy_drop_table=1'
- ],[
-  '',
   '--mysqld=--innodb_file_per_table=1',
   '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda'
  ]
