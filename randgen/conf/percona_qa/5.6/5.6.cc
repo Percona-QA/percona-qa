@@ -17,11 +17,6 @@
 
 # Certain parts (c) Percona Inc
 
-# No LDT in 5.6 yet
-# ],[
-#  '',
-#  '--mysqld=--innodb_lazy_drop_table=1'
-
 # No innodb_log_block_size in 5.6 yet
 # --mysqld=--innodb_log_block_size=512
 # --mysqld=--innodb_log_block_size=4096
