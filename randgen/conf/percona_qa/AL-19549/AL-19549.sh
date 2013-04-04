@@ -12,17 +12,18 @@ else
   WORKDIRSUB=$1
 fi
 
-# Special preparation: _epoch temporary directory setup
-rm -Rf $WORKDIR/$WORKDIRSUB/_epoch
-mkdir $WORKDIR/$WORKDIRSUB/_epoch
-chmod -R 777 $WORKDIR/$WORKDIRSUB/_epoch
-export EPOCH_DIR=$WORKDIR/$WORKDIRSUB/_epoch
-
 # Check if random directory already exists & start run if not
 if [ -d $WORKDIR/$WORKDIRSUB ]; then
   echo "Directory already exists. Retry.";
 else
   mkdir $WORKDIR/$WORKDIRSUB
+
+  # Special preparation: _epoch temporary directory setup
+  rm -Rf $WORKDIR/$WORKDIRSUB/_epoch
+  mkdir $WORKDIR/$WORKDIRSUB/_epoch
+  chmod -R 777 $WORKDIR/$WORKDIRSUB/_epoch
+  export EPOCH_DIR=$WORKDIR/$WORKDIRSUB/_epoch
+
   cd $RQG_DIR
   MTR_BUILD_THREAD=$MTR_BT; perl ./combinations.pl \
   --clean \
