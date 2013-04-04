@@ -18,9 +18,9 @@
 # Certain parts (c) Percona Inc
 
 # All 3 run options (opt,dbg,val)
-#  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313.Linux.x86_64'
-#  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313-debug.Linux.x86_64'
-#  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313-valgrind.Linux.x86_64
+#  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-314.Linux.x86_64'
+#  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-314-debug.Linux.x86_64'
+#  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-314-valgrind.Linux.x86_64
 #    --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
 
 # Not ported to 5.6 yet
@@ -34,12 +34,12 @@
 $combinations=
 [
  ['
-  --seed=random --duration=180 --querytimeout=60 --short_column_names
+  --seed=random --duration=300 --querytimeout=60 --short_column_names
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
   --grammar=conf/percona_qa/percona_qa.yy --gendata=conf/percona_qa/percona_qa.zz'
  ],[
-  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-313-debug.Linux.x86_64'
+  '--basedir=/ssd/Percona-Server-5.6.8-alpha60.2-314-debug.Linux.x86_64'
  ],[
   '--threads=25',
   '--threads=1'
