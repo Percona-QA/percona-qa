@@ -21,13 +21,13 @@ $tables = {
   pk => [undef,'int','int auto_increment'],
   partitions => [ undef , 'KEY (pk) PARTITIONS 2' ],
   engines => ['InnoDB'],
-  rows => [100],
+  rows => [150],
   row_formats => ['DYNAMIC','COMPRESSED','DEFAULT']
 };
 
 $fields = {
   types => ['varchar','int','blob','text'],
-  indexes => [undef,'key'],
+  indexes => [undef,'unique','key'],
   null => [undef,'not null'],
   default => [undef,'default null'],
   sign => [undef, 'unsigned'],
@@ -36,8 +36,6 @@ $fields = {
 
 $data = {
   numbers => ['digit','null',undef],
-  temporals => ['datetime','timestamp'],
   strings => ['varchar(1024)','varchar(1024)','english','letter'],
   blobs => ['letter','data','english'],
-  temporals => ['date','year','null',undef]
 }
