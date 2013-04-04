@@ -5,25 +5,18 @@ RQG_DIR=/ssd/randgen
 # Internal settings
 MTR_BT=$[$RANDOM % 300 + 1]
 
-# Special preparation: _epoch temporary directory setup
-rm -Rf $WORKDIR/_epoch
-mkdir $WORKDIR/_epoch
-export EPOCH_DIR=$WORKDIR/_epoch
-
-# Special preparation: feature specific temporary directories
-rm -Rf $WORKDIR/tmp
-rm -Rf $WORKDIR/tmp2
-mkdir $WORKDIR/tmp
-mkdir $WORKDIR/tmp2
-chmod -R 777 $WORKDIR/tmp
-chmod -R 500 $WORKDIR/tmp2
-
 # If an option was given to the script, use it as part of the workdir name
 if [ -z $1 ]; then
   WORKDIRSUB=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 else
   WORKDIRSUB=$1
 fi
+
+# Special preparation: _epoch temporary directory setup
+rm -Rf $WORKDIR/$WORKDIRSUB/_epoch
+mkdir $WORKDIR/$WORKDIRSUB/_epoch
+chmod -R 777 $WORKDIR/$WORKDIRSUB/_epoch
+export EPOCH_DIR=$WORKDIR/$WORKDIRSUB/_epoch
 
 # Check if random directory already exists & start run if not
 if [ -d $WORKDIR/$WORKDIRSUB ]; then
