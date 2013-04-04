@@ -5,7 +5,12 @@ RQG_DIR=/ssd/randgen
 # Internal settings
 MTR_BT=$[$RANDOM % 300 + 1]
 
-# Special preparation
+# Special preparation: _epoch temporary directory setup
+rm -Rf $WORKDIR/_epoch
+mkdir $WORKDIR/_epoch
+export EPOCH_DIR=$WORKDIR/_epoch
+
+# Special preparation: feature specific temporary directories
 rm -Rf $WORKDIR/tmp
 rm -Rf $WORKDIR/tmp2
 mkdir $WORKDIR/tmp
