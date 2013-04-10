@@ -1,6 +1,10 @@
-# User settings
-WORKDIR=/ssd/qa
-RQG_DIR=/ssd/qa/randgen
+# Directory (user-adjustable) settings
+if [ "$WORKDIR" == "" ]; then
+  WORKDIR=/ssd/qa
+fi
+if [ "$RQGDIR" == "" ]; then
+  RQGDIR=$WORKDIR/randgen
+fi
 
 # Internal settings
 MTR_BT=$[$RANDOM % 300 + 1]
@@ -17,12 +21,12 @@ if [ -d $WORKDIR/$WORKDIRSUB ]; then
   echo "Directory already exists. Retry.";
 else
   mkdir $WORKDIR/$WORKDIRSUB
-  cd $RQG_DIR
+  cd $RQGDIR
   MTR_BUILD_THREAD=$MTR_BT; perl ./combinations.pl \
   --clean \
   --force \
   --parallel=8 \
   --run-all-combinations-once \
   --workdir=$WORKDIR/$WORKDIRSUB \
-  --config=$RQG_DIR/conf/percona_qa/percona_qa.cc
+  --config=$RQGDIR/conf/percona_qa/percona_qa.cc
 fi
