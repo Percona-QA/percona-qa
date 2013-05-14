@@ -1,10 +1,6 @@
-# Directory (user-adjustable) settings
-if [ "$WORKDIR" == "" ]; then
-  WORKDIR=/ssd/qa
-fi
-if [ "$RQGDIR" == "" ]; then
-  RQGDIR=$WORKDIR/randgen
-fi
+# User settings
+WORKDIR=/ssd
+RQG_DIR=/ssd/randgen
 
 # Internal settings
 MTR_BT=$[$RANDOM % 300 + 1]
@@ -21,12 +17,19 @@ if [ -d $WORKDIR/$WORKDIRSUB ]; then
   echo "Directory already exists. Retry.";
 else
   mkdir $WORKDIR/$WORKDIRSUB
-  cd $RQGDIR
+
+  # Special preparation: _epoch temporary directory setup
+  rm -Rf $WORKDIR/$WORKDIRSUB/_epoch
+  mkdir $WORKDIR/$WORKDIRSUB/_epoch
+  chmod -R 777 $WORKDIR/$WORKDIRSUB/_epoch
+  export EPOCH_DIR=$WORKDIR/$WORKDIRSUB/_epoch
+
+  cd $RQG_DIR
   MTR_BUILD_THREAD=$MTR_BT; perl ./combinations.pl \
   --clean \
   --force \
-  --parallel=8 \
+  --parallel=6 \
   --run-all-combinations-once \
   --workdir=$WORKDIR/$WORKDIRSUB \
-  --config=$RQGDIR/conf/percona_qa/percona_qa.cc
+  --config=$RQG_DIR/conf/percona_qa/AL-19549/AL-19549.cc
 fi
