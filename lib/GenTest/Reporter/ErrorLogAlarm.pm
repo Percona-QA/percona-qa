@@ -25,8 +25,16 @@ use GenTest;
 use GenTest::Reporter;
 use GenTest::Constants;
 
-my $pattern = "^ERROR"; # Modify this to look for other patterns in the error log
-my $errorlog;           # Path to error log. Is assigned first time monitor() is called.
+# Modify this to look for other patterns in the error log. 
+# Note: do not modify $pattern to be defined using double quotes (") but leave as single quotes (') 
+# as double quotes require a different escaping sequence for "[" (namely "\\[" it seems)
+my $pattern = '^Error:|^ERROR|\[ERROR\]|allocated at line|missing DBUG_RETURN|^safe_mutex:|Invalid.*old.*table or database|InnoDB: Warning|InnoDB: Error:|InnoDB: Operating system error|Error while setting value|\[Warning\] Invalid';
+
+# Modify this to filter out false positive patern matches (will improve over time)
+my $reject_pattern = 'Lock wait timeout exceeded|Deadlock found when trying to get lock|innodb_log_block_size has been changed|Sort aborted:';
+
+# Path to error log. Is assigned first time monitor() is called.
+my $errorlog;
 
 sub monitor {
     if (defined $ENV{RQG_CALLBACK}) {
@@ -49,11 +57,13 @@ sub monitor {
 
     if ((-e $errorlog) && (-s $errorlog > 0)) {
         open(LOG, $errorlog);
-        while(my $line = <LOG>) { 
-            if($line =~ m{$pattern}) {
+        while(my $line = <LOG>) {
+            # Case insensitive search required for (observed) programming 
+            # incosistencies like "InnoDB: ERROR:" instead of "InnoDB: Error:"
+            if(($line =~ m{$pattern}i) && ($line !~ m{$reject_pattern}i)) {
                 say("ALARM from ErrorLogAlarm reporter: Pattern '$pattern' was".
                     " found in error log. Matching line was:");
-                print($line);
+                say($line);
                 close LOG;
                 return STATUS_ALARM;
             }

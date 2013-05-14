@@ -292,6 +292,17 @@ sub doCombination {
 	$commands[$trial_id] = $command;
 
 	$command =~ s{"}{\\"}sgio;
+
+	# '_epoch' time directory creator extension (only activated if '_epoch' is used anywhere in the command line)
+	if ($command =~ m/_epoch/) {
+		my $epoch=`date -u '+%s%N' | tr -d '\n'`;
+		my $epochdir = defined $ENV{EPOCH_DIR}?$ENV{EPOCH_DIR}:'/tmp';
+		my $epochcreadir=$epochdir.'/'.$epoch;
+		mkdir $epochcreadir or croak "unable to create directory '$epochcreadir': $!";
+		say ("[$thread_id] '_epoch' detected in command line. Created directory: $epochcreadir and substituted '_epoch' to it.");
+		$command =~ s/_epoch/$epochcreadir/sgo;	
+	}
+
 	$command = 'bash -c "set -o pipefail; '.$command.'"';
 
     if ($logToStd) {
