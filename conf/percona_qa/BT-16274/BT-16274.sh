@@ -17,6 +17,8 @@ if [ -d $WORKDIR/$WORKDIRSUB ]; then
   echo "Directory already exists. Retry.";
 else
   mkdir $WORKDIR/$WORKDIRSUB
+  mkdir $WORKDIR/$WORKDIRSUB/tmp
+  export TMP=$WORKDIR/$WORKDIRSUB/tmp
   cd $RQG_DIR
   MTR_BUILD_THREAD=$MTR_BT; perl ./combinations.pl \
   --clean \
