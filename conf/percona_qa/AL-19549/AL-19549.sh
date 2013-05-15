@@ -17,9 +17,10 @@ if [ -d $WORKDIR/$WORKDIRSUB ]; then
   echo "Directory already exists. Retry.";
 else
   mkdir $WORKDIR/$WORKDIRSUB
+  mkdir $WORKDIR/$WORKDIRSUB/tmp
+  export TMP=$WORKDIR/$WORKDIRSUB/tmp
 
   # Special preparation: _epoch temporary directory setup
-  rm -Rf $WORKDIR/$WORKDIRSUB/_epoch
   mkdir $WORKDIR/$WORKDIRSUB/_epoch
   chmod -R 777 $WORKDIR/$WORKDIRSUB/_epoch
   export EPOCH_DIR=$WORKDIR/$WORKDIRSUB/_epoch
