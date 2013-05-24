@@ -28,14 +28,31 @@
 # 5. Do not use the --engines option, storage engine assignent is done in percona_qa.zz
 
 query:
-	select | insert | insert | insert | delete | replace | update | transaction | alter | views | set |
-	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query ; 
+	select | select | insert | insert | delete | delete | replace | update | transaction | 
+        alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | 
+        ext_slow_query_log | user_stats | drop_create_table | bitmap | bitmap ;
 
-p_query:
-# 5.1	ext_slow_query_log | resp_time_dist | user_stats | changed_page_tracking | drop_create_table ;
-	ext_slow_query_log | resp_time_dist | user_stats | drop_create_table ;
+bitmap:
+	SHOW ENGINE INNODB STATUS |
+	SELECT start_lsn, end_lsn, space_id, page_id FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES LIMIT _digit |
+	SELECT COUNT(*) FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES |
+	FLUSH CHANGED_PAGE_BITMAPS | FLUSH CHANGED_PAGE_BITMAPS |
+	RESET CHANGED_PAGE_BITMAPS | RESET CHANGED_PAGE_BITMAPS |
+	PURGE CHANGED_PAGE_BITMAPS BEFORE _digit | PURGE CHANGED_PAGE_BITMAPS BEFORE _digit |
+	SET GLOBAL INNODB_MAX_CHANGED_PAGES = _digit | SET GLOBAL INNODB_MAX_CHANGED_PAGES = 0 |
+	bitmap_ods ;
 
-p_l_query:
+bitmap_ods:
+	PURGE CHANGED_PAGE_BITMAPS BEFORE 0 | PURGE CHANGED_PAGE_BITMAPS BEFORE 1 |
+	PURGE CHANGED_PAGE_BITMAPS BEFORE NULL | PURGE CHANGED_PAGE_BITMAPS BEFORE (SELECT (1)) |
+	PURGE CHANGED_PAGE_BITMAPS BEFORE -1 | PURGE CHANGED_PAGE_BITMAPS BEFORE 18446744073709551615 |
+	SET GLOBAL INNODB_MAX_CHANGED_PAGES = 1 | SET GLOBAL INNODB_MAX_CHANGED_PAGES = NULL |
+	SET GLOBAL INNODB_MAX_CHANGED_PAGES = -1 | SET GLOBAL INNODB_MAX_CHANGED_PAGES = 18446744073709551615 |
+	SELECT COUNT(*) FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES GROUP BY END_LSN ORDER BY END_LSN LIMIT 1 |
+	SELECT * FROM INNODB_CHANGED_PAGES WHERE START_LSN > _digit AND END_LSN <= _digit AND _digit > END_LSN AND PAGE_ID = _digit LIMIT 10 |
+	SELECT COUNT(*) FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES WHERE START_LSN >= END_LSN ;
+
+kill_idle:
 	SET GLOBAL innodb_kill_idle_transaction = kit_list ;
 
 kit_list:
@@ -78,21 +95,6 @@ slow_query_log_use_global_control_list:
 	"" | LOG_SLOW_FILTER | LOG_SLOW_RATE_LIMIT | LOG_SLOW_VERBOSITY | LONG_QUERY_TIME | MIN_EXAMINED_ROW_LIMIT | ALL | 
 	"slow_query_log_use_global_control_list,slow_query_log_use_global_control_list" ;
 
-resp_time_dist:
-	SET GLOBAL resp_time_dist_var | resp_time_dist_query | resp_time_dist_query |
-	FLUSH QUERY_RESPONSE_TIME | SHOW QUERY_RESPONSE_TIME ;
-
-resp_time_dist_var:
-	QUERY_RESPONSE_TIME_RANGE_BASE = _digit |
-	QUERY_RESPONSE_TIME_STATS = 0 | 
-	QUERY_RESPONSE_TIME_STATS = 1 ; 
-
-resp_time_dist_query:
-	SELECT resp_time_dist_1 FROM INFORMATION_SCHEMA.QUERY_RESPONSE_TIME ;
-
-resp_time_dist_1:
-	TIME | COUNT | TOTAL | * ;
-
 user_stats:
 	SELECT user_stats_1 FROM INFORMATION_SCHEMA.USER_STATISTICS |
 	SELECT user_stats_1 FROM INFORMATION_SCHEMA.THREAD_STATISTICS |
@@ -128,10 +130,6 @@ flush_user_stats:
 
 show_user_stats:
 	SHOW CLIENT_STATISTICS  | SHOW INDEX_STATISTICS  | SHOW TABLE_STATISTICS  | SHOW THREAD_STATISTICS  | SHOW USER_STATISTICS  ;
-
-changed_page_tracking:
-	SHOW ENGINE INNODB STATUS |
-	SELECT start_lsn, end_lsn, space_id, page_id FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES LIMIT _digit ;
 
 set:
 	SET scope INNODB_STRICT_MODE = 1 |
