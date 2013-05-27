@@ -217,19 +217,31 @@ options_check(){
       INPUTFILE=$1
     fi
   fi
-  if [ ! -s "$MYBASE/bin/mysqld" ]; then
-    if [ ! -s "/mysql/$MYBASE/bin/mysqld" ]; then 
-      echo "Error: mysqld binary not located at location specified ($MYBASE/bin/mysqld)"
-      echo 'Please check script contents/options ($MYBASE variable)'
-      exit 1
+  BIN="/bin/mysqld"
+  if [ ! -s "${MYBASE}${BIN}" ]; then
+    if [ ! -s "/mysql/${MYBASE}${BIN}" ]; then 
+      BIN="/bin/mysqld-debug"
+      if [ ! -s "${MYBASE}${BIN}" ]; then 
+        if [ ! -s "/mysql/${MYBASE}${BIN}" ]; then 
+          echo "Error: mysqld binary not located at any of the following auto-scanned locaations:"
+          echo -e "${MYBASE}/bin/mysqld\n${MYBASE}/bin/mysqld-debug"
+          echo -e "/mysql/${MYBASE}/bin/mysqld\n/mysql/${MYBASE}/bin/mysqld-debug"
+          echo 'Please check script contents/options (set $MYBASE variable correctly)'
+          exit 1
+        else
+          MYBASE="/mysql/$MYBASE"
+        fi
+      fi
     else
       MYBASE="/mysql/$MYBASE"
     fi
-  elif [ $MODE -ne 1 -a $MODE -ne 2 -a $MODE -ne 3 -a $MODE -ne 4 -a $MODE -ne 5 -a $MODE -ne 6 -a $MODE -ne 7 -a $MODE -ne 8 -a $MODE -ne 9 ]; then
+  fi
+  if [ $MODE -ne 1 -a $MODE -ne 2 -a $MODE -ne 3 -a $MODE -ne 4 -a $MODE -ne 5 -a $MODE -ne 6 -a $MODE -ne 7 -a $MODE -ne 8 -a $MODE -ne 9 ]; then
     echo "Error: Invalid MODE set: $MODE (valid range: 1-9)"
     echo 'Please check script contents/options ($MODE variable)'
     exit 1
-  elif [ $MODE -eq 1 -o $MODE -eq 2 -o $MODE -eq 3 -o $MODE -eq 5 -o $MODE -eq 6 -o $MODE -eq 7 -o $MODE -eq 8 ]; then
+  fi
+  if [ $MODE -eq 1 -o $MODE -eq 2 -o $MODE -eq 3 -o $MODE -eq 5 -o $MODE -eq 6 -o $MODE -eq 7 -o $MODE -eq 8 ]; then
     if [ ! -n "$TEXT" ]; then 
       echo "Error: MODE set to $MODE, but no \$TEXT variable was defined, or \$TEXT is blank"
       echo 'Please check script contents/options ($TEXT variable)'
@@ -587,7 +599,7 @@ init_workdir_and_files(){
     # Initial INPUTFILE to WORKF copy
     (echo "$DROPC"; (cat $INPUTFILE | grep -v "$DROPC")) > $WORKF
   fi
-  echo_out "[Init] Server (When MULTI mode is not active): $MYBASE/bin/mysqld (as $MYUSER)"
+  echo_out "[Init] Server (When MULTI mode is not active): ${MYBASE}${BIN} (as $MYUSER)"
   echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
   if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] Skip stage hack active. Stages up to and including $SKIPSTAGE are skipped"; fi
   echo_out "[Init] Querytimeout: $QUERYTIMEOUT seconds (ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
@@ -654,17 +666,17 @@ start_mysqld_main(){
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
 
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
-    $MYBASE/bin/mysqld --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
-                       --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-                       --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                       --loose-debug-sync-timeout=$TS_DS_TIMEOUT --event-scheduler=ON \
-                       > $WORKD/mysqld.out 2>&1 &
+    ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
+                    --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+                    --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
+                    --loose-debug-sync-timeout=$TS_DS_TIMEOUT --event-scheduler=ON \
+                    > $WORKD/mysqld.out 2>&1 &
     PIDV="$!";
   else
-    $MYBASE/bin/mysqld --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
-                       --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-                       --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                       --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &
+    ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
+                    --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+                    --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
+                    --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &
     PIDV="$!";
   fi
   for X in $(seq 1 120); do
@@ -677,12 +689,12 @@ start_valgrind_mysqld(){
   init_mysql_dir
   if [ -f $WORKD/valgrind.out ]; then mv -f $WORKD/valgrind.out $WORKD/valgrind.prev; fi
   valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
-           $MYBASE/bin/mysqld --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
-                              --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-                              --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                              --event-scheduler=ON \
-                              > $WORKD/valgrind.out 2>&1 &
-                              # Workaround for BUG#12939557 (when older Valgrind version is used): --innodb_checksum_algorithm=none  
+           ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
+                           --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+                           --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
+                           --event-scheduler=ON \
+                           > $WORKD/valgrind.out 2>&1 &
+                           # Workaround for BUG#12939557 (when older Valgrind version is used): --innodb_checksum_algorithm=none  
   PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
   for X in $(seq 1 360); do 
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
