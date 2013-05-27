@@ -339,6 +339,7 @@ sub doCombination {
                 close(OUT);
                 if (defined $clean) {
                     say("[$thread_id] Clean mode active & failed run (".status2text($result)."): Archiving this vardir");
+                    system('rm -f '.$workdir.'/vardir'.$s.'_'.$trial_id.'/tmp/master.sock'); 
                     system('tar zhcf '.$workdir.'/vardir'.$s.'_'.$trial_id.'.tar.gz -C '.$workdir.' ./vardir'.$s.'_'.$trial_id);
                     system("rm -Rf $to");
                 }
