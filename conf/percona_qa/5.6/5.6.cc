@@ -29,49 +29,49 @@ $combinations=
   '--basedir=/Percona-Server',
   '--basedir=/Percona-Server --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
  ],[
-  '--threads=1',
-  '--threads=25'
+  '--threads=25',
+  '--threads=1'
  ],[
-  '--views',
-  '--views --notnull',
-  '--validator=Transformer',
-  '--notnull --validator=Transformer',
+  '--views --notnull --validator=Transformer',
   '--views --validator=Transformer',
-  '--views --notnull --validator=Transformer'
+  '--notnull --validator=Transformer',
+  '--validator=Transformer',
+  '--views --notnull',
+  '--views'
  ],[
+  '--mysqld=--slow_query_log',
   '',
-  '--mysqld=--slow_query_log'
  ],[
-  '',
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=4097
    --mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=2',
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=20480
    --mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=0',
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=9223372036854775807
    --mysqld=--innodb_changed_pages=FORCE --mysqld=--innodb_max_changed_pages=100',
-  '--mysqld=--innodb_track_changed_pages=0 --mysqld=--innodb_changed_pages=FORCE'
+  '--mysqld=--innodb_track_changed_pages=0 --mysqld=--innodb_changed_pages=FORCE',
+  ''
  ],[
-  '',
-  '--mysqld=--userstat'
+  '--mysqld=--userstat',
+  ''
  ],[
-  '',
+  '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=2
+    --mysqld=--innodb_log_buffer_size=1048576 --mysqld=--innodb_log_block_size=512
+    --mysqld=--innodb_fast_shutdown=2 --mysqld=--innodb_adaptive_flushing_method=native
+    --mysqld=--innodb_use_global_flush_log_at_trx_commit=0 --mysqld=--userstat',
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=10
     --mysqld=--innodb_log_buffer_size=10485761',
   '--mysqld=--innodb_log_file_size=10485761 --mysqld=--innodb_log_files_in_group=3
     --mysqld=--innodb_log_buffer_size=1048577 --mysqld=--innodb_log_block_size=4096
     --mysqld=--innodb_fast_shutdown=0 --mysqld=--innodb_adaptive_flushing_method=keep_average
     --mysqld=--skip-innodb_doublewrite --mysqld=--userstat',
-  '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=2
-    --mysqld=--innodb_log_buffer_size=1048576 --mysqld=--innodb_log_block_size=512
-    --mysqld=--innodb_fast_shutdown=2 --mysqld=--innodb_adaptive_flushing_method=native
-    --mysqld=--innodb_use_global_flush_log_at_trx_commit=0 --mysqld=--userstat'
+  ''
  ],[
-  '',
   '--mysqld=--innodb_flush_method=O_DSYNC',
-  '--mysqld=--innodb_flush_method=O_DIRECT'
+  '--mysqld=--innodb_flush_method=O_DIRECT',
+  ''
  ],[
-  '',
   '--mysqld=--innodb_file_per_table=1',
-  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda'
+  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda',
+  ''
  ]
 ]
