@@ -17,6 +17,10 @@
 
 # Certain parts (c) Percona Inc
 
+# Not ported yet ftm (listed just after innodb_fast_shutdown)
+# --mysqld=--innodb_adaptive_flushing_method=native
+# --mysqld=--innodb_adaptive_flushing_method=keep_average
+
 $combinations=
 [
  ['
@@ -56,13 +60,13 @@ $combinations=
  ],[
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=2
     --mysqld=--innodb_log_buffer_size=1048576 --mysqld=--innodb_log_block_size=512
-    --mysqld=--innodb_fast_shutdown=2 --mysqld=--innodb_adaptive_flushing_method=native
+    --mysqld=--innodb_fast_shutdown=2
     --mysqld=--innodb_use_global_flush_log_at_trx_commit=0 --mysqld=--userstat',
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=10
     --mysqld=--innodb_log_buffer_size=10485761',
   '--mysqld=--innodb_log_file_size=10485761 --mysqld=--innodb_log_files_in_group=3
     --mysqld=--innodb_log_buffer_size=1048577 --mysqld=--innodb_log_block_size=4096
-    --mysqld=--innodb_fast_shutdown=0 --mysqld=--innodb_adaptive_flushing_method=keep_average
+    --mysqld=--innodb_fast_shutdown=0
     --mysqld=--skip-innodb_doublewrite --mysqld=--userstat',
   ''
  ],[
