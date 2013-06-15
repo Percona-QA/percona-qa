@@ -30,10 +30,11 @@
 query:
 	select | select | insert | insert | delete | delete | replace | update | transaction | 
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | 
-        ext_slow_query_log | user_stats | drop_create_table | bitmap | bitmap ;
+        ext_slow_query_log | user_stats | drop_create_table | optimize_table | bitmap | bitmap ;
 
 bitmap:
 	SHOW ENGINE INNODB STATUS |
+	SHOW ENGINE INNODB MUTEX |
 	SELECT start_lsn, end_lsn, space_id, page_id FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES LIMIT _digit |
 	SELECT COUNT(*) FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES |
 	FLUSH CHANGED_PAGE_BITMAPS | FLUSH CHANGED_PAGE_BITMAPS |
@@ -79,7 +80,7 @@ ext_slow_query_log:
 
 log_slow_filter_list:
 	QC_MISS | FULL_SCAN | FULL_JOIN | TMP_TABLE | TMP_TABLE_ON_DISK | FILESORT | FILESORT_ON_DISK |
-	"log_slow_filter_list,log_slow_filter_list" ; 
+	"log_slow_filter_list,log_slow_filter_list" | "" ; 
 
 log_slow_rate_type_list:
 	SESSION | QUERY ;
@@ -129,14 +130,32 @@ flush_user_stats:
 	FLUSH CLIENT_STATISTICS | FLUSH INDEX_STATISTICS | FLUSH TABLE_STATISTICS | FLUSH THREAD_STATISTICS | FLUSH USER_STATISTICS ;
 
 show_user_stats:
-	SHOW CLIENT_STATISTICS  | SHOW INDEX_STATISTICS  | SHOW TABLE_STATISTICS  | SHOW THREAD_STATISTICS  | SHOW USER_STATISTICS  ;
+	SHOW CLIENT_STATISTICS  | SHOW INDEX_STATISTICS  | SHOW TABLE_STATISTICS  | SHOW THREAD_STATISTICS  | SHOW USER_STATISTICS ;
+
+action:
+	ASSERT | WARN | SALVAGE ;
+
+onoff:
+	1 | 0 ;	
 
 set:
-	SET scope INNODB_STRICT_MODE = 1 |
-	SET scope INNODB_STRICT_MODE = 0 ;
+	SET GLOBAL INNODB_USE_GLOBAL_FLUSH_LOG_AT_TRX_COMMIT = onoff  |
+	SET GLOBAL INNODB_CORRUPT_TABLE_ACTION = action |
+	SET scope INNODB_STRICT_MODE = onoff |
+	SET scope OLD_ALTER_TABLE = onoff |
+	SET scope EXPAND_FAST_INDEX_CREATION = ON |
+	SET scope EXPAND_FAST_INDEX_CREATION = OFF |
+	SET @@global.innodb_log_checkpoint_now = TRUE ;
+
+isolation:
+	READ-UNCOMMITTED | READ-COMMITTED | REPEATABLE-READ | SERIALIZABLE ;
+
+isolation:
+	READ-UNCOMMITTED | READ-COMMITTED | REPEATABLE-READ | SERIALIZABLE ;
 
 transaction:
-	| | START TRANSACTION | COMMIT | ROLLBACK | SAVEPOINT A | ROLLBACK TO SAVEPOINT A ;
+	| | START TRANSACTION | COMMIT | ROLLBACK | SAVEPOINT A | ROLLBACK TO SAVEPOINT A |
+	SET scope TX_ISOLATION = isolation ;
 
 select:
 	SELECT select_item FROM _table where order_by limit ;
@@ -193,11 +212,22 @@ replace:
 	
 drop_create_table:
 	DROP TABLE IF EXISTS _letter[invariant] ; DROP VIEW IF EXISTS _letter[invariant] ; CREATE temp TABLE _letter[invariant] LIKE _table[invariant] ; INSERT INTO _letter[invariant] SELECT * FROM _table[invariant] |
-	DROP TABLE IF EXISTS _letter[invariant] ; DROP VIEW IF EXISTS _letter[invariant] ; CREATE temp TABLE _letter[invariant] SELECT * FROM _table ;
+	DROP TABLE IF EXISTS _letter[invariant] ; DROP VIEW IF EXISTS _letter[invariant] ; CREATE temp TABLE _letter[invariant] SELECT * FROM _table |
 	DROP TABLE IF EXISTS _letter[invariant] ; DROP VIEW IF EXISTS _letter[invariant] ; CREATE temp TABLE _letter[invariant] LIKE _table[invariant] ; INSERT INTO _letter[invariant] SELECT * FROM _table[invariant] ; DROP TABLE _table[invariant] ; ALTER TABLE _letter[invariant] RENAME _table[invariant] ;
 	
+optimize_table:
+	OPTIMIZE TABLE _table |
+	OPTIMIZE NO_WRITE_TO_BINLOG TABLE _table |
+	OPTIMIZE LOCAL TABLE _table ;
+
 temp:
-	| | | | | | TEMPORARY ;
+	| | | | | TEMPORARY ;
+
+algo:
+	| DEFAULT | INPLACE | COPY ;
+
+lock:
+	| DEFAULT | NONE | SHARED | EXCLUSIVE ;
 
 type:
 	INT | DECIMAL | FLOAT | BIT | CHAR( _digit ) | VARCHAR ( _digit ) | BLOB | BLOB | BLOB |
@@ -207,13 +237,15 @@ null_or_not:
 	| | NULL | NOT NULL ;
 
 default_or_not:
-	| | | | | | | | DEFAULT 0 | DEFAULT NULL ;
+	| | DEFAULT 0 | DEFAULT NULL | DEFAULT 1 | DEFAULT 'a' ;
 
 after_or_not:
 	| | AFTER _field | FIRST ;
 
 alter:
-	ALTER TABLE _table MODIFY _field type null_or_not default_or_not after_or_not ;
+	ALTER TABLE _table algo lock MODIFY _field type null_or_not default_or_not after_or_not |
+	ALTER TABLE _table algo lock ALTER _field DROP DEFAULT |
+	ALTER TABLE _table algo lock CHANGE _field c1 type null_or_not default_or_not after_or_not ;
 
 proc_func:
 	DROP PROCEDURE IF EXISTS _letter[invariant] ; CREATE PROCEDURE _letter[invariant] ( proc_param ) BEGIN SELECT COUNT( _field ) INTO @a FROM _table ; END ; CALL _letter[invariant](@a); |
@@ -230,6 +262,7 @@ views:
 	
 outfile_infile:
 	SELECT * FROM _table[invariant] INTO OUTFILE _tmpnam ; TRUNCATE _table[invariant] ; LOAD DATA INFILE _tmpnam INTO TABLE _table[invariant] ;
+	SELECT * FROM _table[invariant] INTO OUTFILE _tmpnam ; TRUNCATE _table[invariant] ; LOAD DATA LOCAL INFILE _tmpnam INTO TABLE _table[invariant] ;
 
 value:
 	_digit | 0 | 1 | -1 | _data | _bigint_unsigned | _bigint | _mediumint | _english | _letter | 

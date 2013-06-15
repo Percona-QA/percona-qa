@@ -27,14 +27,19 @@ $combinations=
   --seed=random --duration=300 --querytimeout=60
   --short_column_names
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
-  --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
-  --grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz'
+  --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY'
+ ],[
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz',
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2'
  ],[
   '--basedir=/Percona-Server',
   '--basedir=/Percona-Server --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
  ],[
   '--threads=25',
   '--threads=1'
+ ],[
+  '--no-mask',
+  '--mask-level=1'
  ],[
   '--views --notnull --validator=Transformer',
   '--views --validator=Transformer',
@@ -43,19 +48,15 @@ $combinations=
   '--views --notnull',
   '--views'
  ],[
-  '--mysqld=--slow_query_log',
-  '',
- ],[
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=4097
-   --mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=2',
+   --mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=2
+   --mysqld=--slow_query_log --mysqld=--userstat',
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=20480
    --mysqld=--innodb_changed_pages=ON --mysqld=--innodb_max_changed_pages=0',
   '--mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_max_bitmap_file_size=9223372036854775807
    --mysqld=--innodb_changed_pages=FORCE --mysqld=--innodb_max_changed_pages=100',
-  '--mysqld=--innodb_track_changed_pages=0 --mysqld=--innodb_changed_pages=FORCE',
-  ''
- ],[
-  '--mysqld=--userstat',
+  '--mysqld=--innodb_track_changed_pages=0 --mysqld=--innodb_changed_pages=FORCE
+   --mysqld=--slow_query_log --mysqld=--userstat',
   ''
  ],[
   '--mysqld=--innodb_log_file_size=1048576 --mysqld=--innodb_log_files_in_group=2
