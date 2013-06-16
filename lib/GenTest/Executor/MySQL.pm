@@ -592,7 +592,7 @@ sub execute {
 	my $trace_me = 0;
 
 	# Write query to log before execution so it sure to get there
-	if ($executor->sqltrace && defined $err) {
+	if ($executor->sqltrace) {
 		if ($query =~ m{(procedure|function)}sgio) {
 			$trace_query = "DELIMITER |\n$query|\nDELIMITER ";
 		} else {
@@ -656,10 +656,14 @@ sub execute {
 	}
 
 	if ($trace_me eq 1) {
-	        # Mark invalid queries in the trace by prefixing each line.
-	        # We need to prefix all lines of multi-line statements also.
-	        $trace_query =~ s/\n/\n# [sqltrace]    /g;
-	        print '# [sqltrace] ERROR '.$err.": $trace_query;\n";
+		if (defined $err) {
+		        # Mark invalid queries in the trace by prefixing each line.
+		        # We need to prefix all lines of multi-line statements also.
+		        $trace_query =~ s/\n/\n# [sqltrace]    /g;
+		        print '# [sqltrace] ERROR '.$err.": $trace_query;\n";
+		} else {
+			print "$trace_query;\n";
+		}
 	}
 
 	my $result;
