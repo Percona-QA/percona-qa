@@ -588,6 +588,24 @@ sub execute {
 		}
 	}
 
+	my $trace_query;
+	my $trace_me = 0;
+
+	# Write query to log before execution so it sure to get there
+	if ($executor->sqltrace && defined $err) {
+		if ($query =~ m{(procedure|function)}sgio) {
+			$trace_query = "DELIMITER |\n$query|\nDELIMITER ";
+		} else {
+			$trace_query = $query; 
+		}
+		# MarkErrors logging can only be done post-execution
+		if ($executor->sqltrace eq 'MarkErrors') {
+			$trace_me = 1;   # Defer logging
+		} else {
+			print "$trace_query;\n";
+		}
+	}
+
 	my $performance;
 
 	if ($execution_flags & EXECUTOR_FLAG_PERFORMANCE) {
@@ -596,7 +614,7 @@ sub execute {
 			query => $query
 		);	
 	}
-
+			
 	my $start_time = Time::HiRes::time();
 	my $sth = $dbh->prepare($query);
 
@@ -637,20 +655,11 @@ sub execute {
 		$performance->setExecutionTime($execution_time);
 	}
 
-	if ($executor->sqltrace) {
-	    if (defined $err && ($executor->sqltrace eq 'MarkErrors')) {
+	if ($trace_me eq 1) {
 	        # Mark invalid queries in the trace by prefixing each line.
-	        # We need to prefix all lines of multi-line statements.
-	        my $trace_query = $query;
+	        # We need to prefix all lines of multi-line statements also.
 	        $trace_query =~ s/\n/\n# [sqltrace]    /g;
 	        print '# [sqltrace] ERROR '.$err.": $trace_query;\n";
-	    } else {
-		if ($query =~ m{(procedure|function)}sgio) {
-			print "DELIMITER |\n$query|\nDELIMITER ;\n";
-		} else {
-			print "$query;\n";
-		}
-	    }
 	}
 
 	my $result;
