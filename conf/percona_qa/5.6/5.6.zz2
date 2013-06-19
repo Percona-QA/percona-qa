@@ -18,20 +18,20 @@
 # Certain parts (c) Percona Inc
 
 $tables = {
-  pk => [undef,'int','int auto_increment','char'],
+  pk => [undef,'varchar','char'],
   partitions => [ undef , 'KEY (pk) PARTITIONS 3' ],
   engines => ['InnoDB'],
-  rows => [0,1,10],
+  rows => [1,10],
   row_formats => ['DYNAMIC','COMPRESSED','DEFAULT']
 };
 
 $fields = {
-  types => ['varchar','char','tinyint','tinyblob','tinytext','datetime'],
+  types => ['char','tinyint','tinyblob','tinytext','datetime'],
   indexes => [undef,'unique','key'],
   null => [undef,'not null'],
   default => [undef,'default null'],
   sign => [undef, 'unsigned'],
-  charsets => ['utf8','latin1']
+  charsets => ['utf8']
 };
 
 $data = {

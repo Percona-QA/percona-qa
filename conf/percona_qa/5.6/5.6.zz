@@ -18,7 +18,7 @@
 # Certain parts (c) Percona Inc
 
 $tables = {
-  pk => [undef,'int','int auto_increment','varchar'],
+  pk => [undef,'int','int auto_increment'],
   partitions => [ undef , 'KEY (pk) PARTITIONS 2' ],
   engines => ['InnoDB'],
   rows => [100,500],
@@ -26,18 +26,18 @@ $tables = {
 };
 
 $fields = {
-  types => ['varchar','char','int','blob','text','date'],
-  indexes => [undef,'unique','key'],
+  types => ['int','varchar','blob','text','date'],
+  indexes => [undef,'key'],
   null => [undef,'not null'],
   default => [undef,'default null'],
   sign => [undef, 'unsigned'],
-  charsets => ['utf8','latin1']
+  charsets => ['latin1']
 };
 
 $data = {
   numbers => ['digit','null',undef],
   temporals => ['datetime','timestamp'],
-  strings => ['varchar(1024)','varchar(1024)','english','letter'],
+  strings => ['varchar(129)','varchar(257)','english','letter'],
   blobs => ['letter','data','english'],
   temporals => ['date','year','null',undef]
 }
