@@ -30,7 +30,7 @@ $combinations=
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY'
  ],[
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2'
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3'
  ],[
   '--basedir=/Percona-Server',
