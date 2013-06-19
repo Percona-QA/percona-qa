@@ -27,13 +27,55 @@
 # 4. You can use --short_column_names option to RQG to avoid overly long column names
 # 5. Do not use the --engines option, storage engine assignent is done in percona_qa.zz
 
+# TODO:
+# Find a working solution for these types of rules:
+#	"log_slow_filter_list,log_slow_filter_list" ; 
+#	"log_slow_verbosity_list,log_slow_verbosity_list";
+#	"slow_query_log_use_global_control_list,slow_query_log_use_global_control_list" ;
+# As they are, they fail, may want to try spaces; " a , a " 
+# Also, PURGE ARCHIVED LOGS TO cannot be added due to not having actual filename.
+
 query:
-	select | select | insert | insert | delete | delete | replace | update | transaction | 
-        alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | 
-        ext_slow_query_log | user_stats | drop_create_table | optimize_table | bitmap | bitmap ;
+	select | select | insert | insert | delete | delete | replace | update | transaction | i_s |
+        alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
+        ext_slow_query_log | user_stats | drop_create_table | optimize_table | bitmap | bitmap | archive_logs |
+	thread_handling ;
+
+zero_to_ten:
+	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
+
+one_to_thousand:
+	1 | 10 | 100 | 150 | 200 | 250 | 300 | 400 | 500 | 600 | 650 | 700 | 800 | 900 | 999 | 1000 ;
+
+zero_to_ttsh:
+	0 | 1 | 10 | 100 | 200 | 450 | 750 | 1000 | 1111 | 1200 | 1500 | 1700 | 2000 | 2400 | 2600 | 3000 | 3300 | 3600 ;
+
+thread_handling:
+	SET GLOBAL thread_pool_idle_timeout = zero_to_ttsh | 
+	SET GLOBAL thread_pool_high_prio_tickets = zero_to_ten |
+	SET GLOBAL thread_pool_max_threads = one_to_thousand |
+	SET GLOBAL thread_pool_oversubscribe = zero_to_ten | 
+ 	SET GLOBAL thread_pool_size = zero_to_ten ;	
+
+archive_logs:
+        SHOW ENGINE INNODB STATUS |
+        SET GLOBAL INNODB_LOG_ARCHIVE=ON | SET GLOBAL INNODB_LOG_ARCHIVE=OFF |
+        SET GLOBAL INNODB_LOG_ARCH_EXPIRE_SEC = _digit |
+        PURGE ARCHIVED LOGS BEFORE _datetime |
+        PURGE ARCHIVED LOGS BEFORE NOW() ;
+
+query_cache:
+	SET GLOBAL query_cache_strip_comments = 0 |
+	SET GLOBAL query_cache_strip_comments = 1 ;
+
+i_s_area:
+	INFORMATION_SCHEMA.PROCESSLIST | INFORMATION_SCHEMA.GLOBAL_TEMPORARY_TABLES |
+	INFORMATION_SCHEMA.TEMPORARY_TABLES | INFORMATION_SCHEMA.XTRADB_RSEG ;
+
+i_s:
+	SELECT COUNT(*) FROM i_s_area | SELECT * FROM i_s_area ;
 
 bitmap:
-	SHOW ENGINE INNODB STATUS |
 	SHOW ENGINE INNODB MUTEX |
 	SELECT start_lsn, end_lsn, space_id, page_id FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES LIMIT _digit |
 	SELECT COUNT(*) FROM INFORMATION_SCHEMA.INNODB_CHANGED_PAGES |
@@ -79,22 +121,19 @@ ext_slow_query_log:
 	SET GLOBAL SLOW_QUERY_LOG_USE_GLOBAL_CONTROL = slow_query_log_use_global_control_list ;
 
 log_slow_filter_list:
-	QC_MISS | FULL_SCAN | FULL_JOIN | TMP_TABLE | TMP_TABLE_ON_DISK | FILESORT | FILESORT_ON_DISK |
-	"log_slow_filter_list,log_slow_filter_list" | "" ; 
+	QC_MISS | FULL_SCAN | FULL_JOIN | TMP_TABLE | TMP_TABLE_ON_DISK | FILESORT | FILESORT_ON_DISK | "" ;
 
 log_slow_rate_type_list:
 	SESSION | QUERY ;
 
 log_slow_verbosity_list:
-	MICROTIME | QUERY_PLAN | INNODB | FULL | PROFILING | PROFILING_USE_GETRUSAGE | 
-	"log_slow_verbosity_list,log_slow_verbosity_list";
+	MICROTIME | QUERY_PLAN | INNODB | FULL | PROFILING | PROFILING_USE_GETRUSAGE | "" ;
 
 slow_query_log_timestamp_precision_list:
 	SECOND | MICROSECOND ;
 
 slow_query_log_use_global_control_list:
-	"" | LOG_SLOW_FILTER | LOG_SLOW_RATE_LIMIT | LOG_SLOW_VERBOSITY | LONG_QUERY_TIME | MIN_EXAMINED_ROW_LIMIT | ALL | 
-	"slow_query_log_use_global_control_list,slow_query_log_use_global_control_list" ;
+	LOG_SLOW_FILTER | LOG_SLOW_RATE_LIMIT | LOG_SLOW_VERBOSITY | LONG_QUERY_TIME | MIN_EXAMINED_ROW_LIMIT | ALL | "" ;
 
 user_stats:
 	SELECT user_stats_1 FROM INFORMATION_SCHEMA.USER_STATISTICS |
