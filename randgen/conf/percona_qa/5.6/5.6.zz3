@@ -21,7 +21,7 @@ $tables = {
   pk => [undef,'int','int auto_increment','varchar'],
   partitions => [ undef , 'KEY (pk) PARTITIONS 2' ],
   engines => ['Memory'],
-  rows => [100,500],
+  rows => [100,500]
 };
 
 $fields = {
