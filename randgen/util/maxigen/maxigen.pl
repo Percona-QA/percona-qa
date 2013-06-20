@@ -94,7 +94,7 @@ $0 - Generate random grammar rules from an existing grammar and pipe them to STD
 
         --grammar   : Grammar file to use for generating the queries (REQUIRED);
         --seed      : Seed for the pseudo-random generator
-        --queries   : Numer of queries to generate (default $DEFAULT_QUERIES);
+        --queries   : Numer of queries ("rules") to generate (default $DEFAULT_QUERIES);
         --mask      : A seed to a random mask used to mask (reeduce) the grammar.
         --mask-level: How many levels deep the mask is applied (default 1)
         --help      : This help message

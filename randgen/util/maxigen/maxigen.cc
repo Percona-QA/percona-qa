@@ -20,25 +20,21 @@
 $combinations=
 [
  ['
-  --seed=random --duration=300 --querytimeout=60 --sqltrace
+  --seed=random --duration=300 --querytimeout=60
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
   --mysqld=--slow_query_log --mysqld=--userstat
   --views --validator=Transformer'
  ],[
-  '--grammar=GRAMMAR --gendata=GENDATA',
- ],[
   '--threads=1',
   '--threads=25'
  ],[
-  '--notnull'
-  '',
- ],[
   '--mysqld=--innodb_file_per_table=1',
-  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda'
-  '',
+  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda',
+  '--notnull',
+  ''
  ],[
-  '--basedir=/Percona-Server',
-  '--basedir=/Percona-Server --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
- ]
-]
+  '--basedir=/ssd/PERCONA-DBG-SERVER',
+  '--basedir=/ssd/PERCONA-VAL-SERVER --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
+ ],[
+#GRAMMAR-GENDATA-DUMMY-TAG   # do not remove, and leave file otherwise as-is, except you may make modifications above as needed
