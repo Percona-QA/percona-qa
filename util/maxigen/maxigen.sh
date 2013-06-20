@@ -10,20 +10,48 @@
 # Maybe we can copy in files while a master instance keeps running? FUN 
 # No, the simple solution is just to let maxigen loop many times more and create heaps and heaps of yy file (1000 orso) :)
 
-if [ "" == "$1" ]; then
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
+
+if [ -d /randgen/conf ]; then RQG_DIR="/randgen/conf"
+elif [ -d /ssd/randgen/conf ]; then RQG_DIR="/ssd/randgen/conf"
+elif [ -d /ssd/qa/randgen/conf ]; then RQG_DIR="/ssd/qa/randgen/conf"
+elif [ -d ../../conf ]; then RQG_DIR="../../conf"
+elif [ "" == "$1" ]; then
   echo "This script is a very powerfull random grammar generator. It expects one parameter: the conf directory of randgen"
+  echo "Note: this script already auto-searches several directories for randgen existence (for example in /randgen/conf)"
   echo "Example: $maxigen.sh '/randgen/conf'"
   exit 1
+else 
+  RQG_DIR=$1
 fi
 
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
 RND_DIR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
+NR_OF_GRAMMARS=10
+LINES_PER_GRAM=10     # The number of queries (rules) to extract from each sub-grammar created from the existing RQG grammars by maxigen.pl
+GENDATA_RND=5
+QUERIES=$[$NR_OF_GRAMMARS * $LINES_PER_GRAM]
 
 mkdir /tmp/$RND_DIR
 
 LOOP=0
+for GRAMMAR in $(find $RQG_DIR -maxdepth 2 -name '*.yy'); do 
+  LOOP=$[$LOOP +1]
+done
+
+FIN_GRAM_SIZE=$[$LINES_PER_GRAM * $LOOP]
+echo "------------------------------------------------------------------------------"
+echo "| Welcome to MaxiGen v0.10"
+echo "------------------------------------------------------------------------------"
+echo "| Number of original RQG grammars in $RQG_DIR: $LOOP"
+echo "| Number of new random grammars requested: $NR_OF_GRAMMARS"
+echo "| Number of lines taken from each original RQG grammar: $LINES_PER_GRAM"
+echo "| So, we will generate $QUERIES rules per original RQG grammar,"
+echo "| resulting in approx $FIN_GRAM_SIZE rules per generated new random grammar"
+echo "------------------------------------------------------------------------------"
+
+LOOP=0
 echo "Stage 1: generating initial grammar files in: /tmp/$RND_DIR/"
-for GRAMMAR in $(find $1 -maxdepth 2 -name '*.yy'); do 
+for GRAMMAR in $(find $RQG_DIR -maxdepth 2 -name '*.yy'); do 
   LOOP=$[$LOOP +1]
   SEED=$[$RANDOM % 10000]
   if [ $SEED -lt 25000 ]; then MASK=$[$RANDOM % 10]
@@ -32,7 +60,7 @@ for GRAMMAR in $(find $1 -maxdepth 2 -name '*.yy'); do
   else MASK=$[$RANDOM % 10000]
   fi
   MASK_L=$[$RANDOM % 2]
-  $SCRIPT_PWD/maxigen.pl --grammar=$GRAMMAR --queries=200 --seed=$SEED --mask=$MASK --mask-level=$MASK_L \
+  $SCRIPT_PWD/maxigen.pl --grammar=$GRAMMAR --queries=$QUERIES --seed=$SEED --mask=$MASK --mask-level=$MASK_L \
   > /tmp/$RND_DIR/${LOOP}.yy 2>/dev/null
   echo -n "$LOOP..."
 done
@@ -54,13 +82,13 @@ done
 echo -e "\n"
 
 LOOP=0
-echo "Stage 3: Shuffle mix grammars"
+echo "Stage 3: Shuffle mix all queries generated from existing RQG grammars into $NR_OF_GRAMMARS new grammars"
 for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   LOOP=$[$LOOP +1]
-  head -n10 $GRAMMAR >> /tmp/$RND_DIR/_1.yy
-  for ((i=2;i<=20;i++)); do
-    HEAD=$[$i * 10]
-    head -n${HEAD} $GRAMMAR | tail -n10 >> /tmp/$RND_DIR/_${i}.yy
+  for ((i=1;i<=$NR_OF_GRAMMARS;i++)); do
+    TOP=$[ $i * $LINES_PER_GRAM - $LINES_PER_GRAM + 1]
+    END=$[ $i * $LINES_PER_GRAM ]
+    sed -n "${TOP},${END}p" $GRAMMAR >> /tmp/$RND_DIR/_${i}.yy
   done
   echo -n "$LOOP..."
 done
@@ -81,11 +109,34 @@ done
 echo -e "\n"
 
 # Delete old grammars
-#rm /tmp/$RND_DIR/_[0-9]*.yy
+rm /tmp/$RND_DIR/_[0-9]*.yy
 
 #Setup scripts
-       # NO short_column_names
-       # Why not use a runall.pl on a server with all Percona options turned on
-cp $1/percona_qa/percona_qa.sh /tmp/$RND_DIR/percona_qa.sh
-cp $1/percona_qa/percona_qa.cc /tmp/$RND_DIR/percona_qa.cc
+sed "s|COMBINATIONS|/tmp/$RND_DIR/maxigen.cc|" ./maxirun.sh > /tmp/$RND_DIR/maxirun.sh
+chmod +x /tmp/$RND_DIR/maxirun.sh
 
+# Use random gendata's to augment new random yy grammars
+for GENDATA in $(find $RQG_DIR -maxdepth 2 -name '*.zz'); do
+  echo "  '--gendata=$GENDATA'," >> /tmp/$RND_DIR/GENDATA.txt
+done
+
+sort --random-source=/tmp/$RND_DIR/GENDATA.txt -R /tmp/$RND_DIR/GENDATA.txt | \
+  head -n$GENDATA_RND >> /tmp/$RND_DIR/maxigen.cc
+
+echo " ],[" >> /tmp/$RND_DIR/maxigen.cc
+
+# Insert new random yy grammars into template
+grep -v "GRAMMAR-GENDATA-DUMMY-TAG" ./maxigen.cc > /tmp/$RND_DIR/maxigen.cc
+for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
+  echo "  '--grammar=$GRAMMAR'," >> /tmp/$RND_DIR/maxigen.cc
+done
+  
+echo -e " ]\n]" >> /tmp/$RND_DIR/maxigen.cc
+
+# Finalize
+echo "MaxiGen Done! Generated $NR_OF_GRAMMARS grammar files in: /tmp/$RND_DIR/"
+echo -e "\nOnly thing left to do;"
+echo "cd /tmp/$RND_DIR/; vi maxigen.cc"
+echo " > Change 'PERCONA-DBG-SERVER' and 'PERCONA-DBG-SERVER' to normal debug/valgrind server location path names,"
+echo "   for example /ssd/Percona-Server-5.6.11-rc60.3-383-debug.Linux.x86_64 instead of PERCONA-DBG-SERVER"
+echo "./maxirun.sh"
