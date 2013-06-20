@@ -22,7 +22,6 @@ $tables = {
   partitions => [ undef , 'KEY (pk) PARTITIONS 2' ],
   engines => ['Memory'],
   rows => [100,500],
-  row_formats => ['DYNAMIC','COMPRESSED','DEFAULT']
 };
 
 $fields = {
