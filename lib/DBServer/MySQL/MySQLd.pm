@@ -613,19 +613,22 @@ sub running {
 }
 
 sub _find {
-    my($self, $bases, $subdir, $name) = @_;
+    my($self, $bases, $subdir, @names) = @_;
     
     foreach my $base (@$bases) {
         foreach my $s (@$subdir) {
-            my $path  = $base."/".$s."/".$name;
-            return $path if -f $path;
+        	foreach my $n (@names) {
+                my $path  = $base."/".$s."/".$n;
+                return $path if -f $path;
+        	}
         }
     }
     my $paths = "";
     foreach my $base (@$bases) {
         $paths .= join(",",map {"'".$base."/".$_."'"} @$subdir).",";
     }
-    croak "Cannot find '$name' in $paths"; 
+    my $names = join(" or ", @names );
+    croak "Cannot find '$names' in $paths"; 
 }
 
 sub dsn {

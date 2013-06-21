@@ -1,4 +1,5 @@
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,6 +30,8 @@ use GenTest::Comparator;
 use Data::Dumper;
 use IPC::Open2;
 use POSIX;
+
+use DBServer::MySQL::MySQLd;
 
 my $first_reporter;
 
@@ -111,20 +114,19 @@ sub report {
 
 	say("Copying complete.");
 
-	my $aria_read_log_path;
-	if (-e $reporter->serverVariable('basedir')."/../storage/maria/aria_read_log") {
-		$aria_read_log_path = $reporter->serverVariable('basedir')."/../storage/maria/aria_read_log";
-	} else {
-		$aria_read_log_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_read_log";			
-	}
+	my $aria_read_log_path = 
+	     DBServer::MySQL::MySQLd->_find([$reporter->serverVariable('basedir'),
+	    	                             $reporter->serverVariable('basedir').'/..'],
+	    	                            ['storage/maria','bin'],
+	    	                            'aria_read_log',
+	    	                            'maria_read_log');
+	my $aria_chk_path = 
+	     DBServer::MySQL::MySQLd->_find([$reporter->serverVariable('basedir'),
+	    	                             $reporter->serverVariable('basedir').'/..'],
+	    	                            ['storage/maria','bin'],
+	    	                            'aria_chk',
+	    	                            'maria_chk');
 
-	my $aria_chk_path;
-
-	if (-e $reporter->serverVariable('basedir')."/../storage/maria/aria_chk") {
-		$aria_chk_path = $reporter->serverVariable('basedir')."/../storage/maria/aria_chk";
-	} else {
-		$aria_chk_path = $reporter->serverVariable('basedir')."/../storage/maria/maria_chk";
-	}
 
 	chdir($recovery_datadir_aria);
 	my $aria_read_log_command = $aria_read_log_path." --aria-log-dir-path $recovery_datadir_aria --apply --check --silent";
