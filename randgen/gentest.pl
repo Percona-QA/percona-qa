@@ -80,6 +80,8 @@ my $opt_result = GetOptions($options,
                             'sqltrace:s',
                             'no-err-filter',
                             'views:s',
+                            'views1:s',
+                            'views2:s',
                             'start-dirty',
                             'filter=s',
                             'valgrind',
@@ -198,6 +200,7 @@ $0 - Testing via random query generation. Options:
         --rows      : Number of rows to generate for each table in gendata.pl, unless specified in the ZZ file
         --varchar-length: maximum length of strings (deault 1) in gendata.pl
         --views     : Pass --views to gendata-old.pl or gendata.pl. Optionally specify view type (algorithm) as option value. 
+                           Different values can be provided to two servers through --views1 | --views2
         --filter    : ......
         --sqltrace  : Print all generated SQL statements. 
                       Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
@@ -292,6 +295,18 @@ sub backwardCompatability {
             $options->{sqltrace} = 1;
         }
     }
+
+    # if --views[=<value>] is defined, it will be used for both servers.
+    # --views1 and --views2 will only be used for the corresponding server
+    #   and have higher priority than --views
+
+    my @views = ( 
+        defined $options->{views1} ? $options->{views1} : $options->{views}, 
+        defined $options->{views2} ? $options->{views2} : $options->{views}  
+    );
+    $options->{views} = \@views;
+    delete $options->{views1};
+    delete $options->{views2};
 
 }
 

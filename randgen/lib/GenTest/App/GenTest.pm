@@ -458,13 +458,15 @@ sub doGenData {
     return STATUS_OK if not defined $self->config->gendata();
     return STATUS_OK if defined $self->config->property('start-dirty');
 
+    my $i = -1;
     foreach my $dsn (@{$self->config->dsn}) {
+        $i++;
         next if $dsn eq '';
         my $gendata_result;
         if ($self->config->gendata eq '') {
             $gendata_result = GenTest::App::GendataSimple->new(
                dsn => $dsn,
-               views => $self->config->views,
+               views => ${$self->config->views}[$i],
                engine => $self->config->engine,
                sqltrace=> $self->config->sqltrace,
                notnull => $self->config->notnull,
@@ -479,7 +481,7 @@ sub doGenData {
                seed => $self->config->seed(),
                debug => $self->config->debug,
                rows => $self->config->rows,
-               views => $self->config->views,
+               views => ${$self->config->views}[$i],
                varchar_length => $self->config->property('varchar-length'),
                sqltrace => $self->config->sqltrace,
                short_column_names => $self->config->short_column_names,

@@ -68,7 +68,7 @@ my @master_dsns;
 my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file, $skip_recursive_rules,
     @redefine_files, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
-    $varchar_len, $xml_output, $valgrind, $valgrind_options, $valgrind_xml, $views,
+    $varchar_len, $xml_output, $valgrind, $valgrind_options, $valgrind_xml, @views,
     $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
     $report_xml_tt_type, $report_xml_tt_dest, $notnull, $sqltrace,
     $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout,
@@ -123,7 +123,9 @@ my $opt_result = GetOptions(
 	'valgrind'	=> \$valgrind,
 	'valgrind_options=s@'   => \$valgrind_options,
 	'valgrind-xml'	=> \$valgrind_xml,
-	'views:s'	=> \$views,
+	'views:s'	=> \$views[0],
+	'views1:s'	=> \$views[1],
+	'views2:s'	=> \$views[2],
 	'sqltrace:s' => \$sqltrace,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
@@ -514,11 +516,13 @@ push @gentest_options, "--dsn=$master_dsns[1]" if defined $master_dsns[1];
 push @gentest_options, "--grammar=$grammar_file";
 push @gentest_options, "--skip-recursive-rules" if defined $skip_recursive_rules;
 push @gentest_options, map {'--redefine='.$_} @redefine_files if @redefine_files;
-push @gentest_options, "--seed=$seed" if defined $seed;
+push @gentest_options, "--seed=$seed" if defined $seed;	
 push @gentest_options, "--mask=$mask" if ((defined $mask) && (not defined $no_mask));
 push @gentest_options, "--mask-level=$mask_level" if defined $mask_level;
 push @gentest_options, "--rows=$rows" if defined $rows;
-push @gentest_options, "--views=$views" if defined $views;
+push @gentest_options, "--views=$views[0]" if defined $views[0];
+push @gentest_options, "--views1=$views[1]" if defined $views[1];
+push @gentest_options, "--views2=$views[2]" if defined $views[2];
 push @gentest_options, "--varchar-length=$varchar_len" if defined $varchar_len;
 push @gentest_options, "--xml-output=$xml_output" if defined $xml_output;
 push @gentest_options, "--report-xml-tt" if defined $report_xml_tt;
@@ -604,7 +608,8 @@ $0 - Run a complete random query generation test, including server start with re
     --testname  : Name of test, used for reporting purposes
     --sqltrace  : Print all generated SQL statements.
                   Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
-    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl
+    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl.
+                  Different values can be provided to two servers through --views1 | --views2
     --valgrind  : Passed to gentest.pl
     --valgrind_options: The valgrind options to use
     --valgrind-xml: Enables valgrind with --xml=yes and ValgrindXMLErrors reporter that processes the XML output and reports issues found
