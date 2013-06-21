@@ -103,6 +103,10 @@ sub new {
 			push(@node_options, @{$self->[GALERA_MYSQLD_SERVER_OPTIONS]});
 		}
 
+		if ( $self->[GALERA_MYSQLD_NODE_COUNT] > 1 and ( join ',', @node_options ) !~ /wsrep[-_]provider/ ) {
+			croak("ERROR: wsrep_provider is not set, replication between nodes is not possible");
+		}
+
 		$self->nodes->[$i] = DBServer::MySQL::MySQLd->new(
 			basedir => $self->[GALERA_MYSQLD_BASEDIR],
 			vardir => $vardir,
@@ -128,6 +132,8 @@ sub nodes {
 
 sub startServer {
 	my ($self) = @_;
+	# Path to Galera scripts is needed for SST 
+	$ENV{PATH} = "$ENV{PATH}:$self->[GALERA_MYSQLD_BASEDIR]/scripts";
 	foreach my $n (0..$self->[GALERA_MYSQLD_NODE_COUNT]-1) {
 		return DBSTATUS_FAILURE if $self->nodes->[$n]->startServer != DBSTATUS_OK;
 
