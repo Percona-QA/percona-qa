@@ -94,11 +94,10 @@ sub check_gtid_status {
 	my $log = shift;
 	$log = ($log ? ' '.$log : '').':';
 	my @gtid_status = $dbh->selectrow_array(
-		'SELECT GROUP_CONCAT(domain_id,":",sub_id,":",server_id,":",seq_no separator ","), '
-		.'@@global.gtid_current_pos, @@global.gtid_slave_pos, @@global.gtid_binlog_pos, '
-		.'MAX(seq_no) '
-		.'FROM mysql.gtid_slave_pos'
+		'SELECT GROUP_CONCAT(domain_id,"-",server_id,"-",seq_no separator ","), @@gtid_current_pos, @@gtid_slave_pos, @@gtid_binlog_pos, MAX(seq_no) '
+		.'FROM mysql.gtid_slave_pos WHERE (domain_id, sub_id) IN (SELECT domain_id, MAX(sub_id) FROM mysql.gtid_slave_pos GROUP BY domain_id)'
 	);
+
 	say("Slave GTID status". $log. "\n"
 		."  table mysql.gtid_slave_pos: $gtid_status[0]\n"
 		."  gtid_current_pos: $gtid_status[1]\n"
