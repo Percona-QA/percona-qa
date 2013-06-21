@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -538,9 +539,13 @@ sub initGenerator {
 
 	return STATUS_ENVIRONMENT_FAILURE if not defined $self->grammar();
 
-        $self->[GT_GRAMMAR] = $self->[GT_GRAMMAR]->patch(
-            GenTest::Grammar->new( grammar_file => $self->config->redefine )
-        ) if defined $self->config->redefine;
+	if ($self->config->redefine) {
+	    foreach (@{$self->config->redefine}) {
+	        $self->[GT_GRAMMAR] = $self->[GT_GRAMMAR]->patch(
+                    GenTest::Grammar->new( grammar_file => $_ )
+	        ) 
+	    }
+	}
 
 	return STATUS_ENVIRONMENT_FAILURE if not defined $self->grammar();
     }
