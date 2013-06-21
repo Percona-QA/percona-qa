@@ -1,4 +1,5 @@
 # Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved. 
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -165,12 +166,14 @@ sub new {
                                                              "valgrind.supp");
     
     foreach my $file ("mysql_system_tables.sql", 
+                      "mysql_performance_tables.sql",
                       "mysql_system_tables_data.sql", 
                       "mysql_test_data_timezone.sql",
                       "fill_help_tables.sql") {
-        push(@{$self->[MYSQLD_BOOT_SQL]}, 
-             $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
-                          ["scripts","share/mysql","share"], $file));
+        my $script = 
+             eval { $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
+                          ["scripts","share/mysql","share"], $file) };
+        push(@{$self->[MYSQLD_BOOT_SQL]},$script) if $script;
     }
     
     $self->[MYSQLD_MESSAGES] = 
@@ -262,6 +265,10 @@ sub logfile {
 
 sub errorlog {
     return $_[0]->vardir."/".MYSQLD_ERRORLOG_FILE;
+}
+
+sub setStartDirty {
+    $_[0]->[MYSQLD_START_DIRTY] = $_[1];
 }
 
 sub valgrind_suppressionfile {
@@ -375,6 +382,9 @@ sub startServer {
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
     }
+    # If we don't remove the existing pidfile, 
+    # the server will be considered started too early, and further flow can fail
+    unlink($self->pidfile);
     
     my $errorlog = $self->vardir."/".MYSQLD_ERRORLOG_FILE;
     
@@ -538,7 +548,8 @@ sub dumpdb {
                              "\" --hex-blob --skip-triggers --compact ".
                              "--order-by-primary --skip-extended-insert ".
                              "--no-create-info --host=127.0.0.1 ".
-                             "--port=".$self->port;
+                             "--port=".$self->port.
+                             " -uroot $database";
     # --no-tablespaces option was introduced in version 5.1.14.
     if ($self->_newerThan(5,1,13)) {
         $dump_command = $dump_command . " --no-tablespaces";
@@ -602,19 +613,22 @@ sub running {
 }
 
 sub _find {
-    my($self, $bases, $subdir, $name) = @_;
+    my($self, $bases, $subdir, @names) = @_;
     
     foreach my $base (@$bases) {
         foreach my $s (@$subdir) {
-            my $path  = $base."/".$s."/".$name;
-            return $path if -f $path;
+        	foreach my $n (@names) {
+                my $path  = $base."/".$s."/".$n;
+                return $path if -f $path;
+        	}
         }
     }
     my $paths = "";
     foreach my $base (@$bases) {
         $paths .= join(",",map {"'".$base."/".$_."'"} @$subdir).",";
     }
-    croak "Cannot find '$name' in $paths"; 
+    my $names = join(" or ", @names );
+    croak "Cannot find '$names' in $paths"; 
 }
 
 sub dsn {

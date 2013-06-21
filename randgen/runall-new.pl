@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -31,6 +32,7 @@ use GenTest::App::GenTest;
 use DBServer::DBServer;
 use DBServer::MySQL::MySQLd;
 use DBServer::MySQL::ReplMySQLd;
+use DBServer::MySQL::GaleraMySQLd;
 
 my $logger;
 eval
@@ -64,12 +66,13 @@ my @dsns;
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, @validators, @reporters, @transformers, 
     $grammar_file, $skip_recursive_rules,
-    $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
-    $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
+    @redefine_files, $seed, $mask, $mask_level, $mem, $rows,
+    $varchar_len, $xml_output, $valgrind, @valgrind_options, @views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
-    $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server);
+    $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server,
+    $skip_gendata, $skip_shutdown, $galera);
 
 my $gendata=''; ## default simple gendata
 
@@ -98,7 +101,7 @@ my $opt_result = GetOptions(
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
 	'skip-recursive-rules' > \$skip_recursive_rules,
-	'redefine=s' => \$redefine_file,
+	'redefine=s@' => \@redefine_files,
 	'threads=i' => \$threads,
 	'queries=s' => \$queries,
 	'duration=i' => \$duration,
@@ -108,6 +111,7 @@ my $opt_result = GetOptions(
 	'reporters=s@' => \@reporters,
 	'transformers=s@' => \@transformers,
 	'gendata:s' => \$gendata,
+	'skip-gendata' => \$skip_gendata,
 	'notnull' => \$notnull,
 	'short_column_names' => \$short_column_names,
         'freeze_time' => \$freeze_time,
@@ -116,7 +120,7 @@ my $opt_result = GetOptions(
 	'mask=i' => \$mask,
         'mask-level=i' => \$mask_level,
 	'mem' => \$mem,
-	'rows=i' => \$rows,
+	'rows=s' => \$rows,
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s'	=> \$xml_output,
 	'report-xml-tt'	=> \$report_xml_tt,
@@ -125,7 +129,9 @@ my $opt_result = GetOptions(
 	'testname=s'		=> \$testname,
 	'valgrind!'	=> \$valgrind,
 	'valgrind_options=s@'	=> \@valgrind_options,
-	'views:s'		=> \$views,
+	'views:s'		=> \$views[0],
+	'views1:s'		=> \$views[1],
+	'views2:s'		=> \$views[2],
 	'wait-for-debugger' => \$wait_debugger,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
@@ -135,7 +141,10 @@ my $opt_result = GetOptions(
         'logconf=s' => \$logconf,
         'report-tt-logdir=s' => \$report_tt_logdir,
         'querytimeout=i' => \$querytimeout,
-        'no-mask' => \$no_mask
+        'no-mask' => \$no_mask,
+	'skip_shutdown' => \$skip_shutdown,
+	'skip-shutdown' => \$skip_shutdown,
+	'galera=s' => \$galera
     );
 
 if (defined $logfile && defined $logger) {
@@ -146,9 +155,24 @@ if (defined $logfile && defined $logger) {
     }
 }
 
-if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
+if ($help) {
+        help();
+        exit 0;
+}
+if ($basedirs[0] eq '') {
+	print STDERR "\nERROR: Basedir is not defined\n\n";
+        help();
+        exit 1;
+}
+if (not defined $grammar_file) {
+	print STDERR "\nERROR: Grammar file is not defined\n\n";
+        help();
+        exit 1;
+}
+if (!$opt_result) {
+	print STDERR "\nERROR: Error occured while reading options\n\n";
 	help();
-	exit($help ? 0 : 1);
+	exit 1;
 }
 
 if (defined $sqltrace) {
@@ -308,7 +332,49 @@ if ($rpl_mode ne '') {
     $dsns[1] = undef; ## passed to gentest. No dsn for slave!
     $server[0] = $rplsrv->master;
     $server[1] = $rplsrv->slave;
+
+} elsif ($galera ne '') {
+
+	if (osWindows()) {
+		croak("Galera is not supported on Windows (yet)");
+	}
+
+	unless ($galera =~ /^[ms]+$/i) {
+		croak ("--galera option should contain a combination of M and S, indicating masters and slaves");
+	}
+
+	$rplsrv = DBServer::MySQL::GaleraMySQLd->new(
+		basedir => $basedirs[0],
+		parent_vardir => $vardirs[0],
+		debug_server => $debug_server[0],
+		first_port => $ports[0],
+		server_options => $mysqld_options[0],
+		valgrind => $valgrind,
+		valgrind_options => \@valgrind_options,
+		general_log => 1,
+		start_dirty => $start_dirty,
+		node_count => length($galera)
+	);
     
+	my $status = $rplsrv->startServer();
+    
+	if ($status > DBSTATUS_OK) {
+		stopServers();
+
+		say("ERROR: Could not start Galera cluster");
+		exit_test(STATUS_ENVIRONMENT_FAILURE);
+	}
+
+	my $galera_topology = $galera;
+	my $i = 0;
+	while ($galera_topology =~ s/^(\w)//) {
+		if (lc($1) eq 'm') {
+			$dsns[$i] = $rplsrv->nodes->[$i]->dsn($database);
+		}
+		$server[$i] = $rplsrv->nodes->[$i];
+		$i++;
+	}
+
 } else {
     if ($#basedirs != $#vardirs) {
         croak ("The number of basedirs and vardirs must match $#basedirs != $#vardirs")
@@ -425,7 +491,9 @@ my $gentestProps = GenTest::Properties->new(
               'logfile',
               'logconf',
               'debug_server',
-              'report-tt-logdir']
+              'report-tt-logdir',
+              'servers',
+              'multi-master']
     );
 
 my @gentest_options;
@@ -445,10 +513,28 @@ if ($#transformers == 0 and $transformers[0] =~ m/,/) {
     @transformers = split(/,/,$transformers[0]);
 }
 
+## For backward compatibility
+
+# if --views[=<value>] is defined, it will be used for both servers.
+# --views1 and --views2 will only be used for the corresponding server 
+#   and have priority over --views
+
+if (defined $views[0]) {
+	$views[1] = $views[0] unless defined $views[1];
+	$views[2] = $views[0] unless defined $views[2];
+}
+shift @views;
+
+
+## For uniformity
+if ($#redefine_files == 0 and $redefine_files[0] =~ m/,/) {
+    @redefine_files = split(/,/,$redefine_files[0]);
+}
+
 $gentestProps->property('generator','FromGrammar') if not defined $gentestProps->property('generator');
 
 $gentestProps->property('start-dirty',1) if defined $start_dirty;
-$gentestProps->gendata($gendata);
+$gentestProps->gendata($gendata) unless defined $skip_gendata;
 $gentestProps->engine($engine) if defined $engine;
 $gentestProps->rpl_mode($rpl_mode) if defined $rpl_mode;
 $gentestProps->validators(\@validators) if @validators;
@@ -460,18 +546,12 @@ $gentestProps->duration($duration) if defined $duration;
 $gentestProps->dsn(\@dsns) if @dsns;
 $gentestProps->grammar($grammar_file);
 $gentestProps->property('skip-recursive-rules', $skip_recursive_rules);
-$gentestProps->redefine($redefine_file) if defined $redefine_file;
+$gentestProps->redefine(\@redefine_files) if @redefine_files;
 $gentestProps->seed($seed) if defined $seed;
 $gentestProps->mask($mask) if (defined $mask) && (not defined $no_mask);
 $gentestProps->property('mask-level',$mask_level) if defined $mask_level;
 $gentestProps->rows($rows) if defined $rows;
-if (defined $views) {
-	if ($views eq '1') {
-		$gentestProps->property('views', 'UNDEFINED');
-	} else {
-		$gentestProps->property('views', $views);
-	}
-}
+$gentestProps->views(\@views) if @views;
 $gentestProps->property('varchar-length',$varchar_len) if defined $varchar_len;
 $gentestProps->property('xml-output',$xml_output) if defined $xml_output;
 $gentestProps->debug(1) if defined $debug;
@@ -490,8 +570,14 @@ $gentestProps->property('report-tt-logdir',$report_tt_logdir) if defined $report
 $gentestProps->property('report-xml-tt', 1) if defined $report_xml_tt;
 $gentestProps->property('report-xml-tt-type', $report_xml_tt_type) if defined $report_xml_tt_type;
 $gentestProps->property('report-xml-tt-dest', $report_xml_tt_dest) if defined $report_xml_tt_dest;
+# In case of multi-master topology (e.g. Galera with multiple "masters"),
+# we don't want to compare results after each query.
+# Instead, we want to run the flow independently and only compare dumps at the end.
+# If GenTest gets 'multi-master' property, it won't run ResultsetComparator
+$gentestProps->property('multi-master', 1) if (defined $galera and scalar(@dsns)>1);
 # Pass debug server if used.
 $gentestProps->debug_server(\@debug_server) if @debug_server;
+$gentestProps->servers(\@server) if @server;
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
@@ -508,9 +594,9 @@ if ( $gentest_result != 0 ) {
     exit_test($gentest_result);
 } else {
     #
-    # Compare master and slave, or two masters
+    # Compare master and slave, or all masters
     #
-    if ($rpl_mode || (defined $basedirs[1])) {
+    if ($rpl_mode || (defined $basedirs[1]) || $galera) {
         if ($rpl_mode ne '') {
             $rplsrv->waitForSlaveSync;
         }
@@ -518,7 +604,7 @@ if ( $gentest_result != 0 ) {
         my @dump_files;
         
         foreach my $i (0..$#server) {
-            $dump_files[$i] = tmpdir()."server_".$$."_".$i.".dump";
+            $dump_files[$i] = tmpdir()."server_".abs($$)."_".$i.".dump";
             
             my $dump_result = $server[$i]->dumpdb($database,$dump_files[$i]);
             exit_test($dump_result >> 8) if $dump_result > 0;
@@ -543,6 +629,10 @@ if ( $gentest_result != 0 ) {
 }
 
 sub stopServers {
+    if ($skip_shutdown) {
+        say("Server shutdown is skipped upon request");
+        return;
+    }
     if ($rpl_mode ne '') {
         $rplsrv->stopServer();
     } else {
@@ -583,8 +673,10 @@ $0 - Run a complete random query generation test, including server start with re
     General options
 
     --grammar   : Grammar file to use when generating queries (REQUIRED);
-    --redefine  : Grammar file to redefine and/or add rules to the given grammar
+    --redefine  : Grammar file(s) to redefine and/or add rules to the given grammar
     --rpl_mode  : Replication type to use (statement|row|mixed) (default: no replication);
+    --galera    : Galera topology, presented as a string of 'm' or 's' (master or slave).
+                  The test flow will be executed on each "master". "Slaves" will only be updated through Galera replication
     --vardir1   : Optional.
     --vardir2   : Optional. 
     --engine    : Table engine to use when creating tables with gendata (default no ENGINE in CREATE TABLE);
@@ -606,7 +698,8 @@ $0 - Run a complete random query generation test, including server start with re
                   Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
     --varchar-length: length of strings. passed to gentest.pl
     --xml-outputs: Passed to gentest.pl
-    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl
+    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl.
+                  Different values can be provided to two servers through --views1 | --views2
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr

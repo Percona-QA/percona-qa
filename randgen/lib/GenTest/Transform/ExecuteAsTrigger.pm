@@ -1,4 +1,5 @@
 # Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -38,13 +39,13 @@ sub transform {
 	return [
 		#Include database transforms creation DDL so that it appears in the simplified testcase.
 		"CREATE DATABASE IF NOT EXISTS transforms",
-		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$,
-		"CREATE TABLE IF NOT EXISTS trigger1".$$." (f1 INTEGER)",
-		"CREATE TABLE IF NOT EXISTS transforms.trigger2".$$." $orig_query LIMIT 0",
-		"CREATE TRIGGER trigger1".$$." BEFORE INSERT ON trigger1".$$." FOR EACH ROW INSERT INTO transforms.trigger2".$$." $orig_query;",
-		"INSERT INTO trigger1".$$." VALUES (1)",
-		"SELECT * FROM transforms.trigger2".$$." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
-		"DROP TABLE IF EXISTS trigger1".$$.",  transforms.trigger2".$$
+		"DROP TABLE IF EXISTS trigger1".abs($$).",  transforms.trigger2".abs($$),
+		"CREATE TABLE IF NOT EXISTS trigger1".abs($$)." (f1 INTEGER)",
+		"CREATE TABLE IF NOT EXISTS transforms.trigger2".abs($$)." $orig_query LIMIT 0",
+		"CREATE TRIGGER trigger1".abs($$)." BEFORE INSERT ON trigger1".abs($$)." FOR EACH ROW INSERT INTO transforms.trigger2".abs($$)." $orig_query;",
+		"INSERT INTO trigger1".abs($$)." VALUES (1)",
+		"SELECT * FROM transforms.trigger2".abs($$)." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */",
+		"DROP TABLE IF EXISTS trigger1".abs($$).",  transforms.trigger2".abs($$)
 	];
 }
 

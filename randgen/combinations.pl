@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,6 +30,25 @@ use GenTest::Constants;
 use Getopt::Long;
 use GenTest::BzrInfo; 
 use Data::Dumper;
+use File::Basename;
+
+if (defined $ENV{RQG_HOME}) {
+    if (osWindows()) {
+        $ENV{RQG_HOME} = $ENV{RQG_HOME}.'\\';
+    } else {
+        $ENV{RQG_HOME} = $ENV{RQG_HOME}.'/';
+    }
+} else {
+    $ENV{RQG_HOME} = dirname(Cwd::abs_path($0));
+}
+
+if ( osWindows() )
+{
+    require Win32::API;
+    my $errfunc = Win32::API->new('kernel32', 'SetErrorMode', 'I', 'I');
+    my $initial_mode = $errfunc->Call(2);
+    $errfunc->Call($initial_mode | 2);
+};
 
 my $logger;
 eval
@@ -37,10 +57,6 @@ eval
     Log::Log4perl->import();
     $logger = Log::Log4perl->get_logger('randgen.gentest');
 };
-
-if (osWindows()) {
-    croak("Sorry. $0 is not ported to Windows (yet)");
-}
 
 $| = 1;
 my $ctrl_c = 0;
@@ -109,7 +125,7 @@ if (!defined $servers) {
 
 croak "--servers may only be 1 or 2" if !($servers == 1 or $servers == 2);
 
-my $logToStd = !$noLog;
+my $logToStd = !osWindows() && !$noLog;
 
 my $bzrinfo = GenTest::BzrInfo->new(
     dir => cwd()
@@ -303,7 +319,10 @@ sub doCombination {
 		$command =~ s/_epoch/$epochcreadir/sgo;	
 	}
 
-	$command = 'bash -c "set -o pipefail; '.$command.'"';
+	unless (osWindows())
+	{
+		$command = 'bash -c "set -o pipefail; '.$command.'"';
+	}
 
     if ($logToStd) {
         say("[$thread_id] $command");
@@ -327,13 +346,20 @@ sub doCombination {
             my $from = $workdir.'/current'.$s.'_'.$thread_id;
             my $to = $workdir.'/vardir'.$s.'_'.$trial_id;
             say("[$thread_id] Copying $from to $to") if $logToStd;
-            if ($command =~ m{--mem}) {
+            if (osWindows()) {
+                system("xcopy \"$from\" \"$to\" /E /I /Q");
+                system("xcopy \"$from"."_slave\" \"$to\" /E /I /Q") if -e $from.'_slave';
+                open(OUT, ">$to/command");
+                print OUT $command;
+                close(OUT);
+            } elsif ($command =~ m{--mem}) {
                 system("cp -r /dev/shm/var $to");
                 open(OUT, ">$to/command");
                 print OUT $command;
                 close(OUT);
             } else {
                 system("cp -r $from $to");
+                system("cp -r $from"."_slave $to") if -e $from.'_slave';
                 open(OUT, ">$to/command");
                 print OUT $command;
                 close(OUT);

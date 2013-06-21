@@ -1,4 +1,5 @@
 # Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013 Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -41,6 +42,7 @@ use constant TRANSFORM_OUTCOME_DISTINCT		=> 1007;
 use constant TRANSFORM_OUTCOME_COUNT		=> 1008;
 use constant TRANSFORM_OUTCOME_EMPTY_RESULT	=> 1009;
 use constant TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE	=> 1010;
+use constant TRANSFORM_OUTCOME_EXAMINED_ROWS_LIMITED	=> 1011;
 
 my %transform_outcomes = (
 	'TRANSFORM_OUTCOME_EXACT_MATCH'		=> 1001,
@@ -52,7 +54,8 @@ my %transform_outcomes = (
 	'TRANSFORM_OUTCOME_DISTINCT'		=> 1007,
 	'TRANSFORM_OUTCOME_COUNT'		=> 1008,
 	'TRANSFORM_OUTCOME_EMPTY_RESULT'	=> 1009,
-	'TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE'	=> 1010
+	'TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE'	=> 1010,
+	'TRANSFORM_OUTCOME_EXAMINED_ROWS_LIMITED'	=> 1011
 );
 
 # Subset of semantic errors that we may want to allow during transforms.
@@ -237,6 +240,10 @@ sub validate {
 		return $transformer->isEmptyResult($original_result, $transformed_result);
 	} elsif ($transform_outcome == TRANSFORM_OUTCOME_SINGLE_INTEGER_ONE) {
 		return $transformer->isSingleIntegerOne($original_result, $transformed_result);
+	} elsif ($transform_outcome == TRANSFORM_OUTCOME_EXAMINED_ROWS_LIMITED) {
+		return $transformer->isRowsExaminedObeyed($transformed_query, $transformed_result); 
+        } elsif ($transform_outcome == TRANSFORM_OUTCOME_SUBSET) {
+                return $transformer->isSuperset($transformed_result, $original_result);
 	} else {
 		return STATUS_WONT_HANDLE;
 	}
@@ -391,6 +398,21 @@ sub isSingleIntegerOne {
 
 
 }
+
+sub isRowsExaminedObeyed {
+	my ($transformer, $original_result, $transformed_result) = @_;
+	my $transformed_query = $transformed_result->query();
+	# The comment already contains the calculated maximum, including the margin,
+	# we only need to do the comparison
+	return STATUS_WONT_HANDLE if ($transformed_query !~ m{TRANSFORM_OUTCOME_EXAMINED_ROWS_LIMITED\s+(\d+)}s);
+	if ( $transformed_result->data()->[0]->[0] > $1 ) {
+		say("Number of examined rows " . $transformed_result->data()->[0]->[0] . ", max allowed (with margin) $1") if rqg_debug();
+		return STATUS_REQUIREMENT_UNMET;
+	} else {
+		return STATUS_OK;
+	}
+}
+
 
 sub name {
 	my $transformer = shift;

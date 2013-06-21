@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -457,13 +458,15 @@ sub doGenData {
     return STATUS_OK if not defined $self->config->gendata();
     return STATUS_OK if defined $self->config->property('start-dirty');
 
+    my $i = -1;
     foreach my $dsn (@{$self->config->dsn}) {
+        $i++;
         next if $dsn eq '';
         my $gendata_result;
         if ($self->config->gendata eq '') {
             $gendata_result = GenTest::App::GendataSimple->new(
                dsn => $dsn,
-               views => $self->config->views,
+               views => ${$self->config->views}[$i],
                engine => $self->config->engine,
                sqltrace=> $self->config->sqltrace,
                notnull => $self->config->notnull,
@@ -478,7 +481,7 @@ sub doGenData {
                seed => $self->config->seed(),
                debug => $self->config->debug,
                rows => $self->config->rows,
-               views => $self->config->views,
+               views => ${$self->config->views}[$i],
                varchar_length => $self->config->property('varchar-length'),
                sqltrace => $self->config->sqltrace,
                short_column_names => $self->config->short_column_names,
@@ -488,6 +491,9 @@ sub doGenData {
         }
             
         return $gendata_result if $gendata_result > STATUS_OK;
+
+        # For multi-master setup, e.g. Galera, we only need to do generatoion once
+        return STATUS_OK if $self->config->property('multi-master');
     }
 
     return STATUS_OK;
@@ -538,9 +544,13 @@ sub initGenerator {
 
 	return STATUS_ENVIRONMENT_FAILURE if not defined $self->grammar();
 
-        $self->[GT_GRAMMAR] = $self->[GT_GRAMMAR]->patch(
-            GenTest::Grammar->new( grammar_file => $self->config->redefine )
-        ) if defined $self->config->redefine;
+	if ($self->config->redefine) {
+	    foreach (@{$self->config->redefine}) {
+	        $self->[GT_GRAMMAR] = $self->[GT_GRAMMAR]->patch(
+                    GenTest::Grammar->new( grammar_file => $_ )
+	        ) 
+	    }
+	}
 
 	return STATUS_ENVIRONMENT_FAILURE if not defined $self->grammar();
     }
@@ -619,12 +629,17 @@ sub initValidators {
         $self->config->validators([]);
         push(@{$self->config->validators}, 'ErrorMessageCorruption') 
             if $self->isMySQLCompatible();
-        if ($self->config->dsn->[2] ne '') {
-            push @{$self->config->validators}, 'ResultsetComparator3';
-        } elsif ($self->config->dsn->[1] ne '') {
-            push @{$self->config->validators}, 'ResultsetComparator';
-        }
-        
+
+        # In case of multi-master topology (e.g. Galera with multiple "masters"),
+        # we don't want to compare results after each query.
+
+        unless ($self->config->property('multi-master')) {
+            if ($self->config->dsn->[2] ne '') {
+                push @{$self->config->validators}, 'ResultsetComparator3';
+            } elsif ($self->config->dsn->[1] ne '') {
+                push @{$self->config->validators}, 'ResultsetComparator';
+            }
+        }        
         push @{$self->config->validators}, 'ReplicationSlaveStatus' 
             if $self->config->rpl_mode ne '' && $self->isMySQLCompatible();
         push @{$self->config->validators}, 'MarkErrorLog' 
@@ -649,7 +664,7 @@ sub initValidators {
     {
         my $hasTransformer = 0;
         foreach my $t (@{$self->config->validators}) {
-            if ($t eq 'Transformer') {
+            if ($t eq 'Transformer' or $t eq 'TransformerLight') {
                 $hasTransformer = 1;
                 last;
             }
