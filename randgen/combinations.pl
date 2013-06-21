@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,6 +30,17 @@ use GenTest::Constants;
 use Getopt::Long;
 use GenTest::BzrInfo; 
 use Data::Dumper;
+use File::Basename;
+
+if (defined $ENV{RQG_HOME}) {
+    if (osWindows()) {
+        $ENV{RQG_HOME} = $ENV{RQG_HOME}.'\\';
+    } else {
+        $ENV{RQG_HOME} = $ENV{RQG_HOME}.'/';
+    }
+} else {
+    $ENV{RQG_HOME} = dirname(Cwd::abs_path($0));
+}
 
 my $logger;
 eval
