@@ -348,6 +348,7 @@ sub doCombination {
             say("[$thread_id] Copying $from to $to") if $logToStd;
             if (osWindows()) {
                 system("xcopy \"$from\" \"$to\" /E /I /Q");
+                system("xcopy \"$from"."_slave\" \"$to\" /E /I /Q") if -e $from.'_slave';
                 open(OUT, ">$to/command");
                 print OUT $command;
                 close(OUT);
@@ -358,6 +359,7 @@ sub doCombination {
                 close(OUT);
             } else {
                 system("cp -r $from $to");
+                system("cp -r $from"."_slave $to") if -e $from.'_slave';
                 open(OUT, ">$to/command");
                 print OUT $command;
                 close(OUT);
