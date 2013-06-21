@@ -166,12 +166,14 @@ sub new {
                                                              "valgrind.supp");
     
     foreach my $file ("mysql_system_tables.sql", 
+                      "mysql_performance_tables.sql",
                       "mysql_system_tables_data.sql", 
                       "mysql_test_data_timezone.sql",
                       "fill_help_tables.sql") {
-        push(@{$self->[MYSQLD_BOOT_SQL]}, 
-             $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
-                          ["scripts","share/mysql","share"], $file));
+        my $script = 
+             eval { $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
+                          ["scripts","share/mysql","share"], $file) };
+        push(@{$self->[MYSQLD_BOOT_SQL]},$script) if $script;
     }
     
     $self->[MYSQLD_MESSAGES] = 
