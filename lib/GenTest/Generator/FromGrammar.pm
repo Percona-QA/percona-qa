@@ -262,6 +262,14 @@ sub next {
 			my $tables = $executors->[0]->metaTables($last_database);
 			$last_table = $prng->arrayElement($tables);
 			$_ = '`'.$last_table.'`';
+		} elsif ($_ eq '_basetable') {
+			my $tables = $executors->[0]->metaBaseTables($last_database);
+			$last_table = $prng->arrayElement($tables);
+			$_ = '`'.$last_table.'`';
+		} elsif ($_ eq '_view') {
+			my $tables = $executors->[0]->metaViews($last_database);
+			$last_table = $prng->arrayElement($tables);
+			$_ = '`'.$last_table.'`';
 		} elsif ($_ eq '_field') {
 			my $fields = $executors->[0]->metaColumns($last_table, $last_database);
 			$_ = '`'.$prng->arrayElement($fields).'`';
