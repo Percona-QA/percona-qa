@@ -1,4 +1,5 @@
 # Copyright (c) 2008,2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013 Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -44,11 +45,13 @@ require Exporter;
 
 	STATUS_TEST_FAILURE
 
+	STATUS_REQUIREMENT_UNMET_SELECT
 	STATUS_ERROR_MISMATCH_SELECT
 	STATUS_LENGTH_MISMATCH_SELECT
 	STATUS_CONTENT_MISMATCH_SELECT
 	STATUS_SELECT_REDUCTION
 
+	STATUS_REQUIREMENT_UNMET
 	STATUS_ERROR_MISMATCH
 	STATUS_LENGTH_MISMATCH
 	STATUS_CONTENT_MISMATCH
@@ -102,10 +105,12 @@ use constant STATUS_TEST_FAILURE		=> 24;	# Boundary between genuine errors and f
 
 use constant STATUS_SELECT_REDUCTION		=> 5;	# A coefficient to substract from error codes in order to make them non-fatal
 
+use constant STATUS_REQUIREMENT_UNMET_SELECT	=> 25;
 use constant STATUS_ERROR_MISMATCH_SELECT	=> 26;	# A SELECT query caused those erros, however the test can continue
 use constant STATUS_LENGTH_MISMATCH_SELECT	=> 27;	# since the database has not been modified
 use constant STATUS_CONTENT_MISMATCH_SELECT		=> 28;	# 
 
+use constant STATUS_REQUIREMENT_UNMET		=> 30;
 use constant STATUS_ERROR_MISMATCH		=> 31;	# A DML statement caused those errors, and the test can not continue
 use constant STATUS_LENGTH_MISMATCH		=> 32;	# because the databases are in an unknown inconsistent state
 use constant STATUS_CONTENT_MISMATCH		=> 33;	#
