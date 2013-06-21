@@ -50,10 +50,6 @@ eval
     $logger = Log::Log4perl->get_logger('randgen.gentest');
 };
 
-if (osWindows()) {
-    croak("Sorry. $0 is not ported to Windows (yet)");
-}
-
 $| = 1;
 my $ctrl_c = 0;
     
@@ -121,7 +117,7 @@ if (!defined $servers) {
 
 croak "--servers may only be 1 or 2" if !($servers == 1 or $servers == 2);
 
-my $logToStd = !$noLog;
+my $logToStd = !osWindows() && !$noLog;
 
 my $bzrinfo = GenTest::BzrInfo->new(
     dir => cwd()
@@ -315,7 +311,10 @@ sub doCombination {
 		$command =~ s/_epoch/$epochcreadir/sgo;	
 	}
 
-	$command = 'bash -c "set -o pipefail; '.$command.'"';
+	unless (osWindows())
+	{
+		$command = 'bash -c "set -o pipefail; '.$command.'"';
+	}
 
     if ($logToStd) {
         say("[$thread_id] $command");
@@ -339,7 +338,12 @@ sub doCombination {
             my $from = $workdir.'/current'.$s.'_'.$thread_id;
             my $to = $workdir.'/vardir'.$s.'_'.$trial_id;
             say("[$thread_id] Copying $from to $to") if $logToStd;
-            if ($command =~ m{--mem}) {
+            if (osWindows()) {
+                system("xcopy \"$from\" \"$to\" /E /I /Q");
+                open(OUT, ">$to/command");
+                print OUT $command;
+                close(OUT);
+            } elsif ($command =~ m{--mem}) {
                 system("cp -r /dev/shm/var $to");
                 open(OUT, ">$to/command");
                 print OUT $command;
