@@ -21,6 +21,8 @@
 # --mysqld=--innodb_adaptive_flushing_method=native
 # --mysqld=--innodb_adaptive_flushing_method=keep_average
 
+# --mysqld=innodb-buffer-pool-populate doesn't work
+
 $combinations=
 [
  ['
@@ -70,7 +72,7 @@ $combinations=
     --mysqld=--query_cache_type=1 --mysqld=--query_cache_size=1048576',
   '--mysqld=--innodb_log_file_size=10485761 --mysqld=--innodb_log_files_in_group=3
     --mysqld=--innodb_log_buffer_size=1048577 --mysqld=--innodb_log_block_size=4096
-    --mysqld=--innodb_fast_shutdown=0 --mysqld=innodb-buffer-pool-populate
+    --mysqld=--innodb_fast_shutdown=0 
     --mysqld=--skip-innodb_doublewrite',
   '--mysqld=--enforce-storage-engine=InnoDB --mysqld=utility-user=roel 
      --mysqld=--utility-user-password=test --mysqld=secure-file-priv=/tmp
