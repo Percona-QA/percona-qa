@@ -71,7 +71,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
     $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server,
-    $skip_gendata);
+    $skip_gendata, $skip_shutdown);
 
 my $gendata=''; ## default simple gendata
 
@@ -138,7 +138,9 @@ my $opt_result = GetOptions(
         'logconf=s' => \$logconf,
         'report-tt-logdir=s' => \$report_tt_logdir,
         'querytimeout=i' => \$querytimeout,
-        'no-mask' => \$no_mask
+        'no-mask' => \$no_mask,
+	'skip_shutdown' => \$skip_shutdown,
+	'skip-shutdown' => \$skip_shutdown
     );
 
 if (defined $logfile && defined $logger) {
@@ -551,6 +553,10 @@ if ( $gentest_result != 0 ) {
 }
 
 sub stopServers {
+    if ($skip_shutdown) {
+        say("Server shutdown is skipped upon request");
+        return;
+    }
     if ($rpl_mode ne '') {
         $rplsrv->stopServer();
     } else {
