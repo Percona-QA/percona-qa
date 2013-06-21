@@ -1,4 +1,5 @@
 # Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013 Monty Program Ab
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -38,7 +39,7 @@ sub report {
     
     my $primary_port = $reporter->serverVariable('port');
     
-    foreach my $port ($primary_port + 4, $primary_port + 2, $primary_port) {
+    for (my $port = $primary_port + 9; $port >= $primary_port; $port--) {
         my $dsn = "dbi:mysql:host=127.0.0.1:port=".$port.":user=root";
         my $dbh = DBI->connect($dsn, undef, undef, { PrintError => 0 } );
         
