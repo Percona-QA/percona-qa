@@ -267,6 +267,10 @@ sub errorlog {
     return $_[0]->vardir."/".MYSQLD_ERRORLOG_FILE;
 }
 
+sub setStartDirty {
+    $_[0]->[MYSQLD_START_DIRTY] = $_[1];
+}
+
 sub valgrind_suppressionfile {
     return $_[0]->[MYSQLD_VALGRIND_SUPPRESSION_FILE] ;
 }
