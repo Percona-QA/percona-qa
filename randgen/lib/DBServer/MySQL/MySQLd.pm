@@ -376,6 +376,9 @@ sub startServer {
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
     }
+    # If we don't remove the existing pidfile, 
+    # the server will be considered started too early, and further flow can fail
+    unlink($self->pidfile);
     
     my $errorlog = $self->vardir."/".MYSQLD_ERRORLOG_FILE;
     
