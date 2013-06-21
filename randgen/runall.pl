@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -135,6 +136,15 @@ my $opt_result = GetOptions(
     'querytimeout=i' => \$querytimeout,
     'wait-for-debugger' => \$wait_debugger
 );
+
+if ( osWindows() && !$debug )
+{
+    require Win32::API;
+    my $errfunc = Win32::API->new('kernel32', 'SetErrorMode', 'I', 'I');
+    my $initial_mode = $errfunc->Call(2);
+    $errfunc->Call($initial_mode | 2);
+};
+
 
 if (defined $logfile && defined $logger) {
     setLoggingToFile($logfile);

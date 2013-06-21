@@ -42,6 +42,14 @@ if (defined $ENV{RQG_HOME}) {
     $ENV{RQG_HOME} = dirname(Cwd::abs_path($0));
 }
 
+if ( osWindows() )
+{
+    require Win32::API;
+    my $errfunc = Win32::API->new('kernel32', 'SetErrorMode', 'I', 'I');
+    my $initial_mode = $errfunc->Call(2);
+    $errfunc->Call($initial_mode | 2);
+};
+
 my $logger;
 eval
 {
