@@ -151,9 +151,24 @@ if (defined $logfile && defined $logger) {
     }
 }
 
-if (!$opt_result || $help || $basedirs[0] eq '' || not defined $grammar_file) {
+if ($help) {
+        help();
+        exit 0;
+}
+if ($basedirs[0] eq '') {
+	print STDERR "\nERROR: Basedir is not defined\n\n";
+        help();
+        exit 1;
+}
+if (not defined $grammar_file) {
+	print STDERR "\nERROR: Grammar file is not defined\n\n";
+        help();
+        exit 1;
+}
+if (!$opt_result) {
+	print STDERR "\nERROR: Error occured while reading options\n\n";
 	help();
-	exit($help ? 0 : 1);
+	exit 1;
 }
 
 if (defined $sqltrace) {
