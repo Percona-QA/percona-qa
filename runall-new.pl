@@ -66,7 +66,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, @validators, @reporters, @transformers, 
     $grammar_file, $skip_recursive_rules,
     @redefine_files, $seed, $mask, $mask_level, $mem, $rows,
-    $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
+    $varchar_len, $xml_output, $valgrind, @valgrind_options, @views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
@@ -128,7 +128,9 @@ my $opt_result = GetOptions(
 	'testname=s'		=> \$testname,
 	'valgrind!'	=> \$valgrind,
 	'valgrind_options=s@'	=> \@valgrind_options,
-	'views:s'		=> \$views,
+	'views:s'		=> \$views[0],
+	'views1:s'		=> \$views[1],
+	'views2:s'		=> \$views[2],
 	'wait-for-debugger' => \$wait_debugger,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
@@ -465,6 +467,19 @@ if ($#transformers == 0 and $transformers[0] =~ m/,/) {
     @transformers = split(/,/,$transformers[0]);
 }
 
+## For backward compatibility
+
+# if --views[=<value>] is defined, it will be used for both servers.
+# --views1 and --views2 will only be used for the corresponding server 
+#   and have priority over --views
+
+if (defined $views[0]) {
+	$views[1] = $views[0] unless defined $views[1];
+	$views[2] = $views[0] unless defined $views[2];
+}
+shift @views;
+
+
 ## For uniformity
 if ($#redefine_files == 0 and $redefine_files[0] =~ m/,/) {
     @redefine_files = split(/,/,$redefine_files[0]);
@@ -490,13 +505,7 @@ $gentestProps->seed($seed) if defined $seed;
 $gentestProps->mask($mask) if (defined $mask) && (not defined $no_mask);
 $gentestProps->property('mask-level',$mask_level) if defined $mask_level;
 $gentestProps->rows($rows) if defined $rows;
-if (defined $views) {
-	if ($views eq '1') {
-		$gentestProps->property('views', 'UNDEFINED');
-	} else {
-		$gentestProps->property('views', $views);
-	}
-}
+$gentestProps->views(\@views) if @views;
 $gentestProps->property('varchar-length',$varchar_len) if defined $varchar_len;
 $gentestProps->property('xml-output',$xml_output) if defined $xml_output;
 $gentestProps->debug(1) if defined $debug;
@@ -635,7 +644,8 @@ $0 - Run a complete random query generation test, including server start with re
                   Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
     --varchar-length: length of strings. passed to gentest.pl
     --xml-outputs: Passed to gentest.pl
-    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl
+    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl.
+                  Different values can be provided to two servers through --views1 | --views2
     --valgrind  : Passed to gentest.pl
     --filter    : Passed to gentest.pl
     --mem       : Passed to mtr
