@@ -1,4 +1,5 @@
 # Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -47,7 +48,7 @@ sub transform {
 		}
 	}
 
-	my $table_name = 'transforms.where_updatedelete_'.$$;
+	my $table_name = 'transforms.where_updatedelete_'.abs($$);
 	my $col_name = $original_result->columnNames()->[0];
 
 	return STATUS_WONT_HANDLE if $col_name =~ m{`}sgio;

@@ -1,7 +1,5 @@
-# Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
-# Copyright (c) 2013, Monty Program Ab.
-# Use is subject to license terms.
-#
+# Copyright (C) 2013 Monty Program Ab
+# 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License.
@@ -16,7 +14,15 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-package GenTest::Reporter::Recovery;
+
+# The module is based on the traditional Recovery.pm, 
+# but the new one restarts the server in exactly the same way
+# (with the same options) as it was initially running
+
+# It is supposed to be used with the native server startup,
+# i.e. with runall-new.pl rather than runall.pl which is MTR-based.
+
+package GenTest::Reporter::CrashRecovery;
 
 require Exporter;
 @ISA = qw(GenTest::Reporter);
@@ -29,6 +35,7 @@ use GenTest::Reporter;
 use GenTest::Comparator;
 use Data::Dumper;
 use IPC::Open2;
+use File::Copy;
 use POSIX;
 
 use DBServer::MySQL::MySQLd;
@@ -58,37 +65,22 @@ sub monitor {
 sub report {
 	my $reporter = shift;
 
-	#
-	# If there is a hang during recovery in one engine, another engine may continue to print
-	# periodic diagnostic output forever. This prevents PB2 timeout mechanisms from kicking in
-	# In order to avoid that, we set our own crude alarm as a stop-gap measure
-	#
 	alarm(3600);
 
 	$first_reporter = $reporter if not defined $first_reporter;
 	return STATUS_OK if $reporter ne $first_reporter;
 
-	my $binary = $reporter->serverInfo('binary');
-	my $language = $reporter->serverVariable('language');
-	my $lc_messages_dir = $reporter->serverVariable('lc_messages_dir');
 	my $datadir = $reporter->serverVariable('datadir');
 	$datadir =~ s{[\\/]$}{}sgio;
-	my $recovery_datadir = $datadir.'_recovery';
-	my $socket = $reporter->serverVariable('socket');
-	my $port = $reporter->serverVariable('port');
+	my $orig_datadir = $datadir.'_orig';
 	my $pid = $reporter->serverInfo('pid');
-	my $aria_block_size = $reporter->serverVariable('maria_block_size') || $reporter->serverVariable('aria_block_size');
-	my $plugin_dir = $reporter->serverVariable('plugin_dir');
-	my $plugins = $reporter->serverPlugins();
-	my $binlog_format = $reporter->serverVariable('binlog_format');
-	my $binlog_on = $reporter->serverVariable('log_bin');
 
 	my $engine = $reporter->serverVariable('storage_engine');
 
 	my $dbh_prev = DBI->connect($reporter->dsn());
 
 	if (defined $dbh_prev) {
-		# Server is still running, kill it.
+		# Server is still running, kill it. Again.
 		$dbh_prev->disconnect();
 
 		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
@@ -96,106 +88,30 @@ sub report {
 		sleep(5);
 	}
 
-	say("Copying datadir... (interrupting the copy operation may cause a false recovery failure to be reported below");
-	system("cp -r $datadir $recovery_datadir");
-	system("rm -f $recovery_datadir/core*");	# Remove cores from any previous crash
-
-	if ($engine =~ m{aria}sio) {
-		say("Attempting database recovery using aria_read_log ...");
-		my $recovery_datadir_aria = $recovery_datadir.'-aria';
-
-		# Copy just the *aria* files in an empty location and create a test "database"
-		system("mkdir $recovery_datadir_aria");
-		system("cp $datadir/*aria_log* $recovery_datadir_aria");
-		system("mkdir $recovery_datadir_aria/test");
-		system("mkdir $recovery_datadir_aria/smf");
-		system("mkdir $recovery_datadir_aria/smf2");
-
-		say("Copying complete");
-	
-		my $aria_read_log_path = 
-		     DBServer::MySQL::MySQLd->_find([$reporter->serverVariable('basedir'),
-		     	                             $reporter->serverVariable('basedir').'/..',
-		     	                             $reporter->serverVariable('basedir').'/../debug/'],
-		     	                            ['storage/maria','bin'],
-		     	                            'aria_read_log',
-		     	                            'maria_read_log');
-		my $aria_chk_path = 
-		     DBServer::MySQL::MySQLd->_find([$reporter->serverVariable('basedir'),
-		     	                             $reporter->serverVariable('basedir').'/..',
-		     	                             $reporter->serverVariable('basedir').'/../debug/'],
-		     	                            ['storage/maria','bin'],
-		     	                            'aria_chk',
-		     	                            'maria_chk');
-
-		chdir($recovery_datadir_aria);
-
-		my $aria_read_log_result = system("$aria_read_log_path --aria-log-dir-path $recovery_datadir_aria --apply --check --silent");
-		return STATUS_RECOVERY_FAILURE if $aria_read_log_result > 0;
-		say("$aria_read_log_path apparently returned success");
-
-		my $aria_chk_result = system("$aria_chk_path --extend-check */*.MAI");
-		return STATUS_RECOVERY_FAILURE if $aria_chk_result > 0;
-		say("$aria_chk_path apparently returned success");
-	} else {
-		say("Copying complete");
+	my $server = $reporter->properties->servers->[0];
+	say("Copying datadir... (interrupting the copy operation may cause investigation problems later)");
+	if (osWindows()) {
+		system("xcopy \"$datadir\" \"$orig_datadir\" /E /I /Q");
+	} else { 
+		system("cp -r $datadir $orig_datadir");
 	}
+	move($server->errorlog, $server->errorlog.'_orig');
+	unlink("$datadir/core*");	# Remove cores from any previous crash
 
 	say("Attempting database recovery using the server ...");
 
-	my @mysqld_options = (
-		'--no-defaults',
-		'--core-file',
-		'--loose-console',
-		'--loose-maria-block-size='.$aria_block_size,
-		'--loose-aria-block-size='.$aria_block_size,
-		'--language='.$language,
-		'--loose-lc-messages-dir='.$lc_messages_dir,
-		'--datadir="'.$recovery_datadir.'"',
-		'--log-output=file',
-		'--general_log=ON',
-		'--general_log_file="'.$recovery_datadir.'/query-recovery.log"',
-		'--datadir="'.$recovery_datadir.'"',
-		'--socket="'.$socket.'"',
-		'--port='.$port,
-		'--loose-plugin-dir='.$plugin_dir
-	);
+	$server->setStartDirty(1);
+	my $recovery_status = $server->startServer();
+	open(RECOVERY, $server->errorlog);
 
-	if ($binlog_on =~ m{YES|ON}sio) {
-		push @mysqld_options, (
-			'--log-bin',
-			'--binlog-format='.$binlog_format,
-			'--log-bin='.$datadir.'/../log/master-bin',
-			'--server-id=1'
-		);
-	};
-
-	push @mysqld_options, '--loose-skip-pbxt' if lc($engine) ne 'pbxt';
-
-	foreach my $plugin (@$plugins) {
-		push @mysqld_options, '--plugin-load='.$plugin->[0].'='.$plugin->[1];
-	};
-
-	my $mysqld_command = $binary.' '.join(' ', @mysqld_options).' 2>&1';
-	say("Executing $mysqld_command .");
-
-	my $mysqld_pid = open2(\*RDRFH, \*WTRFH, $mysqld_command);
-
-	#
-	# Phase1 - the server is running single-threaded. We consume the error log and parse it for
-	# statements that indicate failed recovery
-	# 
-
-	my $recovery_status = STATUS_OK;
-	while (<RDRFH>) {
+	while (<RECOVERY>) {
 		$_ =~ s{[\r\n]}{}siog;
 		say($_);
 		if ($_ =~ m{registration as a STORAGE ENGINE failed.}sio) {
 			say("Storage engine registration failed");
 			$recovery_status = STATUS_DATABASE_CORRUPTION;
 		} elsif ($_ =~ m{corrupt|crashed}) {
-			say("Log message '$_' indicates database corruption");
-			$recovery_status = STATUS_DATABASE_CORRUPTION;
+			say("Log message '$_' might indicate database corruption");
 		} elsif ($_ =~ m{exception}sio) {
 			$recovery_status = STATUS_DATABASE_CORRUPTION;
 		} elsif ($_ =~ m{ready for connections}sio) {
@@ -214,6 +130,8 @@ sub report {
 		}
 	}
 
+	close(RECOVERY);
+
 	my $dbh = DBI->connect($reporter->dsn());
 	$recovery_status = STATUS_DATABASE_CORRUPTION if not defined $dbh && $recovery_status == STATUS_OK;
 
@@ -224,21 +142,17 @@ sub report {
 	
 	# 
 	# Phase 2 - server is now running, so we execute various statements in order to verify table consistency
-	# However, while we do that, we are still responsible for processing the error log and dumping it to our stdout.
-	# If we do not do that, and the server calls flish(stdout) , it will hang waiting for us to consume its stdout, which
-	# we would no longer be doing. So, we call eater(), which forks a separate process to read the log and dump it to stdout.
 	#
 
 	say("Testing database consistency");
-
-	my $eater_pid = eater(*RDRFH);
 
 	my $databases = $dbh->selectcol_arrayref("SHOW DATABASES");
 	foreach my $database (@$databases) {
 		next if $database =~ m{^(mysql|information_schema|pbxt|performance_schema)$}sio;
 		$dbh->do("USE $database");
-		my $tables = $dbh->selectcol_arrayref("SHOW TABLES");
-		foreach my $table (@$tables) {
+		my $tabl_ref = $dbh->selectcol_arrayref("SHOW FULL TABLES", { Columns=>[1,2] });
+		my %tables = @$tabl_ref;
+		foreach my $table (keys %tables) {
 			say("Verifying table: $table; database: $database");
 
 			my $sth_keys = $dbh->prepare("
@@ -273,7 +187,7 @@ sub report {
 			
 					push @walk_queries, "SELECT $select_type FROM `$database`.`$table` FORCE INDEX ($key_name) ".$main_predicate;
 				}
-                        };
+			};
 
 			my %rows;
 			my %data;
@@ -317,6 +231,9 @@ sub report {
 
 				$recovery_status = STATUS_DATABASE_CORRUPTION;
 			}
+			
+			# Should not do CHECK etc., and especially ALTER, on a view
+			next if $tables{$table} eq 'VIEW';
 
 			foreach my $sql (
 				"CHECK TABLE `$database`.`$table` EXTENDED",
@@ -349,48 +266,7 @@ sub report {
 		}
 	}
 
-	close(MYSQLD);
-
-	# 
-	# We reap the process we spawned to consume the server error log
-	# If there have been any log messages such as "table X is marked as crashed", then
-	# the eater process will exit with STATUS_RECOVERY_FAILURE which we will pass to the caller.
-	#
-	
-
-	waitpid($eater_pid, &POSIX::WNOHANG());
-	my $eater_status = $?;
-	if ($eater_status > -1) {
-		$recovery_status = $eater_status >> 8 if $eater_status > $recovery_status;
-	}
-
-	if ($recovery_status > STATUS_OK) {
-		say("Recovery has failed.");
-		return $recovery_status;
-	} else {
-		return STATUS_OK;
-	}
-}
-
-sub eater {
-	my $fh = shift;
-	if (my $eater_pid = fork()) {
-		# parent
-		return $eater_pid;
-	} else {
-		# child
-		$0 = 'Recovery log eater';
-		while (<$fh>) {
-			$_ =~ s{[\r\n]}{}siog;
-			say($_);
-			if ($_ =~ m{corrupt|repaired|invalid|crashed}sio) {
-				say ("Server stderr line '$_' indicates recovery failure.");
-				exit(STATUS_RECOVERY_FAILURE);
-			}
-		}
-
-		exit(STATUS_OK);
-	}
+	return STATUS_OK;
 }
 
 sub type {

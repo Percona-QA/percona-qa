@@ -1,4 +1,5 @@
 # Copyright (C) 2009-2010 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -406,16 +407,16 @@ reset:
 create_keycache:
 	# 0. There is no SESSION specific KEY CACHE.
 	# 1. This statement does not COMMIT.
-	# 2. 'key_cache_'.$$ gets created if not already known
+	# 2. 'key_cache_'.abs($$) gets created if not already known
 	# 3. A KEY CACHE with size = 0 causes that the KEY CACHE is destroyed but.
 	#    Nevertheless the name of this KEY CACHE can be used within the corresponding statements and
 	#    we do not get error messages.
-	SET GLOBAL { 'key_cache_'.$$ } .key_buffer_size = 128 * 1024 |
-	SET GLOBAL { 'key_cache_'.$$ } .key_buffer_size = 0          ;
+	SET GLOBAL { 'key_cache_'.abs($$) } .key_buffer_size = 128 * 1024 |
+	SET GLOBAL { 'key_cache_'.abs($$) } .key_buffer_size = 0          ;
 cache_index:
 	# COMMIT only *after* successful execution.
-	CACHE INDEX pick_schema table_name                          IN { 'key_cache_'.$$ } |
-	CACHE INDEX pick_schema table_name , pick_schema table_name IN { 'key_cache_'.$$ } |
+	CACHE INDEX pick_schema table_name                          IN { 'key_cache_'.abs($$) } |
+	CACHE INDEX pick_schema table_name , pick_schema table_name IN { 'key_cache_'.abs($$) } |
 	# The next statement will fail.
 	CACHE INDEX pick_schema table_name                          IN cache_not_exists    ;
 load_index_to_cache:
@@ -455,8 +456,8 @@ set_password:
 	# COMMIT before execution.
 	SET PASSWORD FOR user_name = PASSWORD(' _letter ');
 user_name:
-	{ 'Luigi_'.$$.'@localhost' }  |
-	{ 'Emilio_'.$$.'@localhost' } ;
+	{ 'Luigi_'.abs($$).'@localhost' }  |
+	{ 'Emilio_'.abs($$).'@localhost' } ;
 
 grant:
 	GRANT ALL ON test.* TO user_name |
@@ -468,28 +469,28 @@ revoke:
 	REVOKE ALL ON test.* FROM user_name , user_name ;
 
 create_schema:
-	CREATE SCHEMA IF NOT EXISTS { 'test_'.$$ } CHARACTER SET character_set ;
+	CREATE SCHEMA IF NOT EXISTS { 'test_'.abs($$) } CHARACTER SET character_set ;
 drop_schema:
-	DROP   SCHEMA IF EXISTS     { 'test_'.$$ }                             ;
+	DROP   SCHEMA IF EXISTS     { 'test_'.abs($$) }                             ;
 alter_schema:
 	# This fails if we have active locked tables or an open transaction which
 	# already modified a table.
-	ALTER SCHEMA                { 'test_'.$$ } CHARACTER SET character_set ;
+	ALTER SCHEMA                { 'test_'.abs($$) } CHARACTER SET character_set ;
 
 # Attention: An open (existing?) temporary table causes that an in case of current
 #            SESSION BINLOG_FORMAT = ROW any SET ... BINLOG_FORMAT fails.
 create_table:
 	# FIXME Move this out of xid.....
-	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table |
-	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    |
-	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } LIKE nontrans_table |
-	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } LIKE trans_table    |
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.abs($$) } LIKE nontrans_table |
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.abs($$) } LIKE trans_table    |
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.abs($$) } LIKE nontrans_table |
+	CREATE           TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.abs($$) } LIKE trans_table    |
 	# FIXME Add later the case that base and temporary table have the same names
 	# Please enable the next two lines if
 	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
-	# CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_myisam_'.$$ } LIKE nontrans_table |
-	# CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.$$ } LIKE trans_table    |
+	# CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_myisam_'.abs($$) } LIKE nontrans_table |
+	# CREATE TEMPORARY TABLE IF NOT EXISTS pick_schema { 't1_temp_innodb_'.abs($$) } LIKE trans_table    |
 	# This will fail because mysql.user already exists.
 	CREATE TABLE mysql.user ( f1 BIGINT ) ;
 create_table1:
@@ -503,16 +504,16 @@ create_table1:
 	# 2         | nontrans                      | t1_*_myisam_*
 	# 3         | trans                         | t1_*_innodb_*
 	# 4         | nontrans and later trans      | SET pick_mode = 2 (-> t1_*_myisam_*)
-	{if ($format eq 'STATEMENT') {$pick_mode=2}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.$$ } ENGINE = MyISAM AS SELECT _field_list[invariant] FROM table_in_select AS A addition |
-	{if ($format eq 'STATEMENT') {$pick_mode=3}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.$$ } ENGINE = InnoDB AS SELECT _field_list[invariant] FROM table_in_select AS A addition ;
+	{if ($format eq 'STATEMENT') {$pick_mode=2}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_myisam_'.abs($$) } ENGINE = MyISAM AS SELECT _field_list[invariant] FROM table_in_select AS A addition |
+	{if ($format eq 'STATEMENT') {$pick_mode=3}; return '/*' . $pick_mode . '*/'} vmarker_set CREATE TABLE IF NOT EXISTS pick_schema { 't1_base_innodb_'.abs($$) } ENGINE = InnoDB AS SELECT _field_list[invariant] FROM table_in_select AS A addition ;
 drop_table:
 	# FIXME Move this out of xid.....
-	DROP             TABLE IF EXISTS pick_schema { 't1_base_myisam_'.$$ } |
-	DROP             TABLE IF EXISTS pick_schema { 't1_base_innodb_'.$$ } |
+	DROP             TABLE IF EXISTS pick_schema { 't1_base_myisam_'.abs($$) } |
+	DROP             TABLE IF EXISTS pick_schema { 't1_base_innodb_'.abs($$) } |
 	# FIXME Add later the case that base and temporary table have the same names
 	#
-	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_myisam_'.$$ } |
-	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_innodb_'.$$ } |
+	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_myisam_'.abs($$) } |
+	# DROP TEMPORARY TABLE IF EXISTS pick_schema { 't1_temp_innodb_'.abs($$) } |
 	#
 	# This will fail because already exist_not_exist.
 	DROP TABLE does_not_exist                                             ;
@@ -521,72 +522,72 @@ alter_table:
 truncate_table:
 	TRUNCATE TABLE pick_schema table_name ;
 table_name:
-	{ 't1_base_myisam_'.$$ } |
-	{ 't1_base_innodb_'.$$ } |
-	{ 't1_base_myisam_'.$$ } |
-	{ 't1_base_innodb_'.$$ } |
+	{ 't1_base_myisam_'.abs($$) } |
+	{ 't1_base_innodb_'.abs($$) } |
+	{ 't1_base_myisam_'.abs($$) } |
+	{ 't1_base_innodb_'.abs($$) } |
 	# Please enable the next four lines if
 	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
-	# { 't1_temp_myisam_'.$$ } |
-	# { 't1_temp_innodb_'.$$ } |
-	# { 't1_temp_myisam_'.$$ } |
-	# { 't1_temp_innodb_'.$$ } |
+	# { 't1_temp_myisam_'.abs($$) } |
+	# { 't1_temp_innodb_'.abs($$) } |
+	# { 't1_temp_myisam_'.abs($$) } |
+	# { 't1_temp_innodb_'.abs($$) } |
 	does_not_exist           ;
 
 create_index:
-	CREATE INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } (col_tinyint) |
-	CREATE INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } (col_tinyint) |
-	CREATE INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } (col_tinyint) |
-	CREATE INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } (col_tinyint) |
+	CREATE INDEX { 'idx_base_myisam_'.abs($$) } ON { 't1_base_myisam_'.abs($$) } (col_tinyint) |
+	CREATE INDEX { 'idx_base_innodb_'.abs($$) } ON { 't1_base_innodb_'.abs($$) } (col_tinyint) |
+	CREATE INDEX { 'idx_base_myisam_'.abs($$) } ON { 't1_base_myisam_'.abs($$) } (col_tinyint) |
+	CREATE INDEX { 'idx_base_innodb_'.abs($$) } ON { 't1_base_innodb_'.abs($$) } (col_tinyint) |
 	#
 	# Please enable the next four lines if
 	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
-	# CREATE INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } (col_tinyint) |
-	# CREATE INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } (col_tinyint) |
-	# CREATE INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } (col_tinyint) |
-	# CREATE INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } (col_tinyint) |
+	# CREATE INDEX { 'idx_temp_myisam_'.abs($$) } ON { 't1_temp_myisam_'.abs($$) } (col_tinyint) |
+	# CREATE INDEX { 'idx_temp_innodb_'.abs($$) } ON { 't1_temp_innodb_'.abs($$) } (col_tinyint) |
+	# CREATE INDEX { 'idx_temp_myisam_'.abs($$) } ON { 't1_temp_myisam_'.abs($$) } (col_tinyint) |
+	# CREATE INDEX { 'idx_temp_innodb_'.abs($$) } ON { 't1_temp_innodb_'.abs($$) } (col_tinyint) |
 	#
 	CREATE INDEX idx_will_fail ON does_not_exist (f1)                                  ;
 drop_index:
-	DROP INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } |
-	DROP INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } |
-	DROP INDEX { 'idx_base_myisam_'.$$ } ON { 't1_base_myisam_'.$$ } |
-	DROP INDEX { 'idx_base_innodb_'.$$ } ON { 't1_base_innodb_'.$$ } |
+	DROP INDEX { 'idx_base_myisam_'.abs($$) } ON { 't1_base_myisam_'.abs($$) } |
+	DROP INDEX { 'idx_base_innodb_'.abs($$) } ON { 't1_base_innodb_'.abs($$) } |
+	DROP INDEX { 'idx_base_myisam_'.abs($$) } ON { 't1_base_myisam_'.abs($$) } |
+	DROP INDEX { 'idx_base_innodb_'.abs($$) } ON { 't1_base_innodb_'.abs($$) } |
 	#
 	# Please enable the next four lines if
 	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
-	# DROP INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } |
-	# DROP INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } |
-	# DROP INDEX { 'idx_temp_myisam_'.$$ } ON { 't1_temp_myisam_'.$$ } |
-	# DROP INDEX { 'idx_temp_innodb_'.$$ } ON { 't1_temp_innodb_'.$$ } |
+	# DROP INDEX { 'idx_temp_myisam_'.abs($$) } ON { 't1_temp_myisam_'.abs($$) } |
+	# DROP INDEX { 'idx_temp_innodb_'.abs($$) } ON { 't1_temp_innodb_'.abs($$) } |
+	# DROP INDEX { 'idx_temp_myisam_'.abs($$) } ON { 't1_temp_myisam_'.abs($$) } |
+	# DROP INDEX { 'idx_temp_innodb_'.abs($$) } ON { 't1_temp_innodb_'.abs($$) } |
 	#
 	DROP INDEX idx_will_fail ON does_not_exist                       ;
 
 rename_table:
-	RENAME TABLE test . { 't1_base_myisam_'.$$ } TO test . { 't2_base_myisam_'.$$ } |
-	RENAME TABLE test . { 't2_base_myisam_'.$$ } TO test . { 't1_base_myisam_'.$$ } |
-	RENAME TABLE test . { 't1_base_innodb_'.$$ } TO test . { 't2_base_innodb_'.$$ } |
-	RENAME TABLE test . { 't2_base_innodb_'.$$ } TO test . { 't1_base_innodb_'.$$ } |
+	RENAME TABLE test . { 't1_base_myisam_'.abs($$) } TO test . { 't2_base_myisam_'.abs($$) } |
+	RENAME TABLE test . { 't2_base_myisam_'.abs($$) } TO test . { 't1_base_myisam_'.abs($$) } |
+	RENAME TABLE test . { 't1_base_innodb_'.abs($$) } TO test . { 't2_base_innodb_'.abs($$) } |
+	RENAME TABLE test . { 't2_base_innodb_'.abs($$) } TO test . { 't1_base_innodb_'.abs($$) } |
 	#
-	RENAME TABLE test  . { 't1_base_myisam_'.$$ } TO test  . { 't2_base_myisam_'.$$ } , test1 . { 't1_base_myisam_'.$$ } TO test1 . { 't2_base_myisam_'.$$ } |
-	RENAME TABLE test1 . { 't2_base_myisam_'.$$ } TO test1 . { 't1_base_myisam_'.$$ } , test  . { 't2_base_myisam_'.$$ } TO test  . { 't1_base_myisam_'.$$ } |
+	RENAME TABLE test  . { 't1_base_myisam_'.abs($$) } TO test  . { 't2_base_myisam_'.abs($$) } , test1 . { 't1_base_myisam_'.abs($$) } TO test1 . { 't2_base_myisam_'.abs($$) } |
+	RENAME TABLE test1 . { 't2_base_myisam_'.abs($$) } TO test1 . { 't1_base_myisam_'.abs($$) } , test  . { 't2_base_myisam_'.abs($$) } TO test  . { 't1_base_myisam_'.abs($$) } |
 	#
 	# This will fail in case we "move" the table between different schemas and there is a trigger on the table.
-	RENAME TABLE pick_schema { 't1_base_myisam_'.$$ } TO pick_schema { 't1_base_myisam_'.$$ } |
+	RENAME TABLE pick_schema { 't1_base_myisam_'.abs($$) } TO pick_schema { 't1_base_myisam_'.abs($$) } |
 	#
 	# Please enable the next four lines if
 	#    Bug#49132 Replication failure on temporary table + DDL
 	# is fixed.
-	# RENAME TABLE test . { 't1_temp_myisam_'.$$ } TO test . { 't2_temp_myisam_'.$$ } |
-	# RENAME TABLE test . { 't2_temp_myisam_'.$$ } TO test . { 't1_temp_myisam_'.$$ } |
-	# RENAME TABLE test . { 't1_temp_innodb_'.$$ } TO test . { 't2_temp_innodb_'.$$ } |
-	# RENAME TABLE test . { 't2_temp_innodb_'.$$ } TO test . { 't1_temp_innodb_'.$$ } |
+	# RENAME TABLE test . { 't1_temp_myisam_'.abs($$) } TO test . { 't2_temp_myisam_'.abs($$) } |
+	# RENAME TABLE test . { 't2_temp_myisam_'.abs($$) } TO test . { 't1_temp_myisam_'.abs($$) } |
+	# RENAME TABLE test . { 't1_temp_innodb_'.abs($$) } TO test . { 't2_temp_innodb_'.abs($$) } |
+	# RENAME TABLE test . { 't2_temp_innodb_'.abs($$) } TO test . { 't1_temp_innodb_'.abs($$) } |
 	#
 	# This must fail.
-	RENAME TABLE does_not_exist TO pick_schema { 't1_base_myisam_'.$$ } ;
+	RENAME TABLE does_not_exist TO pick_schema { 't1_base_myisam_'.abs($$) } ;
 
 # The server gives a warning in case the current binlog format is STATEMENT and the SELECT
 # used within the VIEW definition is unsafe in SBR mode. This is IMHO a valueless but
@@ -595,25 +596,25 @@ create_view:
 	CREATE VIEW trans_view    |
 	CREATE VIEW nontrans_view ;
 trans_view:
-	pick_schema { if ($format eq 'STATEMENT') {return 'v1_trans_safe_for_sbr_'.$$ }    else { return 'v1_trans_unsafe_for_sbr_'.$$ } }    AS SELECT _field_list FROM trans_table    where ;
+	pick_schema { if ($format eq 'STATEMENT') {return 'v1_trans_safe_for_sbr_'.abs($$) }    else { return 'v1_trans_unsafe_for_sbr_'.abs($$) } }    AS SELECT _field_list FROM trans_table    where ;
 nontrans_view:
-	pick_schema { if ($format eq 'STATEMENT') {return 'v1_nontrans_safe_for_sbr_'.$$ } else { return 'v1_nontrans_unsafe_for_sbr_'.$$ } } AS SELECT _field_list FROM nontrans_table where ;
+	pick_schema { if ($format eq 'STATEMENT') {return 'v1_nontrans_safe_for_sbr_'.abs($$) } else { return 'v1_nontrans_unsafe_for_sbr_'.abs($$) } } AS SELECT _field_list FROM nontrans_table where ;
 drop_view:
-	DROP VIEW IF EXISTS pick_schema { 'v1_trans_safe_for_sbr_'.$$ }      |
-	DROP VIEW IF EXISTS pick_schema { 'v1_trans_unsafe_for_sbr_'.$$ }    |
-	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_safe_for_sbr_'.$$ }   |
-	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_unsafe_for_sbr_'.$$ } ;
+	DROP VIEW IF EXISTS pick_schema { 'v1_trans_safe_for_sbr_'.abs($$) }      |
+	DROP VIEW IF EXISTS pick_schema { 'v1_trans_unsafe_for_sbr_'.abs($$) }    |
+	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_safe_for_sbr_'.abs($$) }   |
+	DROP VIEW IF EXISTS pick_schema { 'v1_nontrans_unsafe_for_sbr_'.abs($$) } ;
 alter_view:
 	ALTER VIEW trans_view    |
 	ALTER VIEW nontrans_view ;
 rename_view:
-	RENAME TABLE test . { 'v1_trans_'.$$ }    TO test . { 'v2_trans_'.$$ }    |
-	RENAME TABLE test . { 'v2_trans_'.$$ }    TO test . { 'v1_trans_'.$$ }    |
-	RENAME TABLE test . { 'v1_nontrans_'.$$ } TO test . { 'v2_nontrans_'.$$ } |
-	RENAME TABLE test . { 'v2_nontrans_'.$$ } TO test . { 'v1_nontrans_'.$$ } |
+	RENAME TABLE test . { 'v1_trans_'.abs($$) }    TO test . { 'v2_trans_'.abs($$) }    |
+	RENAME TABLE test . { 'v2_trans_'.abs($$) }    TO test . { 'v1_trans_'.abs($$) }    |
+	RENAME TABLE test . { 'v1_nontrans_'.abs($$) } TO test . { 'v2_nontrans_'.abs($$) } |
+	RENAME TABLE test . { 'v2_nontrans_'.abs($$) } TO test . { 'v1_nontrans_'.abs($$) } |
 	#
 	# This will fail in case the schemas picked differ. Moving a VIEW from one SCHEMA to another is not supported.
-	RENAME TABLE pick_schema { 'v1_nontrans_safe_for_sbr_'.$$ } TO pick_schema { 'v1_nontrans_safe_for_sbr_'.$$ } ;
+	RENAME TABLE pick_schema { 'v1_nontrans_safe_for_sbr_'.abs($$) } TO pick_schema { 'v1_nontrans_safe_for_sbr_'.abs($$) } ;
 
 vmarker_set:
 	{ if ($format eq 'STATEMENT') { $f0 = ''; $f1 = '/*'; $f2 = '*/' } else { $f0 = '/*'; $f1 = '*/'; $f2 = '' } ; return undef } ;
@@ -642,30 +643,30 @@ create_procedure:
 	# Activate the next line if
 	#    Bug#50423 Crash on second call of a procedure dropping a trigger
 	# is fixed. Not: This crash seems to be fixed in mysql-next-mr and mysql-6.0-codebase-bugfixing.
-	# CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN dml_list ; END ;
-	CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } () BEGIN proc_stmt ; END ;
+	# CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.abs($$) } () BEGIN dml_list ; END ;
+	CREATE PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.abs($$) } () BEGIN proc_stmt ; END ;
 proc_stmt:
 	replace | update | delete ;
 drop_procedure:
-	DROP PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.$$ } ;
+	DROP PROCEDURE pick_schema { 'p1_'.$pick_mode.'_'.abs($$) } ;
 call_procedure:
 	# Enable the next line in case
 	#    Bug #50624  	crash in check_table_access during call procedure
 	# is fixed or you use
 	#    mysql-6.0-codebase-bugfixing
 	#
-	# CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
+	# CALL pick_schema { 'p1_'.$pick_mode.'_'.abs($$) } () ;
 	;
 alter_procedure:
-	ALTER PROCEDURE { 'p1_'.$pick_mode.'_'.$$ } COMMENT ' _letter ' ;
+	ALTER PROCEDURE { 'p1_'.$pick_mode.'_'.abs($$) } COMMENT ' _letter ' ;
 
 create_function:
-	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table where ) ;
+	CREATE FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.abs($$) } () RETURNS TINYINT RETURN ( SELECT MAX( col_tinyint ) FROM pick_schema pick_safe_table where ) ;
 drop_function:
-	DROP FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.$$ } ;
+	DROP FUNCTION pick_schema { 'f1_'.$pick_mode.'_'.abs($$) } ;
 # Note: We use the function within the grammar item "value".
 alter_function:
-	ALTER FUNCTION { 'f1_'.$pick_mode.'_'.$$ } COMMENT ' _letter ' ;
+	ALTER FUNCTION { 'f1_'.$pick_mode.'_'.abs($$) } COMMENT ' _letter ' ;
 
 # I am unsure if "$pick_mode" makes here sense. It could be used to tell us what the TRIGGER might be doing but it cannot
 # be used for deciding if we want to execute the trigger or not.
@@ -698,29 +699,29 @@ alter_function:
 #   Let's try a) first.
 #
 create_trigger:
-	CREATE TRIGGER pick_schema { 'tr1_'.$pick_mode.'_'.$$ } trigger_time trigger_event ON pick_schema pick_safe_table FOR EACH ROW BEGIN trigger_action ; END ;
+	CREATE TRIGGER pick_schema { 'tr1_'.$pick_mode.'_'.abs($$) } trigger_time trigger_event ON pick_schema pick_safe_table FOR EACH ROW BEGIN trigger_action ; END ;
 trigger_time:
 	BEFORE | AFTER  ;
 trigger_event:
 	INSERT | DELETE ;
 trigger_action:
-	# insert | replace | delete | update | CALL pick_schema { 'p1_'.$pick_mode.'_'.$$ } () ;
+	# insert | replace | delete | update | CALL pick_schema { 'p1_'.$pick_mode.'_'.abs($$) } () ;
 	SET @aux = 1    ;
 drop_trigger:
-	DROP TRIGGER IF EXISTS pick_schema { 'tr1_'.$pick_mode.'_'.$$ };
+	DROP TRIGGER IF EXISTS pick_schema { 'tr1_'.$pick_mode.'_'.abs($$) };
 
 # I am unsure if "$pick_mode" makes here sense. Therefore this might be removed in future.
 create_event:
-	CREATE EVENT IF NOT EXISTS pick_schema { 'e1_'.$pick_mode.'_'.$$ } ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO insert ;
+	CREATE EVENT IF NOT EXISTS pick_schema { 'e1_'.$pick_mode.'_'.abs($$) } ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO insert ;
 completion_handling:
 	ON COMPLETION not_or_empty PRESERVE ;
 drop_event:
-	DROP EVENT IF EXISTS pick_schema { 'e1_'.$pick_mode.'_'.$$ } ;
+	DROP EVENT IF EXISTS pick_schema { 'e1_'.$pick_mode.'_'.abs($$) } ;
 not_or_empty:
 	NOT
 	| ;
 alter_event:
-	ALTER EVENT pick_schema { 'e1_'.$pick_mode.'_'.$$ } ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO insert ;
+	ALTER EVENT pick_schema { 'e1_'.$pick_mode.'_'.abs($$) } ON SCHEDULE EVERY 10 SECOND STARTS NOW() ENDS NOW() + INTERVAL 21 SECOND completion_handling DO insert ;
 
 # Some INFORMATION_SCHEMA related tests
 #--------------------------------------
@@ -731,16 +732,16 @@ alter_event:
 # - The tests around information_schema are intentionally simpler than other tests.
 # - Bug#29790 information schema returns non-atomic content => replication (binlog) fails
 create_is_copy:
-	CREATE TABLE IF NOT EXISTS test . { 't1_is_schemata_'.$$ } AS schemata_part WHERE 1 = 0 |
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_schemata_'.abs($$) } AS schemata_part WHERE 1 = 0 |
 	# Experience: The value of tables.AUTO_INCREMENT can differ between master and slave.
-	CREATE TABLE IF NOT EXISTS test . { 't1_is_tables_'.$$ }   AS tables_part   WHERE 1 = 0 |
-	CREATE TABLE IF NOT EXISTS test . { 't1_is_columns_'.$$ }  AS columns_part  WHERE 1 = 0 |
-	CREATE TABLE IF NOT EXISTS test . { 't1_is_routines_'.$$ } AS routines_part WHERE 1 = 0 ;
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_tables_'.abs($$) }   AS tables_part   WHERE 1 = 0 |
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_columns_'.abs($$) }  AS columns_part  WHERE 1 = 0 |
+	CREATE TABLE IF NOT EXISTS test . { 't1_is_routines_'.abs($$) } AS routines_part WHERE 1 = 0 ;
 fill_is_copy:
-	TRUNCATE test . { 't1_is_schemata_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_schemata_'.$$ } schemata_part WHERE SCHEMA_NAME    LIKE 'test%' ORDER BY 1     { return $m11 } ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_tables_'.$$ }   ; safety_check { return $m10 } INSERT INTO test . { 't1_is_tables_'.$$ }   tables_part   WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2   { return $m11 } ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_columns_'.$$ }  ; safety_check { return $m10 } INSERT INTO test . { 't1_is_columns_'.$$ }  columns_part  WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2,3 { return $m11 } ; safety_check COMMIT |
-	TRUNCATE test . { 't1_is_routines_'.$$ } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_routines_'.$$ } routines_part WHERE ROUTINE_SCHEMA LIKE 'test%' ORDER BY 1,2   { return $m11 } ; safety_check COMMIT ;
+	TRUNCATE test . { 't1_is_schemata_'.abs($$) } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_schemata_'.abs($$) } schemata_part WHERE SCHEMA_NAME    LIKE 'test%' ORDER BY 1     { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_tables_'.abs($$) }   ; safety_check { return $m10 } INSERT INTO test . { 't1_is_tables_'.abs($$) }   tables_part   WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2   { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_columns_'.abs($$) }  ; safety_check { return $m10 } INSERT INTO test . { 't1_is_columns_'.abs($$) }  columns_part  WHERE TABLE_SCHEMA   LIKE 'test%' ORDER BY 1,2,3 { return $m11 } ; safety_check COMMIT |
+	TRUNCATE test . { 't1_is_routines_'.abs($$) } ; safety_check { return $m10 } INSERT INTO test . { 't1_is_routines_'.abs($$) } routines_part WHERE ROUTINE_SCHEMA LIKE 'test%' ORDER BY 1,2   { return $m11 } ; safety_check COMMIT ;
 schemata_part:
 	SELECT SCHEMA_NAME,DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.schemata ;
 tables_part:
@@ -914,7 +915,7 @@ value:
 	#    Bug#50511 Sometimes wrong handling of user variables containing NULL
 	# is fixed.
 	# NULL                   |
-	pick_schema { 'f1_'.$pick_mode.'_'.$$ } () |
+	pick_schema { 'f1_'.$pick_mode.'_'.abs($$) } () |
 	{ if ($format eq 'STATEMENT') {return '/*'} } value_unsafe_for_sbr { if ($format eq 'STATEMENT') {return '*/ 17 '} };
 
 value_unsafe_for_sbr:
@@ -1019,13 +1020,13 @@ undef_table:
 	table10_int_autoinc ;
 
 nontrans_table:
-	{ 't1_base_myisam_'.$$ }   |
-	{ 't2_base_myisam_'.$$ }   |
-	{ 't1_temp_myisam_'.$$ }   |
-	{ 't2_temp_myisam_'.$$ }   |
+	{ 't1_base_myisam_'.abs($$) }   |
+	{ 't2_base_myisam_'.abs($$) }   |
+	{ 't1_temp_myisam_'.abs($$) }   |
+	{ 't2_temp_myisam_'.abs($$) }   |
 	# A VIEW used in SBR mode must not be based on a SELECT which is unsafe in SBR mode.
-	{ if ($format eq 'STATEMENT') { return 'v1_nontrans_safe_for_sbr_'.$$ } else { return 'v1_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
-	{ if ($format eq 'STATEMENT') { return 'v2_nontrans_safe_for_sbr_'.$$ } else { return 'v2_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
+	{ if ($format eq 'STATEMENT') { return 'v1_nontrans_safe_for_sbr_'.abs($$) } else { return 'v1_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).abs($$) } } |
+	{ if ($format eq 'STATEMENT') { return 'v2_nontrans_safe_for_sbr_'.abs($$) } else { return 'v2_nontrans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).abs($$) } } |
 	# table0_myisam              |
 	table0_myisam_int          |
 	table0_myisam_int_autoinc  |
@@ -1037,13 +1038,13 @@ nontrans_table:
 	table10_myisam_int_autoinc ;
 
 trans_table:
-	{ 't1_base_innodb_'.$$ }   |
-	{ 't2_base_innodb_'.$$ }   |
-	{ 't1_temp_innodb_'.$$ }   |
-	{ 't2_temp_innodb_'.$$ }   |
+	{ 't1_base_innodb_'.abs($$) }   |
+	{ 't2_base_innodb_'.abs($$) }   |
+	{ 't1_temp_innodb_'.abs($$) }   |
+	{ 't2_temp_innodb_'.abs($$) }   |
 	# A VIEW used in SBR mode must not be based on a SELECT which is unsafe in SBR mode.
-	{ if ($format eq 'STATEMENT') { return 'v1_trans_safe_for_sbr_'.$$ } else { return 'v1_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
-	{ if ($format eq 'STATEMENT') { return 'v2_trans_safe_for_sbr_'.$$ } else { return 'v2_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).$$ } } |
+	{ if ($format eq 'STATEMENT') { return 'v1_trans_safe_for_sbr_'.abs($$) } else { return 'v1_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).abs($$) } } |
+	{ if ($format eq 'STATEMENT') { return 'v2_trans_safe_for_sbr_'.abs($$) } else { return 'v2_trans_'.$prng->arrayElement(['safe_for_sbr_','unsafe_for_sbr_']).abs($$) } } |
 	# table0_innodb              |
 	table0_innodb_int          |
 	table0_innodb_int_autoinc  |

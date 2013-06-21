@@ -1,4 +1,5 @@
 # Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -55,7 +56,7 @@ sub transform {
 
 	$query =~ s{\((\s*SELECT\s+(??{$paren_rx}))\)}{
 		my $subquery = $1;
-		my $view_name = "view_".$$."_inline_".$view_counter;
+		my $view_name = "view_".abs($$)."_inline_".$view_counter;
 		my $drop_view = "DROP VIEW IF EXISTS $view_name",
 		my $create_view = "CREATE OR REPLACE VIEW $view_name AS $subquery;";
 		if ($executor->execute($create_view, 1)->err() == 0) {

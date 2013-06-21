@@ -1,4 +1,5 @@
 # Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -35,7 +36,7 @@ sub transform {
 	return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE)}sio
         	|| $original_query !~ m{^\s*SELECT}sio;
 
-	my $table_name = 'transforms.insert_select_'.$$;
+	my $table_name = 'transforms.insert_select_'.abs($$);
 
 	return [
 		#Include database transforms creation DDL so that it appears in the simplified testcase.

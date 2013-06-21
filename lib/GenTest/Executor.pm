@@ -1,4 +1,5 @@
 # Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -313,8 +314,9 @@ sub cacheMetaData {
         foreach my $row (@{$self->getSchemaMetaData()}) {
             my ($schema, $table, $type, $col, $key) = @$row;
             $meta->{$schema}={} if not exists $meta->{$schema};
-            $meta->{$schema}->{$table}={} if not exists $meta->{$schema}->{$table};
-            $meta->{$schema}->{$table}->{$col}=$key;
+            $meta->{$schema}->{$type}={} if not exists $meta->{$schema}->{$type};
+            $meta->{$schema}->{$type}->{$table}={} if not exists $meta->{$schema}->{$type}->{$table};
+            $meta->{$schema}->{$type}->{$table}->{$col}=$key;
         }
 	$global_schema_cache{$self->dsn()} = $meta;
     } else {
@@ -353,7 +355,43 @@ sub metaTables {
     my $cachekey = "TAB-$schema";
 
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
-        my $tables = [sort keys %{$meta->{$schema}}];
+        my $tables = [sort ( keys %{$meta->{$schema}->{table}}, keys %{$meta->{$schema}->{view}} )];
+        croak "Schema '$schema' has no tables"  
+            if not defined $tables or $#$tables < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $tables;
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+    
+}
+
+sub metaBaseTables {
+    my ($self, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+
+    $schema = $self->defaultSchema if not defined $schema;
+
+    my $cachekey = "BASETAB-$schema";
+
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $tables = [sort keys %{$meta->{$schema}->{table}}];
+        croak "Schema '$schema' has no tables"  
+            if not defined $tables or $#$tables < 0;
+        $self->[EXECUTOR_META_CACHE]->{$cachekey} = $tables;
+    }
+    return $self->[EXECUTOR_META_CACHE]->{$cachekey};
+    
+}
+
+sub metaViews {
+    my ($self, $schema) = @_;
+    my $meta = $self->[EXECUTOR_SCHEMA_METADATA];
+
+    $schema = $self->defaultSchema if not defined $schema;
+
+    my $cachekey = "VIEW-$schema";
+
+    if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
+        my $tables = [sort keys %{$meta->{$schema}->{view}}];
         croak "Schema '$schema' has no tables"  
             if not defined $tables or $#$tables < 0;
         $self->[EXECUTOR_META_CACHE]->{$cachekey} = $tables;
@@ -372,7 +410,7 @@ sub metaColumns {
     my $cachekey="COL-$schema-$table";
     
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
-        my $cols = [sort keys %{$meta->{$schema}->{$table}}];
+        my $cols = [sort keys %{$meta->{$schema}->{table}->{$table} || $meta->{$schema}->{view}->{$table} }];
         croak "Table '$table' in schema '$schema' has no columns"  
             if not defined $cols or $#$cols < 0;
         $self->[EXECUTOR_META_CACHE]->{$cachekey} = $cols;
@@ -390,7 +428,7 @@ sub metaColumnsType {
     my $cachekey="COL-$type-$schema-$table";
     
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
-        my $colref = $meta->{$schema}->{$table};
+        my $colref = $meta->{$schema}->{table}->{$table} || $meta->{$schema}->{view}->{$table};
         my $cols = [sort grep {$colref->{$_} eq $type} keys %$colref];
         croak "Table/view '$table' in schema '$schema' has no '$type' columns (Might be caused by use of --views option in combination with grammars containing _field_indexed)"  
             if not defined $cols or $#$cols < 0;
@@ -410,7 +448,7 @@ sub metaColumnsTypeNot {
     my $cachekey="COLNOT-$type-$schema-$table";
 
     if (not defined $self->[EXECUTOR_META_CACHE]->{$cachekey}) {
-        my $colref = $meta->{$schema}->{$table};
+        my $colref = $meta->{$schema}->{table}->{$table} || $meta->{$schema}->{view}->{$table};
         my $cols = [sort grep {$colref->{$_} ne $type} keys %$colref];
         croak "Table '$table' in schema '$schema' has no columns which are not '$type'"  
             if not defined $cols or $#$cols < 0;

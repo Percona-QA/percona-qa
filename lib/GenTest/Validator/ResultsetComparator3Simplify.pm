@@ -1,4 +1,5 @@
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -117,7 +118,7 @@ sub simplifyTwo {
 	my $show_index = 1;
         my $simplified_test = $simplifier_test->simplify($show_index);
 
-        my $tmpfile = tmpdir().$$.time().".test";
+        my $tmpfile = tmpdir().abs($$).time().".test";
         say("Dumping .test to $tmpfile");
         open (TESTFILE, '>'.$tmpfile);
         print TESTFILE $simplified_test;

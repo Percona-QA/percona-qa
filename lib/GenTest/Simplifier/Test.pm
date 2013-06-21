@@ -1,4 +1,5 @@
 # Copyright (c) 2008,2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -165,7 +166,7 @@ sub simplify {
 
 		$test .= _comment("Begin test case for query $query_id",$useHash)."\n\n";
 
-		my $simplified_database = 'query'.$query_id.$$;
+		my $simplified_database = 'query'.$query_id.abs($$);
 
 		my $tables_simplifier = GenTest::Simplifier::Tables->new(
 			dsn		=> $executors->[0]->dsn(),

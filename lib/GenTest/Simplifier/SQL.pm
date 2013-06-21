@@ -1,4 +1,5 @@
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -180,7 +181,7 @@ sub oracle {
 sub DESTROY {
 	my $simplifier = shift;
 	
-	my $tmpfile = tmpdir().$$.'-'.time();
+	my $tmpfile = tmpdir().abs($$).'-'.time();
 
 	open (PASSING, ">$tmpfile-passing.txt");
 	print PASSING join (";\n", @{$simplifier->[SIMPLIFIER_PASSING_QUERIES]}).";\n" if defined $simplifier->[SIMPLIFIER_PASSING_QUERIES];

@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (c) 2008, 2012 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -66,8 +67,8 @@ my @master_dsns;
 
 my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, $validators, $reporters, $grammar_file, $skip_recursive_rules,
-    $redefine_file, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
-    $varchar_len, $xml_output, $valgrind, $valgrind_options, $valgrind_xml, $views,
+    @redefine_files, $seed, $mask, $mask_level, $no_mask, $mem, $rows,
+    $varchar_len, $xml_output, $valgrind, $valgrind_options, $valgrind_xml, @views,
     $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
     $report_xml_tt_type, $report_xml_tt_dest, $notnull, $sqltrace,
     $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout,
@@ -93,7 +94,7 @@ my $opt_result = GetOptions(
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
 	'skip-recursive-rules' => \$skip_recursive_rules,	
-	'redefine=s' => \$redefine_file,
+	'redefine=s@' => \@redefine_files,
 	'threads=i' => \$threads,
 	'queries=s' => \$queries,
 	'duration=i' => \$duration,
@@ -122,7 +123,9 @@ my $opt_result = GetOptions(
 	'valgrind'	=> \$valgrind,
 	'valgrind_options=s@'   => \$valgrind_options,
 	'valgrind-xml'	=> \$valgrind_xml,
-	'views:s'	=> \$views,
+	'views:s'	=> \$views[0],
+	'views1:s'	=> \$views[1],
+	'views2:s'	=> \$views[2],
 	'sqltrace:s' => \$sqltrace,
 	'start-dirty'	=> \$start_dirty,
 	'filter=s'	=> \$filter,
@@ -135,6 +138,15 @@ my $opt_result = GetOptions(
     'querytimeout=i' => \$querytimeout,
     'wait-for-debugger' => \$wait_debugger
 );
+
+if ( osWindows() && !$debug )
+{
+    require Win32::API;
+    my $errfunc = Win32::API->new('kernel32', 'SetErrorMode', 'I', 'I');
+    my $initial_mode = $errfunc->Call(2);
+    $errfunc->Call($initial_mode | 2);
+};
+
 
 if (defined $logfile && defined $logger) {
     setLoggingToFile($logfile);
@@ -268,7 +280,12 @@ if (
 
 $gendata = $ENV{RQG_HOME}.'/'.$gendata if defined $gendata && defined $ENV{RQG_HOME} && ! -e $gendata;
 $grammar_file = $ENV{RQG_HOME}.'/'.$grammar_file if defined $grammar_file && defined $ENV{RQG_HOME} && ! -e $grammar_file;
-$redefine_file = $ENV{RQG_HOME}.'/'.$redefine_file if defined $redefine_file && defined $ENV{RQG_HOME} && ! -e $redefine_file;
+
+foreach (0..$#redefine_files)
+{
+	$redefine_files[$_] = $ENV{RQG_HOME}.'/'.$redefine_files[$_] 
+		if defined $redefine_files[$_] && defined $ENV{RQG_HOME} && ! -e $redefine_files[$_];
+}
 
 my $cwd = cwd();
 
@@ -298,7 +315,9 @@ foreach my $server_id (0..1) {
 	if ((defined $valgrind) || (defined $valgrind_xml)) {
 		push @mtr_options, "--valgrind";
 		if (defined $valgrind_options) {
-			push @mtr_options, "--valgrind-option=".join(',', @$valgrind_options);
+			foreach (@$valgrind_options) {
+				push @mtr_options, "--valgrind-option=$_";
+			}
 		}
 		if (defined $valgrind_xml) {
 			push @mtr_options, "--valgrind-option='--xml=yes'";
@@ -496,12 +515,14 @@ push @gentest_options, "--dsn=$master_dsns[0]" if defined $master_dsns[0];
 push @gentest_options, "--dsn=$master_dsns[1]" if defined $master_dsns[1];
 push @gentest_options, "--grammar=$grammar_file";
 push @gentest_options, "--skip-recursive-rules" if defined $skip_recursive_rules;
-push @gentest_options, "--redefine=$redefine_file" if defined $redefine_file;
-push @gentest_options, "--seed=$seed" if defined $seed;
+push @gentest_options, map {'--redefine='.$_} @redefine_files if @redefine_files;
+push @gentest_options, "--seed=$seed" if defined $seed;	
 push @gentest_options, "--mask=$mask" if ((defined $mask) && (not defined $no_mask));
 push @gentest_options, "--mask-level=$mask_level" if defined $mask_level;
 push @gentest_options, "--rows=$rows" if defined $rows;
-push @gentest_options, "--views=$views" if defined $views;
+push @gentest_options, "--views=$views[0]" if defined $views[0];
+push @gentest_options, "--views1=$views[1]" if defined $views[1];
+push @gentest_options, "--views2=$views[2]" if defined $views[2];
 push @gentest_options, "--varchar-length=$varchar_len" if defined $varchar_len;
 push @gentest_options, "--xml-output=$xml_output" if defined $xml_output;
 push @gentest_options, "--report-xml-tt" if defined $report_xml_tt;
@@ -527,10 +548,10 @@ my $gentest_result = system("perl ".($Carp::Verbose?"-MCarp=verbose ":"").
 say("gentest.pl exited with exit status ".status2text($gentest_result). " ($gentest_result)");
 
 if ($lcov) {
-	say("Trying to generate a genhtml lcov report in ".tmpdir()."/rqg-lcov-$$ ...");
+	say("Trying to generate a genhtml lcov report in ".tmpdir()."/rqg-lcov-".abs($$)." ...");
 	system("lcov --quiet --directory $basedirs[0] --capture --output-file ".tmpdir()."/lcov-rqg.info");
-	system("genhtml --quiet --no-sort --output-directory=".tmpdir()."/rqg-lcov-$$ ".tmpdir()."/lcov-rqg.info");
-	say("genhtml lcov report may have been generated in ".tmpdir()."/rqg-lcov-$$ .");
+	system("genhtml --quiet --no-sort --output-directory=".tmpdir()."/rqg-lcov-".abs($$)." ".tmpdir()."/lcov-rqg.info");
+	say("genhtml lcov report may have been generated in ".tmpdir()."/rqg-lcov-".abs($$)." .");
 
 }	
 
@@ -587,7 +608,8 @@ $0 - Run a complete random query generation test, including server start with re
     --testname  : Name of test, used for reporting purposes
     --sqltrace  : Print all generated SQL statements.
                   Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
-    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl
+    --views     : Generate views. Optionally specify view type (algorithm) as option value. Passed to gentest.pl.
+                  Different values can be provided to two servers through --views1 | --views2
     --valgrind  : Passed to gentest.pl
     --valgrind_options: The valgrind options to use
     --valgrind-xml: Enables valgrind with --xml=yes and ValgrindXMLErrors reporter that processes the XML output and reports issues found
