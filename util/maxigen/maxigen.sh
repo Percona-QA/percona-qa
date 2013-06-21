@@ -74,7 +74,7 @@ for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   # Maybe Perl is not so unhandy after all. Example:
   #  SELECT * FROM { if (scalar(@created_tables) > 0) { $prng->arrayElement(\@created_tables) } else { $prng->letter() } };
   # To be tested, may be ok for some, not ok for others
-  egrep -v "^$|^[; \t]*$|Sentence is now longer" $GRAMMAR > ${GRAMMAR}.new
+  egrep -v "^$|^[; \t]*$|SET SESSION debug|SET GLOBAL debug|Sentence is now longer" $GRAMMAR > ${GRAMMAR}.new
   rm ${GRAMMAR}
   mv ${GRAMMAR}.new ${GRAMMAR}
   echo -n "$LOOP..."
