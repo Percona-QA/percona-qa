@@ -313,7 +313,9 @@ foreach my $server_id (0..1) {
 	if ((defined $valgrind) || (defined $valgrind_xml)) {
 		push @mtr_options, "--valgrind";
 		if (defined $valgrind_options) {
-			push @mtr_options, "--valgrind-option=".join(',', @$valgrind_options);
+			foreach (@$valgrind_options) {
+				push @mtr_options, "--valgrind-option=$_";
+			}
 		}
 		if (defined $valgrind_xml) {
 			push @mtr_options, "--valgrind-option='--xml=yes'";
