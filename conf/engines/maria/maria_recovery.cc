@@ -1,3 +1,20 @@
+# Copyright (C) 2010, 2013 Monty Program Ab
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+
 # --mysqld=--debug=d:t:i:-f,alloc_dynamic/,my_malloc/,my_multi_malloc/,mysql_select/,open_tables/,close_thread_tables/,log_general/,find_block/,make_lock_and_pin/,reg_requests/,unreg_request/,fix_paths/,translog_write_variable_record/,_ma_seq_search/:O,/dev/shm/mysqld.trace
 
 $combinations = [
@@ -8,7 +25,8 @@ $combinations = [
 		--mysqld=--safe-mode
 		--mysqld=--loose-debug-assert-if-crashed-table
 		--mysqld=--loose-debug-assert-on-error
-		--mysqld=--sync-sys=0
+		--mysqld=--loose-sync-sys=0
+		--mysqld=--loose-debug-no-sync
 		--mysqld=--log-output=file
 		--mysqld=--aria_log_purge_type=at_flush
 	'],[
