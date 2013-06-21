@@ -1,4 +1,5 @@
 # Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved. 
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -538,7 +539,8 @@ sub dumpdb {
                              "\" --hex-blob --skip-triggers --compact ".
                              "--order-by-primary --skip-extended-insert ".
                              "--no-create-info --host=127.0.0.1 ".
-                             "--port=".$self->port;
+                             "--port=".$self->port.
+                             " -uroot $database";
     # --no-tablespaces option was introduced in version 5.1.14.
     if ($self->_newerThan(5,1,13)) {
         $dump_command = $dump_command . " --no-tablespaces";
