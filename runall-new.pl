@@ -70,7 +70,8 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
-    $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server);
+    $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server,
+    $skip_gendata);
 
 my $gendata=''; ## default simple gendata
 
@@ -109,6 +110,7 @@ my $opt_result = GetOptions(
 	'reporters=s@' => \@reporters,
 	'transformers=s@' => \@transformers,
 	'gendata:s' => \$gendata,
+	'skip-gendata' => \$skip_gendata,
 	'notnull' => \$notnull,
 	'short_column_names' => \$short_column_names,
         'freeze_time' => \$freeze_time,
@@ -117,7 +119,7 @@ my $opt_result = GetOptions(
 	'mask=i' => \$mask,
         'mask-level=i' => \$mask_level,
 	'mem' => \$mem,
-	'rows=i' => \$rows,
+	'rows=s' => \$rows,
 	'varchar-length=i' => \$varchar_len,
 	'xml-output=s'	=> \$xml_output,
 	'report-xml-tt'	=> \$report_xml_tt,
@@ -449,7 +451,7 @@ if ($#transformers == 0 and $transformers[0] =~ m/,/) {
 $gentestProps->property('generator','FromGrammar') if not defined $gentestProps->property('generator');
 
 $gentestProps->property('start-dirty',1) if defined $start_dirty;
-$gentestProps->gendata($gendata);
+$gentestProps->gendata($gendata) unless defined $skip_gendata;
 $gentestProps->engine($engine) if defined $engine;
 $gentestProps->rpl_mode($rpl_mode) if defined $rpl_mode;
 $gentestProps->validators(\@validators) if @validators;
