@@ -65,7 +65,7 @@ my @dsns;
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $engine, $help, $debug, @validators, @reporters, @transformers, 
     $grammar_file, $skip_recursive_rules,
-    $redefine_file, $seed, $mask, $mask_level, $mem, $rows,
+    @redefine_files, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, $views,
     $start_dirty, $filter, $build_thread, $sqltrace, $testname,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
@@ -100,7 +100,7 @@ my $opt_result = GetOptions(
 	'engine=s' => \$engine,
 	'grammar=s' => \$grammar_file,
 	'skip-recursive-rules' > \$skip_recursive_rules,
-	'redefine=s' => \$redefine_file,
+	'redefine=s@' => \@redefine_files,
 	'threads=i' => \$threads,
 	'queries=s' => \$queries,
 	'duration=i' => \$duration,
@@ -448,6 +448,11 @@ if ($#transformers == 0 and $transformers[0] =~ m/,/) {
     @transformers = split(/,/,$transformers[0]);
 }
 
+## For uniformity
+if ($#redefine_files == 0 and $redefine_files[0] =~ m/,/) {
+    @redefine_files = split(/,/,$redefine_files[0]);
+}
+
 $gentestProps->property('generator','FromGrammar') if not defined $gentestProps->property('generator');
 
 $gentestProps->property('start-dirty',1) if defined $start_dirty;
@@ -463,7 +468,7 @@ $gentestProps->duration($duration) if defined $duration;
 $gentestProps->dsn(\@dsns) if @dsns;
 $gentestProps->grammar($grammar_file);
 $gentestProps->property('skip-recursive-rules', $skip_recursive_rules);
-$gentestProps->redefine($redefine_file) if defined $redefine_file;
+$gentestProps->redefine(\@redefine_files) if @redefine_files;
 $gentestProps->seed($seed) if defined $seed;
 $gentestProps->mask($mask) if (defined $mask) && (not defined $no_mask);
 $gentestProps->property('mask-level',$mask_level) if defined $mask_level;
@@ -586,7 +591,7 @@ $0 - Run a complete random query generation test, including server start with re
     General options
 
     --grammar   : Grammar file to use when generating queries (REQUIRED);
-    --redefine  : Grammar file to redefine and/or add rules to the given grammar
+    --redefine  : Grammar file(s) to redefine and/or add rules to the given grammar
     --rpl_mode  : Replication type to use (statement|row|mixed) (default: no replication);
     --vardir1   : Optional.
     --vardir2   : Optional. 

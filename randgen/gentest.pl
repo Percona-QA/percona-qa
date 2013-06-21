@@ -2,6 +2,7 @@
 
 # Copyright (c) 2008, 2012, Oracle and/or its affiliates. All rights
 # reserved.
+# Copyright (c) 2013, Monty Program Ab.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,7 +57,7 @@ my $opt_result = GetOptions($options,
                             'gendata:s',
                             'grammar=s',
                             'skip-recursive-rules',
-                            'redefine=s',
+                            'redefine=s@',
                             'testname=s',
                             'threads=i',
                             'queries=s',
@@ -184,7 +185,7 @@ $0 - Testing via random query generation. Options:
         --queries   : Numer of queries to execute per thread (default $DEFAULT_QUERIES);
         --duration  : Duration of the test in seconds (default $DEFAULT_DURATION seconds);
         --grammar   : Grammar file to use for generating the queries (REQUIRED);
-        --redefine  : Grammar file to redefine and/or add rules to the given grammar
+        --redefine  : Grammar file(s) to redefine and/or add rules to the given grammar
         --seed      : PRNG seed (default 1). If --seed=time, the current time will be used.
         --rpl_mode  : Replication mode
         --validator : Validator classes to be used. Defaults
