@@ -1,4 +1,5 @@
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -246,7 +247,7 @@ sub report {
 
 	foreach my $i (0..$#dump_ports) {
                 say("Dumping server on port $dump_ports[$i]...");
-		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
+		$dump_files[$i] = tmpdir()."/server_".abs($$)."_".$i.".dump";
 
 		my $dump_result = system("\"$client_basedir/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root --password='' --databases $databases_string | sort > $dump_files[$i]") >> 8;
 		return STATUS_ENVIRONMENT_FAILURE if $dump_result > 0;

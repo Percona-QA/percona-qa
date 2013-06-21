@@ -1,4 +1,5 @@
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -75,7 +76,7 @@ sub dumpDiff {
 		return undef if not defined $results[$i]->data();
 		my $data_sorted = join("\n", sort map { join("\t", map { defined $_ ? $_ : "NULL" } @$_) } @{$results[$i]->data()});
 		$data_sorted = $data_sorted."\n" if $data_sorted ne '';
-		$files[$i] = tmpdir()."/randgen".$$."-".time()."-server".$i.".dump";
+		$files[$i] = tmpdir()."/randgen".abs($$)."-".time()."-server".$i.".dump";
 		open (FILE, ">".$files[$i]);
 		print FILE $data_sorted;
 		close FILE;

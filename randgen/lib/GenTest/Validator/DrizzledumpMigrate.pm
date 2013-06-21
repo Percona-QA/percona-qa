@@ -1,4 +1,5 @@
 # Copyright (C) 2010 Patrick Crews. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -102,7 +103,7 @@ sub validate {
 
 	  foreach my $port_id (0..1) 
           {
-	    $files[$port_id] = tmpdir()."/translog_rpl_dump_".$$."_".$ports[$port_id].".sql";
+	    $files[$port_id] = tmpdir()."/translog_rpl_dump_".abs($$)."_".$ports[$port_id].".sql";
             say("$files[$port_id]");
 	    my $drizzledump_result = system("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$ports[$port_id] --user=root $database >$files[$port_id]");
             # disable pipe to 'sort' from drizzledump call above

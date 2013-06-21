@@ -537,10 +537,10 @@ my $gentest_result = system("perl ".($Carp::Verbose?"-MCarp=verbose ":"").
 say("gentest.pl exited with exit status ".status2text($gentest_result). " ($gentest_result)");
 
 if ($lcov) {
-	say("Trying to generate a genhtml lcov report in ".tmpdir()."/rqg-lcov-$$ ...");
+	say("Trying to generate a genhtml lcov report in ".tmpdir()."/rqg-lcov-".abs($$)." ...");
 	system("lcov --quiet --directory $basedirs[0] --capture --output-file ".tmpdir()."/lcov-rqg.info");
-	system("genhtml --quiet --no-sort --output-directory=".tmpdir()."/rqg-lcov-$$ ".tmpdir()."/lcov-rqg.info");
-	say("genhtml lcov report may have been generated in ".tmpdir()."/rqg-lcov-$$ .");
+	system("genhtml --quiet --no-sort --output-directory=".tmpdir()."/rqg-lcov-".abs($$)." ".tmpdir()."/lcov-rqg.info");
+	say("genhtml lcov report may have been generated in ".tmpdir()."/rqg-lcov-".abs($$)." .");
 
 }	
 

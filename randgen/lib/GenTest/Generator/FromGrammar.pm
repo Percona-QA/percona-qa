@@ -1,4 +1,5 @@
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -240,15 +241,15 @@ sub next {
 			($_ eq '_tmpfile')
 		) {
 			# Create a new temporary file name and record it for unlinking at the next statement
-			$generator->[GENERATOR_TMPNAM] = tmpdir()."gentest".$$.".tmp" if not defined $generator->[GENERATOR_TMPNAM];
+			$generator->[GENERATOR_TMPNAM] = tmpdir()."gentest".abs($$).".tmp" if not defined $generator->[GENERATOR_TMPNAM];
 			$_ = "'".$generator->[GENERATOR_TMPNAM]."'";
 			$_ =~ s{\\}{\\\\}sgio if osWindows();	# Backslash-escape backslashes on Windows
 		} elsif ($_ eq '_tmptable') {
-			$_ = "tmptable".$$;
+			$_ = "tmptable".abs($$);
 		} elsif ($_ eq '_unix_timestamp') {
 			$_ = time();
 		} elsif ($_ eq '_pid') {
-			$_ = $$;
+			$_ = abs($$);
 		} elsif ($_ eq '_thread_id') {
 			$_ = $generator->threadId();
 		} elsif ($_ eq '_thread_count') {

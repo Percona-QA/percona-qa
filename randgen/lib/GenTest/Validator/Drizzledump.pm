@@ -1,4 +1,5 @@
 # Copyright (C) 2010-2011 Patrick Crews. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -57,7 +58,7 @@ sub validate {
 
         
           # dump our database under test
-	  my $drizzledump_file = tmpdir()."/dump_".$$."_".$port.".sql";
+	  my $drizzledump_file = tmpdir()."/dump_".abs($$)."_".$port.".sql";
           
           if (rqg_debug()) 
           {
