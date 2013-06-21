@@ -1,4 +1,5 @@
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -40,7 +41,7 @@ sub validate {
 	my $database = $executors->[0]->currentSchema();
 
 	foreach my $port_id (0..1) {
-		$files[$port_id] = tmpdir()."/dump_".$$."_".$ports[$port_id].".sql";
+		$files[$port_id] = tmpdir()."/dump_".abs($$)."_".$ports[$port_id].".sql";
 		my $mysqldump_result = system("mysqldump --compact --order-by-primary --skip-triggers --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$ports[$port_id] --user=root --password='' $database | sort > $files[$port_id]");
 		return STATUS_UNKNOWN_ERROR if $mysqldump_result > 0;
 	}

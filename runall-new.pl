@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -518,7 +519,7 @@ if ( $gentest_result != 0 ) {
         my @dump_files;
         
         foreach my $i (0..$#server) {
-            $dump_files[$i] = tmpdir()."server_".$$."_".$i.".dump";
+            $dump_files[$i] = tmpdir()."server_".abs($$)."_".$i.".dump";
             
             my $dump_result = $server[$i]->dumpdb($database,$dump_files[$i]);
             exit_test($dump_result >> 8) if $dump_result > 0;

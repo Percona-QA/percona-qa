@@ -1,4 +1,5 @@
 # Copyright (C) 2008-2009 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -98,7 +99,7 @@ sub report
         {
           $transaction_log = $basedir.'/tests/var/master-data/local/transaction.log' ;
         }
-        my $transaction_log_copy = tmpdir()."/translog_".$$."_.log" ;
+        my $transaction_log_copy = tmpdir()."/translog_".abs($$)."_.log" ;
         copy($transaction_log, $transaction_log_copy);
 
         say("Waiting for slave to catch up...");
@@ -128,7 +129,7 @@ sub report
 
         foreach my $port_id (0..1) 
           {
-            $files[$port_id] = tmpdir()."/translog_rpl_dump_".$$."_".$ports[$port_id].".sql";
+            $files[$port_id] = tmpdir()."/translog_rpl_dump_".abs($$)."_".$ports[$port_id].".sql";
             say("$files[$port_id]");
             say("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$ports[$port_id] --user=root test >$files[$port_id]");
 	    my $drizzledump_result = system("$drizzledump --compact --skip-extended-insert --host=127.0.0.1 --port=$ports[$port_id] --user=root test >$files[$port_id]");

@@ -1,3 +1,4 @@
+# Copyright (c) 2013, Monty Program Ab.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -90,7 +91,7 @@ sub report {
 
 	foreach my $i (0..$#dump_ports) {
 		say("Dumping server on port $dump_ports[$i]...");
-		$dump_files[$i] = tmpdir()."/server_".$$."_".$i.".dump";
+		$dump_files[$i] = tmpdir()."/server_".abs($$)."_".$i.".dump";
 		my $dump_result = system('"'.$reporter->serverInfo('client_bindir')."/mysqldump\" --hex-blob --no-tablespaces --skip-triggers --compact --order-by-primary --skip-extended-insert --no-create-info --host=127.0.0.1 --port=$dump_ports[$i] --user=root --password='' --databases $databases_string | sort > $dump_files[$i]");
 		return STATUS_ENVIRONMENT_FAILURE if $dump_result > 0;
 	}

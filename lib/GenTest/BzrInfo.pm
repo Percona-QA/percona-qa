@@ -1,4 +1,5 @@
 # Copyright (c) 2010 Sun Microsystems, Inc. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -79,7 +80,7 @@ sub _getVersionInfo {
     # perl variables stored in a file, which we then read back in, and thus 
     # avoid extra parsing of the output.
     my ($date, $build_date, $clean, $revno, $revid, $nick); # align with contents of template below
-    my $bzr_output_file = "rqg-bzr-version-info".$$.".txt";
+    my $bzr_output_file = "rqg-bzr-version-info".abs($$).".txt";
     $bzr_output_file = tmpdir().$bzr_output_file if defined tmpdir();
     # Assigning values to Perl variables in a file from a system() command
     # requires proper escaping of special characters that may be interpreted by

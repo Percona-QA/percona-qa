@@ -1,4 +1,5 @@
 # Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -228,7 +229,7 @@ init_basics2:
 	#    - RQG is <RQG install directory>
 	# 2. The environment does not contain any variable pointing to <vardir> or RQG directories
 	# Therefore we need a $outfile with absolute path.
-	{$out_file='/tmp/'.$$.'.tmp' ; unlink($out_file); return undef} SELECT VERSION() LIKE '%debug%' INTO OUTFILE {return "'".$out_file."'"};
+	{$out_file='/tmp/'.abs($$).'.tmp' ; unlink($out_file); return undef} SELECT VERSION() LIKE '%debug%' INTO OUTFILE {return "'".$out_file."'"};
 
 init_namespaces:
 	# Please choose between the following alternatives
