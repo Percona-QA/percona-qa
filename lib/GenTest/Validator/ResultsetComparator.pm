@@ -1,4 +1,5 @@
 # Copyright (c) 2008, 2011 Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -39,6 +40,7 @@ sub validate {
 	return STATUS_WONT_HANDLE if $results->[0]->status() == STATUS_SEMANTIC_ERROR || $results->[1]->status() == STATUS_SEMANTIC_ERROR;
 	return STATUS_WONT_HANDLE if $results->[0]->status() == STATUS_SYNTAX_ERROR || $results->[1]->status() == STATUS_SYNTAX_ERROR;
 	return STATUS_WONT_HANDLE if $results->[0]->query() =~ m{EXPLAIN}sio;
+	return STATUS_WONT_HANDLE if $results->[0]->query() =~ m{ANALYZE}sio;
 
 	if ( ($compare_outcome == STATUS_LENGTH_MISMATCH) ||
 	     ($compare_outcome == STATUS_CONTENT_MISMATCH) 
