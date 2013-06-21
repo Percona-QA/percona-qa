@@ -491,6 +491,9 @@ sub doGenData {
         }
             
         return $gendata_result if $gendata_result > STATUS_OK;
+
+        # For multi-master setup, e.g. Galera, we only need to do generatoion once
+        return STATUS_OK if $self->config->property('multi-master');
     }
 
     return STATUS_OK;
@@ -626,12 +629,17 @@ sub initValidators {
         $self->config->validators([]);
         push(@{$self->config->validators}, 'ErrorMessageCorruption') 
             if $self->isMySQLCompatible();
-        if ($self->config->dsn->[2] ne '') {
-            push @{$self->config->validators}, 'ResultsetComparator3';
-        } elsif ($self->config->dsn->[1] ne '') {
-            push @{$self->config->validators}, 'ResultsetComparator';
-        }
-        
+
+        # In case of multi-master topology (e.g. Galera with multiple "masters"),
+        # we don't want to compare results after each query.
+
+        unless ($self->config->property('multi-master')) {
+            if ($self->config->dsn->[2] ne '') {
+                push @{$self->config->validators}, 'ResultsetComparator3';
+            } elsif ($self->config->dsn->[1] ne '') {
+                push @{$self->config->validators}, 'ResultsetComparator';
+            }
+        }        
         push @{$self->config->validators}, 'ReplicationSlaveStatus' 
             if $self->config->rpl_mode ne '' && $self->isMySQLCompatible();
         push @{$self->config->validators}, 'MarkErrorLog' 

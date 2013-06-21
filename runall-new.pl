@@ -32,6 +32,7 @@ use GenTest::App::GenTest;
 use DBServer::DBServer;
 use DBServer::MySQL::MySQLd;
 use DBServer::MySQL::ReplMySQLd;
+use DBServer::MySQL::GaleraMySQLd;
 
 my $logger;
 eval
@@ -71,7 +72,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
     $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server,
-    $skip_gendata, $skip_shutdown);
+    $skip_gendata, $skip_shutdown, $galera);
 
 my $gendata=''; ## default simple gendata
 
@@ -142,7 +143,8 @@ my $opt_result = GetOptions(
         'querytimeout=i' => \$querytimeout,
         'no-mask' => \$no_mask,
 	'skip_shutdown' => \$skip_shutdown,
-	'skip-shutdown' => \$skip_shutdown
+	'skip-shutdown' => \$skip_shutdown,
+	'galera=s' => \$galera
     );
 
 if (defined $logfile && defined $logger) {
@@ -330,7 +332,49 @@ if ($rpl_mode ne '') {
     $dsns[1] = undef; ## passed to gentest. No dsn for slave!
     $server[0] = $rplsrv->master;
     $server[1] = $rplsrv->slave;
+
+} elsif ($galera ne '') {
+
+	if (osWindows()) {
+		croak("Galera is not supported on Windows (yet)");
+	}
+
+	unless ($galera =~ /^[ms]+$/i) {
+		croak ("--galera option should contain a combination of M and S, indicating masters and slaves");
+	}
+
+	$rplsrv = DBServer::MySQL::GaleraMySQLd->new(
+		basedir => $basedirs[0],
+		parent_vardir => $vardirs[0],
+		debug_server => $debug_server[0],
+		first_port => $ports[0],
+		server_options => $mysqld_options[0],
+		valgrind => $valgrind,
+		valgrind_options => \@valgrind_options,
+		general_log => 1,
+		start_dirty => $start_dirty,
+		node_count => length($galera)
+	);
     
+	my $status = $rplsrv->startServer();
+    
+	if ($status > DBSTATUS_OK) {
+		stopServers();
+
+		say("ERROR: Could not start Galera cluster");
+		exit_test(STATUS_ENVIRONMENT_FAILURE);
+	}
+
+	my $galera_topology = $galera;
+	my $i = 0;
+	while ($galera_topology =~ s/^(\w)//) {
+		if (lc($1) eq 'm') {
+			$dsns[$i] = $rplsrv->nodes->[$i]->dsn($database);
+		}
+		$server[$i] = $rplsrv->nodes->[$i];
+		$i++;
+	}
+
 } else {
     if ($#basedirs != $#vardirs) {
         croak ("The number of basedirs and vardirs must match $#basedirs != $#vardirs")
@@ -448,7 +492,8 @@ my $gentestProps = GenTest::Properties->new(
               'logconf',
               'debug_server',
               'report-tt-logdir',
-              'servers']
+              'servers',
+              'multi-master']
     );
 
 my @gentest_options;
@@ -525,6 +570,11 @@ $gentestProps->property('report-tt-logdir',$report_tt_logdir) if defined $report
 $gentestProps->property('report-xml-tt', 1) if defined $report_xml_tt;
 $gentestProps->property('report-xml-tt-type', $report_xml_tt_type) if defined $report_xml_tt_type;
 $gentestProps->property('report-xml-tt-dest', $report_xml_tt_dest) if defined $report_xml_tt_dest;
+# In case of multi-master topology (e.g. Galera with multiple "masters"),
+# we don't want to compare results after each query.
+# Instead, we want to run the flow independently and only compare dumps at the end.
+# If GenTest gets 'multi-master' property, it won't run ResultsetComparator
+$gentestProps->property('multi-master', 1) if (defined $galera and scalar(@dsns)>1);
 # Pass debug server if used.
 $gentestProps->debug_server(\@debug_server) if @debug_server;
 $gentestProps->servers(\@server) if @server;
@@ -544,9 +594,9 @@ if ( $gentest_result != 0 ) {
     exit_test($gentest_result);
 } else {
     #
-    # Compare master and slave, or two masters
+    # Compare master and slave, or all masters
     #
-    if ($rpl_mode || (defined $basedirs[1])) {
+    if ($rpl_mode || (defined $basedirs[1]) || $galera) {
         if ($rpl_mode ne '') {
             $rplsrv->waitForSlaveSync;
         }
@@ -625,6 +675,8 @@ $0 - Run a complete random query generation test, including server start with re
     --grammar   : Grammar file to use when generating queries (REQUIRED);
     --redefine  : Grammar file(s) to redefine and/or add rules to the given grammar
     --rpl_mode  : Replication type to use (statement|row|mixed) (default: no replication);
+    --galera    : Galera topology, presented as a string of 'm' or 's' (master or slave).
+                  The test flow will be executed on each "master". "Slaves" will only be updated through Galera replication
     --vardir1   : Optional.
     --vardir2   : Optional. 
     --engine    : Table engine to use when creating tables with gendata (default no ENGINE in CREATE TABLE);
