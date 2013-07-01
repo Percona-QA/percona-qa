@@ -146,7 +146,8 @@ my $config = GenTest::Properties->new(
               'logconf',
               'report-tt-logdir',
               'debug_server',
-              'querytimeout'],
+              'querytimeout',
+              'multi-master'],
     help => \&help);
 
 help() if !$opt_result || $config->help;
