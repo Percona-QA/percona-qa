@@ -26,9 +26,9 @@ else
 fi
 
 RND_DIR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
-NR_OF_GRAMMARS=10
-LINES_PER_GRAM=10     # The number of queries (rules) to extract from each sub-grammar created from the existing RQG grammars by maxigen.pl
-GENDATA_RND=5
+NR_OF_GRAMMARS=200
+LINES_PER_GRAM=20     # The number of queries (rules) to extract from each sub-grammar created from the existing RQG grammars by maxigen.pl
+GENDATA_RND=20
 QUERIES=$[$NR_OF_GRAMMARS * $LINES_PER_GRAM]
 
 mkdir /tmp/$RND_DIR
@@ -40,7 +40,7 @@ done
 
 FIN_GRAM_SIZE=$[$LINES_PER_GRAM * $LOOP]
 echo "------------------------------------------------------------------------------"
-echo "| Welcome to MaxiGen v0.10"
+echo "| Welcome to MaxiGen v0.20 - A Powerfull RQG Grammar Generator"
 echo "------------------------------------------------------------------------------"
 echo "| Number of original RQG grammars in $RQG_DIR: $LOOP"
 echo "| Number of new random grammars requested: $NR_OF_GRAMMARS"
@@ -114,19 +114,18 @@ rm /tmp/$RND_DIR/_[0-9]*.yy
 #Setup scripts
 sed "s|COMBINATIONS|/tmp/$RND_DIR/maxigen.cc|" ./maxirun.sh > /tmp/$RND_DIR/maxirun.sh
 chmod +x /tmp/$RND_DIR/maxirun.sh
+grep -v "GRAMMAR-GENDATA-DUMMY-TAG" ./maxigen.cc > /tmp/$RND_DIR/maxigen.cc
 
 # Use random gendata's to augment new random yy grammars
 for GENDATA in $(find $RQG_DIR -maxdepth 2 -name '*.zz'); do
   echo "  '--gendata=$GENDATA'," >> /tmp/$RND_DIR/GENDATA.txt
 done
 
-sort --random-source=/tmp/$RND_DIR/GENDATA.txt -R /tmp/$RND_DIR/GENDATA.txt | \
-  head -n$GENDATA_RND >> /tmp/$RND_DIR/maxigen.cc
+sort -uR /tmp/$RND_DIR/GENDATA.txt | head -n$GENDATA_RND >> /tmp/$RND_DIR/maxigen.cc
 
 echo " ],[" >> /tmp/$RND_DIR/maxigen.cc
 
-# Insert new random yy grammars into template
-grep -v "GRAMMAR-GENDATA-DUMMY-TAG" ./maxigen.cc > /tmp/$RND_DIR/maxigen.cc
+# Insert new random yy grammars into cc template
 for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   echo "  '--grammar=$GRAMMAR'," >> /tmp/$RND_DIR/maxigen.cc
 done
@@ -137,6 +136,6 @@ echo -e " ]\n]" >> /tmp/$RND_DIR/maxigen.cc
 echo "MaxiGen Done! Generated $NR_OF_GRAMMARS grammar files in: /tmp/$RND_DIR/"
 echo -e "\nOnly thing left to do;"
 echo "cd /tmp/$RND_DIR/; vi maxigen.cc"
-echo " > Change 'PERCONA-DBG-SERVER' and 'PERCONA-DBG-SERVER' to normal debug/valgrind server location path names,"
-echo "   for example /ssd/Percona-Server-5.6.11-rc60.3-383-debug.Linux.x86_64 instead of PERCONA-DBG-SERVER"
+echo " > Change 'PERCONA-DBG-SERVER' and 'PERCONA-VAL-SERVER' to normal debug/valgrind server location path names,"
+echo "   for example; use /ssd/Percona-Server-5.6.11-rc60.3-383-debug.Linux.x86_64 instead of PERCONA-DBG-SERVER"
 echo "./maxirun.sh"
