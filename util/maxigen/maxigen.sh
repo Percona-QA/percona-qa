@@ -28,7 +28,6 @@ fi
 RND_DIR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 NR_OF_GRAMMARS=200
 LINES_PER_GRAM=20     # The number of queries (rules) to extract from each sub-grammar created from the existing RQG grammars by maxigen.pl
-GENDATA_RND=20
 QUERIES=$[$NR_OF_GRAMMARS * $LINES_PER_GRAM]
 
 mkdir /tmp/$RND_DIR
@@ -118,16 +117,13 @@ grep -v "GRAMMAR-GENDATA-DUMMY-TAG" ./maxigen.cc > /tmp/$RND_DIR/maxigen.cc
 
 # Use random gendata's to augment new random yy grammars
 for GENDATA in $(find $RQG_DIR -maxdepth 2 -name '*.zz'); do
-  echo "  '--gendata=$GENDATA'," >> /tmp/$RND_DIR/GENDATA.txt
+  echo "   --gendata=$GENDATA'," >> /tmp/$RND_DIR/GENDATA.txt
 done
-
-sort -uR /tmp/$RND_DIR/GENDATA.txt | head -n$GENDATA_RND >> /tmp/$RND_DIR/maxigen.cc
-
-echo " ],[" >> /tmp/$RND_DIR/maxigen.cc
 
 # Insert new random yy grammars into cc template
 for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
-  echo "  '--grammar=$GRAMMAR'," >> /tmp/$RND_DIR/maxigen.cc
+  echo "  '--grammar=$GRAMMAR" >> /tmp/$RND_DIR/maxigen.cc
+  sort -uR /tmp/$RND_DIR/GENDATA.txt | head -n1 >> /tmp/$RND_DIR/maxigen.cc
 done
   
 echo -e " ]\n]" >> /tmp/$RND_DIR/maxigen.cc

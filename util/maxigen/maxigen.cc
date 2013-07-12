@@ -23,14 +23,13 @@ $combinations=
   --seed=random --duration=300 --querytimeout=60
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
-  --mysqld=--slow_query_log --mysqld=--userstat
-  --views --validator=Transformer'
+  --mysqld=--slow_query_log --mysqld=--userstat'
  ],[
   '--threads=1',
   '--threads=25'
  ],[
-  '--mysqld=--innodb_file_per_table=1',
-  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda',
+  '--mysqld=--innodb_file_per_table=1 --validator=Transformer',
+  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda --views',
   '--notnull',
   ''
  ],[
