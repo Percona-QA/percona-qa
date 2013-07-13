@@ -26,8 +26,8 @@ else
 fi
 
 RND_DIR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
-NR_OF_GRAMMARS=200
-LINES_PER_GRAM=20     # The number of queries (rules) to extract from each sub-grammar created from the existing RQG grammars by maxigen.pl
+NR_OF_GRAMMARS=100
+LINES_PER_GRAM=10     # The number of queries (rules) to extract from each sub-grammar created from the existing RQG grammars by maxigen.pl
 QUERIES=$[$NR_OF_GRAMMARS * $LINES_PER_GRAM]
 
 mkdir /tmp/$RND_DIR
@@ -125,13 +125,28 @@ for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   echo "  '--grammar=$GRAMMAR" >> /tmp/$RND_DIR/maxigen.cc
   sort -uR /tmp/$RND_DIR/GENDATA.txt | head -n1 >> /tmp/$RND_DIR/maxigen.cc
 done
-  
 echo -e " ]\n]" >> /tmp/$RND_DIR/maxigen.cc
 
 # Finalize
 echo "MaxiGen Done! Generated $NR_OF_GRAMMARS grammar files in: /tmp/$RND_DIR/"
-echo -e "\nOnly thing left to do;"
-echo "cd /tmp/$RND_DIR/; vi maxigen.cc"
-echo " > Change 'PERCONA-DBG-SERVER' and 'PERCONA-VAL-SERVER' to normal debug/valgrind server location path names,"
-echo "   for example; use /ssd/Percona-Server-5.6.11-rc60.3-383-debug.Linux.x86_64 instead of PERCONA-DBG-SERVER"
-echo "./maxirun.sh"
+
+# Check if we can assume Percona-Server being present in /ssd, and replace DUMMY strings if so
+if [ $(ls -1d /ssd/Percona-Server*-debug* | grep -v '.tar.gz' | wc -l) -eq 2 ]; then 
+  mv /tmp/$RND_DIR/maxigen.cc /tmp/$RND_DIR/maxigen.cc.tmp
+  DEBUG=$(ls -1d /ssd/Percona-Server*-debug.Linux* | grep -v 'tar.gz')
+  VALGR=$(ls -1d /ssd/Percona-Server*-debug-valgrind* | grep -v 'tar.gz')
+  sed "s|PERCONA-DBG-SERVER|$DEBUG|" /tmp/$RND_DIR/maxigen.cc.tmp | \
+    sed "s|PERCONA-VAL-SERVER|$VALGR|" > /tmp/$RND_DIR/maxigen.cc
+  rm /tmp/$RND_DIR/maxigen.cc.tmp
+  echo "(As there were only 2x Percona Debug Server dirs in /ssd - the cc file already contains the correct run diretories)"
+  echo "(Debug   : $DEBUG)"
+  echo "(Valgrind: $VALGR)"
+  echo "To start: cd /tmp/$RND_DIR/; ./maxirun.sh"
+else 
+  echo -e "\nOnly thing left to do;"
+  echo "cd /tmp/$RND_DIR/; vi maxigen.cc"
+  echo " > Change 'PERCONA-DBG-SERVER' and 'PERCONA-VAL-SERVER' to normal debug/valgrind server location path names,"
+  echo "   for example; use /ssd/Percona-Server-5.6.11-rc60.3-383-debug.Linux.x86_64 instead of PERCONA-DBG-SERVER"
+  echo "./maxirun.sh"
+fi
+

@@ -33,7 +33,7 @@ $combinations=
   '--notnull',
   ''
  ],[
-  '--basedir=/ssd/PERCONA-DBG-SERVER',
-  '--basedir=/ssd/PERCONA-VAL-SERVER --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
+  '--basedir=PERCONA-DBG-SERVER',
+  '--basedir=PERCONA-VAL-SERVER --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
  ],[
 #GRAMMAR-GENDATA-DUMMY-TAG   # do not remove, and leave file otherwise as-is, except you may make modifications above as needed
