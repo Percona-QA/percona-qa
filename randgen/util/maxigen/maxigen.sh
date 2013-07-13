@@ -2,13 +2,11 @@
 # Created by Roel Van de Paar, Percona LLC
 
 # Ideas
-# - Keep it light and fast: 200 lines max.
-# - Disable --views in runs, or at least make it very optional (seems to give lots of PERL errors on that)
-# Power: many runs with many different grammars, so we somehow need to have this running
-# Idea for options: a long file with all possible options (but turn all Percona options on maybe) and then grab a random set from that.
-# Out of that, I still wonder if we should just use runall.pl or indeed cc files. Let's decide tomorrow
-# Maybe we can copy in files while a master instance keeps running? FUN 
-# No, the simple solution is just to let maxigen loop many times more and create heaps and heaps of yy file (1000 orso) :)
+# - Keep it light and fast: 200 lines max?
+# - Be very avoisive of '--views' as this generates plenty of errors
+# - Many grammars contain things like 'col_int_nokey' which is not present unless default (i.e. no) data grammar is used?
+#   - Maybe we can do some runs without a data grammar, or another option is to s|col_int_nokey|_field| etc. may also
+#     consider changing _field_indexed to _field since the former fails (in combination with --views, allowing better --view runs)
 
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
@@ -126,6 +124,7 @@ for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   sort -uR /tmp/$RND_DIR/GENDATA.txt | head -n1 >> /tmp/$RND_DIR/maxigen.cc
 done
 echo -e " ]\n]" >> /tmp/$RND_DIR/maxigen.cc
+rm /tmp/$RND_DIR/GENDATA.txt
 
 # Finalize
 echo "MaxiGen Done! Generated $NR_OF_GRAMMARS grammar files in: /tmp/$RND_DIR/"
@@ -138,13 +137,13 @@ if [ $(ls -1d /ssd/Percona-Server*-debug* | grep -v '.tar.gz' | wc -l) -eq 2 ]; 
   sed "s|PERCONA-DBG-SERVER|$DEBUG|" /tmp/$RND_DIR/maxigen.cc.tmp | \
     sed "s|PERCONA-VAL-SERVER|$VALGR|" > /tmp/$RND_DIR/maxigen.cc
   rm /tmp/$RND_DIR/maxigen.cc.tmp
+  echo "=====> To start: cd /tmp/$RND_DIR/; ./maxirun.sh <====="
   echo "(As there were only 2x Percona Debug Server dirs in /ssd - the cc file already contains the correct run diretories)"
   echo "(Debug   : $DEBUG)"
   echo "(Valgrind: $VALGR)"
-  echo "To start: cd /tmp/$RND_DIR/; ./maxirun.sh"
 else 
   echo -e "\nOnly thing left to do;"
-  echo "cd /tmp/$RND_DIR/; vi maxigen.cc"
+  echo "=====> cd /tmp/$RND_DIR/; vi maxigen.cc <====="
   echo " > Change 'PERCONA-DBG-SERVER' and 'PERCONA-VAL-SERVER' to normal debug/valgrind server location path names,"
   echo "   for example; use /ssd/Percona-Server-5.6.11-rc60.3-383-debug.Linux.x86_64 instead of PERCONA-DBG-SERVER"
   echo "./maxirun.sh"
