@@ -40,8 +40,19 @@ $combinations=
   '--threads=25',
   '--threads=1'
  ],[
-  '--no-mask',
+  '--no-mask --mysqld=--innodb_file_per_table=1',
+  '--no-mask --mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda',
   '--mask-level=1'
+  ''
+ ],[
+  '--mysqld=--innodb_flush_method=O_DSYNC
+    --mysqld=--minimum-join-buffer-size=128 --mysqld=--readonly-loose-max-connect-errors=1
+    --mysqld=--readonly-key-cache-block-size=1 --mysqld=--hidden-key-buffer-size=1
+    --mysqld=--loose-readonly-key-cache-division-limit=1'
+  '--mysqld=--innodb_flush_method=O_DIRECT
+    --mysqld=--hidden-key-buffer-size=0 --mysqld=--loose-readonly-key-cache-division-limit=0
+    --mysqld=--readonly-loose-max-connect-errors=0 --mysqld=--readonly-key-cache-block-size=0'
+  ''
  ],[
   '--views --notnull --validator=Transformer',
   '--views --validator=Transformer',
@@ -75,15 +86,7 @@ $combinations=
     --mysqld=--innodb_fast_shutdown=0 
     --mysqld=--skip-innodb_doublewrite',
   '--mysqld=--enforce-storage-engine=InnoDB --mysqld=utility-user=roel 
-     --mysqld=--utility-user-password=test --mysqld=secure-file-priv=/tmp
-     --mysqld=--utility-user-schema-access=mysql,information_schema'
- ],[
-  '--mysqld=--innodb_flush_method=O_DSYNC',
-  '--mysqld=--innodb_flush_method=O_DIRECT',
-  ''
- ],[
-  '--mysqld=--innodb_file_per_table=1',
-  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda',
-  ''
+    --mysqld=--utility-user-password=test --mysqld=secure-file-priv=/tmp
+    --mysqld=--utility-user-schema-access=mysql,information_schema'
  ]
 ]
