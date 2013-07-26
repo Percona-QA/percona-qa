@@ -32,11 +32,11 @@ $combinations=
   '--threads=1',
   '--threads=25'
  ],[
-  '--views',
+  '--views --mysqld=--innodb_adaptive_hash_index_partitions=1',
   '--views --notnull',
   '--validator=Transformer',
-  '--notnull --validator=Transformer',
-  '--views --validator=Transformer',
+  '--notnull --validator=Transformer --mysqld=--innodb_adaptive_hash_index_partitions=8',
+  '--views --validator=Transformer --mysqld=--innodb_adaptive_hash_index_partitions=16',
   '--views --notnull --validator=Transformer'
  ],[
   '',
