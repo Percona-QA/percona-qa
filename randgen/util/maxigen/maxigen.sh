@@ -36,15 +36,20 @@ for GRAMMAR in $(find $RQG_DIR -maxdepth 2 -name '*.yy'); do
 done
 
 FIN_GRAM_SIZE=$[$LINES_PER_GRAM * $LOOP]
-echo "------------------------------------------------------------------------------"
-echo "| Welcome to MaxiGen v0.20 - A Powerfull RQG Grammar Generator"
-echo "------------------------------------------------------------------------------"
+echo "----------------------------------------------------------------------------------------"
+echo "| Welcome to MaxiGen v0.30 - A Powerfull RQG Random Grammar Generator"
+echo "----------------------------------------------------------------------------------------"
+echo "| IMPORTANT: by default a Percona-Server-only compatible cc file is used (maxigen.cc)"
+echo "| If you would like to use the MySQL-Server compatible cc file maxigenMS.cc (and thus"
+echo "| avoid a failed RQG run, due to all trials ending in STATUS_ENVIRONMENT_FAILURE), then"
+echo "| please rename maxigenMS.cc to maxigen.cc, to let maxigen.sh use this file instead!"
+echo "----------------------------------------------------------------------------------------"
 echo "| Number of original RQG grammars in $RQG_DIR: $LOOP"
 echo "| Number of new random grammars requested: $NR_OF_GRAMMARS"
 echo "| Number of lines taken from each original RQG grammar: $LINES_PER_GRAM"
 echo "| So, we will generate $QUERIES rules per original RQG grammar,"
 echo "| resulting in approx $FIN_GRAM_SIZE rules per generated new random grammar"
-echo "------------------------------------------------------------------------------"
+echo "----------------------------------------------------------------------------------------"
 
 LOOP=0
 echo "Stage 1: generating initial grammar files in: /tmp/$RND_DIR/"
