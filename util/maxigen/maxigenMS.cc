@@ -19,23 +19,19 @@
 
 $combinations=
 [
- [
-  '--seed=random --duration=240 --querytimeout=60
-   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
-   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
-   --mysqld=--slow_query_log --mysqld=--userstat 
-   --mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_changed_pages=ON
-   --mysqld=--innodb_log_archive=1 --mysqld=--thread_handling=pool-of-threads'
+ ['
+  --seed=random --duration=300 --querytimeout=60
+  --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
+  --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
+  --mysqld=--slow_query_log'
  ],[
   '--threads=1',
   '--threads=25'
  ],[
-  '--mysqld=--innodb_file_per_table=1 --validator=Transformer --mysqld=--innodb_log_arch_dir=_epoch',
-  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda --views --mysqld=--innodb_log_files_in_group=3',
-  '--notnull --mysqld=--innodb_flush_method=O_DSYNC --mysqld=--innodb-buffer-pool-populate --mysqld=--innodb_log_block_size=512
-   --mysqld=--innodb_fast_shutdown=0 --mysqld=--skip-innodb_doublewrite --mysqld=--innodb_flush_log_at_trx_commit=2',
-  '--mask-level=1 --mysqld=--innodb_flush_method=O_DIRECT --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
-   --mysqld=--enforce-storage-engine=InnoDB --mysqld=--query_cache_type=1 --mysqld=--query_cache_size=1048576'
+  '--mysqld=--innodb_file_per_table=1 --validator=Transformer',
+  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda --views',
+  '--notnull',
+  ''
  ],[
   '--basedir=PERCONA-DBG-SERVER',
   '--basedir=PERCONA-VAL-SERVER --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
