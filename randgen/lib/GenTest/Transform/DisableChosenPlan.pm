@@ -84,7 +84,7 @@ sub transform {
 	}
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
-		return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE)}sio
+		return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio
 		|| $original_query !~ m{^\s*SELECT}sio;
 
 	my $original_explain = $executor->execute("EXPLAIN EXTENDED $original_query");

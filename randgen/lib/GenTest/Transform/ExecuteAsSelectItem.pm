@@ -31,7 +31,7 @@ sub transform {
 	my ($class, $orig_query, $executor, $orig_result) = @_;
 
 	#We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
-	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio
 		|| $orig_query !~ m{^\s*SELECT}sio
 		|| $orig_result->rows() != 1
 		|| $#{$orig_result->data->[0]} != 0;

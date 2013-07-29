@@ -32,7 +32,7 @@ sub transform {
 	my ($class, $orig_query, $executor) = @_;
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
-	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio
 		|| $orig_query =~ m{(SYSDATE)\s*\(}sio
 		|| $executor->execute("CREATE OR REPLACE VIEW transforms.view_".abs($$)."_probe AS $orig_query", 1)->err() > 0;
 

@@ -31,7 +31,7 @@ sub transform {
 	my ($class, $orig_query) = @_;
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
-	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio;
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio;
 
 	$orig_query =~ s{SELECT (.*?) FROM (.*)}{SELECT * FROM ( SELECT $1 FROM $2 ) AS DERIVED_TABLE }sio;
 	return $orig_query." /* TRANSFORM_OUTCOME_UNORDERED_MATCH */";

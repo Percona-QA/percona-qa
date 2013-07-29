@@ -42,7 +42,7 @@ sub transform {
 	my ($class, $query, $executor) = @_;
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
-	return STATUS_WONT_HANDLE if $query =~ m{(OUTFILE|INFILE)}sio;
+	return STATUS_WONT_HANDLE if $query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio;
 
 	my $inline_successful = 0;
 	$query =~ s{(\(\s*SELECT\s+(??{$paren_rx})\))}{

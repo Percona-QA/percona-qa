@@ -54,7 +54,7 @@ sub transform {
 	# We skip: - LIMIT queries because LIMIT N can not be converted into LIMIT ( SELECT ... ) 
 	#          - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
 	return STATUS_WONT_HANDLE if $orig_query =~ m{LIMIT}sio
-		|| $orig_query =~ m{(OUTFILE|INFILE)}sio
+		|| $orig_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio
 		|| $orig_query =~ m{(GROUP BY|ORDER BY) \d}sio;
 
 	my @transformed_queries;

@@ -34,7 +34,7 @@ sub transform {
 	# Currently this produces "Table storage engine for '<tablename>' doesn't have this option" when these engines are used
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
-	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio
 		|| $orig_query !~ m{SELECT}io
 		|| $orig_query =~ m{LIMIT}sio;
 

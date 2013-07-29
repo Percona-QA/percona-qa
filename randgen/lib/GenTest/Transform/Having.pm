@@ -34,7 +34,7 @@ sub transform {
 	my @selects = $orig_query =~ m{(SELECT)}sgio;
 	
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
-	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE)}sio
+	return STATUS_WONT_HANDLE if $orig_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio
 		|| (($#having != 0) || ($#selects != 0))
 		|| $orig_query !~ m{HAVING[^()]*$}sio;
 

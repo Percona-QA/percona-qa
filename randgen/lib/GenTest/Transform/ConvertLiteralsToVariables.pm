@@ -33,7 +33,7 @@ sub transform {
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
 	return STATUS_WONT_HANDLE if $orig_query =~ m{LIMIT}sgio
-	         || $orig_query =~ m{(OUTFILE|INFILE)}sio;
+	         || $orig_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio;
 
 	my $new_query = $orig_query;
 	my $var_counter = 0;
