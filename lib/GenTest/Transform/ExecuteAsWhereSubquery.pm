@@ -33,7 +33,7 @@ sub transform {
 	my ($class, $original_query, $executor, $original_result) = @_;
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
-	return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE)}sio
+	return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio
 	        || $original_query !~ m{^\s*SELECT}sio
 	        || $original_query =~ m{LIMIT}sio
 	        || $original_query =~ m{(AVG|STD|STDDEV_POP|STDDEV_SAMP|STDDEV|SUM|VAR_POP|VAR_SAMP|VARIANCE)\s*\(}sio

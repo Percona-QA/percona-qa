@@ -39,7 +39,7 @@ sub transform {
 	# We skip: - GROUP BY any other aggregate functions as those are difficult to validate with a simple check like TRANSFORM_OUTCOME_COUNT
 	#          - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
 	return STATUS_WONT_HANDLE if $orig_query =~ m{GROUP\s+BY|LIMIT|HAVING}sio
-		|| $orig_query =~ m{(OUTFILE|INFILE)}sio;
+		|| $orig_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio;
 
 	my ($select_list) = $orig_query =~ m{SELECT (.*?) FROM}sio;
 

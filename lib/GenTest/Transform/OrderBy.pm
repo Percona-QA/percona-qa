@@ -35,7 +35,7 @@ sub transform {
 
 	# We skip: - [OUTFILE | INFILE] queries because these are not data producing and fail (STATUS_ENVIRONMENT_FAILURE)
 	#          - CONCAT() in ORDER BY queries, which require more complex regexes below for correct behavior
-	return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE)}sio
+	return STATUS_WONT_HANDLE if $original_query =~ m{(OUTFILE|INFILE|PROCESSLIST)}sio
 		|| $original_query =~ m{GROUP\s+BY}io
 		|| $original_query =~ m{ORDER\s+BY[^()]*CONCAT\s*\(}sio;
 		
