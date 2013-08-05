@@ -38,6 +38,7 @@ $combinations=
    --mysqld=--enforce-storage-engine=InnoDB --mysqld=--query_cache_type=1 --mysqld=--query_cache_size=1048576'
  ],[
   '--basedir=PERCONA-DBG-SERVER',
-  '--basedir=PERCONA-VAL-SERVER --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
+  '--basedir=PERCONA-VAL-SERVER
+   --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog'
  ],[
 #GRAMMAR-GENDATA-DUMMY-TAG   # do not remove, and leave file otherwise as-is, except you may make modifications above as needed
