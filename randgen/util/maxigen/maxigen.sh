@@ -161,9 +161,10 @@ if [ $(ls -1d /ssd/Percona-Server*-debug* | grep -v '.tar.gz' | wc -l) -eq 2 ]; 
   echo "(Valgrind: $VALGR)"
 else 
   echo -e "\nOnly thing left to do;"
-  echo "=====> cd /tmp/$RND_DIR/; vi maxigen.cc <====="
-  echo " > Change 'PERCONA-DBG-SERVER' and 'PERCONA-VAL-SERVER' to normal debug/valgrind server location path names,"
-  echo "   for example; use /ssd/Percona-Server-5.6.11-rc60.3-383-debug.Linux.x86_64 instead of PERCONA-DBG-SERVER"
-  echo "./maxirun.sh"
+  echo "=====> cd /tmp/$RND_DIR/; vi maxirun.sh; vi maxigen.cc <====="
+  echo " > Change the WORKDIR variable (default: /ssd) in maxirun.sh to the location you prefer as workdir"
+  echo " > Change 'PERCONA-DBG-SERVER' and 'PERCONA-VAL-SERVER' to normal debug/valgrind server location path names, for example use"
+  echo "   /ssd/Percona-Server-5.6.11-rc60.3-383-debug.Linux.x86_64 instead of PERCONA-DBG-SERVER. Make these changes in maxigen.cc"
+  echo "====> ./maxirun.sh <====="
 fi
 
