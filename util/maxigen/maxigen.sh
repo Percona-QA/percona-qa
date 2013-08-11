@@ -38,7 +38,7 @@ ORIG_GRAMMARS=$LOOP
 
 FIN_GRAM_SIZE=$[$LINES_PER_GRAM * $LOOP]
 echo "----------------------------------------------------------------------------------------"
-echo "| Welcome to MaxiGen v0.40 - A Powerfull RQG Random Grammar Generator"
+echo "| Welcome to MaxiGen v0.41 - A Powerfull RQG Random Grammar Generator"
 echo "----------------------------------------------------------------------------------------"
 echo "| IMPORTANT: by default a Percona-Server-only compatible cc file is used (maxigen.cc)"
 echo "| If you would like to use the MySQL-Server compatible cc file maxigenMS.cc (and thus"
@@ -75,8 +75,8 @@ for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   #egrep -v "^$|^[; \t]*$|Sentence is now longer|return undef|no strict|{|}" $GRAMMAR > ${GRAMMAR}.new
   # Maybe Perl is not so unhandy after all. Example:
   #  SELECT * FROM { if (scalar(@created_tables) > 0) { $prng->arrayElement(\@created_tables) } else { $prng->letter() } };
-  # To be tested, may be ok for some, not ok for others
-  egrep -v "^$|^[; \t]*$|SET SESSION debug|SET GLOBAL debug|Sentence is now longer" $GRAMMAR > ${GRAMMAR}.new
+  # To be tested, may be ok for some, not ok for others. Example: filtering " table1 " as queries with this string create all trials to fail.
+  egrep -v "^$|^[; \t]*$|SET SESSION debug|SET GLOBAL debug| table1 |Sentence is now longer" $GRAMMAR > ${GRAMMAR}.new
   rm ${GRAMMAR}
   mv ${GRAMMAR}.new ${GRAMMAR}
   echo -n "$LOOP..."
@@ -93,12 +93,13 @@ for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
 done
 
 LOOP=0
-echo -e "\n\nStage 4 ($NR_OF_GRAMMARS): Shuffle mix all queries generated from existing RQG grammars into $NR_OF_GRAMMARS new grammars"
+echo -e "\n\nStage 4 ($ORIG_GRAMMARS): Shuffle mix all queries generated from existing RQG grammars into $NR_OF_GRAMMARS new grammars"
 for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   LOOP=$[$LOOP +1]
   for ((i=1;i<=$NR_OF_GRAMMARS;i++)); do
     TOP=$[ $i * $LINES_PER_GRAM - $LINES_PER_GRAM + 1]
     END=$[ $i * $LINES_PER_GRAM ]
+    # This sed will *not* duplicate end-of-file lines if there aren't sufficient lines; output will simply be blank when addressing past EOF
     sed -n "${TOP},${END}p" $GRAMMAR >> /tmp/$RND_DIR/_${i}.yy
   done
   echo -n "$LOOP..."
@@ -108,7 +109,7 @@ done
 rm /tmp/$RND_DIR/[0-9]*.yy
 
 LOOP=0
-echoi -e "\n\nStage 5 ($NR_OF_GRAMMARS): Setup grammars to be correctly formed"
+echo -e "\n\nStage 5 ($NR_OF_GRAMMARS): Setup grammars to be correctly formed"
 for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   LOOP=$[$LOOP +1]
   echo "query:" > /tmp/$RND_DIR/${LOOP}.yy
