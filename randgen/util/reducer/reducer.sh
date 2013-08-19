@@ -101,6 +101,12 @@ MYBASE="/mysql/mysql-5.6.6-m9-linux-x86_64-trunk-300512-dbg"
 #   Also, the removal of a column fails when a CREATE TABLE statement includes KEY(col), so maybe these keys can be pre-dropped or at the same time
 #   Also, try and swap any use of the column to be removed to the name of column-1 (just store it in a variable) to avoid column missing error
 #   And at the same time still promote removal of the said column 
+# - start_mysqld_main() needs a bit more work to generate the $WORK_RUN file for MODE6+ as well (multiple $WORKO files are used in MODE6+)
+#   Also remove the ifthen in finish() which test for MODE6+ for this and reports that implementation is not complete yet
+# - STAGE6: 2 small bugs (ref output lines below): 1) Trying to eliminate a col that is not one & 2) `table0_myisam` instead of table0_myisam
+#   Note that 2) may not actually be a bug; if the simplifacation of "'" failed for a sporadic testcase (as is the case here), it's hard to fix (check)
+#   | 2013-08-19 10:35:04 [*] [Stage 6] [Trial 2] [Column 22/22] Trying to eliminate column '/*Indices*/' in table '`table0_myisam`'
+#   | sed: -e expression #1, char 41: unknown command: `*'
 # - Need another MODE which will look for *any* Valgrind issue based on the error count not being 0 (instead of named MODE1)
 #   Make a note that this may cause issues to be missed: often, after simplification, less Valgrind errors are seen as the entire
 #   SQL trace likely contained a number of issues, each originating from different Valgrind statements (can multi-issue be automated?)
@@ -145,6 +151,7 @@ MYBASE="/mysql/mysql-5.6.6-m9-linux-x86_64-trunk-300512-dbg"
 #   file   $WORKT overwrites $WORKO when a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT
 # $WORKO = The "reduced" version of $WORKF, in the directory of the original input file as <name>_out
 #   outf   This file definitely causes the same issue as $WORKO can, while being smaller
+# $WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN = Unimportant variables that point to various start/run scripts that get added to testcase working dir 
 
 echo_out(){
   echo "$(date +'%F %T') $1"
@@ -585,6 +592,10 @@ init_workdir_and_files(){
   echo_out "[Init] Workdir: $WORKD"
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
+  WORK_START=$(echo $INPUTFILE | sed 's/_out//g;s/$/_start/')
+  WORK_STOP=$(echo $INPUTFILE | sed 's/_out//g;s/$/_stop/')
+  WORK_RUN=$(echo $INPUTFILE | sed 's/_out//g;s/$/_run/')
+  WORK_CL=$(echo $INPUTFILE | sed 's/_out//g;s/$/_cl/')
   if [ $MODE -ge 6 ]; then
     mkdir $WORKD/out
     mkdir $WORKD/log
@@ -633,6 +644,18 @@ init_workdir_and_files(){
     done
     echo_out "[Info] If you see a GLIBC crash above, change reducer to use a non-Valgrind-instrumented build of mysql_tzinfo_to_sql (Ref. BUG#13498842)"
     $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
+    # Add various scripts: _run (runs the sql), _cl (starts a mysql cli), _stop (stop mysqld). _start is added in the respective startup functions
+    # (start_mysqld_main and start_valgrind_mysqld). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
+    if [ $MODE -ge 6]; then
+      # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
+      echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet."
+      echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet." > $WORK_RUN
+      echo "#${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
+    else
+      echo "${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock < $WORKO" > $WORK_RUN
+    fi 
+    echo "${MYBASE}/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown" > $WORK_STOP
+    echo "${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock test" > $WORK_CL
     stop_mysqld
 
     mkdir $WORKD/data.init
@@ -664,38 +687,40 @@ start_mysqld(){
 
 start_mysqld_main(){
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
-
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
-    ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
-                    --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-                    --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                    --loose-debug-sync-timeout=$TS_DS_TIMEOUT --event-scheduler=ON \
-                    > $WORKD/mysqld.out 2>&1 &
-    PIDV="$!";
+    CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
+                         --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+                         --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --event-scheduler=ON \
+                         > $WORKD/mysqld.out 2>&1 &"
+    $CMD; PIDV="$!"
+    echo $CMD > $WORK_START
   else
-    ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
-                    --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-                    --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                    --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &
-    PIDV="$!";
+    CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
+                         --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+                         --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
+                         --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &"
+    $CMD; PIDV="$!"
+    echo $CMD > $WORK_START
   fi
   for X in $(seq 1 120); do
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
 }
 
-#                              --binlog-format=MIXED \
+#                             --binlog-format=MIXED \
 start_valgrind_mysqld(){
   init_mysql_dir
   if [ -f $WORKD/valgrind.out ]; then mv -f $WORKD/valgrind.out $WORKD/valgrind.prev; fi
-  valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
-           ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
-                           --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-                           --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                           --event-scheduler=ON \
-                           > $WORKD/valgrind.out 2>&1 &
-                           # Workaround for BUG#12939557 (when older Valgrind version is used): --innodb_checksum_algorithm=none  
-  PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
+  CMD="valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
+              ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
+                              --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+                              --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
+                              --event-scheduler=ON \
+                              > $WORKD/valgrind.out 2>&1 &"
+                              # Workaround for BUG#12939557 (when older Valgrind version is used): --innodb_checksum_algorithm=none  
+  $CMD; PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
+  echo $CMD > $WORK_START
   for X in $(seq 1 360); do 
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
@@ -1185,6 +1210,13 @@ finish(){
     echo_out "[Finish] Final testcase            : $WORKO"
   else
     echo_out "[Finish] Final testcase            : $INPUTFILE (= input file, no optimizations were successful)"
+  fi
+  echo_out "[Finish] Matching startup script   : $WORK_START"
+  if [ $MODE -ge 6]; then
+    # See init_workdir_and_files() and search for WORK_RUN for more info. Also more info in improvements section at top
+    echo_out "[Finish] Matching run script       : $WORK_RUN (though you can look at this file for an example, implementation for MODE6+ is not finished yet)"
+  else
+    echo_out "[Finish] Matching run script       : $WORK_RUN"
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     echo_out "[Finish] Final testcase size       : $SIZEF bytes ($LINECOUNTF lines)"
