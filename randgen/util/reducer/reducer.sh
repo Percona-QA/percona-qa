@@ -24,7 +24,7 @@
 # ======== User configurable variables section
 MODE=4
 SKIPSTAGE=0
-TEXT="mi_state_info_write"
+TEXT="strcmp"
 #TEXT="\|      0 \|      7 \|"  # Example of CLI output for MODE5
 #TEXT="\| i      \|"
 MODE5_COUNTTEXT=1
@@ -38,7 +38,7 @@ TS_VARIABILITY_SLEEP=1
 WORKDIR_LOCATION=1
 STAGE1_LINES=90
 MYEXTRA=""
-MYBASE="/mysql/mysql-5.6.6-m9-linux-x86_64-trunk-300512-dbg"
+MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 
 # ======== User configurable variable reference
 # - MODE: 
@@ -166,8 +166,18 @@ echo_out_overwrite(){
 ctrl_c(){
   echo_out "[Abort] CTRL+C Was pressed. Dumping variable stack"
   echo_out "[Abort] WORKD: $WORKD (reducer log @ $WORKD/reducer.log)"
-  echo_out "[Abort] End of dump stack. Terminating"
-  exit 1
+  echo_out "[Abort] End of dump stack. Ensuring threads are terminated"
+  if [ $MULTI_THREADS -ge 1 -a $MULTI_PID1 -ge 1 ]; then 
+    for i in $(eval echo {1..$MULTI_THREADS}); do
+      PID_TO_KILL=$(eval echo $(echo '$MULTI_PID'"$i"))
+      kill -9 $PID_TO_KILL 2>/dev/null
+      wait $PID_TO_KILL 2>/dev/null  # Prevents "<process id> Killed" messages
+    done
+    echo_out "[Abort] All threads terminated. Terminating reducer"
+  else
+    echo_out "[Abort] No threads were active. Terminating reducer"
+  fi
+  exit 2
 }
 
 options_check(){
@@ -646,7 +656,7 @@ init_workdir_and_files(){
     $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
     # Add various scripts: _run (runs the sql), _cl (starts a mysql cli), _stop (stop mysqld). _start is added in the respective startup functions
     # (start_mysqld_main and start_valgrind_mysqld). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
-    if [ $MODE -ge 6]; then
+    if [ $MODE -ge 6 ]; then
       # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
       echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet."
       echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet." > $WORK_RUN
@@ -691,17 +701,18 @@ start_mysqld_main(){
     CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
                          --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                          --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --event-scheduler=ON \
-                         > $WORKD/mysqld.out 2>&1 &"
-    $CMD; PIDV="$!"
-    echo $CMD > $WORK_START
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --event-scheduler=ON"
+    $CMD > $WORKD/mysqld.out 2>&1 &
+     PIDV="$!"
+    echo "$CMD > $WORKD/mysqld.out 2>&1 &" > $WORK_START
   else
     CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
                          --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                          --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                         --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &"
-    $CMD; PIDV="$!"
-    echo $CMD > $WORK_START
+                         --event-scheduler=ON"
+    $CMD > $WORKD/mysqld.out 2>&1 &
+     PIDV="$!"
+    echo "$CMD > $WORKD/mysqld.out 2>&1 &" > $WORK_START
   fi
   for X in $(seq 1 120); do
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
@@ -716,11 +727,11 @@ start_valgrind_mysqld(){
               ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
                               --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                               --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                              --event-scheduler=ON \
-                              > $WORKD/valgrind.out 2>&1 &"
+                              --event-scheduler=ON"
                               # Workaround for BUG#12939557 (when older Valgrind version is used): --innodb_checksum_algorithm=none  
-  $CMD; PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
-  echo $CMD > $WORK_START
+  $CMD > $WORKD/valgrind.out 2>&1 &
+   PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
+  echo "$CMD > $WORKD/valgrind.out 2>&1 &" > $WORK_START
   for X in $(seq 1 360); do 
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
