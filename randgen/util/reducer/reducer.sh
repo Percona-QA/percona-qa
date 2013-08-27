@@ -37,7 +37,7 @@ TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
 WORKDIR_LOCATION=1
 STAGE1_LINES=90
-MYEXTRA=""
+MYEXTRA="--log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
 MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 
 # ======== User configurable variable reference
