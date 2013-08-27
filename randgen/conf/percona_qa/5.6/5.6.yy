@@ -309,7 +309,7 @@ temp:
 algo:
 	| DEFAULT | INPLACE | COPY ;
 
-lock:
+lock_type:
 	| DEFAULT | NONE | SHARED | EXCLUSIVE ;
 
 type:
@@ -326,17 +326,29 @@ after_or_not:
 	| | AFTER _field | FIRST ;
 
 alter:
-	ALTER TABLE _table algo lock MODIFY _field type null_or_not default_or_not after_or_not |
-	ALTER TABLE _table algo lock ALTER _field DROP DEFAULT |
-	ALTER TABLE _table algo lock CHANGE _field c1 type null_or_not default_or_not after_or_not ;
+	ALTER TABLE _table algo lock_type MODIFY _field type null_or_not default_or_not after_or_not |
+	ALTER TABLE _table algo lock_type ALTER _field DROP DEFAULT |
+	ALTER TABLE _table algo lock_type CHANGE _field c1 type null_or_not default_or_not after_or_not ;
 
 proc_func:
 	DROP PROCEDURE IF EXISTS _letter[invariant] ; CREATE PROCEDURE _letter[invariant] ( proc_param ) BEGIN SELECT COUNT( _field ) INTO @a FROM _table ; END ; CALL _letter[invariant](@a); |
 	DROP FUNCTION IF EXISTS _letter[invariant] ; CREATE FUNCTION _letter[invariant] ( _letter type ) RETURNS type DETERMINISTIC READS SQL DATA BEGIN DECLARE out1 type ; SELECT _table._field INTO out1 FROM _table ; RETURN out1 ; END ; CALL _letter[invariant](@a);
 
 flush:
-	FLUSH TABLES | FLUSH QUERY CACHE ;
-		
+        FLUSH TABLES | FLUSH TABLES | FLUSH TABLES | FLUSH QUERY CACHE | FLUSH QUERY CACHE |
+        FLUSH TABLE _table | FLUSH TABLE _letter | lock_rl | lock_rl ;
+
+lock_rl:
+        lock | lock | lock | lock | lock | lock | FLUSH TABLES WITH READ LOCK ;
+
+lock:
+        LOCK TABLE _table READ | LOCK TABLE _table WRITE |
+        LOCK TABLE _letter READ | LOCK TABLE _letter WRITE |
+        LOCK TABLE _table AS _letter READ | LOCK TABLE _table as _letter WRITE |
+        LOCK TABLE _table READ LOCAL | LOCK TABLE _table LOW_PRIORITY WRITE |
+        LOCK TABLE _table AS _letter READ LOCAL | LOCK TABLE _table as _letter LOW_PRIORITY WRITE |
+        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES ;
+
 proc_param:
 	IN _letter type | OUT _letter type ;
 

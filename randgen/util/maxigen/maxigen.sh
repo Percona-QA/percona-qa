@@ -24,8 +24,8 @@ else
 fi
 
 RND_DIR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
-NR_OF_GRAMMARS=500
-LINES_PER_GRAM=3     # The number of queries (rules) to extract from each sub-grammar created from the existing RQG grammars by maxigen.pl
+NR_OF_GRAMMARS=300
+LINES_PER_GRAM=7     # The number of queries (rules) to extract from each sub-grammar created from the existing RQG grammars by maxigen.pl
 QUERIES=$[$NR_OF_GRAMMARS * $LINES_PER_GRAM]
 
 mkdir /tmp/$RND_DIR

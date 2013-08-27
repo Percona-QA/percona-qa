@@ -222,7 +222,19 @@ proc_func:
 	DROP FUNCTION IF EXISTS _letter[invariant] ; CREATE FUNCTION _letter[invariant] ( _letter type ) RETURNS type DETERMINISTIC READS SQL DATA BEGIN DECLARE out1 type ; SELECT _table._field INTO out1 FROM _table ; RETURN out1 ; END ; CALL _letter[invariant](@a);
 
 flush:
-	FLUSH TABLES | FLUSH QUERY CACHE ;
+	FLUSH TABLES | FLUSH TABLES | FLUSH TABLES | FLUSH QUERY CACHE | FLUSH QUERY CACHE | 
+        FLUSH TABLE _table | FLUSH TABLE _letter | lock_rl | lock_rl ;
+
+lock_rl:
+	lock | lock | lock | lock | lock | lock | FLUSH TABLES WITH READ LOCK ;
+
+lock:
+	LOCK TABLE _table READ | LOCK TABLE _table WRITE |
+	LOCK TABLE _letter READ | LOCK TABLE _letter WRITE |
+	LOCK TABLE _table AS _letter READ | LOCK TABLE _table as _letter WRITE |
+	LOCK TABLE _table READ LOCAL | LOCK TABLE _table LOW_PRIORITY WRITE |
+	LOCK TABLE _table AS _letter READ LOCAL | LOCK TABLE _table as _letter LOW_PRIORITY WRITE |
+	UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES ;
 		
 proc_param:
 	IN _letter type | OUT _letter type ;
