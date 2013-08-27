@@ -167,16 +167,10 @@ ctrl_c(){
   echo_out "[Abort] CTRL+C Was pressed. Dumping variable stack"
   echo_out "[Abort] WORKD: $WORKD (reducer log @ $WORKD/reducer.log)"
   echo_out "[Abort] End of dump stack. Ensuring threads are terminated"
-  if [ $MULTI_THREADS -ge 1 -a $MULTI_PID1 -ge 1 ]; then 
-    for i in $(eval echo {1..$MULTI_THREADS}); do
-      PID_TO_KILL=$(eval echo $(echo '$MULTI_PID'"$i"))
-      kill -9 $PID_TO_KILL 2>/dev/null
-      wait $PID_TO_KILL 2>/dev/null  # Prevents "<process id> Killed" messages
-    done
-    echo_out "[Abort] All threads terminated. Terminating reducer"
-  else
-    echo_out "[Abort] No threads were active. Terminating reducer"
-  fi
+  PIDS_TO_TERMINATE=$(ps -ef | grep "$DIRVALUE" | grep -v "grep" | awk '{print $2}' | tr '\n' ' ')
+  echo_out "[Abort] Terminating these PID's: $PIDS_TO_TERMINATE"
+  kill -9 $PIDS_TO_TERMINATE >/dev/null 2>&1
+  echo_out "[Abort] Done. Terminating reducer"
   exit 2
 }
 
