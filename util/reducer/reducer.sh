@@ -698,7 +698,7 @@ start_mysqld_main(){
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT --event-scheduler=ON"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "$CMD > $WORKD/mysqld.out 2>&1 &" > $WORK_START
+    echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
   else
     CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
                          --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
@@ -706,7 +706,7 @@ start_mysqld_main(){
                          --event-scheduler=ON"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "$CMD > $WORKD/mysqld.out 2>&1 &" > $WORK_START
+    echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
   fi
   for X in $(seq 1 120); do
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
@@ -725,7 +725,7 @@ start_valgrind_mysqld(){
                               # Workaround for BUG#12939557 (when older Valgrind version is used): --innodb_checksum_algorithm=none  
   $CMD > $WORKD/valgrind.out 2>&1 &
    PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
-  echo "$CMD > $WORKD/valgrind.out 2>&1 &" > $WORK_START
+  echo "$CMD > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
   for X in $(seq 1 360); do 
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
