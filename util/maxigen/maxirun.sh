@@ -6,6 +6,19 @@ if [ "$RQGDIR" == "" ]; then
   RQGDIR=$WORKDIR/randgen
 fi
 
+# Check if lib/GenTest/Random.pm is patched correctly
+if [ $(grep "use strict" $RQGDIR/lib/GenTest/Random.pm | sed 's/\(.\).*/\1/') != "#" ]; then
+  echo "lib/GenTest/Random.pm workaround patch not in place. Aborting."
+  echo "--------------------------------------------------------------"
+  echo "There is some limitation or shortcoming in RQG currently which makes it terminate many (if not all) maxigen trials with STATUS_ENVIRONMENT_FAILURE"
+  echo -e "This can be easily avoided by making the following patch to $RQGDIR/lib/GenTest/Random.pm:\n"
+  echo "=== modified file 'lib/GenTest/Random.pm'"
+  echo "-use strict;"
+  echo "+#use strict;"
+  echo -e "\n Please ensure this patch is in place (exactly as shown above; with '#' as the first character on the line) before re-starting maxigen."
+  exit 1
+fi
+
 # Internal settings
 MTR_BT=$[$RANDOM % 300 + 1]
 
