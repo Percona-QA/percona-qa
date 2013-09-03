@@ -40,16 +40,16 @@ $combinations=
  ],[
   '--no-mask --mysqld=--innodb_file_per_table=1',
   '--no-mask --mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda',
-  '--mask-level=1'
+  '--mask-level=1',
   ''
  ],[
   '--mysqld=--innodb_flush_method=O_DSYNC
     --mysqld=--minimum-join-buffer-size=128 --mysqld=--readonly-loose-max-connect-errors=1
     --mysqld=--readonly-key-cache-block-size=1 --mysqld=--hidden-key-buffer-size=1
-    --mysqld=--loose-readonly-key-cache-division-limit=1'
+    --mysqld=--loose-readonly-key-cache-division-limit=1',
   '--mysqld=--innodb_flush_method=O_DIRECT
     --mysqld=--hidden-key-buffer-size=0 --mysqld=--loose-readonly-key-cache-division-limit=0
-    --mysqld=--readonly-loose-max-connect-errors=0 --mysqld=--readonly-key-cache-block-size=0'
+    --mysqld=--readonly-loose-max-connect-errors=0 --mysqld=--readonly-key-cache-block-size=0',
   ''
  ],[
   '--views --notnull --validator=Transformer',
