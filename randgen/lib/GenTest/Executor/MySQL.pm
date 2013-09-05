@@ -591,7 +591,6 @@ sub execute {
 	my $trace_query;
 	my $trace_me = 0;
 
-print "# BLA # $query #";
 
 	# Write query to log before execution so it's sure to get there
 	if ($executor->sqltrace) {
