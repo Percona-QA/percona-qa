@@ -25,7 +25,7 @@ $tables = {
 };
 
 $fields = {
-  types => ['varchar','char','int','text','date'],
+  types => ['varchar','char','int','date'],
   indexes => [undef,'unique','key'],
   null => [undef,'not null'],
   default => [undef,'default null'],
@@ -37,6 +37,5 @@ $data = {
   numbers => ['digit','null',undef],
   temporals => ['datetime','timestamp'],
   strings => ['varchar(1024)','varchar(1024)','english','letter'],
-  blobs => ['letter','data','english'],
   temporals => ['date','year','null',undef]
 }
