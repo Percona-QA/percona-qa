@@ -26,34 +26,34 @@ $combinations=
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY'
  ],[
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
-     --basedir=/Percona-Server-Optimized',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
-     --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --no-mask
      --basedir=/Percona-Server-Debug',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --mask-level=1 --validator=Transformer
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=20 --no-mask
+     --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
+     --basedir=/Percona-Server-Debug',
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=17 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --no-mask
-     --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --mask-level=1 --validator=Transformer
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=13 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=1  --no-mask
      --basedir=/Percona-Server-Debug',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=15 --mask-level=1 --validator=Transformer
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=11 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Debug',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=15 --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=25 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=15 --mask-level=1 --validator=Transformer
-     --basedir=/Percona-Server-Optimized',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=15 --mask-level=1 --validator=Transformer
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=8 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=15 --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=10 --no-mask
      --basedir=/Percona-Server-Debug'
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=15 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=15 --mask-level=1 --validator=Transformer
+     --basedir=/Percona-Server-Optimized',
+  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
+     --basedir=/Percona-Server-Optimized',
  ],[
   '
   --mysqld=--enforce-storage-engine=InnoDB
@@ -109,7 +109,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--slow_query_log
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=4
   ','
   --mysqld=--innodb_change_buffering=all
@@ -156,7 +156,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   ','
@@ -180,7 +180,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
@@ -208,7 +208,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -290,7 +290,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -412,7 +412,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -441,7 +441,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -470,7 +470,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=1
@@ -522,7 +522,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=32
   ','
@@ -550,7 +550,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=1
   ','
@@ -577,7 +577,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -653,7 +653,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -705,7 +705,7 @@ $combinations=
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -749,7 +749,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=32
   ','
   --mysqld=--innodb_change_buffering=all
@@ -822,7 +822,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -877,7 +877,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -930,7 +930,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -957,7 +957,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=1
   ','
@@ -983,7 +983,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -1093,7 +1093,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -1227,7 +1227,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -1248,7 +1248,7 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -1276,7 +1276,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -1306,7 +1306,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--enforce-storage-engine=InnoDB
   --mysqld=--innodb_change_buffering=all
@@ -1329,7 +1329,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=4
   ','
@@ -1357,7 +1357,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -1437,7 +1437,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -1465,7 +1465,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -1517,7 +1517,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -1541,7 +1541,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -1594,7 +1594,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
@@ -1645,7 +1645,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   ','
@@ -1722,7 +1722,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -1776,7 +1776,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=32
@@ -1887,7 +1887,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -1911,7 +1911,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -1960,7 +1960,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=1
@@ -1992,7 +1992,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -2123,7 +2123,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -2149,7 +2149,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -2178,7 +2178,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -2201,7 +2201,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=32
   ','
@@ -2357,7 +2357,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_change_buffering=none
@@ -2448,7 +2448,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -2480,7 +2480,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=32
   ','
@@ -2578,7 +2578,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   ','
@@ -2655,7 +2655,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=32
@@ -2680,7 +2680,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
@@ -2763,7 +2763,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=4
@@ -2791,7 +2791,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=32
@@ -2844,7 +2844,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -2874,7 +2874,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -2930,7 +2930,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -2954,7 +2954,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=1
   ','
   --mysqld=--hidden-key-buffer-size=1
@@ -2977,7 +2977,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--slow_query_log
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -3002,7 +3002,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -3084,7 +3084,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -3110,7 +3110,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=4
   ','
@@ -3211,7 +3211,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -3239,7 +3239,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -3264,7 +3264,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=1
   ','
@@ -3292,7 +3292,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -3321,7 +3321,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -3348,7 +3348,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -3401,7 +3401,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -3426,7 +3426,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -3478,7 +3478,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=32
@@ -3509,7 +3509,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -3584,7 +3584,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   ','
@@ -3616,7 +3616,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
@@ -3639,7 +3639,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=4
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -3686,7 +3686,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -3770,7 +3770,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -3800,7 +3800,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
@@ -3846,7 +3846,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -3873,7 +3873,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -3928,7 +3928,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -3946,7 +3946,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -3974,7 +3974,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -4004,7 +4004,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -4058,7 +4058,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=1
@@ -4085,7 +4085,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -4106,7 +4106,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -4322,7 +4322,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -4349,7 +4349,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -4398,7 +4398,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -4427,7 +4427,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -4560,7 +4560,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -4586,7 +4586,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--enforce-storage-engine=InnoDB
   --mysqld=--hidden-key-buffer-size=1
@@ -4610,7 +4610,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -4696,7 +4696,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -4723,7 +4723,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   ','
@@ -4767,7 +4767,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -4820,7 +4820,7 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -4864,7 +4864,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -5076,7 +5076,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -5150,7 +5150,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -5177,7 +5177,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -5201,7 +5201,7 @@ $combinations=
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=1
   ','
@@ -5343,7 +5343,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=4
@@ -5375,7 +5375,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -5400,7 +5400,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--enforce-storage-engine=InnoDB
   --mysqld=--hidden-key-buffer-size=1
@@ -5424,7 +5424,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -5473,7 +5473,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=32
   ','
@@ -5521,7 +5521,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -5592,7 +5592,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -5695,7 +5695,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -5737,7 +5737,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -5842,7 +5842,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -6031,7 +6031,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -6057,7 +6057,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -6086,7 +6086,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -6158,7 +6158,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -6210,7 +6210,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -6236,7 +6236,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=1
   ','
@@ -6291,7 +6291,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -6350,7 +6350,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
@@ -6402,7 +6402,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
@@ -6564,7 +6564,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -6666,7 +6666,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=1
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -6684,7 +6684,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   ','
@@ -6739,7 +6739,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -6913,7 +6913,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=32
@@ -6939,7 +6939,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -7013,7 +7013,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -7047,7 +7047,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -7120,7 +7120,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -7145,7 +7145,7 @@ $combinations=
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=32
   ','
@@ -7166,7 +7166,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--hidden-key-buffer-size=1
@@ -7189,7 +7189,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -7306,7 +7306,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -7334,7 +7334,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -7388,7 +7388,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -7438,7 +7438,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -7574,7 +7574,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--hidden-key-buffer-size=1
@@ -7654,7 +7654,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -7683,7 +7683,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -7717,7 +7717,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=1
   ','
   --mysqld=--innodb_changed_pages=FORCE
@@ -7739,7 +7739,7 @@ $combinations=
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=4
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -7763,7 +7763,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   ','
@@ -7810,7 +7810,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -7838,7 +7838,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -7887,7 +7887,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -7971,7 +7971,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -8001,7 +8001,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -8030,7 +8030,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=4
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -8153,7 +8153,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -8178,7 +8178,7 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -8212,7 +8212,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -8242,7 +8242,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -8276,7 +8276,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -8306,7 +8306,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -8334,7 +8334,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -8361,7 +8361,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=1
   ','
@@ -8414,7 +8414,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -8441,7 +8441,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -8473,7 +8473,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -8501,7 +8501,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -8581,7 +8581,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=1
   ','
@@ -8631,7 +8631,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -8655,7 +8655,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -8760,7 +8760,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -8782,7 +8782,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   ','
   --mysqld=--hidden-key-buffer-size=1
@@ -8801,7 +8801,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -8829,7 +8829,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -8887,7 +8887,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -8912,7 +8912,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -8936,7 +8936,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -9013,7 +9013,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -9040,7 +9040,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -9065,7 +9065,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=1
   ','
@@ -9143,7 +9143,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -9170,7 +9170,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=4
@@ -9198,7 +9198,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -9222,7 +9222,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -9300,7 +9300,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -9328,7 +9328,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -9429,7 +9429,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   ','
@@ -9505,7 +9505,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=32
   ','
@@ -9558,7 +9558,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -9637,7 +9637,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -9667,7 +9667,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -9692,7 +9692,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -9718,7 +9718,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -9772,7 +9772,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -9827,7 +9827,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=32
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -9850,7 +9850,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -9904,7 +9904,7 @@ $combinations=
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=1
@@ -9932,7 +9932,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   ','
@@ -9961,7 +9961,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
@@ -10014,7 +10014,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=32
   ','
@@ -10059,7 +10059,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   ','
   --mysqld=--innodb_change_buffering=inserts
@@ -10083,7 +10083,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -10110,7 +10110,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--innodb_change_buffering=all
@@ -10269,7 +10269,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   ','
@@ -10293,7 +10293,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -10371,7 +10371,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--hidden-key-buffer-size=1
@@ -10449,7 +10449,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -10523,7 +10523,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   ','
@@ -10551,7 +10551,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -10581,7 +10581,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -10607,7 +10607,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -10634,7 +10634,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -10704,7 +10704,7 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=4
   ','
@@ -10735,7 +10735,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -10757,7 +10757,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=32
   ','
@@ -10814,7 +10814,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -10864,7 +10864,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -10912,7 +10912,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=1
   ','
   --mysqld=--hidden-key-buffer-size=1
@@ -10937,7 +10937,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -10963,7 +10963,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   ','
@@ -11010,7 +11010,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -11035,7 +11035,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -11090,7 +11090,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -11115,7 +11115,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=1
   ','
@@ -11144,7 +11144,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -11222,7 +11222,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_change_buffering=inserts
@@ -11270,7 +11270,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -11323,7 +11323,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -11394,7 +11394,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -11417,7 +11417,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -11444,7 +11444,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=4
   ','
@@ -11501,7 +11501,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -11531,7 +11531,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -11716,7 +11716,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--hidden-key-buffer-size=1
@@ -11766,7 +11766,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -11815,7 +11815,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -11887,7 +11887,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -11918,7 +11918,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -11946,7 +11946,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -11978,7 +11978,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=4
   ','
@@ -12051,7 +12051,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -12109,7 +12109,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -12139,7 +12139,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -12192,7 +12192,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -12215,7 +12215,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -12236,7 +12236,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -12290,7 +12290,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -12341,7 +12341,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
@@ -12458,7 +12458,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=32
   ','
@@ -12488,7 +12488,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -12533,7 +12533,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -12558,7 +12558,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -12583,7 +12583,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -12641,7 +12641,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -12667,7 +12667,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   ','
@@ -12695,7 +12695,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -12720,7 +12720,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=1
@@ -12746,7 +12746,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=1
@@ -12866,7 +12866,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--hidden-key-buffer-size=1
@@ -12896,7 +12896,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -12924,7 +12924,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_changed_pages=ON
@@ -12967,7 +12967,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=1
@@ -12994,7 +12994,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -13047,7 +13047,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=4
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -13105,7 +13105,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -13135,7 +13135,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -13163,7 +13163,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -13215,7 +13215,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -13359,7 +13359,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
@@ -13406,7 +13406,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -13432,7 +13432,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -13457,7 +13457,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
@@ -13482,7 +13482,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -13569,7 +13569,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -13651,7 +13651,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -13678,7 +13678,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=32
   ','
@@ -13775,7 +13775,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -13799,7 +13799,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -13827,7 +13827,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=1
   ','
@@ -13851,7 +13851,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=32
   ','
@@ -13958,7 +13958,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -14089,7 +14089,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=1
   ','
@@ -14139,7 +14139,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
@@ -14212,7 +14212,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -14266,7 +14266,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -14419,7 +14419,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -14468,7 +14468,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
@@ -14496,7 +14496,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
@@ -14514,7 +14514,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_change_buffering=all
@@ -14591,7 +14591,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=32
   ','
@@ -14691,7 +14691,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
@@ -14716,7 +14716,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -14766,7 +14766,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -14848,7 +14848,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -14921,7 +14921,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -14943,7 +14943,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -14968,7 +14968,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -15026,7 +15026,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -15070,7 +15070,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -15094,7 +15094,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -15147,7 +15147,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -15196,7 +15196,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -15222,7 +15222,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -15249,7 +15249,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -15270,7 +15270,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -15350,7 +15350,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -15410,7 +15410,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -15435,7 +15435,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -15459,7 +15459,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=32
@@ -15486,7 +15486,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=1
   ','
@@ -15517,7 +15517,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
@@ -15541,7 +15541,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=32
@@ -15571,7 +15571,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -15601,7 +15601,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --notnull
@@ -15627,7 +15627,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -15652,7 +15652,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -15748,7 +15748,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -15776,7 +15776,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -15935,7 +15935,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=4
   ','
@@ -15961,7 +15961,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=1
@@ -16013,7 +16013,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -16042,7 +16042,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=32
@@ -16129,7 +16129,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=32
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -16184,7 +16184,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=1
   ','
   --mysqld=--innodb_change_buffering=inserts
@@ -16211,7 +16211,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -16233,7 +16233,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -16262,7 +16262,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=1
   ','
@@ -16290,7 +16290,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -16318,7 +16318,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=1
   ','
@@ -16345,7 +16345,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=4
@@ -16400,7 +16400,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=1
   ','
@@ -16427,7 +16427,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=1
   ','
@@ -16532,7 +16532,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -16556,7 +16556,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -16709,7 +16709,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -16840,7 +16840,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=1
@@ -16891,7 +16891,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=32
@@ -17016,7 +17016,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -17043,7 +17043,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -17074,7 +17074,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=1
@@ -17104,7 +17104,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -17128,7 +17128,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -17152,7 +17152,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -17183,7 +17183,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=32
   ','
@@ -17272,7 +17272,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -17329,7 +17329,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -17360,7 +17360,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -17408,7 +17408,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -17454,7 +17454,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -17480,7 +17480,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=32
   ','
@@ -17505,7 +17505,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -17561,7 +17561,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -17700,7 +17700,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -17726,7 +17726,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   ','
@@ -17752,7 +17752,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=4
   ','
@@ -17775,7 +17775,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -17797,7 +17797,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=32
   ','
@@ -17921,7 +17921,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -18024,7 +18024,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -18192,7 +18192,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -18218,7 +18218,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=4
   ','
@@ -18241,7 +18241,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=4
   ','
@@ -18267,7 +18267,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=1
@@ -18292,7 +18292,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -18367,7 +18367,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -18495,7 +18495,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=32
   ','
@@ -18618,7 +18618,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -18639,7 +18639,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -18665,7 +18665,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
   ','
@@ -18722,7 +18722,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -18796,7 +18796,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=4
   ','
@@ -18823,7 +18823,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
@@ -18880,7 +18880,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -18909,7 +18909,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -18986,7 +18986,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -19016,7 +19016,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=32
   ','
@@ -19042,7 +19042,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=32
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -19142,7 +19142,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -19166,7 +19166,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=4
   ','
@@ -19194,7 +19194,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -19216,7 +19216,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -19272,7 +19272,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -19300,7 +19300,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -19350,7 +19350,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=4
   ','
@@ -19433,7 +19433,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=4
   ','
@@ -19461,7 +19461,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -19515,7 +19515,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -19547,7 +19547,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=4
   ','
@@ -19577,7 +19577,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -19620,7 +19620,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -19646,7 +19646,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -19742,7 +19742,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -19770,7 +19770,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -19838,7 +19838,7 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -19867,7 +19867,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -19897,7 +19897,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -19918,7 +19918,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=32
@@ -19937,7 +19937,7 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=1
   ','
@@ -19959,7 +19959,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -20014,7 +20014,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -20090,7 +20090,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -20218,7 +20218,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -20245,7 +20245,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=4
   ','
   --mysqld=--hidden-key-buffer-size=1
@@ -20318,7 +20318,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=4
   ','
@@ -20390,7 +20390,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -20414,7 +20414,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -20441,7 +20441,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -20488,7 +20488,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   ','
@@ -20539,7 +20539,7 @@ $combinations=
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=4
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -20686,7 +20686,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -20868,7 +20868,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   ','
@@ -20892,7 +20892,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -20915,7 +20915,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   ','
@@ -20943,7 +20943,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=32
@@ -20973,7 +20973,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -21023,7 +21023,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -21073,7 +21073,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
@@ -21103,7 +21103,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=1
   ','
@@ -21130,7 +21130,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -21179,7 +21179,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -21203,7 +21203,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
@@ -21278,7 +21278,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -21311,7 +21311,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -21391,7 +21391,7 @@ $combinations=
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -21415,7 +21415,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -21482,7 +21482,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=32
   ','
@@ -21552,7 +21552,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -21582,7 +21582,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -21608,7 +21608,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -21687,7 +21687,7 @@ $combinations=
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=32
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -21712,7 +21712,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -21784,7 +21784,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -21900,7 +21900,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
@@ -22021,7 +22021,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -22074,7 +22074,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -22103,7 +22103,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -22126,7 +22126,7 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   --mysqld=--innodb_purge_threads=4
@@ -22156,7 +22156,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -22234,7 +22234,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -22316,7 +22316,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -22342,7 +22342,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -22438,7 +22438,7 @@ $combinations=
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -22467,7 +22467,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   ','
@@ -22491,7 +22491,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -22516,7 +22516,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -22569,7 +22569,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -22591,7 +22591,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=32
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -22744,7 +22744,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -22768,7 +22768,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
@@ -22840,7 +22840,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -22860,7 +22860,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -22985,7 +22985,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -23037,7 +23037,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -23167,7 +23167,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -23190,7 +23190,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -23293,7 +23293,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -23321,7 +23321,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -23371,7 +23371,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   ','
@@ -23402,7 +23402,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=1
   ','
   --mysqld=--hidden-key-buffer-size=0
@@ -23430,7 +23430,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
   ','
@@ -23453,7 +23453,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -23486,7 +23486,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
@@ -23537,7 +23537,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -23564,7 +23564,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   ','
@@ -23613,7 +23613,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=4
   ','
@@ -23635,7 +23635,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=4
@@ -23666,7 +23666,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --mysqld=--innodb_purge_threads=4
   ','
@@ -23721,7 +23721,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
@@ -23843,7 +23843,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -23871,7 +23871,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   --mysqld=--innodb_purge_threads=1
   ','
@@ -23964,7 +23964,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -23991,7 +23991,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   ','
   --mysqld=--enforce-storage-engine=InnoDB
   --mysqld=--hidden-key-buffer-size=0
@@ -24088,7 +24088,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -24114,7 +24114,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --views
   ','
@@ -24141,7 +24141,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -24170,7 +24170,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   ','
@@ -24194,7 +24194,7 @@ $combinations=
   --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   ','
@@ -24289,7 +24289,7 @@ $combinations=
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --notnull
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -24340,7 +24340,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -24393,7 +24393,7 @@ $combinations=
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --views
   ','
   --mysqld=--enforce-storage-engine=InnoDB
@@ -24443,7 +24443,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
@@ -24469,7 +24469,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=1
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --notnull
@@ -24494,7 +24494,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=32
@@ -24521,7 +24521,7 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --notnull
   --mysqld=--innodb_purge_threads=1
@@ -24543,7 +24543,7 @@ $combinations=
   --mysqld=--readonly-loose-max-connect-errors=0
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
-  --mysqld=--utility-user=roel
+  --mysqld=--utility-user=roel@%
   --mysqld=--utility-user-password=test
   --views
   --mysqld=--innodb_purge_threads=4
