@@ -47,13 +47,13 @@ $combinations=
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=8 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=10 --no-mask
-     --basedir=/Percona-Server-Debug'
+     --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=15 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=15 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Optimized',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
-     --basedir=/Percona-Server-Optimized',
+     --basedir=/Percona-Server-Optimized'
  ],[
   '
   --mysqld=--enforce-storage-engine=InnoDB
