@@ -18,6 +18,7 @@
 # Certain parts (c) Percona Inc
 
 # Version 2.0: Advanced Combinatorics
+# Note that --short_column_names is required for this grammar (see .zz1 for use of 'c1' name)
 
 $combinations=
 [
