@@ -19,7 +19,6 @@
 
 $tables = {
   pk => [undef,'varchar','char'],
-  partitions => [ undef , 'KEY (pk) PARTITIONS 3' ],
   engines => ['InnoDB'],
   rows => [1,10],
   row_formats => ['DYNAMIC','COMPRESSED','DEFAULT']
