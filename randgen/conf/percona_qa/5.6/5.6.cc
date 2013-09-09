@@ -33,7 +33,7 @@ $combinations=
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
      --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=17 --mask-level=1 --validator=Transformer
-     --basedir=/Percona-Server-Debug',
+     --basedir=/Percona-Server-Debug --mysqld=--enforce-storage-engine=InnoDB',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=13 --mask-level=1 --validator=Transformer
