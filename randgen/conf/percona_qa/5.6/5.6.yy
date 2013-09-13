@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
+# Some samples/ideas from other grammars used
 # Certain parts (c) Percona Inc
 
 # Suggested use:
@@ -38,8 +39,8 @@
 query:
 	select | select | insert | insert | delete | delete | replace | update | transaction | i_s |
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
-        ext_slow_query_log | user_stats | drop_create_table | optimize_table | bitmap | bitmap | archive_logs |
-	thread_pool | fake_changes ;
+        ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
+        bitmap | bitmap | archive_logs | thread_pool | fake_changes ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
@@ -116,15 +117,15 @@ show:
 query_cache:
 	SET GLOBAL query_cache_strip_comments = onoff ;
 
-# BUG 1205200 in i_s_area: INFORMATION_SCHEMA.GLOBAL_TEMPORARY_TABLES |
-#	                   INFORMATION_SCHEMA.TEMPORARY_TABLES | 
-
 i_s_area:
+	INFORMATION_SCHEMA.GLOBAL_TEMPORARY_TABLES |
+	INFORMATION_SCHEMA.TEMPORARY_TABLES | 
 	INFORMATION_SCHEMA.PROCESSLIST | 
 	INFORMATION_SCHEMA.XTRADB_RSEG ;
 
 i_s:
-	SELECT COUNT(*) FROM i_s_area | SELECT * FROM i_s_area ;
+	SELECT COUNT(*) FROM i_s_area | SELECT * FROM i_s_area |
+	SELECT * FROM i_s_area LIMIT _digit ;
 
 bitmap:
 	SHOW ENGINE INNODB MUTEX |
@@ -295,6 +296,46 @@ delete:
 	
 replace:
 	REPLACE INTO _table ( _field_no_pk ) VALUES ( value ) ;
+
+table_comp:
+	CREATE TABLE IF NOT EXISTS tb_comp ( c1 VARCHAR( vc_size ) null_or_not , c2 VARCHAR( vc_size ) default_or_not , c3 VARCHAR( vcsize ), c4 VARCHAR( vcsize ) null_or_not default_or_not , tb_keydef ) ENGINE = InnoDB ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	CREATE TABLE tb_comp ( c1 INTEGER null_or_not AUTO_INCREMENT, c2 DATETIME, c3 DOUBLE, c4 DECIMAL (20,10) , tb_keydef ) ENGINE = InnoDB ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	DROP TABLE tb_comp | DROP TABLE tb_comp | DROP TABLE tb_comp |
+	INSERT INTO tb_comp VALUES ( value , value , value , value ) |
+	INSERT INTO tb_comp VALUES ( value , value , value , value ) |
+	ALTER TABLE tb_comp_plus ROW_FORMAT = row_format |
+	ALTER TABLE tb_comp_plus ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	ALTER TABLE tb_comp_plus KEY_BLOCK_SIZE = kb_size |
+	ALTER TABLE tb_comp_plus DROP PRIMARY KEY |
+	ALTER TABLE tb_comp_plus ADD tb_keydef ;
+
+tb_comp:
+	t1 | t2 | t3 | t4 | t5 | t6 | t7 | t8 | t9 ;
+
+tb_comp_plus:
+	_table | _table | tb_comp ;
+
+row_format:
+	COMPRESSED | COMPRESSED | COMPRESSED | COMPRESSED |
+	COMPRESSED | COMPRESSED | COMPRESSED | COMPRESSED |
+	DEFAULT | DYNAMIC | FIXED | COMPACT ;
+
+tb_keydef:
+	PRIMARY KEY (c1) , KEY (c2) hash_or_not |
+	PRIMARY KEY (c3,c4) , KEY (c1,c2) hash_or_not |
+	PRIMARY KEY (c1) hash_or_not |
+	PRIMARY KEY (c4,c3) hash_or_not |
+	PRIMARY KEY (c4,c3) hash_or_not KEY_BLOCK_SIZE = kb_size |
+	UNIQUE (c4,c3) hash_or_not ;
+
+hash_or_not:
+	| USING HASH | USING BTREE ;
+
+vc_size:
+	1 | 2 | 32 | 64 | 1024 ;
+
+kb_size:
+	0 | 1 | 2 | 4 | 8 | 16 ;
 	
 drop_create_table:
 	DROP TABLE IF EXISTS _letter[invariant] ; DROP VIEW IF EXISTS _letter[invariant] ; CREATE temp TABLE _letter[invariant] LIKE _table[invariant] ; INSERT INTO _letter[invariant] SELECT * FROM _table[invariant] |
