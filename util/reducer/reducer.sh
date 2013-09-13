@@ -181,7 +181,11 @@ options_check(){
     echo "As fs.aio-max-nr on this system is lower than 300000, so you will likely run into BUG#12677594: INNODB: WARNING: IO_SETUP() FAILED WITH EAGAIN"
     echo "To prevent this from happening, please use the following command at your shell prompt (you will need to have sudo privileges):"
     echo "sudo sysctl -w fs.aio-max-nr=300000"
-    echo "Or alternatively ask your system administartor to make this a system wide change. The setting can be verified by executing: sysctl fs.aio-max-nr"
+    echo "The setting can be verified by executing: sysctl fs.aio-max-nr"
+    echo "Alternatively, you can add make the following settings to be system wide:"
+    echo "sudo vi /etc/sysctl.conf           # Then, add the following two lines to the bottom of the file"
+    echo "fs.aio-max-nr = 1048576"
+    echo "fs.file-max = 6815744"
     echo "Terminating now."
     exit 1
   fi
