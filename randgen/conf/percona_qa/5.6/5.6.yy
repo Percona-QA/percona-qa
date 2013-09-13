@@ -300,6 +300,7 @@ replace:
 table_comp:
 	CREATE TABLE IF NOT EXISTS tb_comp ( c1 VARCHAR( vc_size ) null_or_not , c2 VARCHAR( vc_size ) default_or_not , c3 VARCHAR( vcsize ), c4 VARCHAR( vcsize ) null_or_not default_or_not , tb_keydef ) ENGINE = InnoDB ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
 	CREATE TABLE tb_comp ( c1 INTEGER null_or_not AUTO_INCREMENT, c2 DATETIME, c3 DOUBLE, c4 DECIMAL (20,10) , tb_keydef ) ENGINE = InnoDB ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	CREATE TABLE tb_comp ( c1 BLOB, c2 TEXT, c3 TIMESTAMP, c4 VARBINARY ( vc_size ) , tb_keydef ) ENGINE = InnoDB ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
 	DROP TABLE tb_comp | DROP TABLE tb_comp | DROP TABLE tb_comp |
 	INSERT INTO tb_comp VALUES ( value , value , value , value ) |
 	INSERT INTO tb_comp VALUES ( value , value , value , value ) |
@@ -322,11 +323,12 @@ row_format:
 
 tb_keydef:
 	PRIMARY KEY (c1) , KEY (c2) hash_or_not |
-	PRIMARY KEY (c3,c4) , KEY (c1,c2) hash_or_not |
-	PRIMARY KEY (c1) hash_or_not |
+	PRIMARY KEY (c3,c4) , KEY (c2) hash_or_not |
+	PRIMARY KEY (c2) hash_or_not |
 	PRIMARY KEY (c4,c3) hash_or_not |
 	PRIMARY KEY (c4,c3) hash_or_not KEY_BLOCK_SIZE = kb_size |
-	UNIQUE (c4,c3) hash_or_not ;
+	UNIQUE (c4,c3) hash_or_not |
+	KEY (c1(1)) ;
 
 hash_or_not:
 	| USING HASH | USING BTREE ;
