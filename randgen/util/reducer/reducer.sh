@@ -128,6 +128,8 @@ MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 #   - Check if it is a debug server by issuing dummy DEBUG_SYNC command and see if it waits (TIMEOUT?)
 #   - cut_threadsync_chunk is not in use at the moment, this will be used? but try ts_thread_elimination first
 # - Need to capture interrupt (CTRL+C) signal and do some end-processing (show info + locations + copy to tmp if tmpfs/ramfs used)
+# - If "sed: -e expression #1, char 44: unknown option to `s'" text or similar is seen in the output, it is likely due to the #VARMOD# block 
+#   replacement in multi_reducer() failing somewhere. Update RV 16/9: Added functionality to fix/change ":" to "\:" ($FIXED_TEXT) to avoid this error.
 # - Implement cmd line options instead of in-file options. Example:
 #   while [ "$1" != ""]; do
 #    case $1 in
@@ -343,10 +345,14 @@ multi_reducer(){
     export MULTI_WORKD=$(eval echo $(echo '$WORKD'"$t"))
     mkdir $MULTI_WORKD
 
+    # This section can likely be improved further by inserting first part of reducer, 
+    # then inserting the variable block VARMOD as a block (potentially even using EOF 
+    # block), and then inserting the final part of reducer.
+    FIXED_TEXT=$(echo "$TEXT" | sed "s|:|\\\:|g")
     cat $0 \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MULTI_REDUCER=1\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=$MODE\n#VARMOD#:" \
-      | sed -e "0,/#VARMOD#/s:#VARMOD#:TEXT=\"$TEXT\"\n#VARMOD#:" \
+      | sed -e "0,/#VARMOD#/s:#VARMOD#:TEXT=\"$FIXED_TEXT\"\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE5_COUNTTEXT=$MODE5_COUNTTEXT\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:SKIPV=$SKIPV\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:SPORADIC=$SPORADIC\n#VARMOD#:" \
