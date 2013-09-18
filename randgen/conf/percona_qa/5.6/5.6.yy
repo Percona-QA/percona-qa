@@ -51,10 +51,13 @@ zero_to_thousand:
 zero_to_ttsh:
 	0 | 1 | 2 | 10 | 100 | 200 | 450 | 750 | 1111 | 1000 | 1202 | 1500 | 1700 | 2000 | 2400 | 2600 | 3000 | 3300 | 3600 ;
 
+hundred_to_thousand:
+	100 | 150 | 200 | 250 | 300 | 400 | 500 | 600 | 650 | 700 | 800 | 900 | 999 | 1000 ;
+
 thread_pool:
 	SET GLOBAL thread_pool_idle_timeout = zero_to_ttsh | 
 	SET GLOBAL thread_pool_high_prio_tickets = zero_to_ten |
-	SET GLOBAL thread_pool_max_threads = zero_to_thousand |
+	SET GLOBAL thread_pool_max_threads = hundred_to_thousand |
 	SET GLOBAL thread_pool_oversubscribe = zero_to_ten | 
  	SET GLOBAL thread_pool_size = zero_to_ten |
 	SHOW GLOBAL STATUS LIKE 'threadpool_idle_threads' |
