@@ -20,13 +20,18 @@
 # Version 2.0: Advanced Combinatorics
 # Note that --short_column_names is required for this grammar (see .zz1 for use of 'c1' name)
 
+# Workarounds
+# --mysqld=--utility-user-password=test in top block: to avoid assert BUG #
+
 $combinations=
 [
  ['
   --seed=random --duration=300 --querytimeout=60 --short_column_names
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
-  --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY'
- ],[
+  --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
+  
+  --mysqld=--utility-user-password=test
+ '],[
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --no-mask
      --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=20 --no-mask
@@ -81,7 +86,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -111,7 +116,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_log_arch_expire_sec=120
@@ -137,7 +142,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -166,7 +171,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -193,7 +198,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -224,7 +229,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -247,7 +252,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -270,7 +275,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -299,7 +304,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -330,7 +335,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -360,7 +365,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -384,7 +389,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -413,7 +418,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -440,7 +445,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -465,7 +470,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -494,7 +499,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -521,7 +526,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=2
@@ -550,7 +555,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -582,7 +587,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -611,7 +616,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -634,7 +639,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -662,7 +667,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -691,7 +696,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -716,7 +721,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -749,7 +754,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -782,7 +787,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -806,7 +811,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -831,7 +836,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -857,7 +862,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -884,7 +889,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
@@ -914,7 +919,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -944,7 +949,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -968,7 +973,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -994,7 +999,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -1026,7 +1031,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -1057,7 +1062,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -1085,7 +1090,7 @@ $combinations=
   --mysqld=--utility-user=roel@%
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -1107,7 +1112,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -1134,7 +1139,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -1163,7 +1168,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -1191,7 +1196,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -1220,7 +1225,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=2
@@ -1250,7 +1255,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -1285,7 +1290,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -1309,7 +1314,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -1338,7 +1343,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -1367,7 +1372,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -1394,7 +1399,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -1423,7 +1428,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -1451,7 +1456,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -1477,7 +1482,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -1501,7 +1506,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -1527,7 +1532,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -1555,7 +1560,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -1576,7 +1581,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -1610,7 +1615,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -1635,7 +1640,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -1659,7 +1664,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -1688,7 +1693,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -1713,7 +1718,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
@@ -1743,7 +1748,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -1771,7 +1776,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -1798,7 +1803,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -1829,7 +1834,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -1857,7 +1862,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
@@ -1887,7 +1892,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
@@ -1910,7 +1915,7 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -1931,7 +1936,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -1961,7 +1966,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -1989,7 +1994,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -2012,7 +2017,7 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -2038,7 +2043,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -2067,7 +2072,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -2096,7 +2101,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -2123,7 +2128,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -2152,7 +2157,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -2181,7 +2186,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -2202,7 +2207,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -2235,7 +2240,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -2266,7 +2271,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -2293,7 +2298,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -2324,7 +2329,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -2352,7 +2357,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -2378,7 +2383,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -2411,7 +2416,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -2435,7 +2440,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -2470,7 +2475,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -2501,7 +2506,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -2535,7 +2540,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -2565,7 +2570,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -2589,7 +2594,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -2613,7 +2618,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -2643,7 +2648,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -2668,7 +2673,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -2691,7 +2696,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -2727,7 +2732,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -2756,7 +2761,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -2783,7 +2788,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -2815,7 +2820,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -2848,7 +2853,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -2875,7 +2880,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -2904,7 +2909,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -2928,7 +2933,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
@@ -2957,7 +2962,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -2985,7 +2990,7 @@ $combinations=
   --mysqld=--utility-user-password=test
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -3015,7 +3020,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -3041,7 +3046,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -3066,7 +3071,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -3096,7 +3101,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -3123,7 +3128,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -3152,7 +3157,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -3178,7 +3183,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -3207,7 +3212,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -3231,7 +3236,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -3258,7 +3263,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -3285,7 +3290,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -3314,7 +3319,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -3340,7 +3345,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -3365,7 +3370,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -3397,7 +3402,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -3420,7 +3425,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_log_arch_dir=_epoch
@@ -3449,7 +3454,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -3477,7 +3482,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -3509,7 +3514,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -3530,7 +3535,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -3559,7 +3564,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -3586,7 +3591,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_fast_shutdown=2
@@ -3613,7 +3618,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -3640,7 +3645,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -3667,7 +3672,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -3700,7 +3705,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -3734,7 +3739,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -3760,7 +3765,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -3789,7 +3794,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -3808,7 +3813,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -3838,7 +3843,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -3863,7 +3868,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -3889,7 +3894,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -3922,7 +3927,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -3952,7 +3957,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -3978,7 +3983,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -4009,7 +4014,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -4035,7 +4040,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -4066,7 +4071,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -4095,7 +4100,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -4117,7 +4122,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -4141,7 +4146,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -4165,7 +4170,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -4190,7 +4195,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -4214,7 +4219,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -4243,7 +4248,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -4272,7 +4277,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -4302,7 +4307,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -4327,7 +4332,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -4355,7 +4360,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -4387,7 +4392,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -4416,7 +4421,7 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -4446,7 +4451,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -4475,7 +4480,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -4504,7 +4509,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -4532,7 +4537,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -4561,7 +4566,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -4590,7 +4595,7 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -4622,7 +4627,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -4648,7 +4653,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -4679,7 +4684,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -4704,7 +4709,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -4736,7 +4741,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -4757,7 +4762,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -4783,7 +4788,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -4810,7 +4815,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -4839,7 +4844,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -4865,7 +4870,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -4890,7 +4895,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -4914,7 +4919,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -4939,7 +4944,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -4963,7 +4968,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -4988,7 +4993,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -5020,7 +5025,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -5048,7 +5053,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -5070,7 +5075,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=2
@@ -5095,7 +5100,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -5120,7 +5125,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -5152,7 +5157,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -5178,7 +5183,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -5206,7 +5211,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -5236,7 +5241,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -5265,7 +5270,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -5290,7 +5295,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -5319,7 +5324,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -5353,7 +5358,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -5380,7 +5385,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -5413,7 +5418,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -5436,7 +5441,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -5464,7 +5469,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -5493,7 +5498,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -5520,7 +5525,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -5550,7 +5555,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -5581,7 +5586,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -5614,7 +5619,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -5644,7 +5649,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -5673,7 +5678,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -5703,7 +5708,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -5730,7 +5735,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -5758,7 +5763,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -5787,7 +5792,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -5812,7 +5817,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -5839,7 +5844,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -5869,7 +5874,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -5895,7 +5900,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -5921,7 +5926,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -5948,7 +5953,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -5975,7 +5980,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -5996,7 +6001,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -6021,7 +6026,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=0
@@ -6044,7 +6049,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -6068,7 +6073,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -6092,7 +6097,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -6121,7 +6126,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -6153,7 +6158,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -6183,7 +6188,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -6207,7 +6212,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -6236,7 +6241,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -6263,7 +6268,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -6294,7 +6299,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -6323,7 +6328,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -6351,7 +6356,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -6378,7 +6383,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -6405,7 +6410,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -6432,7 +6437,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -6464,7 +6469,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -6494,7 +6499,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -6523,7 +6528,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -6554,7 +6559,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_log_arch_dir=_epoch
@@ -6577,7 +6582,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -6606,7 +6611,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -6629,7 +6634,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -6656,7 +6661,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -6686,7 +6691,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -6713,7 +6718,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -6738,7 +6743,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -6770,7 +6775,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -6799,7 +6804,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -6827,7 +6832,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -6854,7 +6859,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -6881,7 +6886,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -6911,7 +6916,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -6943,7 +6948,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -6968,7 +6973,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -6997,7 +7002,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -7022,7 +7027,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_log_arch_dir=_epoch
@@ -7048,7 +7053,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
@@ -7070,7 +7075,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -7094,7 +7099,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -7120,7 +7125,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -7146,7 +7151,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -7173,7 +7178,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -7203,7 +7208,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -7228,7 +7233,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -7259,7 +7264,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -7286,7 +7291,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -7315,7 +7320,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -7343,7 +7348,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -7367,7 +7372,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -7396,7 +7401,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -7420,7 +7425,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -7450,7 +7455,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -7479,7 +7484,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -7508,7 +7513,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -7538,7 +7543,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
@@ -7562,7 +7567,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -7594,7 +7599,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -7621,7 +7626,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -7647,7 +7652,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -7674,7 +7679,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -7706,7 +7711,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -7735,7 +7740,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -7762,7 +7767,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -7793,7 +7798,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -7820,7 +7825,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -7851,7 +7856,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -7878,7 +7883,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -7911,7 +7916,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -7937,7 +7942,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -7963,7 +7968,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -7987,7 +7992,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -8011,7 +8016,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -8038,7 +8043,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -8071,7 +8076,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -8100,7 +8105,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -8128,7 +8133,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_log_arch_dir=_epoch
@@ -8151,7 +8156,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -8179,7 +8184,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -8204,7 +8209,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -8232,7 +8237,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=0
@@ -8259,7 +8264,7 @@ $combinations=
   --mysqld=--utility-user-password=test
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -8288,7 +8293,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -8319,7 +8324,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -8351,7 +8356,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -8381,7 +8386,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -8409,7 +8414,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -8435,7 +8440,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -8463,7 +8468,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -8488,7 +8493,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -8517,7 +8522,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -8541,7 +8546,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -8570,7 +8575,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -8599,7 +8604,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -8626,7 +8631,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -8654,7 +8659,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -8684,7 +8689,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -8709,7 +8714,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -8736,7 +8741,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -8760,7 +8765,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -8791,7 +8796,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -8820,7 +8825,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -8853,7 +8858,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=0
@@ -8880,7 +8885,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -8914,7 +8919,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -8942,7 +8947,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -8968,7 +8973,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -8994,7 +8999,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -9019,7 +9024,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -9051,7 +9056,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -9081,7 +9086,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -9108,7 +9113,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_log_file_size=1048576
@@ -9133,7 +9138,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -9158,7 +9163,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -9185,7 +9190,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -9210,7 +9215,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -9241,7 +9246,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -9274,7 +9279,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -9302,7 +9307,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -9328,7 +9333,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -9348,7 +9353,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -9377,7 +9382,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -9405,7 +9410,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -9430,7 +9435,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -9458,7 +9463,7 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -9484,7 +9489,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -9510,7 +9515,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -9536,7 +9541,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -9566,7 +9571,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -9590,7 +9595,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -9622,7 +9627,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -9652,7 +9657,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -9685,7 +9690,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -9710,7 +9715,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -9737,7 +9742,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -9764,7 +9769,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -9792,7 +9797,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -9818,7 +9823,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -9847,7 +9852,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -9877,7 +9882,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -9904,7 +9909,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -9934,7 +9939,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
@@ -9965,7 +9970,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -9997,7 +10002,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=0
@@ -10021,7 +10026,7 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -10046,7 +10051,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -10068,7 +10073,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -10097,7 +10102,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -10129,7 +10134,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -10157,7 +10162,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -10181,7 +10186,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -10210,7 +10215,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -10237,7 +10242,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -10266,7 +10271,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -10293,7 +10298,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -10322,7 +10327,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -10349,7 +10354,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -10373,7 +10378,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -10401,7 +10406,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=2
@@ -10429,7 +10434,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -10459,7 +10464,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -10484,7 +10489,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -10505,7 +10510,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -10531,7 +10536,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -10557,7 +10562,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -10582,7 +10587,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=2
@@ -10612,7 +10617,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -10637,7 +10642,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -10665,7 +10670,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -10690,7 +10695,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
@@ -10717,7 +10722,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -10745,7 +10750,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -10774,7 +10779,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -10801,7 +10806,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -10824,7 +10829,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_per_table=1
@@ -10858,7 +10863,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -10885,7 +10890,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -10917,7 +10922,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -10944,7 +10949,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_log_buffer_size=1048577
@@ -10969,7 +10974,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -10994,7 +10999,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -11021,7 +11026,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -11047,7 +11052,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -11075,7 +11080,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -11100,7 +11105,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -11126,7 +11131,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -11152,7 +11157,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -11181,7 +11186,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -11208,7 +11213,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -11235,7 +11240,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -11260,7 +11265,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -11289,7 +11294,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -11313,7 +11318,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -11338,7 +11343,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -11368,7 +11373,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -11392,7 +11397,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -11417,7 +11422,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -11449,7 +11454,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
@@ -11475,7 +11480,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -11502,7 +11507,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -11528,7 +11533,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -11557,7 +11562,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -11581,7 +11586,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -11609,7 +11614,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -11637,7 +11642,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -11666,7 +11671,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_per_table=1
@@ -11693,7 +11698,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -11722,7 +11727,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -11750,7 +11755,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -11775,7 +11780,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -11812,7 +11817,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -11841,7 +11846,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -11870,7 +11875,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -11899,7 +11904,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -11922,7 +11927,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -11947,7 +11952,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -11973,7 +11978,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -11999,7 +12004,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -12027,7 +12032,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -12051,7 +12056,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -12081,7 +12086,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -12108,7 +12113,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -12140,7 +12145,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -12165,7 +12170,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -12187,7 +12192,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_per_table=1
@@ -12212,7 +12217,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -12237,7 +12242,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -12263,7 +12268,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -12290,7 +12295,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -12318,7 +12323,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -12344,7 +12349,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -12375,7 +12380,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -12406,7 +12411,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -12434,7 +12439,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -12460,7 +12465,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -12486,7 +12491,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -12516,7 +12521,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -12545,7 +12550,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -12577,7 +12582,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -12608,7 +12613,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -12635,7 +12640,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -12666,7 +12671,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -12688,7 +12693,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -12716,7 +12721,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -12744,7 +12749,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -12775,7 +12780,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -12798,7 +12803,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -12824,7 +12829,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -12848,7 +12853,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -12877,7 +12882,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -12901,7 +12906,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -12927,7 +12932,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
@@ -12957,7 +12962,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -12984,7 +12989,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_log_block_size=4096
@@ -13010,7 +13015,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -13044,7 +13049,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -13075,7 +13080,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -13098,7 +13103,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -13118,7 +13123,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -13146,7 +13151,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -13174,7 +13179,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -13200,7 +13205,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -13230,7 +13235,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -13256,7 +13261,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -13285,7 +13290,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -13308,7 +13313,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -13331,7 +13336,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -13361,7 +13366,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -13389,7 +13394,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -13420,7 +13425,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -13449,7 +13454,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -13478,7 +13483,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -13503,7 +13508,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_file_size=10485761
@@ -13527,7 +13532,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -13557,7 +13562,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -13584,7 +13589,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -13615,7 +13620,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_fast_shutdown=2
@@ -13641,7 +13646,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_per_table=1
@@ -13666,7 +13671,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -13691,7 +13696,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -13719,7 +13724,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -13744,7 +13749,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -13769,7 +13774,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_per_table=1
@@ -13803,7 +13808,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -13831,7 +13836,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -13859,7 +13864,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -13890,7 +13895,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_per_table=1
@@ -13916,7 +13921,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -13944,7 +13949,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -13974,7 +13979,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -13998,7 +14003,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -14028,7 +14033,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -14053,7 +14058,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -14084,7 +14089,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -14109,7 +14114,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -14138,7 +14143,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -14164,7 +14169,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -14190,7 +14195,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -14221,7 +14226,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -14251,7 +14256,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -14277,7 +14282,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -14301,7 +14306,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -14327,7 +14332,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -14348,7 +14353,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -14375,7 +14380,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -14402,7 +14407,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_log_arch_dir=_epoch
@@ -14429,7 +14434,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -14461,7 +14466,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -14488,7 +14493,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -14522,7 +14527,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=0
@@ -14545,7 +14550,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -14573,7 +14578,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -14598,7 +14603,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -14622,7 +14627,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -14652,7 +14657,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -14678,7 +14683,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -14709,7 +14714,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -14735,7 +14740,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -14761,7 +14766,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -14790,7 +14795,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -14818,7 +14823,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -14846,7 +14851,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -14874,7 +14879,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -14904,7 +14909,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -14932,7 +14937,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -14957,7 +14962,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -14985,7 +14990,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_log_arch_dir=_epoch
@@ -15007,7 +15012,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -15035,7 +15040,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -15062,7 +15067,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -15083,7 +15088,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -15110,7 +15115,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=2
@@ -15138,7 +15143,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -15169,7 +15174,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -15201,7 +15206,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -15233,7 +15238,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
@@ -15259,7 +15264,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -15285,7 +15290,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -15314,7 +15319,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -15341,7 +15346,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -15367,7 +15372,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -15391,7 +15396,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -15419,7 +15424,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -15443,7 +15448,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -15468,7 +15473,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -15502,7 +15507,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -15528,7 +15533,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -15556,7 +15561,7 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -15584,7 +15589,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -15611,7 +15616,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -15639,7 +15644,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -15663,7 +15668,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -15694,7 +15699,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -15723,7 +15728,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -15755,7 +15760,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -15781,7 +15786,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -15810,7 +15815,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -15837,7 +15842,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -15862,7 +15867,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -15890,7 +15895,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -15920,7 +15925,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -15946,7 +15951,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -15975,7 +15980,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -16000,7 +16005,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -16022,7 +16027,7 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -16046,7 +16051,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -16078,7 +16083,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -16111,7 +16116,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -16132,7 +16137,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -16160,7 +16165,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -16188,7 +16193,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -16213,7 +16218,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -16236,7 +16241,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -16264,7 +16269,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -16291,7 +16296,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -16320,7 +16325,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -16343,7 +16348,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -16374,7 +16379,7 @@ $combinations=
   --mysqld=--utility-user-password=test
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -16405,7 +16410,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -16430,7 +16435,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -16460,7 +16465,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -16488,7 +16493,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -16514,7 +16519,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -16543,7 +16548,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -16568,7 +16573,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -16600,7 +16605,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -16630,7 +16635,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -16662,7 +16667,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -16695,7 +16700,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -16721,7 +16726,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -16747,7 +16752,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -16772,7 +16777,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -16799,7 +16804,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -16823,7 +16828,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -16850,7 +16855,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -16878,7 +16883,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -16905,7 +16910,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -16931,7 +16936,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -16958,7 +16963,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -16985,7 +16990,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -17014,7 +17019,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -17041,7 +17046,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -17071,7 +17076,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -17100,7 +17105,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -17128,7 +17133,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -17158,7 +17163,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -17189,7 +17194,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -17219,7 +17224,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -17249,7 +17254,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -17270,7 +17275,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -17297,7 +17302,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -17327,7 +17332,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -17352,7 +17357,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -17377,7 +17382,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -17404,7 +17409,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -17432,7 +17437,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -17465,7 +17470,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -17494,7 +17499,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -17524,7 +17529,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -17551,7 +17556,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -17578,7 +17583,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=0
@@ -17609,7 +17614,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -17637,7 +17642,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -17668,7 +17673,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -17687,7 +17692,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -17717,7 +17722,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -17745,7 +17750,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_log_arch_expire_sec=120
@@ -17770,7 +17775,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -17801,7 +17806,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -17827,7 +17832,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -17852,7 +17857,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -17876,7 +17881,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -17906,7 +17911,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -17937,7 +17942,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -17964,7 +17969,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -17992,7 +17997,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -18023,7 +18028,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -18047,7 +18052,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -18073,7 +18078,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -18099,7 +18104,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -18127,7 +18132,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -18156,7 +18161,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -18180,7 +18185,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -18207,7 +18212,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -18235,7 +18240,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -18260,7 +18265,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -18288,7 +18293,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -18316,7 +18321,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -18343,7 +18348,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -18369,7 +18374,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -18389,7 +18394,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -18418,7 +18423,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -18442,7 +18447,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -18469,7 +18474,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -18491,7 +18496,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -18521,7 +18526,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=0
@@ -18547,7 +18552,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -18574,7 +18579,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -18602,7 +18607,7 @@ $combinations=
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -18624,7 +18629,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -18653,7 +18658,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -18681,7 +18686,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -18707,7 +18712,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -18736,7 +18741,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -18767,7 +18772,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -18794,7 +18799,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -18820,7 +18825,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -18849,7 +18854,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -18877,7 +18882,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -18907,7 +18912,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=2
@@ -18933,7 +18938,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -18963,7 +18968,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -18997,7 +19002,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
@@ -19029,7 +19034,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -19054,7 +19059,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -19083,7 +19088,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -19107,7 +19112,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -19136,7 +19141,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_log_archive=1
@@ -19158,7 +19163,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -19184,7 +19189,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -19210,7 +19215,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -19236,7 +19241,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -19264,7 +19269,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_per_table=1
@@ -19291,7 +19296,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -19318,7 +19323,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -19350,7 +19355,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -19369,7 +19374,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -19399,7 +19404,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -19430,7 +19435,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -19455,7 +19460,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -19480,7 +19485,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -19507,7 +19512,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_log_arch_expire_sec=120
@@ -19530,7 +19535,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -19554,7 +19559,7 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -19587,7 +19592,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_per_table=1
@@ -19615,7 +19620,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -19641,7 +19646,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -19670,7 +19675,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -19696,7 +19701,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -19726,7 +19731,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -19755,7 +19760,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -19785,7 +19790,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_log_arch_dir=_epoch
@@ -19806,7 +19811,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -19832,7 +19837,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -19861,7 +19866,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -19886,7 +19891,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -19912,7 +19917,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -19944,7 +19949,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_per_table=1
@@ -19972,7 +19977,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -20005,7 +20010,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -20035,7 +20040,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -20064,7 +20069,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -20096,7 +20101,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -20125,7 +20130,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -20154,7 +20159,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -20181,7 +20186,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -20210,7 +20215,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -20235,7 +20240,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_log_arch_dir=_epoch
@@ -20262,7 +20267,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -20286,7 +20291,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_per_table=1
@@ -20308,7 +20313,7 @@ $combinations=
   --mysqld=--userstat
 
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_per_table=1
@@ -20331,7 +20336,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -20360,7 +20365,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -20387,7 +20392,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -20419,7 +20424,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -20447,7 +20452,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -20478,7 +20483,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -20502,7 +20507,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -20522,7 +20527,7 @@ $combinations=
   --mysqld=--utility-user-password=test
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_per_table=1
@@ -20552,7 +20557,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -20579,7 +20584,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -20605,7 +20610,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_per_table=1
@@ -20632,7 +20637,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -20657,7 +20662,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -20687,7 +20692,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -20718,7 +20723,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -20747,7 +20752,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -20775,7 +20780,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -20800,7 +20805,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -20825,7 +20830,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -20852,7 +20857,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -20878,7 +20883,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
@@ -20902,7 +20907,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_per_table=1
@@ -20927,7 +20932,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -20953,7 +20958,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -20978,7 +20983,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -21006,7 +21011,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -21033,7 +21038,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -21065,7 +21070,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -21096,7 +21101,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -21125,7 +21130,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -21154,7 +21159,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -21182,7 +21187,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -21207,7 +21212,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -21232,7 +21237,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -21260,7 +21265,7 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -21287,7 +21292,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -21313,7 +21318,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -21348,7 +21353,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -21374,7 +21379,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -21401,7 +21406,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -21420,7 +21425,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -21451,7 +21456,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -21478,7 +21483,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -21506,7 +21511,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -21537,7 +21542,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -21564,7 +21569,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_per_table=1
@@ -21589,7 +21594,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -21619,7 +21624,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -21642,7 +21647,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -21672,7 +21677,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -21697,7 +21702,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=0
@@ -21724,7 +21729,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -21750,7 +21755,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -21782,7 +21787,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -21807,7 +21812,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -21836,7 +21841,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -21868,7 +21873,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
@@ -21896,7 +21901,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -21921,7 +21926,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -21953,7 +21958,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -21980,7 +21985,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -22005,7 +22010,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -22033,7 +22038,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -22059,7 +22064,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -22080,7 +22085,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -22115,7 +22120,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -22139,7 +22144,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -22170,7 +22175,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -22196,7 +22201,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -22224,7 +22229,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -22254,7 +22259,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -22283,7 +22288,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -22306,7 +22311,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -22336,7 +22341,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -22364,7 +22369,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -22391,7 +22396,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_per_table=1
@@ -22418,7 +22423,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -22446,7 +22451,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -22477,7 +22482,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -22505,7 +22510,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -22535,7 +22540,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
@@ -22562,7 +22567,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -22591,7 +22596,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -22613,7 +22618,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -22632,7 +22637,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -22660,7 +22665,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -22689,7 +22694,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -22718,7 +22723,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -22745,7 +22750,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -22766,7 +22771,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -22796,7 +22801,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -22823,7 +22828,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -22851,7 +22856,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_log_archive=1
@@ -22880,7 +22885,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -22909,7 +22914,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -22943,7 +22948,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -22966,7 +22971,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -22996,7 +23001,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -23023,7 +23028,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -23050,7 +23055,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -23080,7 +23085,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -23106,7 +23111,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -23129,7 +23134,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -23157,7 +23162,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -23183,7 +23188,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -23214,7 +23219,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -23237,7 +23242,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -23269,7 +23274,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -23300,7 +23305,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -23330,7 +23335,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -23356,7 +23361,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -23384,7 +23389,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -23409,7 +23414,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -23435,7 +23440,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -23466,7 +23471,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
@@ -23489,7 +23494,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -23511,7 +23516,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -23539,7 +23544,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -23563,7 +23568,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -23595,7 +23600,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -23623,7 +23628,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -23650,7 +23655,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -23673,7 +23678,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -23696,7 +23701,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -23724,7 +23729,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -23747,7 +23752,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -23774,7 +23779,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
@@ -23803,7 +23808,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -23826,7 +23831,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -23846,7 +23851,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -23874,7 +23879,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -23903,7 +23908,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -23930,7 +23935,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -23961,7 +23966,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -23986,7 +23991,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -24011,7 +24016,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_log_arch_expire_sec=120
@@ -24037,7 +24042,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -24065,7 +24070,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -24095,7 +24100,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DSYNC
@@ -24123,7 +24128,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -24151,7 +24156,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -24172,7 +24177,7 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
@@ -24195,7 +24200,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -24219,7 +24224,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
@@ -24244,7 +24249,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -24269,7 +24274,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -24298,7 +24303,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -24328,7 +24333,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -24362,7 +24367,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_log_arch_expire_sec=120
@@ -24384,7 +24389,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -24408,7 +24413,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -24440,7 +24445,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -24466,7 +24471,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -24491,7 +24496,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -24522,7 +24527,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -24549,7 +24554,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -24573,7 +24578,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -24600,7 +24605,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=2
@@ -24628,7 +24633,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -24658,7 +24663,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -24691,7 +24696,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -24721,7 +24726,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -24746,7 +24751,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -24777,7 +24782,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -24808,7 +24813,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -24837,7 +24842,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=2
@@ -24861,7 +24866,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -24890,7 +24895,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_log_arch_expire_sec=120
@@ -24917,7 +24922,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -24944,7 +24949,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_format=barracuda
@@ -24972,7 +24977,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -24998,7 +25003,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -25024,7 +25029,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -25047,7 +25052,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -25080,7 +25085,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -25101,7 +25106,7 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--innodb_adaptive_hash_index_partitions=5
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
@@ -25125,7 +25130,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=2
@@ -25153,7 +25158,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -25175,7 +25180,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -25202,7 +25207,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -25225,7 +25230,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -25255,7 +25260,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -25282,7 +25287,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -25313,7 +25318,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -25345,7 +25350,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -25372,7 +25377,7 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -25398,7 +25403,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -25428,7 +25433,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -25457,7 +25462,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -25481,7 +25486,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -25511,7 +25516,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -25541,7 +25546,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -25569,7 +25574,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -25597,7 +25602,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -25621,7 +25626,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -25645,7 +25650,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -25669,7 +25674,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
@@ -25694,7 +25699,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -25721,7 +25726,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -25752,7 +25757,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -25781,7 +25786,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -25810,7 +25815,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DIRECT
@@ -25834,7 +25839,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -25859,7 +25864,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
 
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -25883,7 +25888,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
@@ -25910,7 +25915,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -25938,7 +25943,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -25965,7 +25970,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_format=barracuda
@@ -25998,7 +26003,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -26026,7 +26031,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_format=barracuda
@@ -26052,7 +26057,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -26082,7 +26087,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=1
@@ -26108,7 +26113,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -26134,7 +26139,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -26158,7 +26163,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_per_table=1
@@ -26182,7 +26187,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_file_per_table=1
@@ -26208,7 +26213,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -26234,7 +26239,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -26261,7 +26266,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -26289,7 +26294,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -26312,7 +26317,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
 
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -26337,7 +26342,7 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -26366,7 +26371,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -26395,7 +26400,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -26424,7 +26429,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -26451,7 +26456,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -26473,7 +26478,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -26498,7 +26503,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -26523,7 +26528,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
@@ -26548,7 +26553,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -26579,7 +26584,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -26607,7 +26612,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=2
@@ -26631,7 +26636,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -26659,7 +26664,7 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -26686,7 +26691,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -26711,7 +26716,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -26741,7 +26746,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -26767,7 +26772,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -26792,7 +26797,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -26818,7 +26823,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -26840,7 +26845,7 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --views
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_fast_shutdown=0
@@ -26867,7 +26872,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -26892,7 +26897,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -26919,7 +26924,7 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -26945,7 +26950,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -26972,7 +26977,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=8
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -26999,7 +27004,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_file_format=barracuda
@@ -27027,7 +27032,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -27058,7 +27063,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -27086,7 +27091,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
 
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -27110,7 +27115,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
 
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -27142,7 +27147,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
 
 
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -27168,7 +27173,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_log_at_trx_commit=0
@@ -27191,7 +27196,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
-  '],['
+  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=ON
@@ -27219,7 +27224,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_log_arch_dir=_epoch
@@ -27245,7 +27250,7 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=4
-  '],['
+  ','
   --views
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -27272,6 +27277,5 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-
- ]
+ ']
 ]
