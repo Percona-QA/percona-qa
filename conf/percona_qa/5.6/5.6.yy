@@ -280,8 +280,10 @@ insert:
 priority_insert:
 	| | | | LOW_PRIORITY | DELAYED | HIGH_PRIORITY ;
 
+# Disabled IGNORE due to bug #1168265
+#	| | | | IGNORE ;
 ign:
-	| | | | IGNORE ;
+	| | | | ;
 
 update:
 	UPDATE priority_update ign _table SET _field_no_pk = value where order_by limit ;
