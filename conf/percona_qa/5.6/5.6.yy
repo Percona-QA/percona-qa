@@ -358,10 +358,10 @@ temp:
 	| | | | | TEMPORARY ;
 
 algo:
-	| DEFAULT | INPLACE | COPY ;
+	| | ALGORITHM = DEFAULT | ALGORITHM = INPLACE | ALGORITHM = COPY ;
 
 lock_type:
-	| DEFAULT | NONE | SHARED | EXCLUSIVE ;
+	| | LOCK = DEFAULT | LOCK = NONE | LOCK = SHARED | LOCK = EXCLUSIVE ;
 
 type:
 	INT | DECIMAL | FLOAT | BIT | CHAR( _digit ) | VARCHAR ( _digit ) | BLOB | BLOB | BLOB |
