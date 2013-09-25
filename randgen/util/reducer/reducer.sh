@@ -86,6 +86,7 @@ MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 #VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
 
 # ======== Ideas for improvement
+# - Add a MYEXRA simplificator at end (extra stage) so that mysqld options are minimal
 # - Improve ";" work in STAGE4 (";" sometimes missing from results - does not affect reproducibility)
 # - Improve VALGRIND/ERRORLOG run work (complete?)
 # - Improve clause elimination when sub queries are used: "ORDER BY f1);" is not filtered due to the ending ")"
