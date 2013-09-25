@@ -1227,7 +1227,7 @@ finish(){
     echo_out "[Finish] Final testcase            : $INPUTFILE (= input file, no optimizations were successful)"
   fi
   echo_out "[Finish] Matching startup script   : $WORK_START"
-  if [ $MODE -ge 6]; then
+  if [ $MODE -ge 6 ]; then
     # See init_workdir_and_files() and search for WORK_RUN for more info. Also more info in improvements section at top
     echo_out "[Finish] Matching run script       : $WORK_RUN (though you can look at this file for an example, implementation for MODE6+ is not finished yet)"
   else
