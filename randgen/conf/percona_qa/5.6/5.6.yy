@@ -40,7 +40,9 @@ query:
 	select | select | insert | insert | delete | delete | replace | update | transaction | i_s |
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
-        bitmap | bitmap | archive_logs | thread_pool | fake_changes ;
+        bitmap | bitmap | archive_logs | thread_pool ;
+
+# Disabled for 5.6 GA checking: fake_changes ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
