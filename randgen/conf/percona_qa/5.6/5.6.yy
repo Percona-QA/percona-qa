@@ -383,11 +383,12 @@ optimize_table:
 temp:
 	| | | | | TEMPORARY ;
 
-algo:
-	| | ALGORITHM = DEFAULT | ALGORITHM = INPLACE | ALGORITHM = COPY ;
-
-lock_type:
-	| | LOCK = DEFAULT | LOCK = NONE | LOCK = SHARED | LOCK = EXCLUSIVE ;
+# Errors: fix later 
+#algo:
+#	| | ALGORITHM = DEFAULT | ALGORITHM = INPLACE | ALGORITHM = COPY ;
+#
+#lock_type:
+#	| | LOCK = DEFAULT | LOCK = NONE | LOCK = SHARED | LOCK = EXCLUSIVE ;
 
 type:
 	INT | DECIMAL | FLOAT | BIT | CHAR( _digit ) | VARCHAR ( _digit ) | BLOB | BLOB | BLOB |
@@ -402,10 +403,15 @@ default_or_not:
 after_or_not:
 	| | AFTER _field | FIRST ;
 
+# Errors: fix later (see above)
+#	ALTER TABLE _table algo lock_type MODIFY _field type null_or_not default_or_not after_or_not |
+#	ALTER TABLE _table algo lock_type ALTER _field DROP DEFAULT |
+#	ALTER TABLE _table algo lock_type CHANGE _field c1 type null_or_not default_or_not after_or_not ;
+
 alter:
-	ALTER TABLE _table algo lock_type MODIFY _field type null_or_not default_or_not after_or_not |
-	ALTER TABLE _table algo lock_type ALTER _field DROP DEFAULT |
-	ALTER TABLE _table algo lock_type CHANGE _field c1 type null_or_not default_or_not after_or_not ;
+	ALTER TABLE _table MODIFY _field type null_or_not default_or_not after_or_not |
+	ALTER TABLE _table ALTER _field DROP DEFAULT |
+	ALTER TABLE _table CHANGE _field c1 type null_or_not default_or_not after_or_not ;
 
 proc_func:
 	DROP PROCEDURE IF EXISTS _letter[invariant] ; CREATE PROCEDURE _letter[invariant] ( proc_param ) BEGIN SELECT COUNT( _field ) INTO @a FROM _table ; END ; CALL _letter[invariant](@a); |
