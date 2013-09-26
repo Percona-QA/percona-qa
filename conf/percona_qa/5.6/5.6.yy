@@ -40,7 +40,7 @@ query:
 	select | select | insert | insert | delete | delete | replace | update | transaction | i_s |
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
-        bitmap | bitmap | archive_logs | thread_pool ;
+        bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio ;
 
 # Disabled for 5.6 GA checking: fake_changes ;
 
@@ -55,6 +55,27 @@ zero_to_ttsh:
 
 hundred_to_thousand:
 	100 | 150 | 200 | 250 | 300 | 400 | 500 | 600 | 650 | 700 | 800 | 900 | 999 | 1000 ;
+
+# Post 5.6 GA, add shorter msec durations to max_stmt_time_range also
+max_stmt_time_range:
+	100000 | 200000 | 300000 ;
+
+max_stmt_time:
+	SET scope MAX_STATEMENT_TIME = max_stmt_time_range |
+	SHOW scope VARIABLES LIKE 'HAVE_STATEMENT_TIMEOUT' |
+	SHOW scope STATUS LIKE 'MAX_STATEMENT_TIME_EXCEEDED' |
+	SHOW scope STATUS LIKE 'MAX_STATEMENT_TIME_SET' |
+	SHOW scope STATUS LIKE 'MAX_STATEMENT_TIME_SET_FAILED' ;
+
+innodb_prio:
+	SET GLOBAL innodb_prio_set = moreoff |
+	SHOW scope VARIABLES LIKE 'INNODB_PRIORITY_PURGE' |
+	SHOW scope VARIABLES LIKE 'INNODB_PRIORITY_IO' |
+	SHOW scope VARIABLES LIKE 'INNODB_PRIORITY_CLEANER' |
+	SHOW scope VARIABLES LIKE 'INNODB_PRIORITY_MASTER' ;
+
+innodb_prio_set:
+	INNODB_PRIORITY_PURGE | INNODB_PRIORITY_IO | INNODB_PRIORITY_CLEANER | INNODB_PRIORITY_MASTER ;
 
 thread_pool:
 	SET GLOBAL thread_pool_idle_timeout = zero_to_ttsh | 
@@ -230,6 +251,9 @@ action:
 
 onoff:
 	1 | 0 ;	
+
+moreoff:
+	0 | 0 | 0 | 0 | 1 ;
 
 set:
 	SET GLOBAL innodb_show_verbose_locks = onoff | 
