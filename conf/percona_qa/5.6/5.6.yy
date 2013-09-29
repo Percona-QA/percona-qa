@@ -40,7 +40,7 @@ query:
 	select | select | insert | insert | delete | delete | replace | update | transaction | i_s |
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
-        bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio ;
+        bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking ;
 
 # Disabled for 5.6 GA checking: fake_changes ;
 
@@ -419,18 +419,23 @@ proc_func:
 
 flush:
         FLUSH TABLES | FLUSH TABLES | FLUSH TABLES | FLUSH QUERY CACHE | FLUSH QUERY CACHE |
-        FLUSH TABLE _table | FLUSH TABLE _letter | lock_rl | lock_rl ;
+        FLUSH TABLE _table | FLUSH TABLE _letter ;
 
-lock_rl:
-        lock | lock | lock | lock | lock | lock | FLUSH TABLES WITH READ LOCK ;
-
-lock:
+# 25% locking functions, 75% unlocking functions
+locking:
+        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
         LOCK TABLE _table READ | LOCK TABLE _table WRITE |
+        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
         LOCK TABLE _letter READ | LOCK TABLE _letter WRITE |
+        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
         LOCK TABLE _table AS _letter READ | LOCK TABLE _table as _letter WRITE |
+        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
         LOCK TABLE _table READ LOCAL | LOCK TABLE _table LOW_PRIORITY WRITE |
+        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
         LOCK TABLE _table AS _letter READ LOCAL | LOCK TABLE _table as _letter LOW_PRIORITY WRITE |
-        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES ;
+        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
+        FLUSH TABLES WITH READ LOCK | UNLOCK TABLES |
+        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES ;
 
 proc_param:
 	IN _letter type | OUT _letter type ;
