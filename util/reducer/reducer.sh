@@ -646,7 +646,7 @@ init_workdir_and_files(){
     $MYBASE/scripts/mysql_install_db --basedir=$MYBASE --datadir=$WORKD/data --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
     start_mysqld_main
     if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
-      echo_out "[Init] [ERROR] Failed to start mysqld server (1st boot), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used, especially if you see a 'killed' message in the line above this one."
+      echo_out "[Init] [ERROR] Failed to start mysqld server (1st boot), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
       exit 1
     fi
     echo_out "[Init] Loading timezone data into mysql database"
