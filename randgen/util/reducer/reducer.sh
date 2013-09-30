@@ -666,11 +666,15 @@ init_workdir_and_files(){
       echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet."
       echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet." > $WORK_RUN
       echo "#${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
+      chmod +x $WORK_RUN
     else
       echo "${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock < $WORKO" > $WORK_RUN
+      chmod +x $WORK_RUN
     fi 
     echo "${MYBASE}/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown" > $WORK_STOP
+    chmod +x $WORK_STOP
     echo "${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock test" > $WORK_CL
+    chmod +x $WORK_CL
     stop_mysqld
 
     mkdir $WORKD/data.init
@@ -710,6 +714,7 @@ start_mysqld_main(){
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
     echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
+    chmod +x $WORK_START
   else
     CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
                          --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
@@ -718,6 +723,7 @@ start_mysqld_main(){
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
     echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
+    chmod +x $WORK_START
   fi
   for X in $(seq 1 120); do
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
@@ -737,6 +743,7 @@ start_valgrind_mysqld(){
   $CMD > $WORKD/valgrind.out 2>&1 &
    PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
   echo "$CMD > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
+  chmod +x $WORK_START
   for X in $(seq 1 360); do 
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
