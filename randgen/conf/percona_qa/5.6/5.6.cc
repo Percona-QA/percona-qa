@@ -193,7 +193,6 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=5
  ','
   --notnull
@@ -218,7 +217,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -249,7 +247,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -359,7 +356,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=8
  ','
   --mysqld=--innodb_change_buffering=inserts
@@ -609,8 +605,6 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--utility-user=roel@%
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --views
   --notnull
@@ -687,7 +681,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_adaptive_hash_index_partitions=5
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -715,7 +708,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=6
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
  ','
   --notnull
@@ -921,7 +913,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -948,7 +939,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=4
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
  ','
   --notnull
@@ -1031,7 +1021,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=4
  ','
   --mysqld=--innodb_change_buffering=all
@@ -1085,7 +1074,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=4
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
  ','
   --mysqld=--innodb_changed_pages=ON
@@ -1139,7 +1127,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -1331,7 +1318,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=12
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
@@ -1356,8 +1342,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -1461,7 +1445,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -1517,7 +1500,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=6
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=8
  ','
   --notnull
@@ -1681,7 +1663,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_changed_pages=FORCE
@@ -1841,7 +1822,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=8
  ','
   --mysqld=--innodb_change_buffering=all
@@ -1920,7 +1900,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -1947,7 +1926,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
  ','
   --notnull
@@ -2029,7 +2007,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=12
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -2113,7 +2090,6 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
  ','
   --notnull
@@ -2141,7 +2117,6 @@ $combinations=
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
   --mysqld=--hidden-key-buffer-size=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=5
  ','
   --mysqld=--innodb_changed_pages=ON
@@ -2163,8 +2138,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -2241,7 +2214,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=8
  ','
   --mysqld=--innodb_change_buffering=inserts
@@ -2290,7 +2262,6 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
  ','
   --mysqld=--innodb_change_buffering=all
@@ -2317,7 +2288,6 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -2371,8 +2341,6 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --views
   --mysqld=--innodb_change_buffering=none
@@ -2423,7 +2391,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=4
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
  ','
   --notnull
@@ -2479,7 +2446,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
  ','
   --mysqld=--innodb_change_buffering=inserts
@@ -2587,7 +2553,6 @@ $combinations=
   --mysqld=--userstat
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=8
  ','
   --notnull
@@ -2614,7 +2579,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=12
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -2767,7 +2731,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=16
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
@@ -2876,7 +2839,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -2964,7 +2926,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=5
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --views
   --notnull
@@ -2991,7 +2952,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=12
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -3018,7 +2978,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -3369,8 +3328,6 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=4
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
@@ -3444,7 +3401,6 @@ $combinations=
   --mysqld=--utility-user-password=test
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
  ','
   --mysqld=--innodb_changed_pages=FORCE
@@ -3493,7 +3449,6 @@ $combinations=
   --mysqld=--utility-user=roel@%
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=16
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=FORCE
@@ -3635,7 +3590,6 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
