@@ -40,12 +40,19 @@ query:
 	select | select | insert | insert | delete | delete | replace | update | transaction | i_s |
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
-        bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking ;
+        bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking | prio_shed |
+	cleaner | preflush ;
 
 # Disabled for 5.6 GA checking: fake_changes ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
+
+zero_to_forty:
+	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+	11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 |
+	21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 |
+	31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 ;
 
 zero_to_thousand:
 	0 | 1 | 2 | 10 | 100 | 150 | 200 | 250 | 300 | 400 | 500 | 600 | 650 | 700 | 800 | 900 | 999 | 1000 ;
@@ -56,9 +63,30 @@ zero_to_ttsh:
 hundred_to_thousand:
 	100 | 150 | 200 | 250 | 300 | 400 | 500 | 600 | 650 | 700 | 800 | 900 | 999 | 1000 ;
 
-# Post 5.6 GA, add shorter msec durations to max_stmt_time_range also
+# Post 5.6 GA, add/try shorter msec durations to max_stmt_time_range also
 max_stmt_time_range:
 	100000 | 200000 | 300000 ;
+
+prio_shed:
+	SELECT @@GLOBAL.innodb_sched_priority_cleaner ;
+	SET GLOBAL innodb_sched_priority_cleaner = zero_to_forty ;
+	SELECT @@GLOBAL.innodb_sched_priority_io ;
+	SET GLOBAL innodb_sched_priority_io = zero_to_forty ;
+	SELECT @@GLOBAL.innodb_sched_priority_master ;
+	SET GLOBAL innodb_sched_priority_master = zero_to_forty ;
+	SELECT @@GLOBAL.innodb_sched_priority_purge ;
+	SET GLOBAL innodb_sched_priority_purge = zero_to_forty ;
+
+cleaner:
+	SELECT @@GLOBAL.innodb_cleaner_new_lsn_age_factor ;
+	SET GLOBAL innodb_cleaner_new_lsn_age_factor = onoff ;
+	SET GLOBAL innodb_cleaner_lsn_age_factor = 'legacy' ;
+	SET GLOBAL innodb_cleaner_lsn_age_factor = 'high_checkpoint' ;
+
+preflush:
+	SELECT @@GLOBAL.innodb_foreground_preflush ;
+	SET GLOBAL innodb_foreground_preflush = 'sync_preflush' ;
+	SET GLOBAL innodb_foreground_preflush = 'exponential_backoff' ;
 
 max_stmt_time:
 	SET scope MAX_STATEMENT_TIME = max_stmt_time_range |
