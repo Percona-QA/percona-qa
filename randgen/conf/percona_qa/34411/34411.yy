@@ -25,7 +25,7 @@
 #    - 10 RQG threads (--parallel=10) with one SQL thread (--threads=1) for single threaded testing
 #    - 8 RQG threads (--parallel=8) with 10-30 SQL threads (--threads=10) for multi threaded testing
 #    - Both these over many (400+) trials, both in normal and Valgrind mode, to catch most issues
-# 4. You should use --short_column_names option to RQG to avoid overly long column names
+# 4. You can use --short_column_names option to RQG to avoid overly long column names
 # 5. Do not use the --engines option, storage engine assignent is done in percona_qa.zz
 
 query:
