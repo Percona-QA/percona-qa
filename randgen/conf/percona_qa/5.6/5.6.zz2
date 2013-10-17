@@ -18,14 +18,14 @@
 # Certain parts (c) Percona Inc
 
 $tables = {
-  pk => [undef,'varchar','char'],
+  pk => [undef,'varchar(250)','char(250)'],
   engines => ['InnoDB'],
   rows => [1,10],
   row_formats => ['DYNAMIC','COMPRESSED','DEFAULT']
 };
 
 $fields = {
-  types => ['char','tinyint','tinyblob','tinytext','datetime'],
+  types => ['char(250)','tinyint','tinyblob','tinytext','datetime'],
   indexes => [undef,'unique','key'],
   null => [undef,'not null'],
   default => [undef,'default null'],
