@@ -83,7 +83,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_log_buffer_size=1048577
   --mysqld=--innodb_log_files_in_group=3
-  --
  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
@@ -113,7 +112,6 @@ $combinations=
   --mysqld=--innodb_log_file_size=1048576
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
-  --
  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--skip-innodb_doublewrite
@@ -135,7 +133,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_log_buffer_size=10485761
-  --
  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -154,7 +151,6 @@ $combinations=
   --mysqld=--innodb_log_file_size=10485761
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
-  --
  ','
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--innodb_fast_shutdown=2
@@ -203,7 +199,6 @@ $combinations=
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_file_size=10485761
   --mysqld=--innodb_log_files_in_group=2
-  --
  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -231,7 +226,6 @@ $combinations=
   --mysqld=--innodb_log_file_size=1048576
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
-  --
  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_fast_shutdown=2
@@ -336,7 +330,6 @@ $combinations=
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_file_size=1048576
   --mysqld=--innodb_log_files_in_group=3
-  --
  ','
   --mysqld=--innodb_change_buffering=all
   --mysqld=--innodb_fast_shutdown=2
@@ -397,7 +390,6 @@ $combinations=
   --mysqld=--innodb_log_file_size=1048576
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
-  --
  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -472,7 +464,6 @@ $combinations=
   --mysqld=--innodb_log_file_size=1048576
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
-  --
  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
