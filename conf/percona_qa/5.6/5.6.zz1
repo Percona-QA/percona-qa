@@ -26,7 +26,7 @@ $tables = {
 };
 
 $fields = {
-  types => ['int','varchar','blob','text','date'],
+  types => ['int','varchar(240)','blob','text','date'],
   indexes => [undef,'key'],
   null => [undef,'not null'],
   default => [undef,'default null'],
