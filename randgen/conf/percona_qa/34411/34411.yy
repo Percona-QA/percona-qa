@@ -28,10 +28,77 @@
 # 4. You can use --short_column_names option to RQG to avoid overly long column names
 # 5. Do not use the --engines option, storage engine assignent is done in percona_qa.zz
 
+# 66% focused feature testing, 33% general queries
 query:
+	i34411 | i34411 | query_mix ;
+
+i34411:
+	ipv6 | user_stats ;
+
+query_mix:
 	select | select | insert | insert | delete | delete | replace | update | transaction | i_s |
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle |
 	drop_create_table | table_comp | optimize_table ;
+
+ipv6:
+# need joins, complex queries 	
+#INET6_ATON() - Return the numeric value of an IPv6 address
+#INET6_NTOA() - Return the IPv6 address from a numeric value
+#IS_IPV4_COMPAT() - Return true if argument is an IPv4-compatible address
+#IS_IPV4_MAPPED() - Return true if argument is an IPv4-mapped address
+#IS_IPV4() - Return true if argument is an IPv4 address
+#IS_IPV6() - Return true if argument is an IPv6 address
+
+	SELECT INET6_ATON( value ) |
+	SELECT INET6_NTOA( value ) | 
+	SELECT IS_IPV4_COMPAT( value ) | 
+	SELECT IS_IPV4_MAPPED( value ) | 	
+	SELECT IS_IPV4( value ) |
+	SELECT IS_IPV6( value ) ;
+
+user_stats:
+        SELECT user_stats_1 FROM INFORMATION_SCHEMA.USER_STATISTICS |
+        SELECT user_stats_1 FROM INFORMATION_SCHEMA.THREAD_STATISTICS |
+        SELECT user_stats_2 FROM INFORMATION_SCHEMA.TABLE_STATISTICS |
+        SELECT user_stats_3 FROM INFORMATION_SCHEMA.INDEX_STATISTICS |
+        SELECT user_stats_4 FROM INFORMATION_SCHEMA.CLIENT_STATISTICS |
+        flush_user_stats | show_user_stats ;
+
+user_stats_1:
+        user_stats_5 | user_stats_5 | user_stats_5 | user_stats_5 | user_stats_5 | user_stats_5 |
+        USER | TOTAL_CONNECTIONS | CONCURRENT_CONNECTIONS | CONNECTED_TIME | BUSY_TIME | CPU_TIME |
+        BYTES_RECEIVED | BYTES_SENT | BINLOG_BYTES_WRITTEN | ROWS_FETCHED | ROWS_UPDATED | TABLE_ROWS_READ |
+        SELECT_COMMANDS | UPDATE_COMMANDS | OTHER_COMMANDS | COMMIT_TRANSACTIONS | ROLLBACK_TRANSACTIONS |
+        DENIED_CONNECTIONS | LOST_CONNECTIONS | ACCESS_DENIED | EMPTY_QUERIES | TOTAL_SSL_CONNECTIONS |
+        user_stats_1 , user_stats_1 | user_stats_1, user_stats_1 | * ;
+
+user_stats_2:
+        user_stats_5 | user_stats_5 | 
+        TABLE_SCHEMA | TABLE_NAME | ROWS_READ | ROWS_CHANGED | ROWS_CHANGED_X_INDEXES |
+        user_stats_2 , user_stats_2 | * ;
+
+user_stats_3:
+        user_stats_5 | user_stats_5 | 
+        TABLE_SCHEMA | TABLE_NAME | INDEX_NAME | ROWS_READ |
+        user_stats_3 , user_stats_3 | * ;
+
+user_stats_4:
+        user_stats_5 | user_stats_5 | user_stats_5 | user_stats_5 | user_stats_5 | user_stats_5 |
+	CLIENT | TOTAL_CONNECTIONS | CONCURRENT_CONNECTIONS | CONNECTED_TIME | BUSY_TIME | CPU_TIME |
+        BYTES_RECEIVED | BYTES_SENT | BINLOG_BYTES_WRITTEN | ROWS_FETCHED | ROWS_UPDATED | TABLE_ROWS_READ |
+        SELECT_COMMANDS | UPDATE_COMMANDS | OTHER_COMMANDS | COMMIT_TRANSACTIONS | ROLLBACK_TRANSACTIONS |
+        DENIED_CONNECTIONS | LOST_CONNECTIONS | ACCESS_DENIED | EMPTY_QUERIES | TOTAL_CONNECTIONS_SSL |
+        user_stats_4 , user_stats_4 | user_stats_4, user_stats_4 | * ;
+
+user_stats_5:
+	HANDLER_READ_FIRST | HANDLER_READ_LAST | HANDLER_READ_KEY | HANDLER_READ_NEXT | HANDLER_READ_PREV | 
+	HANDLER_READ_RND | HANDLER_READ_RND_NEXT | HANDLER_DELETE | HANDLER_UPDATE | HANDLER_WRITE ;
+
+flush_user_stats:
+        FLUSH CLIENT_STATISTICS | FLUSH INDEX_STATISTICS | FLUSH TABLE_STATISTICS | FLUSH THREAD_STATISTICS | FLUSH USER_STATISTICS ;
+
+show_user_stats:
+        SHOW CLIENT_STATISTICS  | SHOW INDEX_STATISTICS  | SHOW TABLE_STATISTICS  | SHOW THREAD_STATISTICS  | SHOW USER_STATISTICS ;
 
 i_s_area:
 	INFORMATION_SCHEMA.GLOBAL_TEMPORARY_TABLES |
@@ -226,4 +293,11 @@ outfile_infile:
 
 value:
 	_digit | 0 | 1 | -1 | _data | _bigint_unsigned | _bigint | _mediumint | _english | _letter | 
-	_char | _varchar |_date | _year | _time | _datetime | _timestamp | NULL | NULL | NULL ;
+	_char | _varchar |_date | _year | _time | _datetime | _timestamp | NULL | NULL | NULL | 
+	ipval | ipval | ipval | ipval | ipval | ipval | ipval | ipval ;
+
+ipval:
+	'0.0.0.0' | '1.1.1.1' | '255.255.255.255' | '256.255.255.255' | '255.256.255.255' | '255.255.256.255' | '255.255.255.256' |
+	'NULL.0.0.0' | '999999999999999999999999999.255.255.255' | '128.128.128.128' | '127.127.127.127' | 'a.b.c.d' | '128.128.128.c' |
+	'999999999999999999999999999.999999999999999999999999999.999999999999999999999999999.999999999999999999999999999' | '/' | '\' |
+	'130.130.130.130/250' | '-1.1.1.1' | '192.0.0.0' | '192.0.0.0.0' | '192..0.0' | '...' | '192.NULL.a.-9999999999999999/50' ;
