@@ -28,9 +28,9 @@
 # 4. You can use --short_column_names option to RQG to avoid overly long column names
 # 5. Do not use the --engines option, storage engine assignent is done in percona_qa.zz
 
-# 66% focused feature testing, 33% general queries
+# 80% focused feature testing, 20% general queries
 query:
-	i34411 | i34411 | query_mix ;
+	i34411 | i34411 | i34411 | i34411 | query_mix ;
 
 i34411:
 	ipv6 | user_stats ;
@@ -40,15 +40,13 @@ query_mix:
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle |
 	drop_create_table | table_comp | optimize_table ;
 
-ipv6:
-# need joins, complex queries 	
-#INET6_ATON() - Return the numeric value of an IPv6 address
+#INET6_ATON() - Return the numeric value of an IPv6 address in binary format, use HEX() to display in printable form
 #INET6_NTOA() - Return the IPv6 address from a numeric value
 #IS_IPV4_COMPAT() - Return true if argument is an IPv4-compatible address
 #IS_IPV4_MAPPED() - Return true if argument is an IPv4-mapped address
 #IS_IPV4() - Return true if argument is an IPv4 address
 #IS_IPV6() - Return true if argument is an IPv6 address
-
+ipv6:
 	SELECT INET6_ATON( value ) |
 	SELECT INET6_NTOA( value ) | 
 	SELECT IS_IPV4_COMPAT( value ) | 
@@ -57,6 +55,8 @@ ipv6:
 	SELECT IS_IPV6( value ) ;
 
 user_stats:
+	SET scope USERSTAT = moreon |
+	SET scope THREAD_STATISTICS = moreon |
         SELECT user_stats_1 FROM INFORMATION_SCHEMA.USER_STATISTICS |
         SELECT user_stats_1 FROM INFORMATION_SCHEMA.THREAD_STATISTICS |
         SELECT user_stats_2 FROM INFORMATION_SCHEMA.TABLE_STATISTICS |
@@ -114,6 +114,9 @@ scope:
 
 onoff:
 	1 | 0 ;	
+
+moreon:
+        1 | 1 | 0 ;
 
 set:
 	SET scope INNODB_STRICT_MODE = onoff |
@@ -301,4 +304,8 @@ ipval:
 	'NULL.0.0.0' | '999999999999999999999999999.255.255.255' | '128.128.128.128' | '127.127.127.127' | 'a.b.c.d' | '128.128.128.c' |
 	'999999999999999999999999999.999999999999999999999999999.999999999999999999999999999.999999999999999999999999999' | '/' | '\' |
 	'130.130.130.130/250' | '-1.1.1.1' | '192.0.0.0' | '192.0.0.0.0' | '192..0.0' | '...' | '192.NULL.a.-9999999999999999/50' |
-	'10.10.010.050/24' | '10.*.0.0' | '1.1' | '100.100.100.100.100' | '(100.100.100.100)' | '10.10.10.10/-1' | '10.10.10.10/10.10' ;
+	'10.10.010.050/24' | '10.*.0.0' | '1.1' | '100.100.100.100.100' | '(100.100.100.100)' | '10.10.10.10/-1' | '10.10.10.10/10.10' |
+	'2001:0:9d38:6abd:3c3e:1e4:3f57:d4e9' | 'fe80::3c3e:1e4:3f57:d4e9%14' | '2600:f0e0:1000:33::2' | '2600:f0e0:1000:33::2/24' |
+	'0000:0000:0000:0000:0000:0000:0000:0000' | '0000:0000:0000:0000:0000:0000:0000:000z' | '2001:-0:9d38:6abd:3c3e:1e4:3f57:d4e9' | 
+	'fe80::61a1:d0c3:a72f:b441-17' | '2001:0:9d38:6abd:3c3e:1e4:3f57:d4x9' | 'fe80::3c3e:1e4:3f57:d4e9_14' | 'fe80::3c3e:1e4:3f57:d4e9:250' | 
+	'fe80::3c3e:1e4:3f57:d4e9_14:' | 'FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF' | '::' ;
