@@ -239,6 +239,8 @@ slow_query_log_use_global_control_list:
 	LOG_SLOW_FILTER | LOG_SLOW_RATE_LIMIT | LOG_SLOW_VERBOSITY | LONG_QUERY_TIME | MIN_EXAMINED_ROW_LIMIT | ALL | "" ;
 
 user_stats:
+	SET scope USERSTAT = moreon |
+	SET scope THREAD_STATISTICS = moreon | 
 	SELECT user_stats_1 FROM INFORMATION_SCHEMA.USER_STATISTICS |
 	SELECT user_stats_1 FROM INFORMATION_SCHEMA.THREAD_STATISTICS |
 	SELECT user_stats_2 FROM INFORMATION_SCHEMA.TABLE_STATISTICS |
@@ -282,6 +284,9 @@ onoff:
 
 moreoff:
 	0 | 0 | 0 | 0 | 1 ;
+
+moreon:
+	1 | 1 | 0 ;
 
 set:
 	SET GLOBAL innodb_show_verbose_locks = onoff | 
