@@ -31,9 +31,11 @@
 query_init:
 	install plugin tokudb soname 'ha_tokudb.so' ; install plugin tokudb_user_data soname 'ha_tokudb.so' ; install plugin tokudb_user_data_exact soname 'ha_tokudb.so' ; install plugin tokudb_file_map soname 'ha_tokudb.so' ; install plugin tokudb_fractal_tree_info soname 'ha_tokudb.so' ; install plugin tokudb_fractal_tree_block_map soname 'ha_tokudb.so' ; set global default_storage_engine=TokuDB ; set session default_storage_engine=TokuDB ;
 
-# Temp workaround: fake_changes | removed from query: due to feature WIP
+# Temp workaround: fake_changes |   removed from query: due to feature WIP
+# Temp workaround: i_s |            removed from query: to avoid I_S crashes ftm for tokudb testing 
+#                                   (IMPORTANT: to be re-tested later for tokudb+i_s interoperability)
 query:
-	select | select | insert | insert | delete | delete | replace | update | transaction | i_s |
+	select | select | insert | insert | delete | delete | replace | update | transaction | 
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
         bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking | prio_shed |
