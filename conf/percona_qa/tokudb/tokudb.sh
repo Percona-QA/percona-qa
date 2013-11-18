@@ -29,7 +29,7 @@ else
   MTR_BUILD_THREAD=$MTR_BT; perl ./combinations.pl \
   --clean \
   --force \
-  --parallel=8 \
+  --parallel=4 \
   --run-all-combinations-once \
   --workdir=$WORKDIR/$WORKDIRSUB \
   --config=$RQG_DIR/conf/percona_qa/tokudb/tokudb.cc
