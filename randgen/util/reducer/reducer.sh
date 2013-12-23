@@ -552,7 +552,7 @@ init_workdir_and_files(){
         echo 'Error: ssd storage usage was specified (WORKDIR_LOCATION=3), yet /ssd/ does not exist, or could not be read.'
         exit 1
       fi
-      if [ $(df -k -P | grep "/ssd" | awk '{print $4}') -lt 3500000 ]; then
+      if [ $(df -k -P | grep "/ssd$" | awk '{print $4}') -lt 3500000 ]; then
         echo 'Error: /ssd does not have enough free space (3.5Gb free space required)'
         exit 1
       fi
@@ -564,7 +564,7 @@ init_workdir_and_files(){
         echo 'sudo mkdir -p /mnt/ram; sudo mount -t ramfs -o size=4g ramfs /mnt/ram; sudo chmod -R 777 /mnt/ram;'
         exit 1
       fi
-      if [ $(df -k -P | grep "/mnt/ram" | awk '{print $4}') -lt 3500000 ]; then
+      if [ $(df -k -P | grep "/mnt/ram$" | awk '{print $4}') -lt 3500000 ]; then
         echo 'Error: /mnt/ram/ does not have enough free space (3.5Gb free space required)'
         exit 1
       fi
@@ -575,7 +575,7 @@ init_workdir_and_files(){
         echo 'Suggestion: check the location of tmpfs using the 'df -h' command at your shell prompt and change the script to match'
         exit 1
       fi
-      if [ $(df -k -P | grep "/dev/shm" | awk '{print $4}') -lt 3500000 ]; then
+      if [ $(df -k -P | grep "/dev/shm$" | awk '{print $4}') -lt 3500000 ]; then
         echo 'Error: /dev/shm/ does not have enough free space (3.5Gb free space required)'
         exit 1
       fi
