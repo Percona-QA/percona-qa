@@ -36,8 +36,12 @@
 # As they are, they fail, may want to try spaces; " a , a " 
 # Also, PURGE ARCHIVED LOGS TO cannot be added due to not having actual filename.
 
+# Temporarily disabled: i_s |
+# Due to "Assertion `!table || !table->in_use || table->in_use == _current_thd()'" assertions
+# Ref https://bugs.launchpad.net/percona-server/+bug/1260152
+
 query:
-	select | select | insert | insert | delete | delete | replace | update | transaction | i_s |
+	select | select | insert | insert | delete | delete | replace | update | transaction |
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
         bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking | prio_shed |
