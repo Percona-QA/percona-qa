@@ -602,6 +602,7 @@ init_workdir_and_files(){
   fi
   mkdir $WORKD/data $WORKD/data/test $WORKD/tmp
   export TMP=$WORKD/tmp
+  echo_out "[Init] Temporary storage directory set to $TMP"
   chmod -R 777 $WORKD
   touch $WORKD/reducer.log
   echo_out "[Init] Workdir: $WORKD"
