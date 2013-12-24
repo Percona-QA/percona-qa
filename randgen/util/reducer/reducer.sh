@@ -598,10 +598,10 @@ init_workdir_and_files(){
     fi
   done
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
-    mkdir $WORKD $WORKD/data $WORKD/data/test
-  else
-    mkdir $WORKD/data $WORKD/data/test
+    mkdir $WORKD
   fi
+  mkdir $WORKD/data $WORKD/data/test $WORKD/tmp
+  export TMP=$WORKD/tmp
   chmod -R 777 $WORKD
   touch $WORKD/reducer.log
   echo_out "[Init] Workdir: $WORKD"
