@@ -118,7 +118,7 @@ MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 #   SQL trace likely contained a number of issues, each originating from different Valgrind statements (can multi-issue be automated?)
 # - Need another MODE which will attempt to crash the server using the crashing statement from the log, directly starting the vardir
 #   left by RQG. If this works, dump the data, add crashing statement and load in a fresh instance and re-try. If this works, simplify.
-# - "Previous good testcase was also backed up as $WORKO.prev" was only implemented for 1) parent seeing a new simplification subreducer testcase and
+# - "Previous good testcase backed up as $WORKO.prev" was only implemented for 1) parent seeing a new simplification subreducer testcase and
 #   2) main single-threaded reducer seeing a new testcase. It still needs to be added to multi-threaded (ThreadSync) (i.e. MODE6+) simplification. (minor)
 # - Multi-threaded simplification: thread-elimination > DATA + SQL threads simplified as if "one file" but accross files. 
 #   Hence, all stages need to be updated to be multi-threaded/TS aware. Fair amount of work, but doable. 
@@ -429,7 +429,7 @@ multi_reducer(){
           cp -f $(cat $MULTI_WORKD/VERIFIED | grep "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
           if [ -r $WORKO ]; then  # First occurence: there is no $WORKO yet
             cp -f $WORKO ${WORKO}.prev
-            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Previous good testcase was also backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
+            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Previous good testcase backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
           fi
           cp -f $WORKF $WORKO
           echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t reproduced the issue: testcase saved in $WORKO"
@@ -609,11 +609,11 @@ init_workdir_and_files(){
     mkdir $WORKD
   fi
   mkdir $WORKD/data $WORKD/data/test $WORKD/tmp
-  export TMP=$WORKD/tmp
-  echo_out "[Init] Temporary storage directory set to $TMP"
   chmod -R 777 $WORKD
   touch $WORKD/reducer.log
   echo_out "[Init] Workdir: $WORKD"
+  export TMP=$WORKD/tmp
+  echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
   WORK_START=$(echo $INPUTFILE | sed 's/_out//g;s/$/_start/')
@@ -1004,7 +1004,7 @@ cleanup_and_save(){
     cp -f $WORKT $WORKF
     if [ -r $WORKO ]; then  # First occurence: there is no $WORKO yet
       cp -f $WORKO ${WORKO}.prev; 
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase was also backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
     fi
     cp -f $WORKT $WORKO
   fi
