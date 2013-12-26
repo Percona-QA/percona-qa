@@ -82,6 +82,11 @@ MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 # - MYBASE: Full path to MySQL basedir (example: "/mysql/mysql-5.6"). 
 #   If the directory name starts with '/mysql/' then this may be ommited (example: MYBASE="mysql-5.6-trunk")
 
+# ======== General develoment information
+# - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer. 
+#   At the moment there are only two such specific roles: verfication (reproducible yes/no + sporadic yes/no) and simplification (terminate a subreducer batch
+#   (all of it) once a simpler testcase is found by one of the subthreads (subreducers), and use that testcase to again start new simplification subreducers.)
+
 # ======== Machine configurable variables section
 #VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
 
@@ -113,6 +118,8 @@ MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 #   SQL trace likely contained a number of issues, each originating from different Valgrind statements (can multi-issue be automated?)
 # - Need another MODE which will attempt to crash the server using the crashing statement from the log, directly starting the vardir
 #   left by RQG. If this works, dump the data, add crashing statement and load in a fresh instance and re-try. If this works, simplify.
+# - "Previous good testcase was also backed up as $WORKO.prev" was only implemented for 1) parent seeing a new simplification subreducer testcase and
+#   2) main single-threaded reducer seeing a new testcase. It still needs to be added to multi-threaded (ThreadSync) (i.e. MODE6+) simplification. (minor)
 # - Multi-threaded simplification: thread-elimination > DATA + SQL threads simplified as if "one file" but accross files. 
 #   Hence, all stages need to be updated to be multi-threaded/TS aware. Fair amount of work, but doable. 
 #   See initial section of 'Verify' for some more information around multi_reducer_decide_input
@@ -205,7 +212,7 @@ options_check(){
       exit 1
     else
       TS_THREADS=$(ls -l $1/log/C[0-9]*T[0-9]*.sql | wc -l | tr -d '[\t\n ]*')
-      # Making sure $TS_ELIMINATION_THREAD_ID is higher than # of threads to avoid 'unary operator expected' in cleanup_and_save during STAGE V
+      # Making sure $TS_ELIMINATION_THREAD_ID is higher than number of threads to avoid 'unary operator expected' in cleanup_and_save during STAGE V
       TS_ELIMINATION_THREAD_ID=$[$TS_THREADS+1]  
       if [ $TS_THREADS -lt 1 ]; then
         echo 'Error: though input directory was found, no ThreadSync SQL trace files are present, or they could not be read.'
@@ -290,18 +297,18 @@ set_internal_options(){
 
 multi_reducer(){
   MULTI_FOUND=0
-  # This function handles starting and checking subreducer scripts used for verification and simplification of sporadic issues (as such it is the parent 
-  # function watching over multiple [seperately started] subreducer scripts, each child containing the written MULTI_REDUCER=1 setting set in #VARMOD# - 
+  # This function handles starting and checking subreducer threads used for verification AND simplification of sporadic issues (as such it is the parent 
+  # function watching over multiple [seperately started] subreducer threads, each child containing the written MULTI_REDUCER=1 setting set in #VARMOD# - 
   # thereby telling reducer it is a child process)
   # This function does not need to know if reducer is reducing a single or multi-threaded testcase and what MODE is used as all these options are passed
   # verbatim to the child ($1 to the program is $1 to the child, and all ather settings are copied into the child process below)
   if [ "$STAGE" = "V" ]; then
-    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Starting $MULTI_THREADS subreducer threads to verify if the issue is sporadic ($WORKD/subreducer/)"
+    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Starting $MULTI_THREADS verification subreducer threads to verify if the issue is sporadic ($WORKD/subreducer/)"
     SKIPV=0
-    SPORADIC=0
+    SPORADIC=0 # This will quickly be overwritten by the line "SPORADIC=1  # Sporadic unless proven otherwise" below. So, need to check if this is needed here (may be needed for ifthen statements using this variable. Needs research and/or testing.
   else
-    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Starting $MULTI_THREADS subreducer threads to reduce the issue further ($WORKD/subreducer/)"
-    SKIPV=1
+    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Starting $MULTI_THREADS simplification subreducer threads to reduce the issue further ($WORKD/subreducer/)"
+    SKIPV=1 # For subreducers started for simplification (STAGE1+), verify/initial simplification should be skipped as this was done already by the parent/main reducer (i.e. just above)
   fi
 
   # Ensure there are no leftover reducer processes
@@ -346,9 +353,6 @@ multi_reducer(){
     export MULTI_WORKD=$(eval echo $(echo '$WORKD'"$t"))
     mkdir $MULTI_WORKD
 
-    # This section can likely be improved further by inserting first part of reducer, 
-    # then inserting the variable block VARMOD as a block (potentially even using EOF 
-    # block), and then inserting the final part of reducer.
     FIXED_TEXT=$(echo "$TEXT" | sed "s|:|\\\:|g")
     cat $0 \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MULTI_REDUCER=1\n#VARMOD#:" \
@@ -385,30 +389,29 @@ multi_reducer(){
 
   if [ "$STAGE" = "V" ]; then
     # Wait for forked processes to terminate
-    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Waiting for all forked subreducer threads to finish/terminate"
-    TXT_OUT="$ATLEASTONCE [Stage $STAGE] [MULTI] Finished/Terminated subreducer threads:"
+    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Waiting for all forked verification subreducer threads to finish/terminate"
+    TXT_OUT="$ATLEASTONCE [Stage $STAGE] [MULTI] Finished/Terminated verification subreducer threads:"
     for t in $(eval echo {1..$MULTI_THREADS}); do
       wait $(eval echo $(echo '$MULTI_PID'"$t"))
       TXT_OUT="$TXT_OUT #$t"
       echo_out_overwrite "$TXT_OUT"
       if [ $t -eq 20 -a $MULTI_THREADS -gt 20 ]; then
         echo_out "$TXT_OUT"
-        TXT_OUT="$ATLEASTONCE [Stage $STAGE] [MULTI] Finished/Terminated subreducer threads:"
+        TXT_OUT="$ATLEASTONCE [Stage $STAGE] [MULTI] Finished/Terminated verification subreducer threads:"
       fi
     done
     echo_out "$TXT_OUT"
-    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All subreducer threads have finished/terminated"
+    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All verification subreducer threads have finished/terminated"
   else
     # Wait for one of the forked processes to find a better reduction file
-    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Waiting for any forked subreducer threads to find a shorter file (Issue is sporadic: this will take time)"
+    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Waiting for any forked simplifation subreducer threads to find a shorter file (Issue is sporadic: this will take time)"
     FOUND_VERIFIED=0
     while [ $FOUND_VERIFIED -eq 0 ]; do
       for t in $(eval echo {1..$MULTI_THREADS}); do
         export MULTI_WORKD=$(eval echo $(echo '$WORKD'"$t"))
         if [ -s $MULTI_WORKD/VERIFIED ]; then
           sleep 1.5  # Give subreducer script time to write out the file fully
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t reproduced the issue: Swapping files & saving last known good issue in $WORKO"
-          echo_out_overwrite "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating subreducer threads... "
+          echo_out_overwrite "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... "
           for i in $(eval echo {1..$MULTI_THREADS}); do
             PID_TO_KILL=$(eval echo $(echo '$MULTI_PID'"$i"))
             kill -9 $PID_TO_KILL 2>/dev/null
@@ -422,9 +425,14 @@ multi_reducer(){
             wait $PID_TO_KILL 2>/dev/null  # Prevents "<process id> Killed" messages
           done
           sleep 2
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating subreducer threads... done"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... done"
           cp -f $(cat $MULTI_WORKD/VERIFIED | grep "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
+          if [ -r $WORKO ]; then  # First occurence: there is no $WORKO yet
+            cp -f $WORKO ${WORKO}.prev
+            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Previous good testcase was also backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
+          fi
           cp -f $WORKF $WORKO
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t reproduced the issue: testcase saved in $WORKO"
           FOUND_VERIFIED=1  # Outer loop terminate
           break  # Inner loop terminate
         fi
@@ -446,7 +454,7 @@ multi_reducer(){
       fi
     done
     # Report on outcomes
-    SPORADIC=1  # Unless proven otherwise (set below)
+    SPORADIC=1  # Sporadic unless proven otherwise (set below)
     if [ $MULTI_FOUND -eq 0 ]; then 
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue: <none>"
     elif [ $MULTI_FOUND -eq $MULTI_THREADS ]; then
@@ -994,12 +1002,25 @@ cleanup_and_save(){
     fi
   else
     cp -f $WORKT $WORKF
+    if [ -r $WORKO ]; then  # First occurence: there is no $WORKO yet
+      cp -f $WORKO ${WORKO}.prev; 
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase was also backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
+    fi
     cp -f $WORKT $WORKO
   fi
   ATLEASTONCE="[*]"  # The issue was seen at least once (this is used to permanently mark lines with '[*]' suffix as soon as this happens)
+  # VERFIED file creation + subreducer handling
   echo "TRIAL:$TRIAL" > $WORKD/VERIFIED
   echo "WORKO:$WORKO" >> $WORKD/VERIFIED
-  echo "# $ATLEASTONCE Issue was seen at least once during this run of (sub)reducer" >> $WORKD/VERIFIED
+  if [ "$MULTI_REDUCER" = "1" ]; then  # This is a subreducer
+    echo "# $ATLEASTONCE Issue was reproduced during this simplification subreducer." >> $WORKD/VERIFIED
+    echo_out "$ATLEASTONCE [Stage $STAGE] Issue was reproduced during this simplification subreducer. Terminating now." 
+    # This is a simplification subreducer started by a parent/main reducer, to simplify an issue. We terminate now after discovering the issue here. 
+    # We rely on the parent/main reducer to kill off mysqld processes (on the next multi_reducer() call - at the top of the function).
+    finish $INPUTFILE
+  else
+    echo "# $ATLEASTONCE Issue was seen at least once during this run of reducer" >> $WORKD/VERIFIED
+  fi
 }
 
 process_outcome(){
@@ -1459,7 +1480,7 @@ verify(){
         echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #$TRIAL: Success. Issue detected. Saved files."
         report_linecounts
         break
-      else  # Verify fail, while loop continues
+      else  # Verify fail, 'while' loop continues
         echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #$TRIAL: Failed. Issue not detected."
         TRIAL=$[$TRIAL+1]
       fi
@@ -1497,9 +1518,11 @@ verify(){
                            echo_out "[Init] Looking for this string: '$TEXT' in Valgrind output (@ $WORKD/valgrind.out when MULTI mode is not active)"; fi
   echo_out "[Init] Leading [] = No bug/issue found yet | [*] = Bug/issue at least seen once"
   report_linecounts
-  if [ "$SKIPV" != "1" ]; then  # For subreducers started for simplification (STAGE1+), verify/initial simplification should be skipped as this was done already
+  if [ "$SKIPV" != "1" ]; then
     verify $1
-    if [ "$MULTI_REDUCER" = "1" ]; then  # This is a VERIFY-only subreducer script started by a parent/main reducer: we terminate here as the work is done
+    if [ "$MULTI_REDUCER" = "1" ]; then
+      # This is a simplfication subreducer started by a parent/main reducer, but only to verify if the issue is reproducible (as SKIPV=0).
+      # We terminate now after checking if the issue is yes/no reproducible.
       finish $INPUTFILE
     fi
   fi
