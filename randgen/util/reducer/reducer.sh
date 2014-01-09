@@ -717,7 +717,7 @@ start_mysqld_main(){
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
-                         --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+                         --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                          --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT --event-scheduler=ON"
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -726,7 +726,7 @@ start_mysqld_main(){
     chmod +x $WORK_START
   else
     CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
-                         --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+                         --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                          --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                          --event-scheduler=ON"
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -745,7 +745,7 @@ start_valgrind_mysqld(){
   if [ -f $WORKD/valgrind.out ]; then mv -f $WORKD/valgrind.out $WORKD/valgrind.prev; fi
   CMD="valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
               ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
-                              --pid=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+                              --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                               --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                               --event-scheduler=ON"
                               # Workaround for BUG#12939557 (when older Valgrind version is used): --innodb_checksum_algorithm=none  
