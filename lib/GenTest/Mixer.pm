@@ -33,6 +33,7 @@ use constant MIXER_EXECUTORS	=> 1;
 use constant MIXER_VALIDATORS	=> 2;
 use constant MIXER_FILTERS	=> 3;
 use constant MIXER_PROPERTIES	=> 4;
+use constant MIXER_END_TIME	=> 5;
 
 my %rule_status;
 
@@ -46,10 +47,15 @@ sub new {
 		'executors'	=> MIXER_EXECUTORS,
 		'validators'	=> MIXER_VALIDATORS,
 		'properties'	=> MIXER_PROPERTIES,
-		'filters'	=> MIXER_FILTERS
+		'filters'	=> MIXER_FILTERS,
+		'end_time'	=> MIXER_END_TIME
 	}, @_);
 
 	foreach my $executor (@{$mixer->executors()}) {
+		if ($mixer->end_time()) {
+			return undef if time() > $mixer->end_time();
+			$executor->set_end_time($mixer->end_time());
+		}
 		my $init_result = $executor->init();
 		return undef if $init_result > STATUS_OK;
 	        $executor->cacheMetaData();
@@ -129,6 +135,11 @@ sub next {
 
 	query: foreach my $query (@$queries) {
 		next if $query =~ m{^\s*$}o;
+
+		if ($mixer->end_time() && (time() > $mixer->end_time())) {
+			say("We have already exceeded time specified by --duration=x; exiting now.");
+			last;
+		}
 
 		if (defined $filters) {
 			foreach my $filter (@$filters) {
@@ -214,6 +225,10 @@ sub filters {
 
 sub setValidators {
 	$_[0]->[MIXER_VALIDATORS] = $_[1];
+}
+
+sub end_time {
+	return ($_[0]->[MIXER_END_TIME] > 0) ? $_[0]->[MIXER_END_TIME] : undef;
 }
 
 1;

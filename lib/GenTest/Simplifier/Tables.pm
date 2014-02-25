@@ -31,6 +31,7 @@ use lib 'lib';
 use constant SIMPLIFIER_DSN		=> 0;
 use constant SIMPLIFIER_ORIG_DATABASE	=> 1;
 use constant SIMPLIFIER_NEW_DATABASE	=> 2;
+use constant SIMPLIFIER_END_TIME	=> 3;
 
 1;
 
@@ -41,6 +42,7 @@ sub new {
 		dsn		=> SIMPLIFIER_DSN,
 		orig_database	=> SIMPLIFIER_ORIG_DATABASE,
 		new_database	=> SIMPLIFIER_NEW_DATABASE,
+		end_time	=> SIMPLIFIER_END_TIME
 	}, @_);
 
 	return $simplifier;
@@ -77,6 +79,13 @@ sub simplify {
 	my $table_index = 0;
 
 	foreach my $participating_table (keys %participating_tables) {
+		# bail out if this test is taking too long; otherwise all of 
+		# this simplification might take hours
+		if (time() > $simplifier->[SIMPLIFIER_END_TIME]) {
+			say ("Time specified by --duration=x exceeded; aborting simplification.");
+			last;
+		}
+
 		# Skip if a view is encountered.
 		next if ( $participating_table =~ m{view_} );
 		my ($table_exists) = $dbh->selectrow_array("SHOW TABLES IN $orig_database LIKE '$participating_table'");
@@ -116,6 +125,10 @@ sub simplify {
 	        ## Remove the fields we do not want to keep
 		foreach my $actual_field (@$actual_fields) {
 			$dbh->do("ALTER TABLE $new_database . `$new_table_name` DROP COLUMN `$actual_field`") if not $keep{$actual_field};
+			if (time() > $simplifier->[SIMPLIFIER_END_TIME]) {
+				say("Time specified by --duration=x exceeded.  Aborting simplification.");
+				last if 1;
+			}
 	        }
 	}
 	

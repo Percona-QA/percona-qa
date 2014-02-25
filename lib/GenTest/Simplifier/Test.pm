@@ -171,7 +171,8 @@ sub simplify {
 		my $tables_simplifier = GenTest::Simplifier::Tables->new(
 			dsn		=> $executors->[0]->dsn(),
 			orig_database	=> 'test',
-			new_database	=> $simplified_database
+			new_database	=> $simplified_database,
+			end_time	=> $executors->[0]->end_time()
 		);
 
 		my ($participating_tables, $rewritten_query) = $tables_simplifier->simplify($original_query);
