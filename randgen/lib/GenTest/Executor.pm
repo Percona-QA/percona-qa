@@ -65,6 +65,7 @@ use constant EXECUTOR_CONNECTION_ID		=> 17;
 use constant EXECUTOR_FLAGS			=> 18;
 use constant EXECUTOR_HOST          => 19;
 use constant EXECUTOR_PORT          => 20;
+use constant EXECUTOR_END_TIME	    => 21;
 
 use constant FETCH_METHOD_AUTO		=> 0;
 use constant FETCH_METHOD_STORE_RESULT	=> 1;
@@ -87,7 +88,8 @@ sub new {
 		'channel' => EXECUTOR_CHANNEL,
 		'sqltrace' => EXECUTOR_SQLTRACE,
 		'no-err-filter' => EXECUTOR_NO_ERR_FILTER,
-		'fetch_method' => EXECUTOR_FETCH_METHOD
+		'fetch_method' => EXECUTOR_FETCH_METHOD,
+		'end_time' => EXECUTOR_END_TIME
 	}, @_);
 
 	$executor->[EXECUTOR_FETCH_METHOD] = FETCH_METHOD_AUTO if not defined $executor->[EXECUTOR_FETCH_METHOD];
@@ -175,6 +177,14 @@ sub dsn {
 
 sub setDsn {
 	$_[0]->[EXECUTOR_DSN] = $_[1];
+}
+
+sub end_time {
+	return $_[0]->[EXECUTOR_END_TIME];
+}
+
+sub set_end_time {
+	$_[0]->[EXECUTOR_END_TIME] = $_[1];
 }
 
 sub id {

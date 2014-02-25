@@ -414,7 +414,8 @@ sub workerProcess {
         executors => \@executors,
         validators => $self->config->validators,
         properties =>  $self->config,
-        filters => $self->queryFilters()
+        filters => $self->queryFilters(),
+	end_time => $self->[GT_TEST_END]
     );
         
     $self->stopChild(STATUS_ENVIRONMENT_FAILURE) if not defined $mixer;
