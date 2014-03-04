@@ -52,6 +52,12 @@ query:
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
 
+one_to_ten:
+	1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
+
+three_to_twenty:
+	3 | 5 | 7 | 9 | 10 | 11 | 13 | 15 | 17 | 19 | 20 ;
+
 zero_to_forty:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 	11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 |
@@ -66,6 +72,9 @@ zero_to_ttsh:
 
 hundred_to_thousand:
 	100 | 150 | 200 | 250 | 300 | 400 | 500 | 600 | 650 | 700 | 800 | 900 | 999 | 1000 ;
+
+thousand_to_tts:
+	1000 | 2000 | 2500 | 5000 | 7500 | 10000 ;
 
 # Post 5.6 GA, add/try shorter msec durations to max_stmt_time_range also
 max_stmt_time_range:
@@ -111,10 +120,10 @@ innodb_prio_set:
 
 thread_pool:
 	SET GLOBAL thread_pool_idle_timeout = zero_to_ttsh | 
-	SET GLOBAL thread_pool_high_prio_tickets = zero_to_ten |
+	SET GLOBAL thread_pool_high_prio_tickets = thousand_to_tts |
 	SET GLOBAL thread_pool_max_threads = hundred_to_thousand |
-	SET GLOBAL thread_pool_oversubscribe = zero_to_ten | 
- 	SET GLOBAL thread_pool_size = zero_to_ten |
+	SET GLOBAL thread_pool_oversubscribe = three_to_twenty | 
+ 	SET GLOBAL thread_pool_size = one_to_ten |
 	SHOW GLOBAL STATUS LIKE 'threadpool_idle_threads' |
 	SHOW GLOBAL STATUS LIKE 'threadpool_threads' ;
 
