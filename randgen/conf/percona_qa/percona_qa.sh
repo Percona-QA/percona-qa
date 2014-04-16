@@ -2,8 +2,8 @@
 if [ "$WORKDIR" == "" ]; then
   WORKDIR=/ssd/qa
 fi
-if [ "$RQGDIR" == "" ]; then
-  RQGDIR=$WORKDIR/randgen
+if [ "$RQG_DIR" == "" ]; then
+  RQG_DIR=$WORKDIR/randgen
 fi
 
 # Internal settings
@@ -23,12 +23,12 @@ else
   mkdir $WORKDIR/$WORKDIRSUB
   mkdir $WORKDIR/$WORKDIRSUB/tmp
   export TMP=$WORKDIR/$WORKDIRSUB/tmp
-  cd $RQGDIR
+  cd $RQG_DIR
   MTR_BUILD_THREAD=$MTR_BT; perl ./combinations.pl \
   --clean \
   --force \
   --parallel=8 \
   --run-all-combinations-once \
   --workdir=$WORKDIR/$WORKDIRSUB \
-  --config=$RQGDIR/conf/percona_qa/percona_qa.cc
+  --config=$RQG_DIR/conf/percona_qa/percona_qa.cc
 fi
