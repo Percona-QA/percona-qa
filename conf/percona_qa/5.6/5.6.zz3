@@ -19,7 +19,7 @@
 
 $tables = {
   pk => [undef,'int','int auto_increment','varchar(250)'],
-  engines => ['Memory'],
+  engines => ['Memory','TokuDB'],
   rows => [100,500]
 };
 
