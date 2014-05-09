@@ -17,6 +17,13 @@
 
 # Certain parts (c) Percona Inc
 
+# --views is not used ftm as it causes too many STATUS_PERL_FAILURE(255):
+# Table/view 'table0_int' in schema 'test' has no 'indexed' columns (Might 
+# be caused by use of --views option in combination with grammars containing 
+# _field_indexed) at /ssd/randgen//lib/GenTest/Generator/FromGrammar.pm line 290
+# Even if it is not used, this error is shown (though much less), and this is
+# likely due to '_field_indexed' being used, even if --views is not used.
+
 $combinations=
 [
  [
@@ -30,11 +37,11 @@ $combinations=
   '--threads=1',
   '--threads=25'
  ],[
-  '--mysqld=--innodb_file_per_table=1 --validator=Transformer --mysqld=--innodb_log_arch_dir=_epoch',
-  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda --views --mysqld=--innodb_log_files_in_group=3',
+  '--mysqld=--innodb_file_per_table=1 --mysqld=--innodb_file_format=barracuda --mysqld=--innodb_log_files_in_group=3',
   '--notnull --mysqld=--innodb_flush_method=O_DSYNC --mysqld=--innodb-buffer-pool-populate --mysqld=--innodb_log_block_size=512
    --mysqld=--innodb_fast_shutdown=0 --mysqld=--skip-innodb_doublewrite --mysqld=--innodb_flush_log_at_trx_commit=2',
-  '--mask-level=1 --mysqld=--innodb_flush_method=O_DIRECT --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
+  '--mysqld=--innodb_file_per_table=1 --validator=Transformer --mysqld=--innodb_log_arch_dir=_epoch',
+  '--mysqld=--innodb_flush_method=O_DIRECT --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
    --mysqld=--enforce-storage-engine=InnoDB --mysqld=--query_cache_type=1 --mysqld=--query_cache_size=1048576'
  ],[
   '--basedir=PERCONA-DBG-SERVER',
