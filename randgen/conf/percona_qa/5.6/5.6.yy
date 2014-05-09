@@ -36,18 +36,21 @@
 # As they are, they fail, may want to try spaces; " a , a " 
 # Also, PURGE ARCHIVED LOGS TO cannot be added due to not having actual filename.
 
-# Temporarily disabled: i_s |
-# Due to "Assertion `!table || !table->in_use || table->in_use == _current_thd()'" assertions
-# Ref https://bugs.launchpad.net/percona-server/+bug/1260152
+# Temp workaround: i_s |            removed from query: to avoid I_S assertions ftm. Assertions look like this:
+#                                   "Assertion `!table || !table->in_use || table->in_use == _current_thd()'"
+#                                   (IMPORTANT: to be re-tested later for tokudb+i_s interoperability)
+#                                   Ref https://bugs.launchpad.net/percona-server/+bug/1260152
+# Temp workaround: fake_changes |   removed from query: due to Percona feature WIP
+
+query_init:
+	INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so'; SET GLOBAL DEFAULT_STORAGE_ENGINE = TOKUDB ; SET SESSION DEFAULT_STORAGE_ENGINE = TOKUDB;
 
 query:
 	select | select | insert | insert | delete | delete | replace | update | transaction |
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
         bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking | prio_shed |
-	cleaner | preflush ;
-
-# Disabled for 5.6 GA checking: fake_changes ;
+	cleaner | preflush | toku_clustering_key | toku_clustering_key ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
@@ -81,24 +84,24 @@ max_stmt_time_range:
 	100000 | 200000 | 300000 ;
 
 prio_shed:
-	SELECT @@GLOBAL.innodb_sched_priority_cleaner ;
-	SET GLOBAL innodb_sched_priority_cleaner = zero_to_forty ;
-	SELECT @@GLOBAL.innodb_sched_priority_io ;
-	SET GLOBAL innodb_sched_priority_io = zero_to_forty ;
-	SELECT @@GLOBAL.innodb_sched_priority_master ;
-	SET GLOBAL innodb_sched_priority_master = zero_to_forty ;
-	SELECT @@GLOBAL.innodb_sched_priority_purge ;
+	SELECT @@GLOBAL.innodb_sched_priority_cleaner |
+	SET GLOBAL innodb_sched_priority_cleaner = zero_to_forty |
+	SELECT @@GLOBAL.innodb_sched_priority_io |
+	SET GLOBAL innodb_sched_priority_io = zero_to_forty |
+	SELECT @@GLOBAL.innodb_sched_priority_master |
+	SET GLOBAL innodb_sched_priority_master = zero_to_forty |
+	SELECT @@GLOBAL.innodb_sched_priority_purge |
 	SET GLOBAL innodb_sched_priority_purge = zero_to_forty ;
 
 cleaner:
-	SELECT @@GLOBAL.innodb_cleaner_new_lsn_age_factor ;
-	SET GLOBAL innodb_cleaner_new_lsn_age_factor = onoff ;
-	SET GLOBAL innodb_cleaner_lsn_age_factor = 'legacy' ;
+	SELECT @@GLOBAL.innodb_cleaner_new_lsn_age_factor |
+	SET GLOBAL innodb_cleaner_new_lsn_age_factor = onoff |
+	SET GLOBAL innodb_cleaner_lsn_age_factor = 'legacy' |
 	SET GLOBAL innodb_cleaner_lsn_age_factor = 'high_checkpoint' ;
 
 preflush:
-	SELECT @@GLOBAL.innodb_foreground_preflush ;
-	SET GLOBAL innodb_foreground_preflush = 'sync_preflush' ;
+	SELECT @@GLOBAL.innodb_foreground_preflush |
+	SET GLOBAL innodb_foreground_preflush = 'sync_preflush' |
 	SET GLOBAL innodb_foreground_preflush = 'exponential_backoff' ;
 
 max_stmt_time:
@@ -107,6 +110,74 @@ max_stmt_time:
 	SHOW scope STATUS LIKE 'MAX_STATEMENT_TIME_EXCEEDED' |
 	SHOW scope STATUS LIKE 'MAX_STATEMENT_TIME_SET' |
 	SHOW scope STATUS LIKE 'MAX_STATEMENT_TIME_SET_FAILED' ;
+
+toku_clustering_key:
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tb_keydef, tck_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tb_keydef , tck_keydef ) ENGINE = engine |
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type null_or_not default_or_not , tb_keydef , tck_keydef ) ENGINE = engine |
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tck_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tck_keydef ) ENGINE = engine |
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type null_or_not default_or_not , tck_keydef ) ENGINE = engine |
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type tck_or_not , c4 type null_or_not default_or_not tck_or_not , tck_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type tck_or_not , c4 type null_or_not default_or_not tck_or_not , tck_keydef ) ENGINE = engine |
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type tck_or_not , c4 type null_or_not default_or_not tck_or_not ) ENGINE = engine |
+        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type null_or_not default_or_not tck_or_not , tck_keydef ) ENGINE = engine |
+	ALTER TABLE tck_or_other ADD tck_keydef | ALTER TABLE tck_or_other ADD tck_keydef | ALTER TABLE tck_or_other ADD tck_keydef |
+	ALTER TABLE tck_or_other ADD tck_keydef | ALTER TABLE tck_or_other ADD tck_keydef | ALTER TABLE tck_or_other ADD tck_keydef |
+	CREATE CLUSTERING INDEX k2 ON tck_or_other ( tck_field_list ) |
+	CREATE tck_or_not k2 ON tck_or_other ( tck_field_list ) |
+	DROP TABLE tb_toku_clust_key | DROP TABLE tb_toku_clust_key | DROP TABLE tb_toku_clust_key | DROP TABLE tb_toku_clust_key |
+	INSERT INTO tb_toku_clust_key VALUES ( value , value , value , value ) |
+	INSERT INTO tb_toku_clust_key VALUES ( value , value , value , value ) |
+	INSERT INTO tb_toku_clust_key VALUES ( value , value , value ) |
+	ALTER TABLE tb_toku_clust_key ROW_FORMAT = row_format |
+	ALTER TABLE tb_toku_clust_key ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	ALTER TABLE tb_toku_clust_key KEY_BLOCK_SIZE = kb_size |
+	ALTER TABLE tb_toku_clust_key DROP PRIMARY key_or_index ;
+
+tck_keydef:
+	CLUSTERING KEY k1 ( tck_field_list ) | 
+	UNIQUE CLUSTERING KEY k1 ( tck_field_list ) |
+	CLUSTERING UNIQUE KEY k1 ( tck_field_list ) | 
+	tck_or_not k1 ( tck_field_list ) |
+	tck_or_not k1 ( tck_field_list ) | 
+	CONSTRAINT cs1 UNIQUE CLUSTERING KEY k1 ( tck_field_list ) | 
+	CONSTRAINT cs1 CLUSTERING UNIQUE KEY k1 ( tck_field_list ) | 
+	CONSTRAINT cs1 tck_or_not k1 ( tck_field_list ) | 
+	CONSTRAINT cs1 tck_or_not k1 ( tck_field_list ) ;
+
+tck_or_not:
+	tck_or_not1 tck_or_not2 tck_or_not3 | tck_or_not1 tck_or_not2 tck_or_not3 |
+	tck_or_not1 tck_or_not2 tck_or_not3 | tck_or_not1 tck_or_not2 tck_or_not3 |
+	tck_or_not2 tck_or_not1 tck_or_not3 | tck_or_not2 tck_or_not1 tck_or_not3 |
+	tck_or_not3 tck_or_not1 tck_or_not2 | tck_or_not3 tck_or_not2 tck_or_not1 ; 
+
+tck_or_not1:
+	| CLUSTERING ;
+
+tck_or_not2:
+	| UNIQUE ;
+
+tck_or_not3:
+	| key_or_index ;
+
+key_or_index:
+	KEY | INDEX ;
+
+tck_field_list:
+	c1 , c2 , c3, c4 |
+	c1 , c2 , c3 | c2, c3, c4 |
+	c1 , c2 | c2, c3 | c3, c4 |
+	c1 | c1 | c1 | c1 |
+	c2 | c2 | c2 | c2 | 
+	c3 | c3 | c3 | c3 |
+	c4 | c4 | c4 | c4 ;
+
+tck_or_other:
+	tb_toku_clust_key | tb_toku_clust_key | tb_toku_clust_key | tb_toku_clust_key | tb_toku_clust_key | tb_toku_clust_key | _table ;
+
+if_not_exists:
+	| IF NOT EXISTS ;
 
 innodb_prio:
 	SET GLOBAL innodb_prio_set = moreoff |
@@ -193,6 +264,9 @@ i_s_area:
 i_s:
 	SELECT COUNT(*) FROM i_s_area | SELECT * FROM i_s_area |
 	SELECT * FROM i_s_area LIMIT _digit ;
+
+engine:
+	INNODB | TOKUDB ;	
 
 bitmap:
 	SHOW ENGINE INNODB MUTEX |
@@ -375,40 +449,43 @@ replace:
 	REPLACE INTO _table ( _field_no_pk ) VALUES ( value ) ;
 
 table_comp:
-	CREATE TABLE IF NOT EXISTS tb_comp ( c1 VARCHAR( vc_size ) null_or_not , c2 VARCHAR( vc_size ) default_or_not , c3 VARCHAR( vcsize ), c4 VARCHAR( vcsize ) null_or_not default_or_not , tb_keydef ) ENGINE = InnoDB ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
-	CREATE TABLE tb_comp ( c1 INTEGER null_or_not AUTO_INCREMENT, c2 DATETIME, c3 DOUBLE, c4 DECIMAL (20,10) , tb_keydef ) ENGINE = InnoDB ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
-	CREATE TABLE tb_comp ( c1 BLOB, c2 TEXT, c3 TIMESTAMP, c4 VARBINARY ( vc_size ) , tb_keydef ) ENGINE = InnoDB ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	CREATE TABLE if_not_exists tb_comp ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tb_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	CREATE TABLE if_not_exists tb_comp ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tb_keydef ) ENGINE = engine |
+	CREATE TABLE if_not_exists tb_comp ( c1 type null_or_not , c2 type default_or_not , c3 type null_or_not default_or_not , tb_keydef ) ENGINE = engine |
+	CREATE TABLE if_not_exists tb_comp ( c1 type null_or_not , c2 type default_or_not , c3 type null_or_not default_or_not ) ENGINE = engine |
 	DROP TABLE tb_comp | DROP TABLE tb_comp | DROP TABLE tb_comp |
 	INSERT INTO tb_comp VALUES ( value , value , value , value ) |
 	INSERT INTO tb_comp VALUES ( value , value , value , value ) |
+	INSERT INTO tb_comp VALUES ( value , value , value ) |
 	ALTER TABLE tb_comp_plus ROW_FORMAT = row_format |
 	ALTER TABLE tb_comp_plus ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
 	ALTER TABLE tb_comp_plus KEY_BLOCK_SIZE = kb_size |
-	ALTER TABLE tb_comp_plus DROP PRIMARY KEY |
+	ALTER TABLE tb_comp_plus DROP PRIMARY key_or_index |
 	ALTER TABLE tb_comp_plus ADD tb_keydef ;
 
 tb_comp:
-	t1 | t2 | t3 | t4 | t5 | t6 | t7 | t8 | t9 ;
+	t1 | t2 | t3 | t4 | t5 | t6 | t7 | t8 | t9 | _table ;
 
 tb_comp_plus:
 	_table | _table | tb_comp ;
 
 row_format:
-	COMPRESSED | COMPRESSED | COMPRESSED | COMPRESSED |
-	COMPRESSED | COMPRESSED | COMPRESSED | COMPRESSED |
-	DEFAULT | DYNAMIC | FIXED | COMPACT ;
+	COMPRESSED | COMPRESSED | COMPRESSED |
+	DEFAULT | DEFAULT | DYNAMIC | FIXED | COMPACT |
+	TOKUDB_DEFAULT | TOKUDB_FAST | TOKUDB_SMALL |
+	TOKUDB_DEFAULT | TOKUDB_FAST | TOKUDB_SMALL ;
 
 tb_keydef:
-	PRIMARY KEY (c1) , KEY (c2) hash_or_not |
-	PRIMARY KEY (c3,c4) , KEY (c2) hash_or_not |
-	PRIMARY KEY (c2) hash_or_not |
-	PRIMARY KEY (c4,c3) hash_or_not |
-	PRIMARY KEY (c4,c3) hash_or_not KEY_BLOCK_SIZE = kb_size |
+	PRIMARY key_or_index (c1) , key_or_index (c2) hash_or_not |
+	PRIMARY key_or_index (c3,c4) , key_or_index (c2) hash_or_not |
+	PRIMARY key_or_index (c2) hash_or_not |
+	PRIMARY key_or_index (c4,c3) hash_or_not |
+	PRIMARY key_or_index (c4,c3) hash_or_not KEY_BLOCK_SIZE = kb_size |
 	UNIQUE (c4,c3) hash_or_not |
-	KEY (c1(1)) ;
+	key_or_index (c1(1)) ;
 
 hash_or_not:
-	| USING HASH | USING BTREE ;
+	| | | | | USING HASH | USING BTREE ;
 
 vc_size:
 	1 | 2 | 32 | 64 | 1024 ;
@@ -435,16 +512,6 @@ temp:
 #
 #lock_type:
 #	| | LOCK = DEFAULT | LOCK = NONE | LOCK = SHARED | LOCK = EXCLUSIVE ;
-
-type:
-	INT | DECIMAL | FLOAT | BIT | CHAR( _digit ) | VARCHAR ( _digit ) | BLOB | BLOB | BLOB |
-	DATE | DATETIME | TIMESTAMP | TIME | YEAR | BINARY | TEXT | ENUM('a','b','c') | SET('a','b','c') ;
-
-null_or_not:
-	| | NULL | NOT NULL ;
-
-default_or_not:
-	| | DEFAULT 0 | DEFAULT NULL | DEFAULT 1 | DEFAULT 'a' ;
 
 after_or_not:
 	| | AFTER _field | FIRST ;
@@ -489,6 +556,16 @@ views:
 outfile_infile:
 	SELECT * FROM _table[invariant] INTO OUTFILE _tmpnam ; TRUNCATE _table[invariant] ; LOAD DATA INFILE _tmpnam INTO TABLE _table[invariant] ;
 	SELECT * FROM _table[invariant] INTO OUTFILE _tmpnam ; TRUNCATE _table[invariant] ; LOAD DATA LOCAL INFILE _tmpnam INTO TABLE _table[invariant] ;
+
+null_or_not:
+	| | NULL | NOT NULL ;
+
+default_or_not:
+	| | DEFAULT 0 | DEFAULT NULL | DEFAULT 1 | DEFAULT 'a' ;
+
+type:
+	INT | INT AUTO_INCREMENT | DECIMAL | FLOAT | DOUBLE | DECIMAL( _digit , _digit )BIT | CHAR( _digit ) | VARCHAR( _digit ) | 
+        BLOB | BLOB | DATE | DATETIME | TIMESTAMP | TIME | YEAR | BINARY | TEXT | ENUM('a','b','c') | SET('a','b','c') ;
 
 value:
 	_digit | 0 | 1 | -1 | _data | _bigint_unsigned | _bigint | _mediumint | _english | _letter | 

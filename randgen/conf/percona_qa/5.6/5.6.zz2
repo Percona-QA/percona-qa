@@ -19,9 +19,9 @@
 
 $tables = {
   pk => [undef,'varchar(250)','char(250)'],
-  engines => ['InnoDB'],
+  engines => ['InnoDB','TokuDB'],
   rows => [1,10],
-  row_formats => ['DYNAMIC','COMPRESSED','DEFAULT']
+  row_formats => ['DYNAMIC','COMPRESSED','DEFAULT','tokudb_default','tokudb_fast','tokudb_small']
 };
 
 $fields = {
