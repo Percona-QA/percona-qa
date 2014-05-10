@@ -42,8 +42,12 @@
 #                                   Ref https://bugs.launchpad.net/percona-server/+bug/1260152
 # Temp workaround: fake_changes |   removed from query: due to Percona feature WIP
 
+# INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'; is handled by a mysqld option in cc file: 
+# --mysqld=--plugin-load=tokudb=ha_tokudb.so - This is so that TokuDB engine is readily 
+# available for the initial .zz1/2/3 files DDL (executed before .yy file commences running)
+# Other TokuDB modules (all I_S type) are loaded here, they are only needed for .yy file run
 query_init:
-	INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so'; SET GLOBAL DEFAULT_STORAGE_ENGINE = TOKUDB ; SET SESSION DEFAULT_STORAGE_ENGINE = TOKUDB;
+	INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so'; SET GLOBAL DEFAULT_STORAGE_ENGINE = TOKUDB ; SET SESSION DEFAULT_STORAGE_ENGINE = TOKUDB;
 
 query:
 	select | select | insert | insert | delete | delete | replace | update | transaction |
