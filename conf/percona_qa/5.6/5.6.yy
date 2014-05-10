@@ -46,6 +46,17 @@
 # --mysqld=--plugin-load=tokudb=ha_tokudb.so - This is so that TokuDB engine is readily 
 # available for the initial .zz1/2/3 files DDL (executed before .yy file commences running)
 # Other TokuDB modules (all I_S type) are loaded here, they are only needed for .yy file run
+# To check if all modules are loaded use SHOW PLUGINS; 
+# mysql> SHOW PLUGINS;
+# | Name                          | Status   | Type               | Library      | License |
+# [...]
+# | TokuDB                        | ACTIVE   | STORAGE ENGINE     | ha_tokudb.so | GPL     | < Loaded by --plugin-load from .cc file
+# | TokuDB_file_map               | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     | < Loaded by query_init: on .yy init
+# | TokuDB_fractal_tree_info      | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     | < Idem, etc.
+# | TokuDB_fractal_tree_block_map | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
+# | TokuDB_trx                    | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
+# | TokuDB_locks                  | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
+# | TokuDB_lock_waits             | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
 query_init:
 	INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so'; SET GLOBAL DEFAULT_STORAGE_ENGINE = TOKUDB ; SET SESSION DEFAULT_STORAGE_ENGINE = TOKUDB;
 
