@@ -34,33 +34,33 @@ $combinations=
   --mysqld=--utility-user-password=test
  '],[
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --no-mask
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug.Linux.x86_64',
+     --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=20 --no-mask
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug-valgrind.Linux.x86_64 --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
+     --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug.Linux.x86_64',
+     --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=17 --mask-level=1 --validator=Transformer
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug.Linux.x86_64 --mysqld=--enforce-storage-engine=InnoDB',
+     --basedir=/Percona-Server-Debug --mysqld=--enforce-storage-engine=InnoDB',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug-valgrind.Linux.x86_64 --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
+     --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=13 --mask-level=1 --validator=Transformer
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug-valgrind.Linux.x86_64 --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
+     --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=1  --no-mask
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug.Linux.x86_64',
+     --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=11 --mask-level=1 --validator=Transformer
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug.Linux.x86_64',
+     --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=25 --no-mask
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug-valgrind.Linux.x86_64 --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
+     --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=8 --mask-level=1 --validator=Transformer
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug-valgrind.Linux.x86_64 --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
+     --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=10 --no-mask
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug.Linux.x86_64',
+     --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=15 --no-mask
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592-debug-valgrind.Linux.x86_64 --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
+     --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=15 --mask-level=1 --validator=Transformer
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592.Linux.x86_64',
+     --basedir=/Percona-Server-Optimized',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
-     --basedir=/ssd/Percona-Server-5.6.17-rel65.0-592.Linux.x86_64'
+     --basedir=/Percona-Server-Optimized'
  ],['
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_fast_shutdown=2
