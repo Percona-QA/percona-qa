@@ -29,7 +29,7 @@
 $combinations=
 [
  ['
-  --seed=random --duration=600 --querytimeout=60 --short_column_names
+  --seed=random --duration=300 --querytimeout=60 --short_column_names
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
   --mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/percona_qa/5.6/TokuDB.sql
