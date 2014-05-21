@@ -42,23 +42,24 @@
 #                                   Ref https://bugs.launchpad.net/percona-server/+bug/1260152
 # Temp workaround: fake_changes |   removed from query: due to Percona feature WIP
 
-# INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'; is handled by a mysqld option in cc file: 
-# --mysqld=--plugin-load=tokudb=ha_tokudb.so - This is so that TokuDB engine is readily 
-# available for the initial .zz1/2/3 files DDL (executed before .yy file commences running)
-# Other TokuDB modules (all I_S type) are loaded here, they are only needed for .yy file run
+# INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'; was previously handled by a mysqld option in the cc file: 
+# --mysqld=--plugin-load=tokudb=ha_tokudb.so - This was to ensure that TokuDB engine is readily available
+# for the initial .zz1/2/3 files DDL (executed before .yy file commences running). However, this is now
+# included in the TokuDB.sql file, which is loaded using --mysqld=--init-file=... from the cc file.
+# Other TokuDB modules (all I_S type) were previously loaded here using query_init (they are only needed
+# at .yy file runtime), but these are now also moved into the same TokuDB.sql file (which now covers all).
+#
 # To check if all modules are loaded use SHOW PLUGINS; 
 # mysql> SHOW PLUGINS;
 # | Name                          | Status   | Type               | Library      | License |
 # [...]
-# | TokuDB                        | ACTIVE   | STORAGE ENGINE     | ha_tokudb.so | GPL     | < Loaded by --plugin-load from .cc file
-# | TokuDB_file_map               | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     | < Loaded by query_init: on .yy init
-# | TokuDB_fractal_tree_info      | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     | < Idem, etc.
+# | TokuDB                        | ACTIVE   | STORAGE ENGINE     | ha_tokudb.so | GPL     |
+# | TokuDB_file_map               | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
+# | TokuDB_fractal_tree_info      | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
 # | TokuDB_fractal_tree_block_map | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
 # | TokuDB_trx                    | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
 # | TokuDB_locks                  | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
 # | TokuDB_lock_waits             | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
-query_init:
-	INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so'; SET GLOBAL DEFAULT_STORAGE_ENGINE = TOKUDB ; SET SESSION DEFAULT_STORAGE_ENGINE = TOKUDB;
 
 query:
 	select | select | insert | insert | delete | delete | replace | update | transaction |

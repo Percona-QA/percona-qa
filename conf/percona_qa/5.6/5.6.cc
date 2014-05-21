@@ -23,14 +23,17 @@
 # Workarounds
 # --mysqld=--utility-user-password=test in top block: to avoid assert BUG #
 
+# Now using TokuDB.sql to load engine, but an alternative that works, at least for the engine itself, is;
+# --mysqld=--plugin-load=tokudb=ha_tokudb.so
+
 $combinations=
 [
  ['
   --seed=random --duration=600 --querytimeout=60 --short_column_names
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
-  --mysqld=--plugin-load=tokudb=ha_tokudb.so
- 
+  --mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/percona_qa/5.6/TokuDB.sql'
+
   --mysqld=--utility-user-password=test
  '],[
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --no-mask
