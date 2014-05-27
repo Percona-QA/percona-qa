@@ -203,8 +203,8 @@ options_check(){
   # See http://bugs.mysql.com/bug.php?id=26662 for more info
   if egrep -qi "MYEXTRA=.*O_DIRECT" $0; then
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then  # ramfs may not have this same issue, maybe '-o $WORKDIR_LOCATION -eq 2' can be removed?
-      echo 'Error: O_DIRECT is being used in the MYEXTRA string, and tmpfs (or ramfs) storage was specified, but because of'
-      echo 'http://bugs.mysql.com/bug.php?id=26662 one would see a WARNING for this in the error log along the lines of;'
+      echo 'Error: O_DIRECT is being used in the MYEXTRA option string, and tmpfs (or ramfs) storage was specified, but because'
+      echo 'of bug http://bugs.mysql.com/bug.php?id=26662 one would see a WARNING for this in the error log along the lines of;'
       echo '[Warning] InnoDB: Failed to set O_DIRECT on file ./ibdata1: OPEN: Invalid argument, continuing anyway.'
       echo "          O_DIRECT is known to result in 'Invalid argument' on Linux on tmpfs, see MySQL Bug#26662."
       echo 'So, reducer is exiting to allow you to change WORKDIR_LOCATION in the script to a non-tmpfs setting.'
@@ -214,6 +214,21 @@ options_check(){
       exit 1
     fi
   fi 
+  DIR_ISSUE=0;
+  if egrep -qi "MYEXTRA=.*innodb_log_group_home_dir" $0; then DIR_ISSUE='innodb_log_group_home_dir'; fi
+  if egrep -qi "MYEXTRA=.*innodb_log_arch_dir" $0; then DIR_ISSUE='innodb_log_arch_dir'; fi
+  if [ "$DIR_ISSUE" != "0" ]; then
+    echo "Error: the $DIR_ISSUE option is being used in the MYEXTRA option string. This can lead to all sorts of problems;"
+    echo 'Remember that reducer 1) is multi-threaded - i.e. it would access that particularly named directory for each started mysqld, which'
+    echo 'clearly would result in issues, and 2) whilst reducer creates new directories for every trial (and for each thread), it would not do'
+    echo 'anything for this hardcoded directory, so this directory would get used every time, again clearly resulting in issues, especially'
+    echo 'when one considers that 3) running mysqld instances get killed once the achieved result (for example, issue discovered) is obtained.'
+    echo 'Suggested course of action: remove this/these sort of options from the MYEXTRA string and see if the issue reproduces. This/these sort'
+    echo 'of options often have little effect on reproducibility. Howerver, if found significant, reducer.sh can be expanded to cater for this/'
+    echo 'these sort of options being in MYEXTRA by re-directing them to a per-trial (and per-thread) subdirectory of the trial\'s rundir used.'
+    echo 'Terminating reducer to allow this change to be made.'
+    exit 1
+  fi
   if [ $MODE -ge 6 ]; then
     if [ ! -d "$1" ]; then
         echo 'Error: A file name was given as input, but a directory name was expected.'
