@@ -199,6 +199,21 @@ options_check(){
     echo "Terminating now."
     exit 1
   fi
+  # Check if O_DIRECT is being used on tmpfs, which (when the original run was not on tmpfs) is not a 100% reproduce match, which may affect reproducibility
+  # See http://bugs.mysql.com/bug.php?id=26662 for more info
+  if egrep -qi "MYEXTRA=.*O_DIRECT" $0; then
+    if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then  # ramfs may not have this same issue, maybe '-o $WORKDIR_LOCATION -eq 2' can be removed?
+      echo 'Error: O_DIRECT is being used in the MYEXTRA string, and tmpfs (or ramfs) storage was specified, but because of'
+      echo 'http://bugs.mysql.com/bug.php?id=26662 one would see a WARNING for this in the error log along the lines of;'
+      echo '[Warning] InnoDB: Failed to set O_DIRECT on file ./ibdata1: OPEN: Invalid argument, continuing anyway.'
+      echo "          O_DIRECT is known to result in 'Invalid argument' on Linux on tmpfs, see MySQL Bug#26662."
+      echo 'So, reducer is exiting to allow you to change WORKDIR_LOCATION in the script to a non-tmpfs setting.'
+      echo 'Note: this assertion currently shows for ramfs as well, yet it has not been established if ramfs also'        #
+      echo '      shows the same problem. If it does not (modify the script in this section to get it to run with ramfs'  # ramfs, delete if ramfs is affected
+      echo '      as a trial/test), then please remove ramfs, or, if it does, then please remove these 3 last lines.'     # 
+      exit 1
+    fi
+  fi 
   if [ $MODE -ge 6 ]; then
     if [ ! -d "$1" ]; then
         echo 'Error: A file name was given as input, but a directory name was expected.'
@@ -222,6 +237,15 @@ options_check(){
         exit 1
       else
         TS_INPUTDIR="$1/log"
+        if egrep -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql; then
+          if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
+            export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+          else
+            echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
+            echo 'This can be done with a command similar to: $ yum install jemalloc'
+            exit 1
+          fi
+        fi
       fi
     fi
   else
@@ -240,6 +264,15 @@ options_check(){
       fi
     else
       INPUTFILE=$1
+    fi 
+    if egrep -qi "tokudb" $INPUTFILE; then
+      if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
+        export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+      else
+        echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
+        echo 'This can be done with a command similar to: $ yum install jemalloc'
+        exit 1
+      fi
     fi
   fi
   BIN="/bin/mysqld"
