@@ -214,6 +214,7 @@ options_check(){
       exit 1
     fi
   fi 
+  # This section could be expanded to check for any directory specified (by for instance checking for paths), not just the two listed here
   DIR_ISSUE=0;
   if egrep -qi "MYEXTRA=.*innodb_log_group_home_dir" $0; then DIR_ISSUE='innodb_log_group_home_dir'; fi
   if egrep -qi "MYEXTRA=.*innodb_log_arch_dir" $0; then DIR_ISSUE='innodb_log_arch_dir'; fi
