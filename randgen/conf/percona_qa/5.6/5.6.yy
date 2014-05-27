@@ -42,20 +42,18 @@
 #                                   Ref https://bugs.launchpad.net/percona-server/+bug/1260152
 # Temp workaround: fake_changes |   removed from query: due to Percona feature WIP
 
-# INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'; was previously handled by a mysqld option in the cc file: 
-# --mysqld=--plugin-load=tokudb=ha_tokudb.so - This was to ensure that TokuDB engine is readily available
-# for the initial .zz1/2/3 files DDL (executed before .yy file commences running). However, this is now
-# included in the TokuDB.sql file, which is loaded using --mysqld=--init-file=... from the cc file.
-# Other TokuDB modules (all I_S type) were previously loaded here using query_init (they are only needed
-# at .yy file runtime), but these are now also moved into the same TokuDB.sql file (which now covers all).
+# INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'; is instead handled by a mysqld option in the cc file: 
+# --mysqld=--plugin-load=tokudb=ha_tokudb.so - This is to ensure that TokuDB engine is available to
+# enable using --tokudb=... options from the .cc file. The rest of the TokuDB plugin parts (all I_S type)
+# are loaded using the --mysqld=--init-file=... option as listed in the cc file.
 #
 # To check if all modules are loaded use SHOW PLUGINS; 
 # mysql> SHOW PLUGINS;
 # | Name                          | Status   | Type               | Library      | License |
 # [...]
-# | TokuDB                        | ACTIVE   | STORAGE ENGINE     | ha_tokudb.so | GPL     |
-# | TokuDB_file_map               | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
-# | TokuDB_fractal_tree_info      | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
+# | TokuDB                        | ACTIVE   | STORAGE ENGINE     | ha_tokudb.so | GPL     | # Loaded by --plugin-load=...
+# | TokuDB_file_map               | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     | # Loaded by --init-file=...
+# | TokuDB_fractal_tree_info      | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     | # Idem, etc.
 # | TokuDB_fractal_tree_block_map | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
 # | TokuDB_trx                    | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
 # | TokuDB_locks                  | ACTIVE   | INFORMATION SCHEMA | ha_tokudb.so | GPL     |
