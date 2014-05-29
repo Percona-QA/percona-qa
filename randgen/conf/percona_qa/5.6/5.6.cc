@@ -17,16 +17,27 @@
 
 # Certain parts (c) Percona Inc
 
-# Version 2.0: Advanced Combinatorics
-# Note that --short_column_names is required for this grammar (see .zz1 for use of 'c1' name)
-# Is the above outdated? c1 is no longer used in .zz1. Also check mail thread on pk issue.
+# Version 3.0: Advanced Combinatorics + TokuDB final
 
-# Workarounds
+# ==== Workarounds
 # --mysqld=--utility-user-password=test in top block: to avoid assert BUG #
 
-# Notes
+# ==== Notes
+# Note that --short_column_names is required for this grammar (see .zz1 for use of 'c1' name)
+# Is the above outdated? c1 is no longer used in .zz1. Also check mail thread on pk issue.
+#
 # --plugin-load=tokudb=ha_tokudb.so has to be part of all runs, because if a
 # --tokudb-... option is used, the TokuDB engine needs to be available already 
+#
+# To avoid TokuDB checking for jemalloc (i.e. to use default malloc), use the
+# following --mysqld option, and unset LD_PRELOAD so that jemalloc cannot be found
+# (Normally this option should NOT be used, it is only handy for throubleshooting)
+#   --mysqld=--loose-tokudb-check-jemalloc=0
+# Furthermore, when doing this set --soname-synonyms=somalloc=NONE (instead of *jemalloc*)
+# 
+# --soname-synonyms=somalloc=*jemalloc* is set to avoid many jemalloc-related SIG11
+# crashes during Valgrind runs with jemalloc. For additional information, see:
+# http://valgrind.org/docs/manual/manual-core.html#opt.soname-synonyms 
 
 $combinations=
 [
@@ -43,32 +54,32 @@ $combinations=
      --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=20 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
-     --valgrind_options=--soname-synonyms=somalloc=NONE --valgrind_options=--track-origins=yes',
+     --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
      --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=17 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Debug --mysqld=--enforce-storage-engine=InnoDB',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
-     --valgrind_options=--soname-synonyms=somalloc=NONE --valgrind_options=--track-origins=yes',
+     --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=13 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
-     --valgrind_options=--soname-synonyms=somalloc=NONE --valgrind_options=--track-origins=yes',
+     --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=1  --no-mask
      --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=11 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=25 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
-     --valgrind_options=--soname-synonyms=somalloc=NONE --valgrind_options=--track-origins=yes',
+     --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=8 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
-     --valgrind_options=--soname-synonyms=somalloc=NONE --valgrind_options=--track-origins=yes',
+     --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=10 --no-mask
      --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=15 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
-     --valgrind_options=--soname-synonyms=somalloc=NONE --valgrind_options=--track-origins=yes',
+     --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=15 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Optimized',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
