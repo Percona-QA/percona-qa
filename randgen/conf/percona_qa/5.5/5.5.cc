@@ -141,7 +141,6 @@ $combinations=
   --notnull
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=ON
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_file_size=10485761
@@ -193,7 +192,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_files_in_group=2
@@ -328,7 +326,6 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=6
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=4
   --mysqld=--innodb_log_file_size=1048576
   --mysqld=--innodb_log_files_in_group=10
@@ -357,7 +354,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
   --mysqld=--innodb_log_file_size=10485761
@@ -430,7 +426,6 @@ $combinations=
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_adaptive_hash_index_partitions=1
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_file_size=1048576
   --mysqld=--innodb_log_files_in_group=2
@@ -477,7 +472,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=4
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=5
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_files_in_group=10
@@ -581,7 +575,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=12
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_file_size=1048576
@@ -637,7 +630,6 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_purge_threads=32
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=5
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
@@ -687,7 +679,6 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DIRECT
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
@@ -716,7 +707,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_adaptive_hash_index_partitions=5
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_file_size=1048576
   --mysqld=--innodb_log_files_in_group=3
@@ -845,7 +835,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_file_size=10485761
@@ -952,8 +941,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=6
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048577
   --mysqld=--innodb_log_file_size=1048576
@@ -1080,7 +1067,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_purge_threads=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
@@ -1107,7 +1093,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_file_size=1048576
@@ -1305,7 +1290,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_adaptive_hash_index_partitions=1
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
   --mysqld=--innodb_log_file_size=10485761
@@ -1438,7 +1422,6 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_purge_threads=6
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048577
@@ -1490,7 +1473,6 @@ $combinations=
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_purge_threads=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_file_size=10485761
@@ -1538,7 +1520,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=1
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_file_size=1048576
@@ -1564,7 +1545,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=16
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_file_size=10485761
   --mysqld=--innodb_log_files_in_group=3
@@ -1614,7 +1594,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_files_in_group=3
@@ -1663,7 +1642,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=4
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=8
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_file_size=10485761
@@ -1763,7 +1741,6 @@ $combinations=
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_purge_threads=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
@@ -1840,7 +1817,6 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_purge_threads=1
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_file_size=10485761
@@ -2060,7 +2036,6 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=4
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=5
   --mysqld=--innodb_log_buffer_size=1048577
   --mysqld=--innodb_log_files_in_group=2
@@ -2084,7 +2059,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_file_size=10485761
@@ -2134,7 +2108,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_file_size=1048576
@@ -2186,7 +2159,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_adaptive_hash_index_partitions=16
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
   --mysqld=--innodb_max_bitmap_file_size=20480
@@ -2366,7 +2338,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_file_size=10485761
@@ -2385,7 +2356,6 @@ $combinations=
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=0
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=5
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
@@ -2411,7 +2381,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
@@ -2511,7 +2480,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=1
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
   --mysqld=--innodb_log_files_in_group=2
@@ -2539,7 +2507,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=6
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
@@ -2595,7 +2562,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=12
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
@@ -2618,7 +2584,6 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_file_size=10485761
@@ -2697,7 +2662,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=8
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
   --mysqld=--innodb_log_group_home_dir=_epoch
@@ -2720,7 +2684,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=5
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
@@ -2744,7 +2707,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=4
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
@@ -2818,7 +2780,6 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_purge_threads=6
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=4
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_file_size=1048576
@@ -2952,7 +2913,6 @@ $combinations=
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_flush_method=O_DIRECT
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=5
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
@@ -3067,7 +3027,6 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_flush_method=O_DSYNC
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
@@ -3114,7 +3073,6 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=1
-  --mysqld=--innodb_buffer_pool_instances=NOT USED
   --mysqld=--innodb_log_buffer_size=1048576
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
@@ -3134,7 +3092,6 @@ $combinations=
   --mysqld=--innodb_fast_shutdown=0
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=2
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
@@ -3163,7 +3120,6 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_purge_threads=6
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
@@ -3215,7 +3171,6 @@ $combinations=
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_flush_method=O_DSYNC
-  --mysqld=--innodb_adaptive_hash_index_partitions=NOT USED
   --mysqld=--innodb_buffer_pool_instances=17
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_file_size=1048576
