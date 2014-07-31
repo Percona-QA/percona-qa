@@ -29,7 +29,7 @@
 
 query:
 	select | insert | insert | insert | delete | replace | update | transaction | alter | views | set |
-	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query | audit_plugin ; 
+	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query | audit_plugin | thread_pool ; 
 
 p_query:
 # 5.1	ext_slow_query_log | resp_time_dist | user_stats | changed_page_tracking | drop_create_table ;
@@ -84,6 +84,35 @@ audit_plugin:
 
 audit_policy:
         ALL | LOGINS | QUERIES | NONE ;
+
+thread_pool:
+        SET GLOBAL thread_pool_idle_timeout = zero_to_ttsh |
+        SET GLOBAL thread_pool_high_prio_tickets = thousand_to_tts |
+        SET GLOBAL thread_pool_max_threads = hundred_to_thousand |
+        SET GLOBAL thread_pool_oversubscribe = three_to_twenty |
+        SET GLOBAL thread_pool_size = one_to_ten |
+        SET GLOBAL thread_pool_high_prio_tickets=0 |
+        SET scope thread_pool_high_prio_mode = thread_pool_high_prio_mode_list |
+        SHOW GLOBAL STATUS LIKE 'threadpool_idle_threads' |
+        SHOW GLOBAL STATUS LIKE 'threadpool_threads' ;
+
+thread_pool_high_prio_mode_list:
+        transactions | statements | none ;
+
+zero_to_ttsh:
+        0 | 1 | 2 | 10 | 100 | 200 | 450 | 750 | 1111 | 1000 | 1202 | 1500 | 1700 | 2000 | 2400 | 2600 | 3000 | 3300 | 3600 ;
+
+thousand_to_tts:
+        1000 | 2000 | 2500 | 5000 | 7500 | 10000 ;
+
+hundred_to_thousand:
+        100 | 150 | 200 | 250 | 300 | 400 | 500 | 600 | 650 | 700 | 800 | 900 | 999 | 1000 ;
+
+one_to_ten:
+        1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
+
+three_to_twenty:
+        3 | 5 | 7 | 9 | 10 | 11 | 13 | 15 | 17 | 19 | 20 ;
 
 resp_time_dist:
 	SET GLOBAL resp_time_dist_var | resp_time_dist_query | resp_time_dist_query |
