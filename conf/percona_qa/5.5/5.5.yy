@@ -29,7 +29,7 @@
 
 query:
 	select | insert | insert | insert | delete | replace | update | transaction | alter | views | set |
-	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query ; 
+	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query | audit_plugin ; 
 
 p_query:
 # 5.1	ext_slow_query_log | resp_time_dist | user_stats | changed_page_tracking | drop_create_table ;
@@ -77,6 +77,13 @@ slow_query_log_timestamp_precision_list:
 slow_query_log_use_global_control_list:
 	"" | LOG_SLOW_FILTER | LOG_SLOW_RATE_LIMIT | LOG_SLOW_VERBOSITY | LONG_QUERY_TIME | MIN_EXAMINED_ROW_LIMIT | ALL | 
 	"slow_query_log_use_global_control_list,slow_query_log_use_global_control_list" ;
+
+audit_plugin:
+        SET GLOBAL audit_log_policy = audit_policy |
+        SET GLOBAL audit_log_flush = onoff ;
+
+audit_policy:
+        ALL | LOGINS | QUERIES | NONE ;
 
 resp_time_dist:
 	SET GLOBAL resp_time_dist_var | resp_time_dist_query | resp_time_dist_query |
