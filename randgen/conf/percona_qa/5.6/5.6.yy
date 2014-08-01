@@ -64,7 +64,7 @@ query:
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
         bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking | prio_shed |
-	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku ;
+	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku | audit_plugin ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
@@ -216,6 +216,13 @@ thread_pool:
 
 thread_pool_high_prio_mode_list:
         transactions | statements | none ;
+
+audit_plugin:
+        SET GLOBAL audit_log_policy = audit_policy |
+        SET GLOBAL audit_log_flush = onoff ;
+
+audit_policy:
+        ALL | LOGINS | QUERIES | NONE ;
 
 archive_logs:
         SHOW ENGINE INNODB STATUS |
