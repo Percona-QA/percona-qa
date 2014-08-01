@@ -209,8 +209,13 @@ thread_pool:
 	SET GLOBAL thread_pool_max_threads = hundred_to_thousand |
 	SET GLOBAL thread_pool_oversubscribe = three_to_twenty | 
  	SET GLOBAL thread_pool_size = one_to_ten |
+        SET GLOBAL thread_pool_high_prio_tickets=0 |
+        SET scope thread_pool_high_prio_mode = thread_pool_high_prio_mode_list |
 	SHOW GLOBAL STATUS LIKE 'threadpool_idle_threads' |
 	SHOW GLOBAL STATUS LIKE 'threadpool_threads' ;
+
+thread_pool_high_prio_mode_list:
+        transactions | statements | none ;
 
 archive_logs:
         SHOW ENGINE INNODB STATUS |
