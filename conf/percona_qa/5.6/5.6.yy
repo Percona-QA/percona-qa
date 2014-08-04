@@ -442,7 +442,8 @@ set:
 	SET scope OLD_ALTER_TABLE = onoff |
 	SET scope EXPAND_FAST_INDEX_CREATION = ON |
 	SET scope EXPAND_FAST_INDEX_CREATION = OFF |
-	SET @@global.innodb_log_checkpoint_now = TRUE ;
+	SET @@global.innodb_log_checkpoint_now = TRUE |
+        SET GLOBAL innodb_empty_free_list_algorithm=legacy ;
 
 isolation:
 	READ-UNCOMMITTED | READ-COMMITTED | REPEATABLE-READ | SERIALIZABLE ;
