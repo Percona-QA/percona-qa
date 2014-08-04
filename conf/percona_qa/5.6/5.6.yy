@@ -64,7 +64,7 @@ query:
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
         bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking | prio_shed |
-	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku | audit_plugin ;
+	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku | audit_plugin | i_s_buffer_pool_stats ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
@@ -291,6 +291,14 @@ i_s:
 	SELECT COUNT(*) FROM i_s_area | SELECT COUNT(*) FROM i_s_area |
 	SELECT * FROM i_s_area LIMIT _digit | SELECT * FROM i_s_area LIMIT _digit |
 	SELECT * FROM i_s_area ;
+
+i_s_buffer_pool_stats:
+	SELECT PAGE_TYPE,COUNT(1) FROM INNODB_BUFFER_PAGE_LRU GROUP BY PAGE_TYPE |
+	SELECT SUM(DATA_SIZE) FROM INNODB_BUFFER_PAGE_LRU |
+	SELECT SUM(DATA_SIZE) FROM INNODB_BUFFER_PAGE |
+	SELECT POOL_ID,SUM(FREE_BUFFERS),SUM(NUMBER_PAGES_CREATED),SUM(NUMBER_PAGES_WRITTEN) FROM INNODB_BUFFER_POOL_STATS GROUP BY POOL_ID |
+	SELECT PAGES_READ_RATE,PAGES_CREATE_RATE, PAGES_WRITTEN_RATE,HIT_RATE,READ_AHEAD_RATE,READ_AHEAD_EVICTED_RATE FROM INNODB_BUFFER_POOL_STATS |
+	SELECT LRU_IO_TOTAL,LRU_IO_CURRENT,UNCOMPRESS_TOTAL,UNCOMPRESS_CURRENT FROM INNODB_BUFFER_POOL_STATS ;
 
 # This could be merged into i_s and i_s_area
 i_s_toku:
