@@ -64,7 +64,7 @@ query:
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
         bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking | prio_shed |
-	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku | audit_plugin | i_s_buffer_pool_stats ;
+	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku | audit_plugin | i_s_buffer_pool_stats | i_s ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
@@ -285,10 +285,16 @@ i_s_area:
 	INFORMATION_SCHEMA.GLOBAL_TEMPORARY_TABLES |
 	INFORMATION_SCHEMA.TEMPORARY_TABLES | 
 	INFORMATION_SCHEMA.PROCESSLIST | 
-	INFORMATION_SCHEMA.XTRADB_RSEG ;
+	INFORMATION_SCHEMA.XTRADB_RSEG |
+	INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
+	INFORMATION_SCHEMA.TokuDB_lock_waits |
+	INFORMATION_SCHEMA.TokuDB_file_map |
+	INFORMATION_SCHEMA.TokuDB_locks |
+	INFORMATION_SCHEMA.TokuDB_fractal_tree_info |
+	INFORMATION_SCHEMA.TokuDB_trx ;
 
 i_s:
-	SELECT COUNT(*) FROM i_s_area | SELECT COUNT(*) FROM i_s_area |
+	SELECT COUNT(1) FROM i_s_area | SELECT COUNT(1) FROM i_s_area |
 	SELECT * FROM i_s_area LIMIT _digit | SELECT * FROM i_s_area LIMIT _digit |
 	SELECT * FROM i_s_area ;
 
@@ -302,24 +308,12 @@ i_s_buffer_pool_stats:
 
 # This could be merged into i_s and i_s_area
 i_s_toku:
-	SELECT dictionary_name, internal_file_name, checkpoint_count, blocknum, offset, size FROM TokuDB_fractal_tree_block_map LIMIT _digit |
-	SELECT requesting_trx_id, blocking_trx_id, lock_waits_dname, lock_waits_key_left, lock_waits_key_right, lock_waits_start_time FROM TokuDB_lock_waits LIMIT _digit |
-	SELECT dictionary_name, internal_file_name, table_schema, table_name, table_dictionary_name FROM TokuDB_file_map LIMIT _digit |
-	SELECT locks_trx_id, locks_mysql_thread_id, locks_dname, locks_key_left, locks_key_right FROM TokuDB_locks LIMIT _digit |
-	SELECT dictionary_name, internal_file_name, bt_num_blocks_allocated, bt_num_blocks_in_use, bt_size_allocated, bt_size_in_use FROM TokuDB_fractal_tree_info LIMIT _digit |
-	SELECT trx_id, trx_mysql_thread_id FROM TokuDB_trx LIMIT _digit |
-	SELECT * FROM TokuDB_fractal_tree_block_map LIMIT _digit |
-	SELECT * FROM TokuDB_lock_waits LIMIT _digit |
-	SELECT * FROM TokuDB_file_map LIMIT _digit |
-	SELECT * FROM TokuDB_locks LIMIT _digit |
-	SELECT * FROM TokuDB_fractal_tree_info LIMIT _digit |
-	SELECT * FROM TokuDB_trx LIMIT _digit |a
-	SELECT COUNT(*) FROM TokuDB_fractal_tree_block_map |
-	SELECT COUNT(*) FROM TokuDB_lock_waits |
-	SELECT COUNT(*) FROM TokuDB_file_map |
-	SELECT COUNT(*) FROM TokuDB_locks |
-	SELECT COUNT(*) FROM TokuDB_fractal_tree_info |
-	SELECT COUNT(*) FROM TokuDB_trx ;
+        SELECT dictionary_name,internal_file_name,checkpoint_count,blocknum,offset,size FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map LIMIT _digit |
+        SELECT requesting_trx_id,blocking_trx_id,lock_waits_dname,lock_waits_key_left,lock_waits_key_right,lock_waits_start_time FROM INFORMATION_SCHEMA.TokuDB_lock_waits LIMIT _digit |
+        SELECT dictionary_name,internal_file_name,table_schema,table_name,table_dictionary_name FROM INFORMATION_SCHEMA.TokuDB_file_map LIMIT _digit |
+        SELECT locks_trx_id,locks_mysql_thread_id,locks_dname,locks_key_left,locks_key_right FROM INFORMATION_SCHEMA.TokuDB_locks LIMIT _digit |
+        SELECT dictionary_name,internal_file_name,bt_num_blocks_allocated,bt_num_blocks_in_use,bt_size_allocated,bt_size_in_use FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info LIMIT _digit |
+ 	SELECT trx_id,trx_mysql_thread_id FROM TokuDB_trx LIMIT _digit ;
 
 # 60/40 during TokuDB project
 engine:
