@@ -313,7 +313,7 @@ i_s_toku:
         SELECT dictionary_name,internal_file_name,table_schema,table_name,table_dictionary_name FROM INFORMATION_SCHEMA.TokuDB_file_map LIMIT _digit |
         SELECT locks_trx_id,locks_mysql_thread_id,locks_dname,locks_key_left,locks_key_right FROM INFORMATION_SCHEMA.TokuDB_locks LIMIT _digit |
         SELECT dictionary_name,internal_file_name,bt_num_blocks_allocated,bt_num_blocks_in_use,bt_size_allocated,bt_size_in_use FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info LIMIT _digit |
- 	SELECT trx_id,trx_mysql_thread_id FROM TokuDB_trx LIMIT _digit ;
+ 	SELECT trx_id,trx_mysql_thread_id FROM INFORMATION_SCHEMA.TokuDB_trx LIMIT _digit ;
         SELECT * FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
         SELECT * FROM INFORMATION_SCHEMA.TokuDB_lock_waits |
         SELECT * FROM INFORMATION_SCHEMA.TokuDB_file_map |
