@@ -64,7 +64,7 @@ query:
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
         bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking | prio_shed |
-	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku | audit_plugin | i_s_buffer_pool_stats | i_s ;
+	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku | audit_plugin | i_s_buffer_pool_stats ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
@@ -283,7 +283,7 @@ query_cache:
 
 i_s_area:
 	INFORMATION_SCHEMA.GLOBAL_TEMPORARY_TABLES |
-	INFORMATION_SCHEMA.TEMPORARY_TABLES | 
+	INFORMATION_SCHEMA.TEMPORARY_TABLES |
 	INFORMATION_SCHEMA.PROCESSLIST | 
 	INFORMATION_SCHEMA.XTRADB_RSEG |
 	INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
@@ -314,6 +314,18 @@ i_s_toku:
         SELECT locks_trx_id,locks_mysql_thread_id,locks_dname,locks_key_left,locks_key_right FROM INFORMATION_SCHEMA.TokuDB_locks LIMIT _digit |
         SELECT dictionary_name,internal_file_name,bt_num_blocks_allocated,bt_num_blocks_in_use,bt_size_allocated,bt_size_in_use FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info LIMIT _digit |
  	SELECT trx_id,trx_mysql_thread_id FROM TokuDB_trx LIMIT _digit ;
+        SELECT * FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
+        SELECT * FROM INFORMATION_SCHEMA.TokuDB_lock_waits |
+        SELECT * FROM INFORMATION_SCHEMA.TokuDB_file_map |
+        SELECT * FROM INFORMATION_SCHEMA.TokuDB_locks |
+        SELECT * FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info |
+        SELECT * FROM INFORMATION_SCHEMA.TokuDB_trx |
+        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
+        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_lock_waits |
+        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_file_map |
+        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_locks |
+        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info |
+        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_trx ;
 
 # 60/40 during TokuDB project
 engine:
