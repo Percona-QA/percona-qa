@@ -113,6 +113,12 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=1
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=4K
+  --mysqld=--sync_binlog=1
+  --mysqld=--max_binlog_cache_size=8K
+  --mysqld=--max_binlog_size=8K
+  --mysqld=--max_relay_log_size=4K
  ','
   --views
   --notnull
@@ -243,6 +249,12 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=8K
+  --mysqld=--sync_binlog=1
+  --mysqld=--max_binlog_cache_size=16K
+  --mysqld=--max_binlog_size=16K
+  --mysqld=--max_relay_log_size=8K
  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -355,6 +367,12 @@ $combinations=
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=16K
+  --mysqld=--sync_binlog=1
+  --mysqld=--max_binlog_cache_size=32K
+  --mysqld=--max_binlog_size=32K
+  --mysqld=--max_relay_log_size=16K
  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -527,6 +545,12 @@ $combinations=
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=5
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=32K
+  --mysqld=--sync_binlog=1
+  --mysqld=--max_binlog_cache_size=64K
+  --mysqld=--max_binlog_size=64K
+  --mysqld=--max_relay_log_size=32K
  ','
   --notnull
   --mysqld=--innodb_changed_pages=ON
@@ -660,6 +684,12 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=32K
+  --mysqld=--sync_binlog=0
+  --mysqld=--max_binlog_cache_size=64K
+  --mysqld=--max_binlog_size=64K
+  --mysqld=--max_relay_log_size=32K
  ','
   --notnull
   --mysqld=--innodb_change_buffering=all
@@ -689,6 +719,12 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=8
   --mysqld=--innodb_buffer_pool_instances=5
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=32K
+  --mysqld=--sync_binlog=10
+  --mysqld=--max_binlog_cache_size=64K
+  --mysqld=--max_binlog_size=64K
+  --mysqld=--max_relay_log_size=32K
  ','
   --notnull
   --mysqld=--innodb_change_buffering=inserts
@@ -1004,6 +1040,12 @@ $combinations=
   --mysqld=--innodb_purge_threads=6
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=1
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=32K
+  --mysqld=--sync_binlog=100
+  --mysqld=--max_binlog_cache_size=64K
+  --mysqld=--max_binlog_size=64K
+  --mysqld=--max_relay_log_size=32K
  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -1084,6 +1126,12 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
   --mysqld=--innodb_buffer_pool_instances=5
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=16K
+  --mysqld=--sync_binlog=1
+  --mysqld=--max_binlog_cache_size=32K
+  --mysqld=--max_binlog_size=32K
+  --mysqld=--max_relay_log_size=16K
  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE
@@ -1164,6 +1212,12 @@ $combinations=
   --mysqld=--hidden-key-buffer-size=1
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=5
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=16K
+  --mysqld=--sync_binlog=1
+  --mysqld=--max_binlog_cache_size=32K
+  --mysqld=--max_binlog_size=32K
+  --mysqld=--max_relay_log_size=16K
  ','
   --notnull
   --mysqld=--innodb_change_buffering=none
@@ -1620,6 +1674,12 @@ $combinations=
   --mysqld=--innodb_purge_threads=1
   --mysqld=--innodb_adaptive_hash_index_partitions=16
   --mysqld=--innodb_buffer_pool_instances=1
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=16K
+  --mysqld=--sync_binlog=1
+  --mysqld=--max_binlog_cache_size=32K
+  --mysqld=--max_binlog_size=32K
+  --mysqld=--max_relay_log_size=64K
  ','
   --mysqld=--innodb_change_buffering=inserts
   --mysqld=--innodb_changed_pages=FORCE
@@ -1893,6 +1953,12 @@ $combinations=
   --mysqld=--innodb_purge_threads=4
   --mysqld=--innodb_adaptive_hash_index_partitions=1
   --mysqld=--innodb_buffer_pool_instances=5
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=16K
+  --mysqld=--sync_binlog=10
+  --mysqld=--max_binlog_cache_size=32K
+  --mysqld=--max_binlog_size=32K
+  --mysqld=--max_relay_log_size=16K
  ','
   --mysqld=--innodb_change_buffering=none
   --mysqld=--innodb_changed_pages=ON
@@ -2189,6 +2255,12 @@ $combinations=
   --mysqld=--utility-user-schema-access=mysqlinformation_schema
   --mysqld=--hidden-key-buffer-size=0
   --mysqld=--innodb_purge_threads=32
+  --rpl_mode=default
+  --mysqld=--binlog-row-event-max-size=16K
+  --mysqld=--sync_binlog=1
+  --mysqld=--max_binlog_cache_size=32K
+  --mysqld=--max_binlog_size=32K
+  --mysqld=--max_relay_log_size=16K
  ','
   --notnull
   --mysqld=--innodb_changed_pages=FORCE

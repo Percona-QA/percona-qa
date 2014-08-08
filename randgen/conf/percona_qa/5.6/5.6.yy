@@ -64,7 +64,7 @@ query:
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
         bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | innodb_prio | locking | prio_shed |
-	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku | audit_plugin | i_s_buffer_pool_stats ;
+	cleaner | preflush | toku_clustering_key | toku_clustering_key | i_s_toku | audit_plugin | binlog_event | i_s_buffer_pool_stats ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
@@ -223,6 +223,21 @@ audit_plugin:
 
 audit_policy:
         ALL | LOGINS | QUERIES | NONE ;
+
+binlog_event:
+        SET GLOBAL BINLOG_FORMAT = binlog_format_list |
+        insert | update | delete | outfile_infile | master_statement | flush_log |
+        SET GLOBAL BINLOG_FORMAT = binlog_format_list ;
+
+binlog_format_list:
+        STATEMENT | ROW | MIXED ;
+
+master_statement:
+	SHOW BINLOG EVENTS | 
+	SHOW MASTER STATUS ;
+
+flush_log:
+	FLUSH LOGS;
 
 archive_logs:
         SHOW ENGINE INNODB STATUS |
