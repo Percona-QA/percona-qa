@@ -108,8 +108,6 @@ prio_shed:
 	SET GLOBAL innodb_sched_priority_purge = zero_to_forty ;
 
 cleaner:
-	SELECT @@GLOBAL.innodb_cleaner_new_lsn_age_factor |
-	SET GLOBAL innodb_cleaner_new_lsn_age_factor = onoff |
 	SET GLOBAL innodb_cleaner_lsn_age_factor = 'legacy' |
 	SET GLOBAL innodb_cleaner_lsn_age_factor = 'high_checkpoint' ;
 
