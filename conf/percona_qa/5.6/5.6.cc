@@ -3770,8 +3770,6 @@ $combinations=
   --mysqld=--innodb_purge_threads=32
   --mysqld=--innodb_adaptive_hash_index_partitions=12
   --mysqld=--innodb_buffer_pool_instances=1
-  ','
-  --mysqld=--secure-file-priv=/tmp
   '
  ]
 ]
