@@ -74,7 +74,6 @@ $combinations=
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -152,7 +151,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=0
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
   --mysqld=--utility-user=roel@%
@@ -177,7 +175,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
@@ -233,7 +230,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -289,7 +285,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
@@ -363,7 +358,6 @@ $combinations=
   --mysqld=--innodb_track_changed_pages=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
@@ -387,7 +381,6 @@ $combinations=
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -434,7 +427,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=1
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -506,7 +498,6 @@ $combinations=
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--userstat
@@ -557,7 +548,6 @@ $combinations=
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -642,7 +632,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=1
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -665,7 +654,6 @@ $combinations=
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -767,7 +755,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
@@ -821,7 +808,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -845,7 +831,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=0
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--query_cache_type=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -998,7 +983,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -1079,7 +1063,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -1131,7 +1114,6 @@ $combinations=
   --mysqld=--innodb_track_changed_pages=1
   --mysqld=--loose-readonly-key-cache-division-limit=1
   --mysqld=--readonly-key-cache-block-size=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -1150,7 +1132,6 @@ $combinations=
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--loose-readonly-key-cache-division-limit=0
   --mysqld=--query_cache_type=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
@@ -1326,7 +1307,6 @@ $combinations=
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -1382,7 +1362,6 @@ $combinations=
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -1460,7 +1439,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-COMMITTED
@@ -1579,7 +1557,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=1
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
@@ -1727,7 +1704,6 @@ $combinations=
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -1750,7 +1726,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=0
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -1829,7 +1804,6 @@ $combinations=
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -1856,7 +1830,6 @@ $combinations=
   --mysqld=--innodb-buffer-pool-populate
   --mysqld=--loose-readonly-key-cache-division-limit=0
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
@@ -1915,7 +1888,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -1945,7 +1917,6 @@ $combinations=
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
@@ -1994,7 +1965,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -2019,7 +1989,6 @@ $combinations=
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
@@ -2046,7 +2015,6 @@ $combinations=
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
@@ -2117,7 +2085,6 @@ $combinations=
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--readonly-key-cache-block-size=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
@@ -2142,7 +2109,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=0
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -2272,7 +2238,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=1
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -2370,7 +2335,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
@@ -2418,7 +2382,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=1
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
@@ -2441,7 +2404,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--utility-user-password=test
@@ -2464,7 +2426,6 @@ $combinations=
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -2493,7 +2454,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--userstat
@@ -2568,7 +2528,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=0
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--query_cache_type=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -2592,7 +2551,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
@@ -2621,7 +2579,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -2643,7 +2600,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=0
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
@@ -2693,7 +2649,6 @@ $combinations=
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--readonly-key-cache-block-size=1
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
@@ -2715,7 +2670,6 @@ $combinations=
   --mysqld=--innodb_max_changed_pages=0
   --mysqld=--innodb_track_changed_pages=1
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
@@ -2769,7 +2723,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--transaction-isolation=REPEATABLE-READ
   --mysqld=--utility-user=roel@%
@@ -2816,7 +2769,6 @@ $combinations=
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--userstat
@@ -2873,7 +2825,6 @@ $combinations=
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -2899,7 +2850,6 @@ $combinations=
   --mysqld=--loose-readonly-key-cache-division-limit=1
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-loose-max-connect-errors=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--skip-innodb_doublewrite
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
@@ -3038,7 +2988,6 @@ $combinations=
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--query_cache_size=1048576
   --mysqld=--query_cache_type=1
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-COMMITTED
@@ -3132,7 +3081,6 @@ $combinations=
   --mysqld=--query_cache_type=1
   --mysqld=--readonly-key-cache-block-size=0
   --mysqld=--readonly-loose-max-connect-errors=0
-  --mysqld=--secure-file-priv=/tmp
   --mysqld=--slow_query_log
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=REPEATABLE-READ
@@ -3186,8 +3134,6 @@ $combinations=
   --mysqld=--thread_handling=pool-of-threads
   --mysqld=--transaction-isolation=READ-UNCOMMITTED
   --mysqld=--userstat
- ','
-  --mysqld=--secure-file-priv=/tmp
  '
  ]
 ]
