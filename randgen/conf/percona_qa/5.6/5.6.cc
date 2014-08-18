@@ -50,7 +50,7 @@ $combinations=
 
   --mysqld=--utility-user-password=test
  '],[
-  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_debug.yy.redef.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_debug.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --no-mask
      --basedir=/Percona-Server-Debug',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=20 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
