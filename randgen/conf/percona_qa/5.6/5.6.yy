@@ -66,7 +66,8 @@ query:
         alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
         ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
         bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | locking | prio_shed |
-	cleaner | preflush | toku_clustering_key | toku_clustering_key | audit_plugin | binlog_event | i_s_buffer_pool_stats ;
+	cleaner | preflush | toku_clustering_key | toku_clustering_key | audit_plugin | binlog_event | 
+	i_s_buffer_pool_stats | full_text_index ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
@@ -186,6 +187,59 @@ tck_or_other:
 
 if_not_exists:
 	| IF NOT EXISTS ;
+
+full_text_index:
+        CREATE TABLE if_not_exists tb_fti ( c1 INT unsigned NOT NULL AUTO_INCREMENT, c2 text_type , fti_keydef ) ENGINE = INNODB |
+        CREATE TABLE if_not_exists tb_fti ( c1 INT , c2 text_type , fti_keydef) ENGINE = INNODB |
+	CREATE TABLE if_not_exists tb_fti ( c1 INT , c2 text_type , c3 text ,fti_keydef) ENGINE = INNODB |
+        CREATE TABLE if_not_exists tb_fti ( FTS_DOC_ID BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, c2 text_type , PRIMARY KEY (FTS_DOC_ID) , FULLTEXT KEY fk1 (c2) ) ENGINE = INNODB |
+        ALTER TABLE tb_fti ADD fti_keydef |
+        ALTER TABLE tb_fti ADD fti_keydef |
+	ALTER TABLE tb_fti DROP PRIMARY KEY |
+	ALTER TABLE tb_fti DROP INDEX fti_key |
+        INSERT INTO tb_fti (c2) SELECT description FROM mysql.help_topic |
+        INSERT INTO tb_fti (c2) SELECT description FROM mysql.help_topic |
+	INSERT priority_insert ign INTO tb_fti (c3) SELECT description FROM mysql.help_topic |
+	INSERT priority_insert ign INTO tb_fti (c2,c3) SELECT description,description FROM mysql.help_topic |
+        INSERT priority_insert ign INTO tb_fti (c2) SELECT description FROM mysql.help_topic |
+        SELECT * FROM tb_fti WHERE MATCH(c2) AGAINST(_english) |
+        SELECT * FROM tb_fti WHERE MATCH(c2) AGAINST(_english IN BOOLEAN MODE) |
+        SELECT * FROM tb_fti WHERE MATCH(c2) AGAINST(_english WITH QUERY EXPANSION) |
+	DELETE FROM tb_fti where order_by limit |
+	OPTIMIZE TABLE tb_fti ;
+
+i_s_fti:
+        SET GLOBAL innodb_ft_aux_table=innodb_ft_aux_table_list |
+        SET GLOBAL innodb_ft_aux_table=innodb_ft_aux_table_list |
+        SET GLOBAL innodb_optimize_fulltext_only = onoff |
+        SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG |
+	SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_BEING_DELETED |
+	SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_DELETED |
+	SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_INDEX_TABLE |
+	SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_DEFAULT_STOPWORD |
+        SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_BEING_DELETED |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_DELETED |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_INDEX_TABLE |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_DEFAULT_STOPWORD ;	
+
+fti_keydef:
+        PRIMARY KEY (c1) , FULLTEXT KEY fti_key (c2) | PRIMARY KEY (c1) , FULLTEXT KEY fti_key (c2) | 
+	PRIMARY KEY (c1) , FULLTEXT KEY fti_key (c2,c3) | FULLTEXT KEY fti_key (c2) | 
+	FULLTEXT KEY fti_key (c2) | FULLTEXT KEY fti_key (c2,c3) | 
+	FULLTEXT KEY fti_key (c3) | PRIMARY KEY (c1) ;
+
+fti_key:
+	k1 | k2 | k3 | k4 | k5 ;
+
+tb_fti:
+        fti_t1 | fti_t2 | fti_t3 | fti_t4 | fti_t5 ;
+
+innodb_ft_aux_table_list:
+        'test/fti_t1' | 'test/fti_t2' | 'test/fti_t3' | 'test/fti_t4' | 'test/fti_t5' ;
+
+text_type: 
+	TINYTEXT | TINYTEXT | TINYTEXT | TINYTEXT | TEXT | TEXT | TEXT | TEXT | MEDIUMTEXT ;
 
 thread_pool:
 	SET GLOBAL thread_pool_idle_timeout = zero_to_ttsh | 
