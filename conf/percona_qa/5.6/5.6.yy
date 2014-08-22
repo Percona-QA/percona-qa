@@ -695,7 +695,7 @@ default_or_not:
 	| | DEFAULT 0 | DEFAULT NULL | DEFAULT 1 | DEFAULT 'a' ;
 
 type:
-	INT | INT AUTO_INCREMENT | DECIMAL | FLOAT | DOUBLE | DECIMAL( _digit , _digit )BIT | CHAR( _digit ) | VARCHAR( _digit ) | 
+	INT | INT AUTO_INCREMENT | DECIMAL | FLOAT | DOUBLE | DECIMAL( _digit , _digit ) | BIT | CHAR( _digit ) | VARCHAR( _digit ) | 
         BLOB | BLOB | DATE | DATETIME | TIMESTAMP | TIME | YEAR | BINARY | TEXT | ENUM('a','b','c') | SET('a','b','c') ;
 
 value:
