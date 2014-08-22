@@ -102,7 +102,7 @@ max_stmt_time_range:
 
 prio_shed:
 	SELECT @@GLOBAL.innodb_sched_priority_cleaner |
-	SET GLOBAL innodb_sched_priority_cleaner = zero_to_forty |
+	SET GLOBAL innodb_sched_priority_cleaner = zero_to_forty ;
 
 cleaner:
 	SET GLOBAL innodb_cleaner_lsn_age_factor = 'legacy' |
