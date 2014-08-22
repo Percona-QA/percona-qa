@@ -41,7 +41,7 @@ require Exporter;
 	FIELD_TYPE_QUID
 );
 
-use strict;
+#use strict;
 
 use Carp;
 use GenTest;
