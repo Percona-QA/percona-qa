@@ -76,7 +76,7 @@ my %results;
 my @commands;
 my $max_result = 0;
 my $thread_id = 0;
-
+my $epochcreadir;
 my $mtrbt = defined $ENV{MTR_BUILD_THREAD}?$ENV{MTR_BUILD_THREAD}:300;
 
 my $opt_result = GetOptions(
@@ -313,7 +313,7 @@ sub doCombination {
 	if ($command =~ m/_epoch/) {
 		my $epoch=`date -u '+%s%N' | tr -d '\n'`;
 		my $epochdir = defined $ENV{EPOCH_DIR}?$ENV{EPOCH_DIR}:'/tmp';
-		my $epochcreadir=$epochdir.'/'.$epoch;
+		$epochcreadir=$epochdir.'/'.$epoch;
 		mkdir $epochcreadir or croak "unable to create directory '$epochcreadir': $!";
 		say ("[$thread_id] '_epoch' detected in command line. Created directory: $epochcreadir and substituted '_epoch' to it.");
 		$command =~ s/_epoch/$epochcreadir/sgo;	
@@ -360,6 +360,9 @@ sub doCombination {
             } else {
                 system("cp -r $from $to");
                 system("cp -r $from"."_slave $to") if -e $from.'_slave';
+		if ($command =~ m/_epoch/) {
+			system("mv $epochcreadir $to");
+		}
                 open(OUT, ">$to/command");
                 print OUT $command;
                 close(OUT);
@@ -367,6 +370,7 @@ sub doCombination {
                     say("[$thread_id] Clean mode active & failed run (".status2text($result)."): Archiving this vardir");
                     system('rm -f '.$workdir.'/vardir'.$s.'_'.$trial_id.'/tmp/master.sock'); 
                     system('tar zhcf '.$workdir.'/vardir'.$s.'_'.$trial_id.'.tar.gz -C '.$workdir.' ./vardir'.$s.'_'.$trial_id);
+		    system("rm -Rf $epochcreadir");
                     system("rm -Rf $to");
                 }
             }
