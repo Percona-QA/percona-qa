@@ -43,6 +43,9 @@ else
   cd $RQG_DIR
   MTR_BUILD_THREAD=$MTR_BT; perl ./runall-new.pl \
   --rpl_mode=row \
+  --threads=1 \
+  --duration=300 \
+  --queries=99999999999 \
   --basedir1=$BASEDIR \
   --basedir2=$BASEDIR \
   --mysqld1=--plugin-load=tokudb=ha_tokudb.so \
