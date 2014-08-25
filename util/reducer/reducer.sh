@@ -201,7 +201,7 @@ options_check(){
   fi
   # Check if O_DIRECT is being used on tmpfs, which (when the original run was not on tmpfs) is not a 100% reproduce match, which may affect reproducibility
   # See http://bugs.mysql.com/bug.php?id=26662 for more info
-  if egrep -qi "MYEXTRA=.*O_DIRECT" $0; then
+  if $(echo $MYEXTRA | egrep -qi "MYEXTRA=.*O_DIRECT"); then
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then  # ramfs may not have this same issue, maybe '-o $WORKDIR_LOCATION -eq 2' can be removed?
       echo 'Error: O_DIRECT is being used in the MYEXTRA option string, and tmpfs (or ramfs) storage was specified, but because'
       echo 'of bug http://bugs.mysql.com/bug.php?id=26662 one would see a WARNING for this in the error log along the lines of;'
@@ -216,8 +216,8 @@ options_check(){
   fi 
   # This section could be expanded to check for any directory specified (by for instance checking for paths), not just the two listed here
   DIR_ISSUE=0;
-  if egrep -qi "MYEXTRA=.*innodb_log_group_home_dir" $0; then DIR_ISSUE='innodb_log_group_home_dir'; fi
-  if egrep -qi "MYEXTRA=.*innodb_log_arch_dir" $0; then DIR_ISSUE='innodb_log_arch_dir'; fi
+  if $(echo $MYEXTRA | egrep -qi "MYEXTRA=.*innodb_log_group_home_dir"); then DIR_ISSUE='innodb_log_group_home_dir'; fi
+  if $(echo $MYEXTRA | egrep -qi "MYEXTRA=.*innodb_log_arch_dir"); then DIR_ISSUE='innodb_log_arch_dir'; fi
   if [ "$DIR_ISSUE" != "0" ]; then
     echo "Error: the $DIR_ISSUE option is being used in the MYEXTRA option string. This can lead to all sorts of problems;"
     echo 'Remember that reducer 1) is multi-threaded - i.e. it would access that particularly named directory for each started mysqld, which'
