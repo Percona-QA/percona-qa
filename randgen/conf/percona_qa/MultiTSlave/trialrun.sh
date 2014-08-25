@@ -44,6 +44,7 @@ else
   MTR_BUILD_THREAD=$MTR_BT; perl ./runall-new.pl \
   --rpl_mode=row \
   --threads=1 \
+  --sqltrace \
   --duration=300 \
   --queries=99999999999 \
   --basedir1=$BASEDIR \
