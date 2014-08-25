@@ -23,7 +23,7 @@ $combinations=
   --seed=random --duration=300 --querytimeout=60 --short_column_names
   --reporter=Shutdown,Backtrace,QueryTimeout,ErrorLog,ErrorLogAlarm
   --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
-
+  --mysqld=--plugin-load=audit_log=audit_log.so
   --mysqld=--utility-user-password=test
  '],[
   '--grammar=conf/percona_qa/5.5/5.5.yy --gendata=conf/percona_qa/5.5/5.5.zz1 --threads=15 --no-mask
