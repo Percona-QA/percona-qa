@@ -502,12 +502,14 @@ set:
 	SET scope EXPAND_FAST_INDEX_CREATION = ON |
 	SET scope EXPAND_FAST_INDEX_CREATION = OFF |
 	SET @@global.innodb_log_checkpoint_now = TRUE |
-        SET GLOBAL innodb_empty_free_list_algorithm=legacy |
+        SET GLOBAL innodb_empty_free_list_algorithm = innodb_empty_free_list_algo |
         SET GLOBAL innodb_log_checksum_algorithm = innodb_log_checksum_algorithm_list ;
 
 innodb_log_checksum_algorithm_list:
         none | innodb | crc32 | strict_none | strict_innodb | strict_crc32 ;
 
+innodb_empty_free_list_algo:
+        legacy | backoff ;
 
 isolation:
 	READ-UNCOMMITTED | READ-COMMITTED | REPEATABLE-READ | SERIALIZABLE ;
