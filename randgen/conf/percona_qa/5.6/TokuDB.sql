@@ -1,4 +1,3 @@
-INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so';
 INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; 
 INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; 
 INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; 
