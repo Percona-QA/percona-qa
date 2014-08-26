@@ -27,9 +27,11 @@
 # 4. You can use --short_column_names option to RQG to avoid overly long column names
 # 5. Do not use the --engines option, storage engine assignent is done in percona_qa.zz
 
+# Temp workaround: thread_pool |   removed from query: PS is not responding in many trials
+
 query:
 	select | insert | insert | insert | delete | replace | update | transaction | alter | views | set |
-	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query | audit_plugin | thread_pool ; 
+	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query | audit_plugin ; 
 
 p_query:
 # 5.1	ext_slow_query_log | resp_time_dist | user_stats | changed_page_tracking | drop_create_table ;
