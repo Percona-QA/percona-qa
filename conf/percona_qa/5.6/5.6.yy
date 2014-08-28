@@ -42,7 +42,8 @@
 #                                   Ref https://bugs.launchpad.net/percona-server/+bug/1260152
 # Temp workaround: fake_changes |   removed from query: due to Percona feature WIP
 # Temp workaround: i_s_toku |	    removed from query:  These statements cause 'void Protocol::end_statement' 
-#				    asserts - followup in progress
+#				    asserts - Sig6 void Protocol::end_statement(): Assertion `0' failed. - Logged with TokuTek 28/08/14
+#				    (Also remember to re-instate i_s_toku in redef file)
 
 # INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'; is instead handled by a mysqld option in the cc file: 
 # --mysqld=--plugin-load=tokudb=ha_tokudb.so - This is to ensure that TokuDB engine is available to
