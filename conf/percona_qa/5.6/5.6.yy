@@ -673,8 +673,7 @@ lock_function:
         LOCK TABLE _table AS _letter READ LOCAL | LOCK TABLE _table as _letter LOW_PRIORITY WRITE |
 	FLUSH TABLES WITH READ LOCK ;
 
-# Errors: - see MS Bugs 42685 and 47412 (Discussion is going on)
-       
+# Disabled: See PS Bug 1360942 and MS Bug 73721 (Ongoing discussion) 
 # LOCK TABLES FOR BACKUP | LOCK BINLOG FOR BACKUP ;
 
 proc_param:
