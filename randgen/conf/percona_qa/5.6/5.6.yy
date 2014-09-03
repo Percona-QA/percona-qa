@@ -64,9 +64,9 @@
 
 query:
 	select | select | insert | insert | delete | delete | replace | update | transaction |
-        alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
-        ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
-        bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | locking | prio_shed |
+	alter | views | set | flush | proc_func | outfile_infile | update_multi | kill_idle | query_cache |
+	ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
+	bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | locking | prio_shed |
 	cleaner | preflush | toku_clustering_key | toku_clustering_key | audit_plugin | binlog_event | 
 	i_s_buffer_pool_stats | full_text_index ;
 
@@ -122,16 +122,16 @@ max_stmt_time:
 	SHOW scope STATUS LIKE 'MAX_STATEMENT_TIME_SET_FAILED' ;
 
 toku_clustering_key:
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tb_keydef, tck_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tb_keydef , tck_keydef ) ENGINE = engine |
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type null_or_not default_or_not , tb_keydef , tck_keydef ) ENGINE = engine |
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tck_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tck_keydef ) ENGINE = engine |
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type null_or_not default_or_not , tck_keydef ) ENGINE = engine |
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type tck_or_not , c4 type null_or_not default_or_not tck_or_not , tck_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type tck_or_not , c4 type null_or_not default_or_not tck_or_not , tck_keydef ) ENGINE = engine |
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type tck_or_not , c4 type null_or_not default_or_not tck_or_not ) ENGINE = engine |
-        CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type null_or_not default_or_not tck_or_not , tck_keydef ) ENGINE = engine |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tb_keydef, tck_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tb_keydef , tck_keydef ) ENGINE = engine |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type null_or_not default_or_not , tb_keydef , tck_keydef ) ENGINE = engine |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tck_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type , c4 type null_or_not default_or_not , tck_keydef ) ENGINE = engine |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not , c2 type default_or_not , c3 type null_or_not default_or_not , tck_keydef ) ENGINE = engine |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type tck_or_not , c4 type null_or_not default_or_not tck_or_not , tck_keydef ) ENGINE = engine ROW_FORMAT = row_format KEY_BLOCK_SIZE = kb_size |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type tck_or_not , c4 type null_or_not default_or_not tck_or_not , tck_keydef ) ENGINE = engine |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type tck_or_not , c4 type null_or_not default_or_not tck_or_not ) ENGINE = engine |
+	CREATE TABLE if_not_exists tck_or_other ( c1 type null_or_not tck_or_not , c2 type default_or_not tck_or_not , c3 type null_or_not default_or_not tck_or_not , tck_keydef ) ENGINE = engine |
 	ALTER TABLE tck_or_other ADD tck_keydef | ALTER TABLE tck_or_other ADD tck_keydef | ALTER TABLE tck_or_other ADD tck_keydef |
 	ALTER TABLE tck_or_other ADD tck_keydef | ALTER TABLE tck_or_other ADD tck_keydef | ALTER TABLE tck_or_other ADD tck_keydef |
 	CREATE CLUSTERING INDEX k2 ON tck_or_other ( tck_field_list ) |
@@ -190,42 +190,42 @@ if_not_exists:
 	| IF NOT EXISTS ;
 
 full_text_index:
-        CREATE TABLE if_not_exists tb_fti ( c1 INT unsigned NOT NULL AUTO_INCREMENT, c2 text_type , fti_keydef ) ENGINE = INNODB |
-        CREATE TABLE if_not_exists tb_fti ( c1 INT , c2 text_type , fti_keydef) ENGINE = INNODB |
+	CREATE TABLE if_not_exists tb_fti ( c1 INT unsigned NOT NULL AUTO_INCREMENT, c2 text_type , fti_keydef ) ENGINE = INNODB |
+	CREATE TABLE if_not_exists tb_fti ( c1 INT , c2 text_type , fti_keydef) ENGINE = INNODB |
 	CREATE TABLE if_not_exists tb_fti ( c1 INT , c2 text_type , c3 text ,fti_keydef) ENGINE = INNODB |
-        CREATE TABLE if_not_exists tb_fti ( FTS_DOC_ID BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, c2 text_type , PRIMARY KEY (FTS_DOC_ID) , FULLTEXT KEY fk1 (c2) ) ENGINE = INNODB |
-        ALTER TABLE tb_fti ADD fti_keydef |
-        ALTER TABLE tb_fti ADD fti_keydef |
+	CREATE TABLE if_not_exists tb_fti ( FTS_DOC_ID BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, c2 text_type , PRIMARY KEY (FTS_DOC_ID) , FULLTEXT KEY fk1 (c2) ) ENGINE = INNODB |
+	ALTER TABLE tb_fti ADD fti_keydef |
+	ALTER TABLE tb_fti ADD fti_keydef |
 	ALTER TABLE tb_fti DROP PRIMARY KEY |
 	ALTER TABLE tb_fti DROP INDEX fti_key |
-        INSERT INTO tb_fti (c2) SELECT description FROM mysql.help_topic |
-        INSERT INTO tb_fti (c2) SELECT description FROM mysql.help_topic |
+	INSERT INTO tb_fti (c2) SELECT description FROM mysql.help_topic |
+	INSERT INTO tb_fti (c2) SELECT description FROM mysql.help_topic |
 	INSERT priority_insert ign INTO tb_fti (c3) SELECT description FROM mysql.help_topic |
 	INSERT priority_insert ign INTO tb_fti (c2,c3) SELECT description,description FROM mysql.help_topic |
-        INSERT priority_insert ign INTO tb_fti (c2) SELECT description FROM mysql.help_topic |
-        SELECT * FROM tb_fti WHERE MATCH(c2) AGAINST(_english) |
-        SELECT * FROM tb_fti WHERE MATCH(c2) AGAINST(_english IN BOOLEAN MODE) |
-        SELECT * FROM tb_fti WHERE MATCH(c2) AGAINST(_english WITH QUERY EXPANSION) |
+	INSERT priority_insert ign INTO tb_fti (c2) SELECT description FROM mysql.help_topic |
+	SELECT * FROM tb_fti WHERE MATCH(c2) AGAINST(_english) |
+	SELECT * FROM tb_fti WHERE MATCH(c2) AGAINST(_english IN BOOLEAN MODE) |
+	SELECT * FROM tb_fti WHERE MATCH(c2) AGAINST(_english WITH QUERY EXPANSION) |
 	DELETE FROM tb_fti where order_by limit |
 	OPTIMIZE TABLE tb_fti ;
 
 i_s_fti:
-        SET GLOBAL innodb_ft_aux_table=innodb_ft_aux_table_list |
-        SET GLOBAL innodb_ft_aux_table=innodb_ft_aux_table_list |
-        SET GLOBAL innodb_optimize_fulltext_only = onoff |
-        SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG |
+	SET GLOBAL innodb_ft_aux_table=innodb_ft_aux_table_list |
+	SET GLOBAL innodb_ft_aux_table=innodb_ft_aux_table_list |
+	SET GLOBAL innodb_optimize_fulltext_only = onoff |
+	SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG |
 	SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_BEING_DELETED |
 	SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_DELETED |
 	SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_INDEX_TABLE |
 	SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_DEFAULT_STOPWORD |
-        SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG |
 	SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_BEING_DELETED |
 	SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_DELETED |
 	SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_INDEX_TABLE |
 	SELECT COUNT(1) FROM INFORMATION_SCHEMA.INNODB_FT_DEFAULT_STOPWORD ;	
 
 fti_keydef:
-        PRIMARY KEY (c1) , FULLTEXT KEY fti_key (c2) | PRIMARY KEY (c1) , FULLTEXT KEY fti_key (c2) | 
+	PRIMARY KEY (c1) , FULLTEXT KEY fti_key (c2) | PRIMARY KEY (c1) , FULLTEXT KEY fti_key (c2) | 
 	PRIMARY KEY (c1) , FULLTEXT KEY fti_key (c2,c3) | FULLTEXT KEY fti_key (c2) | 
 	FULLTEXT KEY fti_key (c2) | FULLTEXT KEY fti_key (c2,c3) | 
 	FULLTEXT KEY fti_key (c3) | PRIMARY KEY (c1) ;
@@ -234,10 +234,10 @@ fti_key:
 	k1 | k2 | k3 | k4 | k5 ;
 
 tb_fti:
-        fti_t1 | fti_t2 | fti_t3 | fti_t4 | fti_t5 ;
+	fti_t1 | fti_t2 | fti_t3 | fti_t4 | fti_t5 ;
 
 innodb_ft_aux_table_list:
-        'test/fti_t1' | 'test/fti_t2' | 'test/fti_t3' | 'test/fti_t4' | 'test/fti_t5' ;
+	'test/fti_t1' | 'test/fti_t2' | 'test/fti_t3' | 'test/fti_t4' | 'test/fti_t5' ;
 
 text_type: 
 	TINYTEXT | TINYTEXT | TINYTEXT | TINYTEXT | TEXT | TEXT | TEXT | TEXT | MEDIUMTEXT ;
@@ -247,29 +247,29 @@ thread_pool:
 	SET GLOBAL thread_pool_high_prio_tickets = thousand_to_tts |
 	SET GLOBAL thread_pool_max_threads = hundred_to_thousand |
 	SET GLOBAL thread_pool_oversubscribe = three_to_twenty | 
- 	SET GLOBAL thread_pool_size = one_to_ten |
-        SET GLOBAL thread_pool_high_prio_tickets=0 |
-        SET scope thread_pool_high_prio_mode = thread_pool_high_prio_mode_list |
+	SET GLOBAL thread_pool_size = one_to_ten |
+	SET GLOBAL thread_pool_high_prio_tickets=0 |
+	SET scope thread_pool_high_prio_mode = thread_pool_high_prio_mode_list |
 	SHOW GLOBAL STATUS LIKE 'threadpool_idle_threads' |
 	SHOW GLOBAL STATUS LIKE 'threadpool_threads' ;
 
 thread_pool_high_prio_mode_list:
-        transactions | statements | none ;
+	transactions | statements | none ;
 
 audit_plugin:
-        SET GLOBAL audit_log_policy = audit_policy |
-        SET GLOBAL audit_log_flush = onoff ;
+	SET GLOBAL audit_log_policy = audit_policy |
+	SET GLOBAL audit_log_flush = onoff ;
 
 audit_policy:
-        ALL | LOGINS | QUERIES | NONE ;
+	ALL | LOGINS | QUERIES | NONE ;
 
 binlog_event:
-        SET GLOBAL BINLOG_FORMAT = binlog_format_list |
-        insert | update | delete | outfile_infile | master_statement | flush_log |
-        SET GLOBAL BINLOG_FORMAT = binlog_format_list ;
+	SET GLOBAL BINLOG_FORMAT = binlog_format_list |
+	insert | update | delete | outfile_infile | master_statement | flush_log |
+	SET GLOBAL BINLOG_FORMAT = binlog_format_list ;
 
 binlog_format_list:
-        STATEMENT | ROW | MIXED ;
+	STATEMENT | ROW | MIXED ;
 
 master_statement:
 	SHOW BINLOG EVENTS | 
@@ -279,11 +279,11 @@ flush_log:
 	FLUSH LOGS;
 
 archive_logs:
-        SHOW ENGINE INNODB STATUS |
-        SET GLOBAL INNODB_LOG_ARCHIVE = onoff |
-        SET GLOBAL INNODB_LOG_ARCH_EXPIRE_SEC = _digit |
-        PURGE ARCHIVED LOGS BEFORE _datetime |
-        PURGE ARCHIVED LOGS BEFORE NOW() ;
+	SHOW ENGINE INNODB STATUS |
+	SET GLOBAL INNODB_LOG_ARCHIVE = onoff |
+	SET GLOBAL INNODB_LOG_ARCH_EXPIRE_SEC = _digit |
+	PURGE ARCHIVED LOGS BEFORE _datetime |
+	PURGE ARCHIVED LOGS BEFORE NOW() ;
 
 fake_changes:
 	SET SESSION INNODB_FAKE_CHANGES = onoff |
@@ -362,29 +362,27 @@ i_s_buffer_pool_stats:
 
 # This could be merged into i_s and i_s_area
 i_s_toku:
-        SELECT dictionary_name,internal_file_name,checkpoint_count,blocknum,offset,size FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map LIMIT _digit |
-        SELECT requesting_trx_id,blocking_trx_id,lock_waits_dname,lock_waits_key_left,lock_waits_key_right,lock_waits_start_time FROM INFORMATION_SCHEMA.TokuDB_lock_waits LIMIT _digit |
-        SELECT dictionary_name,internal_file_name,table_schema,table_name,table_dictionary_name FROM INFORMATION_SCHEMA.TokuDB_file_map LIMIT _digit |
-        SELECT locks_trx_id,locks_mysql_thread_id,locks_dname,locks_key_left,locks_key_right FROM INFORMATION_SCHEMA.TokuDB_locks LIMIT _digit |
-        SELECT dictionary_name,internal_file_name,bt_num_blocks_allocated,bt_num_blocks_in_use,bt_size_allocated,bt_size_in_use FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info LIMIT _digit |
- 	SELECT trx_id,trx_mysql_thread_id FROM INFORMATION_SCHEMA.TokuDB_trx LIMIT _digit ;
-        SELECT * FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
-        SELECT * FROM INFORMATION_SCHEMA.TokuDB_lock_waits |
-        SELECT * FROM INFORMATION_SCHEMA.TokuDB_file_map |
-        SELECT * FROM INFORMATION_SCHEMA.TokuDB_locks |
-        SELECT * FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info |
-        SELECT * FROM INFORMATION_SCHEMA.TokuDB_trx |
-        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
-        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_lock_waits |
-        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_file_map |
-        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_locks |
-        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info |
-        SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_trx ;
+	SELECT dictionary_name,internal_file_name,checkpoint_count,blocknum,offset,size FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map LIMIT _digit |
+	SELECT requesting_trx_id,blocking_trx_id,lock_waits_dname,lock_waits_key_left,lock_waits_key_right,lock_waits_start_time FROM INFORMATION_SCHEMA.TokuDB_lock_waits LIMIT _digit |
+	SELECT dictionary_name,internal_file_name,table_schema,table_name,table_dictionary_name FROM INFORMATION_SCHEMA.TokuDB_file_map LIMIT _digit |
+	SELECT locks_trx_id,locks_mysql_thread_id,locks_dname,locks_key_left,locks_key_right FROM INFORMATION_SCHEMA.TokuDB_locks LIMIT _digit |
+	SELECT dictionary_name,internal_file_name,bt_num_blocks_allocated,bt_num_blocks_in_use,bt_size_allocated,bt_size_in_use FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info LIMIT _digit |
+	SELECT trx_id,trx_mysql_thread_id FROM INFORMATION_SCHEMA.TokuDB_trx LIMIT _digit ;
+	SELECT * FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
+	SELECT * FROM INFORMATION_SCHEMA.TokuDB_lock_waits |
+	SELECT * FROM INFORMATION_SCHEMA.TokuDB_file_map |
+	SELECT * FROM INFORMATION_SCHEMA.TokuDB_locks |
+	SELECT * FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info |
+	SELECT * FROM INFORMATION_SCHEMA.TokuDB_trx |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_lock_waits |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_file_map |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_locks |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_fractal_tree_info |
+	SELECT COUNT(1) FROM INFORMATION_SCHEMA.TokuDB_trx ;
 
-# 60/40 during TokuDB project
 engine:
-	TOKUDB | TOKUDB | TOKUDB |
-	INNODB | INNODB ;
+	INNODB|INNODB|INNODB|INNODB|TOKUDB;
 
 bitmap:
 	SHOW ENGINE INNODB MUTEX |
@@ -503,14 +501,14 @@ set:
 	SET scope EXPAND_FAST_INDEX_CREATION = ON |
 	SET scope EXPAND_FAST_INDEX_CREATION = OFF |
 	SET @@global.innodb_log_checkpoint_now = TRUE |
-        SET GLOBAL innodb_empty_free_list_algorithm = innodb_empty_free_list_algo |
-        SET GLOBAL innodb_log_checksum_algorithm = innodb_log_checksum_algorithm_list ;
+	SET GLOBAL innodb_empty_free_list_algorithm = innodb_empty_free_list_algo |
+	SET GLOBAL innodb_log_checksum_algorithm = innodb_log_checksum_algorithm_list ;
 
 innodb_log_checksum_algorithm_list:
-        none | innodb | crc32 | strict_none | strict_innodb | strict_crc32 ;
+	none | innodb | crc32 | strict_none | strict_innodb | strict_crc32 ;
 
 innodb_empty_free_list_algo:
-        legacy | backoff ;
+	legacy | backoff ;
 
 isolation:
 	READ-UNCOMMITTED | READ-COMMITTED | REPEATABLE-READ | SERIALIZABLE ;
@@ -657,24 +655,22 @@ proc_func:
 	DROP FUNCTION IF EXISTS _letter[invariant] ; CREATE FUNCTION _letter[invariant] ( _letter type ) RETURNS type DETERMINISTIC READS SQL DATA BEGIN DECLARE out1 type ; SELECT _table._field INTO out1 FROM _table ; RETURN out1 ; END ; CALL _letter[invariant](@a);
 
 flush:
-        FLUSH TABLES | FLUSH TABLES | FLUSH TABLES | FLUSH QUERY CACHE | FLUSH QUERY CACHE |
-        FLUSH TABLE _table | FLUSH TABLE _letter ;
+	FLUSH TABLES | FLUSH TABLES | FLUSH TABLES | FLUSH QUERY CACHE | FLUSH QUERY CACHE |
+	FLUSH TABLE _table | FLUSH TABLE _letter ;
 
 # 89% unlocking, 11% locking functions
 locking:
-        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
-        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | lock_function ;
+	UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
+	UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES | lock_function ;
 
 lock_function:
-        LOCK TABLE _table READ | LOCK TABLE _table WRITE |
-        LOCK TABLE _letter READ | LOCK TABLE _letter WRITE |
-        LOCK TABLE _table AS _letter READ | LOCK TABLE _table as _letter WRITE |
-        LOCK TABLE _table READ LOCAL | LOCK TABLE _table LOW_PRIORITY WRITE |
-        LOCK TABLE _table AS _letter READ LOCAL | LOCK TABLE _table as _letter LOW_PRIORITY WRITE |
+	LOCK TABLE _table READ | LOCK TABLE _table WRITE |
+	LOCK TABLE _letter READ | LOCK TABLE _letter WRITE |
+	LOCK TABLE _table AS _letter READ | LOCK TABLE _table as _letter WRITE |
+	LOCK TABLE _table READ LOCAL | LOCK TABLE _table LOW_PRIORITY WRITE |
+	LOCK TABLE _table AS _letter READ LOCAL | LOCK TABLE _table as _letter LOW_PRIORITY WRITE |
 	FLUSH TABLES WITH READ LOCK ;
-
-# Disabled: See PS Bug 1360942 and MS Bug 73721 (Ongoing discussion) 
-# LOCK TABLES FOR BACKUP | LOCK BINLOG FOR BACKUP ;
+	LOCK TABLES FOR BACKUP | LOCK BINLOG FOR BACKUP ;
 
 proc_param:
 	IN _letter type | OUT _letter type ;
@@ -694,7 +690,7 @@ default_or_not:
 
 type:
 	INT | INT AUTO_INCREMENT | DECIMAL | FLOAT | DOUBLE | DECIMAL( _digit , _digit ) | BIT | CHAR( _digit ) | VARCHAR( _digit ) | 
-        BLOB | BLOB | DATE | DATETIME | TIMESTAMP | TIME | YEAR | BINARY | TEXT | ENUM('a','b','c') | SET('a','b','c') ;
+	BLOB | BLOB | DATE | DATETIME | TIMESTAMP | TIME | YEAR | BINARY | TEXT | ENUM('a','b','c') | SET('a','b','c') ;
 
 value:
 	_digit | 0 | 1 | -1 | _data | _bigint_unsigned | _bigint | _mediumint | _english | _letter | 
