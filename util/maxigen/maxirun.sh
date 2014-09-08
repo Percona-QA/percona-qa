@@ -41,6 +41,14 @@ else
   mkdir $WORKDIR/$WORKDIRSUB/_epoch
   export EPOCH_DIR=$WORKDIR/$WORKDIRSUB/_epoch
 
+  # jemalloc provisioning (reqd for TokuDB)
+  if [ -r /usr/lib64/libjemalloc.so.1 ]; then
+    export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+  else
+    echo "Error: jemalloc not found, please install it first"
+    exit 1
+  fi
+
   # Make sure we keep a copy of the yy grammars
   mkdir $WORKDIR/$WORKDIRSUB/KEEP
   cp * $WORKDIR/$WORKDIRSUB/KEEP
