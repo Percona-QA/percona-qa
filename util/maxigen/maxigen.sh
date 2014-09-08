@@ -14,7 +14,9 @@ if [ -d /randgen/conf ]; then RQG_DIR="/randgen/conf"
 elif [ -d /ssd/randgen/conf ]; then RQG_DIR="/ssd/randgen/conf"
 elif [ -d /sda/randgen/conf ]; then RQG_DIR="/sda/randgen/conf"
 elif [ -d /ssd/qa/randgen/conf ]; then RQG_DIR="/ssd/qa/randgen/conf"
-elif [ -d ../../conf ]; then RQG_DIR="../../conf"
+elif [ -d ../../conf ]; then 
+  RQG_DIR="../../conf"
+  FIXDIR=1
 elif [ "" == "$1" ]; then
   echo "This script is a very powerfull random grammar generator. It expects one parameter: the conf directory of randgen"
   echo "Note: this script already auto-searches several directories for randgen existence (for example in /randgen/conf)"
@@ -147,6 +149,9 @@ grep -v "GRAMMAR-GENDATA-DUMMY-TAG" ./maxigen.cc > /tmp/$RND_DIR/maxigen.cc
 
 # Use random gendata's to augment new random yy grammars
 for GENDATA in $(find $RQG_DIR -maxdepth 2 -name '*.zz'); do
+  if [ $FIXDIR -eq 1 ]; then
+    $GENDATA=`echo $GENDATA | sed 's|[/\.]*conf|/conf|g'
+  fi
   echo "   --gendata=$GENDATA'," >> /tmp/$RND_DIR/GENDATA.txt
 done
 
