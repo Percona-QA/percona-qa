@@ -12,6 +12,7 @@ SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 if [ -d /randgen/conf ]; then RQG_DIR="/randgen/conf"
 elif [ -d /ssd/randgen/conf ]; then RQG_DIR="/ssd/randgen/conf"
+elif [ -d /sda/randgen/conf ]; then RQG_DIR="/sda/randgen/conf"
 elif [ -d /ssd/qa/randgen/conf ]; then RQG_DIR="/ssd/qa/randgen/conf"
 elif [ -d ../../conf ]; then RQG_DIR="../../conf"
 elif [ "" == "$1" ]; then
@@ -166,7 +167,7 @@ rm /tmp/$RND_DIR/GENDATA.txt
 echo "MaxiGen Done! Generated $NR_OF_GRAMMARS grammar files in: /tmp/$RND_DIR/"
 
 # Check if we can assume Percona-Server being present in /ssd, and replace DUMMY strings if so
-if [ $(ls -1d /ssd/Percona-Server*-debug* | grep -v '.tar.gz' | wc -l) -eq 2 ]; then 
+if [ $(ls -1d /ssd/Percona-Server*-debug* 2>/dev/null | grep -v '.tar.gz' | wc -l) -eq 2 ]; then 
   mv /tmp/$RND_DIR/maxigen.cc /tmp/$RND_DIR/maxigen.cc.tmp
   DEBUG=$(ls -1d /ssd/Percona-Server*-debug.Linux* | grep -v 'tar.gz')
   VALGR=$(ls -1d /ssd/Percona-Server*-debug-valgrind* | grep -v 'tar.gz')
