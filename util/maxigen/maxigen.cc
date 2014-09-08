@@ -32,7 +32,9 @@ $combinations=
    --mysqld=--log-output=none --mysqld=--sql_mode=ONLY_FULL_GROUP_BY
    --mysqld=--slow_query_log --mysqld=--userstat 
    --mysqld=--innodb_track_changed_pages=1 --mysqld=--innodb_changed_pages=ON
-   --mysqld=--innodb_log_archive=1 --mysqld=--thread_handling=pool-of-threads'
+   --mysqld=--innodb_log_archive=1 --mysqld=--thread_handling=pool-of-threads
+   --mysqld="--plugin-load=audit_log=audit_log.so;tokudb=ha_tokudb.so"
+   --mysqld=--init-file='.$ENV{RQG_HOME}.'/conf/percona_qa/5.6/TokuDB.sql'
  ],[
   '--threads=1',
   '--threads=25'
