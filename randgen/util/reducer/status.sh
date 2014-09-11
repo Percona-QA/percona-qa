@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Quick reducer status output (number of lines processed by each mysqld versus lines to be processed)"
+echo "Quick reducer status output (number of lines processed by each mysqld versus lines to be processed etc.)"
 echo "For initial simplification during the verify stage ([V]), note that there are 6 verify stages (each time with less simplification),"
 echo "and each time all queries are processed. So you may think about this as Verify stage 1 x (as reported here) out of y (as reported"
 echo "by reducer.sh) queries, and this 6 times, if necessary."
@@ -36,3 +36,4 @@ ps -ef | grep mysqld | grep subreducer | wc -l
 
 echo -e "\n=== Sessions still active (can be used to compare against reducer.sh's 'Finished/Terminated verification subreducer threads')"
 ps -ef | grep mysqld | grep subreducer | sed 's|.*subreducer/\([0-9]*\).*|\1|' | sort -n | sed 's|^|[|;s|$|]|' | tr '\n' ' '
+echo -e "\n"
