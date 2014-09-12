@@ -491,6 +491,11 @@ moreoff:
 moreon:
 	1 | 1 | 0 ;
 
+truefalse:
+	TRUE | TRUE | FALSE ;
+
+# Temporarily disabled due to bug 1368530
+#	SET @@GLOBAL.innodb_track_redo_log_now = truefalse |
 set:
 	SET GLOBAL innodb_show_verbose_locks = onoff | 
 	SET GLOBAL innodb_show_locks_held = zero_to_thousand |
@@ -500,7 +505,8 @@ set:
 	SET scope OLD_ALTER_TABLE = onoff |
 	SET scope EXPAND_FAST_INDEX_CREATION = ON |
 	SET scope EXPAND_FAST_INDEX_CREATION = OFF |
-	SET @@global.innodb_log_checkpoint_now = TRUE |
+	SET @@GLOBAL.innodb_log_checkpoint_now = truefalse |
+	SET @@GLOBAL.innodb_track_changed_pages = truefalse |
 	SET GLOBAL innodb_empty_free_list_algorithm = innodb_empty_free_list_algo |
 	SET GLOBAL innodb_log_checksum_algorithm = innodb_log_checksum_algorithm_list ;
 
