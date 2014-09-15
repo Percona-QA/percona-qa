@@ -1273,7 +1273,8 @@ process_outcome(){
 }
 
 stop_mysqld(){
-  $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
+  # RV-15/9/14 Added timeout due to bug http://bugs.mysql.com/bug.php?id=73914
+  timeout -k20 -s9 20s $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
 
   while :; do
