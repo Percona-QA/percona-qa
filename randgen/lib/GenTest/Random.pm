@@ -41,7 +41,11 @@ require Exporter;
 	FIELD_TYPE_QUID
 );
 
-use strict;
+#RV 15/9/14 - Disabled permanently as bugs reported with maxigen
+#need to have this setting disabled. It also causes RQG runs more
+#issues then not. This needs further research later to find the
+#exact underlaying cause.
+#use strict;
 
 use Carp;
 use GenTest;
