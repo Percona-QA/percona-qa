@@ -95,7 +95,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_track_changed_pages=1
@@ -130,7 +130,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -209,7 +209,7 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -235,7 +235,7 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=100
   --mysqld=--innodb_track_changed_pages=1
@@ -265,7 +265,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
@@ -299,7 +299,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--minimum-join-buffer-size=128
   --mysqld=--query_cache_type=1
@@ -351,7 +351,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=0
   --mysqld=--innodb_track_changed_pages=1
@@ -385,7 +385,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=2
   --mysqld=--innodb_track_changed_pages=1
@@ -467,7 +467,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=0
@@ -498,7 +498,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -525,7 +525,7 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=2
@@ -559,7 +559,7 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_track_changed_pages=1
@@ -588,7 +588,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_changed_pages=0
   --mysqld=--innodb_track_changed_pages=1
@@ -644,7 +644,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=0
@@ -700,7 +700,7 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=100
@@ -732,7 +732,7 @@ $combinations=
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -761,7 +761,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_changed_pages=0
@@ -789,7 +789,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -822,7 +822,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=100
@@ -934,7 +934,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -1021,7 +1021,7 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
@@ -1056,7 +1056,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=0
   --mysqld=--innodb_track_changed_pages=1
@@ -1083,7 +1083,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=0
@@ -1112,7 +1112,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_track_changed_pages=0
   --mysqld=--innodb-buffer-pool-populate
@@ -1141,7 +1141,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=0
@@ -1194,7 +1194,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=100
@@ -1230,7 +1230,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -1263,7 +1263,7 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_track_changed_pages=1
@@ -1318,7 +1318,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=0
@@ -1349,7 +1349,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=0
@@ -1373,7 +1373,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_track_changed_pages=0
   --mysqld=--minimum-join-buffer-size=128
@@ -1442,7 +1442,7 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
@@ -1468,7 +1468,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=2
@@ -1491,7 +1491,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -1521,7 +1521,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=100
@@ -1579,7 +1579,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
@@ -1605,7 +1605,7 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_track_changed_pages=1
@@ -1635,7 +1635,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -1658,7 +1658,7 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=0
@@ -1691,7 +1691,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=2
   --mysqld=--innodb_track_changed_pages=1
@@ -1716,7 +1716,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
@@ -1775,7 +1775,7 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=2
   --mysqld=--innodb_track_changed_pages=1
@@ -1824,7 +1824,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -1853,7 +1853,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -1913,7 +1913,7 @@ $combinations=
   --mysqld=--innodb_flush_log_at_trx_commit=0
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_changed_pages=100
   --mysqld=--innodb_track_changed_pages=1
@@ -1937,7 +1937,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=0
@@ -1968,7 +1968,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
   --mysqld=--innodb-buffer-pool-populate
@@ -1994,7 +1994,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -2022,7 +2022,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -2053,7 +2053,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -2080,7 +2080,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_track_changed_pages=0
@@ -2133,7 +2133,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=0
@@ -2164,7 +2164,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -2191,7 +2191,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_track_changed_pages=1
@@ -2240,7 +2240,7 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=100
   --mysqld=--innodb_track_changed_pages=1
@@ -2271,7 +2271,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_changed_pages=0
@@ -2323,7 +2323,7 @@ $combinations=
   --mysqld=--innodb_file_format=barracuda
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_log_archive=1
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_track_changed_pages=0
@@ -2350,7 +2350,7 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DIRECT
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_track_changed_pages=0
@@ -2397,7 +2397,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=2
@@ -2424,7 +2424,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -2503,7 +2503,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_changed_pages=0
   --mysqld=--innodb_track_changed_pages=1
@@ -2528,7 +2528,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
@@ -2558,7 +2558,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_changed_pages=100
@@ -2586,7 +2586,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_track_changed_pages=1
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
@@ -2612,7 +2612,7 @@ $combinations=
   --mysqld=--innodb_changed_pages=FORCE
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=2
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_changed_pages=0
   --mysqld=--innodb_track_changed_pages=1
@@ -2645,7 +2645,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_track_changed_pages=0
@@ -2669,7 +2669,7 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_track_changed_pages=1
@@ -2689,7 +2689,7 @@ $combinations=
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=1
   --mysqld=--innodb_log_block_size=4096
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=2
@@ -2767,7 +2767,7 @@ $combinations=
   --mysqld=--innodb_fast_shutdown=2
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_log_archive=1
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=0
   --mysqld=--innodb_track_changed_pages=1
@@ -2822,7 +2822,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -2926,7 +2926,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_track_changed_pages=1
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
@@ -2956,7 +2956,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=0
@@ -2981,7 +2981,7 @@ $combinations=
   --mysqld=--innodb_log_arch_expire_sec=120
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_max_changed_pages=100
   --mysqld=--innodb_track_changed_pages=1
@@ -3012,7 +3012,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -3040,7 +3040,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=0
@@ -3071,7 +3071,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=100
@@ -3155,7 +3155,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
@@ -3210,7 +3210,7 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=2
   --mysqld=--innodb_track_changed_pages=1
@@ -3239,7 +3239,7 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
@@ -3263,7 +3263,7 @@ $combinations=
   --mysqld=--innodb_changed_pages=ON
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
@@ -3339,7 +3339,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=4097
   --mysqld=--innodb_max_changed_pages=100
@@ -3371,7 +3371,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=100
@@ -3397,7 +3397,7 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=2
@@ -3425,7 +3425,7 @@ $combinations=
   --mysqld=--innodb_file_per_table=1
   --mysqld=--innodb_flush_log_at_trx_commit=2
   --mysqld=--innodb_log_archive=1
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=0
@@ -3479,7 +3479,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--loose-readonly-key-cache-division-limit=0
   --mysqld=--query_cache_type=1
   --mysqld=--slow_query_log
@@ -3526,7 +3526,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=3
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -3553,7 +3553,7 @@ $combinations=
   --mysqld=--innodb_log_arch_dir=_epoch
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=0
@@ -3602,7 +3602,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_use_global_flush_log_at_trx_commit=0
@@ -3625,7 +3625,7 @@ $combinations=
   --mysqld=--innodb_flush_method=O_DSYNC
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=10485761
+  --mysqld=--innodb_log_file_size=104857601
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=20480
   --mysqld=--innodb_max_changed_pages=2
@@ -3651,7 +3651,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -3683,7 +3683,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=1048577
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=4097
@@ -3714,7 +3714,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=512
   --mysqld=--innodb_log_buffer_size=10485761
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=2
   --mysqld=--innodb_log_group_home_dir=_epoch
   --mysqld=--innodb_max_bitmap_file_size=20480
@@ -3748,7 +3748,7 @@ $combinations=
   --mysqld=--innodb_log_archive=1
   --mysqld=--innodb_log_block_size=4096
   --mysqld=--innodb_log_buffer_size=1048576
-  --mysqld=--innodb_log_file_size=1048576
+  --mysqld=--innodb_log_file_size=10485760
   --mysqld=--innodb_log_files_in_group=10
   --mysqld=--innodb_max_bitmap_file_size=9223372036854770000
   --mysqld=--innodb_max_changed_pages=0
