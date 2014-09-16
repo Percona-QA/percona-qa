@@ -23,6 +23,7 @@ else
   mkdir $WORKDIR/$WORKDIRSUB
   mkdir $WORKDIR/$WORKDIRSUB/tmp
   export TMP=$WORKDIR/$WORKDIRSUB/tmp
+  export TMPDIR=$WORKDIR/$WORKDIRSUB/tmp
   cd $RQG_DIR
   MTR_BUILD_THREAD=$MTR_BT; perl ./combinations.pl \
   --clean \
