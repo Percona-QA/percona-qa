@@ -19,6 +19,7 @@ else
   mkdir $WORKDIR/$WORKDIRSUB
   mkdir $WORKDIR/$WORKDIRSUB/tmp
   export TMP=$WORKDIR/$WORKDIRSUB/tmp
+  export TMPDIR=$WORKDIR/$WORKDIRSUB/tmp
 
   # Special preparation: _epoch temporary directory setup
   mkdir $WORKDIR/$WORKDIRSUB/_epoch
