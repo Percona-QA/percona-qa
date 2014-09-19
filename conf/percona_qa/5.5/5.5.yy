@@ -31,7 +31,7 @@
 
 query:
 	select | insert | insert | insert | delete | replace | update | transaction | alter | views | set |
-	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query | audit_plugin ; 
+	proc_func | flush | outfile_infile | update_multi | p_query | p_query | p_query | p_l_query | audit_plugin | binlog_event ; 
 
 p_query:
 # 5.1	ext_slow_query_log | resp_time_dist | user_stats | changed_page_tracking | drop_create_table ;
@@ -79,6 +79,21 @@ slow_query_log_timestamp_precision_list:
 slow_query_log_use_global_control_list:
 	"" | LOG_SLOW_FILTER | LOG_SLOW_RATE_LIMIT | LOG_SLOW_VERBOSITY | LONG_QUERY_TIME | MIN_EXAMINED_ROW_LIMIT | ALL | 
 	"slow_query_log_use_global_control_list,slow_query_log_use_global_control_list" ;
+
+binlog_event:
+        SET GLOBAL BINLOG_FORMAT = binlog_format_list |
+        insert | update | delete | outfile_infile | master_statement | flush_log |
+        SET GLOBAL BINLOG_FORMAT = binlog_format_list ;
+
+binlog_format_list:
+        STATEMENT | ROW | MIXED ;
+
+master_statement:
+        SHOW BINLOG EVENTS | 
+        SHOW MASTER STATUS ;
+
+flush_log:
+        FLUSH LOGS;
 
 audit_plugin:
         SET GLOBAL audit_log_policy = audit_policy |
