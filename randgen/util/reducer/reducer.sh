@@ -765,7 +765,7 @@ start_mysqld(){
 start_mysqld_main(){
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
-    CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
+    CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
                          --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                          --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT --event-scheduler=ON"
@@ -774,7 +774,7 @@ start_mysqld_main(){
     echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
     chmod +x $WORK_START
   else
-    CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
+    CMD="${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
                          --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                          --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                          --event-scheduler=ON"
@@ -793,7 +793,7 @@ start_valgrind_mysqld(){
   init_mysql_dir
   if [ -f $WORKD/valgrind.out ]; then mv -f $WORKD/valgrind.out $WORKD/valgrind.prev; fi
   CMD="valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
-              ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT \
+              ${MYBASE}${BIN} --basedir=$MYBASE --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
                               --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                               --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                               --event-scheduler=ON"
