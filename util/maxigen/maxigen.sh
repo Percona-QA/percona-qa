@@ -92,8 +92,9 @@ for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
 
   # First filter below is PERL NO (no perl) filter, second filter is PERL YES (leave perl in). Currently set to PERL YES (do not filter any Perl)
   # FILTER="^$|^[; \t]*$|SET SESSION debug|SET GLOBAL debug| table1 |Sentence is now longer|return undef|no strict|{|}"
-  FILTER="^$|^[; \t]*$|SET SESSION debug|SET GLOBAL debug| table1 |Sentence is now longer"
-  egrep -v "$FILTER" $GRAMMAR > ${GRAMMAR}.new
+
+  FILTER="^$|^[; \t]*$|set.*[globalsession]*[ \.\t]*debug.*=| table1 |Sentence is now longer|information_schema[ \.\t]*[global_]*temporary_tables"
+  egrep -vi "$FILTER" $GRAMMAR > ${GRAMMAR}.new
 
   rm ${GRAMMAR}
   mv ${GRAMMAR}.new ${GRAMMAR}
