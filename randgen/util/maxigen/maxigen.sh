@@ -94,6 +94,7 @@ for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   # FILTER="^$|^[; \t]*$|set.*[globalsession]*[ \.\t]*debug.*=| table1 |Sentence is now longer|information_schema[ \.\t]*[global_]*temporary_tables|return undef|no strict|{|}"
 
   FILTER="^$|^[; \t]*$|set.*[globalsession]*[ \.\t]*debug.*=| table1 |Sentence is now longer|information_schema[ \.\t]*[global_]*temporary_tables"
+  FILTER="${FILTER}|set.*[globalsession]*[ \.\t]*innodb_track_redo_log_nowi.*=|set.*[globalsession]*[ \.\t]*innodb_track_changed_pages.*=" # See PS bug 1368530
   egrep -vi "$FILTER" $GRAMMAR > ${GRAMMAR}.new
 
   rm ${GRAMMAR}
