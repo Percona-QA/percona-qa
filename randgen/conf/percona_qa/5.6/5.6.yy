@@ -40,6 +40,8 @@
 #                                   "Assertion `!table || !table->in_use || table->in_use == _current_thd()'"
 #                                   (IMPORTANT: to be re-tested later for tokudb+i_s interoperability)
 #                                   Ref https://bugs.launchpad.net/percona-server/+bug/1260152
+#   - RV 23/9/14: re-instated i_s but excluded i-s-temp tables due to https://bugs.launchpad.net/percona-server/+bug/1367922
+#   - If we observe https://bugs.launchpad.net/percona-server/+bug/1260152 again now, then that bug is not i-s-temp related (update!)
 # Temp workaround: fake_changes |   removed from query: due to Percona feature WIP
 # Temp workaround: i_s_toku |	    removed from query:  These statements cause 'void Protocol::end_statement' 
 #				    asserts - Sig6 void Protocol::end_statement(): Assertion `0' failed. - Logged with TokuTek 28/08/14
@@ -68,7 +70,7 @@ query:
 	ext_slow_query_log | user_stats | drop_create_table | table_comp | table_comp | optimize_table | 
 	bitmap | bitmap | archive_logs | thread_pool | max_stmt_time | locking | prio_shed |
 	cleaner | preflush | toku_clustering_key | toku_clustering_key | audit_plugin | binlog_event | 
-	i_s_buffer_pool_stats | full_text_index ;
+	i_s_buffer_pool_stats | full_text_index | i_s | i_s_fti ;
 
 zero_to_ten:
 	0 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 ;
@@ -335,9 +337,10 @@ show:
 query_cache:
 	SET GLOBAL query_cache_strip_comments = onoff ;
 
+# https://bugs.launchpad.net/percona-server/+bug/1367922 exclusions:
+#	INFORMATION_SCHEMA.GLOBAL_TEMPORARY_TABLES |
+#	INFORMATION_SCHEMA.TEMPORARY_TABLES |
 i_s_area:
-	INFORMATION_SCHEMA.GLOBAL_TEMPORARY_TABLES |
-	INFORMATION_SCHEMA.TEMPORARY_TABLES |
 	INFORMATION_SCHEMA.PROCESSLIST | 
 	INFORMATION_SCHEMA.XTRADB_RSEG |
 	INFORMATION_SCHEMA.TokuDB_fractal_tree_block_map |
