@@ -497,8 +497,8 @@ moreon:
 truefalse:
 	TRUE | TRUE | FALSE ;
 
-# Temporarily disabled due to bug 1368530
-#	SET @@GLOBAL.innodb_track_redo_log_now = truefalse |
+# This is re-defined for debug only (in 5.6_debug.yy.redef) as certain statements fail in debug only
+# See https://bugs.launchpad.net/percona-server/+bug/1368530
 set:
 	SET GLOBAL innodb_show_verbose_locks = onoff | 
 	SET GLOBAL innodb_show_locks_held = zero_to_thousand |
@@ -509,6 +509,7 @@ set:
 	SET scope EXPAND_FAST_INDEX_CREATION = ON |
 	SET scope EXPAND_FAST_INDEX_CREATION = OFF |
 	SET @@GLOBAL.innodb_log_checkpoint_now = truefalse |
+	SET @@GLOBAL.innodb_track_redo_log_now = truefalse |
 	SET @@GLOBAL.innodb_track_changed_pages = truefalse |
 	SET GLOBAL innodb_empty_free_list_algorithm = innodb_empty_free_list_algo |
 	SET GLOBAL innodb_log_checksum_algorithm = innodb_log_checksum_algorithm_list ;
