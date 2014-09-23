@@ -91,7 +91,7 @@ for GRAMMAR in $(find /tmp/$RND_DIR/ -name '*.yy'); do
   # To be tested, may be ok for some, not ok for others. Example of more granular (possibly better) filtering: " table1 " as queries with this string create all trials to fail. - i.e. this one is now included in both Perl yes/no filter
 
   # First filter below is PERL NO (no perl) filter, second filter is PERL YES (leave perl in). Currently set to PERL YES (do not filter any Perl)
-  # FILTER="^$|^[; \t]*$|SET SESSION debug|SET GLOBAL debug| table1 |Sentence is now longer|return undef|no strict|{|}"
+  # FILTER="^$|^[; \t]*$|set.*[globalsession]*[ \.\t]*debug.*=| table1 |Sentence is now longer|information_schema[ \.\t]*[global_]*temporary_tables|return undef|no strict|{|}"
 
   FILTER="^$|^[; \t]*$|set.*[globalsession]*[ \.\t]*debug.*=| table1 |Sentence is now longer|information_schema[ \.\t]*[global_]*temporary_tables"
   egrep -vi "$FILTER" $GRAMMAR > ${GRAMMAR}.new
