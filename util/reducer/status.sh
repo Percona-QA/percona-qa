@@ -35,7 +35,9 @@ echo -e "\n=== # Running mysqld sessions (can be used to quickly gauge if at lea
 ps -ef | grep mysqld | grep subreducer | wc -l
 
 echo -e "\n=== Sessions still active (can be used to compare against reducer.sh's 'Finished/Terminated verification subreducer threads')"
-ps -ef | grep mysqld | grep subreducer | sed 's|.*subreducer/\([0-9]*\).*|\1|' | sort -n | sed 's|^|[|;s|$|]|' | tr '\n' ' '
+ps -ef | grep mysqld | grep subreducer | sed 's|.*subreducer/\([0-9]*\).*|\1|' | sort -n | sed 's|^|[|;s|$|]|' | tr '\n' ' ' | sed 's|$|\n|'
 
 echo -e "\n=== Threads still active"
-ps -ef | grep mysqld | grep subreducer | awk '{print $2}' | sed 's|^|[|;s|$|]|' | tr '\n' ' '
+ps -ef | grep mysqld | grep subreducer | awk '{print $2}' | sed 's|^|[|;s|$|]|' | tr '\n' ' ' | sed 's|$|\n|'
+
+echo ""
