@@ -280,17 +280,25 @@ flush:
 	FLUSH TABLES | FLUSH TABLES | FLUSH TABLES | FLUSH QUERY CACHE | FLUSH QUERY CACHE | 
         FLUSH TABLE _table | FLUSH TABLE _letter | lock_rl | lock_rl ;
 
+# 60% unlocking, 40% locking functions
 lock_rl:
-	lock | lock | lock | lock | lock | lock | FLUSH TABLES WITH READ LOCK ;
+        unlock | unlock | unlock | unlock | lock | lock ;
 
 lock:
-	LOCK TABLE _table READ | LOCK TABLE _table WRITE |
-	LOCK TABLE _letter READ | LOCK TABLE _letter WRITE |
-	LOCK TABLE _table AS _letter READ | LOCK TABLE _table as _letter WRITE |
-	LOCK TABLE _table READ LOCAL | LOCK TABLE _table LOW_PRIORITY WRITE |
-	LOCK TABLE _table AS _letter READ LOCAL | LOCK TABLE _table as _letter LOW_PRIORITY WRITE |
+        LOCK TABLE _table READ | LOCK TABLE _table WRITE |
+        LOCK TABLE _letter READ | LOCK TABLE _letter WRITE |
+        LOCK TABLE _table AS _letter READ | LOCK TABLE _table as _letter WRITE |
+        LOCK TABLE _table READ LOCAL | LOCK TABLE _table LOW_PRIORITY WRITE |
+        LOCK TABLE _table AS _letter READ LOCAL | LOCK TABLE _table as _letter LOW_PRIORITY WRITE |
+        FLUSH TABLES WITH READ LOCK |
+        FLUSH TABLES _table WITH READ LOCK | FLUSH TABLES _letter WITH READ LOCK ;
+
+unlock:
+        UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
+	UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
+	UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES |
 	UNLOCK TABLES | UNLOCK TABLES | UNLOCK TABLES ;
-		
+	
 proc_param:
 	IN _letter type | OUT _letter type ;
 
