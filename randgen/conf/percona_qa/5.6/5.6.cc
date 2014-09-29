@@ -50,34 +50,34 @@ $combinations=
 
   --mysqld=--utility-user-password=test
  '],[
-  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_debug.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=15 --no-mask
      --basedir=/Percona-Server-Debug',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=20 --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=20 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
      --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_debug.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
      --basedir=/Percona-Server-Debug',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_debug.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=17 --mask-level=1
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=17 --mask-level=1
      --basedir=/Percona-Server-Debug --mysqld=--enforce-storage-engine=InnoDB --validator=Transformer',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=1  --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
      --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=13 --mask-level=1 --validator=Transformer
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz1 --threads=13 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
      --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_debug.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=1  --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=1  --no-mask
      --basedir=/Percona-Server-Debug',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_debug.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=11 --mask-level=1
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=11 --mask-level=1
      --basedir=/Percona-Server-Debug --validator=Transformer',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=25 --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=25 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
      --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=8 --mask-level=1 --validator=Transformer
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=8 --mask-level=1 --validator=Transformer
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
      --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_debug.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=10 --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=10 --no-mask
      --basedir=/Percona-Server-Debug',
-  '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=15 --no-mask
+  '--grammar=conf/percona_qa/5.6/5.6.yy --redefine=conf/percona_qa/5.6/5.6_dbg_val.yy.redef --gendata=conf/percona_qa/5.6/5.6.zz3 --threads=15 --no-mask
      --basedir=/Percona-Server-Valgrind --valgrind --reporter=ValgrindErrors --validator=MarkErrorLog
      --valgrind_options=--soname-synonyms=somalloc=*jemalloc* --valgrind_options=--track-origins=yes',
   '--grammar=conf/percona_qa/5.6/5.6.yy --gendata=conf/percona_qa/5.6/5.6.zz2 --threads=15 --mask-level=1 --validator=Transformer
