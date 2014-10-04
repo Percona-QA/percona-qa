@@ -510,6 +510,12 @@ multi_reducer(){
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All threads reproduced the issue: this issue is not sporadic"
       SPORADIC=0
+      if [ $MODE -lt 6 ]; then 
+        rm -Rf $WORKD/subreducer/  # Cleanup subreducer directory, it is no longer needed as this issue is not sporadic, and from here onwards reduction is
+                                   # single threaded because of it (it needs to be checked if this works with ThreadSync reduction though - that is potentially
+                                   # multi-threaded/using subreducer directory - when used for simplifying multiple threads (with or without SET DEBUG). Hence
+                                   # the makes-it-safe MODE<6 check (ThreadSync is MODE6+), but potentially this check can thus also be removed. RV 4/10/2014
+      fi
     elif [ $MULTI_FOUND -lt $MULTI_THREADS ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Only $MULTI_FOUND out of $MULTI_THREADS threads reproduced the issue: this issue is sporadic"
