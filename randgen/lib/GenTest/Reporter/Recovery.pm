@@ -22,18 +22,83 @@ require Exporter;
 @ISA = qw(GenTest::Reporter);
 
 use strict;
+
 use DBI;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Reporter;
 use GenTest::Comparator;
 use Data::Dumper;
-use IPC::Open2;
+use IPC::Open3;
 use POSIX;
 
 use DBServer::MySQL::MySQLd;
 
 my $first_reporter;
+
+# constructor - set build mysqld mode
+
+sub new {
+        my ($class, @args) = @_;
+        say("class: $class");
+        my $reporter;
+        unless (defined @args) {
+        	$reporter=$class->SUPER::new();
+        } else {
+        	$reporter=$class->SUPER::new(@args);
+        }
+        $reporter->[GenTest::Reporter::REPORTER_CUSTOM_ATTRIBUTES]={};
+
+        $reporter=bless($reporter,$class);
+        
+        # 0=build cmd mode / 1=clone cmd mode
+        $reporter->customAttribute('cloneCmd',0);
+        $reporter->customAttribute('cmd','');
+
+	return $reporter;
+};
+
+# Should we clone the original mysqld command line or
+# build a new one?  (the default is to build a new one)
+
+sub cloneCmd {
+	my $reporter = shift;
+	if (@_) {
+		$reporter->customAttribute('cloneCmd',shift);
+	}
+	return $reporter->customAttribute('cloneCmd');
+}
+
+# the cmd line we will restart
+
+sub cmd {
+	my $reporter = shift;
+	if (@_) {
+		$reporter->customAttribute('cmd',shift);
+	}
+	return $reporter->customAttribute('cmd');
+}
+
+sub getCmdFromPid() {
+	my $reporter = shift;
+	my $pid=$reporter->serverInfo('pid');
+	my $ret='';
+	if (@_) {
+		$pid = shift;
+	}
+	#say("Executing: "."ps fwwo cmd -p $pid|");
+	open CMD,"ps fwwo cmd -p $pid|"; # posix 'ps'
+	PS_LOOP: while (<CMD>) {
+		chomp;
+		#say("ps line: ".$_);
+		next PS_LOOP if /^CMD/;
+		$ret=$_;
+		last PS_LOOP;
+	}
+	#say("command: ".$ret);
+	close CMD;
+	return $ret;
+}
 
 sub monitor {
 	my $reporter = shift;
@@ -46,6 +111,13 @@ sub monitor {
 
 	my $pid = $reporter->serverInfo('pid');
 
+	if ($reporter->cloneCmd()) {
+		$reporter->cmd($reporter->getCmdFromPid());
+		say("Clone Command Mode: I will re-start server with the same parameters");
+	} else {
+		say("Build Command Mode: we will build the server command");
+	}
+	
 	if (time() > $reporter->testEnd() - 19) {
 		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
 		kill(9, $pid);
@@ -77,6 +149,8 @@ sub report {
 	my $socket = $reporter->serverVariable('socket');
 	my $port = $reporter->serverVariable('port');
 	my $pid = $reporter->serverInfo('pid');
+	my $old_pid = $pid;
+	my $old_pgrp = getpgrp($old_pid);
 	my $aria_block_size = $reporter->serverVariable('maria_block_size') || $reporter->serverVariable('aria_block_size');
 	my $plugin_dir = $reporter->serverVariable('plugin_dir');
 	my $plugins = $reporter->serverPlugins();
@@ -86,6 +160,18 @@ sub report {
 	my $engine = $reporter->serverVariable('storage_engine');
 
 	my $dbh_prev = DBI->connect($reporter->dsn());
+
+	# capture command before killing
+
+	if ($reporter->cloneCmd()) {
+		$reporter->cmd($reporter->getCmdFromPid());
+		say("Clone Cmd Mode: I will re-start cmd: ".$reporter->cmd());
+		
+	} else {
+		say("Build Cmd Mode: we will build the server command");
+	}
+
+	# kill  the process
 
 	if (defined $dbh_prev) {
 		# Server is still running, kill it.
@@ -112,7 +198,7 @@ sub report {
 		system("mkdir $recovery_datadir_aria/smf2");
 
 		say("Copying complete");
-	
+
 		my $aria_read_log_path = 
 		     DBServer::MySQL::MySQLd->_find([$reporter->serverVariable('basedir'),
 		     	                             $reporter->serverVariable('basedir').'/..',
@@ -143,63 +229,87 @@ sub report {
 
 	say("Attempting database recovery using the server ...");
 
-	my @mysqld_options = (
-		'--no-defaults',
-		'--core-file',
-		'--loose-console',
-		'--loose-maria-block-size='.$aria_block_size,
-		'--loose-aria-block-size='.$aria_block_size,
-		'--language='.$language,
-		'--loose-lc-messages-dir='.$lc_messages_dir,
-		'--datadir="'.$recovery_datadir.'"',
-		'--log-output=file',
-		'--general_log=ON',
-		'--general_log_file="'.$recovery_datadir.'/query-recovery.log"',
-		'--datadir="'.$recovery_datadir.'"',
-		'--socket="'.$socket.'"',
-		'--port='.$port,
-		'--loose-plugin-dir='.$plugin_dir
-	);
-
-	if ($binlog_on =~ m{YES|ON}sio) {
-		push @mysqld_options, (
-			'--log-bin',
-			'--binlog-format='.$binlog_format,
-			'--log-bin='.$datadir.'/../log/master-bin',
-			'--server-id=1'
+	my $mysqld_command;
+	
+	if (!$reporter->cloneCmd()) {
+	
+		my @mysqld_options = (
+			'--no-defaults',
+			'--core-file',
+			'--loose-console',
+			'--loose-maria-block-size='.$aria_block_size,
+			'--loose-aria-block-size='.$aria_block_size,
+			'--language='.$language,
+			'--loose-lc-messages-dir='.$lc_messages_dir,
+			'--datadir="'.$recovery_datadir.'"',
+			'--log-output=file',
+			'--general_log=ON',
+			'--general_log_file="'.$recovery_datadir.'/query-recovery.log"',
+			'--datadir="'.$recovery_datadir.'"',
+			'--socket="'.$socket.'"',
+			'--port='.$port,
+			'--loose-plugin-dir='.$plugin_dir
 		);
-	};
 
-	push @mysqld_options, '--loose-skip-pbxt' if lc($engine) ne 'pbxt';
+		if ($binlog_on =~ m{YES|ON}sio) {
+			push @mysqld_options, (
+				'--log-bin',
+				'--binlog-format='.$binlog_format,
+				'--log-bin='.$datadir.'/../log/master-bin',
+				'--server-id=1'
+			);
+		};
 
-	foreach my $plugin (@$plugins) {
-		push @mysqld_options, '--plugin-load='.$plugin->[0].'='.$plugin->[1];
-	};
+		push @mysqld_options, '--loose-skip-pbxt' if lc($engine) ne 'pbxt';
 
-	my $mysqld_command = $binary.' '.join(' ', @mysqld_options).' 2>&1';
-	say("Executing $mysqld_command .");
+		foreach my $plugin (@$plugins) {
+			push @mysqld_options, '--plugin-load='.$plugin->[0].'='.$plugin->[1];
+		};
+		
+		$mysqld_command = $binary.' '.join(' ', @mysqld_options);
+		
 
-	my $mysqld_pid = open2(\*RDRFH, \*WTRFH, $mysqld_command);
+	} else {
 
+		$mysqld_command = $reporter->cmd();
+
+	}
+	
+	my $holdBuff=$|++;
+
+	say("Restarting server: $mysqld_command");
+
+	$pid = open3(*MYSQLD_IN,*MYSQLD_OUT,undef,$mysqld_command);
+
+	# replace pid for this run
+	setpgrp($pid,$old_pgrp);	
+	my $pid_file = $reporter->serverVariable('pid_file');
+	open (PF, ">".$pid_file);
+	print PF $pid;
+	close(PF);
+	$reporter->[GenTest::Reporter::REPORTER_SERVER_INFO]->{pid} = $pid;
+
+	say("New server pid: $pid");
+		
 	#
 	# Phase1 - the server is running single-threaded. We consume the error log and parse it for
 	# statements that indicate failed recovery
 	# 
 
 	my $recovery_status = STATUS_OK;
-	while (<RDRFH>) {
+	while (<MYSQLD_OUT>) {
 		$_ =~ s{[\r\n]}{}siog;
 		say($_);
 		if ($_ =~ m{registration as a STORAGE ENGINE failed.}sio) {
 			say("Storage engine registration failed");
 			$recovery_status = STATUS_DATABASE_CORRUPTION;
-		} elsif ($_ =~ m{corrupt|crashed}) {
+		} elsif ($_ =~ m{corrupt|crashed} && $_ !~ m{unknown option}) {
 			say("Log message '$_' indicates database corruption");
 			$recovery_status = STATUS_DATABASE_CORRUPTION;
 		} elsif ($_ =~ m{exception}sio) {
 			$recovery_status = STATUS_DATABASE_CORRUPTION;
 		} elsif ($_ =~ m{ready for connections}sio) {
-			say("Server Recovery was apparently successfull.") if $recovery_status == STATUS_OK ;
+			say("Server Recovery was apparently successful.") if $recovery_status == STATUS_OK ;
 			last;
 		} elsif ($_ =~ m{device full error|no space left on device}sio) {
 			$recovery_status = STATUS_ENVIRONMENT_FAILURE;
@@ -213,6 +323,8 @@ sub report {
 			$recovery_status = STATUS_DATABASE_CORRUPTION;
 		}
 	}
+	
+	say("Recovery status: $recovery_status");
 
 	my $dbh = DBI->connect($reporter->dsn());
 	$recovery_status = STATUS_DATABASE_CORRUPTION if not defined $dbh && $recovery_status == STATUS_OK;
@@ -231,8 +343,8 @@ sub report {
 
 	say("Testing database consistency");
 
-	my $eater_pid = eater(*RDRFH);
-
+	my $eater_pid = eater(*MYSQLD_OUT);
+	
 	my $databases = $dbh->selectcol_arrayref("SHOW DATABASES");
 	foreach my $database (@$databases) {
 		next if $database =~ m{^(mysql|information_schema|pbxt|performance_schema)$}sio;
@@ -349,14 +461,10 @@ sub report {
 		}
 	}
 
-	close(MYSQLD);
-
 	# 
 	# We reap the process we spawned to consume the server error log
 	# If there have been any log messages such as "table X is marked as crashed", then
 	# the eater process will exit with STATUS_RECOVERY_FAILURE which we will pass to the caller.
-	#
-	
 
 	waitpid($eater_pid, &POSIX::WNOHANG());
 	my $eater_status = $?;
@@ -370,6 +478,7 @@ sub report {
 	} else {
 		return STATUS_OK;
 	}
+	
 }
 
 sub eater {

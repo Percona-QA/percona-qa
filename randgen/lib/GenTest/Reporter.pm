@@ -49,6 +49,7 @@ use constant REPORTER_TEST_END          => 6;
 use constant REPORTER_TEST_DURATION     => 7;
 use constant REPORTER_PROPERTIES        => 8;
 use constant REPORTER_SERVER_DEBUG      => 9;
+use constant REPORTER_CUSTOM_ATTRIBUTES => 10;
 
 use constant REPORTER_TYPE_PERIODIC     => 2;
 use constant REPORTER_TYPE_DEADLOCK     => 4;
@@ -233,6 +234,13 @@ sub properties {
 
 sub serverDebug {
     return $_[0]->[REPORTER_SERVER_DEBUG];
+}
+
+sub customAttribute() {
+	if (defined $_[2]) {
+		$_[0]->[GenTest::Reporter::REPORTER_CUSTOM_ATTRIBUTES]->{$_[1]}=$_[2];
+	}
+	return $_[0]->[GenTest::Reporter::REPORTER_CUSTOM_ATTRIBUTES]->{$_[1]};
 }
 
 sub configure {
