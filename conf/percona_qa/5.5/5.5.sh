@@ -12,6 +12,16 @@ else
   WORKDIRSUB=$1
 fi
 
+# Second option will allow us to set timeout for RQG run. This will kill RQG run explicitly by kill command after x number of seconds.
+if [ -n $2 ]; then
+  TIME_OUT=$2
+  rqg_time_out(){
+    sleep $TIME_OUT;
+    ps -ef | grep "${WORKDIRSUB}" | grep -v grep | awk '{print $2}' | xargs kill -9 2>/dev/null;
+  }
+fi
+
+rqg_time_out &
 
 # Check if random directory already exists & start run if not
 if [ -d $WORKDIR/$WORKDIRSUB ]; then
