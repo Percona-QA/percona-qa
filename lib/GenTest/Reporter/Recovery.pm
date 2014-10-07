@@ -42,7 +42,7 @@ sub new {
         my ($class, @args) = @_;
         say("class: $class");
         my $reporter;
-        unless (defined @args) {
+        unless (@args) {
         	$reporter=$class->SUPER::new();
         } else {
         	$reporter=$class->SUPER::new(@args);
