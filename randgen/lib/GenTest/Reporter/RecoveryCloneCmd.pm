@@ -39,7 +39,7 @@ use DBServer::MySQL::MySQLd;
 sub new {
         my ($class, @args) = @_;
         my $reporter;
-        unless (defined @args) {
+        unless (@args) {
         	$reporter=$class->SUPER::new();
         } else {
         	$reporter=$class->SUPER::new(@args);
