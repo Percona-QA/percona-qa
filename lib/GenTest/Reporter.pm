@@ -185,6 +185,9 @@ sub new {
 	my $prng = GenTest::Random->new( seed => 1 );
 	$reporter->[REPORTER_PRNG] = $prng;
 
+	# general properties area for sub-classes
+	$reporter->[REPORTER_CUSTOM_ATTRIBUTES]={};
+
 	return $reporter;
 }
 

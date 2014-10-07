@@ -47,13 +47,14 @@ sub new {
         } else {
         	$reporter=$class->SUPER::new(@args);
         }
-        $reporter->[GenTest::Reporter::REPORTER_CUSTOM_ATTRIBUTES]={};
-
         $reporter=bless($reporter,$class);
         
         # 0=build cmd mode / 1=clone cmd mode
         $reporter->customAttribute('cloneCmd',0);
         $reporter->customAttribute('cmd','');
+        $reporter->customAttribute('firstMonitor',1);
+        $reporter->customAttribute('firstReport',1);
+        $reporter->customAttribute('iKilledTheServer',0);
 
 	return $reporter;
 };
@@ -103,24 +104,53 @@ sub getCmdFromPid() {
 sub monitor {
 	my $reporter = shift;
 
+	# check to see if this is the first monitor() call
+	my $firstMonitor = $reporter->customAttribute('firstMonitor');
+	$reporter->customAttribute('firstMonitor',0);
+
 	# In case of two servers, we will be called twice.
 	# Only kill the first server and ignore the second call.
 	
 	$first_reporter = $reporter if not defined $first_reporter;
 	return STATUS_OK if $reporter ne $first_reporter;
 
-	my $pid = $reporter->serverInfo('pid');
-
-	if ($reporter->cloneCmd()) {
-		$reporter->cmd($reporter->getCmdFromPid());
-		say("Clone Command Mode: I will re-start server with the same parameters");
-	} else {
-		say("Build Command Mode: we will build the server command");
+	# report our mode if this is the first monitor() call
+	if ($firstMonitor) {
+		if ($reporter->cloneCmd()) {
+			say("Clone Command Mode: I will re-start server with the same parameters");
+		} else {
+			say("Build Command Mode: we will build the server command");
+		}
 	}
 	
-	if (time() > $reporter->testEnd() - 19) {
+	# get command from the command line if
+	# we are in clone mode and haven't 
+	# retrieved the command yet.
+	#
+	my $pid = $reporter->serverInfo('pid');
+	my $cmd = $reporter->getCmdFromPid();
+	if ($reporter->cloneCmd() &&
+	    $reporter->cmd() eq '' &&
+	    $cmd gt ''
+	) {
+	  	$reporter->cmd($cmd);
+		say("Recovery->monitor() captured clone cmd: ".$reporter->cmd());
+	}
+
+	# it's ok to kill server if we are in the last few seconds of the test.
+	# if we are in clone cmd mode,  make sure we have a command to clone.
+	#
+	my $okToKill=time() > $reporter->testEnd() - 19;
+	if ($okToKill && $reporter->cloneCmd()) {
+	  $okToKill=$reporter->cmd() gt '';
+	}
+
+	# kill it un-gracefully
+	#		
+	if ($okToKill) {
 		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
 		kill(9, $pid);
+		$reporter->customAttribute('iKilledTheServer',1);
 		return STATUS_SERVER_KILLED;
 	} else {
 		return STATUS_OK;
@@ -129,7 +159,11 @@ sub monitor {
 
 sub report {
 	my $reporter = shift;
-
+	
+        # check to see if this is the first report() call
+        my $firstReport = $reporter->customAttribute('firstReport');
+        $reporter->customAttribute('firstReport',0);   
+        
 	#
 	# If there is a hang during recovery in one engine, another engine may continue to print
 	# periodic diagnostic output forever. This prevents PB2 timeout mechanisms from kicking in
@@ -161,27 +195,50 @@ sub report {
 
 	my $dbh_prev = DBI->connect($reporter->dsn());
 
-	# capture command before killing
-
-	if ($reporter->cloneCmd()) {
-		$reporter->cmd($reporter->getCmdFromPid());
-		say("Clone Cmd Mode: I will re-start cmd: ".$reporter->cmd());
-		
-	} else {
-		say("Build Cmd Mode: we will build the server command");
+	# capture the server process cmd before killing
+	#
+	my $cmd=$reporter->getCmdFromPid();
+	if ($reporter->cloneCmd() &&
+	    $reporter->cmd() eq '' &&
+	    $cmd gt ''
+	) {
+		$reporter->cmd($cmd);
+		say("Recovery->report() captured clone cmd: ".$reporter->cmd());
 	}
 
-	# kill  the process
+	# only kill if we established a connection
+	# if it's clone cmd mode, only kill if we have a cmd
+	# and it's the correct pid.
+	my $okToKill=defined $dbh_prev;
+	if ($okToKill && $reporter->cloneCmd()) {
+	  $okToKill=$reporter->cmd() gt '';
+	}
 
-	if (defined $dbh_prev) {
+	# If we are unable to contact the server the report that.	
+	unless (defined $dbh_prev) {
+		say("Recovery could not connect to database");
+		# if I didn't kill it, then say so and return an error
+		if (! $reporter->customAttribute('iKilledTheServer')) {
+			say("Recovery never issued a KILL signal, the crash occured elsewhere.");
+			return STATUS_SERVER_CRASHED;
+		}
+	}
+
+	if ($okToKill) {
 		# Server is still running, kill it.
 		$dbh_prev->disconnect();
 
 		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
 		kill(9, $pid);
+		$reporter->customAttribute('iKilledTheServer',1);
 		sleep(5);
+	} else {
+		say("Recovery did not kill server");
+		if ($reporter->cmd() eq '') {
+			say("Recovery did not have server cmd to execute");
+		}
 	}
-
+	
 	say("Copying datadir... (interrupting the copy operation may cause a false recovery failure to be reported below");
 	system("cp -r $datadir $recovery_datadir");
 	system("rm -f $recovery_datadir/core*");	# Remove cores from any previous crash
@@ -229,7 +286,7 @@ sub report {
 
 	say("Attempting database recovery using the server ...");
 
-	my $mysqld_command;
+	my $mysqld_command='';
 	
 	if (!$reporter->cloneCmd()) {
 	
@@ -271,11 +328,24 @@ sub report {
 
 	} else {
 
+		# get the previous command to clone
 		$mysqld_command = $reporter->cmd();
 
 	}
 	
-	my $holdBuff=$|++;
+	# If we don't have a command to restart at this point then report
+	# that as an error and level
+	#
+	if ($mysqld_command eq '') {
+		say("Recovery does not have a server command to restart.");
+		return STATUS_UNKNOWN_ERROR;
+	}
+
+	# Weirdness after call to open3()
+	# setting autoflush on seems to
+	# fix the issue.
+	#
+	my $holdAutoFlush=$|++;
 
 	say("Restarting server: $mysqld_command");
 
