@@ -85,7 +85,8 @@ sub report {
 }
 
 sub type {
-    return REPORTER_TYPE_ALWAYS;
+    # Shutdown should only be called at the end of a test
+    return REPORTER_TYPE_END;
 }
 
 1;
