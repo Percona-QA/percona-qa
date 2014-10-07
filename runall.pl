@@ -636,7 +636,9 @@ sub exit_test {
 
 	print isoTimestamp()." [$$] $0 will exit with exit status ".status2text($status)." ($status)\n";
         	
-	# shutdown mysqld servers
+	# shutdown any remaining mysqld servers that were
+	# started by this script (If they haven't been
+	# shutdown by the Shutdown reporter already)
 	foreach my $vardir (@vardirs) {
 	  foreach my $role ('master','slave') {
 	    my $pid_file = "$vardir/run/$role.pid";
