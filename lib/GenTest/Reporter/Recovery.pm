@@ -40,7 +40,6 @@ my $first_reporter;
 
 sub new {
         my ($class, @args) = @_;
-        say("class: $class");
         my $reporter;
         unless (@args) {
         	$reporter=$class->SUPER::new();
@@ -134,7 +133,7 @@ sub monitor {
 	    $cmd gt ''
 	) {
 	  	$reporter->cmd($cmd);
-		say("Recovery->monitor() captured clone cmd: ".$reporter->cmd());
+		say("Recovery->monitor: captured clone cmd: ".$reporter->cmd());
 	}
 
 	# it's ok to kill server if we are in the last few seconds of the test.
@@ -203,7 +202,7 @@ sub report {
 	    $cmd gt ''
 	) {
 		$reporter->cmd($cmd);
-		say("Recovery->report() captured clone cmd: ".$reporter->cmd());
+		say("Recovery->report: captured clone cmd: ".$reporter->cmd());
 	}
 
 	# only kill if we established a connection
@@ -216,7 +215,7 @@ sub report {
 
 	# If we are unable to contact the server the report that.	
 	unless (defined $dbh_prev) {
-		say("Recovery could not connect to database");
+		say("Recovery could not connect to the database");
 		# if I didn't kill it, then say so and return an error
 		if (! $reporter->customAttribute('iKilledTheServer')) {
 			say("Recovery never issued a KILL signal, the crash occured elsewhere.");
