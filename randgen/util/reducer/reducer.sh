@@ -344,6 +344,26 @@ set_internal_options(){
   TS_TE_DIR_SWAP_DONE=0
 }
 
+kill_multi_reducer(){
+  if [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
+    PIDS_TO_TERMINATE=`ps -ef | grep subreducer | grep `whoami` | grep 69 | grep -v grep | awk '{print $2}' | sort -u | tr '\n' ' '`
+    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating these PID's: $PIDS_TO_TERMINATE"
+    while [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; do
+      for t in $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | sort -u); do
+        kill -9 $t 2>/dev/null
+        wait $t 2>/dev/null  # Prevents "<process id> Killed" messages
+      done
+      sync; sleep 3
+      if [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
+        sync; sleep 20  # Extended wait for processes to terminate
+        if [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | wc -l) subreducer processes still exists after they were killed, re-attempting kill"
+        fi
+      fi
+    done
+  fi
+}
+
 multi_reducer(){
   MULTI_FOUND=0
   # This function handles starting and checking subreducer threads used for verification AND simplification of sporadic issues (as such it is the parent 
@@ -360,24 +380,12 @@ multi_reducer(){
     SKIPV=1 # For subreducers started for simplification (STAGE1+), verify/initial simplification should be skipped as this was done already by the parent/main reducer (i.e. just above)
   fi
 
-  # Ensure there are no leftover reducer processes
-  while [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; do
-    for t in $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | sort -u); do
-      kill -9 $t 2>/dev/null
-      wait $t 2>/dev/null  # Prevents "<process id> Killed" messages
-    done
-    sleep 3
-    if [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
-      sleep 20  # Extended wait for processes to terminate
-      if [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
-        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | wc -l) subreducer processes still exists after they were killed, re-attempting kill"
-      fi
-    fi
-  done
+  echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Ensuring any old subreducer processes are terminated"
+  kill_multi_reducer
 
   # Create (or remove/create) main multi-reducer path
   rm -Rf $WORKD/subreducer/
-  sleep 0.5
+  sync; sleep 0.5
   if [ -d $WORKD/subreducer/ ]; then
     echo_out "ASSERT: $WORKD/subreducer/ still exists after it has been deleted"
     exit 1
@@ -417,7 +425,7 @@ multi_reducer(){
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MYUSER=\"$MYUSER\"\n#VARMOD#:" > $MULTI_WORKD/subreducer
 
     chmod +x $MULTI_WORKD/subreducer
-    sleep 0.2  # To avoid "InnoDB: Error: pthread_create returned 11" collisions/overloads
+    sync; sleep 0.2  # To avoid "InnoDB: Error: pthread_create returned 11" collisions/overloads
     $($MULTI_WORKD/subreducer $1 >/dev/null 2>/dev/null) >/dev/null 2>/dev/null &
     PID=$!
     export MULTI_PID$t=$PID
@@ -459,21 +467,21 @@ multi_reducer(){
       for t in $(eval echo {1..$MULTI_THREADS}); do
         export MULTI_WORKD=$(eval echo $(echo '$WORKD'"$t"))
         if [ -s $MULTI_WORKD/VERIFIED ]; then
-          sleep 1.5  # Give subreducer script time to write out the file fully
+          sync; sleep 1.5  # Give subreducer script time to write out the file fully
           echo_out_overwrite "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... "
           for i in $(eval echo {1..$MULTI_THREADS}); do
             PID_TO_KILL=$(eval echo $(echo '$MULTI_PID'"$i"))
             kill -9 $PID_TO_KILL 2>/dev/null
             wait $PID_TO_KILL 2>/dev/null  # Prevents "<process id> Killed" messages
           done
-          sleep 4  # Make sure disk based activity is finished
+          sync; sleep 4  # Make sure disk based activity is finished
           # Make sure all subprocessed are gone
           for i in $(eval echo {1..$MULTI_THREADS}); do
             PID_TO_KILL=$(eval echo $(echo '$MULTI_PID'"$i"))
             kill -9 $PID_TO_KILL 2>/dev/null
             wait $PID_TO_KILL 2>/dev/null  # Prevents "<process id> Killed" messages
           done
-          sleep 2
+          sync; sleep 2
           echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... done"
           cp -f $(cat $MULTI_WORKD/VERIFIED | grep "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
           if [ -r $WORKO ]; then  # First occurence: there is no $WORKO yet
@@ -485,7 +493,7 @@ multi_reducer(){
           FOUND_VERIFIED=1  # Outer loop terminate
           break  # Inner loop terminate
         fi
-        sleep 0.4  # Hasten slowly, server already busy with subreducers
+        sync; sleep 0.4  # Hasten slowly, server already busy with subreducers
       done
     done
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All subreducer threads have finished/terminated"
@@ -510,7 +518,10 @@ multi_reducer(){
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All threads reproduced the issue: this issue is not sporadic"
       SPORADIC=0
-      if [ $MODE -lt 6 ]; then 
+      if [ $MODE -lt 6 ]; then
+        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Ensuring any rogue subreducer processes are terminated"
+        kill_multi_reducer 
+        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Removing subreducer directory $WORKD/subreducer to save space (no longer needed; issue is not sporadic)"
         rm -Rf $WORKD/subreducer/  # Cleanup subreducer directory, it is no longer needed as this issue is not sporadic, and from here onwards reduction is
                                    # single threaded because of it (it needs to be checked if this works with ThreadSync reduction though - that is potentially
                                    # multi-threaded/using subreducer directory - when used for simplifying multiple threads (with or without SET DEBUG). Hence
@@ -1020,7 +1031,7 @@ run_sql_code(){
   else
     cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force test > $WORKD/mysql.out 2>&1
   fi
-  sleep 1
+  sync; sleep 1
 }
 
 cleanup_and_save(){
@@ -1083,7 +1094,7 @@ process_outcome(){
   if [ $MODE -eq 1 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Waiting for Valgrind to terminate analysis" 
     while :; do
-      sleep 1;
+      sync; sleep 1
       if egrep -q "ERROR SUMMARY" $WORKD/valgrind.out; then break; fi
     done
     if egrep -iq "$TEXT" $WORKD/valgrind.out; then
@@ -1196,7 +1207,7 @@ process_outcome(){
   if [ $MODE -eq 6 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Waiting for Valgrind to terminate analysis" 
     while :; do
-      sleep 1;
+      sync; sleep 1
       if egrep -q "ERROR SUMMARY" $WORKD/valgrind.out; then break; fi
     done
     if egrep -iq "$TEXT" $WORKD/valgrind.out; then
@@ -1281,16 +1292,16 @@ process_outcome(){
 stop_mysqld(){
   # RV-15/9/14 Added timeout due to bug http://bugs.mysql.com/bug.php?id=73914
   timeout -k20 -s9 20s $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
-  if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
+  if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sync; sleep 5; else sync; sleep 1; fi
 
   while :; do
-    sleep 1; 
+    sync; sleep 1
     if kill -0 $PIDV > /dev/null 2>&1; then 
-      if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
+      if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sync; sleep 5; else sync; sleep 2; fi
       if kill -0 $PIDV > /dev/null 2>&1; then $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi
-      if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 8; else sleep 4; fi
+      if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sync; sleep 8; else sync; sleep 4; fi
       if kill -0 $PIDV > /dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
-      sleep 5
+      sync; sleep 5
       if [ $MODE -ne 1 -a $MODE -ne 6 ]; then if kill -0 $PIDV > /dev/null 2>&1; then 
         echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld (you may see a kill message).";
         kill -9 $PIDV
