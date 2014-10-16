@@ -1322,6 +1322,8 @@ finish(){
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     echo_out "[Finish] Final testcase size       : $SIZEF bytes ($LINECOUNTF lines)"
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
+    echo_out "[Info] Remember that MYEXTRA options (extra options passed to mysqld) may be necessary to have the issue reproduce correctly. Relisting them here to copy/paste:"
+    echo_out "[Info] MYEXTRA: $MYEXTRA"
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
       cp -R $WORKD /tmp/$DIRVALUE
