@@ -1780,7 +1780,7 @@ if [ $SKIPSTAGE -lt 3 ]; then
     elif [ $TRIAL -eq 19 ]; then sed -e 's/\*\//@##@/' -e 's/\/\*.*@##@//' $WORKF > $WORKT
     elif [ $TRIAL -eq 20 ]; then sed -e 's/\*\//@##@/' -e 's/\/\*.*@##@//' $WORKF > $WORKT
     elif [ $TRIAL -eq 21 ]; then sed -e 's/ \. /\./g' -e 's/, /,/g' $WORKF > $WORKT
-    elif [ $TRIAL -eq 22 ]; then sed -e 's/)[ \t]*,/),/g' -e 's/)[ \t]*;/);/g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 22 ]; then sed -e 's/)[ \t]\+,/),/g' -e 's/)[ \t]\+;/);/g' $WORKF > $WORKT
     elif [ $TRIAL -eq 23 ]; then sed -e 's/\/\*\(.*\)\*\//\1/' $WORKF > $WORKT
     elif [ $TRIAL -eq 24 ]; then sed -e 's/field/f/g' $WORKF > $WORKT
     elif [ $TRIAL -eq 25 ]; then sed -e 's/field/f/gi' $WORKF > $WORKT
@@ -1961,7 +1961,7 @@ if [ $SKIPSTAGE -lt 4 ]; then
     elif [ $TRIAL -eq 131 ]; then sed -e 's/SELECT .* /SELECT * /i' $WORKF > $WORKT
     elif [ $TRIAL -eq 132 ]; then sed -e 's/SELECT .* /SELECT 1 /gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 133 ]; then sed -e 's/SELECT .* /SELECT 1 /i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 134 ]; then sed -e 's/[\t ]*/ /g' -e 's/ *\([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 134 ]; then sed -e 's/[\t ]\+/ /g' -e 's/ *\([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
     elif [ $TRIAL -eq 135 ]; then sed -e 's/CHARACTER[ ]*SET[ ]*latin1/ /i' $WORKF > $WORKT
     elif [ $TRIAL -eq 136 ]; then sed -e 's/CHARACTER[ ]*SET[ ]*utf8/ /i' $WORKF > $WORKT
     elif [ $TRIAL -eq 137 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/DROP DATABASE transforms;CREATE DATABASE transforms;//' $WORKF > $WORKT
@@ -2376,7 +2376,7 @@ if [ $SKIPSTAGE -lt 7 ]; then
     elif [ $TRIAL -eq 137 ]; then sed -e "s/set[ ]*('','',/SET('',/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 138 ]; then sed -e "s/INNR/I/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 139 ]; then sed -e "s/OUTR/O/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 140 ]; then sed -e 's/[\t ]*/ /g' -e 's/ \([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 140 ]; then sed -e 's/[\t ]\+/ /g' -e 's/ \([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
     elif [ $TRIAL -eq 141 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
     elif [ $TRIAL -eq 142 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
     elif [ $TRIAL -eq 143 ]; then sed "s/''/0/g" $WORKF > $WORKT
