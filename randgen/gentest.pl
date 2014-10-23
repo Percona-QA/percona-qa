@@ -169,6 +169,9 @@ my $gentest = GenTest::App::GenTest->new(config => $config);
 
 my $status = $gentest->run();
 
+# delete persistentProperties file
+new GenTest()->ppUnlink();
+
 safe_exit($status);
 
 sub help {

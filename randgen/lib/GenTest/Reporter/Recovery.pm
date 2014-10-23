@@ -50,10 +50,10 @@ sub new {
         
         # 0=build cmd mode / 1=clone cmd mode
         $reporter->customAttribute('cloneCmd',0);
-        $reporter->customAttribute('cmd','');
+        $reporter->persistentProperty('cmd','');
         $reporter->customAttribute('firstMonitor',1);
         $reporter->customAttribute('firstReport',1);
-        $reporter->customAttribute('iKilledTheServer',0);
+        $reporter->persistentProperty('iKilledTheServer',0);
 
 	return $reporter;
 };
@@ -74,9 +74,9 @@ sub cloneCmd {
 sub cmd {
 	my $reporter = shift;
 	if (@_) {
-		$reporter->customAttribute('cmd',shift);
+		$reporter->persistentProperty('cmd',shift);
 	}
-	return $reporter->customAttribute('cmd');
+	return $reporter->persistentProperty('cmd');
 }
 
 sub getCmdFromPid() {
@@ -86,16 +86,13 @@ sub getCmdFromPid() {
 	if (@_) {
 		$pid = shift;
 	}
-	#say("Executing: "."ps fwwo cmd -p $pid|");
 	open CMD,"ps fwwo cmd -p $pid|"; # posix 'ps'
 	PS_LOOP: while (<CMD>) {
 		chomp;
-		#say("ps line: ".$_);
 		next PS_LOOP if /^CMD/;
 		$ret=$_;
 		last PS_LOOP;
 	}
-	#say("command: ".$ret);
 	close CMD;
 	return $ret;
 }
@@ -149,7 +146,7 @@ sub monitor {
 	if ($okToKill) {
 		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
 		kill(9, $pid);
-		$reporter->customAttribute('iKilledTheServer',1);
+		$reporter->persistentProperty('iKilledTheServer',1);
 		return STATUS_SERVER_KILLED;
 	} else {
 		return STATUS_OK;
@@ -217,7 +214,7 @@ sub report {
 	unless (defined $dbh_prev) {
 		say("Recovery could not connect to the database");
 		# if I didn't kill it, then say so and return an error
-		if (! $reporter->customAttribute('iKilledTheServer')) {
+		if (! $reporter->persistentProperty('iKilledTheServer')) {
 			say("Recovery never issued a KILL signal, the crash occured elsewhere.");
 			return STATUS_SERVER_CRASHED;
 		}
@@ -229,7 +226,7 @@ sub report {
 
 		say("Sending SIGKILL to server with pid $pid in order to force a recovery.");
 		kill(9, $pid);
-		$reporter->customAttribute('iKilledTheServer',1);
+		$reporter->persistentProperty('iKilledTheServer',1);
 		sleep(5);
 	} else {
 		say("Recovery did not kill server");
