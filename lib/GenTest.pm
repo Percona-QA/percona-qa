@@ -72,6 +72,11 @@ sub BEGIN {
 
 	croak("Unable to locate suitable temporary directory.") if not defined $tmpdir;
 	
+	# persistent property file
+	if (! defined $ppFile) {
+                $ppFile=tmpnam();
+        }  
+	
 	return 1;
 }
 
@@ -263,9 +268,6 @@ sub setLogConf {
 sub persistentProperty {
     my $self=shift;
     my %h;
-    if (! defined $ppFile) {
-        $ppFile=tmpnam();
-    }  
     # lock to prevent multiple processes from accessing
     # at the same time
     open(MYLOCK,'>'.$ppFile.'.lck');
