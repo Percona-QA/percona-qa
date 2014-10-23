@@ -229,7 +229,9 @@ sub report {
 		$reporter->persistentProperty('iKilledTheServer',1);
 		sleep(5);
 	} else {
-		say("Recovery did not kill server");
+		if (! $reporter->persistentProperty('iKilledTheServer')) {
+			say("Recovery did not kill the server");
+		}
 		if ($reporter->cmd() eq '') {
 			say("Recovery did not have server cmd to execute");
 		}
