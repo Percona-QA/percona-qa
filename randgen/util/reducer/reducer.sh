@@ -345,8 +345,9 @@ set_internal_options(){
 }
 
 kill_multi_reducer(){
-  if [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
-    PIDS_TO_TERMINATE=`ps -ef | grep subreducer | grep `whoami` | grep 69 | grep -v grep | awk '{print $2}' | sort -u | tr '\n' ' '`
+  WHOAMI=`whoami`
+  if [ $(ps -ef | grep subreducer | grep $WHOAMI | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
+    PIDS_TO_TERMINATE=$(ps -ef | grep subreducer | grep $WHOAMI | grep $DIRVALUE | grep -v grep | awk '{print $2}' | sort -u | tr '\n' ' ')
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating these PID's: $PIDS_TO_TERMINATE"
     while [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; do
       for t in $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | sort -u); do
