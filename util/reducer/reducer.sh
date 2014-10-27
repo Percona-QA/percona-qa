@@ -1041,6 +1041,7 @@ run_sql_code(){
       cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force test > $WORKD/mysql.out 2>&1
     else
       if [ $PQUERY_MOD -eq 1 ]; then
+        export LD_LIBRARY_PATH=${MYBASE}/lib
         ${PQUERY_LOC} --infile=$WORKT --database=test --threads=1 --no-shuffle --user=root --socket=$WORKD/socket.sock > $WORKD/pquery.out 2>&1
       else
         cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force test > $WORKD/mysql.out 2>&1
