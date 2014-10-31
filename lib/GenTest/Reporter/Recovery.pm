@@ -329,6 +329,8 @@ sub report {
 		# get the previous command to clone
 		$mysqld_command = $reporter->cmd();
 
+		# mysqld command fixup for plugin-load
+		$mysqld_command =~ s/(--plugin-load=)([^\s]+)(\s)/$1'$2'$3/;
 	}
 	
 	# If we don't have a command to restart at this point then report
