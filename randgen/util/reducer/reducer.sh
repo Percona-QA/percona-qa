@@ -678,7 +678,7 @@ init_workdir_and_files(){
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
     mkdir $WORKD
   fi
-  mkdir $WORKD/data $WORKD/data/test $WORKD/tmp
+  mkdir $WORKD/data $WORKD/tmp
   chmod -R 777 $WORKD
   touch $WORKD/reducer.log
   echo_out "[Init] Workdir: $WORKD"
@@ -722,14 +722,26 @@ init_workdir_and_files(){
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
     echo_out "[Init] Setting up standard working subdirectories"
+    if [ "`echo $MYBASE | sed 's|.*\(5\.[567]\).*|\1|'`" == "5.7" ]; then
+      MID_OPTIONS="--insecure"  # --insecure prevents random root password in 5.7. --force is no longer supported in new mysql_install_db binary in 5.7
+    elif [ "`echo $MYBASE | sed 's|.*\(5\.[567]\).*|\1|'`" == "5.6" ]; then
+      MID_OPTIONS="--force"
+    elif [ "`echo $MYBASE | sed 's|.*\(5\.[567]\).*|\1|'`" == "5.5" ]; then
+      MID_OPTIONS="--force"
+    else
+      MID_OPTIONS="" 
+      echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set MID_OPTIONS. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning."
+    fi
+    # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
     if [ -r $MYBASE/scripts/mysql_install_db ]; then
-      $MYBASE/scripts/mysql_install_db --basedir=$MYBASE --datadir=$WORKD/data --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+      $MYBASE/scripts/mysql_install_db --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
     elif [ -r $MYBASE/bin/mysql_install_db ]; then
-      $MYBASE/bin/mysql_install_db --basedir=$MYBASE --datadir=$WORKD/data --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+      $MYBASE/bin/mysql_install_db --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
     else
       echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/."
       exit 1
     fi
+    mkdir $WORKD/data/test 2>&1  # test database provisioning (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
     start_mysqld_main
     if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
       echo_out "[Init] [ERROR] Failed to start mysqld server (1st boot), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
