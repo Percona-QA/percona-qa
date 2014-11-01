@@ -722,7 +722,14 @@ init_workdir_and_files(){
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
     echo_out "[Init] Setting up standard working subdirectories"
-    $MYBASE/scripts/mysql_install_db --basedir=$MYBASE --datadir=$WORKD/data --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+    if [ -r $MYBASE/scripts/mysql_install_db ]; then
+      $MYBASE/scripts/mysql_install_db --basedir=$MYBASE --datadir=$WORKD/data --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+    elif [ -r $MYBASE/bin/mysql_install_db ]; then
+      $MYBASE/bin/mysql_install_db --basedir=$MYBASE --datadir=$WORKD/data --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+    else
+      echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/."
+      exit 1
+    fi
     start_mysqld_main
     if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
       echo_out "[Init] [ERROR] Failed to start mysqld server (1st boot), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
