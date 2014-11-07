@@ -41,6 +41,7 @@ WORKDIR_LOCATION=1
 STAGE1_LINES=90
 MYEXTRA="--log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
 MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
+FORCE_SPORADIC=0
 
 # ======== User configurable variable reference
 # - MODE: 
@@ -84,6 +85,10 @@ MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 #   Generally should be left disabled to obtain cleaner output (using this option gives "core dumped" messages, use less space, and have faster reducer runs)
 # - MYBASE: Full path to MySQL basedir (example: "/mysql/mysql-5.6"). 
 #   If the directory name starts with '/mysql/' then this may be ommited (example: MYBASE="mysql-5.6-trunk")
+# - FORCE_SPORADIC=0 or 1: If set to 1, STAGE1_LINES setting is ignored and set to 3. MULTI reducer mode is used after verify, even if issue is found to
+#   seemingly not be sporadic (i.e. all verify threads, normally 10, reproduced the issue). This can be handy for issues which are very slow to reduce
+#   or which, on visual inspection of the testcase reduction process are clearly sporadic (i.e. it comes to 2 line chunks with still thousands of lines 
+#   in the testcase and/or there are many trials without the issue being observed.
 
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer. 
@@ -325,6 +330,9 @@ options_check(){
       exit 1
     fi
   fi
+  if [ $FORCE_SPORADIC -gt 0 ]; then
+    STAGE1_LINES=3
+  fi
 }
 
 set_internal_options(){
@@ -520,8 +528,14 @@ multi_reducer(){
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue: <none>"
     elif [ $MULTI_FOUND -eq $MULTI_THREADS ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
-      echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All threads reproduced the issue: this issue is not sporadic"
-      SPORADIC=0
+      if [ $FORCE_SPORADIC -gt 0 ]; then
+        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All threads reproduced the issue: this issue is not considered sporadic"
+        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] However, as the 'Force sporadic' hack is on, sporadic testcase reduction will commence"
+      else
+        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All threads reproduced the issue: this issue is not sporadic"
+        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Note: if this issue proves sporadic in actual reduction (slow/stalling reduction), use the FORCE_SPORADIC=1 setting"
+        SPORADIC=0
+      fi
       if [ $MODE -lt 6 ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Ensuring any rogue subreducer processes are terminated"
         kill_multi_reducer 
@@ -707,6 +721,10 @@ init_workdir_and_files(){
   echo_out "[Init] Server (When MULTI mode is not active): ${MYBASE}${BIN} (as $MYUSER)"
   echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
   if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] Skip stage hack active. Stages up to and including $SKIPSTAGE are skipped"; fi
+  if [ $FORCE_SPORADIC -gt 0 ]; then 
+    echo_out "[Init] Force sporadic hack active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
+    echo_out "[Init] STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match FORCE_SPORADIC=$FORCE_SPORADIC setting"
+  fi
   echo_out "[Init] Querytimeout: $QUERYTIMEOUT seconds (ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
   if [ -n "$MYEXTRA" ]; then echo_out "[Init] Passing the following additional options to mysqld: $MYEXTRA"; fi
   if [ $MODE -ge 6 ]; then 
