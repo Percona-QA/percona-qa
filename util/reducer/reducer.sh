@@ -88,7 +88,12 @@ FORCE_SPORADIC=0
 # - FORCE_SPORADIC=0 or 1: If set to 1, STAGE1_LINES setting is ignored and set to 3. MULTI reducer mode is used after verify, even if issue is found to
 #   seemingly not be sporadic (i.e. all verify threads, normally 10, reproduced the issue). This can be handy for issues which are very slow to reduce
 #   or which, on visual inspection of the testcase reduction process are clearly sporadic (i.e. it comes to 2 line chunks with still thousands of lines 
-#   in the testcase and/or there are many trials without the issue being observed.
+#   in the testcase and/or there are many trials without the issue being observed. Another situation which would call for use of this parameter is when
+#   produced testcases are still greater then 15 to 80 lines - this also indicates a possibly sporadic issue (even if verify stage manages to produce it 10x.
+#   Note that this may be a bug in reducer too - i.e. a mismatch between verify stage and stage 1. Yet, if that were true, the issue would likely not 
+#   reproduce to start with. Another plausible reason for this occurence (10/10 verified in verify stage but low frequency reproduction later on) is the
+#   existence of 10 threads in verify stage vs 1 thread in stage 1. It has been observed that a very loaded server (or using Valgrind as it also slows the
+#   code down significantly) is better at reproducing (many) issues then a low-load/single-thread-running machine. Whatever the case, this hack will help.
 
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer. 
