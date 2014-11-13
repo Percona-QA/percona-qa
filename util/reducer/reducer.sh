@@ -39,7 +39,7 @@ TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
 WORKDIR_LOCATION=1
 STAGE1_LINES=90
-MYEXTRA="--log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
+MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # --no-defaults is removed automatically later. Present here to highlight it's set.
 MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 FORCE_SPORADIC=0
 
@@ -343,6 +343,7 @@ options_check(){
   if [ $FORCE_SPORADIC -gt 0 ]; then
     STAGE1_LINES=3
   fi
+  MYEXTRA=`echo ${MYEXTRA} | sed 's|--no-defaults||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
 
 set_internal_options(){
@@ -1464,10 +1465,10 @@ verify_not_found(){
 }
 
 verify(){
-  #STAGEV: VERIFY: Check first if the bug/issue really exists
+  #STAGEV: VERIFY: Check first if the bug/issue exists and is reproducible by reducer
   STAGE='V'
   TRIAL=1
-  echo_out "$ATLEASTONCE [Stage $STAGE] Verifying the bug/issue really exists (duration depends on initial input file size)"
+  echo_out "$ATLEASTONCE [Stage $STAGE] Verifying the bug/issue exists and is reproducible by reducer (duration depends on initial input file size)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer 
     while :; do
       multi_reducer $1
