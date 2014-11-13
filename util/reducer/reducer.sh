@@ -189,6 +189,11 @@ echo_out_overwrite(){
 ctrl_c(){
   echo_out "[Abort] CTRL+C Was pressed. Dumping variable stack"
   echo_out "[Abort] WORKD: $WORKD (reducer log @ $WORKD/reducer.log)"
+  if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
+    echo_out "[Abort] Best testcase thus far: $WORKO"
+  else
+    echo_out "[Abort] Best testcase thus far: $INPUTFILE (= input file, no optimizations were successful)"
+  fi
   echo_out "[Abort] End of dump stack. Ensuring threads are terminated"
   PIDS_TO_TERMINATE=$(ps -ef | grep "$DIRVALUE" | grep -v "grep" | awk '{print $2}' | tr '\n' ' ')
   echo_out "[Abort] Terminating these PID's: $PIDS_TO_TERMINATE"
