@@ -97,6 +97,9 @@ FORCE_SKIPV=0
 #   code down significantly) is better at reproducing (many) issues then a low-load/single-thread-running machine. Whatever the case, this hack will help.
 # - FORCE_SKIV=0 or 1: If set to 1, FORCE_SPORADIC is automatically set to 1 also. This option skips the verify stage and goes straight into testcase reduction
 #   mode. Ideal for issues that have a very low reproducibility, at least initially (usually either increases or decreases during a simplification run.)
+#   Note that skipping the verify stage means that you may not be sure if the issue is reproducibile untill it actually reproduces (how long is a piece of 
+#   string), and the other caveat is that the verify stage normally does some very important inital simplifications which is now skipped. It is suggested that 
+#   if the issue becomes more reproducible during simplification, to restart reducer with this hack turned off. This way you get the best of both worlds.
 
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer. 
