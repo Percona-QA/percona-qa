@@ -549,12 +549,8 @@ multi_reducer(){
       fi
       if [ $MODE -lt 6 ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Ensuring any rogue subreducer processes are terminated"
-        kill_multi_reducer 
-        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Removing subreducer directory $WORKD/subreducer to save space (no longer needed; issue is not sporadic)"
-        rm -Rf $WORKD/subreducer/  # Cleanup subreducer directory, it is no longer needed as this issue is not sporadic, and from here onwards reduction is
-                                   # single threaded because of it (it needs to be checked if this works with ThreadSync reduction though - that is potentially
-                                   # multi-threaded/using subreducer directory - when used for simplifying multiple threads (with or without SET DEBUG). Hence
-                                   # the makes-it-safe MODE<6 check (ThreadSync is MODE6+), but potentially this check can thus also be removed. RV 4/10/2014
+        kill_multi_reducer
+        rm -Rf $WORKD/subreducer/  # Cleanup subreducer directory: if this issue was non-sporadic, and stage 1 is next (with no MULTI threaded reducing because the issue is found non-sporadic), then this ensures that the space currently used by ./subreducer is saved. This is handy for /dev/shm usage which tends to quickly run out os space. Normally the subreducer dir is removed at the start of a new MULTI threaded run, but this is the one case where the directory still exists and is no longer needed. This will also remove the subreducer directory when the issues IS sporadic, and that is fine - it would have been deleted at the starrt of MULTI threaded reducing anyways. MULTI threaded reducing is done in multi_reducer()
       fi
     elif [ $MULTI_FOUND -lt $MULTI_THREADS ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
