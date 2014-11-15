@@ -740,8 +740,10 @@ init_workdir_and_files(){
   echo_out "[Init] Server (When MULTI mode is not active): ${MYBASE}${BIN} (as $MYUSER)"
   echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
   if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] SKIPSTAGE hack active. Stages up to and including $SKIPSTAGE are skipped"; fi
+  if [ $FORCE_SKIPV -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack active. Verify stage skipped, and immediately commencing multi threaded simplification"; fi
+  if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack is active, so FORCE_SPORADIC hack is automatically set active also" ; fi
   if [ $FORCE_SPORADIC -gt 0 ]; then 
-    echo_out "[Init] Force sporadic hack active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
+    echo_out "[Init] FORCE_SPORADIC hack active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
     echo_out "[Init] STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match FORCE_SPORADIC=$FORCE_SPORADIC setting"
   fi
   echo_out "[Init] Querytimeout: $QUERYTIMEOUT seconds (ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
@@ -1659,8 +1661,6 @@ verify(){
                            echo_out "[Init] Looking for this string: '$TEXT' in Valgrind output (@ $WORKD/valgrind.out when MULTI mode is not active)"; fi
   echo_out "[Info] Leading [] = No bug/issue found yet | [*] = Bug/issue at least seen once"
   report_linecounts
-  if [ $FORCE_SKIPV -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack active. Verify stage skipped, and immediately commencing multi threaded simplification"; fi
-  if [ $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack is active, so FORCE_SPORADIC hack is automatically active also. Issue assumed to be sporadic" ; fi
   if [ "$SKIPV" != "1" ]; then
     verify $1
     if [ "$MULTI_REDUCER" = "1" ]; then
