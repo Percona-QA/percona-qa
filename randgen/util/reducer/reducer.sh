@@ -42,6 +42,7 @@ STAGE1_LINES=90
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # --no-defaults is removed automatically later. Present here to highlight it's set.
 MYBASE="/sde/Percona-Server-5.6.12-rc60.4-410-debug.Linux.x86_64"
 FORCE_SPORADIC=0
+FORCE_SKIPV=0
 
 # ======== User configurable variable reference
 # - MODE: 
@@ -94,6 +95,8 @@ FORCE_SPORADIC=0
 #   reproduce to start with. Another plausible reason for this occurence (10/10 verified in verify stage but low frequency reproduction later on) is the
 #   existence of 10 threads in verify stage vs 1 thread in stage 1. It has been observed that a very loaded server (or using Valgrind as it also slows the
 #   code down significantly) is better at reproducing (many) issues then a low-load/single-thread-running machine. Whatever the case, this hack will help.
+# - FORCE_SKIV=0 or 1: If set to 1, FORCE_SPORADIC is automatically set to 1 also. This option skips the verify stage and goes straight into testcase reduction
+#   mode. Ideal for issues that have a very low reproducibility, at least initially (usually either increases or decreases during a simplification run.)
 
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer. 
@@ -340,6 +343,12 @@ options_check(){
       exit 1
     fi
   fi
+  if [ $FORCE_SKIPV -gt 0 ]; then
+    FORCE_SPORADIC=1
+    STAGE1_LINES=3
+    SPORADIC=1
+    SKIPV=1
+  fi  
   if [ $FORCE_SPORADIC -gt 0 ]; then
     STAGE1_LINES=3
   fi
