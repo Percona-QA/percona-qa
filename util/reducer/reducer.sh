@@ -1592,7 +1592,12 @@ finish(){
     echo_out "[Info] MYEXTRA: $MYEXTRA"
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
-      cp -R $WORKD /tmp/$DIRVALUE
+      if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+        sudo cp -R $WORKD /tmp/$DIRVALUE
+        sudo chown -R `whoami`:`whoami` /tmp/$DIRVALUE
+      else
+        cp -R $WORKD /tmp/$DIRVALUE
+      fi
     fi
   fi
   exit 0
