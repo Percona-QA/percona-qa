@@ -203,7 +203,7 @@ FORCE_SKIPV=0
 #   file   $WORKT overwrites $WORKO when a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT
 # $WORKO = The "reduced" version of $WORKF, in the directory of the original input file as <name>_out
 #   outf   This file definitely causes the same issue as $WORKO can, while being smaller
-# $WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN = Unimportant variables that point to various start/run scripts that get added to testcase working dir 
+# $WORK_INIT, WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN: Variables that point to various start/run scripts that get added to testcase working dir 
 
 echo_out(){
   echo "$(date +'%F %T') $1"
@@ -438,7 +438,9 @@ set_internal_options(){
   # Internal options: do not modify!
   SEED=$(head -1 /dev/urandom | od -N 1 | awk '{print $2 }') 
   RANDOM=$SEED
-  EPOCH=$(date +%s)
+  EPOCH=$(date +%s)  # Used for /dev/shm work directory name
+  sleep 0.1$RANDOM
+  EPOCH2=$(date +%s)  # Used for /dev/shm test directory name (i.e. this directory is used in the WORK_INIT, WORK_START etc. scripts for after-reducer replay)
   DROPC="DROP DATABASE transforms;CREATE DATABASE transforms;DROP DATABASE test;CREATE DATABASE test;USE test;"
   MYUSER=$(whoami)
   STARTUPCOUNT=0
@@ -799,6 +801,7 @@ init_workdir_and_files(){
   echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
+  WORK_INIT=$(echo $INPUTFILE | sed 's/_out//g;s/$/_init/')
   WORK_START=$(echo $INPUTFILE | sed 's/_out//g;s/$/_start/')
   WORK_STOP=$(echo $INPUTFILE | sed 's/_out//g;s/$/_stop/')
   WORK_RUN=$(echo $INPUTFILE | sed 's/_out//g;s/$/_run/')
@@ -856,17 +859,23 @@ init_workdir_and_files(){
         MID_OPTIONS="--force"
       else
         MID_OPTIONS="" 
-        echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set MID_OPTIONS. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning."
+        echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set the variable \$MID_OPTIONS manually. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning."
       fi
       # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
+      echo "rm -Rf /dev/shm/${EPOCH2}" > $WORK_INIT
+      echo "mkdir /dev/shm/${EPOCH2}" >> $WORK_INIT
       if [ -r $MYBASE/scripts/mysql_install_db ]; then
         $MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+        echo "$MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS} --user=$MYUSER" >> $WORK_INIT
       elif [ -r $MYBASE/bin/mysql_install_db ]; then
         $MYBASE/bin/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+        echo "$MYBASE/bin/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS} --user=$MYUSER" >> $WORK_INIT
       else
         echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/."
+        rm -f $WORK_INIT
         exit 1
       fi
+      echo "mkdir -p /dev/shm/${EPOCH2}/data/test" >> $WORK_INIT
       mkdir $WORKD/data/test 2>/dev/null  # test db provisioning if not there already (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
       start_mysqld_main
       if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
@@ -890,14 +899,18 @@ init_workdir_and_files(){
         echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet."
         echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet." > $WORK_RUN
         echo "#${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
+        sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START 
         chmod +x $WORK_RUN
       else
         echo "${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock < $WORKO" > $WORK_RUN
+        sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
         chmod +x $WORK_RUN
       fi 
       echo "${MYBASE}/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown" > $WORK_STOP
+      sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
       chmod +x $WORK_STOP
       echo "${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock test" > $WORK_CL
+      sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
       chmod +x $WORK_CL
       stop_mysqld_or_pxc
 
@@ -979,6 +992,8 @@ start_mysqld_main(){
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
     echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
+    sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
+    sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
     chmod +x $WORK_START
   else
     CMD="${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
@@ -987,6 +1002,8 @@ start_mysqld_main(){
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
     echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
+    sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
+    sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
     chmod +x $WORK_START
   fi
   for X in $(seq 1 120); do
@@ -1003,10 +1020,12 @@ start_valgrind_mysqld(){
                               --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                               --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                               --event-scheduler=ON"
-                              # Workaround for BUG#12939557 (when older Valgrind version is used): --innodb_checksum_algorithm=none  
+                              # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none  
   $CMD > $WORKD/valgrind.out 2>&1 &
    PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
   echo "$CMD > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
+  sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
+  sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
   chmod +x $WORK_START
   for X in $(seq 1 360); do 
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
@@ -1581,23 +1600,24 @@ stop_mysqld_or_pxc(){
 
 finish(){
   echo_out "[Finish] Finalized reducing SQL input file ($INPUTFILE)"
-  echo_out "[Finish] Number of server startups : $STARTUPCOUNT (not counting subreducers)"
-  echo_out "[Finish] Working directory was     : $WORKD"
-  echo_out "[Finish] Reducer log               : $WORKD/reducer.log"
+  echo_out "[Finish] Number of server startups     : $STARTUPCOUNT (not counting subreducers)"
+  echo_out "[Finish] Working directory was         : $WORKD"
+  echo_out "[Finish] Reducer log                   : $WORKD/reducer.log"
   if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
-    echo_out "[Finish] Final testcase            : $WORKO"
+    echo_out "[Finish] Final testcase                : $WORKO"
   else
-    echo_out "[Finish] Final testcase            : $INPUTFILE (= input file, no optimizations were successful)"
+    echo_out "[Finish] Final testcase                : $INPUTFILE (= input file, no optimizations were successful)"
   fi
-  echo_out "[Finish] Matching startup script   : $WORK_START"
+  echo_out "[Finish] Matching data dir init script : $WORK_INIT (this script will use /dev/shm/${EPOCH2} as working directory"
+  echo_out "[Finish] Matching startup script       : $WORK_START"
   if [ $MODE -ge 6 ]; then
     # See init_workdir_and_files() and search for WORK_RUN for more info. Also more info in improvements section at top
-    echo_out "[Finish] Matching run script       : $WORK_RUN (though you can look at this file for an example, implementation for MODE6+ is not finished yet)"
+    echo_out "[Finish] Matching run script           : $WORK_RUN (though you can look at this file for an example, implementation for MODE6+ is not finished yet)"
   else
-    echo_out "[Finish] Matching run script       : $WORK_RUN"
+    echo_out "[Finish] Matching run script           : $WORK_RUN"
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
-    echo_out "[Finish] Final testcase size       : $SIZEF bytes ($LINECOUNTF lines)"
+    echo_out "[Finish] Final testcase size           : $SIZEF bytes ($LINECOUNTF lines)"
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     echo_out "[Info] Remember that MYEXTRA options (extra options passed to mysqld) may be necessary to have the issue reproduce correctly. Relisting them here to copy/paste:"
     echo_out "[Info] MYEXTRA: $MYEXTRA"
