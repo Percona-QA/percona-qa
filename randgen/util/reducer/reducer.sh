@@ -63,7 +63,7 @@ FORCE_SKIPV=0
 #   Can contain egrep+regex syntax like "^ERROR|some_other_string". Remember this is regex: specify | as \| etc. 
 #   For MODE5, you would use a mysql CLI to get the desired output "string" (see example given above) and then set MODE5_COUNTTEXT
 # - PQUERY_MOD: 1: use pquery, 0: use mysql CLI. Causes reducer.sh to use pquery instead of the mysql client for replays (default=0). Supported for MODE=1,3,4
-# - PQUERY_LOC: Location of the pquery binary
+# - PQUERY_LOC: Location of the pquery binary (retrieve pquery like this; $ cd ~; bzr branch lp:percona-qa; # then ref ~/percona-qa/pquery/pquery[-ms])
 # - PXC_DOCKER_FIG_MOD: 1: use Fig + Docker to bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
 #   see lp:/percona-qa/pxc-pquery/new/pxc-pquery_info.txt and lp:/percona-qa/docker_info.txt for more information on this. See above for some limitations etc.
 #   IMPORTANT NOTE: If this is set to 1, ftm, these settings (and limitations) are automatically set: INHERENT: PQUERY_MOD=1, LIMTATIONS: FORCE_SPORADIC=0, 
@@ -203,7 +203,9 @@ FORCE_SKIPV=0
 #   file   $WORKT overwrites $WORKO when a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT
 # $WORKO = The "reduced" version of $WORKF, in the directory of the original input file as <name>_out
 #   outf   This file definitely causes the same issue as $WORKO can, while being smaller
-# $WORK_INIT, WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN: Variables that point to various start/run scripts that get added to testcase working dir 
+# $WORK_INIT, WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN, $WORK_RUN_PQUERY: Vars that point to various start/run scripts that get added to testcase working dir
+# WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
+#   of them use ${EPOCH2} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
 echo_out(){
   echo "$(date +'%F %T') $1"
@@ -440,7 +442,9 @@ set_internal_options(){
   RANDOM=$SEED
   EPOCH=$(date +%s)  # Used for /dev/shm work directory name
   sleep 0.1$RANDOM
-  EPOCH2=$(date +%s)  # Used for /dev/shm test directory name (i.e. this directory is used in the WORK_INIT, WORK_START etc. scripts for after-reducer replay)
+  if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main/parent reducer, so create a new EPOCH2 directory name
+    EPOCH2=$(date +%s)  # Used for /dev/shm test directory name (i.e. this directory is used in the WORK_INIT, WORK_START etc. scripts for after-reducer replay)
+  fi
   DROPC="DROP DATABASE transforms;CREATE DATABASE transforms;DROP DATABASE test;CREATE DATABASE test;USE test;"
   MYUSER=$(whoami)
   STARTUPCOUNT=0
@@ -530,6 +534,7 @@ multi_reducer(){
     FIXED_TEXT=$(echo "$TEXT" | sed "s|:|\\\:|g")
     cat $0 \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MULTI_REDUCER=1\n#VARMOD#:" \
+      | sed -e "0,/#VARMOD#/s:#VARMOD#:EPOCH2=$EPOCH2\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=$MODE\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:TEXT=\"$FIXED_TEXT\"\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE5_COUNTTEXT=$MODE5_COUNTTEXT\n#VARMOD#:" \
@@ -736,7 +741,7 @@ init_workdir_and_files(){
   # Make sure that the directory does not exist yet
   DIRVALUE=$EPOCH
   while :; do
-    if [ "$MULTI_REDUCER" = "1" ]; then  # This is a subreducer
+    if [ "$MULTI_REDUCER" == "1" ]; then  # This is a subreducer
       WORKD=$(dirname $0)
       break
     fi
@@ -801,11 +806,17 @@ init_workdir_and_files(){
   echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
-  WORK_INIT=$(echo $INPUTFILE | sed 's/_out//g;s/$/_init/')
-  WORK_START=$(echo $INPUTFILE | sed 's/_out//g;s/$/_start/')
-  WORK_STOP=$(echo $INPUTFILE | sed 's/_out//g;s/$/_stop/')
-  WORK_RUN=$(echo $INPUTFILE | sed 's/_out//g;s/$/_run/')
-  WORK_CL=$(echo $INPUTFILE | sed 's/_out//g;s/$/_cl/')
+  WORK_MYBASE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_mybase|")
+  WORK_INIT=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_init|")
+  WORK_START=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_start|")
+  WORK_STOP=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_stop|")
+  WORK_RUN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_run|")
+  if [ $PQUERY_MOD -eq 1 ]; then
+    WORK_RUN_PQUERY=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_run_pquery|")
+    WORK_PQUERY_BIN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_|" | sed "s|$|$(echo $PQUERY_LOC | sed 's|.*/||')|")
+  fi
+  WORK_CL=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_cl|")
+  WORK_OUT=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}.sql|")
   if [ $MODE -ge 6 ]; then
     mkdir $WORKD/out
     mkdir $WORKD/log
@@ -862,20 +873,23 @@ init_workdir_and_files(){
         echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set the variable \$MID_OPTIONS manually. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning."
       fi
       # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
-      echo "rm -Rf /dev/shm/${EPOCH2}" > $WORK_INIT
+      echo "$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
+      echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
+      echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}" >> $WORK_INIT
       if [ -r $MYBASE/scripts/mysql_install_db ]; then
         $MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
-        echo "$MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS} --user=$MYUSER" >> $WORK_INIT
+        echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/scripts/mysql_install_db --no-defaults --basedir=$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))") --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS} --user=$MYUSER" >> $WORK_INIT
       elif [ -r $MYBASE/bin/mysql_install_db ]; then
         $MYBASE/bin/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
-        echo "$MYBASE/bin/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS} --user=$MYUSER" >> $WORK_INIT
+        echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql_install_db --no-defaults --basedir=$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))") --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS} --user=$MYUSER" >> $WORK_INIT
       else
         echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/."
         rm -f $WORK_INIT
         exit 1
       fi
       echo "mkdir -p /dev/shm/${EPOCH2}/data/test" >> $WORK_INIT
+      chmod +x $WORK_INIT
       mkdir $WORKD/data/test 2>/dev/null  # test db provisioning if not there already (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
       start_mysqld_main
       if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
@@ -898,22 +912,29 @@ init_workdir_and_files(){
         # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
         echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet."
         echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet." > $WORK_RUN
-        echo "#${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
-        sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START 
+        echo "#${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
         chmod +x $WORK_RUN
       else
-        echo "${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock < $WORKO" > $WORK_RUN
-        sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
+        echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
+        echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock < $(echo $WORKO | sed 's|.*/|./|')" >> $WORK_RUN
         chmod +x $WORK_RUN
+        if [ $PQUERY_MOD -eq 1 ]; then
+          cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
+          if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+            echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=$(echo $WORKO | sed 's|.*/|./|') --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000" > $WORK_RUN_PQUERY
+          else
+            echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=$(echo $WORKO | sed 's|.*/|./|') --database=test --threads=1 --no-shuffle --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" > $WORK_RUN_PQUERY
+          fi
+          chmod +x $WORK_RUN_PQUERY
+        fi
       fi 
-      echo "${MYBASE}/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown" > $WORK_STOP
-      sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
+      echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
+      echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqladmin -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
       chmod +x $WORK_STOP
-      echo "${MYBASE}/bin/mysql -uroot -S$WORKD/socket.sock test" > $WORK_CL
-      sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
+      echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
+      echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
       chmod +x $WORK_CL
       stop_mysqld_or_pxc
-
       mkdir $WORKD/data.init
       cp -R $WORKD/data/* $WORKD/data.init/
     fi
@@ -983,6 +1004,7 @@ start_pxc_main(){
 }
 
 start_mysqld_main(){
+  echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     CMD="${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
@@ -991,21 +1013,19 @@ start_mysqld_main(){
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
-    sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
-    sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
-    chmod +x $WORK_START
+    echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   else
     CMD="${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
-    sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
-    sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
-    chmod +x $WORK_START
+    echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   fi
+  sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
+  sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))#g" $WORK_START
+  sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
+  chmod +x $WORK_START
   for X in $(seq 1 120); do
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
@@ -1023,8 +1043,10 @@ start_valgrind_mysqld(){
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none  
   $CMD > $WORKD/valgrind.out 2>&1 &
    PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
-  echo "$CMD > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' > $WORK_START
+  echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
+  echo "$CMD > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
+  sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))#g" $WORK_START
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
   chmod +x $WORK_START
   for X in $(seq 1 360); do 
@@ -1328,12 +1350,15 @@ cleanup_and_save(){
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
     fi
     cp -f $WORKT $WORKO
+    # Save a tarball of full self-contained testcase on each successful reduction
+    BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
+    $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
   fi
   ATLEASTONCE="[*]"  # The issue was seen at least once (this is used to permanently mark lines with '[*]' suffix as soon as this happens)
   # VERFIED file creation + subreducer handling
   echo "TRIAL:$TRIAL" > $WORKD/VERIFIED
   echo "WORKO:$WORKO" >> $WORKD/VERIFIED
-  if [ "$MULTI_REDUCER" = "1" ]; then  # This is a subreducer
+  if [ "$MULTI_REDUCER" == "1" ]; then  # This is a subreducer
     echo "# $ATLEASTONCE Issue was reproduced during this simplification subreducer." >> $WORKD/VERIFIED
     echo_out "$ATLEASTONCE [Stage $STAGE] Issue was reproduced during this simplification subreducer. Terminating now." 
     # This is a simplification subreducer started by a parent/main reducer, to simplify an issue. We terminate now after discovering the issue here. 
@@ -1599,25 +1624,33 @@ stop_mysqld_or_pxc(){
 }
 
 finish(){
+  BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
+  $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
   echo_out "[Finish] Finalized reducing SQL input file ($INPUTFILE)"
-  echo_out "[Finish] Number of server startups     : $STARTUPCOUNT (not counting subreducers)"
-  echo_out "[Finish] Working directory was         : $WORKD"
-  echo_out "[Finish] Reducer log                   : $WORKD/reducer.log"
+  echo_out "[Finish] Number of server startups        : $STARTUPCOUNT (not counting subreducers)"
+  echo_out "[Finish] Working directory was            : $WORKD"
+  echo_out "[Finish] Reducer log                      : $WORKD/reducer.log"
   if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
-    echo_out "[Finish] Final testcase                : $WORKO"
+    cp $WORKO $WORK_OUT
+    echo_out "[Finish] Final testcase                   : $WORKO"
   else
-    echo_out "[Finish] Final testcase                : $INPUTFILE (= input file, no optimizations were successful)"
+    cp $INPUTFILE $WORK_OUT
+    echo_out "[Finish] Final testcase                   : $INPUTFILE (= input file, no optimizations were successful)"
   fi
-  echo_out "[Finish] Matching data dir init script : $WORK_INIT (this script will use /dev/shm/${EPOCH2} as working directory"
-  echo_out "[Finish] Matching startup script       : $WORK_START"
+  echo_out "[Finish] Final testcase for script use    : $WORK_OUT (handy to use in combination with the scripts below)"
+  echo_out "[Finish] File containing datadir          : $WORK_MYBASE (All scripts below use this. Single-update this when basedir changes)"
+  echo_out "[Finish] Matching data dir init script    : $WORK_INIT (This script will use /dev/shm/${EPOCH2} as working directory)"
+  echo_out "[Finish] Matching startup script          : $WORK_START (Starts mysqld with same options as used in reducer)"
   if [ $MODE -ge 6 ]; then
     # See init_workdir_and_files() and search for WORK_RUN for more info. Also more info in improvements section at top
-    echo_out "[Finish] Matching run script           : $WORK_RUN (though you can look at this file for an example, implementation for MODE6+ is not finished yet)"
+    echo_out "[Finish] Matching run script              : $WORK_RUN (though you can look at this file for an example, implementation for MODE6+ is not finished yet)"
   else
-    echo_out "[Finish] Matching run script           : $WORK_RUN"
+    echo_out "[Finish] Matching run script (CLI)        : $WORK_RUN (executes the testcase via the mysql CLI)"
+    echo_out "[Finish] Matching startup script (pquery) : $WORK_RUN_PQUERY (executes the testcase via the pquery binary)"
   fi
+  echo_out "[Finish] Final testcase bundle tar ball   : $(echo $WORKO | sed 's|/[^/]\+$|/|')bug_${EPOCH2}.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
-    echo_out "[Finish] Final testcase size           : $SIZEF bytes ($LINECOUNTF lines)"
+    echo_out "[Finish] Final testcase size             : $SIZEF bytes ($LINECOUNTF lines)"
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     echo_out "[Info] Remember that MYEXTRA options (extra options passed to mysqld) may be necessary to have the issue reproduce correctly. Relisting them here to copy/paste:"
     echo_out "[Info] MYEXTRA: $MYEXTRA"
