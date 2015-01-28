@@ -804,6 +804,12 @@ init_workdir_and_files(){
   echo_out "[Init] Workdir: $WORKD"
   export TMP=$WORKD/tmp
   echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
+  # jemalloc configuration for TokuDB plugin
+  JE1="if [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
+  JE2=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
+  JE3=" elif [ -r ${PWD}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=${PWD}/lib/mysql/libjemalloc.so.1"
+  JE4=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi" 
+
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
   WORK_MYBASE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_mybase|")
@@ -874,9 +880,10 @@ init_workdir_and_files(){
       fi
       # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
       echo "$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
-      echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
+      echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}" >> $WORK_INIT
+      echo "mkdir /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
       if [ -r $MYBASE/scripts/mysql_install_db ]; then
         $MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
         echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/scripts/mysql_install_db --no-defaults --basedir=$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))") --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS} --user=$MYUSER" >> $WORK_INIT
@@ -915,7 +922,7 @@ init_workdir_and_files(){
         echo "#${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
         chmod +x $WORK_RUN
       else
-        echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
+        echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
         echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock < $(echo $WORKO | sed 's|.*/|./|')" >> $WORK_RUN
         chmod +x $WORK_RUN
         if [ $PQUERY_MOD -eq 1 ]; then
@@ -928,10 +935,10 @@ init_workdir_and_files(){
           chmod +x $WORK_RUN_PQUERY
         fi
       fi 
-      echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
+      echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
       echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqladmin -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
       chmod +x $WORK_STOP
-      echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
+      echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
       echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
       chmod +x $WORK_CL
       stop_mysqld_or_pxc
@@ -1004,7 +1011,8 @@ start_pxc_main(){
 }
 
 start_mysqld_main(){
-  echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
+  echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
+  echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     CMD="${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
@@ -1025,6 +1033,7 @@ start_mysqld_main(){
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
   sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))#g" $WORK_START
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
+  sed -i "s|\.so\;|\.so\\\;|" $WORK_START
   chmod +x $WORK_START
   for X in $(seq 1 120); do
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
@@ -1043,11 +1052,13 @@ start_valgrind_mysqld(){
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none  
   $CMD > $WORKD/valgrind.out 2>&1 &
    PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
-  echo "\$SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
+  echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
+  echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
   echo "$CMD > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
   sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))#g" $WORK_START
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
+  sed -i "s|\.so\;|\.so\\\;|" $WORK_START
   chmod +x $WORK_START
   for X in $(seq 1 360); do 
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
