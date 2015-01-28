@@ -237,6 +237,8 @@ ctrl_c(){
   PIDS_TO_TERMINATE=$(ps -ef | grep "$DIRVALUE" | grep -v "grep" | awk '{print $2}' | tr '\n' ' ')
   echo_out "[Abort] Terminating these PID's: $PIDS_TO_TERMINATE"
   kill -9 $PIDS_TO_TERMINATE >/dev/null 2>&1
+  echo_out "[Abort] What follows below is a call of finish(), the results are likely correct, but may be mangled due to the interruption"
+  finish()
   echo_out "[Abort] Done. Terminating reducer"
   exit 2
 }
@@ -1361,8 +1363,10 @@ cleanup_and_save(){
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
     fi
     cp -f $WORKT $WORKO
+    cp -f $WORKO $WORK_OUT
     # Save a tarball of full self-contained testcase on each successful reduction
     BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
+    rm -f $BUGTARDIR/${EPOCH2}_bug_bundle.tar.gz
     $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
   fi
   ATLEASTONCE="[*]"  # The issue was seen at least once (this is used to permanently mark lines with '[*]' suffix as soon as this happens)
@@ -1635,19 +1639,21 @@ stop_mysqld_or_pxc(){
 }
 
 finish(){
-  BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
-  $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
   echo_out "[Finish] Finalized reducing SQL input file ($INPUTFILE)"
   echo_out "[Finish] Number of server startups        : $STARTUPCOUNT (not counting subreducers)"
   echo_out "[Finish] Working directory was            : $WORKD"
   echo_out "[Finish] Reducer log                      : $WORKD/reducer.log"
   if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
-    cp $WORKO $WORK_OUT
+    cp -f $WORKO $WORK_OUT
     echo_out "[Finish] Final testcase                   : $WORKO"
   else
     cp $INPUTFILE $WORK_OUT
     echo_out "[Finish] Final testcase                   : $INPUTFILE (= input file, no optimizations were successful)"
   fi
+  BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
+  rm -f $BUGTARDIR/${EPOCH2}_bug_bundle.tar.gz
+  $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
+  echo_out "[Finish] Final testcase bundle + scripts  : $BUGTARDIR/${EPOCH2}"
   echo_out "[Finish] Final testcase for script use    : $WORK_OUT (handy to use in combination with the scripts below)"
   echo_out "[Finish] File containing datadir          : $WORK_MYBASE (All scripts below use this. Single-update this when basedir changes)"
   echo_out "[Finish] Matching data dir init script    : $WORK_INIT (This script will use /dev/shm/${EPOCH2} as working directory)"
