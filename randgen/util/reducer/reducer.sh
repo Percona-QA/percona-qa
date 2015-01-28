@@ -238,7 +238,7 @@ ctrl_c(){
   echo_out "[Abort] Terminating these PID's: $PIDS_TO_TERMINATE"
   kill -9 $PIDS_TO_TERMINATE >/dev/null 2>&1
   echo_out "[Abort] What follows below is a call of finish(), the results are likely correct, but may be mangled due to the interruption"
-  finish()
+  finish
   echo_out "[Abort] Done. Terminating reducer"
   exit 2
 }
