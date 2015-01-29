@@ -1665,7 +1665,7 @@ finish(){
   $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
   echo_out "[Finish] Final testcase bundle + scripts  : $BUGTARDIR/${EPOCH2}"
   echo_out "[Finish] Final testcase for script use    : $WORK_OUT (handy to use in combination with the scripts below)"
-  echo_out "[Finish] File containing datadir          : $WORK_MYBASE (All scripts below use this. Single-update this when basedir changes)"
+  echo_out "[Finish] File containing datadir          : $WORK_MYBASE (All scripts below use this. Update this when basedir changes)"
   echo_out "[Finish] Matching data dir init script    : $WORK_INIT (This script will use /dev/shm/${EPOCH2} as working directory)"
   echo_out "[Finish] Matching startup script          : $WORK_START (Starts mysqld with same options as used in reducer)"
   if [ $MODE -ge 6 ]; then
@@ -1675,7 +1675,7 @@ finish(){
     echo_out "[Finish] Matching run script (CLI)        : $WORK_RUN (executes the testcase via the mysql CLI)"
     echo_out "[Finish] Matching startup script (pquery) : $WORK_RUN_PQUERY (executes the testcase via the pquery binary)"
   fi
-  echo_out "[Finish] Final testcase bundle tar ball   : $(echo $WORKO | sed 's|/[^/]\+$|/|')bug_${EPOCH2}.tar.gz (handy for upload to bug reports)"
+  echo_out "[Finish] Final testcase bundle tar ball   :  ${EPOCH2}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     echo_out "[Finish] Final testcase size             : $SIZEF bytes ($LINECOUNTF lines)"
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
