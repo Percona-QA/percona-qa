@@ -934,11 +934,13 @@ init_workdir_and_files(){
         if [ $PQUERY_MOD -eq 1 ]; then
           cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
           if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-            echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" >> $WORK_RUN_PQUERY
-            echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000" > $WORK_RUN_PQUERY
+            echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
+            echo "export LD_LIBRARY_PATH=$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/lib" >> $WORK_RUN_PQUERY
+            echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
           else
-            echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" >> $WORK_RUN_PQUERY
-            echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" > $WORK_RUN_PQUERY
+            echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
+            echo "export LD_LIBRARY_PATH=$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/lib" >> $WORK_RUN_PQUERY
+            echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
           fi
           chmod +x $WORK_RUN_PQUERY
         fi
