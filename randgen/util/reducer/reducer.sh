@@ -944,9 +944,9 @@ init_workdir_and_files(){
         fi
       fi 
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
-      echo "gdb $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqld \$(ls /dev/shm/{EPOCH2}/data/core.*)" >> $WORK_GDB
+      echo "gdb $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*)" >> $WORK_GDB
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
-      echo "gdb $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqld \$(ls /dev/shm/{EPOCH2}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
+      echo "gdb $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
       echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH2}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH2}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
       echo "Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock..." >> $WORK_STOP
