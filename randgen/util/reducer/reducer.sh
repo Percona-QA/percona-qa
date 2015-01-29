@@ -885,7 +885,7 @@ init_workdir_and_files(){
       # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
       echo "$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
-      echo "Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}..." >> $WORK_INIT
+      echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
@@ -949,7 +949,7 @@ init_workdir_and_files(){
       echo "gdb $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
       echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH2}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH2}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
-      echo "Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock..." >> $WORK_STOP
+      echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock...\"" >> $WORK_STOP
       echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqladmin -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
       echo "Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client..." >> $WORK_CL
@@ -1026,7 +1026,7 @@ start_pxc_main(){
 
 start_mysqld_main(){
   echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
-  echo "Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)..." >> $WORK_START
+  echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
@@ -1068,7 +1068,7 @@ start_valgrind_mysqld(){
   $CMD > $WORKD/valgrind.out 2>&1 &
    PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
   echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
-  echo "Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)..." >> $WORK_START
+  echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
   echo "$CMD > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
