@@ -819,6 +819,7 @@ init_workdir_and_files(){
   WORK_START=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_start|")
   WORK_STOP=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_stop|")
   WORK_RUN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_run|")
+  WORK_GDB=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_gdb|")
   if [ $PQUERY_MOD -eq 1 ]; then
     WORK_RUN_PQUERY=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_run_pquery|")
     WORK_PQUERY_BIN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_|" | sed "s|$|$(echo $PQUERY_LOC | sed 's|.*/||')|")
@@ -883,6 +884,7 @@ init_workdir_and_files(){
       # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
       echo "$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
+      echo "Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}..." >> $WORK_INIT
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
@@ -925,22 +927,29 @@ init_workdir_and_files(){
         chmod +x $WORK_RUN
       else
         echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
+        echo "Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using the mysql CLI client..." >> $WORK_CL
         echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql -uroot -f -S/dev/shm/${EPOCH2}/socket.sock < ./${EPOCH2}.sql" >> $WORK_RUN
         chmod +x $WORK_RUN
         if [ $PQUERY_MOD -eq 1 ]; then
           cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
           if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+            echo "Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery..." >> $WORK_RUN_PQUERY
             echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000" > $WORK_RUN_PQUERY
           else
+            echo "Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery..." >> $WORK_RUN_PQUERY
             echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" > $WORK_RUN_PQUERY
           fi
           chmod +x $WORK_RUN_PQUERY
         fi
       fi 
+      echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
+      echo "gdb $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqld \$(ls /dev/shm/{EPOCH2}/data/core.*)" >> $WORK_GDB
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
+      echo "Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock..." >> $WORK_STOP
       echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqladmin -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
       chmod +x $WORK_STOP
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
+      echo "Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client..." >> $WORK_CL
       echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
       chmod +x $WORK_CL
       stop_mysqld_or_pxc
@@ -1014,6 +1023,7 @@ start_pxc_main(){
 
 start_mysqld_main(){
   echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
+  echo "Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)..." >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
@@ -1055,6 +1065,7 @@ start_valgrind_mysqld(){
   $CMD > $WORKD/valgrind.out 2>&1 &
    PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
   echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
+  echo "Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)..." >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
   echo "$CMD > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
