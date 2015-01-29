@@ -947,11 +947,10 @@ init_workdir_and_files(){
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
       echo "Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock..." >> $WORK_STOP
       echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqladmin -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
-      chmod +x $WORK_STOP
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
       echo "Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client..." >> $WORK_CL
       echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
-      chmod +x $WORK_CL
+      chmod +x $WORK_CL $WORK_STOP $WORK_GDB
       stop_mysqld_or_pxc
       mkdir $WORKD/data.init
       cp -R $WORKD/data/* $WORKD/data.init/
