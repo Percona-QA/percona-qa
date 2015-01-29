@@ -928,16 +928,16 @@ init_workdir_and_files(){
         chmod +x $WORK_RUN
       else
         echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
-        echo "Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using the mysql CLI client..." >> $WORK_CL
+        echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using the mysql CLI client...\"" >> $WORK_CL
         echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql -uroot --binary-mode --force -S/dev/shm/${EPOCH2}/socket.sock < ./${EPOCH2}.sql" >> $WORK_RUN
         chmod +x $WORK_RUN
         if [ $PQUERY_MOD -eq 1 ]; then
           cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
           if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-            echo "Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery..." >> $WORK_RUN_PQUERY
+            echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" >> $WORK_RUN_PQUERY
             echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000" > $WORK_RUN_PQUERY
           else
-            echo "Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery..." >> $WORK_RUN_PQUERY
+            echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" >> $WORK_RUN_PQUERY
             echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" > $WORK_RUN_PQUERY
           fi
           chmod +x $WORK_RUN_PQUERY
@@ -952,7 +952,7 @@ init_workdir_and_files(){
       echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock...\"" >> $WORK_STOP
       echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysqladmin -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
       echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
-      echo "Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client..." >> $WORK_CL
+      echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
       echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
       chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
       stop_mysqld_or_pxc
