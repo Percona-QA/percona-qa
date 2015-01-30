@@ -872,11 +872,11 @@ init_workdir_and_files(){
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
     if [ $PXC_DOCKER_FIG_MOD -ne 1 ]; then  # For PXC, we do not need this, Fig/Docker takes care of it
       echo_out "[Init] Setting up standard working subdirectories"
-      if [ "`echo $MYBASE | sed 's|.*\(5\.[567]\).*|\1|'`" == "5.7" ]; then
+      if [ "`$MYBASE${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.7" ]; then
         MID_OPTIONS="--insecure"  # --insecure prevents random root password in 5.7. --force is no longer supported in new mysql_install_db binary in 5.7
-      elif [ "`echo $MYBASE | sed 's|.*\(5\.[567]\).*|\1|'`" == "5.6" ]; then
+      elif [ "`$MYBASE${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.6" ]; then
         MID_OPTIONS="--force"
-      elif [ "`echo $MYBASE | sed 's|.*\(5\.[567]\).*|\1|'`" == "5.5" ]; then
+      elif [ "`$MYBASE${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.5" ]; then
         MID_OPTIONS="--force"
       else
         MID_OPTIONS="" 
