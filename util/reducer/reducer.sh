@@ -889,12 +889,11 @@ init_workdir_and_files(){
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
+      echo "if [ -r $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/scripts/mysql_install_db ]; then $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/scripts/mysql_install_db --no-defaults --basedir=$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))") --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS}; elif [ -r $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql_install_db ]; then $(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql_install_db --no-defaults --basedir=$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))") --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS}; else echo 'mysql_install_db not found in scripts nor bin directories'; fi" >> $WORK_INIT
       if [ -r $MYBASE/scripts/mysql_install_db ]; then
         $MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
-        echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/scripts/mysql_install_db --no-defaults --basedir=$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))") --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS} --user=$MYUSER" >> $WORK_INIT
       elif [ -r $MYBASE/bin/mysql_install_db ]; then
         $MYBASE/bin/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
-        echo "$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))")/bin/mysql_install_db --no-defaults --basedir=$(echo "\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))") --datadir=/dev/shm/${EPOCH2}/data ${MID_OPTIONS} --user=$MYUSER" >> $WORK_INIT
       else
         echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/."
         rm -f $WORK_INIT
@@ -1040,14 +1039,19 @@ start_mysqld_main(){
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
+    echo "${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
+                         $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   else
     CMD="${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "$CMD > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
+    echo "${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
+                         $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   fi
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
   sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))#g" $WORK_START
