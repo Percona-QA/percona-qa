@@ -907,8 +907,8 @@ init_workdir_and_files(){
       fi
       # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
       echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
-      echo "JEMALLOC=\$HOME/libjemalloc.so.1" >> $WORK_MYBASE
-      echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
+      echo "JEMALLOC=~/libjemalloc.so.1 # This can be changed to a custom path if you would like to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
+      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
       echo "source $WORK_MYBASE" >> $WORK_INIT
       echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
@@ -952,7 +952,7 @@ init_workdir_and_files(){
         echo "#${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
         chmod +x $WORK_RUN
       else
-        echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
+        echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
         echo "source $WORK_MYBASE" >> $WORK_RUN
         echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using the mysql CLI client...\"" >> $WORK_RUN
         echo "\${MYBASE}/bin/mysql -uroot --binary-mode --force -S/dev/shm/${EPOCH2}/socket.sock < ./${EPOCH2}.sql" >> $WORK_RUN
@@ -961,13 +961,13 @@ init_workdir_and_files(){
           cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
           if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
             echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
-            echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
+            echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
             echo "source $WORK_MYBASE" >> $WORK_RUN_PQUERY
             echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
             echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
           else
             echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
-            echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
+            echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
             echo "source $WORK_MYBASE" >> $WORK_RUN_PQUERY
             echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
             echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
@@ -975,18 +975,18 @@ init_workdir_and_files(){
           chmod +x $WORK_RUN_PQUERY
         fi
       fi 
-      echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
+      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
       echo "source $WORK_MYBASE" >> $WORK_GDB
       echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*)" >> $WORK_GDB
-      echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
+      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
       echo "source $WORK_MYBASE" >> $WORK_PARSE_CORE
       echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
       echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH2}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH2}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
-      echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
+      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
       echo "source $WORK_MYBASE" >> $WORK_STOP
       echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock...\"" >> $WORK_STOP
       echo "\${MYBASE}/bin/mysqladmin -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
-      echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
+      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
       echo "source $WORK_MYBASE" >> $WORK_CL
       echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
       echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
@@ -1061,7 +1061,7 @@ start_pxc_main(){
 }
 
 start_mysqld_main(){
-  echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   echo "source $WORK_MYBASE" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
@@ -1073,7 +1073,7 @@ start_mysqld_main(){
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "${MYBASE}${BIN} --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    echo "\${MYBASE}${BIN} --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
@@ -1083,12 +1083,12 @@ start_mysqld_main(){
                          --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "${MYBASE}${BIN} --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    echo "\${MYBASE}${BIN} --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   fi
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
-#  sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))#g" $WORK_START
+#  sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_DIR}/|'))#g" $WORK_START
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START
   chmod +x $WORK_START
@@ -1102,7 +1102,7 @@ start_valgrind_mysqld(){
   init_mysql_dir
   if [ -f $WORKD/valgrind.out ]; then mv -f $WORKD/valgrind.out $WORKD/valgrind.prev; fi
   CMD="valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
-              ${MYBASE}${BIN} --basedir=\${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
+              ${MYBASE}${BIN} --basedir=${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
                               --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                               --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                               --event-scheduler=ON"
@@ -1110,16 +1110,19 @@ start_valgrind_mysqld(){
   $CMD > $WORKD/valgrind.out 2>&1 &
   
    PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
-  echo "SCRIPT_PWD=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
-  echo "source $WORK_MYBASE" >> $WORK_START  
-  echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
-  echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
-  echo "$CMD > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
-  sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
- # sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_PWD}/|'))#g" $WORK_START
-  sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
-  sed -i "s|\.so\;|\.so\\\;|" $WORK_START
-  chmod +x $WORK_START
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START_valgrint
+  echo "source $WORK_MYBASE" >> $WORK_START_valgrint
+  echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_valgrint
+  echo $JE1 >> $WORK_START_valgrint; echo $JE2_valgrint >> $WORK_START_valgrint; echo $JE3 >> $WORK_START_valgrint
+  echo $JE4 >> $WORK_START_valgrint; echo $JE5 >> $WORK_START_valgrint
+  echo "valgrind --suppressions=\${MYBASE}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
+       \${MYBASE}${BIN} --basedir=\${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
+       --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
+       --socket=$WORKD/socket.sock $MYEXTRA --event-scheduler=ON  > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_valgrint
+  sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START_valgrint
+  sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START_valgrint
+  sed -i "s|\.so\;|\.so\\\;|" $WORK_START_valgrint
+  chmod +x $WORK_START_valgrint
   for X in $(seq 1 360); do 
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
