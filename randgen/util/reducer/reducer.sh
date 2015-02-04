@@ -573,6 +573,13 @@ multi_reducer(){
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Waiting for all forked verification subreducer threads to finish/terminate"
     TXT_OUT="$ATLEASTONCE [Stage $STAGE] [MULTI] Finished/Terminated verification subreducer threads:"
     for t in $(eval echo {1..$MULTI_THREADS}); do
+      # An ideal situation would be to have a check here for 'Failed to start mysqld server' in the subreducer logs. However, this would require a change
+      # to how this section works; the "wait" for PID would have to be changed to some sort of loop. However, as a stopped verify thread (1 in 10 for starters)
+      # is quickly surpassed by a new set of threads - i.e. after 10 threads, 20 are started (a new run with +10 threads) - it is not deemed very necessary
+      # to change this atm. This error also would only show on very busy servers. However, this check SHOULD be done for non-verify MULTI stages, as for
+      # simplification, all threads keep running (if they remain live) untill a simplified testcase is found. Thus, if 8 out of 10 threads sooner or later
+      # end up with 'Failed to start mysqld server', then only 2 threads would remain that try and reproduce the issue (till ifinity). The 'Failed to start 
+      # mysqld server' is seen on very busy servers (presumably some timeout hit). This second part (starting with 'However,...' is implemented already below.
       wait $(eval echo $(echo '$MULTI_PID'"$t"))
       TXT_OUT="$TXT_OUT #$t"
       echo_out_overwrite "$TXT_OUT"
@@ -590,6 +597,7 @@ multi_reducer(){
     while [ $FOUND_VERIFIED -eq 0 ]; do
       for t in $(eval echo {1..$MULTI_THREADS}); do
         export MULTI_WORKD=$(eval echo $(echo '$WORKD'"$t"))
+        # Check if issue was found (i.e. $MULTI_WORKD/VERIFIED file is present). End both loops (while+for) if so
         if [ -s $MULTI_WORKD/VERIFIED ]; then
           sleep 1.5  # Give subreducer script time to write out the file fully
           echo_out_overwrite "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... "
@@ -610,14 +618,24 @@ multi_reducer(){
           cp -f $(cat $MULTI_WORKD/VERIFIED | grep "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
           if [ -r $WORKO ]; then  # First occurence: there is no $WORKO yet
             cp -f $WORKO ${WORKO}.prev
-            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Previous good testcase backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
+            # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
+            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Previous good testcase backed up as $WORKO.prev"
           fi
           cp -f $WORKF $WORKO
           echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t reproduced the issue: testcase saved in $WORKO"
           FOUND_VERIFIED=1  # Outer loop terminate
           break  # Inner loop terminate
         fi
-        sleep 0.4  # Hasten slowly, server already busy with subreducers
+        # Check if this subreducer ($MULTI_PID$t) is still running. For more info, see "However, ..." in few lines of comments above.
+        PID_TO_CHECK=$(eval echo $(echo '$MULTI_PID'"$t"))
+        if [ "$(ps -p$PID_TO_CHECK | grep -o $PID_TO_CHECK)" != "$PID_TO_CHECK" ]; then
+          RESTART_WORKD=$(eval echo $(echo '$WORKD'"$t"))
+          rm -Rf $RESTART_WORKD/[^s]*  # Remove all files, except for subreducer script
+          $($RESTART_WORKD/subreducer $1 >/dev/null 2>/dev/null) >/dev/null 2>/dev/null &
+          export MULTI_PID$t=$!
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happens on busy servers)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+        fi
+        sleep 1  # Hasten slowly, server already busy with subreducers
       done
     done
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All subreducer threads have finished/terminated"
@@ -852,8 +870,12 @@ init_workdir_and_files(){
   if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] SKIPSTAGE hack active. Stages up to and including $SKIPSTAGE are skipped"; fi
   if [ $FORCE_SKIPV -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack active. Verify stage skipped, and immediately commencing multi threaded simplification"; fi
   if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack is active, so FORCE_SPORADIC hack is automatically set active also" ; fi
-  if [ $FORCE_SPORADIC -gt 0 ]; then 
-    echo_out "[Init] FORCE_SPORADIC hack active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
+  if [ $FORCE_SPORADIC -gt 0 ]; then
+    if [ $FORCE_SKIPV -gt 0 ]; then
+      echo_out "[Init] FORCE_SPORADIC hack active. Issue is assumed to be sporadic"
+    else
+      echo_out "[Init] FORCE_SPORADIC hack active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
+    fi
     echo_out "[Init] STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match FORCE_SPORADIC=$FORCE_SPORADIC setting"
   fi
   echo_out "[Init] Querytimeout: $QUERYTIMEOUT seconds (ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
@@ -1688,7 +1710,7 @@ finish(){
     echo_out "[Finish] Matching run script (CLI)        : $WORK_RUN (executes the testcase via the mysql CLI)"
     echo_out "[Finish] Matching startup script (pquery) : $WORK_RUN_PQUERY (executes the testcase via the pquery binary)"
   fi
-  echo_out "[Finish] Final testcase bundle tar ball   :  ${EPOCH2}_bug_bundle.tar.gz (handy for upload to bug reports)"
+  echo_out "[Finish] Final testcase bundle tar ball   : ${EPOCH2}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     echo_out "[Finish] Final testcase size             : $SIZEF bytes ($LINECOUNTF lines)"
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
