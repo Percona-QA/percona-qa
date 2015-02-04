@@ -274,7 +274,7 @@ options_check(){
     fi
   fi 
   # This section could be expanded to check for any directory specified (by for instance checking for paths), not just the two listed here
-  DIR_ISSUE=0;
+  DIR_ISSUE=0
   if $(echo $MYEXTRA | egrep -qi "MYEXTRA=.*innodb_log_group_home_dir"); then DIR_ISSUE='innodb_log_group_home_dir'; fi
   if $(echo $MYEXTRA | egrep -qi "MYEXTRA=.*innodb_log_arch_dir"); then DIR_ISSUE='innodb_log_arch_dir'; fi
   if [ "$DIR_ISSUE" != "0" ]; then
@@ -1034,7 +1034,7 @@ start_pxc_main(){
   echo_out "$ATLEASTONCE [Stage $STAGE] Waiting for the 3 node PXC Cluster to fully start..."
   for X in $(seq 1 300); do
     sleep 1
-    CLUSTER_UP=0;
+    CLUSTER_UP=0
     if $MYBASE/bin/mysqladmin -uroot -h127.0.0.1 -P12000 ping > /dev/null 2>&1; then
       if [ `$MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
       if [ `$MYBASE/bin/mysql -uroot -h127.0.0.1 -P11000 -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
@@ -1404,8 +1404,9 @@ cleanup_and_save(){
   else
     cp -f $WORKT $WORKF
     if [ -r $WORKO ]; then  # First occurence: there is no $WORKO yet
-      cp -f $WORKO ${WORKO}.prev; 
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev (useful if [oddly] the issue now fails to reproduce)"
+      cp -f $WORKO ${WORKO}.prev
+      # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev"
     fi
     cp -f $WORKT $WORKO
     cp -f $WORKO $WORK_OUT
@@ -1672,7 +1673,7 @@ stop_mysqld_or_pxc(){
         if kill -0 $PIDV > /dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
         sleep 5
         if [ $MODE -ne 1 -a $MODE -ne 6 ]; then if kill -0 $PIDV > /dev/null 2>&1; then 
-          echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld (you may see a kill message).";
+          echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld (you may see a kill message)."
           kill -9 $PIDV
         else break; fi; fi
       else
@@ -2050,7 +2051,7 @@ if [ $MODE -ge 6 ]; then
       TRIAL=$[$TRIAL+1]
       if [ $TRIAL -eq $[$TS_THREADS+1+$TS_ELIMINATED_THREAD_COUNT] ]; then 
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Last thread processed. ThreadSync thread elimination complete"
-        break;
+        break
       fi
     done
   fi
@@ -2064,19 +2065,19 @@ if [ $MODE -ge 6 ]; then
     cp -f $WORKF $WORKO
     echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Merging complete. Single threaded DATA+SQL file saved as $WORKO"
     if [ $MODE -eq 6 ]; then
-      MODE=1; 
+      MODE=1
       echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Swapped to standard single-threaded valgrind output testing (MODE1)"
     elif [ $MODE -eq 7 ]; then
-      MODE=2; 
+      MODE=2
       echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Swapped to standard single-threaded mysql CLI output testing (MODE2)"
     elif [ $MODE -eq 8 ]; then
-      MODE=3;
+      MODE=3
       echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Swapped to standard single-threaded mysqld output simplification (MODE3)"
     elif [ $MODE -eq 9 ]; then 
-      MODE=4; 
+      MODE=4
       echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Swapped to standard single-threaded crash simplification (MODE4)"
     fi 
-    VERIFY=1;
+    VERIFY=1
     echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Now starting re-verification in $MODE (this enables INSERT splitting in initial simplification etc.)"
     verify $WORKO
   else
@@ -2456,7 +2457,7 @@ if [ $SKIPSTAGE -lt 6 ]; then
             # This column was removed, reducing column count
             COUNTCOLS=$[$COUNTCOLS-1]
           fi
-          COLUMN=$[$COLUMN+1];
+          COLUMN=$[$COLUMN+1]
           LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
           SIZEF=`stat -c %s $WORKF`
         else
@@ -2599,7 +2600,7 @@ if [ $SKIPSTAGE -lt 6 ]; then
           # Only advance the column number if there was no issue showing, otherwise stay on the same column (If the issue does show, 
           # the script will remove the current column and shift all other columns down by one, hence it has to stay in the same 
           # place as this will contain the next column)
-          COLUMN=$[$COLUMN+1];
+          COLUMN=$[$COLUMN+1]
         else
           # This column was removed, reducing column count
           COUNTCOLS=$[$COUNTCOLS-1]
