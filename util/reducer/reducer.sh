@@ -914,7 +914,7 @@ init_workdir_and_files(){
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
-      echo "if [ \"\`\${MYBASE}/bin/mysqld --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--insecure'; elif [ \"\`i\${MYBASE}/bin/mysqld --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\${MYBASE}/bin/mysqld --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
+      echo "if [ \"\`\${MYBASE}/bin/mysqld --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--insecure'; elif [ \"\`\${MYBASE}/bin/mysqld --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\${MYBASE}/bin/mysqld --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
       echo "if [ -r \${MYBASE}/scripts/mysql_install_db ]; then \${MYBASE}/scripts/mysql_install_db --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; elif [ -r \${MYBASE}/bin/mysql_install_db ]; then \${MYBASE}/bin/mysql_install_db --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; else echo 'mysql_install_db not found in scripts nor bin directories'; fi" >> $WORK_INIT
       if [ -r $MYBASE/scripts/mysql_install_db ]; then
         $MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
