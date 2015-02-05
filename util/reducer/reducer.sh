@@ -912,8 +912,7 @@ init_workdir_and_files(){
       echo "source $WORK_MYBASE" >> $WORK_INIT
       echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
-      echo "mkdir /dev/shm/${EPOCH2}" >> $WORK_INIT
-      echo "mkdir /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
+      echo "mkdir -p /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
       echo "if [ \"\`\${MYBASE}/bin/mysqld --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--insecure'; elif [ \"\`\${MYBASE}/bin/mysqld --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\${MYBASE}/bin/mysqld --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
       echo "if [ -r \${MYBASE}/scripts/mysql_install_db ]; then \${MYBASE}/scripts/mysql_install_db --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; elif [ -r \${MYBASE}/bin/mysql_install_db ]; then \${MYBASE}/bin/mysql_install_db --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; else echo 'mysql_install_db not found in scripts nor bin directories'; fi" >> $WORK_INIT
       if [ -r $MYBASE/scripts/mysql_install_db ]; then
