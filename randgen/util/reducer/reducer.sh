@@ -829,7 +829,7 @@ init_workdir_and_files(){
   JE2=" elif [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
   JE3=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
   JE4=" elif [ -r \${MYBASE}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=\${MYBASE}/lib/mysql/libjemalloc.so.1"
-  JE5=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi" 
+  JE5=" else echo 'Warning: jemalloc was not loaded as it was not found (this is fine for MS, but do check ./${EPOCH2}_mybase to set correct jemalloc location for PS)'; fi" 
 
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
