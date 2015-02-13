@@ -2828,7 +2828,7 @@ if [ $SKIPSTAGE -lt 7 ]; then
   done
 fi
 
-#STAGE8 : Perform mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
+#STAGE8 : Execute mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
 if [ $SKIPSTAGE -lt 8 ]; then
   STAGE=8
   TRIAL=1
