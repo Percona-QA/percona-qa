@@ -17,40 +17,66 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-
 # ======== Script Info
 # Script developer: Roel Van de Paar <roel A.T vandepaar D.O.T com>
 
-# ======== User configurable variables section
-MODE=4
-SKIPSTAGE=0
-TEXT="strcmp"
-#TEXT="\|      0 \|      7 \|"  # Example of CLI output for MODE5
-#TEXT="\| i      \|"
-PQUERY_MOD=0
-PQUERY_LOC=~/percona-qa/pquery/pquery
-PXC_DOCKER_FIG_MOD=0
-PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml
-PXC_ISSUE_NODE=0
-MODE5_COUNTTEXT=1
-MODE5_ADDITIONAL_TEXT=""
-MODE5_ADDITIONAL_COUNTTEXT=1
-QUERYTIMEOUT=90
-TS_TRXS_SETS=0
-TS_DBG_CLI_OUTPUT=0
-TS_DS_TIMEOUT=10
-TS_VARIABILITY_SLEEP=1
-WORKDIR_LOCATION=1
-STAGE1_LINES=90
-MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # --no-defaults is removed automatically later. Present here to highlight it's set.
-MYBASE="/sda/Percona-Server-5.6.21-rel70.0-693.Linux.x86_64-debug"
-FORCE_SPORADIC=0
-FORCE_SKIPV=0
+
+# ======== User configurable variables section (see 'User configurable variable reference' for more detail)
+# === Basic options
+MODE=                        4         # Always required. Most often used modes: 4=any crash, 3=look for specific text (set TEXT)
+TEXT=                        "somebug" # Set to the text your are looking for in MODE 1,2,3,5 (ref below),6,7,8. Regex capable
+WORKDIR_LOCATION=            1         # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
+WORKDIR_M3_DIRECTORY=        "/ssd"    # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
+MYEXTRA=                     "--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
+MYBASE=                      "/sda/Percona-Server-5.6.21-rel70.0-693.Linux.x86_64-debug"
+
+# === Sporadic testcase reduction options (Used when testcases prove to be sporadic *and* fail to reduce using basic methods)
+FORCE_SKIPV=                 0         # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SKIPV)
+FORCE_SPORADIC=              0         # On/Off (1/0) Forces issue to be treated as sporadic
+
+# === Multi-threaded (auto-sporadic covering) testcase reduction
+PQUERY_MULTI=                0         # On/off (1/0) True multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
+
+# === Expert options
+MULTI_THREADS=               10        # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
+MULTI_THREADS_INCREASE=      5         # Do not change (default=5),  unless you fully understand the change (increase of above, both for std and PQUERY_MULTI)
+PQUERY_MULTI_THREADS=        3         # Do not change (default=3),  unless you fully understand the change (x mysqld servers + 1 pquery client with x threads)
+PQUERY_MULTI_CLIENT_THREADS= 30        # Do not change (default=30), unless you fully understand the change (x [client] threads mentioned above)
+PQUERY_MULTI_QUERIES=        400000    # Do not change (default=400000), unless you fully understand the change (queries to be executed per client per trial)
+
+# === pquery options (only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI)
+PQUERY_MOD=                  0         # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
+PQUERY_LOC=                  ~/percona-qa/pquery/pquery 
+
+# === Percona XtraDB Cluster options (only relevant if you want to reduce testcases for Percona XtraDB Cluster)
+PXC_DOCKER_FIG_MOD=          0         # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster 
+PXC_ISSUE_NODE=              0         # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
+PXC_DOCKER_FIG_LOC=          ~/percona-qa/pxc-pquery/existing/fig.yml
+
+# === Other options (not often changed)
+QUERYTIMEOUT=                90
+STAGE1_LINES=                90        # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
+SKIPSTAGE=                   0         # Usually not changed (default=0), skips one or more stages in the program
+
+# === MODE=5 Settings (only applicable when MODE5 is used)
+MODE5_COUNTTEXT=             1
+MODE5_ADDITIONAL_TEXT=       ""
+MODE5_ADDITIONAL_COUNTTEXT=  1
+
+# === Old ThreadSync related options (no longer commonly used)
+TS_TRXS_SETS=                0
+TS_DBG_CLI_OUTPUT=           0
+TS_DS_TIMEOUT=               10
+TS_VARIABILITY_SLEEP=        1
+
+# ==== Examples
+#TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for CLI output (MODE=2 or 5)
+#TEXT=                       "\| i      \|"            # Idem, text instead of number (text is left-aligned, numbers are right-aligned)
 
 # ======== User configurable variable reference
 # - MODE: 
 #   - MODE=1: Valgrind output testing (set TEXT)
-#   - MODE=2: mysql CLI output testing (set TEXT) 
+#   - MODE=2: mysql CLI (Command Line Interface, i.e. the mysql client) output testing (set TEXT) 
 #   - MODE=3: mysqld error output log testing (set TEXT)
 #   - MODE=4: Crash testing
 #   - MODE=5 [BETA]: MTR testcase reduction (set TEXT) (Can also be used for multi-occurence CLI output testing - see MODE5_COUNTTEXT below)
@@ -90,13 +116,28 @@ FORCE_SKIPV=0
 #   - WORKDIR_LOCATION=0: use /tmp/ (disk bound)
 #   - WORKDIR_LOCATION=1: use tmpfs (default)
 #   - WORKDIR_LOCATION=2: use ramfs (setup: sudo mkdir -p /mnt/ram; sudo mount -t ramfs -o size=4g ramfs /mnt/ram; sudo chmod -R 777 /mnt/ram;)
-#   - WORKDIR_LOCATION=3: use ssd   (mounted as /ssd)
+#   - WORKDIR_LOCATION=3: use a specific storage device (like an ssd or other [fast] storage device), mounted as WORKDIR_M3_DIRECTORY
+# - WORKDIR_M3_DIRECTORY: If WORKDIR_LOCATION is set to 3, then this directory is used
 # - STAGE1_LINES: When the testcase becomes smaller than this number of lines, proceed to STAGE2 (default=90)
 #   Only change if reducer keeps trying to reduce by 1 line in STAGE1 for a long time (seen very rarely)
 # - MYEXTRA: Extra options to pass to myqsld (for instance "--core" is handy in some cases, for instance with highly sporadic issues to capture a core)
 #   Generally should be left disabled to obtain cleaner output (using this option gives "core dumped" messages, use less space, and have faster reducer runs)
+#   - Also, --no-defaults as set in the default is removed automatically later on. It is just present here to highlight it's set.
 # - MYBASE: Full path to MySQL basedir (example: "/mysql/mysql-5.6"). 
 #   If the directory name starts with '/mysql/' then this may be ommited (example: MYBASE="mysql-5.6-trunk")
+# - MULTI_THREADS: This option was an internal one only before. Set it to change the number of threads Reducer uses for the verify stage intially, and for 
+#   reduction of sproradic issues if the verify stage found it is a sporadic issue. Recommended: 10, based on experience/testing/time-proven correctness.
+#   Do not change unless you need to. Where this may come in handy, for a single occassion, is when an issue is hard to reproduce and very sporadic. In this
+#   case you could activate FORCE_SKIPV (and thus automatically also FORCE_SPORADIC) which would skip the verify stage, and set this to a higher number for
+#   example 20 or 30. This would then immediately boot into 20 or 30 threads trying to reduce the issue with subreducers (note: thus 20 or 30x mysqld...)
+#   A setting less then 10 is really not recommended as a start since sporadic issues regularly only crash a few threads in 10 or 20 run threads.
+# - MULTI_THREADS_INCREASE: this option configures how many threads are added to MULTI_THREADS if the original MULTI_THREADS setting did not prove to be
+#   sufficient to trigger a (now declared highly-) sporadic issue. Recommended is setting 5 or 10. Note that reducer has a hard coded limit of 50 threads
+#   (this literally means 50x mysqld + client thread(s)) as most systems (including high-end servers) start to seriously fail at this level (and earlier)
+#   Example; if you set MULTI_THREADS to 10 and MULTI_THREADS_INCREASE to 10, then the sequence (if no single reproduce can be established) will be:
+#   10->20->30->40->50->Issue declared non-reproducible and program end. By this stage, the testcase has executed 6 verify levels *(10+20+30+40+50)=900 times.
+#   Still, even in this case there are methods that can be employed to let the testcase reproduce. For further ideas what to do in these cases, see;
+#   http://bazaar.launchpad.net/~percona-core/percona-qa/trunk/view/head:/reproducing_and_simplification.txt
 # - FORCE_SPORADIC=0 or 1: If set to 1, STAGE1_LINES setting is ignored and set to 3. MULTI reducer mode is used after verify, even if issue is found to
 #   seemingly not be sporadic (i.e. all verify threads, normally 10, reproduced the issue). This can be handy for issues which are very slow to reduce
 #   or which, on visual inspection of the testcase reduction process are clearly sporadic (i.e. it comes to 2 line chunks with still thousands of lines 
@@ -111,6 +152,20 @@ FORCE_SKIPV=0
 #   Note that skipping the verify stage means that you may not be sure if the issue is reproducibile untill it actually reproduces (how long is a piece of 
 #   string), and the other caveat is that the verify stage normally does some very important inital simplifications which is now skipped. It is suggested that 
 #   if the issue becomes more reproducible during simplification, to restart reducer with this hack turned off. This way you get the best of both worlds.
+# - PQUERY_MULTI=0 or 1: If set to 1, FORCE_SKIV (and thus FORCE_SPORADIC) are automatically set to 1 also. This is true multi-threaded testcase reduction,
+#   and it is based on random replay. Likely this will be slow, but effective. Alpha quality. This option removes the --no-shuffle option for pquery (i.e. 
+#   random replay) and sets pquery options --threads=x (x=PQUERY_MULTI_CLIENT_THREADS) and --queries=5*testcase size. It also sets the number of subreducer
+#   threads to PQUERY_MULTI_THREADS. To track success/status, view reducer output and/or check error logs;
+#   $ grep "Assertion failure" /dev/shm/1423774466/subreducer/*/error.log
+#   2015-02-13 07:56:01 0x7fe8c48ac700  InnoDB: Assertion failure in thread 140637706569472 in file btr0btr.ic line 144
+#   2015-02-13 07:56:11 0x7fd07a12e700  InnoDB: Assertion failure in thread 140533377984256 in file btr0btr.ic line 144
+#   2015-02-13 08:05:02 0x7f3f044ed700  InnoDB: Assertion failure in thread 139908631942912 in file pars0pars.cc line 826
+#   Note that, idem to when you use FORCE_SKIV and/or FORCE_SPORADIC, STAGE1_LINES is set to 3. Thus, reducer will likely never completely "finish" (3 line
+#   testases are somewhat rare), as it tries to continue to reduce the test to 3 lines. Just watch the output (reducer continually reports on remaining number
+#   of lines and/or filesize) and decide when you are happy with the lenght of any reduced testcase. Suggested for developer convenience; 5-10 lines or less.a
+# - PQUERY_MULTI_CLIENT_THREADS: The number of client threads used for PQUERY_MULTI (see above) replays (i.e. --threads=x for pquery)
+# - PQUERY_MULTI_QUERIES: The number of queries to execute for each and every trial before pquery ends (unless the server crashes/asserts). Must be
+#   sufficiently high, given that the random replay which PQUERY_MULTI employs may not easily trigger an issue (and especially not if also sporadic)
 
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer. 
@@ -382,13 +437,15 @@ options_check(){
     fi
   fi
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-    # These are currently limitations of PXC_DOCKER_FIG_MOD. Feel free to extend reducer.sh to handle these.
+    PQUERY_MOD=1
+    # ========= These are currently limitations of PXC_DOCKER_FIG_MOD. Feel free to extend reducer.sh to handle these ========
+    MYEXTRA=""  # Serious shortcoming. Work to be done.
     FORCE_SPORADIC=0
     SPORADIC=0
     FORCE_SKIPV=0
     SKIPV=1
-    PQUERY_MOD=1
-    MYEXTRA=""
+    MULTI_THREADS=0  # Minor (let's not run dozens of triple docker containers)
+    # /==========
     if [ ! -r $PXC_DOCKER_FIG_LOC ]; then
       echo "Error: PXC_DOCKER_FIG_MOD is set to 1, but the Fig file (as defined by PXC_DOCKER_FIG_LOC; currently set to '$PXC_DOCKER_FIG_LOC') is not available."
       echo 'Please check script contents/options ($PXC_DOCKER_FIG_MOD and $PXC_DOCKER_FIG_LOC variables)'
@@ -419,6 +476,9 @@ options_check(){
       fi
     fi
   fi
+  if [ $PQUERY_MULTI -eq 1 ]; then
+    PQUERY_MOD=1
+  fi
   if [ $PQUERY_MOD -eq 1 ]; then
     if [ ! -r $PQUERY_LOC ]; then
       echo "Error: PQUERY_MOD is set to 1, but the pquery binary (as defined by PQUERY_LOC; currently set to '$PQUERY_LOC') is not available."
@@ -426,14 +486,26 @@ options_check(){
       exit 1
     fi
   fi
+  if [ $PQUERY_MULTI -gt 0 ]; then
+    FORCE_SKIPV=1
+    MULTI_THREADS=$PQUERY_MULTI_THREADS
+    if [ $PQUERY_MULTI_CLIENT_THREADS -lt 1 ]; then
+      echo_out "Error: PQUERY_MULTI_CLIENT_THREADS is set to less then 1 ($PQUERY_MULTI_CLIENT_THREADS), while PQUERY_MULTI is turned on, this does not work; reducer needs threads to be able to replay the issue"
+      exit 1
+    elif [ $PQUERY_MULTI_CLIENT_THREADS -eq 1 ]; then
+      echo_out "Warning: PQUERY_MULTI is turned on, and PQUERY_MULTI_CLIENT_THREADS is set to 1; 1 thread for a multi-threaded issue does not seem logical. Proceeding, but this is highly likely incorrect. Please check"
+    elif [ $PQUERY_MULTI_CLIENT_THREADS -lt 5 ]; then
+      echo_out "Warning: PQUERY_MULTI is turned on, and PQUERY_MULTI_CLIENT_THREADS is set to $PQUERY_MULTI_CLIENT_THREADS, $PQUERY_MULTI_CLIENT_THREADS threads for reproducing a multi-threaded issue via random replay seems insufficient. You may want to increase PQUERY_MULTI_CLIENT_THREADS. Proceeding, but this is likely incorrect. Please check"
+    fi
+ 
+  fi
   if [ $FORCE_SKIPV -gt 0 ]; then
     FORCE_SPORADIC=1
-    STAGE1_LINES=3
-    SPORADIC=1
     SKIPV=1
   fi  
   if [ $FORCE_SPORADIC -gt 0 ]; then
     STAGE1_LINES=3
+    SPORADIC=1
   fi
   MYEXTRA=`echo ${MYEXTRA} | sed 's|--no-defaults||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
@@ -454,11 +526,6 @@ set_internal_options(){
   TRIAL=1
   STAGE='0'
   NOISSUEFLOW=0
-  if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-    MULTI_THREADS=0
-  else
-    MULTI_THREADS=10
-  fi
   C_COL_COUNTER=1
   TS_ELIMINATED_THREAD_COUNT=0
   TS_ORIG_VARS_FLAG=0
@@ -633,7 +700,7 @@ multi_reducer(){
           rm -Rf $RESTART_WORKD/[^s]*  # Remove all files, except for subreducer script
           $($RESTART_WORKD/subreducer $1 >/dev/null 2>/dev/null) >/dev/null 2>/dev/null &
           export MULTI_PID$t=$!
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happens on busy servers)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script while it was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
         fi
         sleep 1  # Hasten slowly, server already busy with subreducers
       done
@@ -766,15 +833,15 @@ init_workdir_and_files(){
       break
     fi
     if [ $WORKDIR_LOCATION -eq 3 ]; then
-      if ! [ -d "/ssd/" -a -x "/ssd/" ]; then
-        echo 'Error: ssd storage usage was specified (WORKDIR_LOCATION=3), yet /ssd/ does not exist, or could not be read.'
+      if ! [ -d "$WORKDIR_M3_DIRECTORY/" -a -x "$WORKDIR_M3_DIRECTORY/" ]; then
+        echo 'Error: WORKDIR_LOCATION=3 (a specific storage location) is set, yet WORKDIR_M3_DIRECTORY (set to $WORKDIR_M3_DIRECTORY) does not exist, or could not be read.'
         exit 1
       fi
-      if [ $(df -k -P 2>&1 | grep -v "docker/devicemapper.*Permission denied" | grep "/ssd$" | awk '{print $4}' | grep -v 'docker.devicemapper') -lt 3500000 ]; then
-        echo 'Error: /ssd does not have enough free space (3.5Gb free space required)'
+      if [ $(df -k -P 2>&1 | grep -v "docker.devicemapper" | grep "WORKDIR_M3_DIRECTORY" | awk '{print $4}') -lt 3500000 ]; then
+        echo "Error: $WORKDIR_M3_DIRECTORY does not have enough free space (3.5Gb free space required)"
         exit 1
       fi
-      WORKD="/ssd/$DIRVALUE"
+      WORKD="$WORKDIR_M3_DIRECTORY/$DIRVALUE"
     elif [ $WORKDIR_LOCATION -eq 2 ]; then
       if ! [ -d "/mnt/ram/" -a -x "/mnt/ram/" ]; then
         echo 'Error: ramfs storage usage was specified (WORKDIR_LOCATION=2), yet /mnt/ram/ does not exist, or could not be read.'
@@ -963,13 +1030,21 @@ init_workdir_and_files(){
             echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
             echo "source $WORK_MYBASE" >> $WORK_RUN_PQUERY
             echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
-            echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
+            if [ $PQUERY_MULTI -eq 1 ]; then
+              echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
+            else
+              echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
+            fi
           else
             echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
             echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
             echo "source $WORK_MYBASE" >> $WORK_RUN_PQUERY
             echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
-            echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
+            if [ $PQUERY_MULTI -eq 1 ]; then
+              echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
+            else
+              echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test --threads=1 --no-shuffle --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
+            fi
           fi
           chmod +x $WORK_RUN_PQUERY
         fi
@@ -1367,10 +1442,21 @@ run_sql_code(){
     else
       if [ $PQUERY_MOD -eq 1 ]; then
         export LD_LIBRARY_PATH=${MYBASE}/lib
+        if [ -r $WORKD/pquery.out ]; then
+          mv $WORKD/pquery.out $WORKD/pquery.prev
+        fi
         if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-          ${PQUERY_LOC} --infile=$WORKT --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000 > $WORKD/pquery.out 2>&1
+          if [ $PQUERY_MULTI -eq 1 ]; then
+            ${PQUERY_LOC} --infile=$WORKT --database=test --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --addr=127.0.0.1 --port=10000 > $WORKD/pquery.out 2>&1
+          else
+            ${PQUERY_LOC} --infile=$WORKT --database=test --threads=1 --no-shuffle --user=root --addr=127.0.0.1 --port=10000 > $WORKD/pquery.out 2>&1
+          fi
         else
-          ${PQUERY_LOC} --infile=$WORKT --database=test --threads=1 --no-shuffle --user=root --socket=$WORKD/socket.sock > $WORKD/pquery.out 2>&1
+          if [ $PQUERY_MULTI -eq 1 ]; then
+            ${PQUERY_LOC} --infile=$WORKT --database=test --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=$WORKD/socket.sock > $WORKD/pquery.out 2>&1
+          else
+            ${PQUERY_LOC} --infile=$WORKT --database=test --threads=1 --no-shuffle --user=root --socket=$WORKD/socket.sock > $WORKD/pquery.out 2>&1
+          fi
         fi
       else
         if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
@@ -1849,9 +1935,9 @@ verify(){
         report_linecounts
         break
       fi
-      echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] As (possibly sporadic) issue did not reproduce with $MULTI_THREADS threads, now increasing number of threads to $[$MULTI_THREADS+10] (maximum is 50)"
-      MULTI_THREADS=$[$MULTI_THREADS+10]
-      if [ $MULTI_THREADS -ge 40 ]; then
+      echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] As (possibly sporadic) issue did not reproduce with $MULTI_THREADS threads, now increasing number of threads to $[$MULTI_THREADS+MULTI_THREADS_INCREASE] (maximum is 50)"
+      MULTI_THREADS=$[$MULTI_THREADS+MULTI_THREADS_INCREASE]
+      if [ $MULTI_THREADS -ge 35 ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: High load active. You may start seeing messages releated to server overload like:"
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: 'command not found', 'No such file or directory' or 'fork: retry: Resource temporarily unavailable'"
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: These can safely be ignored, reducer is trying to see if the issue can be reproduced at all"
