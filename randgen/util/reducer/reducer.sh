@@ -156,10 +156,7 @@ TS_VARIABILITY_SLEEP=        1
 #   and it is based on random replay. Likely this will be slow, but effective. Alpha quality. This option removes the --no-shuffle option for pquery (i.e. 
 #   random replay) and sets pquery options --threads=x (x=PQUERY_MULTI_CLIENT_THREADS) and --queries=5*testcase size. It also sets the number of subreducer
 #   threads to PQUERY_MULTI_THREADS. To track success/status, view reducer output and/or check error logs;
-#   $ grep "Assertion failure" /dev/shm/1423774466/subreducer/*/error.log
-#   2015-02-13 07:56:01 0x7fe8c48ac700  InnoDB: Assertion failure in thread 140637706569472 in file btr0btr.ic line 144
-#   2015-02-13 07:56:11 0x7fd07a12e700  InnoDB: Assertion failure in thread 140533377984256 in file btr0btr.ic line 144
-#   2015-02-13 08:05:02 0x7f3f044ed700  InnoDB: Assertion failure in thread 139908631942912 in file pars0pars.cc line 826
+#   $ grep "Assertion failure" /dev/shm/{reducer's epoch}/subreducer/*/error.log
 #   Note that, idem to when you use FORCE_SKIV and/or FORCE_SPORADIC, STAGE1_LINES is set to 3. Thus, reducer will likely never completely "finish" (3 line
 #   testases are somewhat rare), as it tries to continue to reduce the test to 3 lines. Just watch the output (reducer continually reports on remaining number
 #   of lines and/or filesize) and decide when you are happy with the lenght of any reduced testcase. Suggested for developer convenience; 5-10 lines or less.
