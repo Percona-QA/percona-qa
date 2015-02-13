@@ -936,6 +936,7 @@ init_workdir_and_files(){
     echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
   fi
   if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] SKIPSTAGE hack active. Stages up to and including $SKIPSTAGE are skipped"; fi
+  if [ $PQUERY_MULTI -gt 0 ]; then echo_out "[Init] PQUERY_MULTI mode active. True multi-threaded testcase reduction using pquery random replay commencing"; fi
   if [ $FORCE_SKIPV -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack active. Verify stage skipped, and immediately commencing multi threaded simplification"; fi
   if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack is active, so FORCE_SPORADIC hack is automatically set active also" ; fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
@@ -944,7 +945,7 @@ init_workdir_and_files(){
     else
       echo_out "[Init] FORCE_SPORADIC hack active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
     fi
-    echo_out "[Init] STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match FORCE_SPORADIC=$FORCE_SPORADIC setting"
+    echo_out "[Init] FORCE_SPORADIC, FORCE_SKIPV and/or PQUERY_MULTI active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
   fi
   echo_out "[Init] Querytimeout: $QUERYTIMEOUT seconds (ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
   if [ -n "$MYEXTRA" ]; then echo_out "[Init] Passing the following additional options to mysqld: $MYEXTRA"; fi
