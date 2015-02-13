@@ -1518,6 +1518,7 @@ cleanup_and_save(){
     $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
   fi
   ATLEASTONCE="[*]"  # The issue was seen at least once (this is used to permanently mark lines with '[*]' suffix as soon as this happens)
+  STAGE8_CHK=1
   # VERFIED file creation + subreducer handling
   echo "TRIAL:$TRIAL" > $WORKD/VERIFIED
   echo "WORKO:$WORKO" >> $WORKD/VERIFIED
@@ -1546,9 +1547,6 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ "${STAGE8_CHK}" == "1" ];then
-        STAGE8_VAR=1
-      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" ]; then
@@ -1567,9 +1565,6 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ "${STAGE8_CHK}" == "1" ];then
-        STAGE8_VAR=1
-      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" ]; then
@@ -1594,9 +1589,6 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ "${STAGE8_CHK}" == "1" ];then
-        STAGE8_VAR=1
-      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" ]; then
@@ -1635,9 +1627,6 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ "${STAGE8_CHK}" == "1" ];then
-        STAGE8_VAR=1
-      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" ]; then
@@ -1663,9 +1652,6 @@ process_outcome(){
           control_backtrack_flow
         fi
         cleanup_and_save
-        if [ "${STAGE8_CHK}" == "1" ];then
-          STAGE8_VAR=1
-        fi
         return 1 
       else
         if [ ! "$STAGE" = "V" ]; then
@@ -1698,9 +1684,6 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ "${STAGE8_CHK}" == "1" ];then
-        STAGE8_VAR=1
-      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" -a ! "$STAGE" = "T" ]; then
@@ -1721,9 +1704,6 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ "${STAGE8_CHK}" == "1" ];then
-        STAGE8_VAR=1
-      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" -a ! "$STAGE" = "T" ]; then
@@ -1744,9 +1724,6 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ "${STAGE8_CHK}" == "1" ];then
-        STAGE8_VAR=1
-      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" -a ! "$STAGE" = "T" ]; then
@@ -1767,9 +1744,6 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ "${STAGE8_CHK}" == "1" ];then
-        STAGE8_VAR=1
-      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" -a ! "$STAGE" = "T" ]; then
@@ -2919,16 +2893,17 @@ fi
 if [ $SKIPSTAGE -lt 8 ]; then
   STAGE=8
   TRIAL=1
-  STAGE8_CHK=1
   echo $MYEXTRA | tr -s " " "\n" > mysqld_opt.out
   MYEXTRA_STAGE8=$MYEXTRA
   while read line; do
+    NEXTACTION="& try removing next mysqld option"
     MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$line||")
-    if [ "${STAGE8_VAR}" != "1" ]; then
-      MYEXTRA_STAGE8="$MYEXTRA_STAGE8 ${STAGE8_OPT}"
-    else
+    if [ "${STAGE8_CHK}" == "1" ]; then
       MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$STAGE8_OPT||")
+    else
+      MYEXTRA_STAGE8="$MYEXTRA_STAGE8 ${STAGE8_OPT}"
     fi
+    STAGE8_CHK=0
     run_and_check
     TRIAL=$[$TRIAL+1]
     STAGE8_OPT=$line
