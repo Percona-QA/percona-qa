@@ -23,51 +23,51 @@
 
 # ======== User configurable variables section (see 'User configurable variable reference' for more detail)
 # === Basic options
-MODE=                        4         # Always required. Most often used modes: 4=any crash, 3=look for specific text (set TEXT)
-TEXT=                        "somebug" # Set to the text your are looking for in MODE 1,2,3,5 (ref below),6,7,8. Regex capable
-WORKDIR_LOCATION=            1         # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
-WORKDIR_M3_DIRECTORY=        "/ssd"    # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
-MYEXTRA=                     "--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
-MYBASE=                      "/sda/Percona-Server-5.6.21-rel70.0-693.Linux.x86_64-debug"
+MODE=4                          # Always required. Most often used modes: 4=any crash, 3=look for specific text (set TEXT)
+TEXT="somebug"                  # Set to the text your are looking for in MODE 1,2,3,5 (ref below),6,7,8. Regex capable
+WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
+WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
+MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
+MYBASE="/sda/Percona-Server-5.6.21-rel70.0-693.Linux.x86_64-debug"
 
 # === Sporadic testcase reduction options (Used when testcases prove to be sporadic *and* fail to reduce using basic methods)
-FORCE_SKIPV=                 0         # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SKIPV)
-FORCE_SPORADIC=              0         # On/Off (1/0) Forces issue to be treated as sporadic
+FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SKIPV)
+FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as sporadic
 
 # === Multi-threaded (auto-sporadic covering) testcase reduction
-PQUERY_MULTI=                0         # On/off (1/0) True multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
+PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
 
 # === Expert options
-MULTI_THREADS=               10        # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
-MULTI_THREADS_INCREASE=      5         # Do not change (default=5),  unless you fully understand the change (increase of above, both for std and PQUERY_MULTI)
-PQUERY_MULTI_THREADS=        3         # Do not change (default=3),  unless you fully understand the change (x mysqld servers + 1 pquery client with x threads)
-PQUERY_MULTI_CLIENT_THREADS= 30        # Do not change (default=30), unless you fully understand the change (x [client] threads mentioned above)
-PQUERY_MULTI_QUERIES=        400000    # Do not change (default=400000), unless you fully understand the change (queries to be executed per client per trial)
+MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
+MULTI_THREADS_INCREASE=5        # Do not change (default=5),  unless you fully understand the change (increase of above, both for std and PQUERY_MULTI)
+PQUERY_MULTI_THREADS=3          # Do not change (default=3),  unless you fully understand the change (x mysqld servers + 1 pquery client with x threads)
+PQUERY_MULTI_CLIENT_THREADS=30  # Do not change (default=30), unless you fully understand the change (x [client] threads mentioned above)
+PQUERY_MULTI_QUERIES=400000     # Do not change (default=400000), unless you fully understand the change (queries to be executed per client per trial)
 
 # === pquery options (only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI)
-PQUERY_MOD=                  0         # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
-PQUERY_LOC=                  ~/percona-qa/pquery/pquery 
+PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
+PQUERY_LOC=~/percona-qa/pquery/pquery 
 
 # === Percona XtraDB Cluster options (only relevant if you want to reduce testcases for Percona XtraDB Cluster)
-PXC_DOCKER_FIG_MOD=          0         # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster 
-PXC_ISSUE_NODE=              0         # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
-PXC_DOCKER_FIG_LOC=          ~/percona-qa/pxc-pquery/existing/fig.yml
+PXC_DOCKER_FIG_MOD=0            # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster 
+PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
+PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml
 
 # === Other options (not often changed)
-QUERYTIMEOUT=                90
-STAGE1_LINES=                90        # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
-SKIPSTAGE=                   0         # Usually not changed (default=0), skips one or more stages in the program
+QUERYTIMEOUT=90
+STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
+SKIPSTAGE=0                     # Usually not changed (default=0), skips one or more stages in the program
 
 # === MODE=5 Settings (only applicable when MODE5 is used)
-MODE5_COUNTTEXT=             1
-MODE5_ADDITIONAL_TEXT=       ""
-MODE5_ADDITIONAL_COUNTTEXT=  1
+MODE5_COUNTTEXT=1
+MODE5_ADDITIONAL_TEXT=""
+MODE5_ADDITIONAL_COUNTTEXT=1
 
 # === Old ThreadSync related options (no longer commonly used)
-TS_TRXS_SETS=                0
-TS_DBG_CLI_OUTPUT=           0
-TS_DS_TIMEOUT=               10
-TS_VARIABILITY_SLEEP=        1
+TS_TRXS_SETS=0
+TS_DBG_CLI_OUTPUT=0
+TS_DS_TIMEOUT=10
+TS_VARIABILITY_SLEEP=1
 
 # ==== Examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for CLI output (MODE=2 or 5)
