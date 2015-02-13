@@ -162,7 +162,8 @@ TS_VARIABILITY_SLEEP=        1
 #   2015-02-13 08:05:02 0x7f3f044ed700  InnoDB: Assertion failure in thread 139908631942912 in file pars0pars.cc line 826
 #   Note that, idem to when you use FORCE_SKIV and/or FORCE_SPORADIC, STAGE1_LINES is set to 3. Thus, reducer will likely never completely "finish" (3 line
 #   testases are somewhat rare), as it tries to continue to reduce the test to 3 lines. Just watch the output (reducer continually reports on remaining number
-#   of lines and/or filesize) and decide when you are happy with the lenght of any reduced testcase. Suggested for developer convenience; 5-10 lines or less.a
+#   of lines and/or filesize) and decide when you are happy with the lenght of any reduced testcase. Suggested for developer convenience; 5-10 lines or less.
+# - PQUERY_MULTI_THREADS: Think of this variable as "the initial setting for MULTI_THREADS" when PQUERY_MULTI mode is enabled; the initial number of subreducers
 # - PQUERY_MULTI_CLIENT_THREADS: The number of client threads used for PQUERY_MULTI (see above) replays (i.e. --threads=x for pquery)
 # - PQUERY_MULTI_QUERIES: The number of queries to execute for each and every trial before pquery ends (unless the server crashes/asserts). Must be
 #   sufficiently high, given that the random replay which PQUERY_MULTI employs may not easily trigger an issue (and especially not if also sporadic)
@@ -609,6 +610,8 @@ multi_reducer(){
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE5_COUNTTEXT=$MODE5_COUNTTEXT\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:SKIPV=$SKIPV\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:SPORADIC=$SPORADIC\n#VARMOD#:" \
+      | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_MULTI_CLIENT_THREADS=$PQUERY_MULTI_CLIENT_THREADS\n#VARMOD#:" \
+      | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_MULTI_QUERIES=$PQUERY_MULTI_QUERIES\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:TS_TRXS_SETS=$TS_TRXS_SETS\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:TS_DBG_CLI_OUTPUT=$TS_DBG_CLI_OUTPUT\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MYBASE=\"$MYBASE\"\n#VARMOD#:" \
