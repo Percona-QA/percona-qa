@@ -1459,6 +1459,9 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
+      if [ "${STAGE8_CHK}" == "1" ];then
+        STAGE8_VAR=1
+      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" ]; then
@@ -1477,6 +1480,9 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
+      if [ "${STAGE8_CHK}" == "1" ];then
+        STAGE8_VAR=1
+      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" ]; then
@@ -1501,6 +1507,9 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
+      if [ "${STAGE8_CHK}" == "1" ];then
+        STAGE8_VAR=1
+      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" ]; then
@@ -1539,6 +1548,9 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
+      if [ "${STAGE8_CHK}" == "1" ];then
+        STAGE8_VAR=1
+      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" ]; then
@@ -1564,6 +1576,9 @@ process_outcome(){
           control_backtrack_flow
         fi
         cleanup_and_save
+        if [ "${STAGE8_CHK}" == "1" ];then
+          STAGE8_VAR=1
+        fi
         return 1 
       else
         if [ ! "$STAGE" = "V" ]; then
@@ -1596,6 +1611,9 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
+      if [ "${STAGE8_CHK}" == "1" ];then
+        STAGE8_VAR=1
+      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" -a ! "$STAGE" = "T" ]; then
@@ -1616,6 +1634,9 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
+      if [ "${STAGE8_CHK}" == "1" ];then
+        STAGE8_VAR=1
+      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" -a ! "$STAGE" = "T" ]; then
@@ -1636,6 +1657,9 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
+      if [ "${STAGE8_CHK}" == "1" ];then
+        STAGE8_VAR=1
+      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" -a ! "$STAGE" = "T" ]; then
@@ -1656,6 +1680,9 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
+      if [ "${STAGE8_CHK}" == "1" ];then
+        STAGE8_VAR=1
+      fi
       return 1 
     else
       if [ ! "$STAGE" = "V" -a ! "$STAGE" = "T" ]; then
@@ -1731,7 +1758,7 @@ finish(){
     echo_out "[Finish] Final testcase size             : $SIZEF bytes ($LINECOUNTF lines)"
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     echo_out "[Info] Remember that MYEXTRA options (extra options passed to mysqld) may be necessary to have the issue reproduce correctly. Relisting them here to copy/paste:"
-    echo_out "[Info] MYEXTRA: $MYEXTRA"
+    echo_out "[Info] Reduced set of options required for replay: MYEXTRA: $MYEXTRA"
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
       if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
@@ -2799,6 +2826,27 @@ if [ $SKIPSTAGE -lt 7 ]; then
     fi
     TRIAL=$[$TRIAL+1]
   done
+fi
+
+#STAGE8 : Perform mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
+if [ $SKIPSTAGE -lt 8 ]; then
+  STAGE=8
+  TRIAL=1
+  STAGE8_CHK=1
+  echo $MYEXTRA | tr -s " " "\n" > mysqld_opt.out
+  MYEXTRA_STAGE8=$MYEXTRA
+  while read line; do
+    MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$line||")
+    if [ "${STAGE8_VAR}" != "1" ]; then
+      MYEXTRA_STAGE8="$MYEXTRA_STAGE8 ${STAGE8_OPT}"
+    else
+      MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$STAGE8_OPT||")
+    fi
+    run_and_check
+    TRIAL=$[$TRIAL+1]
+    STAGE8_OPT=$line
+  done < mysqld_opt.out
+
 fi
 
 finish $INPUTFILE
