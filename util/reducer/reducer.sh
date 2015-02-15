@@ -1,4 +1,4 @@
-#!/bin/bash
+!/bin/bash
 
 # Copyright (c) 2012,2013 Oracle and/or its affiliates. All rights reserved.
 # Use is subject to license terms.
@@ -43,7 +43,7 @@ MULTI_THREADS_INCREASE=5        # Do not change (default=5),  unless you fully u
 PQUERY_MULTI_THREADS=3          # Do not change (default=3),  unless you fully understand the change (x mysqld servers + 1 pquery client with x threads)
 PQUERY_MULTI_CLIENT_THREADS=30  # Do not change (default=30), unless you fully understand the change (x [client] threads mentioned above)
 PQUERY_MULTI_QUERIES=400000     # Do not change (default=400000), unless you fully understand the change (queries to be executed per client per trial)
-PQUERY_SHUFFLE_REVERSE=0        # Do not change (defaulty=0), unless you fully understand the change (reverses --no-shuffle into shuffle and vice versa)
+PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (defaulty=0), unless you fully understand the change (reverses --no-shuffle into shuffle and vice versa)
                                 # On/Off (1/0) (Default=0: --no-shuffle is used for standard pquery replay, shuffle is used for PQUERY_MULTI. =1 reverses this)
 
 # === pquery options (only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI)
@@ -166,7 +166,7 @@ TS_VARIABILITY_SLEEP=1
 # - PQUERY_MULTI_CLIENT_THREADS: The number of client threads used for PQUERY_MULTI (see above) replays (i.e. --threads=x for pquery)
 # - PQUERY_MULTI_QUERIES: The number of queries to execute for each and every trial before pquery ends (unless the server crashes/asserts). Must be
 #   sufficiently high, given that the random replay which PQUERY_MULTI employs may not easily trigger an issue (and especially not if also sporadic)
-# - PQUERY_SHUFFLE_REVERSE=0 or 1: If set to 1, PQUERY_MULTI runs will use --no-shuffle (the reverse of normal operation), and standard pquery (not multi-
+# - PQUERY_REVERSE_NOSHUFFLE_OPT=0 or 1: If set to 1, PQUERY_MULTI runs will use --no-shuffle (the reverse of normal operation), and standard pquery (not multi-
 #   threaded) will use shuffle (again the reverse of normal operation). This is a very handy option to increase testcase reproducibility. For example, when
 #   reducing a non-multithreaded testcase (i.e. normally --no-shuffle would be in use), and reducer.sh gets 'stuck' at around 60 lines, setting this to 
 #   on will start replaying the testcase randomly (shuffled). This may increase reproducibility. The final run scripts will have matching --no-shuffle or 
@@ -1040,10 +1040,10 @@ init_workdir_and_files(){
             echo "source $WORK_MYBASE" >> $WORK_RUN_PQUERY
             echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
             if [ $PQUERY_MULTI -eq 1 ]; then
-              if [ $PQUERY_SHUFFLE_REVERSE -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
+              if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
               echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
             else
-              if [ $PQUERY_SHUFFLE_REVERSE -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
+              if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
               echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
             fi
           else
@@ -1052,10 +1052,10 @@ init_workdir_and_files(){
             echo "source $WORK_MYBASE" >> $WORK_RUN_PQUERY
             echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
             if [ $PQUERY_MULTI -eq 1 ]; then
-              if [ $PQUERY_SHUFFLE_REVERSE -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
+              if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
               echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
             else
-              if [ $PQUERY_SHUFFLE_REVERSE -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
+              if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
               echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
             fi
           fi
@@ -1460,18 +1460,18 @@ run_sql_code(){
         fi
         if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
           if [ $PQUERY_MULTI -eq 1 ]; then
-            if [ $PQUERY_SHUFFLE_REVERSE -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
+            if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
             ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --addr=127.0.0.1 --port=10000 > $WORKD/pquery.out 2>&1
           else
-            if [ $PQUERY_SHUFFLE_REVERSE -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
+            if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
             ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --addr=127.0.0.1 --port=10000 > $WORKD/pquery.out 2>&1
           fi
         else
           if [ $PQUERY_MULTI -eq 1 ]; then
-            if [ $PQUERY_SHUFFLE_REVERSE -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
+            if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
             ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=$WORKD/socket.sock > $WORKD/pquery.out 2>&1
           else
-            if [ $PQUERY_SHUFFLE_REVERSE -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
+            if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
             ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=$WORKD/socket.sock > $WORKD/pquery.out 2>&1
           fi
         fi
