@@ -1148,6 +1148,9 @@ start_pxc_main(){
 }
 
 start_mysqld_main(){
+  if [ ${STAGE} -eq 8 ]; then
+     MYEXTRA=${MYEXTRA_STAGE8}
+  fi
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   echo "source $WORK_MYBASE" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
@@ -1834,8 +1837,12 @@ finish(){
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
-    echo_out "[Info] Remember that MYEXTRA options (extra options passed to mysqld) may be necessary to have the issue reproduce correctly. Relisting them here to copy/paste:"
-    echo_out "[Info] Reduced set of options required for replay: MYEXTRA: $MYEXTRA"
+    if [ "" != "$MYEXTRA" ]; then
+      sed -i '1 i\# mysqld options required for replay: $MYEXTRA' $WORK_OUT
+      sed -i '1 i\# mysqld options required for replay: $MYEXTRA' $WORKO
+      echo_out "[Info] Remember that MYEXTRA options (extra options passed to mysqld) may be necessary to have the issue reproduce correctly. Relisting them here to copy/paste:"
+      echo_out "[Info] Reduced set of options required for replay: MYEXTRA: $MYEXTRA"
+    fi
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
       if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
@@ -2909,13 +2916,15 @@ fi
 if [ $SKIPSTAGE -lt 8 ]; then
   STAGE=8
   TRIAL=1
-  echo $MYEXTRA | tr -s " " "\n" > mysqld_opt.out
+  echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
   MYEXTRA_STAGE8=$MYEXTRA
   while read line; do
     NEXTACTION="& try removing next mysqld option"
     MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$line||")
     if [ "${STAGE8_CHK}" == "1" ]; then
-      MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$STAGE8_OPT||")
+      if [ "" != "$STAGE8_OPT" ]; then
+        MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$STAGE8_OPT||")
+      fi
     else
       MYEXTRA_STAGE8="$MYEXTRA_STAGE8 ${STAGE8_OPT}"
     fi
@@ -2923,7 +2932,7 @@ if [ $SKIPSTAGE -lt 8 ]; then
     run_and_check
     TRIAL=$[$TRIAL+1]
     STAGE8_OPT=$line
-  done < mysqld_opt.out
+  done < $WORKD/mysqld_opt.out
 
 fi
 
