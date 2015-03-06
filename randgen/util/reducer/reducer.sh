@@ -985,7 +985,7 @@ init_workdir_and_files(){
       echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
       echo "JEMALLOC=~/libjemalloc.so.1 # This can be changed to a custom path if you would like to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
-      echo "source $WORK_MYBASE" >> $WORK_INIT
+      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_INIT
       echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir -p /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
@@ -1030,7 +1030,7 @@ init_workdir_and_files(){
         chmod +x $WORK_RUN
       else
         echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
-        echo "source $WORK_MYBASE" >> $WORK_RUN
+        echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN
         echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using the mysql CLI client...\"" >> $WORK_RUN
         echo "\${MYBASE}/bin/mysql -uroot --binary-mode --force -S/dev/shm/${EPOCH2}/socket.sock < ./${EPOCH2}.sql" >> $WORK_RUN
         chmod +x $WORK_RUN
@@ -1039,7 +1039,7 @@ init_workdir_and_files(){
           if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
             echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
             echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
-            echo "source $WORK_MYBASE" >> $WORK_RUN_PQUERY
+            echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
             echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
             if [ $PQUERY_MULTI -eq 1 ]; then
               if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
@@ -1051,7 +1051,7 @@ init_workdir_and_files(){
           else
             echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
             echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
-            echo "source $WORK_MYBASE" >> $WORK_RUN_PQUERY
+            echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
             echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
             if [ $PQUERY_MULTI -eq 1 ]; then
               if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
@@ -1065,18 +1065,18 @@ init_workdir_and_files(){
         fi
       fi 
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
-      echo "source $WORK_MYBASE" >> $WORK_GDB
+      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_GDB
       echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*)" >> $WORK_GDB
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
-      echo "source $WORK_MYBASE" >> $WORK_PARSE_CORE
+      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_PARSE_CORE
       echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
       echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH2}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH2}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
-      echo "source $WORK_MYBASE" >> $WORK_STOP
+      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_STOP
       echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock...\"" >> $WORK_STOP
       echo "\${MYBASE}/bin/mysqladmin -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
-      echo "source $WORK_MYBASE" >> $WORK_CL
+      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_CL
       echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
       echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
       chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
@@ -1154,7 +1154,7 @@ start_mysqld_main(){
      MYEXTRA=${MYEXTRA_STAGE8}
   fi
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
-  echo "source $WORK_MYBASE" >> $WORK_START
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
   echo "BIN=\`find \${MYBASE} -name mysqld\`;if [ -z \$BIN ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
@@ -1204,7 +1204,7 @@ start_valgrind_mysqld(){
   
    PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START_valgrint
-  echo "source $WORK_MYBASE" >> $WORK_START_valgrint
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START_valgrint
   echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_valgrint
   echo $JE1 >> $WORK_START_valgrint; echo $JE2_valgrint >> $WORK_START_valgrint; echo $JE3 >> $WORK_START_valgrint
   echo $JE4 >> $WORK_START_valgrint; echo $JE5 >> $WORK_START_valgrint
