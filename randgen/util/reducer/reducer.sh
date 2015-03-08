@@ -983,14 +983,14 @@ init_workdir_and_files(){
       fi
       # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
       echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
-      echo "JEMALLOC=~/libjemalloc.so.1 # This can be changed to a custom path if you would like to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
+      echo "JEMALLOC=~/libjemalloc.so.1  # This can be changed to a custom path if you would like to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
       echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_INIT
       echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir -p /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
-      echo "BIN=\`find \${MYBASE} -name mysqld\`;if [ -z \$BIN ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_INIT
-      echo "MID=\`find \${MYBASE} -name mysql_install_db\`;if [ -z \$MID ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
+      echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld\`;if [ -z \$BIN ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_INIT
+      echo "MID=\`find \${MYBASE} -maxdepth 2 -name mysql_install_db\`;if [ -z \$MID ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
       echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--insecure'; elif [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
       echo "\$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS" >> $WORK_INIT
       if [ -r $MYBASE/scripts/mysql_install_db ]; then
