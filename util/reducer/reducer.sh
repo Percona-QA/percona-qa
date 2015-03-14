@@ -982,14 +982,22 @@ init_workdir_and_files(){
         echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set the variable \$MID_OPTIONS manually. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning."
       fi
       # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
-      echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
+      echo "SOURCE_DIR=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
+      echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
       echo "JEMALLOC=~/libjemalloc.so.1  # This can be changed to a custom path if you would like to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
       echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_INIT
       echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
       echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
       echo "mkdir -p /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
-      echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_INIT
+      echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`" >> $WORK_INIT
+      echo "if [ -n \"\$BIN\"  ]; then" >> $WORK_INIT
+      echo "  if [ \"\$BIN\" != \"\${MYBASE}/bin/mysqld\" -a \"\$BIN\" != \"\${MYBASE}/bin/mysqld-debug\" ];then" >> $WORK_INIT
+      echo "    if [ ! -h \${MYBASE}/bin/mysqld -o ! -f \${MYBASE}/bin/mysqld ]; then mkdir -p \${MYBASE}/bin; ln -s \$BIN \${MYBASE}/bin/mysqld; fi" >> $WORK_INIT
+      echo "    if [ ! -h \${MYBASE}/bin/mysql -o ! -f \${MYBASE}/bin/mysql ]; then ln -s \${MYBASE}/client/mysql \${MYBASE}/bin/mysql ; fi" >> $WORK_INIT
+      echo "    if [ ! -h \${MYBASE}/share -o ! -f \${MYBASE}/share ]; then ln -s \${SOURCE_DIR}/scripts \${MYBASE}/share ; fi" >> $WORK_INIT
+      echo -e "    if [ ! -h \${MYBASE}/share/errmsg.sys -o ! -f \${MYBASE}/share/errmsg.sys ]; then ln -s \${MYBASE}/sql/share/english/errmsg.sys \${MYBASE}/share/errmsg.sys ; fi;\n  fi\nelse" >> $WORK_INIT
+      echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
       echo "MID=\`find \${MYBASE} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
       echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--insecure'; elif [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
       echo "\$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS" >> $WORK_INIT
@@ -1074,7 +1082,8 @@ init_workdir_and_files(){
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
       echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_STOP
       echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock...\"" >> $WORK_STOP
-      echo "\${MYBASE}/bin/mysqladmin -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
+      echo "MYADMIN=\`find \${MYBASE} -maxdepth 2 -type f -name mysqladmin\`" >> $WORK_STOP
+      echo "\$MYADMIN -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
       echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_CL
       echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
@@ -1157,7 +1166,7 @@ start_mysqld_main(){
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
-  echo "BIN=\`find \${MYBASE} -name mysqld\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
+  echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     CMD="${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
@@ -1208,7 +1217,7 @@ start_valgrind_mysqld(){
   echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_valgrint
   echo $JE1 >> $WORK_START_valgrint; echo $JE2_valgrint >> $WORK_START_valgrint; echo $JE3 >> $WORK_START_valgrint
   echo $JE4 >> $WORK_START_valgrint; echo $JE5 >> $WORK_START_valgrint
-  echo "BIN=\`find \${MYBASE} -name mysqld\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_valgrint
+  echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o  -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_valgrint
   echo "valgrind --suppressions=\${MYBASE}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
        \$BIN --basedir=\${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
