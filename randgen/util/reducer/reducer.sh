@@ -1162,8 +1162,8 @@ start_mysqld_main(){
   if [ ${STAGE} -eq 8 ]; then
      MYEXTRA=${MYEXTRA_STAGE8}
   fi
-  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" > $WORK_START
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
@@ -1211,9 +1211,9 @@ start_valgrind_mysqld(){
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none  
   $CMD > $WORKD/valgrind.out 2>&1 &
   
-   PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
-  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START_valgrint
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START_valgrint
+  PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" > $WORK_START_valgrint
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_START_valgrint
   echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_valgrint
   echo $JE1 >> $WORK_START_valgrint; echo $JE2_valgrint >> $WORK_START_valgrint; echo $JE3 >> $WORK_START_valgrint
   echo $JE4 >> $WORK_START_valgrint; echo $JE5 >> $WORK_START_valgrint
@@ -1820,6 +1820,12 @@ stop_mysqld_or_pxc(){
 }
 
 finish(){
+  if [ ${STAGE} -eq 8 ]; then
+    if [ ${STAGE8_CHK} -eq 0 ]; then
+      MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
+      sed -i "s|--event-scheduler=ON|--event-scheduler=ON $MYEXTRA |" $WORK_START
+    fi
+  fi
   echo_out "[Finish] Finalized reducing SQL input file ($INPUTFILE)"
   echo_out "[Finish] Number of server startups        : $STARTUPCOUNT (not counting subreducers)"
   echo_out "[Finish] Working directory was            : $WORKD"
