@@ -425,7 +425,7 @@ options_check(){
         exit 1
       fi
     else
-      INPUTFILE=$1
+      export -n INPUTFILE=$1  # export -n is not necessary for this script, but it is here to prevent pquery-prep-red.sh from seeing this as a adjustable var
     fi 
     if egrep -qi "tokudb" $INPUTFILE; then
       if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
@@ -470,11 +470,11 @@ options_check(){
           echo 'Please check script contents/options (set $MYBASE variable correctly)'
           exit 1
         else
-          MYBASE="/mysql/$MYBASE"
+          export -n MYBASE="/mysql/$MYBASE"
         fi
       fi
     else
-      MYBASE="/mysql/$MYBASE"
+      export -n MYBASE="/mysql/$MYBASE"
     fi
   fi
   if [ $MODE -ne 0 -a $MODE -ne 1 -a $MODE -ne 2 -a $MODE -ne 3 -a $MODE -ne 4 -a $MODE -ne 5 -a $MODE -ne 6 -a $MODE -ne 7 -a $MODE -ne 8 -a $MODE -ne 9 ]; then
@@ -492,12 +492,12 @@ options_check(){
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
     PQUERY_MOD=1
     # ========= These are currently limitations of PXC_DOCKER_FIG_MOD. Feel free to extend reducer.sh to handle these ========
-    MYEXTRA=""  # Serious shortcoming. Work to be done.
-    FORCE_SPORADIC=0
-    SPORADIC=0
-    FORCE_SKIPV=0
-    SKIPV=1
-    MULTI_THREADS=0  # Minor (let's not run dozens of triple docker containers)
+    export -n MYEXTRA=""  # Serious shortcoming. Work to be done.
+    export -n FORCE_SPORADIC=0
+    export -n SPORADIC=0
+    export -n FORCE_SKIPV=0
+    export -n SKIPV=1
+    export -n MULTI_THREADS=0  # Minor (let's not run dozens of triple docker containers)
     # /==========
     if [ $MODE -eq 0 ]; then
       echo "Error: PXC_DOCKER_FIG_MOD is set to 1, and MODE=0 set to 0, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
@@ -548,7 +548,7 @@ options_check(){
     fi
   fi
   if [ $PQUERY_MULTI -gt 0 ]; then
-    FORCE_SKIPV=1
+    export -n FORCE_SKIPV=1
     MULTI_THREADS=$PQUERY_MULTI_THREADS
     if [ $PQUERY_MULTI_CLIENT_THREADS -lt 1 ]; then
       echo_out "Error: PQUERY_MULTI_CLIENT_THREADS is set to less then 1 ($PQUERY_MULTI_CLIENT_THREADS), while PQUERY_MULTI is turned on, this does not work; reducer needs threads to be able to replay the issue"
@@ -561,14 +561,14 @@ options_check(){
  
   fi
   if [ $FORCE_SKIPV -gt 0 ]; then
-    FORCE_SPORADIC=1
-    SKIPV=1
+    export -n FORCE_SPORADIC=1
+    export -n SKIPV=1
   fi  
   if [ $FORCE_SPORADIC -gt 0 ]; then
-    STAGE1_LINES=3
-    SPORADIC=1
+    export -n STAGE1_LINES=3
+    export -n SPORADIC=1
   fi
-  MYEXTRA=`echo ${MYEXTRA} | sed 's|--no-defaults||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
+  export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|--no-defaults||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
 
 set_internal_options(){
@@ -1215,7 +1215,7 @@ start_pxc_main(){
 
 start_mysqld_main(){
   if [ ${STAGE} -eq 8 ]; then
-     MYEXTRA=${MYEXTRA_STAGE8}
+    export -n MYEXTRA=${MYEXTRA_STAGE8}
   fi
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" > $WORK_START
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_START
@@ -1919,7 +1919,7 @@ stop_mysqld_or_pxc(){
 finish(){
   if [ ${STAGE} -eq 8 ]; then
     if [ ${STAGE8_CHK} -eq 0 ]; then
-      MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
+      export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
       sed -i "s|--event-scheduler=ON|--event-scheduler=ON $MYEXTRA |" $WORK_START
     fi
   fi
@@ -2309,16 +2309,16 @@ if [ $MODE -ge 6 ]; then
     cp -f $WORKF $WORKO
     echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Merging complete. Single threaded DATA+SQL file saved as $WORKO"
     if [ $MODE -eq 6 ]; then
-      MODE=1
+      export -n MODE=1
       echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Swapped to standard single-threaded valgrind output testing (MODE1)"
     elif [ $MODE -eq 7 ]; then
-      MODE=2
+      export -n MODE=2
       echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Swapped to standard single-threaded mysql CLI output testing (MODE2)"
     elif [ $MODE -eq 8 ]; then
-      MODE=3
+      export -n MODE=3
       echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Swapped to standard single-threaded mysqld output simplification (MODE3)"
     elif [ $MODE -eq 9 ]; then 
-      MODE=4
+      export -n MODE=4
       echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Swapped to standard single-threaded crash simplification (MODE4)"
     fi 
     VERIFY=1
