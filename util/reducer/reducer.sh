@@ -23,6 +23,7 @@
 
 # ======== User configurable variables section (see 'User configurable variable reference' for more detail)
 # === Basic options
+INPUTFILE=""                    # The SQL file to be reduced. This can also be given as the first option to reducer.sh
 MODE=4                          # Always required. Most often used modes: 4=any crash, 3=look for specific text (set TEXT)
 TEXT="somebug"                  # Set to the text your are looking for in MODE 1,2,3,5 (ref below),6,7,8. Regex capable
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
@@ -39,6 +40,8 @@ PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase redu
 
 # === Shutdown/hanging issues options (specifically here for when a problem is only reproducible at shutdown and/or for hanging mysqld's)
 TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
+                                # TIMEOUT_COMMAND is better for "checkable" (MODE=2 or 3) issues whereas TIMEOUT_CHECK+MODE=0 is better for hanging mysqld's
+TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout in TIMEOUT_COMMAND here
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -62,6 +65,7 @@ PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml
 QUERYTIMEOUT=90
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
 SKIPSTAGE=0                     # Usually not changed (default=0), skips one or more stages in the program
+FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully terminate mysqld instead of using proper mysqladmin shutdown etc.
 
 # === MODE=5 Settings (only applicable when MODE5 is used)
 MODE5_COUNTTEXT=1
@@ -79,7 +83,9 @@ TS_VARIABILITY_SLEEP=1
 #TEXT=                       "\| i      \|"            # Idem, text instead of number (text is left-aligned, numbers are right-aligned)
 
 # ======== User configurable variable reference
+# - INPUTFILE: the SQL trace to be reduced by reducer.sh. This can also be given as the fisrt option to reducer.sh (i.e. $ ./reducer.sh {inputfile.sql})
 # - MODE: 
+#   - MODE=0: Timeout testing (server hangs, shutdown issues, excessive command duration etc.) (set TIMEOUT_CHECK)
 #   - MODE=1: Valgrind output testing (set TEXT)
 #   - MODE=2: mysql CLI (Command Line Interface, i.e. the mysql client) output testing (set TEXT) 
 #   - MODE=3: mysqld error output log testing (set TEXT)
@@ -176,16 +182,22 @@ TS_VARIABILITY_SLEEP=1
 #   shuffle (i.e. no --no-shuffle present) set. Note that this may mean that a testcase has to be executed a few or more times given that if shuffle is
 #   active (pquery's default, i.e. no --no-shuffle present), the testcase may replay differently then to what is needed. Powerful option, slightly confusing.
 # - TIMEOUT_COMMAND: this can be used to set a timeout command for mysqld. It is prefixed to the mysqld startup. This is handy when encountering a shutdown
-#   or server hang issue. When the timeout is reached, mysqld is terminated, but reduction otherwise happens as normal. Note that you will need some way to
-#   check that an actual problem was triggered. For example, suppose that a shutdown issue represents itself in the error log by starting to output INNODB
+#   or server hang issue. When the timeout is reached, mysqld is terminated, but reduction otherwise happens as normal. Note that reducer will need some way#   to establish that an actual problem was triggered. For example, suppose that a shutdown issue shows itself in the error log by starting to output INNODB
 #   STATUS MONITOR output whenever the shutdown issue is occuring (i.e. server refuses to shutdown and INNODB STATUS MONITOR output keeps looping & end of
 #   the SQL input file is apparently never reached). In this case, after a timeout of x minutes, thanks to the TIMEOUT_COMMAND, mysqld is terminated. After
-#   the termination, reducer checks (again for example) for "INNODB MONITOR OUTPUT". It sees or not sees this output and on this it can continue to reduce
-#   the testcase. This would have been using MODE=3 (check error log output). Another method may be to interleave the SQL with a SHOW PROCESSLIST; and then
-#   check the client output (MODE=2) for for example a runaway query. Harder are issues where there is a 1) complete hang or 2) an issue that does not (or
-#   cannot!) represent itself in any way in the error log/client log etc. In such cases, it would be best if reducer was expanded to check how long mysqld
-#   had been running for. If it was within x seconds of the end of the timeout lenght (or larger then the timeout lenght), then it can be assumed that 
-#   timeout was reached (assuming it was large enough), and as such the issue (for example a 'full hang') was reproduced. Please add this to reducer.sh 
+#   the termination, reducer checks for "INNODB MONITOR OUTPUT" (MODE=3). It sees or not sees this output, and hereby it can continue to reduce the testcase
+#   further. This would have been using MODE=3 (check error log output). Another method may be to interleave the SQL with a SHOW PROCESSLIST; and then
+#   check the client output (MODE=2) for (for example) a runaway query. Different are issues where there is a 1) complete hang or 2) an issue that does not
+#   or cannot!) represent itself in the error log/client log etc. In such cases, use TIMEOUT_CHECK and MODE=0. 
+# - TIMEOUT_CHEK: used when MODE=0. Though there is no connection with TIMEOUT_COMMAND, the idea is similar; When MODE=0 is active, a timeout command prefix
+#   for mysqld is auto-generated by reducer.sh. Note that MODE=0 does NOT check for specific TEST string issues. It just checks if a timeout was reached
+#   at the end of each trial run. Thus, if a server was hanging, or a statement ran for a very long time (if not terminated by the QUERYTIMEOUT setting), or
+#   a shutdon was initiated but never completed etc. then reducer.sh will notice that the timeout was reached, and thus assume the issue reproduced. Always
+#   set this setting at least to 2x the expected testcase run/duration lenght in seconds + 30 seconds extra. This longer duration is to prevent false 
+#   positives. Reducer auto-sets this value as the timeout for mysqld, and checks if the termination of mysqld was within 30 seconds of this duration.
+# - FORCE_KILL=0 or 1: If set to 1, then reducer.sh will forcefully terminate mysqld instead of using mysqladmin. This can be used when for example 
+#   authentication issues prevent mysqladmin from shutting down the server cleanly. Normally it is recommended to leave this =0 as certain issues only
+#   present themselves at the time of mysqld shutdown. However, in specific use cases it may be handy. Not often used.
 
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer. 
@@ -425,6 +437,27 @@ options_check(){
       fi
     fi
   fi
+  if [ $MODE -eq 0 ]; then
+    if [ "${TIMEOUT_COMMAND}" != "" ]; then
+      echo "Error: MODE is set to 0, and TIMEOUT_COMMAND is set. Both functions should not be used at the same time"
+      echo "Use either MODE=0 (and set TIMEOUT_CHECK), or TIMEOUT_COMMAND"
+      exit 1
+    fi
+    if [ ${TIMEOUT_CHECK} -le 30 ]; then
+      echo "Error: MODE=0 and TIMEOUT_CHECK<=30. When using MODE=0, set TIMEOUT_CHECK at least to (2x the expected testcase duration lenght in seconds)+30 extra!"
+      exit 1
+    fi
+    TIMEOUT_CHECK_REAL=$[ ${TIMEOUT_CHECK} - 30 ];
+    if [ ${TIMEOUT_CHECK_REAL} -le 0 ]; then
+      echo "Assert: TIMEOUT_CHECK_REAL<=0"
+      exit 1
+    fi
+    TIMEOUT_COMMAND="timeout --signal=SIGKILL ${TIMEOUT_CHECK}s"  # TIMEOUT_COMMAND var is used (hack) instead of adding yet another MODE0 specific variable
+  fi
+  if [ "${TIMEOUT_COMMAND}" != "" -a "$(timeout 2>&1 | grep -o 'information')" != "information" ]; then
+    echo "Error: TIMEOUT_COMMAND is set, yet the timeout command does not seem to be available"
+    exit 1
+  fi
   BIN="/bin/mysqld"
   if [ ! -s "${MYBASE}${BIN}" ]; then
     if [ ! -s "/mysql/${MYBASE}${BIN}" ]; then 
@@ -444,7 +477,7 @@ options_check(){
       MYBASE="/mysql/$MYBASE"
     fi
   fi
-  if [ $MODE -ne 1 -a $MODE -ne 2 -a $MODE -ne 3 -a $MODE -ne 4 -a $MODE -ne 5 -a $MODE -ne 6 -a $MODE -ne 7 -a $MODE -ne 8 -a $MODE -ne 9 ]; then
+  if [ $MODE -ne 0 -a $MODE -ne 1 -a $MODE -ne 2 -a $MODE -ne 3 -a $MODE -ne 4 -a $MODE -ne 5 -a $MODE -ne 6 -a $MODE -ne 7 -a $MODE -ne 8 -a $MODE -ne 9 ]; then
     echo "Error: Invalid MODE set: $MODE (valid range: 1-9)"
     echo 'Please check script contents/options ($MODE variable)'
     exit 1
@@ -466,6 +499,14 @@ options_check(){
     SKIPV=1
     MULTI_THREADS=0  # Minor (let's not run dozens of triple docker containers)
     # /==========
+    if [ $MODE -eq 0 ]; then
+      echo "Error: PXC_DOCKER_FIG_MOD is set to 1, and MODE=0 set to 0, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
+      exit 1
+    fi
+    if [ "${TIMEOUT_COMMAND}" != "" ]; then
+      echo "Error: PXC_DOCKER_FIG_MOD is set to 1, and TIMEOUT_COMMAND is set, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
+      exit 1
+    fi
     if [ ! -r $PXC_DOCKER_FIG_LOC ]; then
       echo "Error: PXC_DOCKER_FIG_MOD is set to 1, but the Fig file (as defined by PXC_DOCKER_FIG_LOC; currently set to '$PXC_DOCKER_FIG_LOC') is not available."
       echo 'Please check script contents/options ($PXC_DOCKER_FIG_MOD and $PXC_DOCKER_FIG_LOC variables)'
@@ -1187,6 +1228,7 @@ start_mysqld_main(){
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT"
+    MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
@@ -1197,6 +1239,7 @@ start_mysqld_main(){
     CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON"
+    MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
@@ -1217,12 +1260,13 @@ start_mysqld_main(){
 start_valgrind_mysqld(){
   init_mysql_dir
   if [ -f $WORKD/valgrind.out ]; then mv -f $WORKD/valgrind.out $WORKD/valgrind.prev; fi
-  CMD="valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
+  CMD="${TIMEOUT_COMMAND} valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
               ${MYBASE}${BIN} --basedir=${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
                               --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                               --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                               --event-scheduler=ON"
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none  
+  MYSQLD_START_TIME=$(date +'%s')
   $CMD > $WORKD/valgrind.out 2>&1 &
   
   PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
@@ -1580,6 +1624,30 @@ cleanup_and_save(){
 }
 
 process_outcome(){
+  # MODE1: timeout/hang testing (SET TIMEOUT_CHECK)
+  if [ $MODE -eq 0 ]; then
+    if [ "${MYSQLD_START_TIME}" == '' ]; then
+      echo "Assert: MYSQLD_START_TIME==''"
+      exit 1
+    fi
+    RUN_TIME=$[ $(date +'%s') - ${MYSQLD_START_TIME} ]
+    if [ ${RUN_TIME} -ge ${TIMEOUT_CHECK_REAL} ]; then
+      if [ ! "$STAGE" = "V" ]; then
+        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TimeoutBug*] [$NOISSUEFLOW] Swapping files & saving last known good timeout issue in $WORKO"
+        control_backtrack_flow
+      fi
+      cleanup_and_save
+      return 1
+    else
+      if [ ! "$STAGE" = "V" ]; then
+        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [NoTimeoutBug] [$NOISSUEFLOW] Kill server $NEXTACTION"
+        NOISSUEFLOW=$[$NOISSUEFLOW+1]
+      fi
+      return 0
+    fi
+  fi
+
+
   # MODE1: Valgrind output testing (set TEXT) 
   if [ $MODE -eq 1 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Waiting for Valgrind to terminate analysis" 
@@ -1808,27 +1876,42 @@ stop_mysqld_or_pxc(){
     sudo docker rm $(sudo docker ps -a | grep "new_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
     sleep 1; sync
   else
-    # RV-15/09/14 Added timeout due to bug http://bugs.mysql.com/bug.php?id=73914
-    # RV-02/12/14 We do not want too fast a shutdown either; quite a few bugs happen when mysqld is being shutdown
-    timeout -k40 -s9 40s $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
-    if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
-
-    while :; do
-      sleep 1
-      if kill -0 $PIDV > /dev/null 2>&1; then 
-        if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
-        if kill -0 $PIDV > /dev/null 2>&1; then $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi
-        if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 8; else sleep 4; fi
-        if kill -0 $PIDV > /dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
-        sleep 5
-        if [ $MODE -ne 1 -a $MODE -ne 6 ]; then if kill -0 $PIDV > /dev/null 2>&1; then 
-          echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld (you may see a kill message)."
+    if [ ${FORCE_KILL} -eq 1 ]; then
+      while :; do
+        if kill -0 $PIDV > /dev/null 2>&1; then
+          sleep 1
           kill -9 $PIDV
-        else break; fi; fi
-      else
-        break
-      fi
-    done
+        else
+          break
+        fi
+      done
+    else
+      # RV-15/09/14 Added timeout due to bug http://bugs.mysql.com/bug.php?id=73914
+      # RV-02/12/14 We do not want too fast a shutdown either; quite a few bugs happen when mysqld is being shutdown
+      timeout -k40 -s9 40s $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
+      if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
+  
+      while :; do
+        sleep 1
+        if kill -0 $PIDV > /dev/null 2>&1; then 
+          if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
+          if kill -0 $PIDV > /dev/null 2>&1; then $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi
+          if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 8; else sleep 4; fi
+          if kill -0 $PIDV > /dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
+          sleep 5
+          if [ $MODE -ne 1 -a $MODE -ne 6 ]; then
+            if kill -0 $PIDV > /dev/null 2>&1; then 
+              echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld"
+              kill -9 $PIDV
+            else 
+              break
+            fi
+          fi
+        else
+          break
+        fi
+      done
+    fi
     PIDV=""
   fi
 }
@@ -2111,26 +2194,28 @@ verify(){
     init_empty_port
   fi
   init_workdir_and_files
-  if [ $MODE -eq 9 ]; then echo_out "[Init] Run mode: MODE$MODE: ThreadSync Crash [ALPHA]"
+  if [ $MODE -eq 9 ]; then echo_out "[Init] Run mode: MODE=9: ThreadSync Crash [ALPHA]"
                            echo_out "[Init] Looking for any mysqld crash"; fi
-  if [ $MODE -eq 8 ]; then echo_out "[Init] Run mode: MODE$MODE: ThreadSync mysqld error log [ALPHA]"
+  if [ $MODE -eq 8 ]; then echo_out "[Init] Run mode: MODE=8: ThreadSync mysqld error log [ALPHA]"
                            echo_out "[Init] Looking for this string: '$TEXT' in mysqld error log output (@ $WORKD/error.log.out when MULTI mode is not active)"; fi
-  if [ $MODE -eq 7 ]; then echo_out "[Init] Run mode: MODE$MODE: ThreadSync mysql CLI output [ALPHA]"
+  if [ $MODE -eq 7 ]; then echo_out "[Init] Run mode: MODE=7: ThreadSync mysql CLI output [ALPHA]"
                            echo_out "[Init] Looking for this string: '$TEXT' in mysql CLI output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi
-  if [ $MODE -eq 6 ]; then echo_out "[Init] Run mode: MODE$MODE: ThreadSync Valgrind output [ALPHA]"
+  if [ $MODE -eq 6 ]; then echo_out "[Init] Run mode: MODE=6: ThreadSync Valgrind output [ALPHA]"
                            echo_out "[Init] Looking for this string: '$TEXT' in Valgrind output (@ $WORKD/valgrind.out when MULTI mode is not active)"; fi
-  if [ $MODE -eq 5 ]; then echo_out "[Init] Run mode: MODE$MODE: MTR testcase output"
+  if [ $MODE -eq 5 ]; then echo_out "[Init] Run mode: MODE=5: MTR testcase output"
                            echo_out "[Init] Looking for "$MODE5_COUNTTEXT"x this string: '$TEXT' in mysql CLI verbose output (@ $WORKD/mysql.out when MULTI mode is not active)"
     if [ "$MODE5_ADDITIONAL_TEXT" != "" -a $MODE5_ADDITIONAL_COUNTTEXT -ge 1 ]; then 
                            echo_out "[Init] Looking additionally for "$MODE5_ADDITIONAL_COUNTTEXT"x this string: '$MODE5_ADDITIONAL_TEXT' in mysql CLI verbose output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi; fi
-  if [ $MODE -eq 4 ]; then echo_out "[Init] Run mode: MODE$MODE: Crash"
+  if [ $MODE -eq 4 ]; then echo_out "[Init] Run mode: MODE=4: Crash"
                            echo_out "[Init] Looking for any mysqld crash"; fi
-  if [ $MODE -eq 3 ]; then echo_out "[Init] Run mode: MODE$MODE: mysqld error log"   
+  if [ $MODE -eq 3 ]; then echo_out "[Init] Run mode: MODE=3: mysqld error log"   
                            echo_out "[Init] Looking for this string: '$TEXT' in mysqld error log output (@ $WORKD/error.log.out when MULTI mode is not active)"; fi
-  if [ $MODE -eq 2 ]; then echo_out "[Init] Run mode: MODE$MODE: mysql CLI output"
+  if [ $MODE -eq 2 ]; then echo_out "[Init] Run mode: MODE=2: mysql CLI output"
                            echo_out "[Init] Looking for this string: '$TEXT' in mysql CLI output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi
-  if [ $MODE -eq 1 ]; then echo_out "[Init] Run mode: MODE$MODE: Valgrind output"
+  if [ $MODE -eq 1 ]; then echo_out "[Init] Run mode: MODE=1: Valgrind output"
                            echo_out "[Init] Looking for this string: '$TEXT' in Valgrind output (@ $WORKD/valgrind.out when MULTI mode is not active)"; fi
+  if [ $MODE -eq 0 ]; then echo_out "[Init] Run mode: MODE=0: Timeout/hang"
+                           echo_out "[Init] Looking for trial durations longer then ${TIMEOUT_CHECK_REAL} seconds (with timeout trigger @ ${TIMEOUT_CHECK} seconds)"; fi
   echo_out "[Info] Leading [] = No bug/issue found yet | [*] = Bug/issue at least seen once"
   report_linecounts
   if [ "$SKIPV" != "1" ]; then
