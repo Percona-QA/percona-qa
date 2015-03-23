@@ -37,6 +37,9 @@ FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as spo
 # === Multi-threaded (auto-sporadic covering) testcase reduction
 PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
 
+# === Shutdown/hanging issues options (specifically here for when a problem is only reproducible at shutdown and/or for hanging mysqld's)
+TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
+
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
 MULTI_THREADS_INCREASE=5        # Do not change (default=5),  unless you fully understand the change (increase of above, both for std and PQUERY_MULTI)
@@ -172,6 +175,17 @@ TS_VARIABILITY_SLEEP=1
 #   on will start replaying the testcase randomly (shuffled). This may increase reproducibility. The final run scripts will have matching --no-shuffle or 
 #   shuffle (i.e. no --no-shuffle present) set. Note that this may mean that a testcase has to be executed a few or more times given that if shuffle is
 #   active (pquery's default, i.e. no --no-shuffle present), the testcase may replay differently then to what is needed. Powerful option, slightly confusing.
+# - TIMEOUT_COMMAND: this can be used to set a timeout command for mysqld. It is prefixed to the mysqld startup. This is handy when encountering a shutdown
+#   or server hang issue. When the timeout is reached, mysqld is terminated, but reduction otherwise happens as normal. Note that you will need some way to
+#   check that an actual problem was triggered. For example, suppose that a shutdown issue represents itself in the error log by starting to output INNODB
+#   STATUS MONITOR output whenever the shutdown issue is occuring (i.e. server refuses to shutdown and INNODB STATUS MONITOR output keeps looping & end of
+#   the SQL input file is apparently never reached). In this case, after a timeout of x minutes, thanks to the TIMEOUT_COMMAND, mysqld is terminated. After
+#   the termination, reducer checks (again for example) for "INNODB MONITOR OUTPUT". It sees or not sees this output and on this it can continue to reduce
+#   the testcase. This would have been using MODE=3 (check error log output). Another method may be to interleave the SQL with a SHOW PROCESSLIST; and then
+#   check the client output (MODE=2) for for example a runaway query. Harder are issues where there is a 1) complete hang or 2) an issue that does not (or
+#   cannot!) represent itself in any way in the error log/client log etc. In such cases, it would be best if reducer was expanded to check how long mysqld
+#   had been running for. If it was within x seconds of the end of the timeout lenght (or larger then the timeout lenght), then it can be assumed that 
+#   timeout was reached (assuming it was large enough), and as such the issue (for example a 'full hang') was reproduced. Please add this to reducer.sh 
 
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer. 
@@ -1169,23 +1183,23 @@ start_mysqld_main(){
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
-    CMD="${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "\$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   else
-    CMD="${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON"
     $CMD > $WORKD/mysqld.out 2>&1 &
      PIDV="$!"
-    echo "\$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
   fi
