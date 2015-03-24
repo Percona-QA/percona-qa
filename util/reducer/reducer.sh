@@ -955,7 +955,7 @@ init_workdir_and_files(){
   export TMP=$WORKD/tmp
   echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
   # jemalloc configuration for TokuDB plugin
-  JE1="if [ \"\${JEMALLOC}\" != \"\" -a -r \${JEMALLOC} ]; then export LD_PRELOAD=\${JEMALLOC}"
+  JE1="if [ \"\${JEMALLOC}\" != \"\" -a -r \"\${JEMALLOC}\" ]; then export LD_PRELOAD=\${JEMALLOC}"
   JE2=" elif [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
   JE3=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
   JE4=" elif [ -r \${MYBASE}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=\${MYBASE}/lib/mysql/libjemalloc.so.1"
@@ -1037,8 +1037,8 @@ init_workdir_and_files(){
         echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set the variable \$MID_OPTIONS manually. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning."
       fi
       # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
-      echo "SOURCE_DIR=$MYBASE # Only required if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
-      echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
+      echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
+      echo "SOURCE_DIR=\$MYBASE # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
       echo "JEMALLOC=~/libjemalloc.so.1  # This can be changed to a custom path if you would like to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
       echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
       echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_INIT
@@ -1217,8 +1217,8 @@ start_mysqld_main(){
   if [ ${STAGE} -eq 8 ]; then
     export -n MYEXTRA=${MYEXTRA_STAGE8}
   fi
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" > $WORK_START
-  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_START
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
@@ -1270,8 +1270,8 @@ start_valgrind_mysqld(){
   $CMD > $WORKD/valgrind.out 2>&1 &
   
   PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" > $WORK_START_valgrint
-  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_START_valgrint
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START_valgrint
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START_valgrint
   echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_valgrint
   echo $JE1 >> $WORK_START_valgrint; echo $JE2_valgrint >> $WORK_START_valgrint; echo $JE3 >> $WORK_START_valgrint
   echo $JE4 >> $WORK_START_valgrint; echo $JE5 >> $WORK_START_valgrint
