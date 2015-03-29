@@ -199,6 +199,15 @@ TS_VARIABILITY_SLEEP=1
 #   authentication issues prevent mysqladmin from shutting down the server cleanly. Normally it is recommended to leave this =0 as certain issues only
 #   present themselves at the time of mysqld shutdown. However, in specific use cases it may be handy. Not often used.
 
+# ======== Gotcha's
+# - When reducing an SQL file using for example FORCE_SKIPV=1, FORCE_SPORADIC=1, PQUERY_MULTI=0, PQUERY_REVERSE_NOSHUFFLE_OPT=1, PQUERY_MOD=1, then reducer
+#   will replay the SQL file, using pquery (PQUERY_MOD=1), using a single client (i.e. pquery) thread against mysqld (PQUERY_MULTI=0), in a sql shuffled order
+#   (PQUERY_REVERSE_NOSHUFFLE_OPT=1) untill (FORCE_SKIPV=1 and FORCE_SPORADIC=1) it hits a bug. But notice that when the partially reduced file is written
+#   as _out, it is normally not valid to re-start reducer using this _out file (for further reduction) using PQUERY_REVERSE_NOSHUFFLE_OPT=0. The reason is
+#   that the sql replay order was random, but _out is generated based on the original testcase (sequential). Thus, the _out, when replayed sequentially,
+#   may not re-hit the same issue. Especially when things are really sporadic this can mean having to wait long and be confused as to the results. Thus,
+#   if you start of with a random replay, finish with a random replay and let the final bug testcase (auto-generated as {epoch}.* be random replay too.
+
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer. 
 #   At the moment there are only two such specific roles: verfication (reproducible yes/no + sporadic yes/no) and simplification (terminate a subreducer batch
