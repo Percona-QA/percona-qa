@@ -1007,7 +1007,7 @@ init_workdir_and_files(){
     fi
   else
     if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -gt 0 ]; then
-      if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]
+      if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then
         echo_out "[Init] PQUERY_REVERSE_NOSHUFFLE_OPT turned on. Replay will be random instead of sequential (whilst still using a single thread client per mysqld)"
       else
         echo_out "[Init] PQUERY_REVERSE_NOSHUFFLE_OPT turned on. Replay will be random instead of sequential (whilst still using a single thread client per mysqld). This setting is best combined with FORCE_SKIPV=1 and FORCE_SPORADIC=1 ! Please edit the settings, unless you know what you're doing"
