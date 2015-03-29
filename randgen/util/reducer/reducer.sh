@@ -157,12 +157,12 @@ TS_VARIABILITY_SLEEP=1
 #   Note that this may be a bug in reducer too - i.e. a mismatch between verify stage and stage 1. Yet, if that were true, the issue would likely not 
 #   reproduce to start with. Another plausible reason for this occurence (10/10 verified in verify stage but low frequency reproduction later on) is the
 #   existence of 10 threads in verify stage vs 1 thread in stage 1. It has been observed that a very loaded server (or using Valgrind as it also slows the
-#   code down significantly) is better at reproducing (many) issues then a low-load/single-thread-running machine. Whatever the case, this hack will help.
+#   code down significantly) is better at reproducing (many) issues then a low-load/single-thread-running machine. Whatever the case, this option will help.
 # - FORCE_SKIV=0 or 1: If set to 1, FORCE_SPORADIC is automatically set to 1 also. This option skips the verify stage and goes straight into testcase reduction
 #   mode. Ideal for issues that have a very low reproducibility, at least initially (usually either increases or decreases during a simplification run.)
 #   Note that skipping the verify stage means that you may not be sure if the issue is reproducibile untill it actually reproduces (how long is a piece of 
 #   string), and the other caveat is that the verify stage normally does some very important inital simplifications which is now skipped. It is suggested that 
-#   if the issue becomes more reproducible during simplification, to restart reducer with this hack turned off. This way you get the best of both worlds.
+#   if the issue becomes more reproducible during simplification, to restart reducer with this option turned off. This way you get the best of both worlds.
 # - PQUERY_MULTI=0 or 1: If set to 1, FORCE_SKIV (and thus FORCE_SPORADIC) are automatically set to 1 also. This is true multi-threaded testcase reduction,
 #   and it is based on random replay. Likely this will be slow, but effective. Alpha quality. This option removes the --no-shuffle option for pquery (i.e. 
 #   random replay) and sets pquery options --threads=x (x=PQUERY_MULTI_CLIENT_THREADS) and --queries=5*testcase size. It also sets the number of subreducer
@@ -790,7 +790,7 @@ multi_reducer(){
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
       if [ $FORCE_SPORADIC -gt 0 ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All threads reproduced the issue: this issue is not considered sporadic"
-        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] However, as the FORCE_SPORADIC hack is on, sporadic testcase reduction will commence"
+        echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] However, as the FORCE_SPORADIC is on, sporadic testcase reduction will commence"
       else
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All threads reproduced the issue: this issue is not sporadic"
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Note: if this issue proves sporadic in actual reduction (slow/stalling reduction), use the FORCE_SPORADIC=1 setting"
@@ -998,15 +998,29 @@ init_workdir_and_files(){
     echo_out "[Init] Server (When MULTI mode is not active): ${MYBASE}${BIN} (as $MYUSER)"
     echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
   fi
-  if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] SKIPSTAGE hack active. Stages up to and including $SKIPSTAGE are skipped"; fi
-  if [ $PQUERY_MULTI -gt 0 ]; then echo_out "[Init] PQUERY_MULTI mode active. True multi-threaded testcase reduction using pquery random replay commencing"; fi
-  if [ $FORCE_SKIPV -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack active. Verify stage skipped, and immediately commencing multi threaded simplification"; fi
-  if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV hack is active, so FORCE_SPORADIC hack is automatically set active also" ; fi
+  if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] SKIPSTAGE active. Stages up to and including $SKIPSTAGE are skipped"; fi
+  if [ $PQUERY_MULTI -gt 0 ]; then
+    if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -gt 0 ]; then
+      echo_out "[Init] PQUERY_MULTI mode active, PQUERY_REVERSE_NOSHUFFLE_OPT off: True multi-threaded testcase reduction using pquery random replay commencing";
+    else
+      echo_out "[Init] PQUERY_MULTI mode active, PQUERY_REVERSE_NOSHUFFLE_OPT on: Semi-true multi-threaded testcase reduction using pquery sequential replay commencing";
+    fi
+  else
+    if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -gt 0 ]; then
+      if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]
+        echo_out "[Init] PQUERY_REVERSE_NOSHUFFLE_OPT turned on. Replay will be random instead of sequential (whilst still using a single thread client per mysqld)"
+      else
+        echo_out "[Init] PQUERY_REVERSE_NOSHUFFLE_OPT turned on. Replay will be random instead of sequential (whilst still using a single thread client per mysqld). This setting is best combined with FORCE_SKIPV=1 and FORCE_SPORADIC=1 ! Please edit the settings, unless you know what you're doing"
+      fi
+    fi
+  fi
+  if [ $FORCE_SKIPV -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active. Verify stage skipped, and immediately commencing multi threaded simplification"; fi
+  if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV is active, so FORCE_SPORADIC is automatically set active also" ; fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
     if [ $FORCE_SKIPV -gt 0 ]; then
-      echo_out "[Init] FORCE_SPORADIC hack active. Issue is assumed to be sporadic"
+      echo_out "[Init] FORCE_SPORADIC active. Issue is assumed to be sporadic"
     else
-      echo_out "[Init] FORCE_SPORADIC hack active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
+      echo_out "[Init] FORCE_SPORADIC active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
     fi
     echo_out "[Init] FORCE_SPORADIC, FORCE_SKIPV and/or PQUERY_MULTI active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
   fi
