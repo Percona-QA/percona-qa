@@ -507,7 +507,7 @@ options_check(){
       echo "Error: PXC_DOCKER_FIG_MOD is set to 1, and TIMEOUT_COMMAND is set, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
       exit 1
     fi
-    if [ ! -r $PXC_DOCKER_FIG_LOC ]; then
+    if [ ! -r "$PXC_DOCKER_FIG_LOC" ]; then
       echo "Error: PXC_DOCKER_FIG_MOD is set to 1, but the Fig file (as defined by PXC_DOCKER_FIG_LOC; currently set to '$PXC_DOCKER_FIG_LOC') is not available."
       echo 'Please check script contents/options ($PXC_DOCKER_FIG_MOD and $PXC_DOCKER_FIG_LOC variables)'
       exit 1
@@ -541,7 +541,7 @@ options_check(){
     PQUERY_MOD=1
   fi
   if [ $PQUERY_MOD -eq 1 ]; then
-    if [ ! -r $PQUERY_LOC ]; then
+    if [ ! -r "$PQUERY_LOC" ]; then
       echo "Error: PQUERY_MOD is set to 1, but the pquery binary (as defined by PQUERY_LOC; currently set to '$PQUERY_LOC') is not available."
       echo 'Please check script contents/options ($PQUERY_MOD and $PQUERY_LOC variables)'
       exit 1
@@ -746,7 +746,7 @@ multi_reducer(){
           sleep 2
           echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... done"
           cp -f $(cat $MULTI_WORKD/VERIFIED | grep "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
-          if [ -r $WORKO ]; then  # First occurence: there is no $WORKO yet
+          if [ -r "$WORKO" ]; then  # First occurence: there is no $WORKO yet
             cp -f $WORKO ${WORKO}.prev
             # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
             echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Previous good testcase backed up as $WORKO.prev"
@@ -1595,7 +1595,7 @@ cleanup_and_save(){
     fi
   else
     cp -f $WORKT $WORKF
-    if [ -r $WORKO ]; then  # First occurence: there is no $WORKO yet
+    if [ -r "$WORKO" ]; then  # First occurence: there is no $WORKO yet
       cp -f $WORKO ${WORKO}.prev
       # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev"
