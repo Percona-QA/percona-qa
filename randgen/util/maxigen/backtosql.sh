@@ -75,17 +75,14 @@ cat *.yy | \
  sed "s|_collation|ujis_bin|g" | \
  sed "s|_data|NULL|g" | \
  sed "s|LIMIT0|LIMIT 1|g" | \
- sed "s|  | |g;s|  | |g;s|  | |g" > outnew.sql
-
-for i in $(seq 1 1000); do
-  echo "DROP TABLE IF EXISTS t1;" >> outnew.sql
-  echo "CREATE TABLE t1 (c1 INT, pk int PRIMARY KEY);" >> outnew.sql
-  echo "CREATE TABLE t1 (c1 DATETIME, pk int PRIMARY KEY AUTO_INCREMENT);" >> outnew.sql
-  echo "CREATE TABLE t1 (c1 TIMESTAMP, pk int PRIMARY KEY);" >> outnew.sql
-  echo "CREATE TABLE t1 (c1 BINARY, pk int PRIMARY KEY);" >> outnew.sql
-  echo "CREATE TABLE t1 (c1 TEXT, pk int PRIMARY KEY);" >> outnew.sql
-  echo "CREATE TABLE t1 (c1 BLOB, pk int PRIMARY KEY);" >> outnew.sql
-done
+ sed "s|  | |g;s|  | |g;s|  | |g" | \
+ sed "0~10 s|$|\nDROP TABLE IF EXISTS t1;|" | \
+ sed "0~30 s|$|\nCREATE TABLE t1 (c1 INT, pk int PRIMARY KEY);|"  | \
+ sed "0~30 s|$|\nCREATE TABLE t1 (c1 DATETIME, pk int PRIMARY KEY AUTO_INCREMENT);|" | \
+ sed "0~30 s|$|\nCREATE TABLE t1 (c1 TIMESTAMP, pk int PRIMARY KEY);|" | \
+ sed "0~30 s|$|\nCREATE TABLE t1 (c1 BINARY, pk int PRIMARY KEY);|" | \
+ sed "0~30 s|$|\nCREATE TABLE t1 (c1 TEXT, pk int PRIMARY KEY);|" | \
+ sed "0~30 s|$|\nCREATE TABLE t1 (c1 BLOB, pk int PRIMARY KEY);|" > outnew.sql
 
 for i in $(seq 1 10); do
   echo "SET AUTOCOMMIT=ON;" >> outnew.sql
