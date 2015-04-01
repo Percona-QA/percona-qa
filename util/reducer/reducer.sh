@@ -909,7 +909,7 @@ init_workdir_and_files(){
         echo 'Error: WORKDIR_LOCATION=3 (a specific storage location) is set, yet WORKDIR_M3_DIRECTORY (set to $WORKDIR_M3_DIRECTORY) does not exist, or could not be read.'
         exit 1
       fi
-      if [ $(df -k -P 2>&1 | grep -v "docker.devicemapper" | grep "WORKDIR_M3_DIRECTORY" | awk '{print $4}') -lt 3500000 ]; then
+      if [ $(df -k -P 2>&1 | grep -v "docker.devicemapper" | grep "$WORKDIR_M3_DIRECTORY" | awk '{print $4}') -lt 3500000 ]; then
         echo "Error: $WORKDIR_M3_DIRECTORY does not have enough free space (3.5Gb free space required)"
         exit 1
       fi
