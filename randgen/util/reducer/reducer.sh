@@ -1678,7 +1678,7 @@ process_outcome(){
       sleep 1; sync
       if egrep -q "ERROR SUMMARY" $WORKD/valgrind.out; then break; fi
     done
-    if egrep -iq "$TEXT" $WORKD/valgrind.out; then
+    if egrep -iq "$TEXT" $WORKD/valgrind.out $WORKD/error.log.out; then
       if [ ! "$STAGE" = "V" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ValgrindBug*] [$NOISSUEFLOW] Swapping files & saving last known good Valgrind issue in $WORKO" 
         control_backtrack_flow
