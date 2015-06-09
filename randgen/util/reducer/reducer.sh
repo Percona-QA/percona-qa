@@ -975,6 +975,7 @@ init_workdir_and_files(){
   WORK_MYBASE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_mybase|")
   WORK_INIT=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_init|")
   WORK_START=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_start|")
+  WORK_START_VALGRIND=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_start_valgrind|")
   WORK_STOP=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_stop|")
   WORK_RUN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_run|")
   WORK_GDB=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_gdb|")
@@ -1293,20 +1294,20 @@ start_valgrind_mysqld(){
   $CMD > $WORKD/valgrind.out 2>&1 &
   
   PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
-  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START_valgrint
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START_valgrint
-  echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_valgrint
-  echo $JE1 >> $WORK_START_valgrint; echo $JE2_valgrint >> $WORK_START_valgrint; echo $JE3 >> $WORK_START_valgrint
-  echo $JE4 >> $WORK_START_valgrint; echo $JE5 >> $WORK_START_valgrint
-  echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o  -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_valgrint
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START_VALGRIND
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START_VALGRIND
+  echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_VALGRIND
+  echo $JE1 >> $WORK_START_VALGRIND; echo $JE2_valgrint >> $WORK_START_VALGRIND; echo $JE3 >> $WORK_START_VALGRIND
+  echo $JE4 >> $WORK_START_VALGRIND; echo $JE5 >> $WORK_START_VALGRIND
+  echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o  -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_VALGRIND
   echo "valgrind --suppressions=\${MYBASE}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
        \$BIN --basedir=\${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-       --socket=$WORKD/socket.sock $MYEXTRA --event-scheduler=ON  > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_valgrint
-  sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START_valgrint
-  sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START_valgrint
-  sed -i "s|\.so\;|\.so\\\;|" $WORK_START_valgrint
-  chmod +x $WORK_START_valgrint
+       --socket=$WORKD/socket.sock $MYEXTRA --event-scheduler=ON  > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
+  sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START_VALGRIND
+  sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START_VALGRIND
+  sed -i "s|\.so\;|\.so\\\;|" $WORK_START_VALGRIND
+  chmod +x $WORK_START_VALGRIND
   for X in $(seq 1 360); do 
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
