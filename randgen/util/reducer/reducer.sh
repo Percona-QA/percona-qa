@@ -1297,7 +1297,7 @@ start_valgrind_mysqld(){
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START_VALGRIND
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START_VALGRIND
   echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_VALGRIND
-  echo $JE1 >> $WORK_START_VALGRIND; echo $JE2_valgrint >> $WORK_START_VALGRIND; echo $JE3 >> $WORK_START_VALGRIND
+  echo $JE1 >> $WORK_START_VALGRIND; echo $JE2 >> $WORK_START_VALGRIND; echo $JE3 >> $WORK_START_VALGRIND
   echo $JE4 >> $WORK_START_VALGRIND; echo $JE5 >> $WORK_START_VALGRIND
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o  -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_VALGRIND
   echo "valgrind --suppressions=\${MYBASE}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
