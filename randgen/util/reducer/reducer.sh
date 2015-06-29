@@ -32,7 +32,7 @@ MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
 MYBASE="/sda/Percona-Server-5.6.21-rel70.0-693.Linux.x86_64-debug"
 
 # === Sporadic testcase reduction options (Used when testcases prove to be sporadic *and* fail to reduce using basic methods)
-FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SKIPV)
+FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
 FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as sporadic
 
 # === Multi-threaded (auto-sporadic covering) testcase reduction
@@ -1648,7 +1648,7 @@ cleanup_and_save(){
 }
 
 process_outcome(){
-  # MODE1: timeout/hang testing (SET TIMEOUT_CHECK)
+  # MODE0: timeout/hang testing (SET TIMEOUT_CHECK)
   if [ $MODE -eq 0 ]; then
     if [ "${MYSQLD_START_TIME}" == '' ]; then
       echo "Assert: MYSQLD_START_TIME==''"
