@@ -56,11 +56,6 @@ PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (defaulty=0), unless you fully u
 PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
 PQUERY_LOC=~/percona-qa/pquery/pquery 
 
-# === Percona XtraDB Cluster options (only relevant if you want to reduce testcases for Percona XtraDB Cluster)
-PXC_DOCKER_FIG_MOD=0            # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster 
-PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
-PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml
-
 # === Other options (not often changed)
 QUERYTIMEOUT=90
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
@@ -77,6 +72,11 @@ TS_TRXS_SETS=0
 TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
+
+# === Old Percona XtraDB Cluster options (deprecated: fig for Docker is no longer maintained, this functionality needs to be updated to Docker Compose)
+PXC_DOCKER_FIG_MOD=0  # deprecated    # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster 
+PXC_ISSUE_NODE=0      # deprecated    # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
+PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml   # deprecated
 
 # ==== Examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for CLI output (MODE=2 or 5)
