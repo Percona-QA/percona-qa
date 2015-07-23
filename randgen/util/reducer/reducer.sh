@@ -1169,15 +1169,21 @@ init_workdir_and_files(){
       echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_CL
       echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
       echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
-      echo -e "The attached tarball gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
-      echo "$ vi ${EPOCH2}_mybase # Update base path in this file (the only change required!). For non-binary distribution please update SOURCE_DIR location also." >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_init # Initializes the data dir" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_start # Starts mysqld" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_cl # To check mysqld is up" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_run # Run the testcase with pquery binary(produces output)" >> $WORK_HOW_TO_USE
-      echo "$ vi /dev/shm/${EPOCH2}/error.log.out # Verify the error log" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_gdb # Brings you to a gdb prompt attached to correct mysqld & generated core" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_parse_core # Create ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full var gdb stack traces etc." >> $WORK_HOW_TO_USE
+      echo -e "The attached tarball (${EPOCH2}.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
+      echo "$ vi ${EPOCH2}_mybase     # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_init        # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_start       # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_cl          # STEP4: To check mysqld is up" >> $WORK_HOW_TO_USE
+      if [ $PQUERY_MOD -eq 1 ]; then
+        echo "$ ./${EPOCH2}_run_pquery  # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
+        echo "$ ./${EPOCH2}_run         # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
+      else
+        echo "$ ./${EPOCH2}_run         # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
+        echo "$ ./${EPOCH2}_run_pquery  # OPTIONAL: Run the testcase with the pquery binary (may not reproduce the issue, as the mysql CLI was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
+      fi
+      echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP6: Verify the error log" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_gdb         # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_parse_core  # STEP7: Create ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
       chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
       stop_mysqld_or_pxc
       mkdir $WORKD/data.init
