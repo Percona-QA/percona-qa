@@ -981,6 +981,7 @@ init_workdir_and_files(){
   WORK_RUN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_run|")
   WORK_GDB=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_gdb|")
   WORK_PARSE_CORE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_parse_core|")
+  WORK_HOW_TO_USE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_how_to_use.txt|")
   if [ $PQUERY_MOD -eq 1 ]; then
     WORK_RUN_PQUERY=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_run_pquery|")
     WORK_PQUERY_BIN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_|" | sed "s|$|$(echo $PQUERY_LOC | sed 's|.*/||')|")
@@ -1168,6 +1169,15 @@ init_workdir_and_files(){
       echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_CL
       echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
       echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
+      echo -e "The attached tarball gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
+      echo "$ vi ${EPOCH2}_mybase # Update base path in this file (the only change required!). For non-binary distribution please update SOURCE_DIR location also." >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_init # Initializes the data dir" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_start # Starts mysqld" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_cl # To check mysqld is up" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_run # Run the testcase with pquery binary(produces output)" >> $WORK_HOW_TO_USE
+      echo "$ vi /dev/shm/${EPOCH2}/error.log.out # Verify the error log" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_gdb # Brings you to a gdb prompt attached to correct mysqld & generated core" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_parse_core # Create ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full var gdb stack traces etc." >> $WORK_HOW_TO_USE
       chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
       stop_mysqld_or_pxc
       mkdir $WORKD/data.init
