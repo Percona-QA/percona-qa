@@ -1978,28 +1978,27 @@ finish(){
   BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
   rm -f $BUGTARDIR/${EPOCH2}_bug_bundle.tar.gz
   $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
-  echo_out "[Finish] Final testcase bundle + scripts  : $BUGTARDIR/${EPOCH2}"
-  echo_out "[Finish] Final testcase for script use    : $WORK_OUT (handy to use in combination with the scripts below)"
-  echo_out "[Finish] File containing datadir          : $WORK_MYBASE (All scripts below use this. Update this when basedir changes)"
-  echo_out "[Finish] Matching data dir init script    : $WORK_INIT (This script will use /dev/shm/${EPOCH2} as working directory)"
-  echo_out "[Finish] Matching startup script          : $WORK_START (Starts mysqld with same options as used in reducer)"
+  echo_out "[Finish] Final testcase bundle + scripts   : $BUGTARDIR/${EPOCH2}"
+  echo_out "[Finish] Final testcase for script use     : $WORK_OUT (handy to use in combination with the scripts below)"
+  echo_out "[Finish] File containing datadir           : $WORK_MYBASE (All scripts below use this. Update this when basedir changes)"
+  echo_out "[Finish] Matching data dir init script     : $WORK_INIT (This script will use /dev/shm/${EPOCH2} as working directory)"
+  echo_out "[Finish] Matching startup script           : $WORK_START (Starts mysqld with same options as used in reducer)"
   if [ $MODE -ge 6 ]; then
     # See init_workdir_and_files() and search for WORK_RUN for more info. Also more info in improvements section at top
-    echo_out "[Finish] Matching run script              : $WORK_RUN (though you can look at this file for an example, implementation for MODE6+ is not finished yet)"
+    echo_out "[Finish] Matching run script               : $WORK_RUN (though you can look at this file for an example, implementation for MODE6+ is not finished yet)"
   else
-    echo_out "[Finish] Matching run script (CLI)        : $WORK_RUN (executes the testcase via the mysql CLI)"
-    echo_out "[Finish] Matching startup script (pquery) : $WORK_RUN_PQUERY (executes the testcase via the pquery binary)"
+    echo_out "[Finish] Matching run script (CLI)         : $WORK_RUN (executes the testcase via the mysql CLI)"
+    echo_out "[Finish] Matching startup script (pquery)  : $WORK_RUN_PQUERY (executes the testcase via the pquery binary)"
   fi
-  echo_out "[Finish] Final testcase bundle tar ball   : ${EPOCH2}_bug_bundle.tar.gz (handy for upload to bug reports)"
+  echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH2}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
+    if [ "" != "$MYEXTRA" ]; then
+      echo_out "[Finish] mysqld options required for replay: $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
+      sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
+      sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORKO
+    fi
     echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
-    if [ "" != "$MYEXTRA" ]; then
-      sed -i '1 i\# mysqld options required for replay: $MYEXTRA' $WORK_OUT
-      sed -i '1 i\# mysqld options required for replay: $MYEXTRA' $WORKO
-      echo_out "[Info] Remember that MYEXTRA options (extra options passed to mysqld) may be necessary to have the issue reproduce correctly. Relisting them here to copy/paste:"
-      echo_out "[Info] Reduced set of options required for replay: MYEXTRA: $MYEXTRA"
-    fi
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
       if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
