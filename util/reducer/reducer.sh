@@ -41,7 +41,7 @@ PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase redu
 # === Shutdown/hanging issues options (specifically here for when a problem is only reproducible at shutdown and/or for hanging mysqld's)
 TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
                                 # TIMEOUT_COMMAND is better for "checkable" (MODE=2 or 3) issues whereas TIMEOUT_CHECK+MODE=0 is better for hanging mysqld's
-TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout in TIMEOUT_COMMAND here
+TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout in TIMEOUT_COMMAND here. Do not set too small (e.g. >600 sec)
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -596,6 +596,7 @@ set_internal_options(){
   ATLEASTONCE="[]"
   TRIAL=1
   STAGE='0'
+  STUCKTRIAL=0
   NOISSUEFLOW=0
   C_COL_COUNTER=1
   TS_ELIMINATED_THREAD_COUNT=0
@@ -762,8 +763,9 @@ multi_reducer(){
             echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Previous good testcase backed up as $WORKO.prev"
           fi
           cp -f $WORKF $WORKO
+          ATLEASTONCE="[*]"  # The issue was seen at least once
           echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t reproduced the issue: testcase saved in $WORKO"
-          FOUND_VERIFIED=1  # Outer loop terminate
+          FOUND_VERIFIED=1  # Outer loop terminate setup
           break  # Inner loop terminate
         fi
         # Check if this subreducer ($MULTI_PID$t) is still running. For more info, see "However, ..." in few lines of comments above.
@@ -1407,14 +1409,20 @@ control_backtrack_flow(){
 cut_random_chunk(){
   RANDLINE=$[ ( $RANDOM % ( $[ $LINECOUNTF - $CHUNK - 1 ] + 1 ) ) + 1 ]
   if [ $RANDLINE -eq 1 ]; then RANDLINE=2; fi  # Do not filter first line which contains DROP/CREATE/USE of test db
-  ENDLINE=$[$RANDLINE+$CHUNK]
-  REALCHUNK=$[$CHUNK+1]
-  if [ $SPORADIC -eq 1 -a $LINECOUNTF -lt 100 ]; then
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Now filtering line(s) $RANDLINE to $ENDLINE (Current chunk size: $REALCHUNK: Sporadic issue; using a fixed % based chunk)"
+  if [ $CHUNK -eq 1 -a $TRIAL -gt 5 ]; then STUCKTRIAL=$[ $STUCKTRIAL + 1 ]; fi
+  if [ $CHUNK -eq 1 -a $STUCKTRIAL -gt 5 ]; then
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Now filtering line $RANDLINE (Current chunk size: stuck at 1)"
+    sed -n "$RANDLINE ! p" $WORKF > $WORKT
   else
-    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Now filtering line(s) $RANDLINE to $ENDLINE (Current chunk size: $REALCHUNK)"
+    ENDLINE=$[$RANDLINE+$CHUNK]
+    REALCHUNK=$[$CHUNK+1]
+    if [ $SPORADIC -eq 1 -a $LINECOUNTF -lt 100 ]; then
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Now filtering line(s) $RANDLINE to $ENDLINE (Current chunk size: $REALCHUNK: Sporadic issue; using a fixed % based chunk)"
+    else
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Now filtering line(s) $RANDLINE to $ENDLINE (Current chunk size: $REALCHUNK)"
+    fi
+    sed -n "$RANDLINE,+$CHUNK ! p" $WORKF > $WORKT 
   fi
-  sed -n "$RANDLINE,+$CHUNK ! p" $WORKF > $WORKT 
 }
 
 cut_fixed_chunk(){
