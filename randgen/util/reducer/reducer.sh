@@ -325,9 +325,9 @@ ctrl_c(){
   echo_out "[Abort] End of dump stack."
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then 
     echo_out "[Abort] Ensuring any remaining PXC Docker containers are terminated and removed"
-    sudo docker kill $(sudo docker ps -a | grep "new_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
+    sudo docker kill $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
     sleep 1; sync
-    sudo docker rm $(sudo docker ps -a | grep "new_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
+    sudo docker rm $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
     sleep 1; sync
   fi
   echo_out "[Abort] Ensuring any remaining live processes are terminated"
@@ -1200,7 +1200,7 @@ init_mysql_dir(){
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
     sudo rm -Rf $WORKD/data/*
     cp $PXC_DOCKER_FIG_LOC $WORKD
-    sed -i "s|/dev/shm/pxc-pquery|$WORKD/data/|" $WORKD/fig.yml
+    sed -i "s|/dev/shm/pxc-pquery|$WORKD|" $WORKD/docker-compose.yml
   else
     rm -Rf $WORKD/data/*
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
@@ -1217,7 +1217,7 @@ start_mysqld_or_pxc(){
     CLUSTER_UP=0
     start_pxc_main
     if [ $CLUSTER_UP -ne 6 ]; then
-      echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start 3 node PXC Cluster, check clients on ports 10000, 11000, 12000 (if still live), and error logs for all 3 nodes in $WORKD/data/{node_nr}/error.log"
+      echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start 3 node PXC Cluster, check clients on ports 10000, 11000, 12000 (if still live), and error logs for all 3 nodes in $WORKD/{node_nr}/error.log"
       exit 1
     fi
   else
@@ -1234,7 +1234,7 @@ start_mysqld_or_pxc(){
 start_pxc_main(){
   CURPATH=$PWD
   cd $WORKD
-  sudo fig up &
+  sudo docker-compose up &
   cd ${CURPATH}
   CURPATH=
   echo_out "$ATLEASTONCE [Stage $STAGE] Waiting for the 3 node PXC Cluster to fully start..."
@@ -1484,9 +1484,9 @@ run_and_check(){
   if [ $MODE -ne 1 -a $MODE -ne 6 ]; then stop_mysqld_or_pxc; fi
   # Add error log from this trial to the overall run error log
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-    sudo cat $WORKD/data/1/error.log >> $WORKD/node1_error.log
-    sudo cat $WORKD/data/2/error.log >> $WORKD/node2_error.log
-    sudo cat $WORKD/data/3/error.log >> $WORKD/node3_error.log
+    sudo cat $WORKD/1/error.log >> $WORKD/node1_error.log
+    sudo cat $WORKD/2/error.log >> $WORKD/node2_error.log
+    sudo cat $WORKD/3/error.log >> $WORKD/node3_error.log
   else
     cat $WORKD/error.log.out >> $WORKD/error.log
     rm -f $WORKD/error.log.out 
@@ -1643,6 +1643,13 @@ cleanup_and_save(){
       TS_init_all_sql_files
     fi
   else
+    if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+      echo_out "[Clean] Ensuring any remaining PXC Docker containers are terminated and removed"
+      sudo docker kill $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
+      sleep 1; sync
+      sudo docker rm $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
+      sleep 1; sync
+    fi
     cp -f $WORKT $WORKF
     if [ -r "$WORKO" ]; then  # First occurence: there is no $WORKO yet
       cp -f $WORKO ${WORKO}.prev
@@ -1742,7 +1749,7 @@ process_outcome(){
   if [ $MODE -eq 3 ]; then
     ERRORLOG=
     if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-      ERRORLOG=$WORKD/data/*/error.log
+      ERRORLOG=$WORKD/*/error.log
     else
       ERRORLOG=$WORKD/error.log.out
     fi
