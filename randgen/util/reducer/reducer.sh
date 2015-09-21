@@ -1055,7 +1055,7 @@ init_workdir_and_files(){
     if [ $PXC_DOCKER_FIG_MOD -ne 1 ]; then  # For PXC, we do not need this, Fig/Docker takes care of it
       echo_out "[Init] Setting up standard working subdirectories"
       if [ "`${MYBASE}${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.7" ]; then
-        MID_OPTIONS="--insecure"  # --insecure prevents random root password in 5.7. --force is no longer supported in new mysql_install_db binary in 5.7
+        MID_OPTIONS="--initialize-insecure"  # --initialize-insecure prevents random root password in 5.7. --force is no longer supported in new mysql_install_db binary in 5.7
       elif [ "`${MYBASE}${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.6" ]; then
         MID_OPTIONS="--force"
       elif [ "`${MYBASE}${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.5" ]; then
@@ -1064,7 +1064,7 @@ init_workdir_and_files(){
         MID_OPTIONS="" 
         echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set the variable \$MID_OPTIONS manually. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning."
       fi
-      # MID_OPTIONS='--insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
+      # MID_OPTIONS='--initialize-insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
       echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
       echo "SOURCE_DIR=\$MYBASE # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
       echo "JEMALLOC=~/libjemalloc.so.1  # This can be changed to a custom path if you would like to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
@@ -1082,12 +1082,18 @@ init_workdir_and_files(){
       echo -e "    if [ ! -h \${MYBASE}/share/errmsg.sys -o ! -f \${MYBASE}/share/errmsg.sys ]; then ln -s \${MYBASE}/sql/share/english/errmsg.sys \${MYBASE}/share/errmsg.sys ; fi;\n  fi\nelse" >> $WORK_INIT
       echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
       echo "MID=\`find \${MYBASE} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
-      echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--insecure'; elif [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
-      echo "\$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS" >> $WORK_INIT
+      echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
+      echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; fi" >> $WORK_INIT
+
+      # echo "\$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS" >> $WORK_INIT
       if [ -r $MYBASE/scripts/mysql_install_db ]; then
         $MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
       elif [ -r $MYBASE/bin/mysql_install_db ]; then
-        $MYBASE/bin/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+        if [ "`${MYBASE}${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.7" ]; then
+          $MYBASE/bin/mysqld --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+        else
+          $MYBASE/bin/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+        fi
       else
         echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/."
         rm -f $WORK_INIT
@@ -1484,9 +1490,9 @@ run_and_check(){
   if [ $MODE -ne 1 -a $MODE -ne 6 ]; then stop_mysqld_or_pxc; fi
   # Add error log from this trial to the overall run error log
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-    sudo cat $WORKD/1/error.log >> $WORKD/node1_error.log
-    sudo cat $WORKD/2/error.log >> $WORKD/node2_error.log
-    sudo cat $WORKD/3/error.log >> $WORKD/node3_error.log
+    sudo cat $WORKD/1/error.log > $WORKD/node1_error.log
+    sudo cat $WORKD/2/error.log > $WORKD/node2_error.log
+    sudo cat $WORKD/3/error.log > $WORKD/node3_error.log
   else
     cat $WORKD/error.log.out >> $WORKD/error.log
     rm -f $WORKD/error.log.out 
