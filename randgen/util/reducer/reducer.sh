@@ -1265,6 +1265,8 @@ start_pxc_main(){
 start_mysqld_main(){
   if [ ${STAGE} -eq 8 ]; then
     export -n MYEXTRA=${MYEXTRA_STAGE8}
+    COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA";
   fi
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
@@ -1670,7 +1672,9 @@ cleanup_and_save(){
     $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
   fi
   ATLEASTONCE="[*]"  # The issue was seen at least once (this is used to permanently mark lines with '[*]' suffix as soon as this happens)
-  STAGE8_CHK=1
+  if [ ${STAGE} -eq 8 ]; then
+    STAGE8_CHK=1
+  fi
   # VERFIED file creation + subreducer handling
   echo "TRIAL:$TRIAL" > $WORKD/VERIFIED
   echo "WORKO:$WORKO" >> $WORKD/VERIFIED
@@ -3096,7 +3100,54 @@ if [ $SKIPSTAGE -lt 8 ]; then
   STAGE=8
   TRIAL=1
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
+  FILE1="file1"
+  FILE2="file2"
   MYEXTRA_STAGE8=$MYEXTRA
+
+  myextra_check(){ 
+    awk '
+    {
+      arr[NR]=$0
+    }
+    END{
+      for (i=0; i<=NR; i++) {
+        if (i < NR/2) {
+          print arr[i] > "file1"
+        }
+        else {
+          print arr[i] > "file2"
+        }
+      }
+    }
+    ' $WORKD/mysqld_opt.out
+  }
+
+  myextra_check
+
+  while true; do
+    NEXTACTION="& try removing next mysqld option"
+    MYEXTRA_STAGE8=$(cat file1 | tr -s "\n" " ")
+    run_and_check
+    if [ "${STAGE8_CHK}" == "1" ]; then
+      echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
+      myextra_check
+    else
+      MYEXTRA_STAGE8=$(cat file2 | tr -s "\n" " ")
+      run_and_check
+      if [ "${STAGE8_CHK}" == "1" ]; then
+        echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
+        myextra_check
+      fi
+    fi
+    STAGE8_CHK=0
+    COUNT_MYFILE=`cat $WORKD/mysqld_opt.out | wc -l`
+    if [ $COUNT_MYFILE -le 2 ]; then
+      FINAL_MATCH="1"
+    fi
+    TRIAL=$[$TRIAL+1]
+    [[ $FINAL_MATCH = "1" ]] && break
+  done
+
   while read line; do
     NEXTACTION="& try removing next mysqld option"
     MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$line||")
