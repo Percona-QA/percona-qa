@@ -3100,39 +3100,27 @@ if [ $SKIPSTAGE -lt 8 ]; then
   STAGE=8
   TRIAL=1
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
-  FILE1="file1"
-  FILE2="file2"
+  FILE1="$WORKD/file1"
+  FILE2="$WORKD/file2"
   MYEXTRA_STAGE8=$MYEXTRA
 
-  myextra_check(){ 
-    awk '
-    {
-      arr[NR]=$0
-    }
-    END{
-      for (i=0; i<=NR; i++) {
-        if (i < NR/2) {
-          print arr[i] > "file1"
-        }
-        else {
-          print arr[i] > "file2"
-        }
-      }
-    }
-    ' $WORKD/mysqld_opt.out
+  myextra_check(){
+    count_mysqld_opt=`cat $WORKD/mysqld_opt.out | wc -l`
+    head -n $((count_mysqld_opt/2)) $WORKD/mysqld_opt.out > $FILE1
+    tail -n $((count_mysqld_opt-count_mysqld_opt/2)) $WORKD/mysqld_opt.out > $FILE2
   }
 
   myextra_check
 
   while true; do
     NEXTACTION="& try removing next mysqld option"
-    MYEXTRA_STAGE8=$(cat file1 | tr -s "\n" " ")
+    MYEXTRA_STAGE8=$(cat $FILE1 | tr -s "\n" " ")
     run_and_check
     if [ "${STAGE8_CHK}" == "1" ]; then
       echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
       myextra_check
     else
-      MYEXTRA_STAGE8=$(cat file2 | tr -s "\n" " ")
+      MYEXTRA_STAGE8=$(cat $FILE2 | tr -s "\n" " ")
       run_and_check
       if [ "${STAGE8_CHK}" == "1" ]; then
         echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
