@@ -3100,6 +3100,7 @@ if [ $SKIPSTAGE -lt 8 ]; then
   STAGE=8
   TRIAL=1
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
+  COUNT_MYEXTRA=`echo ${MYEXTRA_STAGE8} | wc -w`
   FILE1="$WORKD/file1"
   FILE2="$WORKD/file2"
   MYEXTRA_STAGE8=$MYEXTRA
@@ -3112,46 +3113,66 @@ if [ $SKIPSTAGE -lt 8 ]; then
 
   myextra_check
 
-  while true; do
-    NEXTACTION="& try removing next mysqld option"
-    MYEXTRA_STAGE8=$(cat $FILE1 | tr -s "\n" " ")
-    run_and_check
-    if [ "${STAGE8_CHK}" == "1" ]; then
-      echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
-      myextra_check
-    else
-      MYEXTRA_STAGE8=$(cat $FILE2 | tr -s "\n" " ")
-      run_and_check
+  myextra_reduction(){
+    while read line; do
+      NEXTACTION="& try removing next mysqld option"
+      MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$line||")
       if [ "${STAGE8_CHK}" == "1" ]; then
-        echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
-        myextra_check
+        if [ "" != "$STAGE8_OPT" ]; then
+          MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$STAGE8_OPT||")
+        fi
+      else
+        MYEXTRA_STAGE8="$MYEXTRA_STAGE8 ${STAGE8_OPT}"
       fi
-    fi
-    STAGE8_CHK=0
-    COUNT_MYFILE=`cat $WORKD/mysqld_opt.out | wc -l`
-    if [ $COUNT_MYFILE -le 2 ]; then
-      FINAL_MATCH="1"
-    fi
-    TRIAL=$[$TRIAL+1]
-    [[ $FINAL_MATCH = "1" ]] && break
-  done
+      STAGE8_CHK=0
+      COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA";
+      run_and_check
+      TRIAL=$[$TRIAL+1]
+      STAGE8_OPT=$line
+    done < $WORKD/mysqld_opt.out
+  }
 
-  while read line; do
-    NEXTACTION="& try removing next mysqld option"
-    MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$line||")
-    if [ "${STAGE8_CHK}" == "1" ]; then
-      if [ "" != "$STAGE8_OPT" ]; then
-        MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$STAGE8_OPT||")
-      fi
+  if [ -n "$MYEXTRA" ]; then
+    if [[ $COUNT_MYEXTRA -gt 3 ]]; then
+      while true; do
+        ISSUE_CHECK=0
+        NEXTACTION="& try removing next mysqld option"
+        MYEXTRA_STAGE8=$(cat $FILE1 | tr -s "\n" " ")
+        COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
+        if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA"
+        else
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA";
+        fi
+        run_and_check
+        if [ "${STAGE8_CHK}" == "1" ]; then
+          ISSUE_CHECK=1
+          echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
+          myextra_check
+        else
+          MYEXTRA_STAGE8=$(cat $FILE2 | tr -s "\n" " ")
+          run_and_check
+          if [ "${STAGE8_CHK}" == "1" ]; then
+            ISSUE_CHECK=1
+            echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
+            myextra_check
+          fi
+        fi
+        STAGE8_CHK=0
+        COUNT_MYFILE=`cat $WORKD/mysqld_opt.out | wc -l`
+        if [[ $COUNT_MYFILE -le 3 ]] || [[ $ISSUE_CHECK -eq 0 ]]; then
+          myextra_reduction
+          break
+        fi      
+        TRIAL=$[$TRIAL+1]
+      done
     else
-      MYEXTRA_STAGE8="$MYEXTRA_STAGE8 ${STAGE8_OPT}"
+      myextra_reduction
     fi
-    STAGE8_CHK=0
-    run_and_check
-    TRIAL=$[$TRIAL+1]
-    STAGE8_OPT=$line
-  done < $WORKD/mysqld_opt.out
-
+  else
+    echo_out "$ATLEASTONCE [Stage 8] Skipping this stage as it does not contain extra mysqld options." 
+  fi
 fi
 
 finish $INPUTFILE
