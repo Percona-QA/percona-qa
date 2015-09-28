@@ -3100,7 +3100,7 @@ if [ $SKIPSTAGE -lt 8 ]; then
   STAGE=8
   TRIAL=1
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
-  COUNT_MYEXTRA=`echo ${MYEXTRA_STAGE8} | wc -w`
+  COUNT_MYEXTRA=`echo ${MYEXTRA} | wc -w`
   FILE1="$WORKD/file1"
   FILE2="$WORKD/file2"
   MYEXTRA_STAGE8=$MYEXTRA
