@@ -23,7 +23,7 @@
 
 # ======== User configurable variables section (see 'User configurable variable reference' for more detail)
 # === Basic options
-INPUTFILE=""                    # The SQL file to be reduced. This can also be given as the first option to reducer.sh
+INPUTFILE=                      # The SQL file to be reduced. This can also be given as the first option to reducer.sh. Do not use double quotes
 MODE=4                          # Always required. Most often used modes: 4=any crash, 3=look for specific text (set TEXT)
 TEXT="somebug"                  # Set to the text your are looking for in MODE 1,2,3,5 (ref below),6,7,8. Regex capable
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
