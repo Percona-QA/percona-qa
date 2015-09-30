@@ -40,7 +40,7 @@ PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase redu
 
 # === Shutdown/hanging issues options (specifically here for when a problem is only reproducible at shutdown and/or for hanging mysqld's)
 TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
-                                # TIMEOUT_COMMAND is better for "checkable" (MODE=2 or 3) issues whereas TIMEOUT_CHECK+MODE=0 is better for hanging mysqld's
+                                # TIMEOUT_COMMAND is better for "checkable" (i.e. use MODE=2 or =3) issues whereas TIMEOUT_CHECK + MODE=0 is better for hanging mysqld's
 TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout in TIMEOUT_COMMAND here. Do not set too small (e.g. >600 sec)
 
 # === Expert options
@@ -427,7 +427,7 @@ options_check(){
         exit 1
     fi
     if [ ! -s "$1" ]; then
-      if [ ! -s "$INPUTFILE" ]; then
+      if [ ! -s $INPUTFILE ]; then
         echo 'Error: No input file was given, or the input file could not be read.'
         echo 'Please specify a correct SQL file to reduce.'
         echo 'Example: ./reducer ~/1.sql     --> to process ~/1.sql'
@@ -450,11 +450,11 @@ options_check(){
   if [ $MODE -eq 0 ]; then
     if [ "${TIMEOUT_COMMAND}" != "" ]; then
       echo "Error: MODE is set to 0, and TIMEOUT_COMMAND is set. Both functions should not be used at the same time"
-      echo "Use either MODE=0 (and set TIMEOUT_CHECK), or TIMEOUT_COMMAND"
+      echo "Use either MODE=0 (and set TIMEOUT_CHECK), or TIMEOUT_COMMAND in combination with some other MODE, for example MODE=2 or MODE=3"
       exit 1
     fi
     if [ ${TIMEOUT_CHECK} -le 30 ]; then
-      echo "Error: MODE=0 and TIMEOUT_CHECK<=30. When using MODE=0, set TIMEOUT_CHECK at least to (2x the expected testcase duration lenght in seconds)+30 extra!"
+      echo "Error: MODE=0 and TIMEOUT_CHECK<=30. When using MODE=0, set TIMEOUT_CHECK at least to: (2x the expected testcase duration lenght in seconds)+30 seconds extra!"
       exit 1
     fi
     TIMEOUT_CHECK_REAL=$[ ${TIMEOUT_CHECK} - 30 ];
@@ -775,7 +775,7 @@ multi_reducer(){
           rm -Rf $RESTART_WORKD/[^s]*  # Remove all files, except for subreducer script
           $($RESTART_WORKD/subreducer $1 >/dev/null 2>/dev/null) >/dev/null 2>/dev/null &
           export MULTI_PID$t=$!
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script while it was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script (or it's working directory) while it was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
         fi
         sleep 1  # Hasten slowly, server already busy with subreducers
       done
@@ -1028,7 +1028,13 @@ init_workdir_and_files(){
       fi
     fi
   fi
-  if [ $FORCE_SKIPV -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active. Verify stage skipped, and immediately commencing multi threaded simplification"; fi
+  if [ $FORCE_SKIPV -gt 0 ]; then 
+    if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer
+      echo_out "[Init] FORCE_SKIPV active. Verify stage skipped, and immediately commencing multi threaded simplification"
+    else  # This is a subreducer (i.e. not multi-threaded)
+      echo_out "[Init] FORCE_SKIPV active. Verify stage skipped, and immediately commencing simplification"
+    fi
+  fi
   if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV is active, so FORCE_SPORADIC is automatically set active also" ; fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
     if [ $FORCE_SKIPV -gt 0 ]; then
@@ -1177,7 +1183,7 @@ init_workdir_and_files(){
       echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_CL
       echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
       echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
-      echo -e "The attached tarball (${EPOCH2}.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
+      echo -e "The attached tarball (${EPOCH2}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
       echo "$ vi ${EPOCH2}_mybase     # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
       echo "$ ./${EPOCH2}_init        # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
       echo "$ ./${EPOCH2}_start       # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
@@ -1990,20 +1996,20 @@ finish(){
     fi
   fi
   echo_out "[Finish] Finalized reducing SQL input file ($INPUTFILE)"
-  echo_out "[Finish] Number of server startups        : $STARTUPCOUNT (not counting subreducers)"
-  echo_out "[Finish] Working directory was            : $WORKD"
-  echo_out "[Finish] Reducer log                      : $WORKD/reducer.log"
+  echo_out "[Finish] Number of server startups         : $STARTUPCOUNT (not counting subreducers)"
+  echo_out "[Finish] Working directory was             : $WORKD"
+  echo_out "[Finish] Reducer log                       : $WORKD/reducer.log"
   if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
     cp -f $WORKO $WORK_OUT
-    echo_out "[Finish] Final testcase                   : $WORKO"
+    echo_out "[Finish] Final testcase                    : $WORKO"
   else
     cp $INPUTFILE $WORK_OUT
-    echo_out "[Finish] Final testcase                   : $INPUTFILE (= input file, no optimizations were successful)"
+    echo_out "[Finish] Final testcase                    : $INPUTFILE (= input file, no optimizations were successful)"
   fi
   BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
   rm -f $BUGTARDIR/${EPOCH2}_bug_bundle.tar.gz
   $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
-  echo_out "[Finish] Final testcase bundle + scripts   : $BUGTARDIR/${EPOCH2}"
+  echo_out "[Finish] Final testcase bundle + scripts in: $BUGTARDIR/${EPOCH2}"
   echo_out "[Finish] Final testcase for script use     : $WORK_OUT (handy to use in combination with the scripts below)"
   echo_out "[Finish] File containing datadir           : $WORK_MYBASE (All scripts below use this. Update this when basedir changes)"
   echo_out "[Finish] Matching data dir init script     : $WORK_INIT (This script will use /dev/shm/${EPOCH2} as working directory)"
