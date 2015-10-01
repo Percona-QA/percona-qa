@@ -1,0 +1,33 @@
+## i-s-temp-tables bugs: see https://bugs.launchpad.net/percona-server/+bugs?field.tag=i-s-temp-tables
+## SET DEBUG... cases: likely non-important, ref https://bugs.launchpad.net/percona-server/+bug/1372675 and IRC/email 23-09-2014
+## Do not use single # in this file, only ## !
+## in this file, a dot . can be used to substitute any char that may cause later egrep troubles: |, !, &, single ( or ), 
+## You can also use other regex syntax here too, just like in egrep
+
+## =========== Line number based ===========
+## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
+btr0cur.cc line 768                                                                     ## https://bugs.launchpad.net/percona-server/+bug/1382763
+btr0cur.cc line 1132                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1384581
+btr0pcur.cc line 447                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1384650
+buf0buf.cc line 941                                                                     ## https://bugs.launchpad.net/percona-server/+bug/1384627
+fsp0fsp.cc line 3066                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1384601
+trx0rec.cc line 1242                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1414624 
+
+## =========== Assertion based ===========
+allocated_status_memory .= __null                                                       ## https://bugs.launchpad.net/percona-server/+bug/1372704
+
+## =========== First frame from error log based ===========
+ZN12Warning_info5clearEy                                                                ## https://bugs.launchpad.net/percona-server/+bug/1382743
+Z17mysql_lock_tablesP3THDPP5TABLEjj                                                     ## https://bugs.launchpad.net/percona-server/+bug/1384696
+Z18enumerate_sys_varsP3THDb13enum_var_type                                              ## https://bugs.launchpad.net/percona-server/+bug/1384618
+ZN14user_var_entry10free_valueEv                                                        ## https://bugs.launchpad.net/percona-server/+bug/1384585
+ZN14user_var_entry7destroyEv                                                            ## https://bugs.launchpad.net/percona-server/+bug/1385042
+Z12find_sys_varP3THDPKcj                                                                ## https://bugs.launchpad.net/percona-server/+bug/1385047 ## Search string too generic
+ZN11Query_cache10free_cacheEv                                                           ## https://bugs.launchpad.net/percona-server/+bug/1385056
+ZN9Sql_allocnwEmP11st_mem_root                                                          ## https://bugs.launchpad.net/percona-server/+bug/1385057
+Z8closefrmP5TABLEb                                                                      ## https://bugs.launchpad.net/percona-server/+bug/1384563
+ZN6String4copyERKS_                                                                     ## https://bugs.launchpad.net/percona-server/+bug/1384568
+ZN8MDL_lock28has_pending_conflicting_lockE13enum_mdl_type                               ## https://bugs.launchpad.net/percona-server/+bug/1384558
+
+## =========== pquery reducer scripts TEXT based (for short strings that may be part of other assertion messages. End with $ EOL char) ===========
+

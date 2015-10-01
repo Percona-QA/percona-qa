@@ -1,0 +1,258 @@
+Adding debug asserts to the code
+================================
+Edit the file you want, and add this line:
+
+DBUG_ASSERT(condition that must fail for the server to crash);
+
+Then re-build the server (and remember to use the debug build for testing, as this is a debug assert).
+
+To rebuild percona server, you can use percona-qa/build_percona.sh (ignore the 'outdated script' warning at startup and hit 2x enter).
+
+# Note that the assert condition must fail; i.e. DBUG_ASSERT(1==1); will mean the server continues, as the assertion is valid. Read the assertion like this: "assert that 1==1" to make it easier to follow/read. DBUG_ASSERT(1!=1); will make it assert as the assertion is invalid. This seems self-evident, but consider a situation where you want to catch a problem when the examined row count as shown in SHOW PROCESSLIST is > 1000. Another way to express this is 'an assert condition must never fail [for the server to continue]'
+
+  So, one could _seemingly_ assert on DBUG_ASSERT(get_examined_row_count()>1000) in sql/sql_show.cc. But this is incorrect in two ways: if the examined number of rows is 0 (an often seen situation), then get_examined_row_count()=0 and 0 is not greater then 1000, hence the server asserts. Then (second issue), if the number of rows would be larger then 1000 on any given query, 2000 for example, 2000>1000 which is true, so the server would not assert. 
+
+  The correct syntax is thus DBUG_ASSERT(get_examined_row_count()<1000). i.e. continue when < 1000, assert when > 1000.
+
+  Yet, note that this is still not "perfect". For example, if get_examined_row_count()=-1, it would clearly be a bug too, yet as -1 < 1000, the severy continues.
+
+  DBUG_ASSERT((get_examined_row_count()>=0) && (get_examined_row_count()<1000)); would be best. Offcourse this (for debugging purposes) assertion could not live permanently in the code, as larger tests would trip it.
+
+  This is also why one can find asserts like DBUG_ASSERT(0); in the code for for example a default: case in a switch case that should never be reached. It basically says "assert immediately as the condition "0" is always false".
+
+# In debug, if you put some DBUG_ASSERT and it fires, and you see a wrong value which is incompatible with the ASSERT, then there is a bug in your assert. See an example on how this could happen below (typecasting).
+
+# Ensure you're not [incorrectly] typecasting. For example, if you see this code:
+
+  table->field[10]->store((ulonglong) tmp->get_examined_row_count());
+
+  and you want to add the following assert:
+
+  int gerc=tmp->get_examined_row_count();
+  DBUG_ASSERT(gerc > 1000);
+
+  Then note that you're typecasting: from the line of code, you can make out (store into ulongulong) that the outcome of tmp->get_examined_row_count() is highly likely a ulongulong. Yet, here we're trying to store the same in an int, which may lead to weirdness.
+
+  The fix is clear: ulongulong gerc=tmp->get_examined_row_count(); in the code instead of int.
+
+# Negative numbers don't look negative in gdb:
+
+  (gdb) p now_utime
+  $1 = 1412938018519405
+  (gdb) p tmp->start_utime
+  $2 = 1412938018523469     
+  (gdb) p ((now_utime - tmp->start_utime) / 1000)
+  $3 = 18446744073709547   # note that ((1412938018519405 - 1412938018523469) / 1000) = -4.064
+
+# fprintf(stderr, .....) is a convenient (hacky) way of getting something to print to the error log from within the code
+  syntax: http://www.cplusplus.com/reference/cstdio/fprintf/
+
+  Examples:
+
+  fprintf(stderr, "tmp->get_examined_row_count() = %llu\n", tmp->get_examined_row_count());
+  DBUG_ASSERT(tmp->get_examined_row_count() < 100);
+
+  fprintf(stderr, "tmp->start_utime = %llu, now_utime = %llu, offset= %llu, div=%llu, 2ndassertpart=%d, fullassert=%d\n", tmp->start_utime, now_utime, (now_utime - tmp->start_utime), ((now_utime - tmp->start_utime) / 1000), (((now_utime - tmp->start_utime) / 1000) > 100000 ), ( (tmp->start_utime != 0) && (((now_utime - tmp->start_utime) / 1000) > 100000 ) ));
+  DBUG_ASSERT( (tmp->start_utime != 0) && (((now_utime - tmp->start_utime) / 1000) > 100000 ) );
+)
+  This allows "variable research" - one can check what the values of the variables were just before the assert triggered.
+
+  Note that the second example is somewhat incorrect; It will assert if the condition is not true, which is either that (tmp->start_utime == 0) or that (((now_utime - tmp->start_utime) / 1000) < 100000 ), which interestingly showed the bug in our case as the large value returned was actually a negative number. But, it's original intention (to check for large values) is not cheked by it.
+
+# Functions (like tmp->get_examined_row_count()) cannot be called when debugging a core file with gdb. However, on a live mysqld breakin (or having started mysqld from within/with gdb) it is possible to call these. For post-crash/assert core dump analysis, the error log variable printing method shown in Note5 is often handy/enough to find the bug.
+
+# Short-circuit evaluation (http://en.wikipedia.org/wiki/Short-circuit_evaluation) means that if you have a binary assert setup like (someconditon1 && somecondition2) then if somecondition1 is 0, somecondition2 will NOT be checked.
+
+# Adding optimized asserts to the code: Similar idea, but use the following instead;
+  if (failure condition) abort();
+
+A debug assert example
+======================
+* Check for Innodb_row_lock_current_waits and Innodb_current_row_locks outside of 0-5000 range
+
+* To activate, do something like;
+  while(true); do
+    ./bin/mysql -uroot -S/sda/Percona-Server-5.6.21-rel70.0-676-debug.Linux.x86_64/socket.sock test -e"show global status like 'Innodb_row_lock_current_waits'; show global status like 'Innodb_current_row_locks'; show global status like 'questions'; show global status like 'queries'; " | tee -a 2.log
+    sleep 0.2
+  done
+
+$ bzr diff
+=== modified file 'storage/innobase/srv/srv0mon.cc'
+--- storage/innobase/srv/srv0mon.cc     2014-09-25 14:16:07 +0000
++++ storage/innobase/srv/srv0mon.cc     2014-11-27 06:22:43 +0000
+@@ -1686,6 +1686,10 @@
+        /* innodb_row_lock_current_waits */
+        case MONITOR_OVLD_ROW_LOCK_CURRENT_WAIT:
+                value = srv_stats.n_lock_wait_current_count;
++
++fprintf(stderr, "innodb_row_lock_current_waits (in srv0mon.cc) = %lu\n", (ulong) srv_stats.n_lock_wait_current_count);
++DBUG_ASSERT((srv_stats.n_lock_wait_current_count>=0) && (srv_stats.n_lock_wait_current_count<5000));
++
+                break;
+
+        /* innodb_row_lock_time */
+
+=== modified file 'storage/innobase/srv/srv0srv.cc'
+--- storage/innobase/srv/srv0srv.cc     2014-09-25 14:16:07 +0000
++++ storage/innobase/srv/srv0srv.cc     2014-11-27 06:22:56 +0000
+@@ -1770,6 +1770,9 @@
+        export_vars.innodb_current_row_locks
+                = lock_sys->rec_num;
+
++fprintf(stderr, "innodb_current_row_locks (in srv0srv.cc) = %lu\n", (ulong) export_vars.innodb_current_row_locks);
++DBUG_ASSERT((export_vars.innodb_current_row_locks>=0) && (export_vars.innodb_current_row_locks<5000));
++
+ #ifdef HAVE_ATOMIC_BUILTINS
+        export_vars.innodb_have_atomic_builtins = 1;
+ #else
+@@ -1808,6 +1811,9 @@
+        export_vars.innodb_row_lock_current_waits =
+                srv_stats.n_lock_wait_current_count;
+
++fprintf(stderr, "innodb_row_lock_current_waits (in srv0srv.cc) = %lu\n", (ulong) srv_stats.n_lock_wait_current_count);
++DBUG_ASSERT((srv_stats.n_lock_wait_current_count>=0) && (srv_stats.n_lock_wait_current_count<5000));
++
+        export_vars.innodb_row_lock_time = srv_stats.n_lock_wait_time / 1000;
+
+        if (srv_stats.n_lock_wait_count > 0) {
+
+A debug assert example
+======================
+* This will assert when the TIME column shows a value between 130 and 5000
+
+* To activate, select * from information_schema.processlist; with a long running transaction like select sleep (150);
+
+=== modified file 'sql/sql_show.cc'
+--- sql/sql_show.cc     2014-09-26 04:43:24 +0000
++++ sql/sql_show.cc     2014-11-26 05:09:43 +0000
+@@ -2278,6 +2278,8 @@
+       }
+       table->field[5]->store(value_in_time_column, FALSE);
+
++DBUG_ASSERT( !( (value_in_time_column > 130) && (value_in_time_column < 5000) ) );
+
+A debug assert example
+======================
+1. Patched code:
+
+$ bzr diff
+=== modified file 'sql/sql_show.cc'
+--- sql/sql_show.cc 2014-09-26 04:43:24 +0000
++++ sql/sql_show.cc 2014-10-10 10:15:06 +0000
+@@ -2301,6 +2301,8 @@
+       table->field[8]->store(((tmp->start_utime ?
+                                now_utime - tmp->start_utime : 0)/ 1000));
+
++DBUG_ASSERT( (tmp->start_utime != 0) && (((now_utime - tmp->start_utime) / 1000) > 100000 ) );
++
+       mysql_mutex_lock(&tmp->LOCK_thd_data);
+       /* ROWS_SENT */
+       table->field[9]->store((ulonglong) tmp->get_sent_row_count());
+
+2. Recompiled using percona-qa/build_percona.sh (see above)
+
+3. Run pquery-run.sh against server (or RQG or another testcase that can reproduce the issue)
+
+4. When assert hits, debug further with gdb:
+
+(gdb) bt
+[...]
+#6  0x00007fd57fd955e2 in __assert_fail () from /lib64/libc.so.6
+#7  0x00000000007a5ee2 in fill_schema_processlist [...]
+[...]
+(gdb) f 7
+#7  0x00000000007a5ee2 in fill_schema_processlist [...]
+(gdb) p (((now_utime - tmp->start_utime) / 1000) > 100000 )
++p (((now_utime - tmp->start_utime) / 1000) > 100000 )
+$1 = true              # Note one very interesting confusing item here: 18446744073709547 > 100000, yet the assert happened as 18446744073709547 = -4.064 (see above) and thus -4.064 is not > 100000
+(gdb) p ((now_utime - tmp->start_utime) / 1000)
++p ((now_utime - tmp->start_utime) / 1000)
+$2 = 18446744073709547
+(gdb) p now_utime
++p now_utime
+$3 = 1412938018519405
+(gdb) p tmp->start_utime
++p tmp->start_utime
+$4 = 1412938018523469
+(gdb) # started in the future 
+
+This resulted in https://bugs.launchpad.net/percona-server/+bug/1379582
+
+
+==============================
+= Scratchpad (please ignore) =
+==============================
+
+$ bzr diff
+=== modified file 'sql/sql_show.cc'
+--- sql/sql_show.cc     2014-09-26 04:43:24 +0000
++++ sql/sql_show.cc     2014-11-12 09:16:34 +0000
+@@ -57,6 +57,10 @@
+ #include "sql_optimizer.h" // JOIN
+ #include "global_threads.h"
+
++#include <iostream>
++#include <stdio.h>
++#include <string.h>
++
+ #include <algorithm>
+ using std::max;
+ using std::min;
+@@ -2629,6 +2633,24 @@
+           charset= var->charset(thd);
+         }
+
++fprintf(stderr, "variables->name = %s\n", variables->name);
++
++char find[]="row_lock_current_waits";
++/*
++if ( strcmp (find,variables->name) == 0 )
++{
++  fprintf(stderr, "1___variables->name = %s\n", variables->name);
++}
++if ( strcmp (find,variables->name) == 0 && var->value==0 )
++{
++  fprintf(stderr, "2___variables->name = %s\n", variables->name);
++}
++if ( strcmp (find,variables->name) == 0 && var->value>1 )
++{
++  fprintf(stderr, "3___variables->name = %s\n", variables->name);
++}
++*/
++
+         pos= end= buff;
+         /*
+           note that value may be == buff. All SHOW_xxx code below
+@@ -2637,6 +2659,7 @@
+         switch (show_type) {
+         case SHOW_DOUBLE_STATUS:
+           value= ((char *) status_var + (ulong) value);
++fprintf(stderr, "variables->name = %lu\n", (ulong) value);
+           /* fall through */
+         case SHOW_DOUBLE:
+           /* 6 is the default precision for '%f' in sprintf() */
+@@ -2644,6 +2667,7 @@
+           break;
+         case SHOW_LONG_STATUS:
+           value= ((char *) status_var + (ulong) value);
++fprintf(stderr, "variables->name = %lu\n", (ulong) value);
+           /* fall through */
+         case SHOW_LONG:
+         case SHOW_LONG_NOFLUSH: // the difference lies in refresh_status()
+@@ -2654,6 +2678,7 @@
+           break;
+         case SHOW_LONGLONG_STATUS:
+           value= ((char *) status_var + (ulong) value);
++fprintf(stderr, "variables->name = %lu\n", (ulong) value);
+           /* fall through */
+         case SHOW_LONGLONG:
+           end= longlong10_to_str(*(longlong*) value, buff, 10);
+@@ -2734,6 +2759,8 @@
+           res= TRUE;
+           goto end;
+         }
++std::cerr << "value =" << (char*) value << std::endl;
++std::cerr << "value =" << longlong10_to_str(*(longlong*) value, buff, 10) << std::endl;
+       }
+     }
+   }

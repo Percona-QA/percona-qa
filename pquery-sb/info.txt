@@ -1,0 +1,4 @@
+This is an alternative way of doing the same with sysbech as pquery does, using a lua script.
+
+Usage:
+$ sysbench --test=pquery.lua --pquery-file=/tmp/queries.sql run

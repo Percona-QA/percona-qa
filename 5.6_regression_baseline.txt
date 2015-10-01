@@ -1,0 +1,95 @@
+5.6 Regression Tagging Baseling (56reg) 
+=======================================
+* Comparative release: Percona-Server-5.6.16-rel64.0 (bzr revert -r556)
+* If a bug is not marked as upstream, not-resolved and in PS 5.6, it should be in this list and tested against the comparative release
+* In any other situation (resolved, marked as upstream) then it should be removed from this list
+* New bugs found in PS which are not upstream should be tested against the comparative release and added here
+* If a bug is present in the comparative release it will be marked as 'Bug Present', otherwise as '56reg' (and tagged in the bug as '56reg')
+
+Bugs
+====
+https://bugs.launchpad.net/percona-server/+bugs?field.tag=i-s-temp-tables
+https://bugs.launchpad.net/percona-server/+bug/1423314 # Not present in 5.6.23
+https://bugs.launchpad.net/percona-server/+bug/1192898 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1382764 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1392617 56reg
+https://bugs.launchpad.net/percona-server/+bug/1385030 56reg 
+https://bugs.launchpad.net/percona-server/+bug/1382758 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1384567 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1384588 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1381913 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1368552 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1384578 Bug Present (Duplicate of PS#1318453)
+https://bugs.launchpad.net/percona-server/+bug/1193138 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1226525 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1395579 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1372210 Bug Present (Duplicate of PS#1368530
+https://bugs.launchpad.net/percona-server/+bug/1226532 56reg
+https://bugs.launchpad.net/percona-server/+bug/1372219 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1395706 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1195614 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1224272 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1200502 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1395249 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1402999 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1381916 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1226538 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1435678 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1432494 56reg 
+https://bugs.launchpad.net/percona-server/+bug/1224272 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1368552 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1381853 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1318453 Bug Present (5.6.17)
+https://bugs.launchpad.net/percona-server/+bug/1377093 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1427526 56reg
+https://bugs.launchpad.net/percona-server/+bug/1382408 Bug Present ## sig 11 assertion in mysql_execute_command
+https://bugs.launchpad.net/percona-server/+bug/1392375 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1425480 56reg
+https://bugs.launchpad.net/percona-server/+bug/1429039 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1392952 56reg
+https://bugs.launchpad.net/percona-server/+bug/1364707 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1427030 56reg
+https://bugs.launchpad.net/percona-server/+bug/1370002 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1382745 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1415755 Bug Present ## sig 11 assertion in mysql_execute_command
+https://bugs.launchpad.net/percona-server/+bug/1384583 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1387951 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1416956 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1435740 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1416975 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1392924 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1412423 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1403833 56reg
+https://bugs.launchpad.net/percona-server/+bug/1394987 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1387951 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1415455 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1417372 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1417533 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1368530 Bug Present  
+https://bugs.launchpad.net/percona-server/+bug/1433197 Bug Present 
+https://bugs.launchpad.net/percona-server/+bug/1417116 Bug Present ## sig 6 assertion m_lock != __null && thd->mdl_context.is_lock_owner(m_namespace, "", "", MDL_SHARED)
+https://bugs.launchpad.net/percona-server/+bug/1417028 Bug Present ## Fixed in PS 5.6.2
+https://bugs.launchpad.net/percona-server/+bug/1403373 56reg
+https://bugs.launchpad.net/percona-server/+bug/1403446 56reg
+https://bugs.launchpad.net/percona-server/+bug/1397173 Bug Present ## Fixed in PS 5.6.22
+https://bugs.launchpad.net/percona-server/+bug/1384560 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1382738 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1372675 56reg ## Marked as invalid
+https://bugs.launchpad.net/percona-server/+bug/1469041 56reg
+
+https://bugs.launchpad.net/percona-server/+bug/1226534 Bug Present
+https://bugs.launchpad.net/percona-server/+bug/1233128 56reg
+https://bugs.launchpad.net/percona-server/+bug/1384570 Bug Present ## sig 11 assertion in ha_index_or_rnd_end
+https://bugs.launchpad.net/percona-server/+bug/1393682 56reg
+https://bugs.launchpad.net/percona-server/+bug/1415828 Bug Present ## sig 11 assertion in mysql_execute_command
+https://bugs.launchpad.net/percona-server/+bug/1440640 56reg
+https://bugs.launchpad.net/percona-server/+bug/1441001 Bug Present ## sig 11 assertion in list_delete
+https://bugs.launchpad.net/percona-server/+bug/1441139 56reg
+https://bugs.launchpad.net/percona-server/+bug/1441447 56reg
+https://bugs.launchpad.net/percona-server/+bug/1444642 56reg
+https://bugs.launchpad.net/percona-server/+bug/1444706 Bug Present ## sig 11 assertion in list_delete
+https://bugs.launchpad.net/percona-server/+bug/1445833 56reg
+https://bugs.launchpad.net/percona-server/+bug/1449994 56reg
+https://bugs.launchpad.net/percona-server/+bug/1452125 56reg
+https://bugs.launchpad.net/percona-server/+bug/1462852 56reg
+https://bugs.launchpad.net/percona-server/+bug/1463381 56reg

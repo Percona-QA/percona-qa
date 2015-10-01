@@ -1,0 +1,172 @@
+# Setup (thanks https://peterkieser.com/2014/07/07/installing-docker-on-centos-7/ and http://stackoverflow.com/questions/26472586/upgrade-docker-on-centos-7)
+  sudo yum install docker
+  sudo systemctl disable firewalld.service # https://docs.docker.com/installation/centos/#firewalld
+  sudo systemctl start docker.service
+  sudo systemctl enable docker.service
+  sudo docker version  # 1.5.0-dev currently (April 15) on Centos 7.1
+  sudo service docker stop
+  sudo wget https://get.docker.com/builds/Linux/x86_64/docker-latest -O /usr/bin/docker
+  sudo service docker start
+  sudo docker version  # 1.6.0 or later
+
+# Adding OverlayFS support (to avoid devicemapper bug) on Centos 7.1
+  sudo service docker stop
+  sudo vi /etc/sysconfig
+  # Add/change: DOCKER_STORAGE_OPTIONS= -s overlay
+  sudo systemctl start docker.service
+
+# Confirm OverlayFS is working:
+  sudo docker run -t -i -d busybox sh
+  grep overlay /proc/`pidof docker`/mountinfo
+
+# Alternative setup
+  wget -qO- https://get.docker.com/ | sh
+
+# Installing Docker on CentOS-6.x
+  sudo rpm -iUvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+  sudo yum update -y
+  sudo yum -y install docker-io
+  sudo service docker start
+  sudo chkconfig docker on # start the docker service on boot
+
+# Installing fig - http://www.fig.sh/ (Fig is a meta-solution which builds on Docker - handy for creating many Docker nodes at once, for example for PXC etc.)
+  sudo su
+  curl -L https://github.com/docker/fig/releases/download/1.0.1/fig-`uname -s`-`uname -m` > /usr/local/bin/fig; chmod +x /usr/local/bin/fig
+  ln -s /usr/local/bin/fig /usr/bin/fig
+  # Remember to start fig like this; $ sudo fig up
+
+# Possible setup issues
+  http://stackoverflow.com/questions/25372781/docker-error-var-run-docker-sock-no-such-file-or-directory
+  http://stackoverflow.com/questions/25234792/what-does-the-docker-host-variable-do
+
+# Terminology
+  layer: a Docker image may consist of several layers, for example Centos7 (base image) + PXC (additional layer)
+  image: a previously stored container, which can now be used as an image for containers. Images are R/O. See images with '$ docker images'
+  container: an image + a changed state. Containers are R/W. See running containers with '$ docker ps', and see a full container list with '$ docker ps -a'
+    See also: http://docs.docker.com/terms/container/ and http://stackoverflow.com/questions/23735149/docker-image-vs-container
+
+# Where are the images stored
+  /var/lib/docker/
+
+# CLI Level Help
+  sudo docker
+  sudo docker run  # All options for the run command, etc.
+
+# Online training
+  https://www.youtube.com/watch?v=VeiUjkiqo9E                               # Great <30 min in-depth intro + usage
+  http://media.wix.com/ugd/295986_d5059f95a78e451db5de3d54f711e45d.pdf      # Great history of Docker and LXC
+  https://github.com/wsargent/docker-cheat-sheet                            # Great Docker cheat sheet
+  https://docs.docker.com/userguide/                                        # Lots of detailed info on usage
+  http://www.projectatomic.io/docs/docker-image-author-guidance/            # Great tips/gotcha's when creating images at a professional level
+  https://docs.docker.com/articles/host_integration/                        # Auto-restart of containers
+  https://docs.docker.com/installation/ubuntulinux/#giving-non-root-access  # Docker deamon as root, but docker client withuot sudo via docker group addition
+
+# Manual/manual usage
+  $ docker --help  # Latest in-binary help (handy since often only the binary, and not the man page(s), was updated with wget (procedure above)
+  $ man docker  # Brings up the docker manual, mostly with information about the Docker deamon, but look towards page 2 and onwards for Docker commands, then:
+  $ man docker-build  # An example of how to get the manual for the command 'docker build' (listed as docker-build in the "man docker" above)
+
+# Initial image use example
+  sudo docker pull centos:centos7
+  sudo docker images  # Verify Centos7 image is there
+  sudo docker run -t -i --privileged centos:centos7 /bin/bash
+    # Creates & starts a new container based on centos:centos7 image and starts /bin/bash interactively (-i) using a pseudo-tty (-t) in privileged mode
+    # Note that if you repeat this last command 5 times, you will have created 5 new containers. Use start/attach (ref below) instead to re-start a container
+
+# Handy tools
+  http://www.packer.io/intro  # Open source, creates indentical machine images for many platforms based on a single source config, and includes Docker support
+  http://shipyard-project.com/  # A container GUI management tool. Code at https://github.com/shipyard/shipyard
+  alias docker="sudo docker"  # in ~/.bash_profile is handy to avoid having to type sudo each time. Alternative (or better; have both): alias d="sudo docker"
+  #alias drm="docker rm $(docker ps -a -q | tr '\n' ' ')"  # in ~/.bash_profile is handy to use $ drm to at once delete all containers. USE WITH CAUTION!
+
+# Advanced topics/use/issues
+  https://blog.logentries.com/2014/03/the-state-of-logging-on-docker/              # Information on logging inside/outside the container 
+  http://developerblog.redhat.com/2014/09/30/overview-storage-scalability-docker/  # Filesystem selection & info
+  https://github.com/docker/docker/issues/4036  # For "Error getting container ... from driver devicemapper: open ... no such file or directory" (disk full?)
+  http://www.tech-d.net/2014/01/27/docker-quicktip-2-exec-it/                      # Interesting read on exec usage, primary process and process termination
+  http://www.tech-d.net/2014/09/30/docker-restart-policies/                        # Restart policies (per-container)
+  http://www.slideshare.net/jpetazzo/docker-tips-and-tricks-at-the-docker-beijing-meetup?next_slideshow=1  # Advanced configuration of cgroups, etc.
+
+# Command set syntax with commonly used options. Sudo prefix is assumed for all lines (see above for .bash_profile alias hack)
+  docker info              # Registry login status, username and number of containers and images
+  docker inspect {c}       # Inspect container {c}, which gives all it's information, virutal IP address etc.
+  docker images            # List all locally available images
+  docker pull {n}:{i}      # Pull image {i} from namespace/user {n} from a Docker Registry (registry.hub.docker.com by default)
+  docker ps                # List all actively running containers
+  docker ps -a -s          # List all containers, active or not (-a) and optionally list their size (-s)
+  docker run {i/c}         # Run an image or container. {i/c}: image name or container ID (as can be seen by ps -a). {cmd}: command to run, for example bash
+    -t -i                  # Assign a virtual tty, make it interactive
+    -d                     # Start the container as a deamon, often 
+    -p {host}:{docker}     # Map a port on the local host machine (port '{host}') to a port inside the docker image ('{docker}'). Example -p 80:8080
+                           # Also see http://docs.docker.com/userguide/dockerlinks/ for some advanced examples like -p 127.0.0.1:80:8080/udp etc.
+    -v {/v}                # Make an additional volume, in the container, at location {/v}. Docker (plainly) stores volume data at /var/lib/docker/volumes/
+    -v {/l}:{/v}{:ro}      # Map a local host path {/l} to inside the container at location {/v} - this can be a root directory or a subdirectory. ro=read only
+    --volumes-from={c}     # Use the volumes from another container. Handy to reference a purposely created data-only share-amongst-containers container
+    {cmd}                  # Command to run, for example bash, or /bin/sh -c "...some_command..." etc.
+  docker logs {c}          # Display the stdout (and stderr?) of (running?) container {c}
+  docker diff {c}          # Display the 'diff' of container {c} against the base image (or container?) used
+  docker rm {c}            # Remove container {c}
+  docker rmi {i}           # Remove image {i}
+  docker start {c}         # Start container {c}
+  docker stop {c}          # Stop container {c}
+  docker attach {c}        # Attach to container {c} (very similar to 'docker run -t -i {c}', but here we attach to whatever command is/was already running)
+                           # Use Ctrl+C to exit
+  docker exec              # Works in 1.3+, executes an additional command within the container
+  docker commit -m "{m}" {c} {n}/{i} # Commit/promote container {c} to become an image {i} for namespace/user {n} with commit msg {m}
+                           # Use docker images to see the newly committed image (commit is LOCAL only, untill pushed)
+  docker login             # Login to a [remote] Docker images Registry (registry.hub.docker.com by default)
+  docker push {i}          # Push an image to the [remote] Docker images Registry
+  docker build -t {i} {l}  # Build a docker image tagged {i} from script at location {l}. Note that {l} can be a github url
+                           # Virtual example: docker build -t percona/ps56 github.com/percona/ps56-docker
+  docker history {i}       # Build history for image {i}
+  docker save {i} >i.tar   # Save an image into a tar file
+  docker load <i.tar       # Load a saved image
+  docker export {c} >c.tar # Export (similar to save) an export into a tar file
+  cat c.tar | docker import - {n}:{i} # Import a previously exported container (with thanks http://tuhrig.de/difference-between-save-and-export-in-docker/)
+
+# Examples
+  # Run a container, based on Centos7 image, start bash interactively, allow host volume mapping (--privileged=true), map current home dir to /root homedir
+    docker run --privileged -ti -v ~:/root centos:centos7 bash  
+  # Commit/promote a container (with ID 668d9f86ef49) to an image, with details (name/email/message) to a namespace (roelvdp) with repo (pqa) and tag (L1)
+    docker commit  -a "Roel Van de Paar <roel.vandepaar@percona.com>" -m "Percona QA Base Image L1" 668d9f86ef49 roelvdp/pqa:L1
+  # Push the above generated image to a registry (registry.hub.docker.com by default)
+    docker push roelvdp/pqa:L1
+  # Use a previously generated image (already present local, or will be auto-downloaded from the registry) and map /sda to the same dir inside a new container
+    docker run --privileged -ti -v /sda:/sda roelvdp/pqa:L2 bash
+
+# Work without images, container based only (https://forums.docker.com/t/run-command-in-stopped-container/343/15)
+  sudo rm -f /tmp/centos5; docker run --rm=true --cidfile /tmp/centos5 centos:centos5 /bin/sleep 99999999 &  # Starts a background container, with a long sleep
+  docker exec `cat /tmp/centos5` ps -A  # Execute other arbritary commands in the container
+  docker stop -t3 `cat /tmp/centos5`  # When the container needs to be halted, 3 second timeout before kill
+
+# Attached to Docker tty? Keyboard shortcuts;
+  # ctrl-p+ctrl-q which does the same as screen's ctrl-a+d  (from https://github.com/docker/docker/issues/5547)
+  
+# Dockerfile syntax (Dockerfile's are used to automatically create ("build") containers based on a build script named Dockerfile)
+  FROM {n}:{i}             # Base image to use
+  MAINTAINER {n} "{e}"     # Maintainer name {n} (can contain spaces) with email {e} (no <...> needed)
+  RUN {cmd}                # Run a command, as root, inside the docker container
+  ADD {localf} {dockerf}   # Store a local file {localf} inside the container at location {dockerf}, much like cp/scp
+  EXPOSE {port}            # Open up a firewall rule inside the docker container allowing port {port} to be exposed
+  CMD {cmdcmd}             # Execute a command inside the container, for example  CMD [ '/bin/sh', '-e', '/usr/local/bin/run' ]  where run.sh is a script
+  VOLUME ...               # Similar to docker -v option. Note: -v local:remote is not possible with VOLUME https://docs.docker.com/userguide/dockervolumes/
+
+# Handy shortcuts
+  sudo docker stop $(sudo docker ps -a -q); sudo docker rm $(sudo docker ps -a -q)   # Stop and remove all containers. You can also use 'kill' instead of 'stop'
+
+# A shared kernel: the kernel (but only the kernel) of the host OS itself is used/shared in/with the Docker image;
+  $ sudo rm /tmp/centos5; docker run --cidfile /tmp/centos5 centos:centos5 /bin/sleep 99999999 &
+  $ docker exec `cat /tmp/centos5` uname -a
+    Linux 8064421deded 3.10.0-123.13.2.el7.x86_64 #1 SMP Thu Dec 18 14:09:13 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux  # el7
+  $ uname -a
+    Linux localhost.localdomain 3.10.0-123.13.2.el7.x86_64 #1 SMP Thu Dec 18 14:09:13 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux  # el7
+  $ docker exec `cat /tmp/centos5` cat /etc/redhat-release
+    CentOS release 5.11 (Final)
+  $ cat /etc/redhat-release
+    CentOS Linux release 7.0.1406 (Core)
+  Ref; http://www.quora.com/Can-you-change-the-date-in-a-docker-container-and-not-have-that-date-change-in-another-docker-container-running-on-the-same-host
+  Yet, not all kernel values are shared (ref; https://groups.google.com/forum/#!topic/docker-dev/HTC_q92ILZs) (results are same with/without privileged mode)
+  $ sudo rm /tmp/centos7; docker run --privileged=true --cidfile /tmp/centos7 centos:centos7 /bin/sleep 99999999 &
+  $ docker exec `cat /tmp/centos7` cat /proc/sys/kernel/* > out1 2>/dev/null
+  $ cat /proc/sys/kernel/* > out2 2>/dev/null
+  $ diff out1 out2  # Shows several Kernel differences 

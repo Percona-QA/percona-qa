@@ -1,0 +1,3 @@
+export LD_PRELOAD=~/sysbenchnew/libmysqlclient_r.so.16
+~/sysbenchnew/sysbench --num-threads=50 --report-interval=10 --max-time=0 --max-requests=0 --rand-type=pareto --oltp-table-size=1000000 --mysql-user=root --test=/home/roel/sysbenchnew/oltp.lua --mysql-socket=/sda/Percona-Server-5.6.21-rel70.0-676-debug.Linux.x86_64/socket.sock --mysql-db=test run &
+~/sysbenchnew/sysbench --num-threads=300 --report-interval=10 --max-time=0 --max-requests=0 --rand-type=pareto --oltp-table-size=1000000 --mysql-user=root --test=/home/roel/sysbenchnew/oltp.lua --mysql-socket=/sda/Percona-Server-5.6.21-rel70.0-676-debug.Linux.x86_64/socket.sock --threads=120 --mysql-db=test run &

@@ -1,0 +1,2 @@
+export LD_LIBRARY_PATH=/sda/Percona-Server-5.6.20-rel68.0-657.Linux.x86_64-debug/lib
+./pquery --infile=./main.sql --database=test --threads=10 --queries_per_thread=100000 --log_all_queries --log_failed_queries --user=root --socket=/sda/Percona-Server-5.6.20-rel68.0-657.Linux.x86_64-debug/socket.sock

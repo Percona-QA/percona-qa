@@ -1,0 +1,18 @@
+[mysqld]
+datadir                         = /var/lib/mysql
+innodb_buffer_pool_size         = 500M
+innodb_flush_log_at_trx_commit  = 0
+innodb_flush_method             = O_DIRECT
+innodb_log_file_size            = 20M
+innodb_file_per_table           = 1
+bind_address = 0.0.0.0
+
+wsrep_cluster_address=gcomm://
+wsrep_provider=/usr/lib64/galera3/libgalera_smm.so
+wsrep_cluster_name=pxc-garbd
+
+innodb_locks_unsafe_for_binlog=1
+
+[client]
+user=root
+password=

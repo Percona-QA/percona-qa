@@ -1,0 +1,3 @@
+As per the fig website, 'Fig has been replaced by Docker Compose, and is now deprecated.', hence the pxc-pquery fig scripts are hereby also deprecated.
+
+The files in this directory (and sub-directories thereof) are for historical reference only.

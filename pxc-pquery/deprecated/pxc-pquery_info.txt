@@ -1,0 +1,67 @@
+==== 
+Info from an earlier email, just for reference. 
+
+This more or less describes what happens here/in the subdirectories here, though the text is based on the original version on GitHub, whilst this (lp:percona-qa/pxc-pquery) is an advanced implementation thereof. The Github version may have also changed since, the one in these directories is more static/purposely build for PXC QA purposes.
+
+Note that this file is also referenced from lp:randgen/util/reducer/reducer.sh
+====
+
+tl;dr; A fresh/clean 3 node PXC cluster, ready for use, up and running in 58 seconds, whenever and as many times as you want it, on a single machine. Easy to expand to any number of nodes.
+
+Continuing Raghu's work, I've added an additional Fig setup where once a Cluster has been created, the images created by the original Fig scripts are then re-used to bring up a new fresh/clean Cluster much quicker. 
+
+Benefits: 
+* Much quicker startup (< 1 minute) whilst still having a 99.99% fresh/clean 3 node cluster (not 100%; it's a secondary startup, but again with --wsrep-new-cluster). 
+* Ideal for QA/quick testing/verification/support/bug verification purposes. 
+* It also avoids re-downloading PXC + all required yum packages each time you want a new fresh/clean Cluster
+
+Cons: 
+* Major; none. 
+* Minor; if a new PXC version is released, you could take the bit longer "new" method described below to get the latest version (optional).
+
+Terminology;
+* "new" (fig config as stored in "pxc-docker/quickstart/new" directory): this is used for building your 3 node images for the first time, or when a new PXC version is released, and you want to use the new version. This is identical to the Fig setup in pxc-docker git repo that Raghu mentioned earlier. i.e. think "Docker Images being build/created". These images are _only_ deleted when you want to use a newer PXC version.
+
+* "existing" (fig config as stored "pxc-docker/quickstart/existing" directory): this is used for bringing up a fresh/clean 3 node cluster using the images build with the "new" method. It uses the PXC version that was used when using the "new" method. This spawns 3 Docker containers based on the 3 Docker images. i.e. think "Docker Containers being created". These Docker containers can be deleted each time - consider them "runtime" and utterly "temporary".
+
+New to docker?
+* See https://www.youtube.com/watch?v=VeiUjkiqo9E 
+* For more info/links see docker_info.txt
+
+Usage;
+$ bzr branch lp:percona-qa
+$ cd percona-qa/pxc-pquery/new
+$ sudo fig up  # Wait till you see "Synchronized with group, ready for connections" from pxc node 3. 
+# Press CTRL+C to shutdown the cluster now (required) 
+# Should the message "Aborting." appear instead of a clean stopping of nodes, execute: $ sudo fig stop  # Then continue as normal
+$ sudo docker images  # Confirm you see new_pxc1, new_pxc2, new_pxc3
+$ cd ../existing
+$ sudo fig up  # This will use the new_pxc<nr> images to build a semi-new fresh/clean 3 node PXC cluster in 3 containers, but much quicker then a "new" Docker setup
+                     # Wait till you see "Synchronized with group, ready for connections" from pxc node 3.
+$ <path_to_some_mysql_bin_dir>/mysql -uroot -P10000 -h127.0.0.1  # Nodes 2 and 3 are ports 11000 and 12000
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 5
+Server version: 5.6.21-70.1-56 Percona XtraDB Cluster (GPL), Release rel70.1, Revision 940, WSREP version 25.8, wsrep_25.8.r4150
+[...]
+# You can use CTRL+C to shutdown this cluster, or use the next stop command;
+
+$ sudo docker stop $(sudo docker ps -a | grep "new_pxc" | awk '{print $1}' | tr '\n' ' ')
+$ sudo docker rm $(sudo docker ps -a | grep "new_pxc" | awk '{print $1}' | tr '\n' ' ')  # You can use this after shutting down the Cluster with CTRL+C. 
+                                            # This removes all "existing" setup PXC containers (but not the images created with the "new" Fig setup!)
+
+To start another fresh cluster;
+$ sudo fig up  # Again in the "existing" (== existing images are present) directory 
+etc.
+
+To get fresh images (the only reason why you would want to do this is to get the latest PXC version);
+$ cd ../new
+$ sudo docker rmi new_pxc1, new_pxc2, new_pxc3   # Remove the 3 PXC images (note that you must remove linked containers before removing images, i.e. the docker rm command above)
+$ sudo fig up
+etc.
+
+To programatically check that the Cluster is ready to go;   (Note we're querying Node 3 on port 12000)
+$ /sda/Percona-Server-5.6.21-rel70.0-693.Linux.x86_64/bin/mysql -uroot -h127.0.0.1 -P12000 -e"show global status like 'wsrep_cluster_size';show global status like 'wsrep_local_state_comment';" | grep "wsrep" | sed 's/[| \t]\+/\t/g'
+wsrep_cluster_size      3
+wsrep_local_state_comment       Synced
+
+You can also add host paths to the Docker file, use a --datadir directory directly on the host etc. - for an example/full QA setup see lp:percona-qa (/pxc-pquery/*) [i.e. this directory]

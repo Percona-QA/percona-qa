@@ -1,0 +1,138 @@
+# ------ GNU/Bash ------
+# In-file replace a with b in file in.txt and save a backup copy of original as in.txt.bak. If '' or nothing is specified for i, then no backup is saved.
+  sed -i'.bak' 's/a/b/' in.txt
+# Start output of a file after a certain string is seen (i.e. delete all output upto a certain string)    Second example uses line numbers instead 
+  sed '0,/3/d' test  # If test had 6 lines with numbers 1->6, then output would be 4,5,6 (3 lines)        sed '1,3d' test  # Note functionality is quite different
+# Get all directories that consist of numbers (any lenght) and the for each of those do something (dir name will be in $i inside loop)
+  VAR=`ls -d [0-9]*`; for i in ${VAR[*]}; do ...insertyourcode...; done
+# Get the current workdirectory of this script
+  SCRIPT_PWD=$(cd `dirname $0` && pwd)
+# Random number generator (6 digits). If randomness is paramount/you need a large number of random numbers remember to init entropy pool
+  RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
+# Random selection of echo's, with another type of entropy pool init
+  RANDOM=`date +%s%N | cut -b14-19`; case $[$RANDOM % 3 + 1] in 1) echo '1';; 2) echo '2';; 3) echo '3';; *) echo '+';; esac
+# Random number between 0-9 based on nanosecond clock. To get random number between 0 and 99 do -b18-19 and so on
+  date +%s%N | cut -b19-19
+# Random number between 1 and X
+  echo $(( RANDOM % 1000 + 1 ))  # Example where X is 1000, change as needed
+# Ensure fault-free grep operation when grepping through a file which contains non-ASCII characters
+  grep --binary-files=text ...
+# Shuffle lines of a file. Much better then sort -R --random-source=/dev/urandom. sort -R will still sort according to hash, leaving similar lines clustered
+  shuf --random-source=/dev/urandom inputfile > outputfile
+# The same, with random entropy pool initialization (TODO: confirm that RANDOM=x entropy pool init also inits /dev/urandom)
+  RANDOM=`date +%s%N | cut -b14-19`; shuf --random-source=/dev/urandom inputfile > outputfile 
+# Delete all alpha chars from a string
+  echo "string" | tr -d '[:alpha:]'
+# Sort unique vs uniq: sort -u sorts the input list and only leaves unique entries. uniq on the other hand does not sort and removes only adjoining same entries
+  cat need_sorted_file_with_unique_results_only.txt | sort -u; cat need_adjoining_same_entries_removed; | uniq; # cat need_all_duplicates_removed.txt | uniq -u
+# Re-use filename based output as input for a new command
+  ls | xargs -I{} echo {}  # {} is the filename passed and has become a variable, echo is the example new command
+# Execute two (or more) commands from xargs, based on pipe input, and additionally use some variables from the parent shell in the subshell
+  export TEST="path of parent shell: "; ls * | xargs -I{} -i sh -c 'echo {}; echo {}; echo $0 $1;' ${TEST} ${PWD}
+# Discover the process name of the parent shell (output can be things like 'screen', 'bash', 'sh', 'sshd' etc.)
+  if [ "`cat /proc/$PPID/comm`" == "sh" ]; then echo "Subshell started from sh"; else echo "Subshell was started from `cat /proc/$PPID/cmdline`"; fi
+# Gotcha: always use quotes around variables in an if statement, which would avoid errors if the string is empty/zero-lenght
+  if [ "${SOME_STRING}" == "${SOME_OTHER_STRING}" ]; then ...
+# Arrays: * expands to a concatenated, IFS 1st char seperated, one line string, but only if it is double quoted. [@] expands to each-member-of-the-array, always
+  IFS="";v=('1 2' '3 4');for i in ${v[*]};do echo $i;done;for i in ${v[@]};do echo $i;done;for i in "${v[*]}";do echo $i;done;for i in "${v[@]}";do echo $i;done
+# Show the manual (man) for a particular command without using pager mode (i.e. continuous stdout output): use `cat` command as pager:
+  man -Pcat ls
+# Get full output of a command into a file, while at the same time providing parsed/partial output of the same command to stdout
+  for i in `seq 1 10`; do echo $i; done | tee fulllog.txt | grep "[369]"  # fulllog.txt will have 1-10, screen will only have 3,6,9
+# Track progress, on a single line, of a live income stream, while modifying the income stream to be in a different (i.e. usually "readable") format. Example;
+  for i in `seq 1 10`; do echo $i; sleep 0.3; done | awk '/[2-8]/{sub(/[456]/,"middle",$0);printf "%s",$0}'  # Output: 23middlemiddlemiddle78
+# Tracking visual output of Docker build process, on one line, live:  $ sudo docker build . | \
+  awk '{if(match($0,/Step/)!=0){sub(/Step[ \t]*/,"",$0);sub(/[ \t]*:.*/,"",$0);printf("%s... ",$0)};if(match($0,/Successfully built/)!=0){printf("%s",$0);}}'
+# Using input redirection ("here document") which removes the tabs (ref http://tldp.org/LDP/abs/html/here-docs.html) (the EOF can have a leading tab also);
+  cat <<-EOF   ....   EOF  # Where .... and EOF are on subsequent lines. The "-" in "<<-" removes a leading tab from what follows in ....
+# The name of the calling procedure in a script
+  caller 0 | awk '{print $2}'
+# Extract the directory name, with leading slash, from a path with filename in the form of (example); "/some/paths/here/some_filename" to "/some/paths/here/"
+  DIR_NAME=$(echo $PATH_AND_FILENAME | sed "s|/[^/]\+$|/|")
+# Show signal masks for a running process - bit position 1 (2nd bit) is SIGHUP, etc..
+  grep ^Sig /proc/$PPID/status
+# Interleave, after each 75 lines in[to] file A.txt, the content of file B.txt
+  sed -i "0~75 r B.txt" A.txt
+# Interleave, after each 2nd line, a newly inserted string ($=EOL).          Second example does the same, just for a input file 'test' instead of for loop
+  for i in $(seq 1 10); do echo $i; done | sed "0~2 s|$|\ninsert_text|";     cat test | sed "0~2 s|$|\ninsert_text|"
+# If a variable [partially] matches a pre-determinted value, print another value instead (match needs to be from start of line)
+  VAR1="abc"; echo "${VAR1/#ab/c}"  # output: cc ("ab" matches and is replaced by "c". A search for "bc" would fail, as it is not from start of line)
+# Terminate a long-running/(or 'screen scrolling') command (which does not respond to CTRL+C quickly: 
+  1) Press CTRL+z, 2) jobs -l; kill -9 {PID_seen_in_jobs_-l_output}
+# Timeout a given script/program after a set time. In the example, 1h=1 hour, but one can also use 10s=10 seconds etc.
+  timeout --signal=9 1h ./pquery-run.sh
+# If you have made a process background (bg) with for example CTRL+Z it will show you the background ID: [1] to kill this particular background process, use:
+  kill %1  # Where 1 is the index of the background process
+# Check for the existence of multiple files. (Btw, if you get '-bash: !": event not found' when running directly at the bash prompt, see 'Common Issues' below)
+  if [ ! -r aaa -o ! -r bbb -o ! -r ccc ]; then echo "One or more files not found: aaa, bbb and ccc!"; fi
+# Multi-threaded (3 threads in example) xargs call with direct input using cat. Output will be 1 then 2 then 3 after respective pauses (start at same time):
+  CONCURRENCY=3; cat << EOC |
+  sleep 1; echo "1" % sleep 2; echo "2" % sleep 3; echo "3" 
+  EOC
+  xargs -d"%" -P${CONCURRENCY} -i^ sudo sh -c '^'
+# xargs can be used as follows: INPUT | xargs | PROCESSOR - i.e. "pipe the INPUT directly into the PROCESSOR". Note this is conceptually somewhat similar to
+  INPUT | xargs bash -c, but a much cleaner/clearer way to write it, as well as allowing some additional functionality + bash may not always be the shell used;
+  echo "INPUT" | xargs | sed "s/INPUT/PROCESSOR/"
+  echo ls | xargs | sh -x  # Conceptually similar to echo ls | xargs bash -c
+  echo -n "echo\necho" | xargs | sed 's|DUMMY|NO ACTION|'  # When used like this, a \n is added to the output. This is not the case if 'xargs |' is dropped
+# Check a string variable for the occurence of a particular search term. Note that -qi can also be used on a file, i.e.  if grep -qi "search string" file.txt; 
+  echo "this is a short search string" | if grep -qi "search string"; then echo "found"; else echo "not found"; fi  # Returns "found"
+# For all lines in a file, action something. Note that the for loop has limitations (spaces) which require IFS to be set. This is not so with the while loop 
+  ORIG_IFS=${IFS}; IFS=$'\n'; for LINE in $(cat ./file.txt); do echo ${LINE}; done; IFS=${ORIG_IFS}   #OR#  while read line; do echo ${line}; done < ./file.txt
+# Obtain a fully qualified directory and script name 
+  SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||')
+# Change the file contents (inline replace used here) of multiple files in subdirectories
+  ls ./*/somefiles | xargs -I{} sed -i 's|find|replace|' {}
+# Rename file names from abc to xyz (where there is no numbers in the filename) in numerical subdirectories (where there is no letters in the directory name)
+  ls ./*/abc | sed 's|[^0-9]||g' | xargs -I{} mv ./{}/abc ./{}/xyz
+# Age of a file or directory in seconds (Thanks http://www.linuxquestions.org/questions/linux-software-2/how-to-calculate-file-age-file-xy-is-2-days-3-hours-old-164908/)
+  echo $[ $(date +%s) - $(stat -c %Z filename.txt) ]  # where filename.txt is the file name (can also be a directory name) you want to know the age of
+# For each file in a given filespec, action something. Example here: all reducer logs
+  for file in /dev/shm/14*/reducer.log; do echo "$file"; done
+
+# ------ Debugging ------
+# View complete output of all executed items, which is great for debugging
+  bash -x ./your_script.sh
+# View all OS-level function/system calls/IO etc.
+  strace ./your_script.sh  # You may need to add additional strace options, see 'man strace'
+# View what mysqld (or any other process) is doing. Ideal for hangs/odd long query durations etc. (First install utility perf: $ sudo yum install perf)
+  perf record -g --pid=`pidof mysqld`; perf report | c++filt; rm perf.data   # CTRL+C to interrupt the perf record once you think you have enough data
+
+# ------ Common Issues ------
+# Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;
+  histchars=  # in ./bash_profile (or at the command line) will fix it. Reason; https://www.gnu.org/software/bash/manual/html_node/History-Interaction.html
+# Unlike echo -n, sed cannot parse a live input stream and print the result on a single line step-by-step as the input comes in. Proof;
+  for i in `seq 1 10`; do echo $i; sleep 1; done | sed -n "H;/[369]/{x;s/\n/ /g;p}"  # Ref https://www.gnu.org/software/sed/manual/sed.html#fn-3
+# While the above cannot be done with sed, it can be done quite easily with awk. Semi-similar example, showing output, progressively, on one line;
+  for i in `seq 1 10`; do echo $i; sleep 0.3; done | awk '/[369]/{printf "%s",$0}'  # To make example above 100% similar, use: sed -n "/[369]/{s/\n/ /g;p}"
+# When calling a function in the background (like the example on the next line) in a script, remember that such a function runs in a subshell
+  function &  # By calling a function this way, all variables used within it will be fresh/new and any variables updated will not reflect back in the parent
+# When checking for the existence of a directory, do not just use:  if [ -d ${SOME_VAR} ]; then echo "yes"; fi  The reason is that if ${SOME_VAR} is empty,
+  the check will still work. Confirm the gotcha by executing:  if [ -d ]; then echo "yes"; fi  Instead, use:  if [ "${SOME_VAR}" != "" -a -d ${SOME_VAR} ];
+# Along the same lines of the last issue, it is an easy mistake to make not to include double quotes around variables when checking for (in)equality. Use;
+  if [ "${SOME_VAR}" == "Some Text" ]; then ...; fi  instead of not using double quotes (which fails when the variable is empty). 
+
+# ------ OS/Admin ------
+# If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
+  ## sudo umount -flv /dev/<device> ## Make sure you know what you are doing before executing this!
+# Make a 12Gb tmpfs drive for reducer.sh/pquery-run.sh (also works on Centos7): edit fstab (sudo vi /etc/fstab;) and add:
+  tmpfs     /dev/shm        tmpfs   size=12g,noatime,nodiratime       0 0
+# Check the process limits of any process, mysqld example:
+  cat /proc/`pidof mysqld`/limits
+# Hanging processes/load average (ref 'uptime') increasing steadily/rogue processes? See which ones are causing issues by:
+  top -n10 -b | head -n25
+
+# ------ Tools ------
+# Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax
+  sudo yum install cabal-install; cabal update; cabal install shellcheck; ~/.cabal/bin/shellcheck
+# git: git checkout (checkout a branch), git branch [-a] [-r] (show current branch, -a is all branches local and remote, -r is remote branches only)
+
+# ------ Shortcuts ------
+# Pquery, single-threaded run, mysqld pre-started, socket, testcase and ./lib/ in this directory, percona-qa bzr tree pulled to ~/percona-qa/
+  export LD_LIBRARY_PATH=${PWD}/lib;~/percona-qa/pquery/pquery --infile=./testc.sql --database=test --threads=1 --no-shuffle --user=root --socket=./socket.sock
+
+# ------ Must read's ------
+# http://tldp.org/LDP/abs/html/globbingref.html on globbing (and not regex) and filename expansion
+  echo *  # expands "*" to all filenames     ls -l [^ab]*  # Lists all files not starting with a or b, but [^ab]* is not a regex, it's globbing
+# Various tools to extract information from files etc. From http://stackoverflow.com/questions/1124571/get-list-of-static-libraries-used-in-an-executable
+  file, ldd, nm, objdump, readelf, strings

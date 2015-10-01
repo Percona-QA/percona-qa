@@ -1,0 +1,17 @@
+This is for PXC internal development only!
+
+How to:
+============
+
+a) docker-compose up (It will start 3 node cluster : 2 PXC nodes and 1 garbd node)
+
+Your cluster is up now for garbd testing!
+
+b) ./pxc-garbd-docker.sh : will perform garbd testing
+
+docker-compose install:
+https://docs.docker.com/compose/install/
+
+Docker install:
+https://docs.docker.com/installation/
+

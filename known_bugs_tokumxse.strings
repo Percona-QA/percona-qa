@@ -1,0 +1,53 @@
+# ===== Known bugs  (https://tokutek.atlassian.net/browse/{MSE-nr}
+# Strict Syntax (used by other scripts that use this file/filter list): suite/test.js|MSE-nr
+mmap_v1/drop.js|MSE-60                                  # assert: [1] != [0] are not equal : B
+mmap_v1/use_power_of_2_a.js|MSE-72                      # assert: [0] != [1] are not equal : undefined
+mmap_v1/compact.js|MSE-61                               # Error: assert failed   (in compact.js:25:1)
+mmap_v1/list_collections2.js|MSE-62                     # assert: [[ ]] != [[ "bar", "foo" ]] are not equal : undefined
+mmap_v1/collmod.js|MSE-64                               # assert: [undefined] != [1] are not equal : fresh collection doesn't have userFlags = 1
+mmap_v1/touch1.js|MSE-65                                # TypeError: Cannot read property 'numRanges' of undefined
+mmap_v1/capped7.js|MSE-66                               # assert: [11] != [undefined] are not equal : [11] != [tzz.stats().numExtents]
+mmap_v1/capped2.js|MSE-67                               # assert failed : F  (capped2.js:69:5)
+mmap_v1/repair_cursor1.js|MSE-68                        # assert failed : { "ok" : 0, "errmsg" : "repair iterator not supported", "code" : 115 }
+disk/directoryperdb.js|MSE-69                           # Test shortcoming: disk/directoryperdb.js needs to be expanded to TokuMXse
+mmap_v1/extent2.js|MSE-70                               # TypeError: Cannot read property 'num' of undefined
+disk/repair5.js|MSE-71                                  # repair5.js completes quickly against MMAPv1, very slow (has to be aborted) on TokuMXse
+mmap_v1/update.js|MSE-73                                # assert failed  (update.js:34:1)
+mmap_v1/capped_max.js|MSE-74                            # assert: 4611686018427388000 is not less than undefined : undefined
+mmap_v1/compactPreservePadding.js|MSE-76                # assert failed  (compactPreservePadding.js:26:1)
+mmap_v1/list_indexes2.js|MSE-77                         # assert: [[ ]] != [[ {some array} ]] are not equal : undefined
+mmap_v1/reverse_empty_extent.js|MSE-78                  # TypeError: Cannot read property '0' of undefined at extentsSpanned
+mmap_v1/indexh.js|MSE-79                                # assert failed : s1 < s2
+disk/diskfull.js|MSE-80                                 # TypeError: Cannot read property 'code' of null
+mmap_v1/compact2.js|MSE-81                              # TypeError: Cannot read property 'v' of null
+mmap_v1/stats.js|MSE-82                                 # assert: undefined is not greater than 0
+mmap_v1/capped_server13912.js|MSE-83                    # assert: [16384] != [4096] are not equal : undefined
+noPassthrough/repair2.js|MSE-84                         # noPassthrough/repair2.js completes quickly against MMAPv1, but very slowly against TokuMXse  # MAJOR
+mmap_v1/use_power_of_2.js|MSE-85                        # assert: [14362] != [16368] are not equal : size should be expected
+#RESOLVED#parallel/basic.js|MSE-86                      # Uncaught std::exception: Too many open files, terminating
+#RESOLVED#slow2/conc_update.js|MSE-86                   # Uncaught std::exception: Too many open files, terminating
+mmap_v1/capped_server7543.js|MSE-87                     # assert: [12288] != [16384] are not equal : undefined
+mmap_v1/datasize.js|MSE-88                              # assert: [48] != [32] are not equal : undefined
+
+# ===== Testcases which can only run using a single mongod instance on the server (i.e. single threaded testing) due to hardcoded ports or otherwise
+# Strict Syntax (used by other scripts that use this file/filter list): suite/test.js|single 
+noPassthroughWithMongod/sharding_rs_arb1.js|single      # Uses port 31000 hardcoded
+replsets/stepdown.js|single                             # Uses port 31000 hardcoded
+replsets/tags2.js|single                                # Uses port 31000 hardcoded
+replsets/tags.js|single                                 # Uses port 31000 hardcoded
+sharding/addshard3.js|single                            # Uses port 31000 hardcoded
+sharding/auth.js|single                                 # Uses port 31000 hardcoded
+auth/auth3.js|single                                    # Uses port 31001 hardcoded
+noPassthroughWithMongod/server7428.js|single            # Uses port 31001 hardcoded
+
+# ===== Testcases which work correctly when executed manually using a single thread, yet which fail when running multi-threaded
+# These testcases will need further review: why do they fail when running multi-threaded: potential/likely testcase design issues
+# Note that this list may grow overtime because there is a possibility that a test runs successfully, but later still turns out to have design issues
+# To get an idea of a test's suitability for multi-threaded execution, execute it 10-20x simultaneously/quickly in the background using ./single_test_mongo.sh & and check results
+# Strict Syntax (used by other scripts that use this file/filter list): suite/test.js|single
+dur/indexbg2.js|single                                  # Works fine when tested using a single thread. To review
+noPassthrough/minvalid2.js|single                       # Works fine when tested using a single thread. To review
+sharding/sync_conn_cmd.js|single                        # Works fine when tested using a single thread. To review
+noPassthroughWithMongod/btreedel.js|single              # Works fine when tested using a single thread. To review
+auth/renameSystemCollections.js|single                  # Works fine when tested using a single thread. To review
+noPassthroughWithMongod/index_retry.js|single           # Works fine when tested using a single thread. To review

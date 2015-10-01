@@ -1,0 +1,1 @@
+sysbench --test=pquery.lua --pquery-file=./pquery.sql run

@@ -1,0 +1,2 @@
+export LD_PRELOAD=${PWD}/bundle/libmysqlclient_r.so.16
+~/sysbenchnew/sysbench --num-threads=64 --report-interval=10 --max-time=0 --max-requests=0 --rand-type=pareto --oltp-table-size=1000000 --mysql-user=root --mysql-password=  --test=/home/roel/sysbenchnew/oltp.lua --mysql-socket=${PWD}/socket.sock run

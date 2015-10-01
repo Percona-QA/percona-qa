@@ -1,0 +1,4 @@
+while(true); do 
+  ./bin/mysql -uroot -S/sda/Percona-Server-5.6.21-rel70.0-676-debug.Linux.x86_64/socket.sock test -e"show global status like 'Innodb_row_lock_current_waits'; show global status like 'Innodb_current_row_locks'; show global status like 'questions'; show global status like 'queries'; " | tee -a 2.log
+  sleep 0.2
+done

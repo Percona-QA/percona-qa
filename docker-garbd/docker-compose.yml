@@ -1,0 +1,26 @@
+bootstrap:
+  build: .
+  hostname: Dock1
+  command: sh -c "/usr/sbin/mysqld --basedir=/usr --user=mysql --wsrep-new-cluster --skip-grant-tables"
+  ports:
+      - "10000:3306"
+      - "10001:4567"
+      - "10002:4568"
+members:
+  image: dockergarbd_bootstrap
+  command: sh -c "/usr/sbin/mysqld --basedir=/usr --user=mysql --wsrep-node-name=Dock${RANDOM} --wsrep_cluster_address=gcomm://Dock1 --skip-grant-tables --wsrep-sst-method=rsync"
+  links:
+      - bootstrap:Dock1
+  ports:
+      - "11000:3306"
+      - "11001:4567"
+      - "11002:4568"
+garbd:
+  image: dockergarbd_bootstrap
+  command: sh -c "while true; do ping 8.8.8.8; done"
+  links:
+      - bootstrap:Dock1
+  ports:
+      - "12000:3306"
+      - "12001:4567"
+      - "12002:4568"

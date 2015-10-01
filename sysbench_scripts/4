@@ -1,0 +1,7 @@
+/sda/Percona-Server-5.6.21-rel70.0-676-debug.Linux.x86_64/bin/mysql -A -uroot -S/sda/Percona-Server-5.6.21-rel70.0-676-debug.Linux.x86_64/socket.sock test -e "set global max_connections=2000;show global variables like 'max_connections';"
+while(true); do 
+  ./3b &
+  DELAY=$[1 + ( $RANDOM % ( 3600 ) ) ]
+  sleep $DELAY
+  kill -9 `pidof sysbench`
+done

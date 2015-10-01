@@ -1,0 +1,20 @@
+For pquery, the pquery Framework, reducer and QA in general, see the following resources:
+-----------------------------------------------------------------------------------------
+
+- 13 Part video tutorial in HD quality on MySQL QA, pquery, the pquery Framework, Bash scripting, GDB & more, presented by Roel Van de Paar;
+  https://www.percona.com/blog/2015/03/17/free-mysql-qa-and-bash-linux-training-series/
+  https://www.youtube.com/playlist?list=PLWhC0zeznqkkgBcV3Kn-eWhwJsqmp4z0I
+
+- pquery Blog posts:
+  https://www.percona.com/blog/2015/02/04/future-mysql-quality-assurance-introducing-pquery/
+  https://www.percona.com/blog/2015/04/09/pquery-binaries-with-statically-included-client-libs-now-available/
+
+- reducer.sh (testcase simplication) Blog posts:
+  https://www.percona.com/blog/2014/09/03/reducer-sh-a-powerful-mysql-test-case-simplificationreducer-tool/
+  https://www.percona.com/blog/2015/07/21/mysql-qa-episode-7-single-threaded-reducer-sh-reducing-testcases-for-beginners
+  https://www.percona.com/blog/2015/07/23/mysql-qa-episode-8-reducing-testcases-engineers-tuning-reducer-sh/
+  https://www.percona.com/blog/2015/07/28/mysql-qa-episode-9-reducing-testcases-experts-multi-threaded-reducer-sh/
+  https://www.percona.com/blog/2015/07/31/mysql-qa-episode-10-reproducing-simplifying-get-right/
+
+- RQG post (older; we do not use RQG anymore, but instead use pquery - see above):
+  https://www.percona.com/blog/2014/04/17/how-to-find-bugs-in-mysql/

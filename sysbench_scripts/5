@@ -1,0 +1,12 @@
+while (true);do
+  clear
+  echo "--------------------- # Innodb_row_lock_current_waits"
+  grep "Innodb_row_lock_current_waits" 2.log | sed 's|[A-Za-z_ \t]\+||' | sort -n | tail -n10
+  echo "--------------------- # Innodb_current_row_locks"
+  grep "Innodb_current_row_locks" 2.log | sed 's|[A-Za-z_ \t]\+||' | sort -n | tail -n10
+  echo "--------------------- # Questions"
+  grep "Questions" 2.log | sed 's|[A-Za-z_ \t]\+||' | sort -n | tail -n10
+  echo "--------------------- # Queries"
+  grep "Queries" 2.log | sed 's|[A-Za-z_ \t]\+||' | sort -n | tail -n10
+  sleep 1
+done
