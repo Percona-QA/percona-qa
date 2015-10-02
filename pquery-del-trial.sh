@@ -16,6 +16,7 @@ fi
 TRIAL=$1
 
 rm -Rf ./${TRIAL} > /dev/null 2>&1
+rm -f  ./reducer${TRIAL}-*.sh > /dev/null 2>&1
 rm -f  ./reducer${TRIAL}.sh > /dev/null 2>&1
 rm -f  ./${TRIAL}_bundle > /dev/null 2>&1
 rm -f  ./${TRIAL}_bundle.tar.gz > /dev/null 2>&1
