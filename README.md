@@ -2,10 +2,10 @@ Percona QA
 ==============================================================================
 
 Percona QA is a suite of scripts and utilities that assists in building,
-continuous integration, automated testing and bug reporting for Percona Server
-and Percona XtraDB Cluster.
+continuous integration, automated testing & bug reporting for Percona Server, 
+Percona XtraDB Cluster, and Percona Server for MongoDB.
 
-It is a requirement for these script to work that sudo is enabled and working
+It is a requirement for many scripts to work that sudo is enabled and working
 (and should not request a password) for the user who is using these scripts.
 
 # Files #
