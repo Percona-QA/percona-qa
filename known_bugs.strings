@@ -100,6 +100,7 @@ ZN16Partition_helper19ph_read_range_firstEPK12st_key_rangeS2_bb ## Still present
 ZN7SEL_ARG9store_minEjPPhj                              ## http://bugs.mysql.com/bug.php?id=78238
 #mp->count > 0 .. my_thread_equal.my_thread_self ## Fixed  ## http://bugs.mysql.com/bug.php?id=78337 (unclear what version it was fixed in)
 buf0buf.cc line 3388                          ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=78494                                      (# after MS 5.7.10 merged)
+static_cast<Sql_cmd_xa_commit.>.thd->lex->m_sql_cmd     ## http://bugs.mysql.com/bug.php?id=78695
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
