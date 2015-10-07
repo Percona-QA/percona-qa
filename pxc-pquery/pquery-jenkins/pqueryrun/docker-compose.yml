@@ -8,7 +8,7 @@ pxc1:
       - "10000:3306"
       - "10001:4567"
       - "10002:4568"
-  command: sh -c "sed -i 's|/var/lib/mysql|/data|' /etc/my.cnf && cp -R /var/lib/mysql/* /data && chmod -R 777 /data && cp /mysql/bin/mysqld /data && cd /data && /usr/bin/ldd_files.sh && ln -s /mysql/lib/libgalera_smm.so /usr/lib64/libgalera_smm.so; ln -s /usr/lib64/libreadline.so.6.2 /usr/lib64/libreadline.so.5; /mysql/bin/mysqld --basedir=/mysql --user=mysql --wsrep-new-cluster --skip-grant-tables --log-error=error.log"
+  command: sh -c "sed -i 's|/var/lib/mysql|/data|' /etc/my.cnf && cp -R /var/lib/mysql/* /data && chmod -R 777 /data && cp /mysql/bin/mysqld /data && cd /data && /usr/bin/ldd_files.sh && /mysql/bin/mysqld --basedir=/mysql --datadir=/data  --core-file --user=mysql --wsrep-new-cluster --skip-grant-tables --log-error=error.log"
 
 pxc2:
   image: pqueryjenkins_pxc2
@@ -22,7 +22,7 @@ pxc2:
       - "11000:3306"
       - "11001:4567"
       - "11002:4568"
-  command: sh -c "/bin/sleep 4 &&  sed -i 's|/var/lib/mysql|/data|' /etc/my.cnf && cp -R /var/lib/mysql/* /data && chmod -R 777 /data && cp /mysql/bin/mysqld /data && cd /data && /usr/bin/ldd_files.sh && ln -s /usr/lib64/libreadline.so.6.2 /usr/lib64/libreadline.so.5;/mysql/bin/mysqld --basedir=/mysql --user=mysql --wsrep-node-name=pxc2 --wsrep_cluster_address=gcomm://pxc1 --skip-grant-tables  --log-error=error.log --wsrep-sst-method=rsync"
+  command: sh -c "/bin/sleep 4 &&  sed -i 's|/var/lib/mysql|/data|' /etc/my.cnf && cp -R /var/lib/mysql/* /data && chmod -R 777 /data && cp /mysql/bin/mysqld /data && cd /data && /usr/bin/ldd_files.sh && /mysql/bin/mysqld --basedir=/mysql --datadir=/data  --core-file --user=mysql --wsrep-node-name=pxc2 --wsrep_cluster_address=gcomm://pxc1 --skip-grant-tables --wsrep-sst-method=rsync --log-error=error.log"
 
 pxc3:
   image: pqueryjenkins_pxc3
@@ -37,4 +37,4 @@ pxc3:
       - "12000:3306"
       - "12001:4567"
       - "12002:4568"
-  command: sh -c "/bin/sleep 40 && sed -i 's|/var/lib/mysql|/data|' /etc/my.cnf && cp -R /var/lib/mysql/* /data && chmod -R 777 /data && cp /mysql/bin/mysqld /data && cd /data && /usr/bin/ldd_files.sh && ln -s /usr/lib64/libreadline.so.6.2 /usr/lib64/libreadline.so.5;/mysql/bin/mysqld --basedir=/mysql --user=mysql --wsrep-node-name=pxc3 --wsrep_cluster_address=gcomm://pxc1,pxc2 --skip-grant-tables  --log-error=error.log --wsrep-sst-method=rsync"
+  command: sh -c "/bin/sleep 40 && sed -i 's|/var/lib/mysql|/data|' /etc/my.cnf && cp -R /var/lib/mysql/* /data && chmod -R 777 /data && cp /mysql/bin/mysqld /data && cd /data && /usr/bin/ldd_files.sh && /mysql/bin/mysqld --basedir=/mysql --datadir=/data  --core-file --user=mysql --wsrep-node-name=pxc3 --wsrep_cluster_address=gcomm://pxc1,pxc2 --skip-grant-tables  --wsrep-sst-method=rsync --log-error=error.log"
