@@ -97,6 +97,8 @@
   strace ./your_script.sh  # You may need to add additional strace options, see 'man strace'
 # View what mysqld (or any other process) is doing. Ideal for hangs/odd long query durations etc. (First install utility perf: $ sudo yum install perf)
   perf record -g --pid=`pidof mysqld`; perf report | c++filt; rm perf.data   # CTRL+C to interrupt the perf record once you think you have enough data
+# Find out which compiler was used to compile an un-stripped binary
+  objdump -s --section .comment /path/binary
 
 # ------ Common Issues ------
 # Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;

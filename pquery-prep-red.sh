@@ -6,6 +6,9 @@
 # To aid with correct bug to testcase generation for pquery trials, this script creates a local run script for reducer and sets #VARMOD#.
 # This handles crashes/asserts for the moment only. Could be expanded later for other cases, and to handle more unforseen situations.
 
+# User variables
+REDUCER="$(echo ~)/percona-qa/reducer.sh"
+
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 WORKD_PWD=$PWD

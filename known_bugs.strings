@@ -74,7 +74,6 @@ btr0cur.cc line 2573                                     ## http://bugs.mysql.co
 buf0buf.cc line 1106                                     ## http://bugs.mysql.com/bug.php?id=76439
 handler0alter.cc line 6647                               ## http://bugs.mysql.com/bug.php?id=76445
 explain_other .. unit->is_optimized                      ## http://bugs.mysql.com/bug.php?id=76446
-row0upd.cc line 1759                                     ## http://bugs.mysql.com/bug.php?id=76528 (likely dup of 75837)
 ## 5.7.7 RC Test
 Z15ha_commit_transP3THDbb                                ## http://bugs.mysql.com/bug.php?id=77520
 trx0trx.cc line 1290                           ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=77521                                     (# after MS 5.7.9 merged)
@@ -92,15 +91,22 @@ Z15acl_update_userPKcS0_8SSL_typeS0_S0_S0_P14user_resourcesmRK25st_mysql_const_l
 Z18get_interval_valueP4Item13interval_typeP6StringP8Interval  ## http://bugs.mysql.com/bug.php?id=75943 and http://bugs.mysql.com/bug.php?id=78187
 Z17test_quick_selectP3THD6BitmapILj64EEyybN8st_order10enum_orderEPK16QEP_shared_ownerP4ItemPS2_PP14QUICK_SELECT_I ## http://bugs.mysql.com/bug.php?id=78188
 fts0fts.cc line 3160                           ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=78235                                     (# after MS 5.7.9 merged)
-ha_innodb.cc line 1220                                  ## http://bugs.mysql.com/bug.php?id=78236
+ha_innodb.cc line 1220                                   ## http://bugs.mysql.com/bug.php?id=78236
 Z14get_quick_keysP5PARAMP18QUICK_RANGE_SELECTP11st_key_partP7SEL_ARGPhjS7_j  ## http://bugs.mysql.com/bug.php?id=78237
-ZN10Field_blob8val_realEv                               ## http://bugs.mysql.com/bug.php?id=78250
-Z7row_updP10upd_node_tP9que_thr_t                       ## http://bugs.mysql.com/bug.php?id=78251
+ZN10Field_blob8val_realEv                                ## http://bugs.mysql.com/bug.php?id=78250
+Z7row_updP10upd_node_tP9que_thr_t                        ## http://bugs.mysql.com/bug.php?id=78251
 ZN16Partition_helper19ph_read_range_firstEPK12st_key_rangeS2_bb ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=78260                    (# after MS 5.7.10 merged)
-ZN7SEL_ARG9store_minEjPPhj                              ## http://bugs.mysql.com/bug.php?id=78238
+ZN7SEL_ARG9store_minEjPPhj                               ## http://bugs.mysql.com/bug.php?id=78238
 #mp->count > 0 .. my_thread_equal.my_thread_self ## Fixed  ## http://bugs.mysql.com/bug.php?id=78337 (unclear what version it was fixed in)
-buf0buf.cc line 3388                          ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=78494                                      (# after MS 5.7.10 merged)
-static_cast<Sql_cmd_xa_commit.>.thd->lex->m_sql_cmd     ## http://bugs.mysql.com/bug.php?id=78695
+buf0buf.cc line 3388                           ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=78494                                     (# after MS 5.7.10 merged)
+static_cast<Sql_cmd_xa_commit.>.thd->lex->m_sql_cmd      ## http://bugs.mysql.com/bug.php?id=78695
+#row0upd.cc line 1786                          ## Fixed  ## http://bugs.mysql.com/bug.php?id=75837
+#row0upd.cc line 1759                          ## Fixed  ## http://bugs.mysql.com/bug.php?id=76528 (likely dup of 75837)
+row0upd.cc line 2171                                     ## http://bugs.mysql.com/bug.php?id=78698 (successor of 75837 & 76528, present in 5.7.8)
+dict0load.cc line 2561                                   ## http://bugs.mysql.com/bug.php?id=78701
+ZN3THD21send_statement_statusEv                          ## http://bugs.mysql.com/bug.php?id=78701
+dict0stats.cc line 3049                                  ## http://bugs.mysql.com/bug.php?id=78714
+ha_innopart.cc line 3526                                 ## http://bugs.mysql.com/bug.php?id=78728
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
@@ -230,7 +236,6 @@ row0sel.cc line 4017                                                            
 row0sel.cc line 4071                                                                    ## https://bugs.launchpad.net/bugs/1402999
 row0umod.cc line 338                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1381916
 row0upd.ic line 182                                               ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74589 - With MS debug build (fixed in 5.6.24, 5.7.6)
-row0upd.cc line 1786                                                                    ## http://bugs.mysql.com/bug.php?id=75837
 row0upd.cc line 1794                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1226538
 srv0srv.cc line 2664                                                                    ## http://bugs.mysql.com/bug.php?id=73913 (same asrt as 74418 but diff)
 srv0srv.cc line 2666                                                                    ## http://bugs.mysql.com/bug.php?id=73913, MS build 5.6.22
