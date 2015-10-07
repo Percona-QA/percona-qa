@@ -571,7 +571,7 @@ if [ ${PXC} -eq 0 ]; then
   fi
 else
   echoit "Ensuring that PXC Docker Images are ready to go..."
-  if [ $(sudo docker images | grep "dockercompose_pxc" | wc -l) -ne 3 ]; then
+  if [ $(sudo docker images | grep "pqueryjenkins_pxc" | wc -l) -ne 3 ]; then
     echoit "Assert: $(sudo docker images | grep "new_pxc" | wc -l) != 3"
     echoit "Did you run cd ${DOCKER_COMPOSE_LOC}; sudo docker-compose up followed by CTRL+C when the cluster was fully up (takes about 5 minutes) ? Terminating."
     exit 1
