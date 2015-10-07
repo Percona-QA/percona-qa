@@ -20,6 +20,10 @@ LD_LIBRARY_PATH=${BASEDIR}/lib                                # Likely does not 
 WORKDIR=/sda/$RANDOMD                                         # Working directory. Here we keep the log files, option list, failed items
 RUNDIR=/dev/shm/$RANDOMD                                      # Run directory. Here we keep a copy of the data template dir and here we do the actual mysqld runs (--datadir=...)
 
+#docker-compose configuration
+DOCKER_COMPOSE_LOC=${SCRIPT_PWD}/pxc-pquery/pquery-jenkins
+DOCKER_COMPOSE_YML=${SCRIPT_PWD}/pxc-pquery/pquery-jenkins/pqueryrun/docker-compose.yml
+
 # Improvement ideas
 # * SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 (These likely include some of the 'SIGKILL' issues - no core but terminated)
 # * SQL hashing s/t2/t1/, hex values "0x"
@@ -192,11 +196,11 @@ pquery_test(){
                                     # from being displayed in the output. Thank you to user 'Foonly' @ forums.whirlpool.net.au
   else
     echoit "Ensuring there are no relevant Docker containers present..."
-    if [ ! -r ${SCRIPT_PWD}/pxc-pquery/docker-compose/cleanup.sh ]; then
-      echoit "Assert: ${SCRIPT_PWD}/pxc-pquery/docker-compose/cleanup.sh was not found!"
+    if [ ! -r ${DOCKER_COMPOSE_LOC}/cleanup.sh ]; then
+      echoit "Assert: ${DOCKER_COMPOSE_LOC}/cleanup.sh was not found!"
       exit 1
     else
-      ${SCRIPT_PWD}/pxc-pquery/docker-compose/cleanup.sh
+      ${DOCKER_COMPOSE_LOC}/cleanup.sh
     fi
   fi
   echoit "Clearing rundir..."
@@ -293,12 +297,12 @@ pquery_test(){
   else
     mkdir -p ${RUNDIR}/${TRIAL}/
     chmod 777 -R ${RUNDIR} 
-    echoit "Copying docker-compose file (${SCRIPT_PWD}/pxc-pquery/docker-compose/pqueryrun/docker-compose.yml) to trial workdir ${RUNDIR}/${TRIAL}"
-    if [ ! -r ${SCRIPT_PWD}/pxc-pquery/docker-compose/pqueryrun/docker-compose.yml ]; then
-      echoit "Assert: ${SCRIPT_PWD}/pxc-pquery/docker-compose/pqueryrun/docker-compose.yml not found? Terminating."
+    echoit "Copying docker-compose file (${DOCKER_COMPOSE_YML}) to trial workdir ${RUNDIR}/${TRIAL}"
+    if [ ! -r ${DOCKER_COMPOSE_YML} ]; then
+      echoit "Assert: ${DOCKER_COMPOSE_YML} not found? Terminating."
       exit 1
     else
-      cp ${SCRIPT_PWD}/pxc-pquery/docker-compose/pqueryrun/docker-compose.yml ${RUNDIR}/${TRIAL} 
+      cp ${DOCKER_COMPOSE_YML} ${RUNDIR}/${TRIAL} 
     fi
 
     # Adding random PXC wsrep related mysqld options to MYEXTRA 
@@ -499,7 +503,7 @@ pquery_test(){
       sleep 2; sync
     else
       echoit "3 Node PXC Cluster failed to start after ${PXC_DOCKER_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
-      ${SCRIPT_PWD}/pxc-pquery/docker-compose/cleanup.sh
+      ${DOCKER_COMPOSE_LOC}/cleanup.sh
       sleep 2; sync
     fi
   fi
@@ -569,7 +573,7 @@ else
   echoit "Ensuring that PXC Docker Images are ready to go..."
   if [ $(sudo docker images | grep "dockercompose_pxc" | wc -l) -ne 3 ]; then
     echoit "Assert: $(sudo docker images | grep "new_pxc" | wc -l) != 3"
-    echoit "Did you run cd ${SCRIPT_PWD}/pxc-pquery/docker-compose/; sudo docker-compose up followed by CTRL+C when the cluster was fully up (takes about 5 minutes) ? Terminating."
+    echoit "Did you run cd ${DOCKER_COMPOSE_LOC}; sudo docker-compose up followed by CTRL+C when the cluster was fully up (takes about 5 minutes) ? Terminating."
     exit 1
   else
     echoit "Found 3 dockercompose_pxc images in place/ready to go, proceeding..."
@@ -594,7 +598,7 @@ if [ ${PXC} -eq 0 ]; then
   fi
 else
   echoit "Cleaning up remaining Docker containers..."
-  ${SCRIPT_PWD}/pxc-pquery/docker-compose/cleanup.sh
+  ${DOCKER_COMPOSE_LOC}/cleanup.sh
 fi
 echoit "Done. Attempting to cleanup the pquery rundir ${RUNDIR}..."
 rm -Rf ${RUNDIR}

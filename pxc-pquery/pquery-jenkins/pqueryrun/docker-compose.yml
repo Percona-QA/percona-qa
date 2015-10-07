@@ -1,0 +1,40 @@
+pxc1:
+  image: pqueryjenkins_pxc1
+  hostname: pxc1
+  privileged: true
+  volumes:
+      - "/dev/shm/pxc-pquery/1:/data"
+  ports:
+      - "10000:3306"
+      - "10001:4567"
+      - "10002:4568"
+  command: sh -c "sed -i 's|/var/lib/mysql|/data|' /etc/my.cnf && cp -R /var/lib/mysql/* /data && chmod -R 777 /data && cp /mysql/bin/mysqld /data && cd /data && /usr/bin/ldd_files.sh && /mysql/bin/mysqld --basedir=/mysql --datadir=/data  --core-file --user=mysql --wsrep-new-cluster --skip-grant-tables --log-error=error.log"
+
+pxc2:
+  image: pqueryjenkins_pxc2
+  hostname: pxc2
+  privileged: true
+  volumes:
+      - "/dev/shm/pxc-pquery/2:/data"
+  links:
+      - pxc1:pxc1
+  ports:
+      - "11000:3306"
+      - "11001:4567"
+      - "11002:4568"
+  command: sh -c "/bin/sleep 4 &&  sed -i 's|/var/lib/mysql|/data|' /etc/my.cnf && cp -R /var/lib/mysql/* /data && chmod -R 777 /data && cp /mysql/bin/mysqld /data && cd /data && /usr/bin/ldd_files.sh && /mysql/bin/mysqld --basedir=/mysql --datadir=/data  --core-file --user=mysql --wsrep-node-name=pxc2 --wsrep_cluster_address=gcomm://pxc1 --skip-grant-tables --wsrep-sst-method=rsync --log-error=error.log"
+
+pxc3:
+  image: pqueryjenkins_pxc3
+  hostname: pxc3
+  privileged: true
+  volumes:
+      - "/dev/shm/pxc-pquery/3:/data"
+  links:
+      - pxc1:pxc1
+      - pxc2:pxc2
+  ports:
+      - "12000:3306"
+      - "12001:4567"
+      - "12002:4568"
+  command: sh -c "/bin/sleep 40 && sed -i 's|/var/lib/mysql|/data|' /etc/my.cnf && cp -R /var/lib/mysql/* /data && chmod -R 777 /data && cp /mysql/bin/mysqld /data && cd /data && /usr/bin/ldd_files.sh && /mysql/bin/mysqld --basedir=/mysql --datadir=/data  --core-file --user=mysql --wsrep-node-name=pxc3 --wsrep_cluster_address=gcomm://pxc1,pxc2 --skip-grant-tables  --wsrep-sst-method=rsync --log-error=error.log"

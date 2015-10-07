@@ -13,6 +13,9 @@ REDUCER="$(echo ~)/percona-qa/reducer.sh"
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 WORKD_PWD=$PWD
 
+# User variables
+REDUCER="${SCRIPT_PWD}/reducer.sh"
+
 # Check if this is a pxc run
 if [ "$1" == "pxc" ]; then
   PXC=1
