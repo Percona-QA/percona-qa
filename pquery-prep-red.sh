@@ -7,7 +7,7 @@
 # This handles crashes/asserts for the moment only. Could be expanded later for other cases, and to handle more unforseen situations.
 
 # User variables
-REDUCER="/home/roel/randgen/util/reducer/reducer.sh"
+REDUCER="$(echo ~)/percona-qa/reducer.sh"
 
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
