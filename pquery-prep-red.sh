@@ -12,6 +12,8 @@ WORKD_PWD=$PWD
 
 # User variables
 REDUCER="${SCRIPT_PWD}/reducer.sh"
+DOCKER_COMPOSE_YML="`grep '^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*[ \t]*||'`"
+DOCKER_COMPOSE_LOC="`grep '^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*[ \t]*||'`"
 
 # Check if this is a pxc run
 if [ "$1" == "pxc" ]; then
@@ -212,12 +214,14 @@ generate_reducer_script(){
     PXC_CLEANUP1="0,/^[ \t]*PXC_DOCKER_FIG_MOD[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_FIG_MOD[ \t]*=.*$|#PXC_DOCKER_FIG_MOD=<set_below_in_machine_variables_section>|"
     PXC_CLEANUP2="0,/^[ \t]*PXC_DOCKER_FIG_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_FIG_LOC[ \t]*=.*$|#PXC_DOCKER_FIG_LOC=<set_below_in_machine_variables_section>|"
     PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_MOD=1\n#VARMOD#:"
-    PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_LOC=${SCRIPT_PWD}\/pxc-pquery\/docker-compose\/pqueryrun\/docker-compose.yml\n#VARMOD#:"
+    PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_LOC=${DOCKER_COMPOSE_YML}\n#VARMOD#:"
+    PXC_STRING3="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_CLEAN_LOC=${DOCKER_COMPOSE_LOC}\n#VARMOD#:"
   else
     PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
     PXC_CLEANUP2="s|ZERO0|ZERO0|"
     PXC_STRING1="s|ZERO0|ZERO0|"
     PXC_STRING2="s|ZERO0|ZERO0|"
+    PXC_STRING3="s|ZERO0|ZERO0|"
   fi
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
@@ -245,6 +249,7 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
    | sed -e "${PXC_STRING1}" \
    | sed -e "${PXC_STRING2}" \
+   | sed -e "${PXC_STRING3}" \
    > ./reducer${OUTFILE}.sh
   chmod +x ./reducer${OUTFILE}.sh 
 }

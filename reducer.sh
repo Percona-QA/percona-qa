@@ -76,7 +76,8 @@ TS_VARIABILITY_SLEEP=1
 # === Old Percona XtraDB Cluster options (deprecated: fig for Docker is no longer maintained, this functionality needs to be updated to Docker Compose)
 PXC_DOCKER_FIG_MOD=0  # deprecated    # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster 
 PXC_ISSUE_NODE=0      # deprecated    # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
-PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml   # deprecated
+PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml
+PXC_DOCKER_CLEAN_LOC=~/percona-qa/pxc-pquery 
 
 # ==== Examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for CLI output (MODE=2 or 5)
@@ -325,10 +326,7 @@ ctrl_c(){
   echo_out "[Abort] End of dump stack."
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then 
     echo_out "[Abort] Ensuring any remaining PXC Docker containers are terminated and removed"
-    sudo docker kill $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-    sleep 1; sync
-    sudo docker rm $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-    sleep 1; sync
+    ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
   fi
   echo_out "[Abort] Ensuring any remaining live processes are terminated"
   PIDS_TO_TERMINATE=$(ps -ef | grep "$DIRVALUE" | grep -v "grep" | awk '{print $2}' | tr '\n' ' ')
@@ -1659,10 +1657,7 @@ cleanup_and_save(){
   else
     if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
       echo_out "[Clean] Ensuring any remaining PXC Docker containers are terminated and removed"
-      sudo docker kill $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-      sleep 1; sync
-      sudo docker rm $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-      sleep 1; sync
+      ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
     fi
     cp -f $WORKT $WORKF
     if [ -r "$WORKO" ]; then  # First occurence: there is no $WORKO yet
@@ -1943,10 +1938,7 @@ process_outcome(){
 
 stop_mysqld_or_pxc(){
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-    sudo docker kill $(sudo docker ps -a | grep "new_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-    sleep 1; sync
-    sudo docker rm $(sudo docker ps -a | grep "new_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-    sleep 1; sync
+    ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
   else
     if [ ${FORCE_KILL} -eq 1 ]; then
       while :; do
