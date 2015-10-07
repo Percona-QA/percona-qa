@@ -15,8 +15,8 @@ WORKD_PWD=$PWD
 
 # User variables
 REDUCER="${SCRIPT_PWD}/reducer.sh"
-DOCKER_COMPOSE_YML="`grep '^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*[ \t]*||'`"
-DOCKER_COMPOSE_LOC="`grep '^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*[ \t]*||'`"
+DOCKER_COMPOSE_YML="`grep '^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*[ \t]*||' | sed 's|${SCRIPT_PWD}||'`"
+DOCKER_COMPOSE_LOC="`grep '^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*[ \t]*||' | sed 's|${SCRIPT_PWD}||'`"
 
 # Check if this is a pxc run
 if [ "$1" == "pxc" ]; then
@@ -216,12 +216,14 @@ generate_reducer_script(){
   if [ ${PXC} -eq 1 ]; then
     PXC_CLEANUP1="0,/^[ \t]*PXC_DOCKER_FIG_MOD[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_FIG_MOD[ \t]*=.*$|#PXC_DOCKER_FIG_MOD=<set_below_in_machine_variables_section>|"
     PXC_CLEANUP2="0,/^[ \t]*PXC_DOCKER_FIG_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_FIG_LOC[ \t]*=.*$|#PXC_DOCKER_FIG_LOC=<set_below_in_machine_variables_section>|"
+    PXC_CLEANUP3="0,/^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$|#PXC_DOCKER_CLEAN_LOC=<set_below_in_machine_variables_section>|"
     PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_MOD=1\n#VARMOD#:"
-    PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_LOC=${DOCKER_COMPOSE_YML}\n#VARMOD#:"
-    PXC_STRING3="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_CLEAN_LOC=${DOCKER_COMPOSE_LOC}\n#VARMOD#:"
+    PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_YML}\n#VARMOD#:"
+    PXC_STRING3="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_CLEAN_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_LOC}\n#VARMOD#:"
   else
     PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
     PXC_CLEANUP2="s|ZERO0|ZERO0|"
+    PXC_CLEANUP3="s|ZERO0|ZERO0|"
     PXC_STRING1="s|ZERO0|ZERO0|"
     PXC_STRING2="s|ZERO0|ZERO0|"
     PXC_STRING3="s|ZERO0|ZERO0|"
@@ -239,6 +241,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "${PXC_CLEANUP1}" \
    | sed -e "${PXC_CLEANUP2}" \
+   | sed -e "${PXC_CLEANUP3}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
    | sed -e "${TEXT_STRING2}" \
