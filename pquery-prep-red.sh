@@ -295,7 +295,7 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
       else
         BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//'`"
       fi
-      BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
+      #BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
       CORE=`ls -1 ./${TRIAL}/${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
       if [ "$CORE" != "" ]; then
         extract_queries_core
