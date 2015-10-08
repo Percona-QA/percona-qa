@@ -318,7 +318,9 @@ pquery_test(){
       MYEXTRA=" ${MYEXTRA} ${OPTIONS_TO_ADD} --log-error=error.log"
       sed -i "s|--log-error=error.log|${MYEXTRA}|" ${RUNDIR}/${TRIAL}/docker-compose.yml
     fi
-
+    echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
+    # Restore orignal MYEXTRA for the next trial (MYEXTRA is no longer needed anywhere else. If this changes in the future, relocate this to below the changed code)
+    MYEXTRA=${MYEXTRA_SAVE_IT}
     echoit "Changing ${RUNDIR}/${TRIAL}/docker-compose.yml to use this trial's path (${RUNDIR}/${TRIAL})..."
     sed -i "s|/dev/shm/pxc-pquery|${RUNDIR}/${TRIAL}|" ${RUNDIR}/${TRIAL}/docker-compose.yml
     echoit "Starting 3 node PXC Cluster..."

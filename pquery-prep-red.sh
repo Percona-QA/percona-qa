@@ -6,14 +6,10 @@
 # To aid with correct bug to testcase generation for pquery trials, this script creates a local run script for reducer and sets #VARMOD#.
 # This handles crashes/asserts for the moment only. Could be expanded later for other cases, and to handle more unforseen situations.
 
-# User variables
-REDUCER="$(echo ~)/percona-qa/reducer.sh"
 
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 WORKD_PWD=$PWD
-
-# User variables
 REDUCER="${SCRIPT_PWD}/reducer.sh"
 DOCKER_COMPOSE_YML="`grep '^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*[ \t]*||' | sed 's|${SCRIPT_PWD}||'`"
 DOCKER_COMPOSE_LOC="`grep '^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*[ \t]*||' | sed 's|${SCRIPT_PWD}||'`"
