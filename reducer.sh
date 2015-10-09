@@ -500,7 +500,7 @@ options_check(){
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
     PQUERY_MOD=1
     # ========= These are currently limitations of PXC_DOCKER_FIG_MOD. Feel free to extend reducer.sh to handle these ========
-    export -n MYEXTRA=""  # Serious shortcoming. Work to be done.
+    #export -n MYEXTRA=""  # Serious shortcoming. Work to be done. PQUERY MYEXTRA variables will be added docker-compose.yml
     export -n FORCE_SPORADIC=0
     export -n SPORADIC=0
     export -n FORCE_SKIPV=0
@@ -1211,6 +1211,7 @@ init_mysql_dir(){
     sudo rm -Rf $WORKD/data/*
     cp $PXC_DOCKER_FIG_LOC $WORKD
     sed -i "s|/dev/shm/pxc-pquery|$WORKD|" $WORKD/docker-compose.yml
+    sed -i "s|--log-error=error.log|${MYEXTRA} --log-error=error.log|" $WORKD/docker-compose.yml
   else
     rm -Rf $WORKD/data/*
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
@@ -1761,6 +1762,7 @@ process_outcome(){
     ERRORLOG=
     if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
       ERRORLOG=$WORKD/*/error.log
+      sudo chmod 777 $ERRORLOG
     else
       ERRORLOG=$WORKD/error.log.out
     fi
