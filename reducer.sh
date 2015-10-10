@@ -1208,10 +1208,10 @@ init_workdir_and_files(){
 
 init_mysql_dir(){
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-    sudo rm -Rf $WORKD/data/*
+    sudo rm -Rf $WORKD/1 $WORKD/2 $WORKD/3 
     cp $PXC_DOCKER_FIG_LOC $WORKD
     sed -i "s|/dev/shm/pxc-pquery|$WORKD|" $WORKD/docker-compose.yml
-    sed -i "s|--log-error=error.log|${MYEXTRA} --log-error=error.log|" $WORKD/docker-compose.yml
+    sed -i "s|--log-error=error.log|${MYEXTRA}|" $WORKD/docker-compose.yml
   else
     rm -Rf $WORKD/data/*
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
