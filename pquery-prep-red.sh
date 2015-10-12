@@ -293,7 +293,7 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
       if [ `ls ./pquery-run.log 2>/dev/null | wc -l` -eq 0 ]; then
         BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
       else
-        BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//'`"
+        BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//' | tr -d '[[:space:]]'`"
       fi
       #BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
       CORE=`ls -1 ./${TRIAL}/${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
