@@ -107,6 +107,7 @@ dict0load.cc line 2561                                   ## http://bugs.mysql.co
 ZN3THD21send_statement_statusEv                          ## http://bugs.mysql.com/bug.php?id=78701
 dict0stats.cc line 3049                                  ## http://bugs.mysql.com/bug.php?id=78714
 ha_innopart.cc line 3526                                 ## http://bugs.mysql.com/bug.php?id=78728
+ha_innodb.cc line 1803                                   ## http://bugs.mysql.com/bug.php?id=78732
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
