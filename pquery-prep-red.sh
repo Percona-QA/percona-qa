@@ -6,15 +6,13 @@
 # To aid with correct bug to testcase generation for pquery trials, this script creates a local run script for reducer and sets #VARMOD#.
 # This handles crashes/asserts for the moment only. Could be expanded later for other cases, and to handle more unforseen situations.
 
-# User variables
-REDUCER="$(echo ~)/percona-qa/reducer.sh"
 
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 WORKD_PWD=$PWD
-
-# User variables
 REDUCER="${SCRIPT_PWD}/reducer.sh"
+DOCKER_COMPOSE_YML="`grep '^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*[ \t]*||' | sed 's|${SCRIPT_PWD}||'`"
+DOCKER_COMPOSE_LOC="`grep '^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*[ \t]*||' | sed 's|${SCRIPT_PWD}||'`"
 
 # Check if this is a pxc run
 if [ "$1" == "pxc" ]; then
@@ -214,13 +212,17 @@ generate_reducer_script(){
   if [ ${PXC} -eq 1 ]; then
     PXC_CLEANUP1="0,/^[ \t]*PXC_DOCKER_FIG_MOD[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_FIG_MOD[ \t]*=.*$|#PXC_DOCKER_FIG_MOD=<set_below_in_machine_variables_section>|"
     PXC_CLEANUP2="0,/^[ \t]*PXC_DOCKER_FIG_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_FIG_LOC[ \t]*=.*$|#PXC_DOCKER_FIG_LOC=<set_below_in_machine_variables_section>|"
+    PXC_CLEANUP3="0,/^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$|#PXC_DOCKER_CLEAN_LOC=<set_below_in_machine_variables_section>|"
     PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_MOD=1\n#VARMOD#:"
-    PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_LOC=${SCRIPT_PWD}\/pxc-pquery\/docker-compose\/pqueryrun\/docker-compose.yml\n#VARMOD#:"
+    PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_YML}\n#VARMOD#:"
+    PXC_STRING3="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_CLEAN_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_LOC}\n#VARMOD#:"
   else
     PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
     PXC_CLEANUP2="s|ZERO0|ZERO0|"
+    PXC_CLEANUP3="s|ZERO0|ZERO0|"
     PXC_STRING1="s|ZERO0|ZERO0|"
     PXC_STRING2="s|ZERO0|ZERO0|"
+    PXC_STRING3="s|ZERO0|ZERO0|"
   fi
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
@@ -235,6 +237,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "${PXC_CLEANUP1}" \
    | sed -e "${PXC_CLEANUP2}" \
+   | sed -e "${PXC_CLEANUP3}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
    | sed -e "${TEXT_STRING2}" \
@@ -248,6 +251,7 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
    | sed -e "${PXC_STRING1}" \
    | sed -e "${PXC_STRING2}" \
+   | sed -e "${PXC_STRING3}" \
    > ./reducer${OUTFILE}.sh
   chmod +x ./reducer${OUTFILE}.sh 
 }
@@ -289,9 +293,9 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
       if [ `ls ./pquery-run.log 2>/dev/null | wc -l` -eq 0 ]; then
         BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
       else
-        BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//'`"
+        BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//' | tr -d '[[:space:]]'`"
       fi
-      BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
+      #BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
       CORE=`ls -1 ./${TRIAL}/${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
       if [ "$CORE" != "" ]; then
         extract_queries_core

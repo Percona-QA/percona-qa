@@ -1,0 +1,4 @@
+Execute following docker command to build custom PXC pquery jenkins image
+
+cd jenkins_build 
+docker build -t pqueryjenkins .

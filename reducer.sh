@@ -76,7 +76,8 @@ TS_VARIABILITY_SLEEP=1
 # === Old Percona XtraDB Cluster options (deprecated: fig for Docker is no longer maintained, this functionality needs to be updated to Docker Compose)
 PXC_DOCKER_FIG_MOD=0  # deprecated    # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster 
 PXC_ISSUE_NODE=0      # deprecated    # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
-PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml   # deprecated
+PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml
+PXC_DOCKER_CLEAN_LOC=~/percona-qa/pxc-pquery 
 
 # ==== Examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for CLI output (MODE=2 or 5)
@@ -325,10 +326,7 @@ ctrl_c(){
   echo_out "[Abort] End of dump stack."
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then 
     echo_out "[Abort] Ensuring any remaining PXC Docker containers are terminated and removed"
-    sudo docker kill $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-    sleep 1; sync
-    sudo docker rm $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-    sleep 1; sync
+    ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
   fi
   echo_out "[Abort] Ensuring any remaining live processes are terminated"
   PIDS_TO_TERMINATE=$(ps -ef | grep "$DIRVALUE" | grep -v "grep" | awk '{print $2}' | tr '\n' ' ')
@@ -502,7 +500,7 @@ options_check(){
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
     PQUERY_MOD=1
     # ========= These are currently limitations of PXC_DOCKER_FIG_MOD. Feel free to extend reducer.sh to handle these ========
-    export -n MYEXTRA=""  # Serious shortcoming. Work to be done.
+    #export -n MYEXTRA=""  # Serious shortcoming. Work to be done. PQUERY MYEXTRA variables will be added docker-compose.yml
     export -n FORCE_SPORADIC=0
     export -n SPORADIC=0
     export -n FORCE_SKIPV=0
@@ -1210,9 +1208,18 @@ init_workdir_and_files(){
 
 init_mysql_dir(){
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-    sudo rm -Rf $WORKD/data/*
+    sudo rm -Rf $WORKD/1 $WORKD/2 $WORKD/3 
     cp $PXC_DOCKER_FIG_LOC $WORKD
     sed -i "s|/dev/shm/pxc-pquery|$WORKD|" $WORKD/docker-compose.yml
+    if [ ${STAGE} -eq 8 ]; then
+      export -n MYEXTRA=${MYEXTRA_STAGE8}
+      COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA";
+      sed -i "s|--log-error=error.log|${MYEXTRA} --log-error=error.log|" $WORKD/docker-compose.yml
+      read
+    else
+      sed -i "s|--log-error=error.log|${MYEXTRA}|" $WORKD/docker-compose.yml
+    fi
   else
     rm -Rf $WORKD/data/*
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
@@ -1659,10 +1666,7 @@ cleanup_and_save(){
   else
     if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
       echo_out "[Clean] Ensuring any remaining PXC Docker containers are terminated and removed"
-      sudo docker kill $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-      sleep 1; sync
-      sudo docker rm $(sudo docker ps -a | grep "dockercompose_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-      sleep 1; sync
+      ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
     fi
     cp -f $WORKT $WORKF
     if [ -r "$WORKO" ]; then  # First occurence: there is no $WORKO yet
@@ -1766,6 +1770,7 @@ process_outcome(){
     ERRORLOG=
     if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
       ERRORLOG=$WORKD/*/error.log
+      sudo chmod 777 $ERRORLOG
     else
       ERRORLOG=$WORKD/error.log.out
     fi
@@ -1943,10 +1948,7 @@ process_outcome(){
 
 stop_mysqld_or_pxc(){
   if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
-    sudo docker kill $(sudo docker ps -a | grep "new_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-    sleep 1; sync
-    sudo docker rm $(sudo docker ps -a | grep "new_pxc" | awk '{print $1}' | tr '\n' ' ') 2>/dev/null
-    sleep 1; sync
+    ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
   else
     if [ ${FORCE_KILL} -eq 1 ]; then
       while :; do
