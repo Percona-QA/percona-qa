@@ -1213,10 +1213,7 @@ init_mysql_dir(){
     sed -i "s|/dev/shm/pxc-pquery|$WORKD|" $WORKD/docker-compose.yml
     if [ ${STAGE} -eq 8 ]; then
       export -n MYEXTRA=${MYEXTRA_STAGE8}
-      COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA";
       sed -i "s|--log-error=error.log|${MYEXTRA} --log-error=error.log|" $WORKD/docker-compose.yml
-      read
     else
       sed -i "s|--log-error=error.log|${MYEXTRA}|" $WORKD/docker-compose.yml
     fi
