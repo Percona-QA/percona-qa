@@ -89,6 +89,9 @@
   echo $[ $(date +%s) - $(stat -c %Z filename.txt) ]  # where filename.txt is the file name (can also be a directory name) you want to know the age of
 # For each file in a given filespec, action something. Example here: all reducer logs
   for file in /dev/shm/14*/reducer.log; do echo "$file"; done
+# Two different ways to find today's directories, text process them, and then execute the processed text
+  find . -mindepth 1 -maxdepth 1 -type d -mtime -1 -exec sh -c 'cd {};~/percona-qa/pquery-results.sh' \;
+  ls -l | grep "$(date | awk '{print $2" "$3}')" | sed 's|.*:[0-9][0-9] ||' | xargs -I{} echo 'cd {};~/percona-qa/pquery-results.sh' | xargs -I{} sh -c '{}'
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
