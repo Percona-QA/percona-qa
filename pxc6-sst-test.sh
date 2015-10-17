@@ -49,7 +49,7 @@ TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
 tar -xf $TAR
 
 for ver in {20..0};do 
-    BBASE="percona-xtrabackup-${XB_VER}.${ver}-Linux-$(uname -m)"
+    BBASE=`ls  -d percona-xtrabackup*-Linux-$(uname -m)`
     if [[ -d $BBASE ]];then 
         XB_VER=2.2.$ver
         break
