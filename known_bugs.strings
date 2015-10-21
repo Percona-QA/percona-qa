@@ -16,7 +16,7 @@
 ## [ERROR] Got error 155 when reading table                 ## Read from table after ALTER TABLE x DISCARD TABLESPACE  | MS 75911
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
-## =========== 5.7 Work ===========
+## =========== 5.7 Prepatory Work ===========
 ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
 ut0ut.cc line 906                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
 ut0ut.cc line 916                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
@@ -108,6 +108,9 @@ ZN3THD21send_statement_statusEv                          ## http://bugs.mysql.co
 dict0stats.cc line 3049                                  ## http://bugs.mysql.com/bug.php?id=78714
 ha_innopart.cc line 3526                                 ## http://bugs.mysql.com/bug.php?id=78728
 ha_innodb.cc line 1803                                   ## http://bugs.mysql.com/bug.php?id=78732
+
+## =========== PS 5.7 Work ===========
+ZN8Item_row7val_strEP6String                             ## alpha # https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...

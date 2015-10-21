@@ -1195,7 +1195,7 @@ init_workdir_and_files(){
       fi
       echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP6: Verify the error log" >> $WORK_HOW_TO_USE
       echo "$ ./${EPOCH2}_gdb         # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_parse_core  # STEP7: Create ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
+      echo "$ ./${EPOCH2}_parse_core  # STEP7: Creates ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
       chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
       stop_mysqld_or_pxc
       mkdir $WORKD/data.init

@@ -92,6 +92,10 @@
 # Two different ways to find today's directories, text process them, and then execute the processed text
   find . -mindepth 1 -maxdepth 1 -type d -mtime -1 -exec sh -c 'cd {};~/percona-qa/pquery-results.sh' \;
   ls -l | grep "^d" | grep "$(date +'%b %d')" | sed 's|.*:[0-9][0-9] ||' | xargs -I{} echo 'cd {};~/percona-qa/pquery-results.sh' | xargs -I{} sh -c '{}'
+# Display a one-liner script, and append to it a given option, then execute the total. Example used here is a MyQSL client script which already has mysql -uroot etc.
+  cat ./cl | sed -e "s|$| -e 'SELECT 1;SELECT 2;'|" | xargs -0 -I{} sh -c {}
+# Insert a line at the top of a file
+  sed -ie '1i\your_text_here' file.txt
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging

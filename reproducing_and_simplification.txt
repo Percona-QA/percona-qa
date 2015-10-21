@@ -82,6 +82,9 @@ However, for issues that fail to reproduce, try these things (in this order):
 * Go back to an older version of the file. i.e. instead of _out_out, start with _out or even the original testcase again. The randomness in simplification
   chunk deletion may take a very different route this time. This has shown to work well
 
+* Try with and without jemalloc. In one instance, this made the difference between reproducibility or not. The other thing to check is that all more generic
+  mysqld options (--no-defaults, --sql_mode=ONLY_FULL_GROUP_BY, --event-scheduler=ON etc.) also match between tests.
+
 * If all else fails, set MODE=4 instead of MODE=3. This will now look for any crash. 
   Note that as reducer is randomly chunking, you may run into different crashes and as such have to restart reducer a few times to reduce to the correct one.
 

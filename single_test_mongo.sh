@@ -11,8 +11,6 @@
 TEST_TO_RUN=./parallel/basic.js            # The actual test to run
 PRI_ENGINE=tokuft                          # Primary engine to use for testing (usually tokuft)
 SEC_ENGINE=wiredTiger                      # Compare primary engine against this engine (usually mmapv1 or wiredTiger)
-SEC_ENGINE=mmapv1
-PRI_ENGINE=tokuft
 TEST_TO_RUN=./noPassthroughWithMongod/index_retry.js
 
 # Semi-configurable user variables. Automated script configurable variables
