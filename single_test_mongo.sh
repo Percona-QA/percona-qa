@@ -77,16 +77,16 @@ if [ ! -r ${PWD}/jstests/${TEST_TO_RUN} ]; then
 fi
 
 if [ ${VERBOSE} -eq 1 ]; then echoit "Intializing per-engine working directories..."; fi
-WORKDIR_SEC="${WORKDIR}/$(echo ${PRI_SHORT_ENGINE_NAME})_RUN_DATA"
-mkdir -p ${WORKDIR_SEC}
-if [ ! -d ${WORKDIR_SEC} ]; then 
-  echoit "Assert: this script tried to create the directory ${WORKDIR_SEC}, but the directory does not exist after creation!"
-  exit 1
-fi
-WORKDIR_PRI="${WORKDIR}/$(echo ${SEC_SHORT_ENGINE_NAME})_RUN_DATA"
+WORKDIR_PRI="${WORKDIR}/$(echo ${PRI_SHORT_ENGINE_NAME})_RUN_DATA"
 mkdir -p ${WORKDIR_PRI}
 if [ ! -d ${WORKDIR_PRI} ]; then 
   echoit "Assert: this script tried to create the directory ${WORKDIR_PRI}, but the directory does not exist after creation!"
+  exit 1
+fi
+WORKDIR_SEC="${WORKDIR}/$(echo ${SEC_SHORT_ENGINE_NAME})_RUN_DATA"
+mkdir -p ${WORKDIR_SEC}
+if [ ! -d ${WORKDIR_SEC} ]; then 
+  echoit "Assert: this script tried to create the directory ${WORKDIR_SEC}, but the directory does not exist after creation!"
   exit 1
 fi
 

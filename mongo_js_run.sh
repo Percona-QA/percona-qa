@@ -5,7 +5,7 @@
 # around single_test_mongo.sh. It analyzes output of single_test_mongo.sh &  reports on the same. It also stores interesting results to a ${RESULTSDIR} dir.
 
 # User configurable variables
-MONGODIR="/sdc/tokumxse.rc6/tokumxse/"     # Where mongo/mongod lives
+MONGODIR="/sdc/tokumxse_debug_build/tokumxse/"     # Where mongo/mongod lives
 RESULTS_DIR="/sdc"                         # Where failures/bugs are stored
 JS_LIST="/sdc/js_tests_to_run.txt"         # Temporary file of JS tests (created by this script)
 THREADS=10                                 # Number of threads that should run
