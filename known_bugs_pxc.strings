@@ -2,7 +2,9 @@
 ## =========== Line number based ===========
 ha_innodb.cc line 15656                                                                  ## https://jira.percona.com/browse/PXC-452
 ## =========== Assertion based ===========
+.provider_resumed                                                                        ## https://jira.percona.com/browse/PXC-461
 .strcmp.table_list->get_db_name                                                          ## https://jira.percona.com/browse/PXC-453
+cache_el.i.->used_tables.is_empty                                                        ## https://jira.percona.com/browse/PXC-459
 key_count > 0                                                                            ## https://jira.percona.com/browse/PXC-450
 pool_.size                                                                               ## https://jira.percona.com/browse/PXC-454
 thd->wsrep_exec_mode == LOCAL_STATE                                                      ## https://jira.percona.com/browse/PXC-451
