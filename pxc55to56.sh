@@ -439,7 +439,7 @@ fi
         pushd /tmp
 
         rm $STEST.lua || true
-        wget -O $STEST.lua  https://github.com/akopytov/sysbench/tree/0.5/sysbench/tests/db/${STEST}.lua
+        wget -O $STEST.lua  https://github.com/Percona-QA/sysbench/tree/0.5/sysbench/tests/db/${STEST}.lua
         SDIR=/tmp/
         popd
     fi
