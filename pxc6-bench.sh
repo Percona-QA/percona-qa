@@ -16,6 +16,39 @@ sleep 5
 
 LPATH=${SPATH:-/usr/share/doc/sysbench/tests/db}
 
+# For local run - User Configurable Variables
+if [ -z ${SDURATION} ]; then
+  SDURATION=150
+fi
+
+if [ -z ${DUALTEST} ]; then
+  DUALTEST=1
+fi
+
+if [ -z ${SST_METHOD} ]; then
+  SST_METHOD=rsync
+fi
+
+if [ -z ${STEST} ]; then
+  STEST=oltp
+fi
+
+if [ -z ${TSIZE} ]; then
+  TSIZE=250
+fi
+
+if [ -z ${NUMT} ]; then
+  NUMT=8
+fi
+
+if [ -z ${TCOUNT} ]; then
+  TCOUNT=50
+fi
+
+if [ -z ${AUTOINC} ]; then
+  AUTOINC=off
+fi
+
 SBENCH="sysbench"
 XB_VER=2.2.1
 WORKDIR=$1
@@ -281,7 +314,7 @@ echo "Basedir: $MYSQL_BASEDIR"
         pushd /tmp
 
         rm $STEST.lua || true
-        wget -O $STEST.lua  http://files.wnohang.net/files/${STEST}.lua
+        wget -O $STEST.lua  https://github.com/Percona-QA/sysbench/tree/0.5/sysbench/tests/db/${STEST}.lua
         SDIR=/tmp/
         popd
     fi

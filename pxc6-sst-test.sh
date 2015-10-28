@@ -61,6 +61,10 @@ if [[ $ver -eq 0 ]];then
     exit 2
 fi
 
+if [ -z ${BUILD_NUMBER} ]; then
+  BUILD_NUMBER=1
+  rm -Rf ${BUILD_NUMBER}/*
+fi
 
 BUILD_WIPE=$[ ${BUILD_NUMBER} - 5 ]
 if [ -d ${BUILD_WIPE} ]; then rm -Rf ${BUILD_WIPE}; fi
