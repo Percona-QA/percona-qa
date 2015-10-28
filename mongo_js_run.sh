@@ -5,7 +5,7 @@
 # around single_test_mongo.sh. It analyzes output of single_test_mongo.sh &  reports on the same. It also stores interesting results to a ${RESULTSDIR} dir.
 
 # User configurable variables
-MONGODIR="/sdc/tokumxse_debug_build/tokumxse/"     # Where mongo/mongod lives
+MONGODIR="/sda/PSMDB/percona-server-mongodb-3.0.5-rel0.8rc"     # Where mongo/mongod lives (with ./mongod and ./jstests both present!)
 RESULTS_DIR="/sdc"                         # Where failures/bugs are stored
 JS_LIST="/sdc/js_tests_to_run.txt"         # Temporary file of JS tests (created by this script)
 THREADS=10                                 # Number of threads that should run
@@ -27,17 +27,17 @@ CTRL_C_PRESSED=0
 trap ctrl-c SIGINT
 
 ctrl-c(){
-  echoit "CTRL+c Was pressed. Attempting to terminate running processes..."
+  echoit "CTRL+c Was pressed. Results directory: ${RESULTSDIR}" CTRLC
+  echoit "Attempting to terminate running processes..." CTRLC
   touch ${RESULTSDIR}/ctrl_c_was_pressed_during_this_run
   kill_pids
   sleep 1 # Allows background termination & screen output to finish
-  echoit "Done. Results directory: ${RESULTSDIR}" CTRLC
   echoit "Terminating mongo-js-run.sh with exit code 2..." CTRLC
   exit 2
 }
 
 kill_pids(){
-  KILL_PIDS=`ps -ef | grep mongo | grep -v grep | egrep "${WORKDIR}|${RESULTSDIR}" | awk '{print $2}' | tr '\n' ' '`
+  KILL_PIDS=`ps -ef | grep mongo | grep -v grep | grep -v 'mongo_js_run' | egrep "${WORKDIR}|${RESULTSDIR}" | awk '{print $2}' | tr '\n' ' '`
   if [ "${KILL_PIDS}" != "" ]; then
     echoit "Terminating the following PID's: ${KILL_PIDS}"
     kill -9 ${KILL_PIDS} >/dev/null 2>&1

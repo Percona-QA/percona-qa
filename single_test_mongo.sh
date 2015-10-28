@@ -65,8 +65,9 @@ if [ "${2}" != "" ]; then
 fi
 
 if [ ${VERBOSE} -eq 1 ]; then echoit "Checking prerequisites..."; fi
-if [ ! -r mongod -o ! -r mongo -o ! -r mongos ]; then
+if [ ! -r ./mongod -o ! -r ./mongo -o ! -r ./mongos ]; then
   echoit "Assert: required binaries ./mongod, ./mongo and ./mongos not all present in the current directory!"
+  echoit "If this is PSMDB RC8+, did you move ./bin/* to the root of the basedir? If not, please do so (and ./jstests/ should be available here also)"
   ps -ef | grep "mongo_js_run" | grep -v grep | awk '{print $2}' | kill -9 >/dev/null 2>&1  # Halting parent script MJR, if running
   exit 1
 fi
