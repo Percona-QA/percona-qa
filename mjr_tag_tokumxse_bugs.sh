@@ -1,6 +1,12 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
+# Current script shortcomings:
+# 1. It scans through the known_bugs_tokumxse.strings file, irrespective of the SE used in the test. i.e. if that filter list contains tests that need to be filtered which
+#    were the result of MMAPv1 vs TokuFT failures, and it is used in combination with this script against WT vs TokuFT, those issues will be filtered too, irrespective of
+#    the fact that another SE was used. To resolve this, eventually, known_bugs_tokumxse.strings should become SE-aware - another column needs adding + this cript needs
+#    to use the same. For the moment, it is of minor consequence as only a handful of bugs fall into this category (and are likely the same between the two SE compares)
+
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 KNOWN_BUGS_LIST=${SCRIPT_PWD}/known_bugs_tokumxse.strings
 WORKDIR=${PWD}
@@ -34,7 +40,7 @@ while read LINE; do
   TEST="$(echo "${LINE}" | sed 's/|.*//')"
   INFO="$(echo "${LINE}" | sed 's/.*|//;s/ .*//')"
   # echo "TEST = ${TEST} | INFO = ${INFO}"  # Debug
-  QUALIFIES=$(grep "${TEST}" */single_test_mongo.log | head -n2 | sed 's|.*>[ \t]*||;s|[ \t]*for.*||' | tr -d '\n' | tr -d ' ')
+  QUALIFIES=$(grep "${TEST}" */single_test_mongo.log | head -n2 | grep -v "Executing.*test.*against" | sed 's|.*>[ \t]*||;s|[ \t]*for.*||' | tr -d '\n' | tr -d ' ')
   DIRECTORY=$(grep "${TEST}" */single_test_mongo.log | head -n1 | sed 's|\([0-9]\+\).*|\1|')  # This would be empty if no qualifying directory was found
   # Note: -d Directory check cannot be globalized, due to num regex (ref above in DIRECTORY=). The per-if checks prevent further renames on re-run as they do not match
   if [ "${DIRECTORY}" != "" ]; then  # There is a qualifying issue (ref above in DIRECTORY=)
