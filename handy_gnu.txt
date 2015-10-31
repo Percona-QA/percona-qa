@@ -119,7 +119,11 @@
 # When checking for the existence of a directory, do not just use:  if [ -d ${SOME_VAR} ]; then echo "yes"; fi  The reason is that if ${SOME_VAR} is empty,
   the check will still work. Confirm the gotcha by executing:  if [ -d ]; then echo "yes"; fi  Instead, use:  if [ "${SOME_VAR}" != "" -a -d ${SOME_VAR} ];
 # Along the same lines of the last issue, it is an easy mistake to make not to include double quotes around variables when checking for (in)equality. Use;
-  if [ "${SOME_VAR}" == "Some Text" ]; then ...; fi  instead of not using double quotes (which fails when the variable is empty). 
+  if [ "${SOME_VAR}" == "Some Text" ]; then ...; fi  instead of not using double quotes (which fails when the variable is empty).
+# If you see an error like '/usr/bin/ld: cannot find -lsnappy' when compiling, then it means that the snappy (for example) library cannot be found.
+  To discover the real source, run  ld -lsnappy --verbose  and look near the end for the locations is scans for 'attempt to open ...' 
+  If you have the library in a specific location, you can use;  sudo ln -s /usr/lib64/libsnappy.so.1 /usr/lib64/libsnappy.so  or use -L option to your compiler!
+  With thanks, http://stackoverflow.com/questions/16710047/usr-bin-ld-cannot-find-lnameofthelibrary
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)

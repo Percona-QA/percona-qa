@@ -11,7 +11,7 @@ JS_LIST="/sdc/js_tests_to_run.txt"         # Temporary file of JS tests (created
 THREADS=10                                 # Number of threads that should run
 TIMEOUT=$[ 60 * 30 ]                       # Timeout, in seconds, per test (currently 30 min)
 FILES_ULIMIT=100000                        # Ulimit -n value which script will attempt to set (TokuFT needs many file descriptors)
-PRI_ENGINE=perconaft                       # Primary engine to use for testing (usually tokuft)
+PRI_ENGINE=PerconaFT                       # Primary engine to use for testing (usually tokuft)
 SEC_ENGINE=wiredTiger                      # Compare primary engine against this engine (usually mmapv1 or wiredTiger)
 
 # Internal variables

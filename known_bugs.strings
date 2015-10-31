@@ -109,8 +109,12 @@ dict0stats.cc line 3049                                  ## http://bugs.mysql.co
 ha_innopart.cc line 3526                                 ## http://bugs.mysql.com/bug.php?id=78728
 ha_innodb.cc line 1803                                   ## http://bugs.mysql.com/bug.php?id=78732
 
+## =========== MS 5.7 GA ===========
+pfs_file .= __null                                       ## http://bugs.mysql.com/bug.php?id=79016
+
 ## =========== PS 5.7 Work ===========
 ZN8Item_row7val_strEP6String                             ## alpha # https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
+
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
