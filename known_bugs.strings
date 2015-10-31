@@ -111,6 +111,8 @@ ha_innodb.cc line 1803                                   ## http://bugs.mysql.co
 
 ## =========== MS 5.7 GA ===========
 pfs_file .= __null                                       ## http://bugs.mysql.com/bug.php?id=79016
+ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_          ## http://bugs.mysql.com/bug.php?id=79018
+Z22get_filename_hash_pinsP10PFS_thread                   ## http://bugs.mysql.com/bug.php?id=79042
 
 ## =========== PS 5.7 Work ===========
 ZN8Item_row7val_strEP6String                             ## alpha # https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
