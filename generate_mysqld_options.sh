@@ -362,9 +362,21 @@ while read line; do
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
   elif [ "${OPTION}" == "--sql-mode" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-  elif [ "${OPTION}" == "--" ]; then
+  elif [ "${OPTION}" == "--innodb-monitor-gaplock-query-filename" ]; then                  ## fb-mysql
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-  elif [ "${OPTION}" == "--" ]; then
+  elif [ "${OPTION}" == "--innodb-tmpdir" ]; then                                          ## fb-mysql
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--rocksdb-compact-cf" ]; then                                     ## fb-mysql
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--rocksdb-default-cf-options" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--rocksdb-override-cf-options" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--rocksdb-snapshot-dir" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--rocksdb-strict-collation-exceptions" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--rocksdb-wal-dir" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
   elif [ "${OPTION}" == "--" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
