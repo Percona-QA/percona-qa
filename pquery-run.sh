@@ -7,6 +7,7 @@ RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||')
 PXC=0
 DOCKER=0
+SYSBENCH_DATALOAD=1
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 # User Configurable Variables
@@ -566,6 +567,33 @@ if [ ${PXC} -eq 0 ]; then
   else 
     echoit "Error: mysql_install_db not found in $PWD/scripts nor in $PWD/bin"
     exit 1
+  fi
+  # Sysbench dataload
+  if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
+    echoit "Starting mysqld for sysbench data load. Error log is stored at ${WORKDIR}/data.template/master.err"
+    CMD="${BIN} --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template --tmpdir=${WORKDIR}/data.template \
+      --core-file --port=$PORT --pid_file=${WORKDIR}/data.template/pid.pid --socket=${WORKDIR}/data.template/socket.sock \
+      --log-output=none --log-error=${WORKDIR}/data.template/master.err"
+
+    $CMD > ${WORKDIR}/data.template/master.err 2>&1 &
+    MPID="$!"
+
+    for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+      sleep 1
+      if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/data.template/socket.sock ping > /dev/null 2>&1; then
+        break
+      fi
+      if [ "${MPID}" == "" ]; then
+        echoit "Assert! ${MPID} empty. Terminating!"
+        exit 1
+      fi
+    done
+    # Sysbench run for data load
+    /usr/bin/sysbench --test=${SCRIPT_PWD}/sysbench_scripts/parallel_prepare.lua --num-threads=1 --oltp-tables-count=1 --oltp-table-size=1000000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${WORKDIR}/data.template/socket.sock run > ${WORKDIR}/data.template/sysbench_prepare.txt 2>&1
+
+    # Terminate mysqld
+    timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/data.template/socket.sock shutdown > /dev/null 2>&1
+    (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; wait ${MPID} >/dev/null 2>&1) &  # Terminate mysqld
   fi
   echo "${MYEXTRA}${MYSAFE}" | if grep -qi "innodb[_-]log[_-]checksum[_-]algorithm"; then
     # Ensure that if MID created log files with the standard checksum algo, whilst we start the server with another one, that log files are re-created by mysqld
