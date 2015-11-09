@@ -182,28 +182,12 @@ echo "Basedir: $MYSQL_BASEDIR"
   RPORT=$(( RANDOM%21 + 10 ))
   RBASE1="$(( RPORT*1000 ))"
   #lsof -i tcp:$RBASE1 |  awk 'NR!=1 {print $2}'  |  xargs kill -9 2>/dev/null
-  while true ; do
-    netstat -a | grep $RBASE1 >> /dev/null
-    if [ $? -gt 0  ]; then
-      break
-    else
-      RBASE1="$(( RPORT*1000 ))"
-    fi
-  done
   echo "Setting RBASE to $RBASE1"
   RADDR1="$ADDR:$(( RBASE1 + 7 ))"
   LADDR1="$ADDR:$(( RBASE1 + 8 ))"
 
   RBASE2="$(( RBASE1 + 100 ))"
   #lsof -i tcp:$RBASE2 |  awk 'NR!=1 {print $2}'  |  xargs kill -9 2>/dev/null
-  while true ; do
-    netstat -a | grep $RBASE2 >> /dev/null
-    if [ $? -gt 0  ]; then
-      break
-    else
-      RBASE2="$(( RPORT*1000 ))"
-    fi
-  done
   RADDR2="$ADDR:$(( RBASE2 + 7 ))"
   LADDR2="$ADDR:$(( RBASE2 + 8 ))"
 
