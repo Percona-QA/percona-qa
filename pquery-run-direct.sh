@@ -73,21 +73,27 @@ while true; do
   fi
    echoit "[Trial ${TRIAL}] Processing ${QUERIES_PER_THREAD} queries accross ${THREADS} thread(s) with a timeout of ${PQUERY_RUN_TIMEOUT} seconds..."
    timeout --signal=9 ${PQUERY_RUN_TIMEOUT}s ${PQUERY_BIN} --address=${HOST} --port=${PORT} --user=${USER} --password=${PASSWORD} --infile=${INFILE} --database=${DATABASE} --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${WORKDIR}/${TRIAL} --log_all_queries --log_failed_queries >${WORKDIR}/${TRIAL}/pquery.log 2>&1
+   if egrep -qi "Last.*consecutive queries all failed" ${WORKDIR}/${TRIAL}/pquery.log; then
+     echoit "[Trial ${TRIAL}] pquery reported that last set of queries all failed. This could be a crash/assert, user privileges drop, or similar! Error from pquery log:"
+     grep "Last.*consecutive queries all failed" ${WORKDIR}/${TRIAL}/pquery.log | head -n1
+     echoit "[Trial ${TRIAL}] Terminating!"
+     exit 0
+   fi
    if egrep -qi "Can.t connect to MySQL server" ${WORKDIR}/${TRIAL}/pquery.log; then
-     echoit "[Trial ${TRIAL}] Unable to connect to MySQL server! Potential Crash! Error from pquery log:"
-     grep "Can.t connect to MySQL server" ${WORKDIR}/${TRIAL}/pquery.log
+     echoit "[Trial ${TRIAL}] Unable to connect to MySQL server! Potentially incorrect settings, crash/assert, user privileges drop, or similar! Error from pquery log:"
+     grep "Can.t connect to MySQL server" ${WORKDIR}/${TRIAL}/pquery.log | head -n1
      echoit "[Trial ${TRIAL}] Terminating!"
      exit 1
    fi
    if egrep -qi "Access denied for user" ${WORKDIR}/${TRIAL}/pquery.log; then
      echoit "[Trial ${TRIAL}] Authentication denied - check credentials! Error from pquery log:"
-     grep "Access denied for user" ${WORKDIR}/${TRIAL}/pquery.log
+     grep "Access denied for user" ${WORKDIR}/${TRIAL}/pquery.log | head -n1 
      echoit "[Trial ${TRIAL}] Terminating!"
      exit 1
    fi
    if egrep -qi "Too many connections" ${WORKDIR}/${TRIAL}/pquery.log; then
      echoit "[Trial ${TRIAL}] Connection failed - MySQL server reports 'Too many connections' - this is a known issue! Recommend action: restart server. Error from pquery log:"
-     grep "Too many connections" ${WORKDIR}/${TRIAL}/pquery.log
+     grep "Too many connections" ${WORKDIR}/${TRIAL}/pquery.log | head -n1
      echoit "[Trial ${TRIAL}] Terminating!"
      exit 1
    fi
