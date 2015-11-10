@@ -83,7 +83,11 @@ if [ ${MULTI_THREADED_RUN} -eq 0 ]; then
     PQUERY_RUN_TIMEOUT=120  # See below for run time timeout descripton. Starting up a cluster takes more time, so don't rotate too quickly
     QUERIES_PER_THREAD=2147483647  # Max int
   else
-    PQUERY_RUN_TIMEOUT=15  # x seconds max pquery trial run time (in this it will try to process ${QUERIES_PER_THREAD} x ${THREADS} queries against 1 mysqld)
+    if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
+      PQUERY_RUN_TIMEOUT=60
+    else
+      PQUERY_RUN_TIMEOUT=15  # x seconds max pquery trial run time (in this it will try to process ${QUERIES_PER_THREAD} x ${THREADS} queries against 1 mysqld)
+    fi
     QUERIES_PER_THREAD=100000
   fi
   THREADS=1
@@ -248,6 +252,7 @@ pquery_test(){
     $CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1 &
     MPID="$!"
     echo "$CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" > ${RUNDIR}/${TRIAL}/start; chmod +x ${RUNDIR}/${TRIAL}/start
+    echo ${CMD//$RUNDIR/$WORKDIR} > ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
     # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
     echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     if [ ${VALGRIND_RUN} -eq 1 ]; then
@@ -382,6 +387,12 @@ pquery_test(){
       sleep 1
       if [ "`ps -ef | grep ${PQPID} | grep -v grep`" == "" ]; then  # pquery ended
         break
+      fi
+      if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
+        if [ $X -eq 45 ]; then
+           kill -9 ${MPID} >/dev/null 2>&1;
+           sleep 2
+        fi
       fi
     done
     if [ $Y -eq ${PQUERY_RUN_TIMEOUT} ]; then 
