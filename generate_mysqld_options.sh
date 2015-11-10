@@ -150,6 +150,13 @@ while read line; do
     echo "${OPTION}=full" >> ${OUTPUT_FILE}
     echo "${OPTION}=profiling" >> ${OUTPUT_FILE}
     echo "${OPTION}=profiling_use_getrusageg" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--innodb-log-files-in-group" ]; then
+    echoit "  > Adding possible values 0,1,2,5,10 for option '${OPTION}' to the final list..."
+    echo "${OPTION}=0" >> ${OUTPUT_FILE}
+    echo "${OPTION}=1" >> ${OUTPUT_FILE}
+    echo "${OPTION}=2" >> ${OUTPUT_FILE}
+    echo "${OPTION}=5" >> ${OUTPUT_FILE}
+    echo "${OPTION}=10" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--log-warnings-suppress" ]; then
     echoit "  > Adding possible values 1592 for option '${OPTION}' to the final list..."
     echo "${OPTION}=1592" >> ${OUTPUT_FILE}

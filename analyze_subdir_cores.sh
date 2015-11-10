@@ -12,9 +12,14 @@ else
   BIN=$1
 fi
 
+echoit(){
+  echo "[$(date +'%T')] $1"
+}
+
 for CORE in $(find . | grep "core.*") ; do
   # For debugging purposes, remove ">/dev/null 2>&1" on the next line and observe output
   COREFILE=$(echo $CORE | sed 's|data.\([0-9]*\).|core_data.\1_|' | sed 's|.*core|core|')
+  echoit "Now processing core ${COREFILE}..."
   gdb ${BIN} ${CORE} >/dev/null 2>&1 <<EOF
     # Avoids libary loading issues / more manual work, see bash$ info "(gdb)Auto-loading safe path"
     set auto-load safe-path /         
