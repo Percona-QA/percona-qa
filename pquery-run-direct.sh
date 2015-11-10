@@ -51,7 +51,7 @@ else
   rm ${WORKDIR}/test
 fi
 echoit "pquery-run-direct.sh v0.01"
-echoit "Running against server/database at ${USER}:${PASSWORD}@${HOST}:${PORT}/${DATABASE}"
+echoit "Running against server/database at ${USER}:PASSWORD@${HOST}:${PORT}/${DATABASE}"
 echoit "Using ${THREADS} thread(s), with up to ${QUERIES_PER_THREAD} queries/thread, with a timeout (kill -9) at ${PQUERY_RUN_TIMEOUT} sec"
 echoit "Storing results to ${WORKDIR}, log is at ${WORKDIR}/pquery-run-direct.log"
 echoit "[Init] Pre-processing SQL input file; removing any references to root userID to avoid lockout..."
@@ -94,6 +94,12 @@ while true; do
    if egrep -qi "Too many connections" ${WORKDIR}/${TRIAL}/pquery.log; then
      echoit "[Trial ${TRIAL}] Connection failed - MySQL server reports 'Too many connections' - this is a known issue! Recommend action: restart server. Error from pquery log:"
      grep "Too many connections" ${WORKDIR}/${TRIAL}/pquery.log | head -n1
+     echoit "[Trial ${TRIAL}] Terminating!"
+     exit 1
+   fi
+   if egrep -qi "Host.*is not allowed to connect to this MySQL server" ${WORKDIR}/${TRIAL}/pquery.log; then
+     echoit "[Trial ${TRIAL}] Connection failed - MySQL server reports 'Host is not allowed to connect to this MySQL server' - check mysql side priviliges (likely there is no ${USER}@% account or similar)"
+     grep "Host.*is not allowed to connect to this MySQL server" ${WORKDIR}/${TRIAL}/pquery.log | head -n1
      echoit "[Trial ${TRIAL}] Terminating!"
      exit 1
    fi
