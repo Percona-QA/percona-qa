@@ -18,7 +18,7 @@ THREADS=50                                        # Number of client threads
 HOST=127.0.0.1                                    # IP Address of the target host
 PORT=16327                                        # Port of the target host
 USER="root"                                       # MySQL Username on the target host
-PASS=""                                           # Password on the target host
+PASSWORD=""                                       # Password on the target host
 DATABASE=test                                     # Database on the target host. It's highly recommended to use 'test' as the SQL input file references it many times. If you 
                                                   # need to use another database if name, it's best to:  sed -i "s|test|somedb|g" ${INFILE}  or similar (may lower SQL quality!)
 
