@@ -7,7 +7,7 @@ RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||')
 PXC=0
 DOCKER=0
-SYSBENCH_DATALOAD=1
+SYSBENCH_DATALOAD=0
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 # User Configurable Variables
