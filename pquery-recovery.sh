@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+PQUERY_PWD=${PWD}
 MYSQLD_START_TIMEOUT=60
 if [ -z $1 ]; then
   echo "No valid parameter passed. Need relative trial directoy setting. Retry.";
@@ -25,10 +25,13 @@ done
 # Check server startup
 if egrep -q  "registration as a STORAGE ENGINE failed" $SCRIPT_PWD/$TRIAL/log/master.err; then
   echo "Recovery error : Storage engine registration failed."
+  exit 1
 elif egrep -q  "corrupt|crashed" $SCRIPT_PWD/$TRIAL/log/master.err; then
   echo "Recovery error : Log message '$_' indicates database corruption."
+  exit 1
 elif egrep -q  "device full error|no space left on device" $SCRIPT_PWD/$TRIAL/log/master.err; then
   echo "Recovery error : Check disk space."
+  exit 1
 elif egrep -q  "ready for connections" $SCRIPT_PWD/$TRIAL/log/master.err; then
   echo "Recovery info : Server Recovery was apparently successful."
 fi
