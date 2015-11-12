@@ -252,7 +252,7 @@ pquery_test(){
     $CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1 &
     MPID="$!"
     echo "$CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" > ${RUNDIR}/${TRIAL}/start; chmod +x ${RUNDIR}/${TRIAL}/start
-    echo ${CMD//$RUNDIR/$WORKDIR} > ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
+    echo "${CMD//$RUNDIR/$WORKDIR}  > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" > ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
     # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
     echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     if [ ${VALGRIND_RUN} -eq 1 ]; then
