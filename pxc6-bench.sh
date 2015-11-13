@@ -361,7 +361,7 @@ echo "Basedir: $MYSQL_BASEDIR"
     ver_and_row $node2/socket.sock
 
     ## cleanup run
-    /usr/bin/sysbench --test=oltp --num-threads=16 --mysql-db=test --mysql-user=root \
+    /usr/bin/sysbench --test=$LPATH/parallel_prepare.lua --num-threads=16 --mysql-db=test --mysql-user=root \
       --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock cleanup > $SRESULTS/sysbench_cleanup.txt
 
     ver_and_row $node1/socket.sock
