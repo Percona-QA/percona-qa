@@ -343,7 +343,7 @@ echo "Basedir: $MYSQL_BASEDIR"
             rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
             ver_and_row $node1/socket.sock
             ver_and_row $node2/socket.sock
-            clean_up "$node1/socket.sock,$node2/socket.sock" $WORKDIR/logs/sysbench_cleanup.txt 
+            clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt 
         fi
 
 
@@ -372,8 +372,8 @@ echo "Basedir: $MYSQL_BASEDIR"
   fi
   set +x
 
-    ver_and_row $node1/socket.sock 
-    ver_and_row $node2/socket.sock
+#    ver_and_row $node1/socket.sock 
+#    ver_and_row $node2/socket.sock
 
     $MYSQL_BASEDIR/bin/mysql -S $node1/socket.sock  -u root -e "drop database testdb;" || true
     $MYSQL_BASEDIR/bin/mysql -S $node2/socket.sock  -u root -e "drop database test;"
