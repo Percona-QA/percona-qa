@@ -160,6 +160,15 @@ rw_full()
         --mysql-user=root --db-driver=mysql --mysql-socket=$sock  run 2>&1 | tee $log
 }
 
+clean_up()
+{
+    local sock=$1
+    local log=$2
+    echo "Sysbench Run: Cleanup"
+    $SBENCH --test=$LPATH/parallel_prepare.lua  \
+        --oltp-table-size=$TSIZE --mysql-db=test --mysql-user=root  \
+        --db-driver=mysql --mysql-socket=$sock cleanup 2>&1 | tee $log
+}
 
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
@@ -331,7 +340,10 @@ echo "Basedir: $MYSQL_BASEDIR"
                 --mysql-user=root --db-driver=mysql --mysql-socket=$node2/socket.sock \
                 run > $SRESULTS/sysbench_rw_run.txt 
         else 
-            rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt 
+            rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
+            ver_and_row $node1/socket.sock
+            ver_and_row $node2/socket.sock
+            clean_up "$node1/socket.sock,$node2/socket.sock" $WORKDIR/logs/sysbench_cleanup.txt 
         fi
 
 
@@ -352,19 +364,15 @@ echo "Basedir: $MYSQL_BASEDIR"
                 --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock \
                 run > $SRESULTS/sysbench_rw_run.txt 
         else 
-            rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt 
+            rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
+            ver_and_row $node1/socket.sock
+            ver_and_row $node2/socket.sock
+            clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
         fi
   fi
   set +x
 
     ver_and_row $node1/socket.sock 
-    ver_and_row $node2/socket.sock
-
-    ## cleanup run
-    /usr/bin/sysbench --test=$LPATH/parallel_prepare.lua --num-threads=16 --mysql-db=test --mysql-user=root \
-      --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock cleanup > $SRESULTS/sysbench_cleanup.txt
-
-    ver_and_row $node1/socket.sock
     ver_and_row $node2/socket.sock
 
     $MYSQL_BASEDIR/bin/mysql -S $node1/socket.sock  -u root -e "drop database testdb;" || true
