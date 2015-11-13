@@ -166,7 +166,7 @@ clean_up()
     local log=$2
     echo "Sysbench Run: Cleanup"
     $SBENCH --test=$LPATH/parallel_prepare.lua  \
-        --oltp-table-size=$TSIZE --mysql-db=test --mysql-user=root  \
+        --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  \
         --db-driver=mysql --mysql-socket=$sock cleanup 2>&1 | tee $log
 }
 
