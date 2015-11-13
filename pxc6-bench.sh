@@ -359,6 +359,14 @@ echo "Basedir: $MYSQL_BASEDIR"
 
     ver_and_row $node1/socket.sock 
     ver_and_row $node2/socket.sock
+
+    ## cleanup run
+    /usr/bin/sysbench --test=oltp --num-threads=16 --mysql-db=test --mysql-user=root \
+      --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock cleanup > $SRESULTS/sysbench_cleanup.txt
+
+    ver_and_row $node1/socket.sock
+    ver_and_row $node2/socket.sock
+
     $MYSQL_BASEDIR/bin/mysql -S $node1/socket.sock  -u root -e "drop database testdb;" || true
     $MYSQL_BASEDIR/bin/mysql -S $node2/socket.sock  -u root -e "drop database test;"
 
