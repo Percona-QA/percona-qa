@@ -208,7 +208,8 @@ echo "Basedir: $MYSQL_BASEDIR"
   node2="${MYSQL_VARDIR}/node2"
   mkdir -p $node2
 
-
+sysbench_run()
+{
   pushd ${MYSQL_BASEDIR}/mysql-test/
 
   set +e 
@@ -218,8 +219,7 @@ echo "Basedir: $MYSQL_BASEDIR"
     --nowarnings \
     --vardir=$node1 \
     --mysqld=--skip-performance-schema  \
-    --mysqld=--innodb_file_per_table  \
-    --mysqld=--binlog-format=ROW \
+    --mysqld=--innodb_file_per_table $1 \
     --mysqld=--wsrep-slave-threads=2 \
     --mysqld=--innodb_autoinc_lock_mode=2 \
     --mysqld=--innodb_locks_unsafe_for_binlog=1 \
@@ -275,8 +275,7 @@ echo "Basedir: $MYSQL_BASEDIR"
         --nowarnings \
         --vardir=$node2 \
         --mysqld=--skip-performance-schema  \
-        --mysqld=--innodb_file_per_table  \
-        --mysqld=--binlog-format=ROW \
+        --mysqld=--innodb_file_per_table $1 \
         --mysqld=--wsrep-slave-threads=2 \
         --mysqld=--innodb_autoinc_lock_mode=2 \
         --mysqld=--innodb_locks_unsafe_for_binlog=1 \
@@ -381,3 +380,18 @@ echo "Basedir: $MYSQL_BASEDIR"
 
     $MYSQL_BASEDIR/bin/mysqladmin  --socket=$node1/socket.sock -u root shutdown
     $MYSQL_BASEDIR/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
+}
+
+## sysbench run with binlog
+sysbench_run --mysqld=--binlog-format=ROW
+
+mv $node1 ${MYSQL_VARDIR}/with_binlog_node1
+mv $node2 ${MYSQL_VARDIR}/with_binlog_node2
+mkdir -p $node1
+mkdir -p $node2
+
+## sysbench run without binlog
+sysbench_run --skip-log-bin
+
+mv $node1 ${MYSQL_VARDIR}/without_binlog_node1
+mv $node2 ${MYSQL_VARDIR}/without_binlog_node2
