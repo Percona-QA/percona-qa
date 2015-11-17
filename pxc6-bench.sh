@@ -160,6 +160,15 @@ rw_full()
         --mysql-user=root --db-driver=mysql --mysql-socket=$sock  run 2>&1 | tee $log
 }
 
+clean_up()
+{
+    local sock=$1
+    local log=$2
+    echo "Sysbench Run: Cleanup"
+    $SBENCH --test=$LPATH/parallel_prepare.lua  \
+        --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  \
+        --db-driver=mysql --mysql-socket=$sock cleanup 2>&1 | tee $log
+}
 
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
@@ -199,7 +208,8 @@ echo "Basedir: $MYSQL_BASEDIR"
   node2="${MYSQL_VARDIR}/node2"
   mkdir -p $node2
 
-
+sysbench_run()
+{
   pushd ${MYSQL_BASEDIR}/mysql-test/
 
   set +e 
@@ -209,8 +219,7 @@ echo "Basedir: $MYSQL_BASEDIR"
     --nowarnings \
     --vardir=$node1 \
     --mysqld=--skip-performance-schema  \
-    --mysqld=--innodb_file_per_table  \
-    --mysqld=--binlog-format=ROW \
+    --mysqld=--innodb_file_per_table $1 \
     --mysqld=--wsrep-slave-threads=2 \
     --mysqld=--innodb_autoinc_lock_mode=2 \
     --mysqld=--innodb_locks_unsafe_for_binlog=1 \
@@ -266,8 +275,7 @@ echo "Basedir: $MYSQL_BASEDIR"
         --nowarnings \
         --vardir=$node2 \
         --mysqld=--skip-performance-schema  \
-        --mysqld=--innodb_file_per_table  \
-        --mysqld=--binlog-format=ROW \
+        --mysqld=--innodb_file_per_table $1 \
         --mysqld=--wsrep-slave-threads=2 \
         --mysqld=--innodb_autoinc_lock_mode=2 \
         --mysqld=--innodb_locks_unsafe_for_binlog=1 \
@@ -331,7 +339,10 @@ echo "Basedir: $MYSQL_BASEDIR"
                 --mysql-user=root --db-driver=mysql --mysql-socket=$node2/socket.sock \
                 run > $SRESULTS/sysbench_rw_run.txt 
         else 
-            rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt 
+            rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
+            ver_and_row $node1/socket.sock
+            ver_and_row $node2/socket.sock
+            clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt 
         fi
 
 
@@ -352,16 +363,35 @@ echo "Basedir: $MYSQL_BASEDIR"
                 --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock \
                 run > $SRESULTS/sysbench_rw_run.txt 
         else 
-            rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt 
+            rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
+            ver_and_row $node1/socket.sock
+            ver_and_row $node2/socket.sock
+            clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
         fi
   fi
   set +x
 
-    ver_and_row $node1/socket.sock 
-    ver_and_row $node2/socket.sock
+#    ver_and_row $node1/socket.sock 
+#    ver_and_row $node2/socket.sock
+
     $MYSQL_BASEDIR/bin/mysql -S $node1/socket.sock  -u root -e "drop database testdb;" || true
     $MYSQL_BASEDIR/bin/mysql -S $node2/socket.sock  -u root -e "drop database test;"
 
 
     $MYSQL_BASEDIR/bin/mysqladmin  --socket=$node1/socket.sock -u root shutdown
     $MYSQL_BASEDIR/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
+}
+
+## sysbench run with binlog
+sysbench_run --mysqld=--binlog-format=ROW
+
+mv $node1 ${MYSQL_VARDIR}/with_binlog_node1
+mv $node2 ${MYSQL_VARDIR}/with_binlog_node2
+mkdir -p $node1
+mkdir -p $node2
+
+## sysbench run without binlog
+sysbench_run --skip-log-bin
+
+mv $node1 ${MYSQL_VARDIR}/without_binlog_node1
+mv $node2 ${MYSQL_VARDIR}/without_binlog_node2
