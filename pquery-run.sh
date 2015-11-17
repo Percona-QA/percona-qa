@@ -74,6 +74,11 @@ if [ ${VALGRIND_RUN} -eq 1 ]; then
 else
   MYSQLD_START_TIMEOUT=60
 fi
+CRASH_TESTING_MODE=0 # Set to 1 to make this a crash testing run
+if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
+  SYSBENCH_DATALOAD=1 # Need large dataset to ensure buffer pool overreach
+  KILL_BEFORE_END_SEC=15
+fi
 ARCHIVE_INFILE_COPY=1  # Archive a copy of the SQL input file in the work directory
 PXC_DOCKER_START_TIMEOUT=140
 MULTI_THREADED_RUN=0  # Set to 0 for a single-thread client run only, or set to 1 for a multi threaded run. You can still change options below if you like, but this is an easy if/then "profile" shortcut that pre-sets optimal settings for single or multi threaded runs. So, this variables is _only_ used in the next IF.
@@ -84,7 +89,7 @@ if [ ${MULTI_THREADED_RUN} -eq 0 ]; then
     QUERIES_PER_THREAD=2147483647  # Max int
   else
     if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
-      PQUERY_RUN_TIMEOUT=60
+      PQUERY_RUN_TIMEOUT=20
     else
       PQUERY_RUN_TIMEOUT=15  # x seconds max pquery trial run time (in this it will try to process ${QUERIES_PER_THREAD} x ${THREADS} queries against 1 mysqld)
     fi
@@ -158,6 +163,10 @@ fi
 savetrial(){
   if [ ${PXC} -eq 0 ]; then
     if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
+      SAVED=$[ $SAVED + 1 ]
+      echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
+      mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
+    elif [ ${SAVE_CRASH_TRIAL} -eq 1 ]; then
       SAVED=$[ $SAVED + 1 ]
       echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
       mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
@@ -389,9 +398,13 @@ pquery_test(){
         break
       fi
       if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
-        if [ $X -eq 45 ]; then
+        SAVE_CRASH_TRIAL=0
+        if [ $X -eq $KILL_BEFORE_END_SEC ]; then
            kill -9 ${MPID} >/dev/null 2>&1;
            sleep 2
+           echoit "killed for crash testing"
+           SAVE_CRASH_TRIAL=1
+           break
         fi
       fi
     done
@@ -484,6 +497,12 @@ pquery_test(){
         if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE3}`"; fi
       fi
       if [ ${TRIAL_SAVED} -eq 0 ]; then
+        savetrial
+        TRIAL_SAVED=1
+      fi
+    elif [ ${SAVE_CRASH_TRIAL} -eq 1 ];then
+      if [ ${TRIAL_SAVED} -eq 0 ]; then
+        echoit "Saving full trial outcome (as kill -9 issued for crash testing and so trials are saved irrespective of whetter an issue was detected or not)"
         savetrial
         TRIAL_SAVED=1
       fi
