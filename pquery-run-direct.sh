@@ -5,6 +5,7 @@
 RANDOM=`date +%s%N | cut -b14-19`                             # RANDOM: Random entropy pool init. RANDOMD (below): Random number generator (6 digits)
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
+TRIAL=0
 
 # User Configurable Variables
 PQUERY_BIN=${SCRIPT_PWD}/pquery/pquery            # pquery/pquery-ps for Percona Server, .../pquery-ms for MySQL, .../pquery-md for MariaDB, pquery-ws for WebScaleSQL
@@ -23,8 +24,8 @@ DATABASE=test                                     # Database on the target host.
                                                   # need to use another database if name, it's best to:  sed -i "s|test|somedb|g" ${INFILE}  or similar (may lower SQL quality!)
 
 echoit(){
-  echo "[$(date +'%T')] [$SAVED] $1"
-  if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] [$SAVED] $1" >> /${WORKDIR}/pquery-run-direct.log; fi
+  echo "[$(date +'%T')] $1"
+  if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> /${WORKDIR}/pquery-run-direct.log; fi
 }
 
 # Trap ctrl-c
@@ -37,10 +38,6 @@ ctrl-c(){
   echoit "Terminating pquery-run-direct.sh with exit code 2..."
   exit 2
 }
-
-# Setup counters
-SAVED=0
-TRIAL=0
 
 # Commence testing
 mkdir -p ${WORKDIR}
