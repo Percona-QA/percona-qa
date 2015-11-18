@@ -262,7 +262,15 @@ pquery_test(){
     MPID="$!"
     echo "$CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" > ${RUNDIR}/${TRIAL}/start; chmod +x ${RUNDIR}/${TRIAL}/start
     echo "BASEDIR=$BASEDIR" > ${RUNDIR}/${TRIAL}/start_recovery
-    echo "${CMD//$RUNDIR/$WORKDIR}  > ${WORKDIR}/${TRIAL}/log/master.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
+    echo "if [ -r /usr/lib64/libjemalloc.so.1 ]; then" >> ${RUNDIR}/${TRIAL}/start_recovery
+    echo "  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1;" >> ${RUNDIR}/${TRIAL}/start_recovery
+    echo "else" >> ${RUNDIR}/${TRIAL}/start_recovery
+    echo "  echo \"Assert! jemalloc not found at /usr/lib64/libjemalloc.so.1, please install it!\";" >> ${RUNDIR}/${TRIAL}/start_recovery
+    echo "  echoit \"For Centos7 you can do this by: sudo yum -y install epel-release; sudo yum -y install jemalloc;\"" >> ${RUNDIR}/${TRIAL}/start_recovery
+    echo "exit 1;" >> ${RUNDIR}/${TRIAL}/start_recovery
+fi
+
+    echo "${CMD//$RUNDIR/$WORKDIR}  --skip-grant-tables > ${WORKDIR}/${TRIAL}/log/master.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
     # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
     echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     if [ ${VALGRIND_RUN} -eq 1 ]; then
