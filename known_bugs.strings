@@ -294,7 +294,7 @@ hash_not_ok == 0                                                                
 host_length <= 60                                                                       ## http://bugs.mysql.com/bug.php?id=74678
 inited == NONE                                                                          ## http://bugs.mysql.com/bug.php?id=74650
 InnoDB. log block checksum mismatch. expected                                           ## https://bugs.launchpad.net/percona-server/+bug/1318453
-. is_set() .. m_can_overwrite_status                                                    ## http://bugs.mysql.com/bug.php?id=74026
+. is_set() .. m_can_overwrite_status                                                    ## http://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## http://bugs.mysql.com/bug.php?id=74646
 .length % 4                                                                             ## http://bugs.mysql.com/bug.php?id=74220
 length > 0 .. keyparts .= 0                                                             ## http://bugs.mysql.com/bug.php?id=76604
@@ -506,7 +506,7 @@ ZNK7handler22ha_statistic_incrementEM17system_status_vary                       
 
 ## =========== pquery reducer scripts TEXT based (for short strings that may be part of other assertion messages. End with $ EOL char) ===========
 #TEXT=.\. is_set.$                                                            ## Fixed  ## http://bugs.mysql.com/bug.php?id=74597 (old PS Bug #1206050)
-#TEXT=.\. is_set.$                                                                       ## http://bugs.mysql.com/bug.php?id=76515 (#74597 ^ not fixed yet)
+TEXT=.\. is_set.$                    ## 79303 Also shows like this ## Still present ftm ## http://bugs.mysql.com/bug.php?id=76515 (#74597 ^ not fixed yet) (fixed in 5.7.6)
 TEXT=...tables.$                                                                        ## http://bugs.mysql.com/bug.php?id=74740 (Also see above #74740)
 TEXT=.child_l.$                                                                         ## http://bugs.mysql.com/bug.php?id=76277 (with debug build)
 TEXT=.ds_control.$                                                                      ## Likely not a bug, asked Umesh to check (testcase: see above at top)

@@ -73,10 +73,10 @@ TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
 
-# === Old Percona XtraDB Cluster options (deprecated: fig for Docker is no longer maintained, this functionality needs to be updated to Docker Compose)
-PXC_DOCKER_FIG_MOD=0  # deprecated    # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster 
-PXC_ISSUE_NODE=0      # deprecated    # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
-PXC_DOCKER_FIG_LOC=~/percona-qa/pxc-pquery/existing/fig.yml
+# === Percona XtraDB Cluster options (uses Docker & Docker Compose)
+PXC_DOCKER_COMPOSE_MOD=0        # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster 
+PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
+PXC_DOCKER_COMPOSE_LOC=~/percona-qa/pxc-pquery/existing/fig.yml
 PXC_DOCKER_CLEAN_LOC=~/percona-qa/pxc-pquery 
 
 # ==== Examples
@@ -102,13 +102,13 @@ PXC_DOCKER_CLEAN_LOC=~/percona-qa/pxc-pquery
 #   For MODE5, you would use a mysql CLI to get the desired output "string" (see example given above) and then set MODE5_COUNTTEXT
 # - PQUERY_MOD: 1: use pquery, 0: use mysql CLI. Causes reducer.sh to use pquery instead of the mysql client for replays (default=0). Supported for MODE=1,3,4
 # - PQUERY_LOC: Location of the pquery binary (retrieve pquery like this; $ cd ~; bzr branch lp:percona-qa; # then ref ~/percona-qa/pquery/pquery[-ms])
-# - PXC_DOCKER_FIG_MOD: 1: use Fig + Docker to bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
+# - PXC_DOCKER_COMPOSE_MOD: 1: use Docker Compose to bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
 #   see lp:/percona-qa/pxc-pquery/new/pxc-pquery_info.txt and lp:/percona-qa/docker_info.txt for more information on this. See above for some limitations etc.
 #   IMPORTANT NOTE: If this is set to 1, ftm, these settings (and limitations) are automatically set: INHERENT: PQUERY_MOD=1, LIMTATIONS: FORCE_SPORADIC=0, 
 #   SPORADIC=0, FORCE_SKIPV=0, SKIPV=1, MYEXTRA="", MULTI_THREADS=0 
 # - PXC_ISSUE_NODE: This indicates which node you would like to be checked for presence of the issue. 0 = Any node. Valid options: 0, 1, 2, or 3. Only works
 #   for MODE=4 currently.
-# - PXC_DOCKER_FIG_LOC: Location of the Fig file used to bring up 3 node Percona XtraDB Cluster (using images previously prepared by "new" method) 
+# - PXC_DOCKER_COMPOSE_LOC: Location of the Docker Compose file used to bring up 3 node Percona XtraDB Cluster (using images previously prepared by "new" method) 
 # - MODE5_COUNTTEXT: Number of times the text should appear (default=minimum=1). Currently only used for MODE 5
 # - MODE5_ADDITIONAL_TEXT: An additional string to look for in the CLI output when using MODE 5. When not using this set to "" (=default)
 # - MODE5_ADDITIONAL_COUNTTEXT: Number of times the additional text should appear (default=minimum=1). Only used for MODE 5
@@ -324,7 +324,7 @@ ctrl_c(){
     echo_out "[Abort] Best testcase thus far: $INPUTFILE (= input file, no optimizations were successful)"
   fi
   echo_out "[Abort] End of dump stack."
-  if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then 
+  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then 
     echo_out "[Abort] Ensuring any remaining PXC Docker containers are terminated and removed"
     ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
   fi
@@ -497,9 +497,9 @@ options_check(){
       exit 1
     fi
   fi
-  if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
     PQUERY_MOD=1
-    # ========= These are currently limitations of PXC_DOCKER_FIG_MOD. Feel free to extend reducer.sh to handle these ========
+    # ========= These are currently limitations of PXC_DOCKER_COMPOSE_MOD. Feel free to extend reducer.sh to handle these ========
     #export -n MYEXTRA=""  # Serious shortcoming. Work to be done. PQUERY MYEXTRA variables will be added docker-compose.yml
     export -n FORCE_SPORADIC=0
     export -n SPORADIC=0
@@ -508,30 +508,29 @@ options_check(){
     export -n MULTI_THREADS=0  # Minor (let's not run dozens of triple docker containers)
     # /==========
     if [ $MODE -eq 0 ]; then
-      echo "Error: PXC_DOCKER_FIG_MOD is set to 1, and MODE=0 set to 0, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
+      echo "Error: PXC_DOCKER_COMPOSE_MOD is set to 1, and MODE=0 set to 0, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
       exit 1
     fi
     if [ "${TIMEOUT_COMMAND}" != "" ]; then
-      echo "Error: PXC_DOCKER_FIG_MOD is set to 1, and TIMEOUT_COMMAND is set, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
+      echo "Error: PXC_DOCKER_COMPOSE_MOD is set to 1, and TIMEOUT_COMMAND is set, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
       exit 1
     fi
-    if [ ! -r "$PXC_DOCKER_FIG_LOC" ]; then
-      echo "Error: PXC_DOCKER_FIG_MOD is set to 1, but the Fig file (as defined by PXC_DOCKER_FIG_LOC; currently set to '$PXC_DOCKER_FIG_LOC') is not available."
-      echo 'Please check script contents/options ($PXC_DOCKER_FIG_MOD and $PXC_DOCKER_FIG_LOC variables)'
+    if [ ! -r "$PXC_DOCKER_COMPOSE_LOC" ]; then
+      echo "Error: PXC_DOCKER_COMPOSE_MOD is set to 1, but the Docker Compose file (as defined by PXC_DOCKER_COMPOSE_LOC; currently set to '$PXC_DOCKER_COMPOSE_LOC') is not available."
+      echo 'Please check script contents/options ($PXC_DOCKER_COMPOSE_MOD and $PXC_DOCKER_COMPOSE_LOC variables)'
       exit 1
     fi
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
       echo "Error: Valgrind for 3 node PXC replay has not been implemented yet. Please do so! Free cookies afterwards!"
-      echo "Starting tip: this would involve creating a new lp:percona-qa/pxc-pquery/ Fig+Docker setup that has Valgrind build in"
       exit 1
     fi
     if [ $MODE -ge 6 -a $MODE -le 9 ]; then
-      echo "Error: wrong option combination: MODE is set to $MODE (ThreadSync) and PXC_DOCKER_FIG_MOD is active"
-      echo 'Please check script contents/options ($MODE and $PXC_DOCKER_FIG_MOD variables)'
+      echo "Error: wrong option combination: MODE is set to $MODE (ThreadSync) and PXC_DOCKER_COMPOSE_MOD is active"
+      echo 'Please check script contents/options ($MODE and $PXC_DOCKER_COMPOSE_MOD variables)'
       exit 1
     fi
     if [ $MODE -eq 5 -o $MODE -eq 3 ]; then
-      echo_out "[Warning] MODE=$MODE is set, as well as PXC_DOCKER_FIG_MOD=1. This combination will likely work, but has not been tested yet. Removing this warning (for MODE=$MODE only please) when it was tested a number of times"
+      echo_out "[Warning] MODE=$MODE is set, as well as PXC_DOCKER_COMPOSE_MOD=1. This combination will likely work, but has not been tested yet. Removing this warning (for MODE=$MODE only please) when it was tested a number of times"
     fi
     if [ $MODE -eq 4 ]; then
       if [ $PXC_ISSUE_NODE -eq 0 ]; then
@@ -1002,7 +1001,7 @@ init_workdir_and_files(){
     # Initial INPUTFILE to WORKF copy
     (echo "$DROPC"; (cat $INPUTFILE | grep -v "$DROPC")) > $WORKF
   fi
-  if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
     echo_out "[Init] PXC Node #1 Client: $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000"
     echo_out "[Init] PXC Node #2 Client: $MYBASE/bin/mysql -uroot -h127.0.0.1 -P11000"
     echo_out "[Init] PXC Node #3 Client: $MYBASE/bin/mysql -uroot -h127.0.0.1 -P12000"
@@ -1056,7 +1055,7 @@ init_workdir_and_files(){
     fi
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
-    if [ $PXC_DOCKER_FIG_MOD -ne 1 ]; then  # For PXC, we do not need this, Fig/Docker takes care of it
+    if [ $PXC_DOCKER_COMPOSE_MOD -ne 1 ]; then  # For PXC, we do not need this, Docker Compose takes care of it
       echo_out "[Init] Setting up standard working subdirectories"
       if [ "`${MYBASE}${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.7" ]; then
         MID_OPTIONS="--initialize-insecure"  # --initialize-insecure prevents random root password in 5.7. --force is no longer supported in new mysql_install_db binary in 5.7
@@ -1137,7 +1136,7 @@ init_workdir_and_files(){
         chmod +x $WORK_RUN
         if [ $PQUERY_MOD -eq 1 ]; then
           cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
-          if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+          if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
             echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
             echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
             echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
@@ -1207,9 +1206,9 @@ init_workdir_and_files(){
 }
 
 init_mysql_dir(){
-  if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
     sudo rm -Rf $WORKD/1 $WORKD/2 $WORKD/3 
-    cp $PXC_DOCKER_FIG_LOC $WORKD
+    cp $PXC_DOCKER_COMPOSE_LOC $WORKD
     sed -i "s|/dev/shm/pxc-pquery|$WORKD|" $WORKD/docker-compose.yml
     if [ ${STAGE} -eq 8 ]; then
       export -n MYEXTRA=${MYEXTRA_STAGE8}
@@ -1229,7 +1228,7 @@ init_mysql_dir(){
 
 start_mysqld_or_pxc(){
   init_mysql_dir
-  if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
     CLUSTER_UP=0
     start_pxc_main
     if [ $CLUSTER_UP -ne 6 ]; then
@@ -1501,7 +1500,7 @@ run_and_check(){
   OUTCOME="$?"
   if [ $MODE -ne 1 -a $MODE -ne 6 ]; then stop_mysqld_or_pxc; fi
   # Add error log from this trial to the overall run error log
-  if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
     sudo cat $WORKD/1/error.log > $WORKD/node1_error.log
     sudo cat $WORKD/2/error.log > $WORKD/node2_error.log
     sudo cat $WORKD/3/error.log > $WORKD/node3_error.log
@@ -1518,7 +1517,7 @@ run_sql_code(){
 
   # Setting up query timeouts using the MySQL Event Sheduler
   # Place event into the mysql db, not test db as the test db is dropped immediately
-  if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
     $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 --force mysql -e"
       DELIMITER ||
       CREATE EVENT querytimeout ON SCHEDULE EVERY 20 SECOND DO BEGIN
@@ -1577,7 +1576,7 @@ run_sql_code(){
     echo_out "$TXT_OUT"
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] All SQL threads have finished/terminated"
   elif [ $MODE -eq 5 ]; then
-    if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+    if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
       cat $WORKT | $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 -vvv --force test > $WORKD/mysql.out 2>&1
     else
       cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
@@ -1588,7 +1587,7 @@ run_sql_code(){
     # issue was generated by pquery. Reason; pquery is C/API driven, each statement executed is a statement in and by itself. In the CLI OTOH. each
     # statement can be continued on the next line, and a mismatched (i.e. unterminated) single or double quote in the sql file can throw off the replay.
     if [ $MODE -eq 2 ]; then
-      if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+      if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
         cat $WORKT | $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 --binary-mode --force test > $WORKD/mysql.out 2>&1
       else
         cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --binary-mode --force test > $WORKD/mysql.out 2>&1
@@ -1599,7 +1598,7 @@ run_sql_code(){
         if [ -r $WORKD/pquery.out ]; then
           mv $WORKD/pquery.out $WORKD/pquery.prev
         fi
-        if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+        if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
           if [ $PQUERY_MULTI -eq 1 ]; then
             if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
             ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --addr=127.0.0.1 --port=10000 > $WORKD/pquery.out 2>&1
@@ -1617,7 +1616,7 @@ run_sql_code(){
           fi
         fi
       else
-        if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+        if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
           cat $WORKT | $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 --binary-mode --force test > $WORKD/mysql.out 2>&1
         else
           cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --binary-mode --force test > $WORKD/mysql.out 2>&1
@@ -1661,7 +1660,7 @@ cleanup_and_save(){
       TS_init_all_sql_files
     fi
   else
-    if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+    if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
       echo_out "[Clean] Ensuring any remaining PXC Docker containers are terminated and removed"
       ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
     fi
@@ -1765,7 +1764,7 @@ process_outcome(){
   # MODE3: mysqld error output log testing (set TEXT)
   if [ $MODE -eq 3 ]; then
     ERRORLOG=
-    if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+    if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
       ERRORLOG=$WORKD/*/error.log
       sudo chmod 777 $ERRORLOG
     else
@@ -1790,7 +1789,7 @@ process_outcome(){
   # MODE4: Crash testing
   if [ $MODE -eq 4 ]; then
     M4_ISSUE_FOUND=0
-    if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+    if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 1 ]; then
         if ! $MYBASE/bin/mysqladmin -uroot -h127.0.0.1 -P10000 ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
@@ -1944,7 +1943,7 @@ process_outcome(){
 }
 
 stop_mysqld_or_pxc(){
-  if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
     ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
   else
     if [ ${FORCE_KILL} -eq 1 ]; then
@@ -2031,7 +2030,7 @@ finish(){
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
-      if [ $PXC_DOCKER_FIG_MOD -eq 1 ]; then
+      if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
         sudo cp -R $WORKD /tmp/$DIRVALUE
         sudo chown -R `whoami`:`whoami` /tmp/$DIRVALUE
       else
