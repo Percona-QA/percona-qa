@@ -126,7 +126,7 @@ fi
 # Local build mode: only setup scritps for local directory, then exit (used for creating startup scripts in the local directory,
 # for example after using ./build/binary-build.sh & extracing the resulting tarball or when using a yassl-based QA build from Jenkins.)
 if [ "0" == "$1" ]; then
-  echo "Adding scripts: ./start | ./start_gypsy | ./stop | ./cl | ./cl_binmode | ./test | ./init | ./wipe (last two without executable attribute)"
+  echo "Adding scripts: ./start | ./start_gypsy | ./stop | ./setup | ./cl | ./cl_binmode | ./test | ./init | ./wipe (last two without executable attribute)"
   mkdir -p ./data ./data/mysql ./data/test ./log
   if [ -r $PWD/bin/mysqld ]; then
     BIN="$PWD/bin/mysqld"
@@ -149,6 +149,7 @@ if [ "0" == "$1" ]; then
   tail -n1 start >> ./start_gypsy
   echo "$PWD/bin/mysqladmin -uroot -S$PWD/socket.sock shutdown" > ./stop
   echo "echo 'Server on socket $PWD/socket.sock with datadir $PWD/data halted'" >> ./stop
+  echo "./init;./start;sleep 5;./cl;./stop;tail ./log/master.err" > ./setup
   echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock test" > ./cl
   echo "./start; sleep 5; $PWD/bin/mysql -A -uroot -S$PWD/socket.sock -e \"INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';\"; ./stop" > ./tokutek_init
   echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test" > ./cl_binmode
@@ -179,7 +180,7 @@ if [ "0" == "$1" ]; then
     echo "mkdir $PWD/data/test" >> ./init
   fi
   echo "rm -f ./log/master.*" >> ./init
-  chmod +x start start_gypsy stop cl cl_binmode test init ./tokutek_init
+  chmod +x start start_gypsy stop setup cl cl_binmode test init ./tokutek_init
   echo "Setting up server with default directories"
   ./init
   if [ -r $PWD/lib/mysql/plugin/ha_tokudb.so ]; then
