@@ -292,7 +292,7 @@ PXC_DOCKER_CLEAN_LOC=~/percona-qa/pxc-pquery
 
 # ======== Internal variable Reference
 # $WORKD = Working directory (i.e. likely /tmp/<epoch>/ or /dev/shm/<epoch>)
-# $INPUTFILE = The original input file (the file to reduce). This file is never changed.
+# $INPUTFILE = The original input file (the file to reduce). This file, and this variable, are never changed.
 # $WORKF = This is *originally* a copy of $INPUTFILE and hence the main input file in the working directory (i.e. $WORKD/in.sql). 
 #   work   From it are made chunk deletes etc. and the result is stored in the $WORKT file
 #   file   $WORKT overwrites $WORKF when a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT
@@ -2030,11 +2030,24 @@ finish(){
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
+      echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$DIRVALUE also"
       if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
         sudo cp -R $WORKD /tmp/$DIRVALUE
         sudo chown -R `whoami`:`whoami` /tmp/$DIRVALUE
+        cp $0 /tmp/$DIRVALUE  # Copy this reducer script
+        cp $INPUTFILE /tmp/$DIRVALUE  # Copy the original input file
       else
         cp -R $WORKD /tmp/$DIRVALUE
+        cp $0 /tmp/$DIRVALUE  # Copy this reducer script
+        cp $INPUTFILE /tmp/$DIRVALUE  # Copy the original input file
+      fi
+      SPACE_WORKD=$(du -s $WORKD 2>/dev/null | sed 's|[ \t].*||')
+      SPACE_TMPCP=$(du -s /tmp/$DIRVALUE 2>/dev/null | sed 's|[ \t].*||')
+      if [ -d /tmp/$DIRVALUE -a ${SPACE_TMPCP} -gt ${SPACE_WORKD} ]; then
+        echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$DIRVALUE now deleting temporary work directory $WORKD"
+        rm -Rf $WORKD
+      else 
+        echo_out "[Non-fatal Error] Reducer tried saving a copy of $WORKD, $INPUTFILE and $0 in /tmp/$DIRVALUE, but on checkup after the copy, either the target directory /tmp/$DIRVALUE was not found, or it's size was not larger then the original work directory $WORKD (which should not be the case, as $INPUTFILE and $0 were added unto it). Please check that the filesystem on which /tmp is stored is not full, and that this script has write rights to /tmp. Note this error is non-fatal, the original work directory $WORKD was left, and $INPUTFILE and $0, if necessary, can still be accessed from their original location."
       fi
     fi
   fi
