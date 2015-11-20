@@ -1032,7 +1032,7 @@ init_workdir_and_files(){
       echo_out "[Init] FORCE_SKIPV active. Verify stage skipped, and immediately commencing simplification"
     fi
   fi
-  if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV is active, so FORCE_SPORADIC is automatically set active also" ; fi
+  if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active, so FORCE_SPORADIC is automatically set active also" ; fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
     if [ $FORCE_SKIPV -gt 0 ]; then
       echo_out "[Init] FORCE_SPORADIC active. Issue is assumed to be sporadic"
@@ -1987,10 +1987,12 @@ stop_mysqld_or_pxc(){
 }
 
 finish(){
-  if [ ${STAGE} -eq 8 ]; then
-    if [ ${STAGE8_CHK} -eq 0 ]; then
-      export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
-      sed -i "s|--event-scheduler=ON|--event-scheduler=ON $MYEXTRA |" $WORK_START
+  if [ ${STAGE} != "" -a ${STAGE8_CHK} != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
+    if [ ${STAGE} -eq 8 ]; then
+      if [ ${STAGE8_CHK} -eq 0 ]; then
+        export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
+        sed -i "s|--event-scheduler=ON|--event-scheduler=ON $MYEXTRA |" $WORK_START
+      fi
     fi
   fi
   echo_out "[Finish] Finalized reducing SQL input file ($INPUTFILE)"
