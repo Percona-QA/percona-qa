@@ -22,38 +22,101 @@ BACKUP_DIR=/home/tokubackupdir
 TB_COMMAND="set tokudb_backup_dir='${BACKUP_DIR}'"
 DUMP_FILE=/home/employees_tokudb.sql
 
+#################################################
+#            INITIAL COMMANDS                   #
+#################################################
 
 # Starter commands for Percona Server with TokuDB&TokuBackup:
 
 CMD1="${BASEDIR}/bin/mysqld_safe --defaults-file=${DEFAULTS_FILE} --user=${USER} --datadir=${DATADIR1} --socket=${SOCKET1} --port=${PORT1} --pid-file=${PID1} --malloc-lib=${LIBJEMALLOC}"
 
-CMD2="${BASEDIR}/bin/mysqld_safe --defaults-file=${DEFAULTS_FILE} --user=${USER} --datadir=${DATADIR12} --socket=${SOCKET2} --port=${PORT2} --pid-file=${PID2} --malloc-lib=${LIBJEMALLOC}"
+CMD2="${BASEDIR}/bin/mysqld_safe --defaults-file=${DEFAULTS_FILE} --user=${USER} --datadir=${DATADIR2} --socket=${SOCKET2} --port=${PORT2} --pid-file=${PID2} --malloc-lib=${LIBJEMALLOC}"
 
 
 # RECOVER command
 
-RCV="rsync -avrP ${BACKUP_DIR} ${DATADIR2}"
+RCV="rsync -avrP ${BACKUP_DIR}/mysql_data_dir/ ${DATADIR2}/"
+
+# Consistency check command
+
+CHCK="/usr/bin/mysqldbcompare --server1=${USER}:${PASS}@localhost:${PORT1}:${SOCKET1} --server2=${USER}:${PASS}@localhost:${PORT2}:${SOCKET2} --all --run-all-tests"
+
+
+#################################################
+#               WORKER FUNCTIONS                #
+#################################################
+
 
 # Function for STARTING Percona Server
 
 start_main_mysql() {
-	${CMD1} > /dev/null & 
-	echo "Started Percona Server!"
+	${CMD1} > /dev/null &
 }
 
-# Start PS for backup
-#start_main_mysql
 
-
-#Importing DUMP
+#Importing TokuDB tables
 
 import_dump() {
-	echo "Importing sample TokuDB schema"
 	${BASEDIR}/bin/mysql --user=${USER} --password=${PASS} --socket=${SOCKET1} --port=${PORT1} < ${DUMP_FILE}
 }
 
+
+# Function for Taking Backup
+
+take_backup() {
+	${BASEDIR}/bin/mysql --user=${USER} --password=${PASS} --socket=${SOCKET1} --port=${PORT1} -e "${TB_COMMAND}"
+	
+}
+
+
+#Copy backup files to DATADIR2
+
+copy_back() {
+	${RCV} > /dev/null
+}
+
+
+# Starting secondary server:
+
+start_secondary_mysql() {
+	${CMD2} > /dev/null &
+}
+
+
+#mysqldbcompare --server1=root:12345@localhost:3308:/opt/percona-5.6.27/datadir/mysqld.sock --server2=root:12345@localhost:3309:/opt/percona-5.6.27/datadir2/mysqld.sock --all --run-all-tests
+
+# Checking for data consistency between 2 servers
+
+compare_data() {
+	#echo "/usr/bin/mysqldbcompare --server1=${USER}:${PASS}@localhost:${PORT1}  --server2=${USER}:${PASS}@localhost:${PORT2}  --all  --run-all-tests"
+	/usr/bin/mysqldbcompare --server1=${USER}:${PASS}@localhost:${PORT1}  --server2=${USER}:${PASS}@localhost:${PORT2}  --all  --run-all-tests
+}
+
+
+
+#################################################
+#               RUN ALL                         #
+#################################################
+
+start_main_mysql
+
+if [[ $? -ne 0 ]] ; then
+    echo "Start - Failed!"
+    exit 1
+else
+	echo "Started Main Percona Server - OK!"
+	sleep 5
+fi
+
 import_dump
 
+if [[ $? -ne 0 ]] ; then
+    echo "Importing of Sample Schema - Failed!"
+    exit 1
+else
+	echo "Imported Sample Schema      - OK!"
+	sleep 5
+fi
 
 # Check for backup directory
 
@@ -64,15 +127,48 @@ else
 	chown mysql:mysql ${BACKUP_DIR}
 fi;
 
-
-
-# Function for Taking Backup
-
-take_backup() {
-	echo "Taking Backup Using TokuBackup!"
-	${BASEDIR}/bin/mysql --user=${USER} --password=${PASS} --socket=${SOCKET1} --port=${PORT1} -e "${TB_COMMAND}"
-	
-}
-
 take_backup
- 
+
+if [[ $? -ne 0 ]] ; then
+    echo "Backup - Failed!"
+    exit 1
+else
+	echo "Backup Completed             - OK!"
+fi
+
+#Copying taken backup to DATADIR2
+#Check for DATADIR2
+if [ ! -d ${DATADIR2} ]; then
+	mkdir ${DATADIR2}
+	chown mysql:mysql ${DATADIR2}
+else
+	chown mysql:mysql ${DATADIR2}
+fi;
+
+copy_back
+
+if [[ $? -ne 0 ]] ; then
+    echo "Copy action Failed!"
+    exit 1
+else
+	echo "Copied backup to new datadir - OK!"
+fi
+
+start_secondary_mysql
+
+if [[ $? -ne 0 ]] ; then
+    echo "Starting Secondary Server - Failed!"
+    exit 1
+else
+	echo "Started Secondary Percona Server- OK!"
+	sleep 10
+fi
+
+compare_data
+
+if [[ $? -ne 0 ]] ; then
+    echo "Compare command - Failed!"
+    exit 1
+else
+	echo "Compare Command - OK! , Check Status"
+fi
