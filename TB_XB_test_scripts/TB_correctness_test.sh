@@ -93,10 +93,32 @@ compare_data() {
 }
 
 
+# Function for cleaning environment before test
+clean_environment() {
+
+	echo "Killing running mysqld processes"
+	pkill -9 -f mysqld
+	sleep 5
+
+	if [ -d ${BACKUP_DIR} ]; then
+		rm -rf ${BACKUP_DIR}
+	fi
+
+	if [ -d ${DATADIR2} ]; then
+		rm -rf ${DATADIR2}
+	fi
+	echo "Cleaned!"
+}
+
+
 
 #################################################
 #               RUN ALL                         #
 #################################################
+
+clean_environment
+
+##
 
 start_main_mysql
 
