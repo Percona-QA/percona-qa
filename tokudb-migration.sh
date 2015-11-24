@@ -11,6 +11,7 @@ BASEDIR_56="/sda/workdir/Percona-Server-5.6.27-rel75.0-Linux.x86_64"
 MYSQLD_START_TIMEOUT=60
 SBENCH="sysbench"
 INNOBACKUP="innobackupex"
+PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 
 echoit(){
   echo "[$(date +'%T')] $1"
@@ -18,7 +19,7 @@ echoit(){
 }
 
 start_mysql_55(){
-  ${BASEDIR_55}/bin/mysqld --no-defaults $1 --basedir=${BASEDIR_55} --tmpdir=${BASEDIR_55}/tmp --datadir=${BASEDIR_55}/data  --socket=${BASEDIR_55}/socket.sock --log-error=${BASEDIR_55}/log/master.err > ${BASEDIR_55}/log/master.err 2>&1 &
+  ${BASEDIR_55}/bin/mysqld --no-defaults $1 --basedir=${BASEDIR_55} --tmpdir=${BASEDIR_55}/tmp --datadir=${BASEDIR_55}/data  --socket=${BASEDIR_55}/socket.sock --port=${PORT} --log-error=${BASEDIR_55}/log/master.err > ${BASEDIR_55}/log/master.err 2>&1 &
   MPID="$!"
   for X in $(seq 0 $MYSQLD_START_TIMEOUT); do
     sleep 1
@@ -39,7 +40,7 @@ stop_mysql_55(){
 }
 
 start_mysql_56(){
-  ${BASEDIR_56}/bin/mysqld --no-defaults $1 --basedir=${BASEDIR_56} --tmpdir=${BASEDIR_56}/tmp --datadir=${BASEDIR_56}/data  --socket=${BASEDIR_56}/socket.sock --log-error=${BASEDIR_56}/log/master.err > ${BASEDIR_56}/log/master.err 2>&1 &
+  ${BASEDIR_56}/bin/mysqld --no-defaults $1 --basedir=${BASEDIR_56} --tmpdir=${BASEDIR_56}/tmp --datadir=${BASEDIR_56}/data  --socket=${BASEDIR_56}/socket.sock --port=${PORT} --log-error=${BASEDIR_56}/log/master.err > ${BASEDIR_56}/log/master.err 2>&1 &
   MPID="$!"
   for X in $(seq 0 $MYSQLD_START_TIMEOUT); do
     sleep 1
