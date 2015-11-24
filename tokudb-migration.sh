@@ -171,7 +171,7 @@ ${BASEDIR_56}/bin/mysql -uroot --socket=${BASEDIR_56}/socket.sock test < ${WORKD
 
 stop_mysql_56
 
-rm -Rf ${BASEDIR_56}/data/*tokudb*
+rm -Rf ${BASEDIR_56}/data/*toku*
 
 cp -r  ${WORKDIR}/tokudb_files/* ${BASEDIR_56}/data/
 echoit "Starting server with --tokudb-strip-frm-data=TRUE for tokudb data migration."
