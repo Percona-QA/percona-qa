@@ -15,7 +15,7 @@ sleep 5
 
 
 LPATH=${SPATH:-/usr/share/doc/sysbench/tests/db}
-
+IST_RUN=0
 # For local run - User Configurable Variables
 if [ -z ${SDURATION} ]; then
   SDURATION=150
@@ -133,9 +133,9 @@ prepare()
     echo "Sysbench Run: Prepare stage"
     $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10  --oltp-auto-inc=$AUTOINC --mysql-engine-trx=yes --mysql-table-engine=innodb \
         --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT \
-        --db-driver=mysql --mysql-socket=$sock prepare 2>&1 | tee $log
+        --db-driver=mysql --mysql-socket=$sock prepare  2>&1 | tee $log
 
-    $MYSQL_BASEDIR/bin/mysql  -S $sock -u root -e "create database testdb;" || true
+#    $MYSQL_BASEDIR/bin/mysql  -S $sock -u root -e "create database testdb;" || true
 }
 
 
@@ -144,9 +144,8 @@ ver_and_row(){
     
 
     $MYSQL_BASEDIR/bin/mysql -S $sock  -u root -e "show global variables like 'version';"
-
     $MYSQL_BASEDIR/bin/mysql -S $sock  -u root -e "select count(*) from $STABLE;"
-    $MYSQL_BASEDIR/bin/mysql -S $sock  -u root -e "select count(*) from $STABLE;"
+#    $MYSQL_BASEDIR/bin/mysql -S $sock  -u root -e "select count(*) from $STABLE;"
 }
 
 rw_full()
@@ -157,7 +156,7 @@ rw_full()
     echo "Sysbench Run: OLTP RW testing"
     $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
         --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
-        --mysql-user=root --db-driver=mysql --mysql-socket=$sock  run 2>&1 | tee $log
+        --mysql-user=root --db-driver=mysql --mysql-socket=$sock  run  2>&1 | tee $log
 }
 
 clean_up()
@@ -167,7 +166,7 @@ clean_up()
     echo "Sysbench Run: Cleanup"
     $SBENCH --test=$LPATH/parallel_prepare.lua  \
         --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  \
-        --db-driver=mysql --mysql-socket=$sock cleanup 2>&1 | tee $log
+        --db-driver=mysql --mysql-socket=$sock cleanup  2>&1 | tee $log
 }
 
 
@@ -210,6 +209,7 @@ echo "Basedir: $MYSQL_BASEDIR"
 
 sysbench_run()
 {
+  echo "Starting PXC node1"
   pushd ${MYSQL_BASEDIR}/mysql-test/
 
   set +e 
@@ -242,7 +242,7 @@ sysbench_run()
     --mysqld=--socket=$node1/socket.sock \
     --mysqld=--log-error=$WORKDIR/logs/node1.err \
     --mysqld=--log-output=none \
-    1st
+    1st > $WORKDIR/logs/node1.err 2>&1
   set -e
   popd
 
@@ -298,7 +298,7 @@ sysbench_run()
         --mysqld=--log-error=$WORKDIR/logs/node2.err \
         --mysqld=--socket=$node2/socket.sock \
         --mysqld=--log-output=none \
-        1st
+        1st > $WORKDIR/logs/node2.err 2>&1 
     set -e
     popd
   fi
@@ -339,13 +339,35 @@ sysbench_run()
                 --mysql-user=root --db-driver=mysql --mysql-socket=$node2/socket.sock \
                 run > $SRESULTS/sysbench_rw_run.txt 
         else 
-            rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
-            ver_and_row $node1/socket.sock
-            ver_and_row $node2/socket.sock
-            clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt 
+            if [ ${IST_RUN} -eq 1 ]; then
+              timeout --signal=9 20s ${MYSQL_BASEDIR}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown > /dev/null 2>&1
+              sleep 5
+              rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_ist_run.txt
+              ${MYSQL_BASEDIR}/bin/mysqld --defaults-group-suffix=.1 --defaults-file=$node2/my.cnf --log-output=file --loose-debug-sync-timeout=600 --default-storage-engine=MyISAM --default-tmp-storage-engine=MyISAM --skip-performance-schema  --innodb_file_per_table --binlog-format=ROW --wsrep-slave-threads=2 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 --wsrep-provider=${MYSQL_BASEDIR}/lib/libgalera_smm.so --wsrep_cluster_address=gcomm://$LADDR1 --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT --core-file --loose-new --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 --skip-name-resolve --log-error=$WORKDIR/logs/node2.err --socket=$node2/socket.sock --log-output=none --core-file > $WORKDIR/logs/node2.err 2>&1 & 
+              MPID="$!"
+              while true ; do
+                sleep 10
+                if egrep -qi  "Synchronized with group, ready for connections" /home/ramesh/pxc//logs/node2.err ; then
+                  break
+                fi
+                if [ "${MPID}" == "" ]; then
+                  echoit "Error! server not started.. Terminating!"
+                  egrep -i "ERROR|ASSERTION" $WORKDIR/logs/node2.err 
+                  exit 1
+                fi
+              done 
+              echo "Table row count after IST run"
+              ver_and_row $node1/socket.sock
+              ver_and_row $node2/socket.sock
+              clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
+            else
+              echo "Table row count after SST run"
+              rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
+              ver_and_row $node1/socket.sock
+              ver_and_row $node2/socket.sock
+              clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
+            fi
         fi
-
-
         if [[ -n ${BUILTIN_SYSBENCH:-} ]];then 
             echo "Sleeping for 5s"
             sleep 5
@@ -362,21 +384,38 @@ sysbench_run()
                 --test=oltp --oltp-table-size=100000 --mysql-db=test \
                 --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock \
                 run > $SRESULTS/sysbench_rw_run.txt 
-        else 
-            rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
-            ver_and_row $node1/socket.sock
-            ver_and_row $node2/socket.sock
-            clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
+        else
+            if [ ${IST_RUN} -eq 1 ]; then
+              timeout --signal=9 20s ${MYSQL_BASEDIR}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown > /dev/null 2>&1
+              sleep 5
+              rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_ist_run.txt
+              ${MYSQL_BASEDIR}/bin/mysqld --defaults-group-suffix=.1 --defaults-file=$node2/my.cnf --log-output=file --loose-debug-sync-timeout=600 --default-storage-engine=MyISAM --default-tmp-storage-engine=MyISAM --skip-performance-schema  --innodb_file_per_table --binlog-format=ROW --wsrep-slave-threads=2 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 --wsrep-provider=${MYSQL_BASEDIR}/lib/libgalera_smm.so --wsrep_cluster_address=gcomm://$LADDR1 --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT --core-file --loose-new --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 --skip-name-resolve --log-error=$WORKDIR/logs/node2.err --socket=$node2/socket.sock --log-output=none --core-file > $WORKDIR/logs/node2.err 2>&1 &
+              MPID="$!"
+              while true ; do
+                sleep 10
+                if egrep -qi  "Synchronized with group, ready for connections" /home/ramesh/pxc//logs/node2.err ; then
+                  break
+                fi
+                if [ "${MPID}" == "" ]; then
+                  echoit "Error! server not started.. Terminating!"
+                  egrep -i "ERROR|ASSERTION" $WORKDIR/logs/node2.err  
+                  exit 1
+                fi
+              done
+              echo "Table row count after IST run"
+              ver_and_row $node1/socket.sock
+              ver_and_row $node2/socket.sock
+              clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
+            else
+              echo "Table row count after SST run"
+              rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
+              ver_and_row $node1/socket.sock
+              ver_and_row $node2/socket.sock
+              clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
+            fi
         fi
   fi
   set +x
-
-#    ver_and_row $node1/socket.sock 
-#    ver_and_row $node2/socket.sock
-
-    $MYSQL_BASEDIR/bin/mysql -S $node1/socket.sock  -u root -e "drop database testdb;" || true
-    $MYSQL_BASEDIR/bin/mysql -S $node2/socket.sock  -u root -e "drop database test;"
-
 
     $MYSQL_BASEDIR/bin/mysqladmin  --socket=$node1/socket.sock -u root shutdown
     $MYSQL_BASEDIR/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
@@ -395,3 +434,10 @@ sysbench_run --skip-log-bin
 
 mv $node1 ${MYSQL_VARDIR}/without_binlog_node1
 mv $node2 ${MYSQL_VARDIR}/without_binlog_node2
+mkdir -p $node1
+mkdir -p $node2
+
+##sysbench run for IST test
+IST_RUN=1
+sysbench_run --mysqld=--binlog-format=ROW
+
