@@ -347,7 +347,7 @@ sysbench_run()
               MPID="$!"
               while true ; do
                 sleep 10
-                if egrep -qi  "Synchronized with group, ready for connections" /home/ramesh/pxc//logs/node2.err ; then
+                if egrep -qi  "Synchronized with group, ready for connections" $WORKDIR/logs/node2.err ; then
                   break
                 fi
                 if [ "${MPID}" == "" ]; then
@@ -393,7 +393,7 @@ sysbench_run()
               MPID="$!"
               while true ; do
                 sleep 10
-                if egrep -qi  "Synchronized with group, ready for connections" /home/ramesh/pxc//logs/node2.err ; then
+                if egrep -qi  "Synchronized with group, ready for connections" $WORKDIR/logs/node2.err ; then
                   break
                 fi
                 if [ "${MPID}" == "" ]; then
