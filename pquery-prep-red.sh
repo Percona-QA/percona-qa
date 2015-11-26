@@ -214,8 +214,8 @@ generate_reducer_script(){
     PXC_CLEANUP1="0,/^[ \t]*PXC_DOCKER_COMPOSE_MOD[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_COMPOSE_MOD[ \t]*=.*$|#PXC_DOCKER_COMPOSE_MOD=<set_below_in_machine_variables_section>|"
     PXC_CLEANUP2="0,/^[ \t]*PXC_DOCKER_COMPOSE_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_COMPOSE_LOC[ \t]*=.*$|#PXC_DOCKER_COMPOSE_LOC=<set_below_in_machine_variables_section>|"
     PXC_CLEANUP3="0,/^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$|#PXC_DOCKER_CLEAN_LOC=<set_below_in_machine_variables_section>|"
-    PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_MOD=1\n#VARMOD#:"
-    PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_FIG_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_YML}\n#VARMOD#:"
+    PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_MOD=1\n#VARMOD#:"
+    PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_YML}\n#VARMOD#:"
     PXC_STRING3="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_CLEAN_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_LOC}\n#VARMOD#:"
   else
     PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
