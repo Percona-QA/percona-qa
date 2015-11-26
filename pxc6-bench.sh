@@ -242,7 +242,7 @@ sysbench_run()
     --mysqld=--socket=$node1/socket.sock \
     --mysqld=--log-error=$WORKDIR/logs/node1.err \
     --mysqld=--log-output=none \
-    1st > $WORKDIR/logs/node1.err 2>&1
+    1st 
   set -e
   popd
 
@@ -298,7 +298,7 @@ sysbench_run()
         --mysqld=--log-error=$WORKDIR/logs/node2.err \
         --mysqld=--socket=$node2/socket.sock \
         --mysqld=--log-output=none \
-        1st > $WORKDIR/logs/node2.err 2>&1 
+        1st  
     set -e
     popd
   fi
