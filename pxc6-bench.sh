@@ -340,7 +340,7 @@ sysbench_run()
                 run > $SRESULTS/sysbench_rw_run.txt 
         else 
             if [ ${IST_RUN} -eq 1 ]; then
-              timeout --signal=9 20s ${MYSQL_BASEDIR}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown > /dev/null 2>&1
+              ${MYSQL_BASEDIR}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown > /dev/null 2>&1
               sleep 5
               rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_ist_run.txt
               ${MYSQL_BASEDIR}/bin/mysqld --defaults-group-suffix=.1 --defaults-file=$node2/my.cnf --log-output=file --loose-debug-sync-timeout=600 --default-storage-engine=MyISAM --default-tmp-storage-engine=MyISAM --skip-performance-schema  --innodb_file_per_table --binlog-format=ROW --wsrep-slave-threads=2 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 --wsrep-provider=${MYSQL_BASEDIR}/lib/libgalera_smm.so --wsrep_cluster_address=gcomm://$LADDR1 --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT --core-file --loose-new --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 --skip-name-resolve --log-error=$WORKDIR/logs/node2.err --socket=$node2/socket.sock --log-output=none --core-file > $WORKDIR/logs/node2.err 2>&1 & 
@@ -386,7 +386,7 @@ sysbench_run()
                 run > $SRESULTS/sysbench_rw_run.txt 
         else
             if [ ${IST_RUN} -eq 1 ]; then
-              timeout --signal=9 20s ${MYSQL_BASEDIR}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown > /dev/null 2>&1
+              ${MYSQL_BASEDIR}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown > /dev/null 2>&1
               sleep 5
               rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_ist_run.txt
               ${MYSQL_BASEDIR}/bin/mysqld --defaults-group-suffix=.1 --defaults-file=$node2/my.cnf --log-output=file --loose-debug-sync-timeout=600 --default-storage-engine=MyISAM --default-tmp-storage-engine=MyISAM --skip-performance-schema  --innodb_file_per_table --binlog-format=ROW --wsrep-slave-threads=2 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 --wsrep-provider=${MYSQL_BASEDIR}/lib/libgalera_smm.so --wsrep_cluster_address=gcomm://$LADDR1 --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT --core-file --loose-new --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 --skip-name-resolve --log-error=$WORKDIR/logs/node2.err --socket=$node2/socket.sock --log-output=none --core-file > $WORKDIR/logs/node2.err 2>&1 &
