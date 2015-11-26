@@ -75,6 +75,7 @@ else
   MYSQLD_START_TIMEOUT=60
 fi
 CRASH_TESTING_MODE=0 # Set to 1 to make this a crash testing run
+SAVE_CRASH_TRIAL=0
 if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
   SYSBENCH_DATALOAD=1 # Need large dataset to ensure buffer pool overreach
   KILL_BEFORE_END_SEC=15
