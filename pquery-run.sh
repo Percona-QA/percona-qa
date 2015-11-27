@@ -556,7 +556,7 @@ pquery_test(){
 rm -Rf ${WORKDIR} ${RUNDIR}
 mkdir ${WORKDIR} ${WORKDIR}/log ${RUNDIR}
 # User for recovery testing
-echo "create user recovery@'%';grant all *.* on to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
+echo "create user recovery@'%';grant all on *.* to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
 if [ ${PXC} -eq 0 ];then
   echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR}"
 else
