@@ -79,6 +79,7 @@ SAVE_CRASH_TRIAL=0
 if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
   SYSBENCH_DATALOAD=1 # Need large dataset to ensure buffer pool overreach
   KILL_BEFORE_END_SEC=15
+  echo "create user recovery@'%';grant all *.* on to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
 fi
 ARCHIVE_INFILE_COPY=1  # Archive a copy of the SQL input file in the work directory
 PXC_DOCKER_START_TIMEOUT=140
@@ -270,8 +271,8 @@ pquery_test(){
     echo "  echoit \"For Centos7 you can do this by: sudo yum -y install epel-release; sudo yum -y install jemalloc;\"" >> ${RUNDIR}/${TRIAL}/start_recovery
     echo "  exit 1;" >> ${RUNDIR}/${TRIAL}/start_recovery
     echo "fi" >> ${RUNDIR}/${TRIAL}/start_recovery
-
-    echo "${CMD//$RUNDIR/$WORKDIR}  --skip-grant-tables > ${WORKDIR}/${TRIAL}/log/master.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
+    
+    echo "${CMD//$RUNDIR/$WORKDIR} --init-file=${WORKDIR}/recovery-user.sql > ${WORKDIR}/${TRIAL}/log/master.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
     # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
     echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     if [ ${VALGRIND_RUN} -eq 1 ]; then
