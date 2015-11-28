@@ -15,7 +15,7 @@ rm -Rf ${CURPATH}_opt
 rm -f /tmp/5.7_opt_build
 cp -R ${CURPATH} ${CURPATH}_opt
 cd ${CURPATH}_opt
-cmake . -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DWITH_EMBEDDED_SERVER=OFF -DWITH_MAINTAINER_MODE=OFF -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp | tee /tmp/5.7_opt_build
+cmake . -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system | tee /tmp/5.7_opt_build
 make | tee -a /tmp/5.7_opt_build
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_opt_build
 TAR_opt=`ls -1 *.tar.gz | head -n1`

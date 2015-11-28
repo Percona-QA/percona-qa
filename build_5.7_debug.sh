@@ -15,7 +15,7 @@ rm -Rf ${CURPATH}_dbg
 rm -f /tmp/5.7_debug_build
 cp -R ${CURPATH} ${CURPATH}_dbg
 cd ${CURPATH}_dbg
-cmake . -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DWITH_EMBEDDED_SERVER=OFF -DDEBUG_EXTNAME=OFF -DENABLE_DOWNLOADS=1 -DWITH_EMBEDDED_SERVER=OFF -DWITH_MAINTAINER_MODE=OFF -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp | tee /tmp/5.7_debug_build
+cmake . -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system | tee /tmp/5.7_debug_build
 make | tee -a /tmp/5.7_debug_build
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_debug_build
 TAR_dbg=`ls -1 *.tar.gz | head -n1`

@@ -1,0 +1,28 @@
+[randgen.hacked.for.sql.generation]$ bzr diff
+=== modified file 'lib/GenTest/Generator/FromGrammar.pm'
+--- lib/GenTest/Generator/FromGrammar.pm        2013-06-21 14:37:14 +0000
++++ lib/GenTest/Generator/FromGrammar.pm        2015-11-28 05:19:48 +0000
+@@ -225,12 +225,14 @@
+                } elsif ( ($_ eq 'digit')  || ($_ eq '_digit') ) {
+                        $_ = $prng->digit();
+                } elsif ($_ eq '_table') {
+-                       my $tables = $executors->[0]->metaTables($last_database);
+-                       $last_table = $prng->arrayElement($tables);
+-                       $_ = '`'.$last_table.'`';
++                       #my $tables = $executors->[0]->metaTables($last_database);
++                       #$last_table = $prng->arrayElement($tables);
++                       #$_ = '`'.$last_table.'`';
++                       $_ = 't1';
+                } elsif ($_ eq '_field') {
+-                       my $fields = $executors->[0]->metaColumns($last_table, $last_database);
+-                       $_ = '`'.$prng->arrayElement($fields).'`';
++                       #my $fields = $executors->[0]->metaColumns($last_table, $last_database);
++                       #$_ = '`'.$prng->arrayElement($fields).'`';
++                       $_ = 'c1';
+                } elsif ($_ eq '_hex') {
+                        $_ = $prng->hex();
+                } elsif ($_ eq '_cwd') {
+
+[randgen.hacked.for.sql.generation]$ ./gensql.pl --grammar=./conf/engines/blobs.yy --seed=1 --queries=2
+UPDATE t1 SET c1 = LOAD_FILE('/home/user/randgen.hacked.for.sql.generation/data/earth215kb.jpg') ORDER BY RAND() LIMIT 1;
+UPDATE t1 SET c1 = LOAD_FILE('/home/user/randgen.hacked.for.sql.generation/data/earth5kb.jpg') ORDER BY RAND() LIMIT 1;

@@ -16,7 +16,7 @@
 ## [ERROR] Got error 155 when reading table                 ## Read from table after ALTER TABLE x DISCARD TABLESPACE  | MS 75911
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
-## =========== 5.7 Prepatory Work ===========
+## =========== Early 5.7 Prepatory Work ===========
 ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
 ut0ut.cc line 906                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
 ut0ut.cc line 916                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
@@ -61,7 +61,7 @@ i == uint2korr.part_rec_buf_ptr                          ## http://bugs.mysql.co
 #row0mysql.cc line 2418                        ## Fixed  ## http://bugs.mysql.com/bug.php?id=76419                                                 (# after MS 5.7.8 merged)
 row0mysql.cc line 3339                                   ## http://bugs.mysql.com/bug.php?id=75945
 ZN13MYSQL_BIN_LOG12find_log_posEP11st_log_infoPKcb       ## http://bugs.mysql.com/bug.php?id=76420
-thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE  ## http://bugs.mysql.com/bug.php?id=76424
+#thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE ## Fixed in 5.7.8 http://bugs.mysql.com/bug.php?id=76424
 TEXT=.is_started.$                                       ## http://bugs.mysql.com/bug.php?id=76425
 dict0priv.ic line 44                                     ## http://bugs.mysql.com/bug.php?id=76430
 ha_innodb.cc line 9833                                   ## http://bugs.mysql.com/bug.php?id=76431
@@ -74,7 +74,8 @@ btr0cur.cc line 2573                                     ## http://bugs.mysql.co
 buf0buf.cc line 1106                                     ## http://bugs.mysql.com/bug.php?id=76439
 handler0alter.cc line 6647                               ## http://bugs.mysql.com/bug.php?id=76445
 explain_other .. unit->is_optimized                      ## http://bugs.mysql.com/bug.php?id=76446
-## 5.7.7 RC Test
+
+## =========== MS 5.7.7 RC ===========
 Z15ha_commit_transP3THDbb                                ## http://bugs.mysql.com/bug.php?id=77520
 #trx0trx.cc line 1290                           ## Fixed ## http://bugs.mysql.com/bug.php?id=77521                                     (# after MS 5.7.9 merged)
 Z27fill_schema_user_privilegesP3THDP10TABLE_LISTP4Item   ## http://bugs.mysql.com/bug.php?id=77522
@@ -120,6 +121,17 @@ Z22get_filename_hash_pinsP10PFS_thread                   ## http://bugs.mysql.co
 btr0cur.cc line 830                                      ## beta  # https://bugs.launchpad.net/percona-server/+bug/1517757
 trx0trx.cc line 1297                                     ## beta  # http://bugs.mysql.com/bug.php?id=79349
 trx0trx.cc line 1262                                     ## MS5.7 # http://bugs.mysql.com/bug.php?id=79349 (same bug as trx0trx.cc line 1297 on PS)
+thd->get_transaction                                     ## beta  # https://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)
+sync0policy.ic line 63                                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=79391                 (MS version of PS #1519201)
+buf0buf.ic line 230                                      ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519201 (PS version of MS #79391)
+ha_innodb.cc line 18605                                  ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519204
+ZN12ha_myisammrg15detach_childrenEv                      ## MS5.7 # http://bugs.mysql.com/bug.php?id=79392
+trx0sys.cc line 1265                                     ## MS5.7 # http://bugs.mysql.com/bug.php?id=79416 (same line for PS&MS)
+ha_innodb.cc line 2653                                   ## beta  # http://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on PS)
+ha_innodb.cc line 2444                                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on MS)
+ZN13st_select_lex19make_active_optionsEyy                ## MS5.7 # http://bugs.mysql.com/bug.php?id=79417
+m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespace, .., .., MDL_INTENTION_EXCLUSIVE ## beta # https://bugs.launchpad.net/percona-server/+bug/1520401
+..HA_ATTACHABLE_TRX_COMPATIBLE is not set.               ## beta  # https://bugs.launchpad.net/percona-server/+bug/1520403
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
@@ -490,7 +502,7 @@ ZN7handler12ha_index_endEv                                         ## Still pres
 ZN7handler19ha_index_or_rnd_endEv                                  ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74583, 74584, and LP #1384656, 1417382 (Fixed in 5.7.6)
 ZN7handler22ha_inplace_alter_tableEP5TABLEP18Alter_inplace_info    ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74810, LP #1385062 (fixed in 5.7.6)
 ZN7handler9ha_createEPKcP5TABLEP24st_ha_create_information         ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74292 (fixed in 5.6.23) Duplicate MS#75284
-ZN7ha_heap11index_firstEPh                                                              ## https://bugs.launchpad.net/percona-server/+bug/1488055 
+ZN7ha_heap11index_firstEPh                                                              ## https://bugs.launchpad.net/percona-server/+bug/1488055 (dup of 1518183 in 5.7 above)
 ZN7MDL_key12mdl_key_initENS_18enum_mdl_namespaceEPKcS2_            ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74499 (fixed in 5.5.43)
 ZN7sys_var5checkEP3THDP7set_var                                                         ## http://bugs.mysql.com/bug.php?id=78064 (also seen in 5.7.8 RC2)
 ZN8Item_row19illegal_method_callEPKc                                                    ## http://bugs.mysql.com/bug.php?id=76468
