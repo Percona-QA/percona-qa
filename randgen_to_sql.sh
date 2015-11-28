@@ -22,6 +22,10 @@ for FILE in $(find . | grep "\.yy$"); do
      SEED=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random number generator (6 digits)
      MASK=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random number generator (6 digits)
      MASK_LEVEL=$(echo $[ $RANDOM % 3 ])
-     ./gensql.pl --grammar=${FILE} --seed=${SEED} --queries=${QUERIES_PER_GRAMMAR} --mask-level=${MASK_LEVEL} --mask=${MASK} >> /tmp/newsql.sql
+     if [ ${LOOP} -eq 0 ]; then  # Only show errors for the first run, much less screen filling
+       ./gensql.pl --grammar=${FILE} --seed=${SEED} --queries=${QUERIES_PER_GRAMMAR} --mask-level=${MASK_LEVEL} --mask=${MASK} >> /tmp/newsql.sql
+     else
+       ./gensql.pl --grammar=${FILE} --seed=${SEED} --queries=${QUERIES_PER_GRAMMAR} --mask-level=${MASK_LEVEL} --mask=${MASK} >> /tmp/newsql.sql 2>/dev/null
+     fi
   done
 done
