@@ -1056,7 +1056,7 @@ init_workdir_and_files(){
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
     if [ $PXC_DOCKER_COMPOSE_MOD -ne 1 ]; then  # For PXC, we do not need this, Docker Compose takes care of it
-      echo_out "[Init] Setting up standard working subdirectories"
+      echo_out "[Init] Setting up standard working template"
       if [ "`${MYBASE}${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.7" ]; then
         MID_OPTIONS="--initialize-insecure"  # --initialize-insecure prevents random root password in 5.7. --force is no longer supported in new mysql_install_db binary in 5.7
       elif [ "`${MYBASE}${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.6" ]; then
@@ -1068,27 +1068,7 @@ init_workdir_and_files(){
         echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set the variable \$MID_OPTIONS manually. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning."
       fi
       # MID_OPTIONS='--initialize-insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
-      echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
-      echo "SOURCE_DIR=\$MYBASE # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
-      echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. # This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
-      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
-      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_INIT
-      echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
-      echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
-      echo "mkdir -p /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
-      echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`" >> $WORK_INIT
-      echo "if [ -n \"\$BIN\"  ]; then" >> $WORK_INIT
-      echo "  if [ \"\$BIN\" != \"\${MYBASE}/bin/mysqld\" -a \"\$BIN\" != \"\${MYBASE}/bin/mysqld-debug\" ];then" >> $WORK_INIT
-      echo "    if [ ! -h \${MYBASE}/bin/mysqld -o ! -f \${MYBASE}/bin/mysqld ]; then mkdir -p \${MYBASE}/bin; ln -s \$BIN \${MYBASE}/bin/mysqld; fi" >> $WORK_INIT
-      echo "    if [ ! -h \${MYBASE}/bin/mysql -o ! -f \${MYBASE}/bin/mysql ]; then ln -s \${MYBASE}/client/mysql \${MYBASE}/bin/mysql ; fi" >> $WORK_INIT
-      echo "    if [ ! -h \${MYBASE}/share -o ! -f \${MYBASE}/share ]; then ln -s \${SOURCE_DIR}/scripts \${MYBASE}/share ; fi" >> $WORK_INIT
-      echo -e "    if [ ! -h \${MYBASE}/share/errmsg.sys -o ! -f \${MYBASE}/share/errmsg.sys ]; then ln -s \${MYBASE}/sql/share/english/errmsg.sys \${MYBASE}/share/errmsg.sys ; fi;\n  fi\nelse" >> $WORK_INIT
-      echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
-      echo "MID=\`find \${MYBASE} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
-      echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
-      echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; fi" >> $WORK_INIT
-
-      # echo "\$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS" >> $WORK_INIT
+      generate_run_scripts      
       if [ -r $MYBASE/scripts/mysql_install_db ]; then
         $MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
       elif [ -r $MYBASE/bin/mysql_install_db ]; then
@@ -1120,89 +1100,111 @@ init_workdir_and_files(){
       done
       echo_out "[Info] If you see a [GLIBC] crash above, change reducer to use a non-Valgrind-instrumented build of mysql_tzinfo_to_sql (Ref. BUG#13498842)"
       $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
-      # Add various scripts: _run (runs the sql), _cl (starts a mysql cli), _stop (stop mysqld). _start is added in the respective startup functions
-      # (start_mysqld_main and start_valgrind_mysqld). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
-      if [ $MODE -ge 6 ]; then
-        # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
-        echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet."
-        echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet." > $WORK_RUN
-        echo "#${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
-        chmod +x $WORK_RUN
-      else
-        echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
-        echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN
-        echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using the mysql CLI client...\"" >> $WORK_RUN
-        echo "\${MYBASE}/bin/mysql -uroot --binary-mode --force -S/dev/shm/${EPOCH2}/socket.sock < ./${EPOCH2}.sql" >> $WORK_RUN
-        chmod +x $WORK_RUN
-        if [ $PQUERY_MOD -eq 1 ]; then
-          cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
-          if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-            echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
-            echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
-            echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
-            echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
-            if [ $PQUERY_MULTI -eq 1 ]; then
-              if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-              echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
-            else
-              if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-              echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
-            fi
-          else
-            echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
-            echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
-            echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
-            echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
-            if [ $PQUERY_MULTI -eq 1 ]; then
-              if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-              echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
-            else
-              if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-              echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
-            fi
-          fi
-          chmod +x $WORK_RUN_PQUERY
-        fi
-      fi 
-      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
-      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_GDB
-      echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*)" >> $WORK_GDB
-      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
-      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_PARSE_CORE
-      echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
-      echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH2}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH2}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
-      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
-      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_STOP
-      echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock...\"" >> $WORK_STOP
-      echo "MYADMIN=\`find \${MYBASE} -maxdepth 2 -type f -name mysqladmin\`" >> $WORK_STOP
-      echo "\$MYADMIN -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
-      echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
-      echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_CL
-      echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
-      echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
-      echo -e "The attached tarball (${EPOCH2}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
-      echo "$ vi ${EPOCH2}_mybase     # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_init        # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_start       # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_cl          # STEP4: To check mysqld is up" >> $WORK_HOW_TO_USE
-      if [ $PQUERY_MOD -eq 1 ]; then
-        echo "$ ./${EPOCH2}_run_pquery  # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
-        echo "$ ./${EPOCH2}_run         # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
-      else
-        echo "$ ./${EPOCH2}_run         # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
-        echo "$ ./${EPOCH2}_run_pquery  # OPTIONAL: Run the testcase with the pquery binary (may not reproduce the issue, as the mysql CLI was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
-      fi
-      echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP6: Verify the error log" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_gdb         # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE
-      echo "$ ./${EPOCH2}_parse_core  # STEP7: Creates ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
-      chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
       stop_mysqld_or_pxc
       mkdir $WORKD/data.init
       cp -R $WORKD/data/* $WORKD/data.init/
     fi
   else
-    echo_out "[Init] This is a subreducer process; use initialization data from the main process ($WORKD/../../data.init)"
+    echo_out "[Init] This is a subreducer process; using initialization data from the main process ($WORKD/../../data.init)"
   fi
+}
+
+generate_run_scripts(){
+  # Add various scripts: _mybase (setup variable(s)), _init (setup), _run (runs the sql), _cl (starts a mysql cli), _stop (stop mysqld). _start (starts mysqld)
+  # (start_mysqld_main and start_valgrind_mysqld). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
+  echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
+  echo "SOURCE_DIR=\$MYBASE # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
+  echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. # This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_INIT
+  echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
+  echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
+  echo "mkdir -p /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
+  echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`" >> $WORK_INIT
+  echo "if [ -n \"\$BIN\"  ]; then" >> $WORK_INIT
+  echo "  if [ \"\$BIN\" != \"\${MYBASE}/bin/mysqld\" -a \"\$BIN\" != \"\${MYBASE}/bin/mysqld-debug\" ];then" >> $WORK_INIT
+  echo "    if [ ! -h \${MYBASE}/bin/mysqld -o ! -f \${MYBASE}/bin/mysqld ]; then mkdir -p \${MYBASE}/bin; ln -s \$BIN \${MYBASE}/bin/mysqld; fi" >> $WORK_INIT
+  echo "    if [ ! -h \${MYBASE}/bin/mysql -o ! -f \${MYBASE}/bin/mysql ]; then ln -s \${MYBASE}/client/mysql \${MYBASE}/bin/mysql ; fi" >> $WORK_INIT
+  echo "    if [ ! -h \${MYBASE}/share -o ! -f \${MYBASE}/share ]; then ln -s \${SOURCE_DIR}/scripts \${MYBASE}/share ; fi" >> $WORK_INIT
+  echo -e "    if [ ! -h \${MYBASE}/share/errmsg.sys -o ! -f \${MYBASE}/share/errmsg.sys ]; then ln -s \${MYBASE}/sql/share/english/errmsg.sys \${MYBASE}/share/errmsg.sys ; fi;\n  fi\nelse" >> $WORK_INIT
+  echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
+  echo "MID=\`find \${MYBASE} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
+  echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
+  echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; fi" >> $WORK_INIT
+  if [ $MODE -ge 6 ]; then
+    # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
+    echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet."
+    echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet." > $WORK_RUN
+    echo "#${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
+    chmod +x $WORK_RUN
+  else
+    echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
+    echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN
+    echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using the mysql CLI client...\"" >> $WORK_RUN
+    echo "\${MYBASE}/bin/mysql -uroot --binary-mode --force -S/dev/shm/${EPOCH2}/socket.sock < ./${EPOCH2}.sql" >> $WORK_RUN
+    chmod +x $WORK_RUN
+    if [ $PQUERY_MOD -eq 1 ]; then
+      cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
+      if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
+        echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
+        echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
+        echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
+        echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
+        if [ $PQUERY_MULTI -eq 1 ]; then
+          if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
+          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
+        else
+          if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
+          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
+        fi
+      else
+        echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
+        echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
+        echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
+        echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
+        if [ $PQUERY_MULTI -eq 1 ]; then
+          if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
+          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
+        else
+          if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
+          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
+        fi
+      fi
+      chmod +x $WORK_RUN_PQUERY
+    fi
+  fi 
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_GDB
+  echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*)" >> $WORK_GDB
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_PARSE_CORE
+  echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
+  echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH2}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH2}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_STOP
+  echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock...\"" >> $WORK_STOP
+  echo "MYADMIN=\`find \${MYBASE} -maxdepth 2 -type f -name mysqladmin\`" >> $WORK_STOP
+  echo "\$MYADMIN -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
+  echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
+  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_CL
+  echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
+  echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
+  echo -e "The attached tarball (${EPOCH2}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
+  echo "$ vi ${EPOCH2}_mybase     # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH2}_init        # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH2}_start       # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH2}_cl          # STEP4: To check mysqld is up" >> $WORK_HOW_TO_USE
+  if [ $PQUERY_MOD -eq 1 ]; then
+    echo "$ ./${EPOCH2}_run_pquery  # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
+    echo "$ ./${EPOCH2}_run         # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
+  else
+    echo "$ ./${EPOCH2}_run         # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
+    echo "$ ./${EPOCH2}_run_pquery  # OPTIONAL: Run the testcase with the pquery binary (may not reproduce the issue, as the mysql CLI was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
+  fi
+  echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP6: Verify the error log" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH2}_gdb         # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH2}_parse_core  # STEP7: Creates ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
+  chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
 }
 
 init_mysql_dir(){
