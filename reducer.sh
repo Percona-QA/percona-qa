@@ -1110,7 +1110,7 @@ init_workdir_and_files(){
 }
 
 generate_run_scripts(){
-  # Add various scripts: _mybase (setup variable(s)), _init (setup), _run (runs the sql), _cl (starts a mysql cli), _stop (stop mysqld). _start (starts mysqld)
+  # Add various scripts (with {epoch} prefix): _mybase (setup variables), _init (setup), _run (runs the sql), _cl (starts a mysql cli), _stop (stop mysqld). _start (starts mysqld)
   # (start_mysqld_main and start_valgrind_mysqld). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
   echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
   echo "SOURCE_DIR=\$MYBASE # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
@@ -1199,7 +1199,6 @@ generate_run_scripts(){
     echo "$ ./${EPOCH2}_run         # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
   else
     echo "$ ./${EPOCH2}_run         # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
-    echo "$ ./${EPOCH2}_run_pquery  # OPTIONAL: Run the testcase with the pquery binary (may not reproduce the issue, as the mysql CLI was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
   fi
   echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP6: Verify the error log" >> $WORK_HOW_TO_USE
   echo "$ ./${EPOCH2}_gdb         # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE

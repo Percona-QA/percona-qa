@@ -31,7 +31,7 @@ echoit(){
  > ${TEMP_FILE}
 
 # mysqld options excluded from list.
-EXCLUDED_LIST=( --basedir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect  --optimizer-trace --performance-schema-instrument --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password )  
+EXCLUDED_LIST=( --basedir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password )  
 # Create a file (${OUTPUT_FILE}) with all options/values intelligently handled and included
 rm -Rf ${OUTPUT_FILE}
 touch ${OUTPUT_FILE}
@@ -384,6 +384,35 @@ while read line; do
   elif [ "${OPTION}" == "--rocksdb-strict-collation-exceptions" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
   elif [ "${OPTION}" == "--rocksdb-wal-dir" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--optimizer-trace" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--performance-schema-instrument" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--block-encryption-mode" ]; then
+    echoit "  > Adding possible values aes-128-ecb, aes-128-cbc, aes-128-cfb1, aes-192-ecb, aes-192-cbc, aes-192-ofb, aes-256-ecb, aes-256-cbc, aes-256-cfb128 for option '${OPTION}' to the final list..."
+    echo "${OPTION}=aes-128-ecb" >> ${OUTPUT_FILE}
+    echo "${OPTION}=aes-128-cbc" >> ${OUTPUT_FILE}
+    echo "${OPTION}=aes-128-cfb1" >> ${OUTPUT_FILE}
+    echo "${OPTION}=aes-192-ecb" >> ${OUTPUT_FILE}
+    echo "${OPTION}=aes-192-cbc" >> ${OUTPUT_FILE}
+    echo "${OPTION}=aes-192-ofb" >> ${OUTPUT_FILE}
+    echo "${OPTION}=aes-256-ecb" >> ${OUTPUT_FILE}
+    echo "${OPTION}=aes-256-cbc" >> ${OUTPUT_FILE}
+    echo "${OPTION}=aes-256-cfb128" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--" ]; then
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
   elif [ "${OPTION}" == "--" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."

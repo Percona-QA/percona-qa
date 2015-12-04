@@ -5,14 +5,15 @@
 # around single_test_mongo.sh. It analyzes output of single_test_mongo.sh &  reports on the same. It also stores interesting results to a ${RESULTSDIR} dir.
 
 # User configurable variables
-MONGODIR="/sda/PSMDB/percona-server-mongodb-3.0.5-rel0.8rc"     # Where mongo/mongod lives (with ./mongod and ./jstests both present!)
+MONGODIR="/sdc/percona-server-mongodb-3.0.7-1.0"    # Where mongo/mongod lives (with ./mongod and ./jstests both present!)
 RESULTS_DIR="/sdc"                         # Where failures/bugs are stored
 JS_LIST="/sdc/js_tests_to_run.txt"         # Temporary file of JS tests (created by this script)
 THREADS=10                                 # Number of threads that should run
 TIMEOUT=$[ 60 * 30 ]                       # Timeout, in seconds, per test (currently 30 min)
 FILES_ULIMIT=100000                        # Ulimit -n value which script will attempt to set (TokuFT needs many file descriptors)
 PRI_ENGINE=PerconaFT                       # Primary engine to use for testing (usually tokuft)
-SEC_ENGINE=wiredTiger                      # Compare primary engine against this engine (usually mmapv1 or wiredTiger)
+#SEC_ENGINE=wiredTiger                      # Compare primary engine against this engine (usually mmapv1 or wiredTiger)
+SEC_ENGINE=MMAPv1
 
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)

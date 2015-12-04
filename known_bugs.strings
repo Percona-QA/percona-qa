@@ -20,6 +20,7 @@
 ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
 ut0ut.cc line 906                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
 ut0ut.cc line 916                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
+ut0ut.cc line 918                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7B2
 buf0buf.cc line 2678                                     ## Not logged: SET GLOBAL innodb_fil_make_page_dirty_debug=38098908;
 #sync0debug.cc line 299                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
 #buf0lru.cc line 2245                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1415357                                 (# after next bzr pull)
@@ -132,6 +133,7 @@ ha_innodb.cc line 2444                                   ## MS5.7 # http://bugs.
 ZN13st_select_lex19make_active_optionsEyy                ## MS5.7 # http://bugs.mysql.com/bug.php?id=79417
 m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespace, .., .., MDL_INTENTION_EXCLUSIVE ## beta # https://bugs.launchpad.net/percona-server/+bug/1520401
 ..HA_ATTACHABLE_TRX_COMPATIBLE is not set.               ## beta  # https://bugs.launchpad.net/percona-server/+bug/1520403
+log0log.cc line 1104
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...

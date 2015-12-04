@@ -15,7 +15,11 @@ rm -Rf ${CURPATH}_opt
 rm -f /tmp/5.7_opt_build
 cp -R ${CURPATH} ${CURPATH}_opt
 cd ${CURPATH}_opt
-cmake . -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system | tee /tmp/5.7_opt_build
+
+### TEMPORARY HACK TO AVOID COMPILING TB (WHICH IS NOT READY YET)
+rm -Rf ./plugin/tokudb-backup-plugin
+
+cmake . -DWITH_ZLIB=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system | tee /tmp/5.7_opt_build
 make | tee -a /tmp/5.7_opt_build
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_opt_build
 TAR_opt=`ls -1 *.tar.gz | head -n1`
