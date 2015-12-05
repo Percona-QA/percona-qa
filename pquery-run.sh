@@ -77,8 +77,8 @@ fi
 CRASH_TESTING_MODE=0 # Set to 1 to make this a crash testing run
 SAVE_CRASH_TRIAL=0
 if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
-  SYSBENCH_DATALOAD=1 # Need large dataset to ensure buffer pool overreach
-  KILL_BEFORE_END_SEC=15
+  INFILE=${SCRIPT_PWD}/simple.sql # Using simple.sql for crash testing
+  KILL_BEFORE_END_SEC=25
 fi
 ARCHIVE_INFILE_COPY=1  # Archive a copy of the SQL input file in the work directory
 PXC_DOCKER_START_TIMEOUT=140
@@ -89,15 +89,17 @@ if [ ${MULTI_THREADED_RUN} -eq 0 ]; then
     PQUERY_RUN_TIMEOUT=120  # See below for run time timeout descripton. Starting up a cluster takes more time, so don't rotate too quickly
     QUERIES_PER_THREAD=2147483647  # Max int
   else
-    if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
-      PQUERY_RUN_TIMEOUT=20
-    else
-      PQUERY_RUN_TIMEOUT=15  # x seconds max pquery trial run time (in this it will try to process ${QUERIES_PER_THREAD} x ${THREADS} queries against 1 mysqld)
-    fi
+    PQUERY_RUN_TIMEOUT=15 # x seconds max pquery trial run time (in this it will try to process ${QUERIES_PER_THREAD} x ${THREADS} queries against 1 mysqld)
     QUERIES_PER_THREAD=100000
   fi
-  THREADS=1
-  MULTI_THREADED_TESTC_LINES=0  # Not used for single threaded-runs
+  if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
+    PQUERY_RUN_TIMEOUT=30
+    THREADS=50
+    MULTI_THREADED_TESTC_LINES=0  # Not used for single threaded-runs
+  else
+    THREADS=1
+    MULTI_THREADED_TESTC_LINES=0  # Not used for single threaded-runs
+  fi
 else
   # Suggestion: keep PQUERY_RUN_TIMEOUT low for the moment (10 to 240 seconds) - even in 10-20 seconds pquery can execute thousands of queries == more crashes
   if [ ${PXC} -eq 1 ]; then
@@ -164,10 +166,6 @@ fi
 savetrial(){
   if [ ${PXC} -eq 0 ]; then
     if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
-      SAVED=$[ $SAVED + 1 ]
-      echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
-      mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
-    elif [ ${SAVE_CRASH_TRIAL} -eq 1 ]; then
       SAVED=$[ $SAVED + 1 ]
       echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
       mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
@@ -386,14 +384,20 @@ pquery_test(){
       else
         ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       fi
-    else  # Multi-threaded run using a chunk from INFILE (${THREADS} clients)
-      echoit "Taking ${MULTI_THREADED_TESTC_LINES} lines randomly from ${INFILE} as testcase for this trial..."
-      shuf ${INFILE} | head -n${MULTI_THREADED_TESTC_LINES} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
+    else  
+      if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
+        SQL_FILE="--infile=${INFILE}"
+      else
+        # Multi-threaded run using a chunk from INFILE (${THREADS} clients)
+        echoit "Taking ${MULTI_THREADED_TESTC_LINES} lines randomly from ${INFILE} as testcase for this trial..."
+        shuf ${INFILE} | head -n${MULTI_THREADED_TESTC_LINES} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
+        SQL_FILE="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql"
+      fi
       # Debug echo "-------"; cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql; echo "-------"
       if [ ${PXC} -eq 0 ]; then
-        ${PQUERY_BIN} --infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       else
-        ${PQUERY_BIN} --infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       fi
     fi 
     PQPID="$!"
@@ -407,13 +411,11 @@ pquery_test(){
       if [ "`ps -ef | grep ${PQPID} | grep -v grep`" == "" ]; then  # pquery ended
         break
       fi
-      if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
-        SAVE_CRASH_TRIAL=0
+      if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
         if [ $X -eq $KILL_BEFORE_END_SEC ]; then
            kill -9 ${MPID} >/dev/null 2>&1;
            sleep 2
            echoit "killed for crash testing"
-           SAVE_CRASH_TRIAL=1
            break
         fi
       fi
@@ -507,12 +509,6 @@ pquery_test(){
         if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE3}`"; fi
       fi
       if [ ${TRIAL_SAVED} -eq 0 ]; then
-        savetrial
-        TRIAL_SAVED=1
-      fi
-    elif [ ${SAVE_CRASH_TRIAL} -eq 1 ];then
-      if [ ${TRIAL_SAVED} -eq 0 ]; then
-        echoit "Saving full trial outcome (as kill -9 issued for crash testing and so trials are saved irrespective of whetter an issue was detected or not)"
         savetrial
         TRIAL_SAVED=1
       fi
