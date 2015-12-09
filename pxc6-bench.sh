@@ -164,9 +164,16 @@ oltp_ddl()
     local sock=$1
     local log=$2
     if [[ ! -e ${SDIR}/oltp_ddl.lua ]];then
-        pushd ${SDIR}
-        wget -O oltp_ddl.lua  https://github.com/Percona-QA/sysbench/tree/0.5/sysbench/tests/db/oltp_ddl.lua
+      if [[ ! -e ${ROOT_FS}/sysbench/sysbench/tests/db/oltp_ddl.lua ]];then
+        pushd ${ROOT_FS}
+        git clone -n https://github.com/Percona-QA/sysbench.git --depth 1
+        cd sysbench
+        git checkout HEAD sysbench/tests/db/oltp_ddl.lua
+        $SDIR=${ROOT_FS}/sysbench/sysbench/tests/db/
+        cd $SDIR
+        ln -s ${LPATH}/* .
         popd
+      fi
     fi
 
     echo "Sysbench Run: OLTP DDL testing"
