@@ -159,6 +159,23 @@ rw_full()
         --mysql-user=root --db-driver=mysql --mysql-socket=$sock  run  2>&1 | tee $log
 }
 
+oltp_ddl()
+{
+    local sock=$1
+    local log=$2
+    if [[ ! -e ${SDIR}/oltp_ddl.lua ]];then
+        pushd ${SDIR}
+        wget -O oltp_ddl.lua  https://github.com/Percona-QA/sysbench/tree/0.5/sysbench/tests/db/oltp_ddl.lua
+        popd
+    fi
+
+    echo "Sysbench Run: OLTP DDL testing"
+    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
+        --test=$SDIR/oltp_ddl.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
+        --mysql-user=root --db-driver=mysql --mysql-socket=$sock  run  2>&1 | tee $log
+ 
+}
+
 clean_up()
 {
     local sock=$1
@@ -365,6 +382,7 @@ sysbench_run()
               rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
               ver_and_row $node1/socket.sock
               ver_and_row $node2/socket.sock
+              oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
               clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
             fi
         fi
@@ -411,6 +429,7 @@ sysbench_run()
               rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
               ver_and_row $node1/socket.sock
               ver_and_row $node2/socket.sock
+              oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
               clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
             fi
         fi
