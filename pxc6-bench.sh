@@ -176,6 +176,8 @@ oltp_ddl()
       else
         pushd ${ROOT_FS}
         SDIR=${ROOT_FS}/sysbench/sysbench/tests/db/
+        cd sysbench
+        git checkout HEAD sysbench/tests/db/oltp_ddl.lua
         cd $SDIR
         if [[ ! -e ${ROOT_FS}/sysbench/sysbench/tests/db/common.lua ]];then
           ln -s ${LPATH}/* .
