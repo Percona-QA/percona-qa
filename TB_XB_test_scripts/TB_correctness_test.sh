@@ -2,7 +2,7 @@
 
 # Configuration Settings:
 
-BASEDIR=/opt/percona-5.6.27
+BASEDIR=/opt/percona-aio-5.6.27
 LD_LIBRARY_PATH=${BASEDIR}/lib
 DATADIR1=${BASEDIR}/datadir
 DATADIR2=${BASEDIR}/datadir2
@@ -64,7 +64,7 @@ import_dump() {
 # Function for Taking Backup
 
 take_backup() {
-	${BASEDIR}/bin/mysql --user=${USER} --password=${PASS} --socket=${SOCKET1} --port=${PORT1} -e "${TB_COMMAND}"
+	${BASEDIR}/bin/mysql --user=${USER} --password=${PASS} --socket=${SOCKET1} --port=${PORT1} -e "${TB_COMMAND}" > /dev/null
 	
 }
 
