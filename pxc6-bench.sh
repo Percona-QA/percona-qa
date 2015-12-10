@@ -389,7 +389,7 @@ sysbench_run()
               rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
               ver_and_row $node1/socket.sock
               ver_and_row $node2/socket.sock
-              oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
+              #oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
               clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
             fi
         fi
@@ -436,7 +436,7 @@ sysbench_run()
               rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
               ver_and_row $node1/socket.sock
               ver_and_row $node2/socket.sock
-              oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
+              #oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
               clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
             fi
         fi
