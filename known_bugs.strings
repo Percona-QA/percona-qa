@@ -135,6 +135,9 @@ m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespac
 ..HA_ATTACHABLE_TRX_COMPATIBLE is not set.               ## beta  # https://bugs.launchpad.net/percona-server/+bug/1520403
 log0log.cc line 1104
 
+## =========== PS 5.7 TokuDB bugs ==========
+Handlerton. kc_info->cp_info.keynr. == NULL              ## https://tokutek.atlassian.net/browse/DB-917
+
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
 #btr0btr.cc line 1081                                                 ## Fixed upstream ## http://bugs.mysql.com/bug.php?id=74605, MS build (old LP #1384561)
