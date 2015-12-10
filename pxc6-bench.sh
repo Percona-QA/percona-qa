@@ -169,10 +169,17 @@ oltp_ddl()
         git clone -n https://github.com/Percona-QA/sysbench.git --depth 1
         cd sysbench
         git checkout HEAD sysbench/tests/db/oltp_ddl.lua
-        $SDIR=${ROOT_FS}/sysbench/sysbench/tests/db/
+        SDIR=${ROOT_FS}/sysbench/sysbench/tests/db/
         cd $SDIR
         ln -s ${LPATH}/* .
         popd
+      else
+        pushd ${ROOT_FS}
+        SDIR=${ROOT_FS}/sysbench/sysbench/tests/db/
+        cd $SDIR
+        if [[ ! -e ${ROOT_FS}/sysbench/sysbench/tests/db/common.lua ]];then
+          ln -s ${LPATH}/* .
+        fi
       fi
     fi
 
@@ -389,7 +396,7 @@ sysbench_run()
               rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
               ver_and_row $node1/socket.sock
               ver_and_row $node2/socket.sock
-              #oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
+              oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
               clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
             fi
         fi
@@ -436,7 +443,7 @@ sysbench_run()
               rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
               ver_and_row $node1/socket.sock
               ver_and_row $node2/socket.sock
-              #oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
+              oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
               clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
             fi
         fi
