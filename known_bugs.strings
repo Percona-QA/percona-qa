@@ -136,7 +136,9 @@ m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespac
 log0log.cc line 1104
 
 ## =========== PS 5.7 TokuDB bugs ==========
-Handlerton. kc_info->cp_info.keynr. == NULL              ## https://tokutek.atlassian.net/browse/DB-917
+Handlerton. kc_info->cp_info.keynr. == NULL                                             ## https://tokutek.atlassian.net/browse/DB-917
+mh->m_magic == 1234                                                                     ## https://tokutek.atlassian.net/browse/DB-920
+ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb                     ## https://tokutek.atlassian.net/browse/DB-921
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
