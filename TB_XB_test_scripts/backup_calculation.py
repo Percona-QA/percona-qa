@@ -6,7 +6,9 @@ import subprocess
 import mysql.connector
 import shlex
 
-
+# Script Logic from -> David Bennett (david.bennett@percona.com)
+# Usage info:
+    # Run script from Python3 and specify backup directory to watch. It will calculate and show which files backed up in real-time.
 
 class CheckMySQLEnvironment():
 
