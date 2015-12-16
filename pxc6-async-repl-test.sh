@@ -67,13 +67,13 @@ fi
 PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
 if [ ! -z $PT_TAR ];then
   tar -xzf $PT_TAR
-  PTBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
+  PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
   export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
 else
   wget https://www.percona.com/downloads/percona-toolkit/2.2.16/tarball/percona-toolkit-2.2.16.tar.gz
   PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
   tar -xzf $PT_TAR
-  PTBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
+  PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
   export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
 fi
 
@@ -298,3 +298,4 @@ $PXC_BASEDIR/bin/mysqladmin  --socket=$node1/socket.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
 $PS_BASEDIR/bin/mysqladmin  --socket=$psnode/socket.sock -u root shutdown
 
+tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs 
