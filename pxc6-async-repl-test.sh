@@ -6,7 +6,7 @@ SBENCH="sysbench"
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 WORKDIR=$1
 ROOT_FS=$WORKDIR
-
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
 LPATH="/usr/share/doc/sysbench/tests/db"
 
 cd $WORKDIR
@@ -56,6 +56,10 @@ PS_TAR=`ls -1td ?ercona-?erver* | grep ".tar" | head -n1`
 
 if [ ! -z $PS_TAR ];then
   tar -xzf $PS_TAR
+  PSBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
+else
+  $SCRIPT_PWD/get_percona.sh 56 1
   PSBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
   export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
 fi
