@@ -5,18 +5,16 @@ from watchdog.observers import Observer
 import subprocess
 import mysql.connector
 import shlex
+from general_conf.generalops import GeneralClass
 
 # Script Logic from -> David Bennett (david.bennett@percona.com)
 # Usage info:
     # Run script from Python3 and specify backup directory to watch. It will calculate and show which files backed up in real-time.
 
-class CheckMySQLEnvironment():
+class CheckMySQLEnvironment(GeneralClass):
 
     def __init__(self):
-        self.user = 'root'
-        self.host='localhost'
-        self.port='3306'
-        self.password='12345'
+        GeneralClass.__init__(self)
         self.variable_values=[]
 
 
@@ -48,11 +46,11 @@ class CheckMySQLEnvironment():
 
         # Backuper command
 
-        backup_command = 'mysql -u{} --password={} --host={} -e "set tokudb_backup_dir=\'{}\'"'
+        backup_command = '{} -u{} --password={} --host={} -e "set tokudb_backup_dir=\'{}\'"'
 
 
         try:
-            new_backup_command = shlex.split(backup_command.format(self.user, self.password, self.host, backup_dir))
+            new_backup_command = shlex.split(backup_command.format(self.mysql, self.user, self.password, self.host, backup_dir))
             # Do not return anything from subprocess
             process = subprocess.Popen(new_backup_command, stdin=None, stdout=None, stderr=None)
 
@@ -73,9 +71,9 @@ class BackupProgressEstimate(FileSystemEventHandler):
 
     def __init__(self):
         #initialize MySQL datadir and backup directory here
-        self.datadir = '/var/lib/mysql'
-        self.backup_dir = '/home/tokubackupdir'
         self.chck = CheckMySQLEnvironment()
+        self.datadir = self.chck.datadir
+        self.backup_dir = self.chck.backupdir
         self.chck.get_tokudb_variable_value('tokudb_data_dir')
         self.chck.get_tokudb_variable_value('tokudb_log_dir')
         self.variable_values_list = self.chck.variable_values
@@ -163,12 +161,12 @@ class BackupProgressEstimate(FileSystemEventHandler):
 if __name__ == "__main__":
 
     a = CheckMySQLEnvironment()
-    dest_path = sys.argv[1]
-    a.run_backup(backup_dir=dest_path)
+    #dest_path = sys.argv[1]
+    a.run_backup(backup_dir=a.backupdir)
     #observer = PausingObserver()
     observer = Observer()
     event_handler = BackupProgressEstimate()
-    observer.schedule(event_handler, dest_path, recursive=True)
+    observer.schedule(event_handler, a.backupdir, recursive=True)
     observer.start()
     try:
         while True:

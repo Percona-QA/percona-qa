@@ -1,4 +1,3 @@
-
 # Download MariaDB source .tar.gz and untar
 # Then clone following repos into same directory where unpacked MariaDB
 #git clone https://github.com/percona/Percona-TokuBackup.git
@@ -6,7 +5,7 @@
 
 # Then just run this script and wait.
 
-
+# Based ON -> https://mariadb.atlassian.net/browse/MDEV-8843
 
 set -e
 pushd tokudb-backup-plugin
