@@ -268,11 +268,11 @@ $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --m
   --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
 
 #Creating dsns table for table checkum
-${PS_BASEDIR}/bin/mysql -h${ADDR} -P$RBASE1 -uroot -e "drop database if exists percona;create database percona;"
-${PS_BASEDIR}/bin/mysql -h${ADDR} -P$RBASE1 -uroot -e "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100));"
-${PS_BASEDIR}/bin/mysql -h${ADDR} -P$RBASE1 -uroot -e "insert into percona.dsns (id,dsn) values (1,'h=${ADDR},P=$RBASE1,u=root'),(2,'h=${ADDR},P=$RBASE2,u=root'),(3,'h=${ADDR},P=$RBASE3,u=root');"
+echo "drop database if exists percona;create database percona;" | mysql -h${ADDR} -P$RBASE1 -uroot
+echo "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100));" | mysql -h${ADDR} -P$RBASE1 -uroot
+echo "insert into percona.dsns (id,dsn) values (1,'h=${ADDR},P=$RBASE1,u=root'),(2,'h=${ADDR},P=$RBASE2,u=root'),(3,'h=${ADDR},P=$RBASE3,u=root');" | mysql -h${ADDR} -P$RBASE1 -uroot
 
-SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=$psnode/socket.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+SB_MASTER=`mysql -uroot --socket=$psnode/socket.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
 
 if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
   echo "Slave is not started yet. Please check error log"
@@ -280,7 +280,7 @@ if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
 fi
 
 while [ $SB_MASTER -gt 0 ]; do
-  SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=$psnode/socket.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+  SB_MASTER=`mysql -uroot --socket=$psnode/socket.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
   if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
     echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode.err"
     exit 1
