@@ -37,6 +37,12 @@ if [ -z ${TCOUNT} ]; then
   TCOUNT=100
 fi
 
+cleanup(){
+  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
+}
+
+trap cleanup EXIT KILL
+
 if [[ $SST_METHOD == xtrabackup ]];then
   TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
   tar -xf $TAR
@@ -50,18 +56,6 @@ if [ ! -z $PXC_TAR ];then
   tar -xzf $PXC_TAR
   PXCBASE=`ls -1td ?ercona-?tra??-?luster* | grep -v ".tar" | head -n1`
   export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
-fi
-
-PS_TAR=`ls -1td ?ercona-?erver* | grep ".tar" | head -n1`
-
-if [ ! -z $PS_TAR ];then
-  tar -xzf $PS_TAR
-  PSBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
-else
-  $SCRIPT_PWD/get_percona.sh 56 1
-  PSBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
 fi
 
 PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
@@ -95,7 +89,6 @@ echo "Note: Using sysbench at $(which sysbench)"
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 
 PXC_BASEDIR="${ROOT_FS}/$PXCBASE"
-PS_BASEDIR="${ROOT_FS}/$PSBASE"
 
 export MYSQL_VARDIR="$WORKDIR/mysqldir"
 mkdir -p $MYSQL_VARDIR
@@ -228,20 +221,14 @@ popd
 echo "Sleeping for 10s"
 sleep 10
 
-pushd ${PS_BASEDIR}/mysql-test/
-
-#Enable --binary-format=ROW for MTR
-cp mysql-test-run.pl mysql-test-run-rpl.pl
-COMMENT_START=`grep -n "skip_binlog and mtr_match_prefix" mysql-test-run-rpl.pl | cut -f1 -d':'`
-COMMENT_END=$(($COMMENT_START+3))
-sed -i "$COMMENT_START,$COMMENT_END"' s/^/#/' mysql-test-run-rpl.pl
+pushd ${PXC_BASEDIR}/mysql-test/
 
 set +e 
-perl mysql-test-run-rpl.pl \
+perl mysql-test-run.pl \
     --start-and-exit \
+    --port-base=$RBASE3 \
     --nowarnings \
     --vardir=$psnode \
-    --mysqld=--port=$RBASE3 \
     --mysqld=--innodb_file_per_table \
     --mysqld=--default-storage-engine=InnoDB \
     --mysqld=--binlog-format=ROW \
@@ -296,6 +283,5 @@ pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test --recursion-method dsn=h=${
 
 $PXC_BASEDIR/bin/mysqladmin  --socket=$node1/socket.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
-$PS_BASEDIR/bin/mysqladmin  --socket=$psnode/socket.sock -u root shutdown
+$PXC_BASEDIR/bin/mysqladmin  --socket=$psnode/socket.sock -u root shutdown
 
-tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs 
