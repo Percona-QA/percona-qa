@@ -159,7 +159,7 @@ perl mysql-test-run.pl \
     --mysqld=--secure-file-priv= \
     --mysqld=--loose-innodb-status-file=1 \
     --mysqld=--skip-name-resolve \
-    --mysqld=--socket=$node1/socket.sock \
+    --mysqld=--socket=$WORKDIR/node1.sock \
     --mysqld=--log-error=$WORKDIR/logs/node1.err \
     --mysqld=--log-output=none \
   1st 
@@ -173,7 +173,7 @@ echo "START SLAVE;" >> $node1/rpl.sql
 
 echo "Sysbench Run: Prepare stage"
 
-$SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=$node1/socket.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+$SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=$WORKDIR/node1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
 pushd ${PXC_BASEDIR}/mysql-test/
 export MYSQLD_BOOTSTRAP_CMD=
@@ -212,7 +212,7 @@ perl mysql-test-run.pl \
     --mysqld=--loose-innodb-status-file=1 \
     --mysqld=--skip-name-resolve \
     --mysqld=--log-error=$WORKDIR/logs/node2.err \
-    --mysqld=--socket=$node2/socket.sock \
+    --mysqld=--socket=$WORKDIR/node2.sock \
     --mysqld=--log-output=none \
 1st  
 set -e
@@ -242,7 +242,7 @@ perl mysql-test-run.pl \
     --mysqld=--secure-file-priv= \
     --mysqld=--skip-name-resolve \
     --mysqld=--log-error=$WORKDIR/logs/psnode.err \
-    --mysqld=--socket=$psnode/socket.sock \
+    --mysqld=--socket=$WORKDIR/psnode.sock \
     --mysqld=--init-file=$node1/rpl.sql \
     --mysqld=--log-output=none \
 1st  
@@ -252,14 +252,14 @@ popd
 #OLTP RW run
 
 $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-  --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
+  --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=$WORKDIR/node1.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
 
 #Creating dsns table for table checkum
 echo "drop database if exists percona;create database percona;" | mysql -h${ADDR} -P$RBASE1 -uroot
 echo "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100));" | mysql -h${ADDR} -P$RBASE1 -uroot
 echo "insert into percona.dsns (id,dsn) values (1,'h=${ADDR},P=$RBASE1,u=root'),(2,'h=${ADDR},P=$RBASE2,u=root'),(3,'h=${ADDR},P=$RBASE3,u=root');" | mysql -h${ADDR} -P$RBASE1 -uroot
 
-SB_MASTER=`mysql -uroot --socket=$psnode/socket.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+SB_MASTER=`mysql -uroot --socket=$WORKDIR/psnode.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
 
 if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
   echo "Slave is not started yet. Please check error log"
@@ -267,7 +267,7 @@ if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
 fi
 
 while [ $SB_MASTER -gt 0 ]; do
-  SB_MASTER=`mysql -uroot --socket=$psnode/socket.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+  SB_MASTER=`mysql -uroot --socket=$WORKDIR/psnode.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
   if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
     echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode.err"
     exit 1
@@ -281,7 +281,7 @@ pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test --recursion-method dsn=h=${
 
 #Shutdown PXC/PS servers
 
-$PXC_BASEDIR/bin/mysqladmin  --socket=$node1/socket.sock -u root shutdown
-$PXC_BASEDIR/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
-$PXC_BASEDIR/bin/mysqladmin  --socket=$psnode/socket.sock -u root shutdown
+$PXC_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/node1.sock -u root shutdown
+$PXC_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/node2.sock -u root shutdown
+$PXC_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/psnode.sock -u root shutdown
 
