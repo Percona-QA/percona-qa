@@ -221,10 +221,16 @@ popd
 echo "Sleeping for 10s"
 sleep 10
 
-pushd ${PXC_BASEDIR}/mysql-test/
+#Creating dsns table for table checkum
+echo "drop database if exists percona;create database percona;" | mysql -h${ADDR} -P$RBASE1 -uroot
+echo "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100));" | mysql -h${ADDR} -P$RBASE1 -uroot
+echo "insert into percona.dsns (id,dsn) values (1,'h=${ADDR},P=$RBASE1,u=root'),(2,'h=${ADDR},P=$RBASE2,u=root'),(3,'h=${ADDR},P=$RBASE3,u=root');" | mysql -h${ADDR} -P$RBASE1 -uroot
 
-set +e 
-perl mysql-test-run.pl \
+function master_slave_test(){
+  pushd ${PXC_BASEDIR}/mysql-test/
+
+  set +e 
+  perl mysql-test-run.pl \
     --start-and-exit \
     --port-base=$RBASE3 \
     --nowarnings \
@@ -245,42 +251,81 @@ perl mysql-test-run.pl \
     --mysqld=--socket=$WORKDIR/psnode.sock \
     --mysqld=--init-file=$node1/rpl.sql \
     --mysqld=--log-output=none \
-1st  
-set -e
-popd
+  1st  
+  set -e
+  popd
 
-#OLTP RW run
+  #OLTP RW run
 
-$SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-  --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=$WORKDIR/node1.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
+  $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
+    --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=$WORKDIR/node1.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
 
-#Creating dsns table for table checkum
-echo "drop database if exists percona;create database percona;" | mysql -h${ADDR} -P$RBASE1 -uroot
-echo "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100));" | mysql -h${ADDR} -P$RBASE1 -uroot
-echo "insert into percona.dsns (id,dsn) values (1,'h=${ADDR},P=$RBASE1,u=root'),(2,'h=${ADDR},P=$RBASE2,u=root'),(3,'h=${ADDR},P=$RBASE3,u=root');" | mysql -h${ADDR} -P$RBASE1 -uroot
-
-SB_MASTER=`mysql -uroot --socket=$WORKDIR/psnode.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
-
-if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-  echo "Slave is not started yet. Please check error log"
-  exit 1
-fi
-
-while [ $SB_MASTER -gt 0 ]; do
   SB_MASTER=`mysql -uroot --socket=$WORKDIR/psnode.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+
   if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
     echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode.err"
     exit 1
   fi
+
+  while [ $SB_MASTER -gt 0 ]; do
+    SB_MASTER=`mysql -uroot --socket=$WORKDIR/psnode.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
+      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode.err"
+      exit 1
+    fi
+    sleep 5
+  done
+
   sleep 5
-done
 
-sleep 5
+  pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns --no-check-binlog-format > $WORKDIR/logs/master_slave_checksum.log 2>&1
+}
 
-pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns --no-check-binlog-format 
+function master_master_test(){
+  echo "Sysbench Run for replication master master test : Prepare stage"
+
+  echo "drop database if exists master_test;create database master_test;" | mysql -h${ADDR} -P$RBASE3 -uroot
+  $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=master_test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=$WORKDIR/psnode.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_ps_prepare.txt
+
+  echo "CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE3, MASTER_USER='root', MASTER_AUTO_POSITION=1;" | mysql -h${ADDR} -P$RBASE1 -uroot 
+  echo "START SLAVE;" |  mysql -h${ADDR} -P$RBASE1 -uroot
+
+  #OLTP RW run
+
+  $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
+    --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=master_test --mysql-user=root --db-driver=mysql --mysql-socket=$WORKDIR/psnode.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_rw.log
+
+  SB_MASTER=`mysql -uroot --socket=$WORKDIR/node1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+
+  if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
+    echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
+    exit 1
+  fi
+
+  while [ $SB_MASTER -gt 0 ]; do
+    SB_MASTER=`mysql -uroot --socket=$WORKDIR/node1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
+      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
+      exit 1
+    fi
+    sleep 5
+  done
+
+  sleep 5
+
+  pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d master_test --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns --no-check-binlog-format > $WORKDIR/logs/master_master_checksum.log 2>&1
+}
+
+master_slave_test
+master_master_test
+
+#Checksum result.
+echo -e "Replication master slave table checksum result.\n"
+cat $WORKDIR/logs/master_slave_checksum.log
+echo -e "\nReplication master master table checksum result.\n"
+cat  $WORKDIR/logs/master_master_checksum.log
 
 #Shutdown PXC/PS servers
-
 $PXC_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/node1.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/node2.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/psnode.sock -u root shutdown
