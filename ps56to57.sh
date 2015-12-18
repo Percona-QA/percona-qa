@@ -29,6 +29,14 @@ if [ -z ${TCOUNT} ]; then
   TCOUNT=10
 fi
 
+cleanup(){
+  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
+}
+
+trap cleanup EXIT KILL
+
+cd $WORKDIR
+
 PS56_TAR=`ls -1td ?ercona-?erver-5.6* | grep ".tar" | head -n1`
 PS57_TAR=`ls -1td ?ercona-?erver-5.7* | grep ".tar" | head -n1`
 
