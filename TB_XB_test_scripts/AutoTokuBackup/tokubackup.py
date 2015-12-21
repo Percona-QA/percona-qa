@@ -1,7 +1,4 @@
 import click
-from backup import backup_calculation
-import subprocess
-import shlex
 import runpy
 
 def print_version(ctx, param, value):
@@ -24,8 +21,7 @@ def all_procedure(backup):
     if (not backup):
         print("ERROR: you must give an option, run with --help for available options")
     elif backup:
-        print("Here")
-        runpy.run_module('backup_calculation')
+        runpy.run_module('backup.backup_calculation', run_name='__main__')
 
 
 
