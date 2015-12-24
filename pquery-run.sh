@@ -74,32 +74,26 @@ if [ ${VALGRIND_RUN} -eq 1 ]; then
 else
   MYSQLD_START_TIMEOUT=60
 fi
-CRASH_TESTING_MODE=0 # Set to 1 to make this a crash testing run
-SAVE_CRASH_TRIAL=0
-if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
-  INFILE=${SCRIPT_PWD}/simple.sql # Using simple.sql for crash testing
-  KILL_BEFORE_END_SEC=25
-fi
 ARCHIVE_INFILE_COPY=1  # Archive a copy of the SQL input file in the work directory
 PXC_DOCKER_START_TIMEOUT=140
 MULTI_THREADED_RUN=0  # Set to 0 for a single-thread client run only, or set to 1 for a multi threaded run. You can still change options below if you like, but this is an easy if/then "profile" shortcut that pre-sets optimal settings for single or multi threaded runs. So, this variables is _only_ used in the next IF.
+CRASH_RECOVERY_TESTING=0  # Set to 1 to make this a crash recovery testing run (will terminate server after x seconds and then attempt crash recovery)
+if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
+  INFILE=${SCRIPT_PWD}/simple.sql # Using simple.sql for crash recovery testing
+  KILL_BEFORE_END_SEC=25
+  MULTI_THREADED_RUN=1
+fi
 if [ ${MULTI_THREADED_RUN} -eq 0 ]; then
   # Suggestion: keep PQUERY_RUN_TIMEOUT low for the moment (10 to 240 seconds) - even in 10-20 seconds pquery can execute thousands of queries == more crashes
   if [ ${PXC} -eq 1 ]; then
     PQUERY_RUN_TIMEOUT=120  # See below for run time timeout descripton. Starting up a cluster takes more time, so don't rotate too quickly
     QUERIES_PER_THREAD=2147483647  # Max int
   else
-    PQUERY_RUN_TIMEOUT=15 # x seconds max pquery trial run time (in this it will try to process ${QUERIES_PER_THREAD} x ${THREADS} queries against 1 mysqld)
+    PQUERY_RUN_TIMEOUT=15  # x seconds max pquery trial run time (in this it will try to process ${QUERIES_PER_THREAD} x ${THREADS} queries against 1 mysqld)
     QUERIES_PER_THREAD=100000
   fi
-  if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
-    PQUERY_RUN_TIMEOUT=30
-    THREADS=50
-    MULTI_THREADED_TESTC_LINES=0  # Not used for single threaded-runs
-  else
-    THREADS=1
-    MULTI_THREADED_TESTC_LINES=0  # Not used for single threaded-runs
-  fi
+  THREADS=1
+  MULTI_THREADED_TESTC_LINES=0  # Not used for single threaded-runs
 else
   # Suggestion: keep PQUERY_RUN_TIMEOUT low for the moment (10 to 240 seconds) - even in 10-20 seconds pquery can execute thousands of queries == more crashes
   if [ ${PXC} -eq 1 ]; then
@@ -110,6 +104,11 @@ else
     QUERIES_PER_THREAD=100000
   fi
   THREADS=30
+  if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
+    PQUERY_RUN_TIMEOUT=30
+    THREADS=50
+    MULTI_THREADED_TESTC_LINES=0  # Not normally used with crash recovery testing (a more simple sql input file is generally used)
+  fi
   MULTI_THREADED_TESTC_LINES=25000  # Only takes effect if THREADS>1. pquery-run will take this amount of lines to form individual testcases for mutli-threaded runs. IOW, if THREADS=1, pquery-run will just run one client, continously getting random queries out of INFILE, uptill QUERIES_PER_THREAD queries is reached (if mysqld does not crash earlier). On the other hand, if THREADS>1, then pquery-run will take a random chunk out of INFILE (to the amount of MULTI_THREADED_TESTC_LINES lines) _before_ starting it's pquery run. It will then run pquery, with THREADS threads, only using that smaller chunk extracted from INFILE. So, if MULTI_THREADED_TESTC_LINES=1000, and THREADS=100 and INFILE=main-new.sql, then it will grab 1000 random lines out of main-new.sql, create a new temporary (and stored/saved in the trial's dir) sql file from these 10 lines, start mysqld and use pquery to run 100 parallel client threads against it, utill the maximum amount of queries (i.e QUERIES_PER_THREAD) for each threads is reached (if mysqld does not crash earlier).
 fi
 if [ ${VALGRIND_RUN} -eq 1 ]; then
@@ -385,7 +384,7 @@ pquery_test(){
         ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       fi
     else  
-      if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
+      if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
         SQL_FILE="--infile=${INFILE}"
       else
         # Multi-threaded run using a chunk from INFILE (${THREADS} clients)
@@ -404,14 +403,14 @@ pquery_test(){
     echoit "pquery running (Max duration: ${PQUERY_RUN_TIMEOUT}s)..."
     for X in $(seq 0 ${PQUERY_RUN_TIMEOUT}); do
       if grep -qi "error while loading shared libraries" ${RUNDIR}/${TRIAL}/pquery.log; then
-        echoit "Assert: There was an error loading shared libraries for pquery (ref. ${RUNDIR}/${TRIAL}/pquery.log). The solution is to ensure that LD_LIBRARY_PATH is set correctly (this is normally done by this scripti, and it's currently set to LD_LIBRARY_PATH=${LD_LIBRARY_PATH}. Is this correct? Are the client libraries available at this location? Alternatively, compile the pquery binary with client libs included etc., see ${SCRIPT_PWD}/pquery/compile* scripts."
+        echoit "Assert: There was an error loading shared libraries for pquery (ref. ${RUNDIR}/${TRIAL}/pquery.log). The solution is to ensure that LD_LIBRARY_PATH is set correctly (this is normally done by this script, and it's currently set to LD_LIBRARY_PATH=${LD_LIBRARY_PATH}. Is this correct? Are the client libraries available at this location? Alternatively, compile the pquery binary with client libs included etc., see ${SCRIPT_PWD}/pquery/compile* scripts."
       fi
       Y=$X
       sleep 1
       if [ "`ps -ef | grep ${PQPID} | grep -v grep`" == "" ]; then  # pquery ended
         break
       fi
-      if [ ${CRASH_TESTING_MODE} -eq 1 ]; then
+      if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
         if [ $X -eq $KILL_BEFORE_END_SEC ]; then
            kill -9 ${MPID} >/dev/null 2>&1;
            sleep 2
@@ -469,7 +468,7 @@ pquery_test(){
       echoit "Changing owner of trial workdir (${RUNDIR}/${TRIAL}) to `whoami`:`whoami`..."
       sudo chown -R `whoami`:`whoami` ${RUNDIR}/${TRIAL}
     fi
-    echoit "`cat "${RUNDIR}/${TRIAL}/pquery.log" | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|'`"
+    echoit "$(cat ${RUNDIR}/${TRIAL}/pquery.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
     if [ ${VALGRIND_RUN} -eq 1 ]; then
       VALGRIND_ERRORS_FOUND=0
       # What follows next are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
