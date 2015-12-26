@@ -1,14 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-# Internal variables: Do not change! Ref below for user configurable variables
-RANDOM=`date +%s%N | cut -b14-19`                             # RANDOM: Random entropy pool init. RANDOMD (below): Random number generator (6 digits)
-RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
-SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||')
-PXC=0
-DOCKER=0
-SYSBENCH_DATALOAD=0
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+setup-internal-variables                                      # Sets up internal variables: Please do not change/remove ! Ref below for user configurable variables
 
 # User Configurable Variables
 PQUERY_BIN=${SCRIPT_PWD}/pquery/pquery-ps                     # pquery/pquery-ps for Percona Server, .../pquery-ms for MySQL, .../pquery-md for MariaDB, pquery-ws for WebScaleSQL
@@ -20,9 +13,7 @@ BASEDIR=/sda/PS-mysql-5.7.9-1-linux-x86_64-debug              # Basedir. Note th
 LD_LIBRARY_PATH=${BASEDIR}/lib                                # Likely does not need changing if previous line was set correctly (MS pquery build is build with MS lib)
 WORKDIR=/sda/$RANDOMD                                         # Working directory. Here we keep the log files, option list, failed items
 RUNDIR=/dev/shm/$RANDOMD                                      # Run directory. Here we keep a copy of the data template dir and here we do the actual mysqld runs (--datadir=...)
-
-#docker-compose configuration
-DOCKER_COMPOSE_LOC=${SCRIPT_PWD}/pxc-pquery/pquery-jenkins
+DOCKER_COMPOSE_LOC=${SCRIPT_PWD}/pxc-pquery/pquery-jenkins    # Only used for PXC runs which use Docker Compose
 DOCKER_COMPOSE_YML=${SCRIPT_PWD}/pxc-pquery/pquery-jenkins/pqueryrun/docker-compose.yml
 
 # Improvement ideas
@@ -116,6 +107,14 @@ if [ ${VALGRIND_RUN} -eq 1 ]; then
 fi
 
 # Setup counters
+RANDOM=`date +%s%N | cut -b14-19`                             # RANDOM: Random entropy pool init. RANDOMD (below): Random number generator (6 digits)
+RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
+SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||')
+PXC=0
+DOCKER=0
+SYSBENCH_DATALOAD=0
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
+
 SAVED=0
 TRIAL=0
 
@@ -596,7 +595,7 @@ if [ ${PXC} -eq 0 ]; then
   cd ${WORKDIR}/mysqld
   ${SCRIPT_PWD}/ldd_files.sh  # TODO for PXC, not sure yet how
   cd ${PWDTMPSAVE}
-  echoit "Generating datadir template (using mysql_install_db)..."
+  echoit "Generating datadir template (using mysql_install_db or mysqld --init)..."
   if [ -r ${BASEDIR}/bin/mysql_install_db ]; then 
     $MID_57 $MID_OPT --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template > ${WORKDIR}/log/mysql_install_db.txt 2>&1
   elif [ -r ${BASEDIR}/scripts/mysql_install_db ]; then 

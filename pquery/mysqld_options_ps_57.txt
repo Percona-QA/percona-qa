@@ -12,6 +12,8 @@
 --allow-suspicious-udfs=0
 --archive=1
 --archive=0
+--auto-generate-certs=1
+--auto-generate-certs=0
 --auto-increment-increment=1
 --auto-increment-increment=0
 --auto-increment-increment=1
@@ -134,6 +136,15 @@
 --binlog-stmt-cache-size=1125899906842624
 --blackhole=1
 --blackhole=0
+--block-encryption-mode=aes-128-ecb
+--block-encryption-mode=aes-128-cbc
+--block-encryption-mode=aes-128-cfb1
+--block-encryption-mode=aes-192-ecb
+--block-encryption-mode=aes-192-cbc
+--block-encryption-mode=aes-192-ofb
+--block-encryption-mode=aes-256-ecb
+--block-encryption-mode=aes-256-cbc
+--block-encryption-mode=aes-256-cfb128
 --bulk-insert-buffer-size=8388608
 --bulk-insert-buffer-size=0
 --bulk-insert-buffer-size=1
@@ -579,6 +590,8 @@
 --innodb-autoinc-lock-mode=2047
 --innodb-autoinc-lock-mode=-1125899906842624
 --innodb-autoinc-lock-mode=1125899906842624
+--innodb-background-drop-list-empty=1
+--innodb-background-drop-list-empty=0
 --innodb-buf-flush-list-now=1
 --innodb-buf-flush-list-now=0
 --innodb-buffer-pool-chunk-size=134217728
@@ -744,6 +757,8 @@
 --innodb-corrupt-table-action=assert
 --innodb-corrupt-table-action=warn
 --innodb-corrupt-table-action=salvage
+--innodb-dict-stats-disabled-debug=1
+--innodb-dict-stats-disabled-debug=0
 --innodb-disable-background-merge=1
 --innodb-disable-background-merge=0
 --innodb-disable-resize-buffer-pool-debug=1
@@ -877,8 +892,6 @@
 --innodb-force-recovery-crash=2047
 --innodb-force-recovery-crash=-1125899906842624
 --innodb-force-recovery-crash=1125899906842624
---innodb-foreground-preflush=sync_preflush
---innodb-foreground-preflush=exponential_backoff
 --innodb-ft-cache-size=8000000
 --innodb-ft-cache-size=0
 --innodb-ft-cache-size=1
@@ -1017,18 +1030,6 @@
 --innodb-lock-wait-timeout=1125899906842624
 --innodb-locks-unsafe-for-binlog=1
 --innodb-locks-unsafe-for-binlog=0
---innodb-log-arch-expire-sec=0
---innodb-log-arch-expire-sec=1
---innodb-log-arch-expire-sec=2
---innodb-log-arch-expire-sec=12
---innodb-log-arch-expire-sec=24
---innodb-log-arch-expire-sec=254
---innodb-log-arch-expire-sec=1023
---innodb-log-arch-expire-sec=2047
---innodb-log-arch-expire-sec=-1125899906842624
---innodb-log-arch-expire-sec=1125899906842624
---innodb-log-archive=1
---innodb-log-archive=0
 --innodb-log-buffer-size=16777216
 --innodb-log-buffer-size=0
 --innodb-log-buffer-size=1
@@ -1084,6 +1085,8 @@
 --innodb-lru-scan-depth=2047
 --innodb-lru-scan-depth=-1125899906842624
 --innodb-lru-scan-depth=1125899906842624
+--innodb-master-thread-disabled-debug=1
+--innodb-master-thread-disabled-debug=0
 --innodb-max-bitmap-file-size=104857600
 --innodb-max-bitmap-file-size=0
 --innodb-max-bitmap-file-size=1
@@ -1230,6 +1233,8 @@
 --innodb-open-files=1125899906842624
 --innodb-optimize-fulltext-only=1
 --innodb-optimize-fulltext-only=0
+--innodb-page-cleaner-disabled-debug=1
+--innodb-page-cleaner-disabled-debug=0
 --innodb-page-cleaners=4
 --innodb-page-cleaners=0
 --innodb-page-cleaners=1
@@ -2689,7 +2694,7 @@
 --performance-schema-max-stage-classes=2047
 --performance-schema-max-stage-classes=-1125899906842624
 --performance-schema-max-stage-classes=1125899906842624
---performance-schema-max-statement-classes=202
+--performance-schema-max-statement-classes=200
 --performance-schema-max-statement-classes=0
 --performance-schema-max-statement-classes=1
 --performance-schema-max-statement-classes=2
@@ -3029,6 +3034,8 @@
 --session-track-state-change=0
 --session-track-transaction-info=1
 --session-track-transaction-info=0
+--sha256-password-auto-generate-rsa-keys=1
+--sha256-password-auto-generate-rsa-keys=0
 --sha256-password-proxy-users=1
 --sha256-password-proxy-users=0
 --show-compatibility-56=1

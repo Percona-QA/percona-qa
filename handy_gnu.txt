@@ -127,7 +127,10 @@
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
-  ## sudo umount -flv /dev/<device> ## Make sure you know what you are doing before executing this!
+  ## sudo umount -flv /dev/<device>                         ## Make sure you know what you are doing before executing this!   Another possible method is:
+  ## sudo yum install psmisc; sudo fuser -km /dev/<device>  ## Make sure you know what you are doing before executing this!
+# To recover text from a deleted file, use: (change 'your_search_string' to a known string that was in the file, and /dev/sda to the partition it was on)
+  sudo grep -a -C 500 'your_search_string' /dev/sda | tee /tmp/recover  # Make sure to tee to another partition then the one the file was on
 # Make a 12Gb tmpfs drive for reducer.sh/pquery-run.sh (also works on Centos7): edit fstab (sudo vi /etc/fstab;) and add:
   tmpfs     /dev/shm        tmpfs   size=12g,noatime,nodiratime       0 0
 # Check the process limits of any process, mysqld example:
