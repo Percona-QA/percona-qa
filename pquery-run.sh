@@ -378,9 +378,9 @@ pquery_test(){
     export LD_LIBRARY_PATH=${BASEDIR}/lib  # Assuming here that pquery was correctly compiled with correct client lib
     if [ ${THREADS} -eq 1 ]; then  # Single-threaded run (1 client only)
       if [ ${PXC} -eq 0 ]; then
-        ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       else
-        ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       fi
     else  
       if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
@@ -393,9 +393,9 @@ pquery_test(){
       fi
       # Debug echo "-------"; cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql; echo "-------"
       if [ ${PXC} -eq 0 ]; then
-        ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       else
-        ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log_all_queries --log_failed_queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       fi
     fi 
     PQPID="$!"

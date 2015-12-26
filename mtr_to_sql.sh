@@ -56,12 +56,17 @@ egrep --binary-files=text -ih "^SELECT |^INSERT |^UPDATE |^DROP |^CREATE |^RENAM
  egrep --binary-files=text -vi "Is a directory" | \
  sort -u | \
   grep --binary-files=text -vi "strict" | \
+  grep --binary-files=text -vi "delete from mysql.user;" | \
+  grep --binary-files=text -vi "drop table mysql.user;" | \
+  grep --binary-files=text -vi "delete from mysql.user where user='root'" | \
+  grep --binary-files=text -vi "[updatedelete]\+.*where user='root'" | \
   grep --binary-files=text -vi "innodb[-_]track[-_]redo[-_]log[-_]now" | \
   grep --binary-files=text -vi "innodb[-_]log[-_]checkpoint[-_]now" | \
   grep --binary-files=text -vi "innodb[-_]purge[-_]stop[-_]now" | \
   grep --binary-files=text -vi "set[ @globalsession\.\t]*innodb[-_]track_changed[-_]pages[ \.\t]*=" | \
   grep --binary-files=text -vi "yfos" | \
   grep --binary-files=text -vi "set[ @globalsession\.\t]*debug[ \.\t]*=" | \
+ sed 's|SLEEP[ \t]*([\.0-9]\+)|SLEEP(0.01)|gi' | \
  sed 's/.*[^;]$//' | grep --binary-files=text -v "^$" | \
  sed 's/$/ ;;;/' | sed 's/[ \t;]*$/;/' >> ${TEMP_SQL}
 
@@ -124,6 +129,10 @@ cat ${TESTS_PATH}/*/*.test ${TESTS_PATH}/*/*/*.test ${TESTS_PATH}/*/*/*/*.test $
   grep --binary-files=text -vi "^[ \t]*enable_info" | \
   grep --binary-files=text -vi "^[ \t]*call mtr.add_suppression" | \
   grep --binary-files=text -vi "strict" | \
+  grep --binary-files=text -vi "delete from mysql.user;" | \
+  grep --binary-files=text -vi "drop table mysql.user;" | \
+  grep --binary-files=text -vi "delete from mysql.user where user='root'" | \
+  grep --binary-files=text -vi "[updatedelete]\+.*where user='root'" | \
   grep --binary-files=text -vi "innodb[-_]track[-_]redo[-_]log[-_]now" | \
   grep --binary-files=text -vi "innodb[-_]log[-_]checkpoint[-_]now" | \
   grep --binary-files=text -vi "innodb[-_]purge[-_]stop[-_]now" | \
@@ -148,6 +157,7 @@ cat ${TESTS_PATH}/*/*.test ${TESTS_PATH}/*/*/*.test ${TESTS_PATH}/*/*/*/*.test $
  sed 's|DROP PROCEDURE IF EXISTS .*;|DROP PROCEDURE IF EXISTS p1;|gi' | \
  sed 's|CREATE PROCEDURE.*BEGIN END;|CREATE PROCEDURE p1() BEGIN END;|gi' | \
  sed 's|^USE .*|USE test;|gi' | \
+ sed 's|SLEEP[ \t]*([\.0-9]\+)|SLEEP(0.01)|gi' | \
  grep --binary-files=text -v "/^[^A-Z][^ ]\+$" >> ${TEMP_SQL}
 
 # Grammar variations
