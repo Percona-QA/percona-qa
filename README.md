@@ -553,6 +553,12 @@ Earlier version of the pxc6-sst=test.sh
 
 *See:* pxc6-sst-test.sh
 
+## reducer.sh ##
+
+reducer.sh - the best mysql testcase reduction program
+
+For more info, search Google for:   reducer.sh
+
 ## rqg_failure_counts.sh ##
 
 *Note:* Jenkins CI script
