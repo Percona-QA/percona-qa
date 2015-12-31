@@ -65,15 +65,15 @@ PXC_DOCKER_START_TIMEOUT=140                                   # Should not be n
 # Security checks: ensure variables are correctly set to avoid rm -Rf issues (if not set correctly, it was likely due to altering internal variables at the top of this file)
 if [ "${WORKDIR}" == "/sd[a-z][/]" ]; then echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
 if [ "${RUNDIR}" == "/dev/shm[/]" ]; then echo "Assert! \$RUNDIR == '${RUNDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
-if [ "$(echo ${$RANDOMD} | sed 's|[0-9]\+|=')" != "======" ]; then  "Assert! \$RANDOMD == '${RANDOMD}'. This looks incorrect - it should be 6 numbers exactly"; exit 1; fi
-if [ "$(echo ${WORKDIR} | grep -oi "$RANDOMD" | head -n1)" != "$RANDOMD" ]; then "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
-if [ "$(echo ${RUNDIR}  | grep -oi "$RANDOMD" | head -n1)" != "$RANDOMD" ]; then "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
+if [ "$(echo ${RANDOMD} | sed 's|[0-9]|/|g')" != "//////" ]; then echo "Assert! \$RANDOMD == '${RANDOMD}'. This looks incorrect - it should be 6 numbers exactly"; exit 1; fi
+if [ "$(echo ${WORKDIR} | grep -oi "$RANDOMD" | head -n1)" != "${RANDOMD}" ]; then echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
+if [ "$(echo ${RUNDIR}  | grep -oi "$RANDOMD" | head -n1)" != "${RANDOMD}" ]; then echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
 if [ "$(echo ${PQUERY_BIN} | sed 's|\(^/pquery\)|\1|')" == "/pquery" ]; then echo "Assert! \$PQUERY_BIN == '${PQUERY_BIN}' - is it missing the \$SCRIPT_PWD prefix?"; exit 1; fi
 
 # Output function
 echoit(){
   echo "[$(date +'%T')] [$SAVED] $1"
-  if [ WORKDIRACTIVE -eq 1 ]; then echo "[$(date +'%T')] [$SAVED] $1" >> /${WORKDIR}/pquery-run.log; fi
+  if [ ${WORKDIRACTIVE} -eq 1 ]; then echo "[$(date +'%T')] [$SAVED] $1" >> /${WORKDIR}/pquery-run.log; fi
 }
 
 # Find mysqld binary
@@ -96,7 +96,7 @@ fi
 
 # JEMALLOC for PS/TokuDB
 if [ ${SKIP_JEMALLOC_FOR_PS} -ne 1 ]; then
-  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" -eq "Percona" ]; then
+  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" == "Percona" ]; then
     if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
       export LD_PRELOAD=/usr/lib64/libjemalloc.so.1; 
     else 
@@ -106,7 +106,7 @@ if [ ${SKIP_JEMALLOC_FOR_PS} -ne 1 ]; then
     fi
   fi
 else
-  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" -eq "Percona" ]; then
+  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" == "Percona" ]; then
     echoit "*** IMPORTANT WARNING ***: SKIP_JEMALLOC_FOR_PS was set to 1, and thus JEMALLOC will not be LD_PRELOAD'ed. However, the mysqld binary (${BIN}) reports itself as Percona Server. If you are going to test TokuDB, JEMALLOC should be LD_PRELOAD'ed. If not testing TokuDB, then this warning can be safely ignored."
   fi
 fi
