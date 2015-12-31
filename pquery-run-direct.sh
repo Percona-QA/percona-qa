@@ -69,7 +69,7 @@ while true; do
     rm ${WORKDIR}/${TRIAL}/test
   fi
    echoit "[Trial ${TRIAL}] Processing ${QUERIES_PER_THREAD} queries accross ${THREADS} thread(s) with a timeout of ${PQUERY_RUN_TIMEOUT} seconds..."
-   timeout --signal=9 ${PQUERY_RUN_TIMEOUT}s ${PQUERY_BIN} --address=${HOST} --port=${PORT} --user=${USER} --password=${PASSWORD} --infile=${INFILE} --database=${DATABASE} --threads=${THREADS} --queries_per_thread=${QUERIES_PER_THREAD} --logdir=${WORKDIR}/${TRIAL} --log_all_queries --log_failed_queries >${WORKDIR}/${TRIAL}/pquery.log 2>&1
+   timeout --signal=9 ${PQUERY_RUN_TIMEOUT}s ${PQUERY_BIN} --address=${HOST} --port=${PORT} --user=${USER} --password=${PASSWORD} --infile=${INFILE} --database=${DATABASE} --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${WORKDIR}/${TRIAL} --log-all-queries --log-failed-queries >${WORKDIR}/${TRIAL}/pquery.log 2>&1
    if egrep -qi "Last.*consecutive queries all failed" ${WORKDIR}/${TRIAL}/pquery.log; then
      echoit "[Trial ${TRIAL}] pquery reported that last set of queries all failed. This could be a crash/assert, user privileges drop, or similar! Error from pquery log:"
      grep "Last.*consecutive queries all failed" ${WORKDIR}/${TRIAL}/pquery.log | head -n1

@@ -133,7 +133,9 @@ ha_innodb.cc line 2444                                   ## MS5.7 # http://bugs.
 ZN13st_select_lex19make_active_optionsEyy                ## MS5.7 # http://bugs.mysql.com/bug.php?id=79417
 m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespace, .., .., MDL_INTENTION_EXCLUSIVE ## beta # https://bugs.launchpad.net/percona-server/+bug/1520401
 ..HA_ATTACHABLE_TRX_COMPATIBLE is not set.               ## beta  # https://bugs.launchpad.net/percona-server/+bug/1520403
-log0log.cc line 1104
+#log0log.cc line 1104 ??
+fsp0fsp.cc line 766                                      ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1529555
+ZN12Item_func_sp8val_jsonEP12Json_wrapper                ## MS5.7 # http://bugs.mysql.com/bug.php?id=79801
 
 ## =========== PS 5.7 TokuDB bugs ==========
 Handlerton. kc_info->cp_info.keynr. == NULL                                             ## https://tokutek.atlassian.net/browse/DB-917
@@ -248,6 +250,7 @@ os0sync.cc line 475                                                             
 pars0pars.cc line 865                                                                   ## http://bugs.mysql.com/bug.php?id=68987
 que0que.cc line 1206                                                                    ## http://bugs.mysql.com/bug.php?id=74762, MS build
 que0que.cc line 1216                                                                    ## http://bugs.mysql.com/bug.php?id=74762, PS build
+rem0rec.cc line 867                                                                     ## http://bugs.mysql.com/bug.php?id=79794 (5.7.10 only, seemingly not in 5.7.9)
 rem0rec.cc line 845                                                                     ## http://bugs.mysql.com/bug.php?id=74664
 rem0rec.ic line 939                                                                     ## https://bugs.launchpad.net/percona-server/5.6/+bug/1226532
 row0import.cc line 3453                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1372219
@@ -539,3 +542,4 @@ TEXT=.res.$                                                                     
 TEXT=.src.$                                                        ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74500 (fixed in 5.7.6)
 TEXT=.strlen.db.$                                                                       ## http://bugs.mysql.com/bug.php?id=76467
 TEXT=.thd.$                                                                             ## https://bugs.launchpad.net/percona-server/+bug/1372675 (pquery)
+TEXT=.thread .= __null.$                                                                ## http://bugs.mysql.com/bug.php?id=79802 (5.7.10)
