@@ -2,14 +2,18 @@
 use warnings;
 use strict;
 
-# Sequence match will search through the standard input
+# sequence_match.pl
+#
+# This script will search through the standard input
 # for a sequence of lines that match a sequence of regular
 # expressions and report when a match is found.
 #
-# This can be used to find a blocks of matching code
+# This can be used to find blocks of matching code
 # within a project.
 #
 # david. bennett at percona. com - 1/2/2016
+#
+# Example usage: ./sequence_match.pl < sequence_match.pl
 #
 
 # The number of non-matching lines to tolerate when
@@ -22,13 +26,13 @@ my $TOLERANCE=1;
 # variable declaration and beginning of the main loop
 # when this script is given as input.
 
-my $expressions = <<'_EOL_';
+my $EXPRESSIONS = <<'_EOL_';
 ^my
 ^while
 \$lineNumber
 _EOL_
 
-my @matchingExpressions=split /\n/, $expressions;
+my @matchingExpressions=split /\n/, $EXPRESSIONS;
 my $matchCurrentOffset=0;
 my $lineNumber=0;
 my $startMatchLineNumber=0;

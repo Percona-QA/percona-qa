@@ -650,6 +650,13 @@ Bzr setup:| [Optional] to configure bzr for uploading code, follow this;
 Bzr repo: | Setting up a local repo ensures that broken downloads (removed with rm -Rf {download_dir_name}) can be resumed (a must for PS)
           | cd /;sudo mkdir bzr;sudo chown -R {username}:{username} bzr;sudo chmod -R 777 bzr;cd bzr;bzr init-repo .
 
+## sequence_match.pl ##
+
+This script will search through the standard input for a sequence of lines
+that match a sequence of regular expressions and report when a match is found.
+
+This can be used to find blocks of matching code within a project.
+
 ## startup.sh ##
 
 Generate cmd startup scripts used in an RQG trial.
