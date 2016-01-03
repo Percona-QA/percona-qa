@@ -4,6 +4,13 @@ Edit the file you want, and add this line:
 
 DBUG_ASSERT(condition that must fail for the server to crash);
 
+  Real example from MySQL code switch case:
+
+  default:
+    DBUG_ASSERT(0);
+
+  IOW: always assert (0 = always false) if a non-covered switch casei (i.e. 'default') is hit.
+
 Then re-build the server (and remember to use the debug build for testing, as this is a debug assert).
 
 To rebuild percona server, you can use percona-qa/build_percona.sh (ignore the 'outdated script' warning at startup and hit 2x enter).
@@ -256,3 +263,9 @@ $ bzr diff
        }
      }
    }
+
+Another example; See http://bugs.mysql.com/bug.php?id=79822
+
+DBUG_ASSERT(thd_info->start_time>=0);
+DBUG_ASSERT(now>=thd_info->start_time);
+DBUG_ASSERT((now-thd_info->start_time)<1000000);

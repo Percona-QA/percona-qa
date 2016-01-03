@@ -36,6 +36,9 @@ MYSAFE="--no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M 
 THREADS=1                                                      # Number of threads to use. Default: 1. Set to >1 to enable multi-threaded runs. Also see MULTI_THREADED_TESTC_LINES
 MULTI_THREADED_TESTC_LINES=25000                               # Only takes effect if THREADS>1. pquery-run will take this amount of lines to form individual testcases for multi-threaded runs. IOW, if THREADS=1, pquery-run will just run one client, continously getting random queries out of INFILE, untill QUERIES_PER_THREAD queries is reached (if mysqld does not crash earlier). On the other hand, if THREADS>1, pquery-run will take a random chunk out of INFILE (to the amount of MULTI_THREADED_TESTC_LINES lines) _before_ starting each trial run. It will then run pquery, with THREADS threads, only using that smaller chunk extracted from INFILE. These individual SQL input files are saved in the trial's dirtory. You may want to keep this number small to ensure that true-multi-threaded testcase reduction using reducer.sh is still sufficiently fast (25K lines takes a few days to reduce), while keeping it large enough to ensure crashes/asserts to start with.
 
+# ========================================= User configurable variables to enable query duration testing =========================
+QUERY_DURATION_TESTING=0
+
 # ========================================= User configurable variables to enable Valgrind testing only ==========================
 VALGRIND_RUN=0                                                 # Set to 1 to make this a Valgrind run. Do not change VALGRIND_CMD unless you fully understand the change being made
 VALGRIND_CMD="valgrind --suppressions=${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes --track-origins=yes"
@@ -140,6 +143,10 @@ if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
     echoit "Note: As this is a CRASH_RECOVERY_TESTING=1 run, and PQUERY_RUN_TIMEOUT was set to only ${PQUERY_RUN_TIMEOUT}, this script is setting the timeout to the required minimum of 30 for this run."
     PQUERY_RUN_TIMEOUT=30
   fi
+fi
+if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then
+    echoit "Note: As this is a QUERY_DURATION_TESTING=1 run, and THREADS was set to ${THREADS}, this script is setting the number of threads to the required setting of 1 thread for this run. (While multi-threaded query duration testing may be added later, it's priority is low, and it's use case seems small.)"
+    THREADS=1
 fi
 if [ ${VALGRIND_RUN} -eq 1 ]; then
   echoit "Note: As this is a VALGRIND_RUN=1 run, this script is increasing MYSQLD_START_TIMEOUT (${MYSQLD_START_TIMEOUT} by 240 seconds because Valgrind is very slow in starting up mysqld."
@@ -394,7 +401,11 @@ pquery_test(){
     echoit "Starting pquery (log stored in ${RUNDIR}/${TRIAL}/pquery.log)..."
     if [ ${THREADS} -eq 1 ]; then  # Single-threaded run (1 client only)
       if [ ${PXC} -eq 0 ]; then
-        ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        if [ ${QUERY_DURATION_TESTING} -eq 0 ]; then
+          ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        else
+          ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        fi
       else
         ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       fi

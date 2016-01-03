@@ -21,6 +21,7 @@ ut0ut.cc line 981                                        ## http://bugs.mysql.co
 ut0ut.cc line 906                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
 ut0ut.cc line 916                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
 ut0ut.cc line 918                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7B2
+ut0ut.cc line 923                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7.10
 buf0buf.cc line 2678                                     ## Not logged: SET GLOBAL innodb_fil_make_page_dirty_debug=38098908;
 #sync0debug.cc line 299                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
 #buf0lru.cc line 2245                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1415357                                 (# after next bzr pull)
@@ -117,7 +118,7 @@ Z8filesortP3THDP8FilesortbPyS3_S3_                       ## http://bugs.mysql.co
 ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_          ## http://bugs.mysql.com/bug.php?id=79018
 Z22get_filename_hash_pinsP10PFS_thread                   ## http://bugs.mysql.com/bug.php?id=79042
 
-## =========== PS 5.7 Work ===========
+## =========== PS 5.7 Beta & GA ===========
 #ZN8Item_row7val_strEP6String                   ## Fixed ## alpha # https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
 btr0cur.cc line 830                                      ## beta  # https://bugs.launchpad.net/percona-server/+bug/1517757
 trx0trx.cc line 1297                                     ## beta  # http://bugs.mysql.com/bug.php?id=79349
@@ -131,11 +132,15 @@ trx0sys.cc line 1265                                     ## MS5.7 # http://bugs.
 ha_innodb.cc line 2653                                   ## beta  # http://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on PS)
 ha_innodb.cc line 2444                                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on MS)
 ZN13st_select_lex19make_active_optionsEyy                ## MS5.7 # http://bugs.mysql.com/bug.php?id=79417
-m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespace, .., .., MDL_INTENTION_EXCLUSIVE ## beta # https://bugs.launchpad.net/percona-server/+bug/1520401
+# m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespace, .., .., MDL_INTENTION_EXCLUSIVE ## beta # https://bugs.launchpad.net/percona-server/+bug/1520401  # No longer present? Ref bug report
+thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE ## MS5.7 # http://bugs.mysql.com/bug.php?id=79820
 ..HA_ATTACHABLE_TRX_COMPATIBLE is not set.               ## beta  # https://bugs.launchpad.net/percona-server/+bug/1520403
 #log0log.cc line 1104 ??
 fsp0fsp.cc line 766                                      ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1529555
 ZN12Item_func_sp8val_jsonEP12Json_wrapper                ## MS5.7 # http://bugs.mysql.com/bug.php?id=79801
+ha_innodb.cc line 8210                                       ## MS5.7 # http://bugs.mysql.com/bug.php?id=79821 (debug)
+ha_innodb.cc line 8621                                       ## ^     # http://bugs.mysql.com/bug.php?id=79821 (PS 5.7, debug)
+Z18row_search_no_mvccPh15page_cur_mode_tP14row_prebuilt_tmm  ## ^     # http://bugs.mysql.com/bug.php?id=79821 (PS 5.7, opt)
 
 ## =========== PS 5.7 TokuDB bugs ==========
 Handlerton. kc_info->cp_info.keynr. == NULL                                             ## https://tokutek.atlassian.net/browse/DB-917
