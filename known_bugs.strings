@@ -16,6 +16,12 @@
 ## [ERROR] Got error 155 when reading table                 ## Read from table after ALTER TABLE x DISCARD TABLESPACE  | MS 75911
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
+## =========== fb-mysql ===========
+v->cfd_->internal_comparator                             ## https://github.com/facebook/mysql-5.6/issues/131
+Z18table_stats_deletePKc                                 ## https://github.com/facebook/mysql-5.6/issues/132
+ZN7rocksdb10TableCache9FindTableERKNS_10EnvOptionsERKNS_21InternalKeyComparatorERKNS_14FileDescriptorEPPNS_5Cache6HandleEbbPNS_13HistogramImplE  ## https://github.com/facebook/mysql-5.6/issues/133
+block_restart_interval_ >= 1                             ## https://github.com/facebook/mysql-5.6/issues/134
+
 ## =========== Early 5.7 Prepatory Work ===========
 ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
 ut0ut.cc line 906                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;

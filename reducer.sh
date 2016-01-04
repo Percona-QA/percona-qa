@@ -1218,7 +1218,7 @@ init_mysql_dir(){
       sed -i "s|--log-error=error.log|${MYEXTRA}|" $WORKD/docker-compose.yml
     fi
   else
-    rm -Rf $WORKD/data/*
+    rm -Rf $WORKD/data/*  $WORKD/tmp/*
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
       cp -R $WORKD/data.init/* $WORKD/data/
     else
