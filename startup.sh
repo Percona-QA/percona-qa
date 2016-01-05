@@ -57,7 +57,8 @@ fi
 # Get version specific options. MID=mysql_install_db
 versionOptCheck() {
   if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.7" ]; then
-    if [[ ! `${BIN}  --version | grep -oe '5\.[1567]\.[0-5]'` ]]; then
+    VERSION_CHK=`${BIN}  --version | grep -oe '5\.[1567]\.[0-9]*' | cut -f3 -d'.' | head -n1`
+    if [[ $VERSION_CHK -ge 5 ]]; then
       MID_OPT="--initialize-insecure"
     else
       MID_OPT="--insecure"
@@ -164,7 +165,7 @@ if [ "0" == "$1" ]; then
   else
     MID_57="$PWD/bin/mysql_install_db"
   fi  
-  echo "if [ -r $PWD/scripts/mysql_install_db ]; then $PWD/scripts/mysql_install_db ${MID_OPT} --basedir=$PWD --datadir=$PWD/data; elif [ -r $PWD/bin/mysql_install_db ]; then $MID_57 ${MID_OPT} --basedir=$PWD --datadir=$PWD/data; else echo 'mysql_install_db not found in scripts nor bin directories'; fi" >> ./wipe
+  echo "if [ -r $PWD/scripts/mysql_install_db ]; then $PWD/scripts/mysql_install_db ${MID_OPT} --basedir=$PWD --datadir=$PWD/data; elif [ -r $PWD/bin/mysql_install_db ]; then $MID_57 --no-defaults ${MID_OPT} --basedir=$PWD --datadir=$PWD/data; else echo 'mysql_install_db not found in scripts nor bin directories'; fi" >> ./wipe
   if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.7" ]; then
      echo "mkdir -p $PWD/data/test " >> ./wipe
   fi
@@ -175,7 +176,7 @@ if [ "0" == "$1" ]; then
   if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" != "5.7" ]; then
     echo "mkdir $PWD/data $PWD/data/test $PWD/data/mysql" >> ./init
   fi
-  echo "if [ -r $PWD/bin/mysql_install_db ]; then $MID_57 ${MID_OPT} --basedir=$PWD --datadir=$PWD/data; elif [ -r $PWD/scripts/mysql_install_db ]; then $PWD/scripts/mysql_install_db ${MID_OPT} --basedir=$PWD --datadir=$PWD/data; else echo 'mysql_install_db not found in scripts nor bin directories'; fi" >> ./init
+  echo "if [ -r $PWD/bin/mysql_install_db ]; then $MID_57 --no-defaults ${MID_OPT} --basedir=$PWD --datadir=$PWD/data; elif [ -r $PWD/scripts/mysql_install_db ]; then $PWD/scripts/mysql_install_db ${MID_OPT} --basedir=$PWD --datadir=$PWD/data; else echo 'mysql_install_db not found in scripts nor bin directories'; fi" >> ./init
   if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.7" ]; then
     echo "mkdir $PWD/data/test" >> ./init
   fi
