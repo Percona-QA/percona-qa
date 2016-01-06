@@ -99,7 +99,7 @@ fi
 
 # JEMALLOC for PS/TokuDB
 if [ ${SKIP_JEMALLOC_FOR_PS} -ne 1 ]; then
-  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" == "Percona" ]; then
+  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" == "Percona" ] || [ `$(${BIN} --version | grep -oi '5.7.10-[0-9]' | cut -f2 -d'-' | head -n1)` -ge 1 ]; then
     if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
       export LD_PRELOAD=/usr/lib64/libjemalloc.so.1; 
     else 
@@ -109,7 +109,7 @@ if [ ${SKIP_JEMALLOC_FOR_PS} -ne 1 ]; then
     fi
   fi
 else
-  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" == "Percona" ]; then
+  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" == "Percona" ] || [ `$(${BIN} --version | grep -oi '5.7.10-[0-9]' | cut -f2 -d'-' | head -n1)` -ge 1 ]; then
     echoit "*** IMPORTANT WARNING ***: SKIP_JEMALLOC_FOR_PS was set to 1, and thus JEMALLOC will not be LD_PRELOAD'ed. However, the mysqld binary (${BIN}) reports itself as Percona Server. If you are going to test TokuDB, JEMALLOC should be LD_PRELOAD'ed. If not testing TokuDB, then this warning can be safely ignored."
   fi
 fi
