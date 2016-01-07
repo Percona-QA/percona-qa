@@ -150,7 +150,7 @@ Z18row_search_no_mvccPh15page_cur_mode_tP14row_prebuilt_tmm  ## ^     # http://b
 
 ## =========== PS 5.7 TokuDB bugs ==========
 Handlerton. kc_info->cp_info.keynr. == NULL                                             ## https://tokutek.atlassian.net/browse/DB-917
-mh->m_magic == 1234                                                                     ## https://tokutek.atlassian.net/browse/DB-920
+#mh->m_magic == 1234                                                                     ## https://tokutek.atlassian.net/browse/DB-920
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb                     ## https://tokutek.atlassian.net/browse/DB-921
 
 ## =========== Line number based ===========

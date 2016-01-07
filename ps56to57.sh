@@ -68,7 +68,6 @@ pushd ${PS56_BASEDIR}/mysql-test/
 set +e 
 perl mysql-test-run.pl \
   --start-and-exit \
-  --nowarnings \
   --vardir=$psdatadir \
   --mysqld=--port=$PORT \
   --mysqld=--innodb_file_per_table \
@@ -109,7 +108,6 @@ set +e
 perl mysql-test-run.pl \
   --start-and-exit \
   --start-dirty \
-  --nowarnings \
   --vardir=$psdatadir \
   --mysqld=--port=$PORT \
   --mysqld=--innodb_file_per_table \
