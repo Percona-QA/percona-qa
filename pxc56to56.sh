@@ -37,7 +37,7 @@ fi
 
 cd $WORKDIR
 
-VER2=$LATEST_VER
+VER2=`ls -1ct Percona-XtraDB-Cluster-* | cut -f4 -d'-' | grep -v '5.6.22'`
 VER1=$(basename $RELEASE_BIN | cut -d- -f4)
 
 if [[ $VER1 == $VER2 ]];then 

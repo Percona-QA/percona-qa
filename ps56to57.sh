@@ -63,12 +63,24 @@ mkdir -p $WORKDIR/logs
 psdatadir="${MYSQL_VARDIR}/ps56"
 mkdir -p $psdatadir
 
+#Load jemalloc lib
+if [ -r /usr/lib64/libjemalloc.so.1 ]; 
+  then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then 
+  export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
+elif [ -r /sda/workdir/PS-mysql-5.7.10-1rc1-linux-x86_64-debug/lib/mysql/libjemalloc.so.1 ]; then 
+  export LD_PRELOAD=/sda/workdir/PS-mysql-5.7.10-1rc1-linux-x86_64-debug/lib/mysql/libjemalloc.so.1
+else 
+  echo 'Error: jemalloc not found, please install it first'; 
+  exit 1; 
+fi
+
+
 pushd ${PS56_BASEDIR}/mysql-test/
 
 set +e 
 perl mysql-test-run.pl \
   --start-and-exit \
-  --nowarnings \
   --vardir=$psdatadir \
   --mysqld=--port=$PORT \
   --mysqld=--innodb_file_per_table \
@@ -90,6 +102,9 @@ perl mysql-test-run.pl \
 set -e
 popd
 
+#Install TokuDB plugin
+echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $PS56_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps56.sock 
+$PS56_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps56.sock < ${SCRIPT_PWD}/TokuDB.sql
 echo "Sysbench Run: Prepare stage"
 
 $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=$WORKDIR/ps56.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
@@ -99,7 +114,26 @@ $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/samp
 
 echo "Load world db"
 $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
- 
+
+if [ -d ${SCRIPT_PWD}/employees_db ]; then
+  pushd /sda/workdir/uptest/employees_db/
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees.sql 
+  popd
+fi
+
+echo "Drop foreign keys for changing SE"
+$PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root -Bse "SELECT CONCAT('ALTER TABlE ',TABLE_SCHEMA,'.',TABLE_NAME,' DROP FOREIGN KEY ',CONSTRAINT_NAME) as a FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_TYPE='FOREIGN KEY' AND TABLE_SCHEMA NOT IN('mysql','information_schema','performance_schema','sys')" | while read drop_key ; do
+  echo "Executing : $drop_key"
+  echo "$drop_key" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root
+done
+
+echo "Alter tables to TokuDB.."
+
+$PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root -Bse "select concat('ALTER TABLE ',table_schema,'.',table_name,' ENGINE=TokuDB') as a from information_schema.tables where table_schema not in('mysql','information_schema','performance_schema','sys') and table_type='BASE TABLE'" | while read alter_tbl ; do
+  echo "Executing : $alter_tbl"
+  echo "$alter_tbl" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true  
+done
+
 $PS56_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps56.sock -u root shutdown
 
 
@@ -109,7 +143,6 @@ set +e
 perl mysql-test-run.pl \
   --start-and-exit \
   --start-dirty \
-  --nowarnings \
   --vardir=$psdatadir \
   --mysqld=--port=$PORT \
   --mysqld=--innodb_file_per_table \
