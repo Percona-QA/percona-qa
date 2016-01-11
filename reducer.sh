@@ -1006,7 +1006,7 @@ init_workdir_and_files(){
     echo_out "[Init] PXC Node #2 Client: $MYBASE/bin/mysql -uroot -h127.0.0.1 -P11000"
     echo_out "[Init] PXC Node #3 Client: $MYBASE/bin/mysql -uroot -h127.0.0.1 -P12000"
   else
-    echo_out "[Init] Server (When MULTI mode is not active): ${MYBASE}${BIN} (as $MYUSER)"
+    echo_out "[Init] Server: ${MYBASE}${BIN} (as $MYUSER)"
     echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
   fi
   if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] SKIPSTAGE active. Stages up to and including $SKIPSTAGE are skipped"; fi

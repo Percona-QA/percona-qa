@@ -29,6 +29,7 @@
   sudo service docker start
   sudo chkconfig docker on # start the docker service on boot
 
+# Following point is outdated, use Docker Compose now
 # Installing fig - http://www.fig.sh/ (Fig is a meta-solution which builds on Docker - handy for creating many Docker nodes at once, for example for PXC etc.)
   sudo su
   curl -L https://github.com/docker/fig/releases/download/1.0.1/fig-`uname -s`-`uname -m` > /usr/local/bin/fig; chmod +x /usr/local/bin/fig

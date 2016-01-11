@@ -44,7 +44,7 @@ ha_innodb.cc line 17770                                  ## http://bugs.mysql.co
 #trx0trx.cc line 1270                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75782                                                 (# after MS 5.7.8 merged)
 #btr0btr.ic line 126                            ## Fixed ## http://bugs.mysql.com/bug.php?id=75784 (Apparent dup of MS #74577)                     (# after MS 5.7.6 merged)
 btr0cur.cc line 1240                                     ## http://bugs.mysql.com/bug.php?id=74747 (Apparently not present in 5.7.6)
-#TEXT=.strlen.m_ptr.$                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75870                                                 (# after MS 5.7.8 merged)
+#TEXT=.strlen.m_ptr.$                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75870 (Also ref bug 79905)                            (# after MS 5.7.8 merged)
 fil0fil.cc line 5133                                     ## http://bugs.mysql.com/bug.php?id=74481
 fsp0fsp.cc line 2025                                     ## http://bugs.mysql.com/bug.php?id=74876 (MS 5.7.15-m15) (InnoDB: Failing assertion: inode)
 fsp0fsp.cc line 2023                                     ## http://bugs.mysql.com/bug.php?id=74343 (testcase from bug #74876 triggers this assertion also)
@@ -147,6 +147,8 @@ ZN12Item_func_sp8val_jsonEP12Json_wrapper                ## MS5.7 # http://bugs.
 ha_innodb.cc line 8210                                       ## MS5.7 # http://bugs.mysql.com/bug.php?id=79821 (debug)
 ha_innodb.cc line 8621                                       ## ^     # http://bugs.mysql.com/bug.php?id=79821 (PS 5.7, debug)
 Z18row_search_no_mvccPh15page_cur_mode_tP14row_prebuilt_tmm  ## ^     # http://bugs.mysql.com/bug.php?id=79821 (PS 5.7, opt)
+strlen.m_ptr                                             ## MS5.7 # http://bugs.mysql.com/bug.php?id=79905  
+ZN17sys_var_pluginvar14session_updateEP3THDP7set_var     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1532635
 
 ## =========== PS 5.7 TokuDB bugs ==========
 Handlerton. kc_info->cp_info.keynr. == NULL                                             ## https://tokutek.atlassian.net/browse/DB-917
@@ -554,3 +556,4 @@ TEXT=.src.$                                                        ## Still pres
 TEXT=.strlen.db.$                                                                       ## http://bugs.mysql.com/bug.php?id=76467
 TEXT=.thd.$                                                                             ## https://bugs.launchpad.net/percona-server/+bug/1372675 (pquery)
 TEXT=.thread .= __null.$                                                                ## http://bugs.mysql.com/bug.php?id=79802 (5.7.10)
+TEXT=.i == .uint16.                                                                     ## http://bugs.mysql.com/bug.php?id=79829

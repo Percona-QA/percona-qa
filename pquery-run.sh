@@ -602,12 +602,12 @@ echoit "Valgrind run: `if [ ${VALGRIND_RUN} -eq 1 ]; then echo -n 'TRUE'; else e
 echoit "pquery Binary: ${PQUERY_BIN}"
 if [ "${MYEXTRA}" != "" ]; then echoit "MYEXTRA: ${MYEXTRA}"; fi
 if [ "${MYSAFE}" != "" ]; then echoit "MYSAFE: ${MYSAFE}"; fi
-echoit "Making a copy of the pquery binary used (${PQUERY_BIN}) to ${WORKDIR} (handy for later re-runs/reference etc.)"
+echoit "Making a copy of the pquery binary used (${PQUERY_BIN}) to ${WORKDIR}/ (handy for later re-runs/reference etc.)"
 cp ${PQUERY_BIN} ${WORKDIR}
-echoit "Making a copy of this script (${SCRIPT}) to ${WORKDIR} for reference & adding pquery- prefix (avoids pquery-prep-run not finding the script)..."  # pquery- prefix avoids pquer-prep-red.sh script-locating issues if this script had been renamed to a name without 'pquery' in it.
+echoit "Making a copy of this script (${SCRIPT}) to ${WORKDIR}/ for reference & adding pquery- prefix (avoids pquery-prep-run not finding the script)..."  # pquery- prefix avoids pquer-prep-red.sh script-locating issues if this script had been renamed to a name without 'pquery' in it.
 cp ${SCRIPT_AND_PATH} ${WORKDIR}/pquery-${SCRIPT}
 if [ ${STORE_COPY_OF_INFILE} -eq 1 ]; then
-  echoit "Making a copy of the SQL input file used (${INFILE}) to ${WORKDIR} for reference..."
+  echoit "Making a copy of the SQL input file used (${INFILE}) to ${WORKDIR}/ for reference..."
   cp ${INFILE} ${WORKDIR}
 fi
 
