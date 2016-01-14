@@ -151,8 +151,10 @@ strlen.m_ptr                                             ## MS5.7 # http://bugs.
 ZN17sys_var_pluginvar14session_updateEP3THDP7set_var     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1532635
 
 ## =========== PS 5.7 TokuDB bugs ==========
+Handlerton. error == 0                                                                  ## https://tokutek.atlassian.net/browse/DB-927
 Handlerton. kc_info->cp_info.keynr. == NULL                                             ## https://tokutek.atlassian.net/browse/DB-917
-#mh->m_magic == 1234                                                                     ## https://tokutek.atlassian.net/browse/DB-920
+mh->m_magic == 1234                                                                     ## https://tokutek.atlassian.net/browse/DB-920
+used_keyparts <= key->user_defined_key_parts                                            ## https://tokutek.atlassian.net/browse/DB-926
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb                     ## https://tokutek.atlassian.net/browse/DB-921
 
 ## =========== Line number based ===========
