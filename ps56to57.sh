@@ -13,6 +13,8 @@ if [ -z ${BUILD_NUMBER} ]; then
   BUILD_NUMBER=1001
 fi
 
+WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
+
 if [ -z ${SDURATION} ]; then
   SDURATION=100
 fi
@@ -33,9 +35,18 @@ cleanup(){
   tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
 }
 
+echoit(){
+  echo "[$(date +'%T')] $1"
+  if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/upgrade_testing.log; fi
+}
+
 trap cleanup EXIT KILL
 
-cd $WORKDIR
+cd $ROOT_FS
+
+if [ ! -d $ROOT_FS/test_db ]; then
+  git clone https://github.com/datacharmer/test_db.git
+fi
 
 PS56_TAR=`ls -1td ?ercona-?erver-5.6* | grep ".tar" | head -n1`
 PS57_TAR=`ls -1td ?ercona-?erver-5.7* | grep ".tar" | head -n1`
@@ -63,6 +74,22 @@ mkdir -p $WORKDIR/logs
 psdatadir="${MYSQL_VARDIR}/psdata"
 mkdir -p $psdatadir
 
+function create_emp_db()
+{
+  DB_NAME=$1
+  SE_NAME=$2
+  SQL_FILE=$3
+  pushd $ROOT_FS/test_db
+  cat $ROOT_FS/test_db/$SQL_FILE \
+   | sed -e "s|DROP DATABASE IF EXISTS employees|DROP DATABASE IF EXISTS ${DB_NAME}|" \
+   | sed -e "s|CREATE DATABASE IF NOT EXISTS employees|CREATE DATABASE IF NOT EXISTS ${DB_NAME}|" \
+   | sed -e "s|USE employees|USE ${DB_NAME}|" \
+   | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
+   > $ROOT_FS/test_db/${DB_NAME}_${SE_NAME}.sql
+   $PS56_BASEDIR/bin/mysql --socket=${WORKDIR}/ps56.sock -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
+   popd
+}
+
 #Load jemalloc lib
 if [ -r /usr/lib64/libjemalloc.so.1 ]; 
   then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
@@ -71,7 +98,7 @@ elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then
 elif [ -r /sda/workdir/PS-mysql-5.7.10-1rc1-linux-x86_64-debug/lib/mysql/libjemalloc.so.1 ]; then 
   export LD_PRELOAD=/sda/workdir/PS-mysql-5.7.10-1rc1-linux-x86_64-debug/lib/mysql/libjemalloc.so.1
 else 
-  echo 'Error: jemalloc not found, please install it first'; 
+  echoit "Error: jemalloc not found, please install it first" 
   exit 1; 
 fi
 
@@ -105,54 +132,58 @@ popd
 #Install TokuDB plugin
 echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $PS56_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps56.sock 
 $PS56_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps56.sock < ${SCRIPT_PWD}/TokuDB.sql
-echo "Sysbench Run: Prepare stage"
+echoit "Sysbench Run: Prepare stage"
 
 $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=$WORKDIR/ps56.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
-echo "Load Sakila db"
+echoit "Loading sakila test database"
 $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
 
-echo "Load world db"
+echoit "Loading world test database"
 $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
 
-if [ -d ${SCRIPT_PWD}/employees_db ]; then
-  pushd /sda/workdir/uptest/employees_db/
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb_partitioned.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb_partitioned2.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb_partitioned3.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam_partitioned.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam_partitioned2.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam_partitioned3.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb.sql || true
-  popd
-fi
+echoit "Loading employees database with innodb engine.."
+create_emp_db employee_1 innodb employees.sql
 
-echo "Drop foreign keys for changing SE"
+echoit "Loading employees partitioned database with innodb engine.."
+create_emp_db employee_2 innodb employees_partitioned.sql
+
+echoit "Loading employees database with myisam engine.."
+create_emp_db employee_3 myisam employees.sql
+
+echoit "Loading employees partitioned database with myisam engine.."
+create_emp_db employee_4 myisam employees_partitioned.sql
+
+echoit "Drop foreign keys for changing storage engine"
 $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root -Bse "SELECT CONCAT('ALTER TABlE ',TABLE_SCHEMA,'.',TABLE_NAME,' DROP FOREIGN KEY ',CONSTRAINT_NAME) as a FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_TYPE='FOREIGN KEY' AND TABLE_SCHEMA NOT IN('mysql','information_schema','performance_schema','sys')" | while read drop_key ; do
-  echo "Executing : $drop_key"
+  echoit "Executing : $drop_key"
   echo "$drop_key" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root
 done
 
-echo "Alter tables to TokuDB.."
+echoit "Altering tables to TokuDB.."
 
 $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root -Bse "select concat('ALTER TABLE ',table_schema,'.',table_name,' ENGINE=TokuDB') as a from information_schema.tables where table_schema not in('mysql','information_schema','performance_schema','sys') and table_type='BASE TABLE'" | while read alter_tbl ; do
-  echo "Executing : $alter_tbl"
+  echoit "Executing : $alter_tbl"
   echo "$alter_tbl" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true  
 done
 
-if [ -d ${SCRIPT_PWD}/employees_db ]; then
-  pushd /sda/workdir/uptest/employees_db/
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_tokudb.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_tokudb_partitioned.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_tokudb_partitioned2.sql || true
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_tokudb_partitioned3.sql || true
-  cat ${SCRIPT_PWD}/employees_db/employees_innodb_partitioned.sql | sed -e 's|employees_innodb_part1|employees_inno_noalter_part1|' > ${SCRIPT_PWD}/employees_db/employees_innodb_part_noalter.sql 
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb_part_noalter.sql || true
-  cat ${SCRIPT_PWD}/employees_db/employees_myisam_partitioned.sql | sed -e 's|employees_myisam_part1|employees_myisam_noalter_part1|' > ${SCRIPT_PWD}/employees_db/employees_myisam_part_noalter.sql
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam_part_noalter.sql || true
-  popd
-fi
+echoit "Loading employees database with tokudb engine for upgrade testing.."
+create_emp_db employee_5 tokudb employees.sql
+
+echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
+create_emp_db employee_6 tokudb employees_partitioned.sql
+
+echoit "Loading employees database with innodb engine for upgrade testing.."
+create_emp_db employee_7 innodb employees.sql
+
+echoit "Loading employees partitioned database with innodb engine for upgrade testing.."
+create_emp_db employee_8 innodb employees_partitioned.sql
+
+echoit "Loading employees database with myisam engine for upgrade testing.."
+create_emp_db employee_9 myisam employees.sql
+
+echoit "Loading employees partitioned database with myisam engine for upgrade testing.."
+create_emp_db employee_10 myisam employees_partitioned.sql
 
 #Partition testing with sysbench data
 echo "ALTER TABLE test.sbtest1 PARTITION BY HASH(id) PARTITIONS 8;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true
@@ -199,7 +230,7 @@ echo "ALTER TABLE test.sbtest4 CHECK PARTITION p2;" | $PS56_BASEDIR/bin/mysql --
 
 $PS57_BASEDIR/bin/mysql -S $WORKDIR/ps57.sock  -u root -e "show global variables like 'version';"
 
-echo "Downgrade testing with mysqlddump and reload.."
+echoit "Downgrade testing with mysqlddump and reload.."
 $PS57_BASEDIR/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=$WORKDIR/ps57.sock -uroot --databases `$PS57_BASEDIR/bin/mysql --socket=$WORKDIR/ps57.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
 
 psdatadir="${MYSQL_VARDIR}/ps56_down"
@@ -235,6 +266,6 @@ ${PS56_BASEDIR}/bin/mysql --socket=$WORKDIR/ps56_down.sock -uroot < $WORKDIR/dbd
 
 CHECK_DBS=`$PS57_BASEDIR/bin/mysql --socket=$WORKDIR/ps57.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"`
 
-echo "Checking table status..."
+echoit "Checking table status..."
 ${PS56_BASEDIR}/bin/mysqlcheck -uroot --socket=$WORKDIR/ps56_down.sock --check-upgrade --databases $CHECK_DBS 2>&1
 
