@@ -60,7 +60,7 @@ export MYSQL_VARDIR="$WORKDIR/mysqldir"
 mkdir -p $MYSQL_VARDIR
 mkdir -p $WORKDIR/logs
 
-psdatadir="${MYSQL_VARDIR}/ps56"
+psdatadir="${MYSQL_VARDIR}/psdata"
 mkdir -p $psdatadir
 
 #Load jemalloc lib
@@ -117,7 +117,14 @@ $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/samp
 
 if [ -d ${SCRIPT_PWD}/employees_db ]; then
   pushd /sda/workdir/uptest/employees_db/
-  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees.sql 
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb_partitioned.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb_partitioned2.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb_partitioned3.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam_partitioned.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam_partitioned2.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam_partitioned3.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb.sql || true
   popd
 fi
 
@@ -133,6 +140,25 @@ $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root -Bse "select concat(
   echo "Executing : $alter_tbl"
   echo "$alter_tbl" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true  
 done
+
+if [ -d ${SCRIPT_PWD}/employees_db ]; then
+  pushd /sda/workdir/uptest/employees_db/
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_tokudb.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_tokudb_partitioned.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_tokudb_partitioned2.sql || true
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_tokudb_partitioned3.sql || true
+  cat ${SCRIPT_PWD}/employees_db/employees_innodb_partitioned.sql | sed -e 's|employees_innodb_part1|employees_inno_noalter_part1|' > ${SCRIPT_PWD}/employees_db/employees_innodb_part_noalter.sql 
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_innodb_part_noalter.sql || true
+  cat ${SCRIPT_PWD}/employees_db/employees_myisam_partitioned.sql | sed -e 's|employees_myisam_part1|employees_myisam_noalter_part1|' > ${SCRIPT_PWD}/employees_db/employees_myisam_part_noalter.sql
+  $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/employees_db/employees_myisam_part_noalter.sql || true
+  popd
+fi
+
+#Partition testing with sysbench data
+echo "ALTER TABLE test.sbtest1 PARTITION BY HASH(id) PARTITIONS 8;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true
+echo "ALTER TABLE test.sbtest2 PARTITION BY LINEAR KEY ALGORITHM=2 (id) PARTITIONS 32;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true
+echo "ALTER TABLE test.sbtest3 PARTITION BY HASH(id) PARTITIONS 8;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true
+echo "ALTER TABLE test.sbtest4 PARTITION BY LINEAR KEY ALGORITHM=2 (id) PARTITIONS 32;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true
 
 $PS56_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps56.sock -u root shutdown
 
@@ -166,5 +192,49 @@ popd
 
 $PS57_BASEDIR/bin/mysql_upgrade -S $WORKDIR/ps57.sock -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade.log
 
+echo "ALTER TABLE test.sbtest1 COALESCE PARTITION 2;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps57.sock -u root || true
+echo "ALTER TABLE test.sbtest2 REORGANIZE PARTITION;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps57.sock -u root || true
+echo "ALTER TABLE test.sbtest3 ANALYZE PARTITION p1;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps57.sock -u root || true
+echo "ALTER TABLE test.sbtest4 CHECK PARTITION p2;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps57.sock -u root || true
+
 $PS57_BASEDIR/bin/mysql -S $WORKDIR/ps57.sock  -u root -e "show global variables like 'version';"
+
+echo "Downgrade testing with mysqlddump and reload.."
+$PS57_BASEDIR/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=$WORKDIR/ps57.sock -uroot --databases `$PS57_BASEDIR/bin/mysql --socket=$WORKDIR/ps57.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
+
+psdatadir="${MYSQL_VARDIR}/ps56_down"
+PORT1=$[50000 + ( $RANDOM % ( 9999 ) ) ]
+
+pushd ${PS56_BASEDIR}/mysql-test/
+
+set +e 
+perl mysql-test-run.pl \
+  --start-and-exit \
+  --vardir=$psdatadir \
+  --mysqld=--port=$PORT1 \
+  --mysqld=--innodb_file_per_table \
+  --mysqld=--default-storage-engine=InnoDB \
+  --mysqld=--binlog-format=ROW \
+  --mysqld=--log-bin=mysql-bin \
+  --mysqld=--server-id=101 \
+  --mysqld=--gtid-mode=ON  \
+  --mysqld=--log-slave-updates \
+  --mysqld=--enforce-gtid-consistency \
+  --mysqld=--innodb_flush_method=O_DIRECT \
+  --mysqld=--core-file \
+  --mysqld=--secure-file-priv= \
+  --mysqld=--skip-name-resolve \
+  --mysqld=--log-error=$WORKDIR/logs/ps56_down.err \
+  --mysqld=--socket=$WORKDIR/ps56_down.sock \
+  --mysqld=--log-output=none \
+1st
+set -e
+popd
+
+${PS56_BASEDIR}/bin/mysql --socket=$WORKDIR/ps56_down.sock -uroot < $WORKDIR/dbdump.sql 2>&1
+
+CHECK_DBS=`$PS57_BASEDIR/bin/mysql --socket=$WORKDIR/ps57.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"`
+
+echo "Checking table status..."
+${PS56_BASEDIR}/bin/mysqlcheck -uroot --socket=$WORKDIR/ps56_down.sock --check-upgrade --databases $CHECK_DBS 2>&1
 
