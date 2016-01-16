@@ -91,8 +91,8 @@ function create_emp_db()
 }
 
 #Load jemalloc lib
-if [ -r `find /usr/*lib*/ -name libjemalloc.so.1 | wc -l` ]; then 
-  export LD_PRELOAD=`find /usr/*lib*/ -name libjemalloc.so.1 | wc -l`
+if [ -r `find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then 
+  export LD_PRELOAD=`find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
 elif [ -r /sda/workdir/PS-mysql-5.7.10-1rc1-linux-x86_64-debug/lib/mysql/libjemalloc.so.1 ]; then 
   export LD_PRELOAD=/sda/workdir/PS-mysql-5.7.10-1rc1-linux-x86_64-debug/lib/mysql/libjemalloc.so.1
 else 
