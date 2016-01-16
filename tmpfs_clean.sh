@@ -21,18 +21,25 @@ else
       if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
         sleep 0.3  # Small wait, then recheck (to avoid missed ps output)
         if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
-          AGE=$[ $(date +%s) - $(stat -c %Z ${DIR}) ]  # Directory age in seconds
-          if [ ${AGE} -ge 60 ]; then  # Yet another safety, don't delete very recent directories
-            echo "Deleting... ${DIR} (age: ${AGE} seconds)"
-            COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
-            if [ ${ARMED} -eq 1 ]; then
-              rm -Rf ${DIR}
+          AGEDIR=$[ $(date +%s) - $(stat -c %Z ${DIR}) ]  # Directory age in seconds
+          if [ ${AGEDIR} -ge 90 ]; then  # Yet another safety, don't delete very recent directories
+            if [ -r ${DIR}/reducer.log ]; then 
+              AGEFILE=$[ $(date +%s) - $(stat -c %Z ${DIR}/reducer.log) ]  # File age in seconds
+              if [ ${AGEFILE} -ge 90 ]; then  # Yet another safety specifically for often-occuring reducer directories, don't delete very recent reducers
+                echo "Deleting reducer directory ${DIR} (directory age: ${AGEDIR}s, file age: ${AGEFILE}s)"
+                COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+                if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+              fi
+            else
+              echo "Deleting directory ${DIR} (directory age: ${AGEDIR}s)"
+              COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+              if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
             fi
           fi
         fi
       fi
     else
-     COUNT_FOUND_AND_NOT_DEL=$[ ${COUNT_FOUND_AND_NOT_DEL} + 1 ]
+      COUNT_FOUND_AND_NOT_DEL=$[ ${COUNT_FOUND_AND_NOT_DEL} + 1 ]
     fi
   done
   if [ ${COUNT_FOUND_AND_NOT_DEL} -ge 1 -a ${COUNT_FOUND_AND_DEL} -eq 0 ]; then

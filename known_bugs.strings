@@ -21,6 +21,10 @@ v->cfd_->internal_comparator                             ## https://github.com/f
 Z18table_stats_deletePKc                                 ## https://github.com/facebook/mysql-5.6/issues/132
 ZN7rocksdb10TableCache9FindTableERKNS_10EnvOptionsERKNS_21InternalKeyComparatorERKNS_14FileDescriptorEPPNS_5Cache6HandleEbbPNS_13HistogramImplE  ## https://github.com/facebook/mysql-5.6/issues/133
 block_restart_interval_ >= 1                             ## https://github.com/facebook/mysql-5.6/issues/134
+ZNK8Item_ref11used_tablesEv                              ## https://github.com/facebook/mysql-5.6/issues/139
+ZN9__gnu_cxx13new_allocatorImE8allocateEmPKv             ## https://github.com/facebook/mysql-5.6/issues/140
+Z19fill_table_stats_cbPKcS0_bP17my_io_perf_structS2_S2_S2_S2_P17page_stats_structP17comp_stats_structiiS0_  ## https://github.com/facebook/mysql-5.6/issues/141
+Z12mysql_deleteP3THDP10TABLE_LISTP4ItemP10SQL_I_ListI8st_orderEyy  ## https://github.com/facebook/mysql-5.6/issues/142
 
 ## =========== Early 5.7 Prepatory Work ===========
 ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
