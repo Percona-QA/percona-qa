@@ -2029,7 +2029,9 @@ finish(){
       sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
       sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORKO
     fi
-    echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
+    if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
+      echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
+    fi
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
