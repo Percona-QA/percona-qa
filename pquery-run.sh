@@ -623,7 +623,7 @@ else
   MID_OPT="--force --no-defaults"
 fi
 
-if [ "${MID_OPT}" == "--initialize-insecure" ]; then
+if [ "${MID_OPT}" == "--no-defaults --initialize-insecure" ]; then
     MID_57="${BASEDIR}/bin/mysqld"
   else
     MID_57="${BASEDIR}/bin/mysql_install_db"
