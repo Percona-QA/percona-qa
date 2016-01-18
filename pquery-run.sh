@@ -102,11 +102,12 @@ fi
 # JEMALLOC for PS/TokuDB
 if [ ${SKIP_JEMALLOC_FOR_PS} -ne 1 ]; then
   if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" == "Percona" ] || [ `${BIN} --version | grep -oi '5.7.10-[0-9]' | cut -f2 -d'-' | head -n1` -ge 1 ]; then
-    if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
-      export LD_PRELOAD=/usr/lib64/libjemalloc.so.1; 
+    if [ -r `find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+      export LD_PRELOAD=`find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
     else 
-      echoit "Assert! Binary (${BIN} reported itself as Percona Server, yet jemalloc was not found ready at /usr/lib64/libjemalloc.so.1, please install it!";
+      echoit "Assert! Binary (${BIN} reported itself as Percona Server, yet jemalloc was not found, please install it!";
       echoit "For Centos7 you can do this by:  sudo yum -y install epel-release; sudo yum -y install jemalloc;"
+      echoit "For Ubuntu you can do this by: sudo apt-get install libjemalloc-dev;"
       exit 1; 
     fi
   fi
@@ -612,8 +613,9 @@ if [ ${STORE_COPY_OF_INFILE} -eq 1 ]; then
 fi
 
 if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.7" ]; then
-  if [[ ! `${BIN}  --version | grep -oe '5\.[1567]\.[0-5]'` ]]; then
-    MID_OPT="--initialize-insecure"
+  VERSION_CHK=`${BIN}  --version | grep -oe '5\.[1567]\.[0-9]*' | cut -f3 -d'.' | head -n1`
+  if [[ $VERSION_CHK -ge 5 ]]; then
+    MID_OPT="--no-defaults --initialize-insecure"
   else
     MID_OPT="--insecure"
   fi
