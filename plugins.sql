@@ -6,6 +6,12 @@ INSTALL PLUGIN auth_pam_compat SONAME 'auth_pam_compat.so';                     
 INSTALL PLUGIN query_response_time SONAME 'query_response_time.so';                # YES
 INSTALL PLUGIN audit_log SONAME 'audit_log.so';                                    # YES
 INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so';                                       # YES
+INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so';    ## Need to research other ones whetter they have more then one function!!!!
+INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; 
+INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so';
+INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so';
+INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so';
+INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';
 INSTALL PLUGIN validate_password SONAME 'validate_password.so';                    # YES
 INSTALL PLUGIN version_token SONAME 'version_token.so';                            # YES
 INSTALL PLUGIN auth_socket SONAME 'auth_socket.so';                                # YES
