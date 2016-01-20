@@ -126,6 +126,8 @@
   To discover the real source, run  ld -lsnappy --verbose  and look near the end for the locations is scans for 'attempt to open ...' 
   If you have the library in a specific location, you can use;  sudo ln -s /usr/lib64/libsnappy.so.1 /usr/lib64/libsnappy.so  or use -L option to your compiler!
   With thanks, http://stackoverflow.com/questions/16710047/usr-bin-ld-cannot-find-lnameofthelibrary
+# Find out symbols for a library
+  nm --synthetic some_plugin.so | c++filt
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
