@@ -23,9 +23,14 @@ else
   PQUERY_DIR=$1
 fi
 
-# Download latest lp:percona-qa revision
-cd ${SCRIPT_PWD}
-bzr pull
+# Download latest percona-qa revision
+if [ -d ${SCRIPT_PWD} ]; then
+  cd ${SCRIPT_PWD}
+  git pull || true
+else
+  git clone https://github.com/Percona-QA/percona-qa.git 
+  cd ${SCRIPT_PWD}
+fi
 
 cd ${WORK_DIR}/${PQUERY_DIR}
 
