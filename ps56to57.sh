@@ -165,6 +165,16 @@ $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root -Bse "select concat(
   echo "$alter_tbl" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true  
 done
 
+echoit "Sysbench Run: Creating MyISAM tables"
+echo "CREATE DATABASE sysbench_myisam_db;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true
+$SBENCH --test=$LPATH/parallel_prepare.lua --mysql-engine-trx=yes --mysql-table-engine=myisam --oltp-table-size=5000 --oltp_tables_count=1000 --mysql-db=sysbench_myisam_db --mysql-user=root  --num-threads=1000 --db-driver=mysql --mysql-socket=$WORKDIR/ps56.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+
+$PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root sysbench_myisam_db -e"CREATE TABLE sbtest_mrg like sbtest1" || true
+
+SBTABLE_LIST=`$PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root -Bse "SELECT GROUP_CONCAT(table_name SEPARATOR ',') FROM information_schema.tables WHERE table_schema='sysbench_myisam_db' and table_name!='sbtest_mrg'"`
+
+$PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root sysbench_myisam_db -e"ALTER TABLE sbtest_mrg UNION=($SBTABLE_LIST), ENGINE=MRG_MYISAM" || true
+
 echoit "Loading employees database with tokudb engine for upgrade testing.."
 create_emp_db employee_5 tokudb employees.sql
 
@@ -190,7 +200,6 @@ echo "ALTER TABLE test.sbtest3 PARTITION BY HASH(id) PARTITIONS 8;" | $PS56_BASE
 echo "ALTER TABLE test.sbtest4 PARTITION BY LINEAR KEY ALGORITHM=2 (id) PARTITIONS 32;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true
 
 $PS56_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps56.sock -u root shutdown
-
 
 pushd ${PS57_BASEDIR}/mysql-test/
 
