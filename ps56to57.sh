@@ -167,7 +167,7 @@ done
 
 echoit "Sysbench Run: Creating MyISAM tables"
 echo "CREATE DATABASE sysbench_myisam_db;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true
-$SBENCH --test=$LPATH/parallel_prepare.lua --mysql-engine-trx=yes --mysql-table-engine=myisam --oltp-table-size=5000 --oltp_tables_count=1000 --mysql-db=sysbench_myisam_db --mysql-user=root  --num-threads=1000 --db-driver=mysql --mysql-socket=$WORKDIR/ps56.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+$SBENCH --test=$LPATH/parallel_prepare.lua --mysql-engine-trx=yes --mysql-table-engine=myisam --oltp-table-size=5000 --oltp_tables_count=100 --mysql-db=sysbench_myisam_db --mysql-user=root  --num-threads=100 --db-driver=mysql --mysql-socket=$WORKDIR/ps56.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
 $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root sysbench_myisam_db -e"CREATE TABLE sbtest_mrg like sbtest1" || true
 
