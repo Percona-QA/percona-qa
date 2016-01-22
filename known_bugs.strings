@@ -557,7 +557,7 @@ TEXT=.ds_control.$                                                              
 TEXT=.false.$                                                                           ## http://bugs.mysql.com/bug.php?id=74877
 TEXT=.fd .= -1.$                                                                        ## http://bugs.mysql.com/bug.php?id=74641
 TEXT=.my_b_write.$                                                 ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74950 (fixed in 5.6.27, 5.7.9)
-TEXT=.r == 0.$                                                     ## Still present ftm ## https://tokutek.atlassian.net/browse/DB-737 (fixed in 5.6.23/Tk7.5.6) 
+### CHECK TEXT=.r == 0.$                                                     ## Still present ftm ## https://tokutek.atlassian.net/browse/DB-737 (fixed in 5.6.23/Tk7.5.6) 
 TEXT=.res.$                                                                             ## http://bugs.mysql.com/bug.php?id=76745
 TEXT=.src.$                                                        ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74500 (fixed in 5.7.6)
 TEXT=.strlen.db.$                                                                       ## http://bugs.mysql.com/bug.php?id=76467

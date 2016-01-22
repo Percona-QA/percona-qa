@@ -49,3 +49,7 @@ echo "P.S. To quickly check what the cores are for, use:"
 echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]" | egrep -v "assert|abort" | grep " in " | sed "s|.* in|in|" | sort -u'
 echo "or:"
 echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]" | egrep -v "assert|abort"'
+echo "for tokudb issues, use:"
+echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]" | grep " in " | sed "s|.* in|in|" | sort -u'
+echo "or:"
+echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]"'

@@ -307,7 +307,7 @@ PXC_DOCKER_CLEAN_LOC=~/percona-qa/pxc-pquery
 
 echo_out(){
   echo "$(date +'%F %T') $1"
-  echo "$(date +'%F %T') $1" >> $WORKD/reducer.log
+  if [ -r $WORKD/reducer.log ]; then echo "$(date +'%F %T') $1" >> $WORKD/reducer.log; fi
 }
 
 echo_out_overwrite(){
@@ -561,7 +561,7 @@ options_check(){
       echo_out "Error: PQUERY_MULTI_CLIENT_THREADS is set to less then 1 ($PQUERY_MULTI_CLIENT_THREADS), while PQUERY_MULTI is turned on, this does not work; reducer needs threads to be able to replay the issue"
       exit 1
     elif [ $PQUERY_MULTI_CLIENT_THREADS -eq 1 ]; then
-      echo_out "Warning: PQUERY_MULTI is turned on, and PQUERY_MULTI_CLIENT_THREADS is set to 1; 1 thread for a multi-threaded issue does not seem logical. Proceeding, but this is highly likely incorrect. Please check"
+      echo_out "Warning: PQUERY_MULTI is turned on, and PQUERY_MULTI_CLIENT_THREADS is set to 1; 1 thread for a multi-threaded issue does not seem logical. Proceeding, but this is highly likely incorrect. Please check. NOTE: There is at least one possible use case for this: proving that a sporadic mysqld startup can be reproduced (with a near-empty SQL file; i.e. the run is concerned with reproducing the startup issue, not reducing the SQL file)"
     elif [ $PQUERY_MULTI_CLIENT_THREADS -lt 5 ]; then
       echo_out "Warning: PQUERY_MULTI is turned on, and PQUERY_MULTI_CLIENT_THREADS is set to $PQUERY_MULTI_CLIENT_THREADS, $PQUERY_MULTI_CLIENT_THREADS threads for reproducing a multi-threaded issue via random replay seems insufficient. You may want to increase PQUERY_MULTI_CLIENT_THREADS. Proceeding, but this is likely incorrect. Please check"
     fi
@@ -2423,7 +2423,7 @@ if [ $SKIPSTAGE -lt 1 ]; then
   NEXTACTION="& try removing next random line(set)"
   STAGE=1
   TRIAL=1
-  if [ $LINECOUNTF -ge $STAGE1_LINES ]; then
+  if [ $LINECOUNTF -ge $STAGE1_LINES -a $PQUERY_MULTI -eq 0 -a $FORCE_SKIPV -eq 0 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE (duration depends on initial input file size)"
     while [ $LINECOUNTF -ge $STAGE1_LINES ]; do 
       if [ $LINECOUNTF -eq $STAGE1_LINES  ]; then NEXTACTION="& Progress to the next stage"; fi
