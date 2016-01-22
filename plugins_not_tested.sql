@@ -1,3 +1,4 @@
+#INSTALL PLUGIN ? SONAME 'auth.so';                                                   # WIP
 #INSTALL PLUGIN adt_null SONAME 'adt_null.so';                                        # NO
 #INSTALL PLUGIN dialog SONAME 'dialog.so';                                            # NO
 #INSTALL PLUGIN qa_auth_interface SONAME 'qa_auth_interface.so';                      # NO
