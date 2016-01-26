@@ -156,6 +156,7 @@ strlen.m_ptr                                             ## MS5.7 # http://bugs.
 ZN17sys_var_pluginvar14session_updateEP3THDP7set_var     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1532635
 length == 0 .. json_binary..parse_binary.ptr, length     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1536469
 trx->undo_no == 0                                        ## MS5.7 # https://bugs.mysql.com/bug.php?id=80062
+Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1538019
 
 ## =========== PS 5.7 TokuDB bugs ==========
 Handlerton. error == 0                                                                  ## https://tokutek.atlassian.net/browse/DB-927

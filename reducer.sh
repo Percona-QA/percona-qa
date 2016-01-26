@@ -2423,7 +2423,7 @@ if [ $SKIPSTAGE -lt 1 ]; then
   NEXTACTION="& try removing next random line(set)"
   STAGE=1
   TRIAL=1
-  if [ $LINECOUNTF -ge $STAGE1_LINES -a $PQUERY_MULTI -eq 0 -a $FORCE_SKIPV -eq 0 ]; then
+  if [ $LINECOUNTF -ge $STAGE1_LINES -o $PQUERY_MULTI -eq 1 -o $FORCE_SKIPV -eq 1 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE (duration depends on initial input file size)"
     while [ $LINECOUNTF -ge $STAGE1_LINES ]; do 
       if [ $LINECOUNTF -eq $STAGE1_LINES  ]; then NEXTACTION="& Progress to the next stage"; fi
