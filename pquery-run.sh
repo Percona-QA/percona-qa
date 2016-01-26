@@ -249,6 +249,7 @@ pquery_test(){
   ISSTARTED=0
   if [ ${PXC} -eq 0 ]; then
     mkdir -p ${RUNDIR}/${TRIAL}/data/test ${RUNDIR}/${TRIAL}/data/mysql ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log
+    echo 'SELECT 1;' > ${RUNDIR}/${TRIAL}/pquery_thread-0.sql  # Add fake pquery_thread-0.sql file enabling pquery-prep-red.sh/reducer.sh to be used with/for mysqld startup issues
     echoit "Copying datadir from template..."
     if [ `ls -l ${WORKDIR}/data.template/* | wc -l` -eq 0 ]; then
       echoit "Assert: ${WORKDIR}/data.template/ is empty? Check ${WORKDIR}/log/mysql_install_db.txt to see if the original template creation worked ok. Terminating."
@@ -415,6 +416,7 @@ pquery_test(){
   fi
  
   if [ ${ISSTARTED} -eq 1 ]; then
+    rm -f ${RUNDIR}/${TRIAL}/pquery_thread-0.sql  # Remove the earlier created fake (SELECT 1; only) pquery_thread-0.sql file present for startup issues (server is started OK now)
     echoit "Starting pquery (log stored in ${RUNDIR}/${TRIAL}/pquery.log)..."
     if [ ${THREADS} -eq 1 ]; then  # Single-threaded run (1 client only)
       if [ ${PXC} -eq 0 ]; then
