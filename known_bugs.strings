@@ -166,6 +166,7 @@ Handlerton. kc_info->cp_info.keynr. == NULL                                     
 mh->m_magic == 1234                                                                     ## https://tokutek.atlassian.net/browse/DB-920
 used_keyparts <= key->user_defined_key_parts                                            ## https://tokutek.atlassian.net/browse/DB-926
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb                     ## https://tokutek.atlassian.net/browse/DB-921
+TEXT=.r == 0.$                                                                          ## https://bugs.launchpad.net/percona-server/+bug/1511969
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
@@ -568,4 +569,4 @@ TEXT=.src.$                                                        ## Still pres
 TEXT=.strlen.db.$                                                                       ## http://bugs.mysql.com/bug.php?id=76467
 TEXT=.thd.$                                                                             ## https://bugs.launchpad.net/percona-server/+bug/1372675 (pquery)
 TEXT=.thread .= __null.$                                                                ## http://bugs.mysql.com/bug.php?id=79802 (5.7.10)
-TEXT=.i == .uint16.                                                                     ## http://bugs.mysql.com/bug.php?id=79829
+TEXT=.i == .uint16.$                                                                    ## http://bugs.mysql.com/bug.php?id=79829
