@@ -21,8 +21,8 @@ SYSBENCH_DATALOAD=0                                                 # Sysbench d
 # ========================================= User configurable variablesi: generics ===============================================
 TRIALS=100000                                                  # Number of individual trials to execute (one can always interrupt with ctrl+c also)
 ADD_RANDOM_OPTIONS=1                                           # Add random mysqld --options to MYEXTRA using an input file. 1=On, 0=off
-ADD_RANDOM_TOKUDB_OPTIONS=0                                    # Add random tokudb --options to MYEXTRA using an input file. 1=On, 0=off
-MAX_NR_OF_RND_OPTS_TO_ADD=8                                    # Maximum number of random options to add (minimum is always 1). Recommended: 5-13
+ADD_RANDOM_TOKUDB_OPTIONS=1                                    # Add random tokudb --options to MYEXTRA using an input file. 1=On, 0=off
+MAX_NR_OF_RND_OPTS_TO_ADD=4                                    # Max nr of random options to add (minimum is always 1). Recommended: 4. Counts per ADD_RANDOM_... option above (x2)
 SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1                       # Save only trials that generate a core file (good for initial few runs where there are lot of crashes/asserts)
 SAVE_SQL=0                                                     # Saves per-trial SQL even if SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1. Main usecase: full server lockups/hangs
 STORE_COPY_OF_INFILE=0                                         # Store a copy of the SQL input file (INFILE) in the work directory (this is not related to per-trial SQL)
@@ -153,13 +153,13 @@ if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then
     THREADS=1
 fi
 if [ ${VALGRIND_RUN} -eq 1 ]; then
-  echoit "Note: As this is a VALGRIND_RUN=1 run, this script is increasing MYSQLD_START_TIMEOUT (${MYSQLD_START_TIMEOUT} by 240 seconds because Valgrind is very slow in starting up mysqld."
+  echoit "Note: As this is a VALGRIND_RUN=1 run, this script is increasing MYSQLD_START_TIMEOUT (${MYSQLD_START_TIMEOUT}) by 240 seconds because Valgrind is very slow in starting up mysqld."
   MYSQLD_START_TIMEOUT=$[ ${MYSQLD_START_TIMEOUT} + 240 ]
   if [ ${MYSQLD_START_TIMEOUT} -lt 300 ]; then
-    echoit "Note: As this is a VALGRIND_RUN=1 run, and MYSQLD_START_TIMEOUT was set to only ${MYSQLD_START_TIMEOUT}, this script is setting the timeout to the required minimum of 300 for this run."
+    echoit "Note: As this is a VALGRIND_RUN=1 run, and MYSQLD_START_TIMEOUT was set to only ${MYSQLD_START_TIMEOUT}), this script is setting the timeout to the required minimum of 300 for this run."
     MYSQLD_START_TIMEOUT=300
   fi
-  echoit "Note: As this is a VALGRIND_RUN=1 run, this script is increasing PQUERY_RUN_TIMEOUT (${PQUERY_RUN_TIMEOUT} by 180 seconds because Valgrind is very slow in processing SQL."
+  echoit "Note: As this is a VALGRIND_RUN=1 run, this script is increasing PQUERY_RUN_TIMEOUT (${PQUERY_RUN_TIMEOUT}) by 180 seconds because Valgrind is very slow in processing SQL."
   PQUERY_RUN_TIMEOUT=$[ ${PQUERY_RUN_TIMEOUT} + 180 ] 
 fi
 
@@ -580,14 +580,18 @@ pquery_test(){
   else
     if [ ${SAVE_SQL} -eq 1 ]; then 
       if [ ${VALGRIND_RUN} -eq 1 ]; then
-        echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump or Valgrind issue was generated), except the SQL trace (as SAVE_SQL=1)"
+        if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
+          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump or Valgrind issue was generated), except the SQL trace (as SAVE_SQL=1)"
+        fi
       else
         echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump was generated), except the SQL trace (as SAVE_SQL=1)"
       fi
       savesql
     else
       if [ ${VALGRIND_RUN} -eq 1 ]; then
-        echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump or Valgrind issue was generated)" 
+        if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
+          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump or Valgrind issue was generated)" 
+        fi
       else
         echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump was generated)" 
       fi

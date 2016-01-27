@@ -400,8 +400,10 @@ while read line; do
     echo "${OPTION}=aes-256-ecb" >> ${OUTPUT_FILE}
     echo "${OPTION}=aes-256-cbc" >> ${OUTPUT_FILE}
     echo "${OPTION}=aes-256-cfb128" >> ${OUTPUT_FILE}
-  elif [ "${OPTION}" == "--" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--tokudb_cache_size" ]; then
+    echoit "  > Adding possible values 52428800, 1125899906842624 for option '${OPTION}' to the final list..."
+    echo "${OPTION}=52428800" >> ${OUTPUT_FILE}
+    echo "${OPTION}==1125899906842624" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
   elif [ "${OPTION}" == "--" ]; then

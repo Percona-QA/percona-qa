@@ -31,7 +31,8 @@ ut0ut.cc line 981                                        ## http://bugs.mysql.co
 ut0ut.cc line 906                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
 ut0ut.cc line 916                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
 ut0ut.cc line 918                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7B2
-ut0ut.cc line 923                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7.10
+ut0ut.cc line 923                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10
+ut0ut.cc line 924                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10R1
 buf0buf.cc line 2678                                     ## Not logged: SET GLOBAL innodb_fil_make_page_dirty_debug=38098908;
 #sync0debug.cc line 299                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
 #buf0lru.cc line 2245                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1415357                                 (# after next bzr pull)
@@ -161,12 +162,12 @@ ZN17sys_var_pluginvar13global_updateEP3THDP7set_var              ## MS5.7 # http
 Z15error_log_print8loglevelPKcP13__va_list_tag                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=80153
 
 ## =========== PS 5.7 TokuDB bugs ==========
-Handlerton. error == 0                                                                  ## https://tokutek.atlassian.net/browse/DB-927
-Handlerton. kc_info->cp_info.keynr. == NULL                                             ## https://tokutek.atlassian.net/browse/DB-917
-mh->m_magic == 1234                                                                     ## https://tokutek.atlassian.net/browse/DB-920
-used_keyparts <= key->user_defined_key_parts                                            ## https://tokutek.atlassian.net/browse/DB-926
-ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb                     ## https://tokutek.atlassian.net/browse/DB-921
-TEXT=.r == 0.$                                                                          ## https://bugs.launchpad.net/percona-server/+bug/1511969
+Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927
+Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917
+mh->m_magic == 1234                                                   ## https://tokutek.atlassian.net/browse/DB-920
+used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926
+ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb   ## https://tokutek.atlassian.net/browse/DB-921
+#TEXT=.r == 0.$                                                       ## PS Bug #1511969, but should not be filtered, ref https://tokutek.atlassian.net/browse/DB-933 / DB-737
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
