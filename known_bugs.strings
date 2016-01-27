@@ -149,6 +149,7 @@ thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_in
 ..HA_ATTACHABLE_TRX_COMPATIBLE is not set.               ## beta  # https://bugs.launchpad.net/percona-server/+bug/1520403
 #log0log.cc line 1104 ??
 fsp0fsp.cc line 766                                      ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1529555
+get_state                                                ## MS5.7 # http://bugs.mysql.com/bug.php?id=80168
 ZN12Item_func_sp8val_jsonEP12Json_wrapper                ## MS5.7 # http://bugs.mysql.com/bug.php?id=79801
 ha_innodb.cc line 8210                                       ## MS5.7 # http://bugs.mysql.com/bug.php?id=79821 (debug)
 ha_innodb.cc line 8621                                       ## ^     # http://bugs.mysql.com/bug.php?id=79821 (PS 5.7, debug)
@@ -160,6 +161,7 @@ trx->undo_no == 0                                        ## MS5.7 # https://bugs
 Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1538019
 ZN17sys_var_pluginvar13global_updateEP3THDP7set_var              ## MS5.7 # http://bugs.mysql.com/bug.php?id=80152
 Z15error_log_print8loglevelPKcP13__va_list_tag                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=80153
+ZN6UniqueD1Ev                                                    ## MS5.7 # http://bugs.mysql.com/bug.php?id=80134
 
 ## =========== PS 5.7 TokuDB bugs ==========
 Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927
