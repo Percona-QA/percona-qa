@@ -30,8 +30,8 @@ PQUERY_RUN_TIMEOUT=15                                          # x sec max trial
 QUERIES_PER_THREAD=100000                                      # Maximum number of queries executed per thread (THREADS) per trial (small = faster reduction, large = more crashes)
 MYEXTRA=""                                                     # Extra options to pass to mysqld. Examples below
 #MYEXTRA="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --skip-innodb-buffer-page --default-storage-engine=RocksDB"     # Use for RocksDB/fb-mysql testing
-#MYEXTRA="--plugin-load=audit_log=audit_log.so;tokudb=ha_tokudb.so --init-file=${SCRIPT_PWD}/TokuDB.sql"                              # Use for PS: TokuDB & audit-log testing
-#MYEXTRA="--plugin-load=audit_log=audit_log.so;tokudb=ha_tokudb.so --init-file=${SCRIPT_PWD}/plugins.sql"                             # Use for PS: enables all testable plugins
+#MYEXTRA="--plugin-load-add=audit_log=audit_log.so --plugin-load-add=tokudb=ha_tokudb.so --init-file=${SCRIPT_PWD}/TokuDB.sql"        # Use for PS: TokuDB & audit-log testing
+#MYEXTRA="--plugin-load-add=audit_log=audit_log.so --plugin-load-add=tokudb=ha_tokudb.so --init-file=${SCRIPT_PWD}/plugins.sql"       # Use for PS: enables all testable plugins
 #MYEXTRA="--innodb_file_per_table=1 --innodb_flush_method=O_DIRECT --log-bin=binlog --binlog_format=MIXED"                            # Example of InnoDB & binlog options 
 #MYEXTRA="--innodb_track_changed_pages"                                                                                               # Example of PS specific options
 MYSAFE="--no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
@@ -297,7 +297,11 @@ pquery_test(){
     fi
     $CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1 &
     MPID="$!"
-    echo "$CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" > ${RUNDIR}/${TRIAL}/start; chmod +x ${RUNDIR}/${TRIAL}/start
+    echo "# Good for reproducing mysqld startup issues only (full issues need a data dir, so use mysql_install_db or mysqld --init for those)" > ${RUNDIR}/${TRIAL}/start
+    echo "rm -Rf ${RUNDIR}/${TRIAL}" >> ${RUNDIR}/${TRIAL}/start
+    echo "mkdir -p ${RUNDIR}/${TRIAL}" >> ${RUNDIR}/${TRIAL}/start
+    echo "$CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" >> ${RUNDIR}/${TRIAL}/start
+    chmod +x ${RUNDIR}/${TRIAL}/start
     echo "BASEDIR=$BASEDIR" > ${RUNDIR}/${TRIAL}/start_recovery
     echo "if [ -r /usr/lib64/libjemalloc.so.1 ]; then" >> ${RUNDIR}/${TRIAL}/start_recovery
     echo "  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1;" >> ${RUNDIR}/${TRIAL}/start_recovery
