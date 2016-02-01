@@ -35,6 +35,9 @@ MYBASE="/sda/Percona-Server-5.6.21-rel70.0-693.Linux.x86_64-debug"
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
 FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as sporadic
 
+# === Reduce startup issues (prevents exit when first server start fails)
+DEBUG_STARTUP_ISSUES=1          # Default/normal use: 0. Only set to 1 when debugging mysqld startup issues, caused for example by a misbehaving --option
+
 # === Multi-threaded (auto-sporadic covering) testcase reduction
 PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
 
@@ -340,6 +343,13 @@ ctrl_c(){
 
 options_check(){
   # $1 to this procedure = $1 to the program - i.e. the SQL file to reduce
+  if [ "$(sudo -A echo 'test' 2>/dev/null)" != "test" ]; then 
+    echo "Error: sudo is not available or requires a password. This script needs to be able to use sudo, without password, from the userID that invokes it ($(whoami))"
+    echo "To get your setup correct, you may like to use a tool like visudo (use 'sudo visudo' or 'su' and then 'visudo') and consider adding the following line to the file:"
+    echo "$(whoami)   ALL=(ALL)      NOPASSWD:ALL"
+    echo "If you do not have sudo installed yet, try 'su' and then 'yum install sudo' or the apt-get equivalent"
+    exit 1
+  fi
   # Note that instead of giving the SQL file on the cmd line, $INPUTFILE can be set (./process does so automaticaly using the #VARMOD# marker above)
   if [ $(sysctl -n fs.aio-max-nr) -lt 300000 ]; then
     echo "As fs.aio-max-nr on this system is lower than 300000, so you will likely run into BUG#12677594: INNODB: WARNING: IO_SETUP() FAILED WITH EAGAIN"
@@ -407,9 +417,14 @@ options_check(){
         exit 1
       else
         TS_INPUTDIR="$1/log"
-        if egrep -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql; then
-          if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
-            export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+        TOKUDB_RUN_DETECTED=0
+        if echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
+        if egrep -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql; then TOKUDB_RUN_DETECTED=1; fi
+        if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
+          #if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
+          #  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+          if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+            export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
           else
             echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
             echo 'This can be done with a command similar to: $ yum install jemalloc'
@@ -435,9 +450,14 @@ options_check(){
     else
       export -n INPUTFILE=$1  # export -n is not necessary for this script, but it is here to prevent pquery-prep-red.sh from seeing this as a adjustable var
     fi 
-    if egrep -qi "tokudb" $INPUTFILE; then
-      if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
-        export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+    TOKUDB_RUN_DETECTED=0
+    if echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
+    if egrep -qi "tokudb" ${INPUTFILE}; then TOKUDB_RUN_DETECTED=1; fi
+    if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
+      #if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
+      #  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+      if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+        export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
       else
         echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
         echo 'This can be done with a command similar to: $ yum install jemalloc'
@@ -965,10 +985,11 @@ init_workdir_and_files(){
   echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
   # jemalloc configuration for TokuDB plugin
   JE1="if [ \"\${JEMALLOC}\" != \"\" -a -r \"\${JEMALLOC}\" ]; then export LD_PRELOAD=\${JEMALLOC}"
-  JE2=" elif [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
-  JE3=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
-  JE4=" elif [ -r \${MYBASE}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=\${MYBASE}/lib/mysql/libjemalloc.so.1"
-  JE5=" else echo 'Warning: jemalloc was not loaded as it was not found (this is fine for MS, but do check ./${EPOCH2}_mybase to set correct jemalloc location for PS)'; fi" 
+  #JE2=" elif [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
+  #JE3=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
+  JE2=" elif [ -r \`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1\` ]; then export LD_PRELOAD=\`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1\`"
+  JE3=" elif [ -r \${MYBASE}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=\${MYBASE}/lib/mysql/libjemalloc.so.1"
+  JE4=" else echo 'Warning: jemalloc was not loaded as it was not found (this is fine for MS, but do check ./${EPOCH2}_mybase to set correct jemalloc location for PS)'; fi" 
 
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
@@ -1041,6 +1062,10 @@ init_workdir_and_files(){
     fi
     echo_out "[Init] FORCE_SPORADIC, FORCE_SKIPV and/or PQUERY_MULTI active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
   fi
+  if [ ${DEBUG_STARTUP_ISSUES} -eq 1 ]; then
+    echo_out "[Init] DEBUG_STARTUP_ISSUES active. Issue is assumed to be a startup issue"
+    echo_out "[Info] Note: DEBUG_STARTUP_ISSUES is normally used for debugging mysqld startup issues only; for example caused by a misbehaving --option to mysqld. You may want to make the SQL input file really small (for example 'SELECT 1;' only) to ensure that when the particular issue being debugged is not seen, reducer will not spent a long time on executing SQL unrelated to the real issue, i.e. failing mysqld startup"
+  fi
   echo_out "[Init] Querytimeout: $QUERYTIMEOUT seconds (ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
   if [ -n "$MYEXTRA" ]; then echo_out "[Init] Passing the following additional options to mysqld: $MYEXTRA"; fi
   if [ $MODE -ge 6 ]; then 
@@ -1088,8 +1113,13 @@ init_workdir_and_files(){
       #start_mysqld_main
       if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld; fi
       if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
-        echo_out "[Init] [ERROR] Failed to start mysqld server (1st boot), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
-        exit 1
+        if [ ${DEBUG_STARTUP_ISSUES} -eq 1 ]; then 
+          echo_out "[Init] [NOTE] Failed to cleanly start mysqld server (1st boot). Normally this would cause reducer.sh to halt here (and advice you to check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log + check that there is plenty of space on the device being used). However, because DEBUG_STARTUP_ISSUES is set to 1, we continue this reducer run. See above for more info on the DEBUG_STARTUP_ISSUES setting"
+        else
+          echo_out "[Init] [ERROR] Failed to start mysqld server (1st boot), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
+          echo_out "[Init] [INFO] If however you want to debug a mysqld startup issue, for example caused by a misbehaving --option to mysqld, set DEBUG_STARTUP_ISSUES=1 and restart reducer.sh"
+          exit 1
+        fi
       fi
       echo_out "[Init] Loading timezone data into mysql database"
       # echo_out "[Info] You may safely ignore any 'Warning: Unable to load...' messages, unless there are very many (Ref. BUG#13563952)"
@@ -1282,7 +1312,8 @@ start_mysqld_main(){
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
-  echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
+  #echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
+  echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
@@ -1336,7 +1367,8 @@ start_valgrind_mysqld(){
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START_VALGRIND
   echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_VALGRIND
   echo $JE1 >> $WORK_START_VALGRIND; echo $JE2 >> $WORK_START_VALGRIND; echo $JE3 >> $WORK_START_VALGRIND
-  echo $JE4 >> $WORK_START_VALGRIND; echo $JE5 >> $WORK_START_VALGRIND
+  #echo $JE4 >> $WORK_START_VALGRIND; echo $JE5 >> $WORK_START_VALGRIND
+  echo $JE4 >> $WORK_START_VALGRIND
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o  -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_VALGRIND
   echo "valgrind --suppressions=\${MYBASE}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
        \$BIN --basedir=\${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \

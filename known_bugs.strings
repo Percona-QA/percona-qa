@@ -169,8 +169,9 @@ Handlerton. kc_info->cp_info.keynr. == NULL                           ## https:/
 mh->m_magic == 1234                                                   ## https://tokutek.atlassian.net/browse/DB-920
 used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb   ## https://tokutek.atlassian.net/browse/DB-921
-TEXT=.r == 0.$                                                        ## PS Bug #1511969 (verified), also see https://tokutek.atlassian.net/browse/DB-933 / DB-737
-
+#TEXT=.r == 0.$                                                        ## PS Bug #1511969 (verified), also see https://tokutek.atlassian.net/browse/DB-933 / DB-737
+# ^^^ debugging
+  
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
 #btr0btr.cc line 1081                                                 ## Fixed upstream ## http://bugs.mysql.com/bug.php?id=74605, MS build (old LP #1384561)

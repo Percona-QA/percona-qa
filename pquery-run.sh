@@ -29,7 +29,7 @@ STORE_COPY_OF_INFILE=0                                         # Store a copy of
 PQUERY_RUN_TIMEOUT=15                                          # x sec max trial runtime within which pquery tries to process QUERIES_PER_THREAD x THREADS queries against 1 mysqld
 QUERIES_PER_THREAD=100000                                      # Maximum number of queries executed per thread (THREADS) per trial (small = faster reduction, large = more crashes)
 MYEXTRA=""                                                     # Extra options to pass to mysqld. Examples below
-#MYEXTRA="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --skip-innodb-buffer-page --default-storage-engine=RocksDB"     # Use for RocksDB/fb-mysql testing
+#MYEXTRA="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"                               # Use for RocksDB/fb-mysql testing
 #MYEXTRA="--plugin-load-add=audit_log=audit_log.so --plugin-load-add=tokudb=ha_tokudb.so --init-file=${SCRIPT_PWD}/TokuDB.sql"        # Use for PS: TokuDB & audit-log testing
 #MYEXTRA="--plugin-load-add=audit_log=audit_log.so --plugin-load-add=tokudb=ha_tokudb.so --init-file=${SCRIPT_PWD}/plugins.sql"       # Use for PS: enables all testable plugins
 #MYEXTRA="--innodb_file_per_table=1 --innodb_flush_method=O_DIRECT --log-bin=binlog --binlog_format=MIXED"                            # Example of InnoDB & binlog options 
@@ -297,10 +297,16 @@ pquery_test(){
     fi
     $CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1 &
     MPID="$!"
-    echo "# Good for reproducing mysqld startup issues only (full issues need a data dir, so use mysql_install_db or mysqld --init for those)" > ${RUNDIR}/${TRIAL}/start
+    echo "## Good for reproducing mysqld (5.7+) startup issues only (full issues need a data dir, so use mysql_install_db or mysqld --init for those)" > ${RUNDIR}/${TRIAL}/start
+    echo "echo '=== Setting up directories...'" >> ${RUNDIR}/${TRIAL}/start
     echo "rm -Rf ${RUNDIR}/${TRIAL}" >> ${RUNDIR}/${TRIAL}/start
-    echo "mkdir -p ${RUNDIR}/${TRIAL}" >> ${RUNDIR}/${TRIAL}/start
-    echo "$CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" >> ${RUNDIR}/${TRIAL}/start
+    echo "mkdir -p ${RUNDIR}/${TRIAL}/data ${RUNDIR}/${TRIAL}/tmp" >> ${RUNDIR}/${TRIAL}/start
+    echo "echo '=== Data dir init...'" >> ${RUNDIR}/${TRIAL}/start
+    echo "${BIN} --no-defaults --initialize-insecure --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${RUNDIR}/${TRIAL}/socket.sock --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err" >> ${RUNDIR}/${TRIAL}/start
+    echo "echo '=== Starting mysqld...'" >> ${RUNDIR}/${TRIAL}/start
+    echo "${CMD} > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" >> ${RUNDIR}/${TRIAL}/start
+    echo "# Same startup command, but without MYEXTRA included:" >> ${RUNDIR}/${TRIAL}/start 
+    echo "#$(echo ${CMD} | sed 's|${MYEXTRA}||')" >> ${RUNDIR}/${TRIAL}/start
     chmod +x ${RUNDIR}/${TRIAL}/start
     echo "BASEDIR=$BASEDIR" > ${RUNDIR}/${TRIAL}/start_recovery
     echo "if [ -r /usr/lib64/libjemalloc.so.1 ]; then" >> ${RUNDIR}/${TRIAL}/start_recovery
