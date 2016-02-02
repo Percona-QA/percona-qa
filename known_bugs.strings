@@ -132,6 +132,7 @@ Z22get_filename_hash_pinsP10PFS_thread                   ## http://bugs.mysql.co
 ## =========== PS 5.7 Beta & GA ===========
 #ZN8Item_row7val_strEP6String                   ## Fixed ## alpha # https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
 btr0cur.cc line 830                                      ## beta  # https://bugs.launchpad.net/percona-server/+bug/1517757
+rem0rec.cc line 886                                      ## beta  # https://bugs.launchpad.net/percona-server/+bug/1540903
 trx0trx.cc line 1297                                     ## beta  # http://bugs.mysql.com/bug.php?id=79349
 trx0trx.cc line 1262                                     ## MS5.7 # http://bugs.mysql.com/bug.php?id=79349 (same bug as trx0trx.cc line 1297 on PS)
 thd->get_transaction                                     ## beta  # https://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)
@@ -158,6 +159,7 @@ strlen.m_ptr                                             ## MS5.7 # http://bugs.
 ZN17sys_var_pluginvar14session_updateEP3THDP7set_var     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1532635
 length == 0 .. json_binary..parse_binary.ptr, length     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1536469
 trx->undo_no == 0                                        ## MS5.7 # https://bugs.mysql.com/bug.php?id=80062
+type...!                                                 ## MS5.7 # https://bugs.mysql.com/bug.php?id=80094
 Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1538019
 ZN17sys_var_pluginvar13global_updateEP3THDP7set_var              ## MS5.7 # http://bugs.mysql.com/bug.php?id=80152
 Z15error_log_print8loglevelPKcP13__va_list_tag                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=80153
