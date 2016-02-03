@@ -534,7 +534,7 @@ ZN20Field_iterator_table13end_of_fieldsEv                                       
 ZN21Sql_cmd_handler_close7executeEP3THD                                                 ## http://bugs.mysql.com/bug.php?id=75721
 ZN23Gcalc_operation_reducer10end_coupleEPNS_13active_threadES1_PKN10Gcalc_heap4InfoE    ## http://bugs.mysql.com/bug.php?id=77580
 ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## http://bugs.mysql.com/bug.php?id=78201
-ZN4JOIN8optimizeEv                                                                      ## http://bugs.mysql.com/bug.php?id=74783   ## MARK
+ZN4JOIN8optimizeEv                                                                      ## http://bugs.mysql.com/bug.php?id=74783
 ZN5QueueI16PROF_MEASUREMENTE3popEv                                                      ## https://bugs.launchpad.net/percona-server/+bug/1441139
 ZN5QueueI16PROF_MEASUREMENTE14iterator_valueEPv                                         ## https://bugs.launchpad.net/percona-server/+bug/1441447
 ZN5TABLE4initEP3THDP10TABLE_LIST                                                        ## https://bugs.launchpad.net/percona-server/+bug/1463381
@@ -551,10 +551,10 @@ ZN7MDL_key12mdl_key_initENS_18enum_mdl_namespaceEPKcS2_            ## Still pres
 ZN7sys_var5checkEP3THDP7set_var                                                         ## http://bugs.mysql.com/bug.php?id=78064 (also seen in 5.7.8 RC2)
 ZN8Item_row19illegal_method_callEPKc                                                    ## http://bugs.mysql.com/bug.php?id=76468
 ZN8Protocol13end_statementEv                                                            ## http://bugs.mysql.com/bug.php?id=74411, pquery
-ZN9READ_INFO10read_fieldEv                                                              ## https://bugs.mysql.com/bug.php?id=77993
+ZN9READ_INFO10read_fieldEv                                                              ## https://bugs.mysql.com/bug.php?id=77993 
 ZNK10MDL_ticket26has_stronger_or_equal_typeE13enum_mdl_type                             ## https://bugs.launchpad.net/percona-server/+bug/1444706
 ZNK10MDL_ticket28has_pending_conflicting_lockEv                                         ## https://bugs.launchpad.net/percona-server/+bug/1384570 and #74584 ?
-ZNK5Field7is_nullEx                                                                     ## https://bugs.launchpad.net/percona-server/+bug/1445833
+ZNK5Field7is_nullEx                                                                     ## https://bugs.launchpad.net/percona-server/+bug/1445833 - now DB-838
 ZNK6String7charsetEv                                                                    ## http://bugs.mysql.com/bug.php?id=74578
 ZNK7handler6ha_thdEv                                               ## Still present ftm ## http://bugs.mysql.com/bug.php?id=75284 (fixed in 5.6.23) Duplicate MS#74292
 ZNK7handler22ha_statistic_incrementEM17system_status_vary                               ## http://bugs.mysql.com/bug.php?id=75234 
@@ -575,6 +575,6 @@ TEXT=.my_b_write.$                                                 ## Still pres
 TEXT=.res.$                                                                             ## http://bugs.mysql.com/bug.php?id=76745
 TEXT=.src.$                                                        ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74500 (fixed in 5.7.6)
 TEXT=.strlen.db.$                                                                       ## http://bugs.mysql.com/bug.php?id=76467
-TEXT=.thd.$                                                                             ## https://bugs.launchpad.net/percona-server/+bug/1372675 (pquery)
+TEXT=.thd.$                                                                             ## https://bugs.launchpad.net/percona-server/+bug/1372675 (pquery) # May need review
 TEXT=.thread .= __null.$                                                                ## http://bugs.mysql.com/bug.php?id=79802 (5.7.10)
 TEXT=.i == .uint16.$                                                                    ## http://bugs.mysql.com/bug.php?id=79829
