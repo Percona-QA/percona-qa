@@ -63,15 +63,15 @@ t1->result_range                                ## Still present ftm  ## http://
 #Z18replace_user_tableP3THDP5TABLEP11st_lex_usermbbb ## Fixed ## http://bugs.mysql.com/bug.php?id=75947                                            (# after MS 5.7.6 merged)
 # ZN28Item_func_latlongfromgeohash14decode_geohashEP6StringddddPdS2_  ## Fixed ## Fixed in 5.7.6-m16 (no bug report logged, seen afterwards)
 #ZN6String7replaceEmmPKcm                       ## Fixed ## http://bugs.mysql.com/bug.php?id=75958                                                 (# after MS 5.7.6 merged)
-#ha_innodb.cc line 15747                                 ## https://bugs.launchpad.net/percona-server/+bug/1423314  ## Fixed in 5.7.10.2rc2 
-#buf0lru.cc line 2245                                    ## https://bugs.launchpad.net/percona-server/+bug/1423314 (bug 1415357 not fully fixed yet)  ## Fixed in 5.7.10.2rc2
+#ha_innodb.cc line 15747                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1423314  ## Fixed in 5.7.10.2rc2 
+#buf0lru.cc line 2245                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1423314 (bug 1415357 not fully fixed yet)  ## Fixed in 5.7.10.2rc2
 m_db.length == copy->m_db.length                         ## http://bugs.mysql.com/bug.php?id=74604 (5.7 version thereof)
 trx0trx.h line 1410                                      ## http://bugs.mysql.com/bug.php?id=76415
 #thd->variables.gtid_next.type == ANONYMOUS_GROUP ## Fixed ## http://bugs.mysql.com/bug.php?id=76416                                               (# after MS 5.7.8 merged)
 db_return_                                               ## http://bugs.mysql.com/bug.php?id=76417
 i == uint2korr.part_rec_buf_ptr                          ## http://bugs.mysql.com/bug.php?id=76418
-#row0mysql.cc line 2405                        ## Fixed  ## http://bugs.mysql.com/bug.php?id=76419                                                 (# after MS 5.7.8 merged)
-#row0mysql.cc line 2418                        ## Fixed  ## http://bugs.mysql.com/bug.php?id=76419                                                 (# after MS 5.7.8 merged)
+#row0mysql.cc line 2405                         ## Fixed ## http://bugs.mysql.com/bug.php?id=76419                                                 (# after MS 5.7.8 merged)
+#row0mysql.cc line 2418                         ## Fixed ## http://bugs.mysql.com/bug.php?id=76419                                                 (# after MS 5.7.8 merged)
 row0mysql.cc line 3339                                   ## http://bugs.mysql.com/bug.php?id=75945
 ZN13MYSQL_BIN_LOG12find_log_posEP11st_log_infoPKcb       ## http://bugs.mysql.com/bug.php?id=76420
 #thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE ## Fixed in 5.7.8 http://bugs.mysql.com/bug.php?id=76424
@@ -131,14 +131,14 @@ Z22get_filename_hash_pinsP10PFS_thread                   ## http://bugs.mysql.co
 
 ## =========== PS 5.7 Beta & GA ===========
 #ZN8Item_row7val_strEP6String                   ## Fixed ## alpha # https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
-#btr0cur.cc line 830                                     ## beta  # https://bugs.launchpad.net/percona-server/+bug/1517757  ## Fixed in PS 5.7.10-2rc2
+#btr0cur.cc line 830                            ## Fixed ## beta  # https://bugs.launchpad.net/percona-server/+bug/1517757  ## Fixed in PS 5.7.10-2rc2
 rem0rec.cc line 886                                      ## beta  # https://bugs.launchpad.net/percona-server/+bug/1540903
 trx0trx.cc line 1297                                     ## beta  # http://bugs.mysql.com/bug.php?id=79349
 trx0trx.cc line 1262                                     ## MS5.7 # http://bugs.mysql.com/bug.php?id=79349 (same bug as trx0trx.cc line 1297 on PS)
-thd->get_transaction                                     ## beta  # https://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)
-sync0policy.ic line 63                                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=79391                 (MS version of PS #1519201)
-#buf0buf.ic line 230                                     ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519201 (PS version of MS #79391)  ## Fixed in PS 5.7.10-2rc2
-ha_innodb.cc line 18605                                  ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519204
+#thd->get_transaction                           ## Fixed ## beta  # https://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)  ## Fixed in PS 5.7.10-rc1
+#sync0policy.ic line 63                                  ## MS5.7 # http://bugs.mysql.com/bug.php?id=79391 (MS version of PS #1519201) (remarked to not miss anything in PS)
+#buf0buf.ic line 230                                     ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519201 (PS version of MS #79391)  ## Fixed in PS 5.7.10-rc1
+#ha_innodb.cc line 18605                                 ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519204 (duplicate of 1368552) ## Fixed in PS 5.7.10-rc2
 ZN12ha_myisammrg15detach_childrenEv                      ## MS5.7 # http://bugs.mysql.com/bug.php?id=79392
 trx0sys.cc line 1265                                     ## MS5.7 # http://bugs.mysql.com/bug.php?id=79416 (same line for PS&MS)
 ha_innodb.cc line 2653                                   ## beta  # http://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on PS)
@@ -147,7 +147,7 @@ ZN13st_select_lex19make_active_optionsEyy                ## MS5.7 # http://bugs.
 # m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespace, .., .., MDL_INTENTION_EXCLUSIVE ## beta # https://bugs.launchpad.net/percona-server/+bug/1520401  # No longer present? Ref bug report
 thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE ## MS5.7 # http://bugs.mysql.com/bug.php?id=79820
 #.old_mh->m_key == key                                   ## beta  # https://bugs.launchpad.net/percona-server/+bug/1534874  ## Fixed in PS 5.7.10-2rc2  
-..HA_ATTACHABLE_TRX_COMPATIBLE is not set.               ## beta  # https://bugs.launchpad.net/percona-server/+bug/1520403
+#..HA_ATTACHABLE_TRX_COMPATIBLE is not set.              ## beta  # https://bugs.launchpad.net/percona-server/+bug/1520403 (duplicate of 1488055) ## Fixed in PS 5.7.10-rc1
 #log0log.cc line 1104 ??
 #fsp0fsp.cc line 766                                     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1529555  ## Fixed in PS 5.7.10-2rc2
 get_state                                                ## MS5.7 # http://bugs.mysql.com/bug.php?id=80168
@@ -242,11 +242,11 @@ fts0fts.cc line 2228                                                            
 fts0vlc.ic line 96                                                                      ## http://bugs.mysql.com/bug.php?id=78643
 ha_innodb.cc line 1588                                                                  ## http://bugs.mysql.com/bug.php?id=74585, PS build (old LP #1384616)
 ha_innodb.cc line 16152                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1381913
-ha_innodb.cc line 16159                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1368552 (with oldPS)
-ha_innodb.cc line 16169                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1368552
-ha_innodb.cc line 16175                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1368552 (with oldPS)
-ha_innodb.cc line 16176                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1368552 ha_innodb.cc line 16182
-ha_innodb.cc line 16182                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1368552 (with oldPS)
+#ha_innodb.cc line 16159                                                        # Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552 (with oldPS) 
+#ha_innodb.cc line 16169                                                        # Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552
+#ha_innodb.cc line 16175                                                        # Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552 (with oldPS)
+#ha_innodb.cc line 16176                                                        # Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552 ha_innodb.cc line 16182
+#ha_innodb.cc line 16182                                                        # Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552 (with oldPS)
 ha_innodb.cc line 18500                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1384578 (with oldPS)
 ha_innodb.cc line 18523                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1384578 with oldPS)
 ha_innodb.cc line 18530                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1384578
@@ -544,7 +544,7 @@ ZN7handler12ha_index_endEv                                         ## Still pres
 ZN7handler19ha_index_or_rnd_endEv                                  ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74583, 74584, and LP #1384656, 1417382 (Fixed in 5.7.6)
 ZN7handler22ha_inplace_alter_tableEP5TABLEP18Alter_inplace_info    ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74810, LP #1385062 (fixed in 5.7.6)
 ZN7handler9ha_createEPKcP5TABLEP24st_ha_create_information         ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74292 (fixed in 5.6.23) Duplicate MS#75284
-ZN7ha_heap11index_firstEPh                                                              ## https://bugs.launchpad.net/percona-server/+bug/1488055 (dup of 1518183 in 5.7 above)
+#ZN7ha_heap11index_firstEPh                                                     # Fixed ## https://bugs.launchpad.net/percona-server/+bug/1488055 (dup of 1518183 in 5.7 above)
 ZN7MDL_key12mdl_key_initENS_18enum_mdl_namespaceEPKcS2_            ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74499 (fixed in 5.5.43)
 ZN7sys_var5checkEP3THDP7set_var                                                         ## http://bugs.mysql.com/bug.php?id=78064 (also seen in 5.7.8 RC2)
 ZN8Item_row19illegal_method_callEPKc                                                    ## http://bugs.mysql.com/bug.php?id=76468
