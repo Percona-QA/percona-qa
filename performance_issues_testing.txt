@@ -1,0 +1,35 @@
+# ================= Sysbench 0.5 setup
+cd ~
+sudo yum install mariadb-devel mariadb-libs   # Just for building convenience on Centos 7
+sudo yum remove sysbench
+git clone https://github.com/akopytov/sysbench.git
+./autogen.sh
+./configure
+make
+sudo make install
+sysbench --version  # Should show 0.5 or higher
+# Obtain a copy of tokudb_select_range_limit_secondary.lua and move it to same dir as common.lua (which is called by it)
+mv ~/tokudb_select_range_limit_secondary.lua ~/sysbench/sysbench/tests/db/
+# ================= 5.7 test
+cd /sdd/PS-03.02-16-percona-server-5.7.10-1rc1-linux-x86_64-debug/mysql-test
+export LD_PRELOAD=~/libjemalloc.so.1
+rm -Rf /dev/shm/test
+mkdir /dev/shm/test
+./mysql-test-run.pl  --start-and-exit --skip-ndb --vardir=/dev/shm/test --mysqld=--port=19725 --mysqld=--core-file --mysqld=--log-output=none --mysqld=--secure-file-priv= --mysqld=--max-connections=1500 --mysqld=--plugin-load=tokudb=ha_tokudb.so --mysqld=--init-file=/home/roel/percona-qa/TokuDB.sql --mysqld=--socket=/dev/shm/test/socket.sock --mysqld=--tokudb_read_block_size=64K --mysqld=--tokudb_row_format=tokudb_quicklz --mysqld=--tokudb_cache_size=16G --mysqld=--tokudb_loader_memory_size=1G 1st
+ps -ef | grep mysqld | grep -v grep   # check it's running and make sure there's only one mysqld
+# Next command will take 5 minutes
+sysbench --test=/home/roel/sysbench/sysbench/tests/db/parallel_prepare.lua --mysql-table-engine=tokudb --num-threads=16 --oltp-tables-count=16  --oltp-table-size=1000000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/dev/shm/test/socket.sock run > /dev/shm/test/out1.txt
+# Next command will take 3 minutes
+sysbench --test=/home/roel/sysbench/sysbench/tests/db/tokudb_select_range_limit_secondary.lua --oltp_tables_count=16 --oltp-table-size=250000 --rand-init=on --num-threads=250 --report-interval=10 --rand-type=uniform --mysql-socket=/dev/shm/test/socket.sock --mysql-table-engine=TokuDB --max-time=1800 --mysql-user=root --mysql-db=test --max-requests=0 --oltp-point-selects=1 --oltp-range-size=20000 --oltp-simple-ranges=1000 --percentile=99 run > /dev/shm/test/out1.txt
+# ================= 5.6 test
+cd /sdd/PS56-03.02.16-percona-server-5.6.28-76.1-linux-x86_64-debug/mysql-test
+export LD_PRELOAD=~/libjemalloc.so.1
+rm -Rf /dev/shm/test2
+mkdir /dev/shm/test2
+./mysql-test-run.pl  --start-and-exit --skip-ndb --vardir=/dev/shm/test2 --mysqld=--port=19725 --mysqld=--core-file --mysqld=--log-output=none --mysqld=--secure-file-priv= --mysqld=--max-connections=1500 --mysqld=--plugin-load=tokudb=ha_tokudb.so --mysqld=--init-file=/home/roel/percona-qa/TokuDB.sql --mysqld=--socket=/dev/shm/test2/socket.sock --mysqld=--tokudb_read_block_size=64K --mysqld=--tokudb_row_format=tokudb_quicklz --mysqld=--tokudb_cache_size=16G --mysqld=--tokudb_loader_memory_size=1G 1st
+ps -ef | grep mysqld | grep -v grep   # check it's running and make sure there's only one mysqld
+# Next command will take 5 minutes
+sysbench --test=/home/roel/sysbench/sysbench/tests/db/parallel_prepare.lua --mysql-table-engine=tokudb --num-threads=16 --oltp-tables-count=16  --oltp-table-size=1000000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/dev/shm/test2/socket.sock run > /dev/shm/test2/out1.txt
+# Next command will take 3 minutes
+sysbench --test=/home/roel/sysbench/sysbench/tests/db/tokudb_select_range_limit_secondary.lua --oltp_tables_count=16 --oltp-table-size=250000 --rand-init=on --num-threads=250 --report-interval=10 --rand-type=uniform --mysql-socket=/dev/shm/test2/socket.sock --mysql-table-engine=TokuDB --max-time=1800 --mysql-user=root --mysql-db=test --max-requests=0 --oltp-point-selects=1 --oltp-range-size=20000 --oltp-simple-ranges=1000 --percentile=99 run > /dev/shm/test2/out2.txt
+
