@@ -442,7 +442,7 @@ options_check(){
     if [ ! -s "$1" ]; then
       if [ ! -s $INPUTFILE ]; then
         echo 'Error: No input file was given, or the input file could not be read.'
-        echo 'Please specify a correct SQL file to reduce.'
+        echo 'Please specify a single SQL file to reduce.'
         echo 'Example: ./reducer ~/1.sql     --> to process ~/1.sql'
         echo 'Also, please ensure input file name only contains [0-9a-zA-Z_-] characters'
         exit 1
