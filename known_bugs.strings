@@ -166,10 +166,10 @@ Z15error_log_print8loglevelPKcP13__va_list_tag                   ## MS5.7 # http
 ZN6UniqueD1Ev                                                    ## MS5.7 # http://bugs.mysql.com/bug.php?id=80134
 
 ## =========== PS 5.7 TokuDB bugs ==========
-Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927
-Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917
-mh->m_magic == 1234                                                   ## https://tokutek.atlassian.net/browse/DB-920
-used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926
+#Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
+#Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917 # Fixed 5.7 RC2
+mh->m_magic == 1234                                                   ## https://tokutek.atlassian.net/browse/DB-920  
+#used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926 # Fixed 5.7 RC2
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb   ## https://tokutek.atlassian.net/browse/DB-921
 #TEXT=.r == 0.$                                                        ## PS Bug #1511969 (verified), also see https://tokutek.atlassian.net/browse/DB-933 / DB-737
 # ^^^ debugging
@@ -332,7 +332,7 @@ bit < map->n_bits                                                 ## Still prese
 comma_length > 0                                                                        ## http://bugs.mysql.com/bug.php?id=74603 (old LP #1384625)
 data_offset == ..null_count                                                             ## http://bugs.mysql.com/bug.php?id=74677
 db_length == copy->db_length                                                            ## http://bugs.mysql.com/bug.php?id=74604 (old LP #1384621)
-db_txn_struct_i.txn->parent                                       ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-761 (fixed in 5.6.23/Tk7.5.6)
+#db_txn_struct_i.txn->parent                                       ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-761 (fixed in 5.6.23/Tk7.5.6)
 do_checksum.*remains                                                                    ## http://bugs.mysql.com/bug.php?id=75079
 duration .= MDL_EXPLICIT .* .thd->mdl_context.is_lock_owner.m_namespace                 ## https://bugs.launchpad.net/percona-server/+bug/1432494
 exec_method .= EXEC_MATERIALIZATION .* .exec_method == EXEC_MATERIALIZATION .* engine->engine_type ## http://bugs.mysql.com/bug.php?id=74889
@@ -343,9 +343,9 @@ fixed == 1                                                                      
 ftnode->blocknum.b == blocknum.b                                                        ## https://tokutek.atlassian.net/browse/DB-852
 from->len == to->len                                                                    ## http://bugs.mysql.com/bug.php?id=76477
 from->m_byte_count == 0                                           ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=76090 (fixed in 5.6.25)
-Handlerton.*offset_start                                                                ## https://tokutek.atlassian.net/browse/DB-771
-Handlerton.*.share->kc_info.num_blobs == 0                        ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-811 (Fixed in tokudb-7.5.7)
-Handlerton.*trx                                                                         ## https://tokutek.atlassian.net/browse/DB-762
+#Handlerton.*offset_start                                                                ## https://tokutek.atlassian.net/browse/DB-771 (Fixed tokudb-7.5.4)
+#Handlerton.*.share->kc_info.num_blobs == 0                        ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-811 (Fixed in tokudb-7.5.7)
+#Handlerton.*trx                                                                         ## https://tokutek.atlassian.net/browse/DB-762 (Fixed tokudb-7.5.4)
 hash_not_ok == 0                                                                        ## http://bugs.mysql.com/bug.php?id=74852
 host_length <= 60                                                                       ## http://bugs.mysql.com/bug.php?id=74678
 inited == NONE                                                                          ## http://bugs.mysql.com/bug.php?id=74650
@@ -405,10 +405,10 @@ thd->transaction.stmt.is_empty                                                  
 timer == __null                                                                         ## https://bugs.launchpad.net/percona-server/+bug/1370002
 .tlen % 2                                                                               ## http://bugs.mysql.com/bug.php?id=74221 (2nd comment)
 .tlen % 4                                                                               ## http://bugs.mysql.com/bug.php?id=74221 (3rd comment)
-txn..state..TOKUTXN_LIVE                                          ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-769 (fixed in 5.6.23/Tk7.5.6)
-txn->child == __null                                              ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-810 (fixed in 5.6.23/Tk7.5.6)
-txn->do_fsync_lsn.lsn == ZERO_LSN.lsn                             ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-763 (fixed in 5.6.23/Tk7.5.6)
-txn->roll_info.num_rollentries == 0                               ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-764 (fixed in 5.6.23/Tk7.5.6)
+#txn..state..TOKUTXN_LIVE                                          ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-769 (fixed in 5.6.23/Tk7.5.6)
+#txn->child == __null                                              ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-810 (fixed in 5.6.23/Tk7.5.6)
+#txn->do_fsync_lsn.lsn == ZERO_LSN.lsn                             ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-763 (fixed in 5.6.23/Tk7.5.6)
+#txn->roll_info.num_rollentries == 0                               ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-764 (fixed in 5.6.23/Tk7.5.6)
 transactional_table .* .changed .* thd->transaction.stmt.cannot_safely_rollback         ## https://bugs.launchpad.net/percona-server/+bug/1382745
 unknown error code 47                                                                   ## http://bugs.mysql.com/bug.php?id=74343, both build
 void Protocol::end_statement                                                            ## http://bugs.mysql.com/bug.php?id=74411, RQG
@@ -420,7 +420,7 @@ ZN3THD19send_explain_fieldsEP13select_result                                    
 Z10MYSQLerrorP3THDPKc                                                                   ## https://bugs.launchpad.net/percona-server/+bug/1415755
 Z10open_tableP3THDP10TABLE_LISTP18Open_table_context                                    ## https://bugs.launchpad.net/percona-server/+bug/1384583
 Z11alloc_queryP3THDPKcj                                                                 ## https://bugs.launchpad.net/percona-server/+bug/1387951
-Z11lock_tablesP3THDP10TABLE_LISTjj                                                      ## https://tokutek.atlassian.net/browse/DB-767
+#Z11lock_tablesP3THDP10TABLE_LISTjj                                                      ## https://tokutek.atlassian.net/browse/DB-767 (Fixed tokudb-7.5.4)
 Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                    ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384566) (fixed in 5.6.24)
 Z11open_tablesP3THDPP10TABLE_LISTPjjP19Prelocking_strategy                              ## https://bugs.launchpad.net/percona-server/+bug/1416956
 Z12find_filenumRKP2ftS2_                                                                ## https://tokutek.atlassian.net/browse/DB-837
@@ -440,16 +440,16 @@ Z16open_table_errorP11TABLE_SHAREiii                                            
 Z15eval_const_condP4Item                                                                ## http://bugs.mysql.com/bug.php?id=74418, PS build (different result)
 ZN8Item_row10fix_fieldsEP3THDPP4Item                                                    ## http://bugs.mysql.com/bug.php?id=78330
 ZN12ha_myisammrg15attach_childrenEv                                                     ## http://bugs.mysql.com/bug.php?id=76277
-ZN12ha_partition15end_bulk_insertEv                                                     ## https://tokutek.atlassian.net/browse/DB-805 (fixed in tokudb-7.5.6)
+#ZN12ha_partition15end_bulk_insertEv                                                     ## https://tokutek.atlassian.net/browse/DB-805 (fixed in tokudb-7.5.6)
 ZN14cachefile_list9remove_cfEP9cachefile                                                ## https://tokutek.atlassian.net/browse/DB-858
 ZN14JOIN_CACHE_BNL21join_matching_recordsEb                                             ## https://bugs.mysql.com/bug.php?id=76925
-Z17mysql_alter_tableP3THDPcS1_P24st_ha_create_informationP10TABLE_LISTP10Alter_infojP8st_orderb ## TokuDB DB-805 (ref above) (fixed in tokudb-7.5.6)
+#Z17mysql_alter_tableP3THDPcS1_P24st_ha_create_informationP10TABLE_LISTP10Alter_infojP8st_orderb ## TokuDB DB-805 (ref above) (fixed in tokudb-7.5.6)
 Z17mysql_create_userP3THDR4ListI11st_lex_userE                    ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384651) 74615
 Z17mysql_lock_tablesP3THDPP5TABLEjj                                                     ## http://bugs.mysql.com/bug.php?id=74895
 Z17mysql_show_grantsP3THDP11st_lex_user                                                 ## http://bugs.mysql.com/bug.php?id=74778
 Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74615 (fixed in 5.6.24)
 Z17table_hash_searchPKcS0_S0_S0_S0_b                              ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74850 (fixed in 5.7.8)
-Z17toku_loader_closeP13__toku_loader                                                    ## https://tokutek.atlassian.net/browse/DB-806
+#Z17toku_loader_closeP13__toku_loader                                                    ## https://tokutek.atlassian.net/browse/DB-806 (fixed tokudb-7.5.6)
 Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                         ## https://tokutek.atlassian.net/browse/DB-845
 Z17wild_case_compareP15charset_info_stPKcS2_                                            ## http://bugs.mysql.com/bug.php?id=78230
 Z18close_thread_tableP3THDPP5TABLE                                                      ## http://bugs.mysql.com/bug.php?id=75854
@@ -460,17 +460,17 @@ Z19mysql_unlock_tablesP3THDP13st_mysql_lock                                     
 Z19toku_drd_unsafe_setIhEvPT_S0_                                                        ## https://tokutek.atlassian.net/browse/DB-852
 Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxPK5TABLEP5trx_tPK ## http://bugs.mysql.com/bug.php?id=74363
 Z20get_parts_for_updatePKhPhS0_P14partition_infoPjS4_Px                                 ## http://bugs.mysql.com/bug.php?id=74856
-Z20ha_release_savepointP3THDP12st_savepoint                       ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-765 (fixed in 5.6.23/Tk7.5.6)
+#Z20ha_release_savepointP3THDP12st_savepoint                       ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-765 (fixed in 5.6.23/Tk7.5.6)
 Z20net_after_header_psiP6st_netPvmc                                                     ## https://bugs.launchpad.net/percona-server/+bug/1412423
 Z20sp_revoke_privilegesP3THDPKcS2_b                                                     ## https://bugs.launchpad.net/percona-server/+bug/1403833
-Z20toku_env_is_panickedP13__toku_db_env                           ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-821 (fixed in tokudb-7.5.6)
+#Z20toku_env_is_panickedP13__toku_db_env                           ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-821 (fixed in tokudb-7.5.6)
 Z21convert_error_messagePcjPK15charset_info_stPKcjS2_Pj                                 ## https://bugs.launchpad.net/percona-server/5.6/+bug/1394987
 Z21fill_temporary_tablesP3THDP10TABLE_LI                                                ## Another i-s-temp-tables bug (based on crashing query) (see comment)
 Z21join_read_const_tableP13st_join_tableP11st_position                                  ## http://bugs.mysql.com/bug.php?id=74418
 Z21mysql_execute_commandP3THD                                                           ## https://bugs.launchpad.net/percona-server/+bug/1387951
 Z21plugin_thdvar_cleanupP3THD                                                           ## https://bugs.launchpad.net/percona-server/+bug/1415455
 Z21prep_alter_part_tableP3THDP5TABLEP10Alter_infoP24st_ha_create_informationP15Alter_ta ## http://bugs.mysql.com/bug.php?id=74412
-Z21toku_txn_is_read_onlyP7tokutxn                                 ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-822 (fixed in tokudb-7.5.6)
+#Z21toku_txn_is_read_onlyP7tokutxn                                 ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-822 (fixed in tokudb-7.5.6)
 Z22reinit_stmt_before_useP3THDP3LEX                                                     ## http://bugs.mysql.com/bug.php?id=74670
 Z23well_formed_copy_ncharsPK15charset_info_stPcjS1_PKcjjPS4_S5_S5_                      ## https://bugs.launchpad.net/percona-server/+bug/1417372
 Z24get_schema_tables_resultP4JOIN23enum_                                                ## Another i-s-temp-tables bug (based on crashing query) (see comment)
@@ -479,9 +479,9 @@ Z24mark_tmp_table_for_reuseP5TABLE                                              
 #Z24plugin_foreach_with_maskP3THDPFcS0_PP13st_plugin_intPvEijS4_                         ## https://bugs.launchpad.net/percona-server/+bug/1368530 (fixed in 5.6.27)
 Z25generate_partition_syntaxP14partition_infoPjbbP24st_ha_create_informationP10Alter_infoPKc ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74860 (fixed in 5.6.24)
 Z25get_partition_id_list_colP14partition_infoPjPx                 ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74841 (fixed in 5.6.24)
-Z25toku_loader_create_loaderP13__toku_db_envP13__toku_db_txnPP13__toku_loaderP9__toku_dbiPS7_PjS9_jb  ## https://tokutek.atlassian.net/browse/DB-760
+#Z25toku_loader_create_loaderP13__toku_db_envP13__toku_db_txnPP13__toku_loaderP9__toku_dbiPS7_PjS9_jb  ## https://tokutek.atlassian.net/browse/DB-760 (Fixed PS 5.6.25)
 Z26get_partition_id_range_colP14partition_infoPjPx                                      ## http://bugs.mysql.com/bug.php?id=74727
-Z26toku_xids_can_create_childP6XIDS_S                             ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-814 (fixed in tokudb-7.5.6)
+#Z26toku_xids_can_create_childP6XIDS_S                             ## Still present ftm  ## https://tokutek.atlassian.net/browse/DB-814 (fixed in tokudb-7.5.6)
 Z29toku_db_release_lt_key_rangesP13__toku_db_txnP17txn_lt_key_ranges                    ## https://tokutek.atlassian.net/browse/DB-840
 Z30dict_table_stats_latch_destroyP12dict_table_t                                        ## https://bugs.launchpad.net/percona-server/+bug/1462852
 Z34convert_charset_partition_constantP4ItemPK15charset_info_st                          ## http://bugs.mysql.com/bug.php?id=74580 (old LP #1384573)
@@ -489,7 +489,7 @@ Z37toku_get_oldest_in_live_root_txn_listP7tokutxn                               
 Z39get_partition_id_cols_list_for_endpointP14partition_infobbj                          ## http://bugs.mysql.com/bug.php?id=75862
 Z8filesortP3THDP5TABLEP8FilesortbPyS5_                                                  ## http://bugs.mysql.com/bug.php?id=74579 (old LP #1384595)
 Z9os_mallocm                                                                            ## https://tokutek.atlassian.net/browse/DB-839
-ZN7handler18ha_end_bulk_insertEv                                                        ## https://tokutek.atlassian.net/browse/DB-760
+#ZN7handler18ha_end_bulk_insertEv                                                        ## https://tokutek.atlassian.net/browse/DB-760  (fixed in ps-5.6.25)
 ZN7handler25update_global_table_statsEv                                                 ## http://bugs.mysql.com/bug.php?id=75741 (LP PS#1417382)
 ZN7handler8ha_checkEP3THDP15st_ha_check_opt                                             ## https://bugs.launchpad.net/percona-server/+bug/1433197
 ZN7MDL_map6removeEP8MDL_lock                                                            ## https://bugs.launchpad.net/percona-server/+bug/1417116
@@ -508,16 +508,16 @@ ZNK12dict_table_t13get_ref_countEv                                 ## Still pres
 ZN12ha_myisammrg18append_create_infoEP6String                                           ## http://bugs.mysql.com/bug.php?id=74502
 ZN12ha_myisammrg5cloneEPKcP11st_mem_root                                                ## Another i-s-temp-tables bug (based on crashing query) (see comment)
 ZN12ha_partition21handle_opt_partitionsEP3THDP15st_ha_check_optj   ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74869 (fixed in 5.6.24)
-ZN12ha_partition5extraE17ha_extra_function                                              ## https://tokutek.atlassian.net/browse/DB-766
+#ZN12ha_partition5extraE17ha_extra_function                                              ## https://tokutek.atlassian.net/browse/DB-766 (fixed in tokudb-7.5.4)
 ZN12ha_partition5resetEv                                           ## Still present ftm ## http://bugs.mysql.com/bug.php?id=75677 (Refer PS#1415799) (fixed in 5.6.26)
 ZN13Bounded_queueIhhE4pushEPh                                      ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74008 (fixed in 5.7.6)
 ZN13Bounded_queueIPhS0_10Sort_paramE4pushES0_                                           ## http://bugs.mysql.com/bug.php?id=74008 (potentially fixed in 5.7.6)
-ZN13select_insert8send_eofEv                                                            ## https://tokutek.atlassian.net/browse/DB-806
+#ZN13select_insert8send_eofEv                                                            ## https://tokutek.atlassian.net/browse/DB-806 (fixed in tokudb-7.5.6)
 ZN13st_join_table7cleanupEv                                                             ## http://bugs.mysql.com/bug.php?id=74628
 ZN13st_select_lex5printEP3THDP6String15enum_query_type                                  ## http://bugs.mysql.com/bug.php?id=78335
 ZN13Item_func_div10decimal_opEP10my_decimal                                             ## http://bugs.mysql.com/bug.php?id=74807 (Same gdb trace of Z14my_decimal_divjP10my_decimalPKS_S2_i)
 ZN14Arg_comparator24cache_converted_constantEP3THDPP4ItemS4_11Item_result               ## https://bugs.mysql.com/bug.php?id=77991
-ZN14cachefile_list15add_cf_unlockedEP9cachefile                    ## Still present ftm ## https://tokutek.atlassian.net/browse/DB-812 (fixed in 5.6.23/Tk7.5.6)
+#ZN14cachefile_list15add_cf_unlockedEP9cachefile                    ## Still present ftm ## https://tokutek.atlassian.net/browse/DB-812 (fixed in 5.6.23/Tk7.5.6)
 ZN14Item_func_plus10decimal_opEP10my_decimal                                            ## http://bugs.mysql.com/bug.php?id=74619 (Same gdb trace of Z14my_decimal_addjP10my_decimalPKS_S2_ assertion)
 ZN14partition_info20check_partition_infoEP3THDPP10handlertonP7handlerP24st_ha_create_information  ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74451 (fixed in 5.6.24)
 ZN14partition_info9get_cloneEv                                     ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74478 (fixed in 5.6.24)

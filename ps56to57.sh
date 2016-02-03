@@ -372,7 +372,7 @@ done
 
 ${PS57_BASEDIR}/bin/mysql_upgrade --socket=$WORKDIR/ps_slave.sock -uroot > $WORKDIR/logs/ps_rpl_slave_upgrade.log 2>&1
 
-$SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=10 --oltp_tables_count=5000 --mysql-db=test --mysql-user=root  --num-threads=10 --db-driver=mysql --mysql-socket=$WORKDIR/ps_master.sock prepare  2>&1 | tee $WORKDIR/logs/rpl_sysbench_prepare.txt
+$SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=5000 --oltp_tables_count=10 --mysql-db=test --mysql-user=root  --num-threads=10 --db-driver=mysql --mysql-socket=$WORKDIR/ps_master.sock prepare  2>&1 | tee $WORKDIR/logs/rpl_sysbench_prepare.txt
 
 #Upgrade PS 5.6 master
 
