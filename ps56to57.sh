@@ -276,3 +276,130 @@ CHECK_DBS=`$PS57_BASEDIR/bin/mysql --socket=$WORKDIR/ps57.sock -uroot -Bse "SELE
 echoit "Checking table status..."
 ${PS56_BASEDIR}/bin/mysqlcheck -uroot --socket=$WORKDIR/ps56_down.sock --check-upgrade --databases $CHECK_DBS 2>&1
 
+${PS56_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps56_down.sock shutdown
+$PS57_BASEDIR/bin/mysqladmin  -S $WORKDIR/ps57.sock  -u root shutdown
+
+ps_master_datadir="${MYSQL_VARDIR}/ps_master"
+PORT_MASTER=$[50000 + ( $RANDOM % ( 9999 ) ) ]
+
+pushd ${PS56_BASEDIR}/mysql-test/
+
+set +e 
+perl mysql-test-run.pl \
+  --start-and-exit \
+  --vardir=$ps_master_datadir \
+  --mysqld=--port=$PORT_MASTER \
+  --mysqld=--innodb_file_per_table \
+  --mysqld=--default-storage-engine=InnoDB \
+  --mysqld=--binlog-format=ROW \
+  --mysqld=--log-bin=mysql-bin \
+  --mysqld=--server-id=101 \
+  --mysqld=--gtid-mode=ON  \
+  --mysqld=--log-slave-updates \
+  --mysqld=--enforce-gtid-consistency \
+  --mysqld=--innodb_flush_method=O_DIRECT \
+  --mysqld=--core-file \
+  --mysqld=--secure-file-priv= \
+  --mysqld=--skip-name-resolve \
+  --mysqld=--log-error=$WORKDIR/logs/ps_master.err \
+  --mysqld=--socket=$WORKDIR/ps_master.sock \
+  --mysqld=--log-output=none \
+1st
+set -e
+popd
+
+sleep 10
+
+$PS56_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
+
+sleep 10
+
+mkdir ${MYSQL_VARDIR}/ps_slave
+ps_slave_datadir="${MYSQL_VARDIR}/ps_slave"
+cp -r $ps_master_datadir/mysqld.1/data/* ${MYSQL_VARDIR}/ps_slave
+rm -rf ${MYSQL_VARDIR}/ps_slave/auto.cnf
+
+#Start master
+${PS56_BASEDIR}/bin/mysqld --no-defaults   --basedir=${PS56_BASEDIR} --datadir=$ps_master_datadir/mysqld.1/data --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=101 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 &
+
+for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+  sleep 1
+  if ${PS56_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/ps_master.sock ping > /dev/null 2>&1; then
+    break
+  fi
+done
+#Start slave
+PORT_SLAVE=$[50000 + ( $RANDOM % ( 9999 ) ) ]
+${PS56_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS56_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+
+for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+  sleep 1
+  if ${PS56_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/ps_slave.sock ping > /dev/null 2>&1; then
+    break
+  fi
+done
+
+echo "CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=$PORT_MASTER,MASTER_USER='root',MASTER_AUTO_POSITION=1;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
+echo "START SLAVE;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
+
+echoit "Loading sakila test database"
+$PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps_master.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
+
+#Check replication status
+SLAVE_IO_STATUS=`${PS56_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_IO_Running | awk '{ print $2 }'`
+SLAVE_SQL_STATUS=`${PS56_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_SQL_Running | awk '{ print $2 }'`
+
+if [ -z "$SLAVE_IO_STATUS" -o -z "$SLAVE_SQL_STATUS" ] ; then
+  echoit "Error : Replication is not running, please check.." 
+  exit
+fi
+
+echoit "Replication status : Slave_IO_Running=$SLAVE_IO_STATUS - Slave_SQL_Running=$SLAVE_SQL_STATUS"
+
+#Upgrade PS 5.6 slave to 5.7 for replication test
+
+$PS56_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_slave.sock -u root shutdown
+
+${PS57_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS57_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+
+MYSQLD_START_TIMEOUT=200
+for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+  sleep 1
+  if ${PS57_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/ps_slave.sock ping > /dev/null 2>&1; then
+    break
+  fi
+done
+
+${PS57_BASEDIR}/bin/mysql_upgrade --socket=$WORKDIR/ps_slave.sock -uroot > $WORKDIR/logs/ps_rpl_slave_upgrade.log 2>&1
+
+$SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=10 --oltp_tables_count=5000 --mysql-db=test --mysql-user=root  --num-threads=10 --db-driver=mysql --mysql-socket=$WORKDIR/ps_master.sock prepare  2>&1 | tee $WORKDIR/logs/rpl_sysbench_prepare.txt
+
+#Upgrade PS 5.6 master
+
+$PS56_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
+
+${PS57_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS57_BASEDIR}  --datadir=$ps_master_datadir/mysqld.1/data  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=101 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 & 
+
+for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+  sleep 1
+  if ${PS57_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/ps_master.sock ping > /dev/null 2>&1; then
+    break
+  fi
+done
+${PS57_BASEDIR}/bin/mysql_upgrade --socket=$WORKDIR/ps_master.sock -uroot > $WORKDIR/logs/ps_rpl_master_upgrade.log 2>&1
+
+sleep 10
+#Check replication status
+SLAVE_IO_STATUS=`${PS56_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_IO_Running | awk '{ print $2 }'`
+SLAVE_SQL_STATUS=`${PS56_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_SQL_Running | awk '{ print $2 }'`
+
+if [ -z "$SLAVE_IO_STATUS" -o -z "$SLAVE_SQL_STATUS" ] ; then
+  echoit "Error : Replication is not running, please check.."
+  exit
+fi
+
+echoit "Replication status after master upgrade : Slave_IO_Running=$SLAVE_IO_STATUS - Slave_SQL_Running=$SLAVE_SQL_STATUS"
+
+$PS57_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
+$PS57_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_slave.sock -u root shutdown
+
