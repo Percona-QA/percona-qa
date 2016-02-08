@@ -337,17 +337,17 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
     else
       INPUTFILE=`echo ${SQLLOG} | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
     fi
-    BIN=$(grep "mysqld" ./${TRIAL}/start | head -n1 | sed 's|mysqld .*|mysqld|;s|.* \(.*bin/mysqld\)|\1|') 
+    BIN=$(grep "\/mysqld" ./${TRIAL}/start | head -n1 | sed 's|mysqld .*|mysqld|;s|.* \(.*bin/mysqld\)|\1|') 
     if [ "${BIN}" == "" ]; then 
       echo "Assert \$BIN is empty"
       exit 1
     fi
-    if [ ! -r ${BIN} ]; then
+    if [ ! -r "${BIN}" ]; then
       echo "Assert! mysqld binary '${BIN}' could not be read"
       exit 1
     fi
     BASE=`echo ${BIN} | sed 's|/bin/mysqld||'`
-    if [ ! -d ${BASE} ]; then
+    if [ ! -d "${BASE}" ]; then
       echo "Assert! Basedir '${BASE}' does not look to be a directory"
       exit 1
     fi

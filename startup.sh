@@ -23,8 +23,9 @@ SKIP_RQG_AND_BUILD_EXTRACT=0
 
 JE1="if [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
 JE2=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
-JE3=" elif [ -r ${PWD}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=${PWD}/lib/mysql/libjemalloc.so.1"
-JE4=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi" 
+JE3=" elif [ -r /usr/local/lib/libjemalloc.so ]; then export LD_PRELOAD=/usr/local/lib/libjemalloc.so"
+JE4=" elif [ -r ${PWD}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=${PWD}/lib/mysql/libjemalloc.so.1"
+JE5=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi" 
 
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
@@ -143,7 +144,7 @@ if [ "0" == "$1" ]; then
   echo 'MYEXTRA=" --no-defaults"' > ./start
   echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --skip-innodb-buffer-page --default-storage-engine=RocksDB"' > ./start
   echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> ./start
-  echo $JE1 >> ./start; echo $JE2 >> ./start; echo $JE3 >> ./start; echo $JE4 >> ./start
+  echo $JE1 >> ./start; echo $JE2 >> ./start; echo $JE3 >> ./start; echo $JE4 >> ./start; echo $JE5 >> ./start
   cp ./start ./start_gypsy  # Just copying jemalloc commands from last line above over to gypsy start also
   echo "$BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start
   echo "$BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --general_log=1 --general_log_file=$PWD/general.log --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start_gypsy
@@ -257,7 +258,7 @@ echo "Adding scripts: ./start_mtr$1 | start_wipe_mtr$1 | ./stop_mtr$1 | ./cl_mtr
 echo " -> These bring up the server (using MTR) with the vardir from the original run, and all mysqld options are preseved"
 echo " -> These MTR scripts also preseve the --valgrind option (normal scripts need a ./valgrind$1 addition still)"
 echo "cd $BASE/mysql-test/" > ./start_mtr$1
-echo $JE1 >> ./start_mtr$1; echo $JE2 >> ./start_mtr$1; echo $JE3 >> ./start_mtr$1; echo $JE4 >> ./start_mtr$1
+echo $JE1 >> ./start_mtr$1; echo $JE2 >> ./start_mtr$1; echo $JE3 >> ./start_mtr$1; echo $JE4 >> ./start_mtr$1; echo $JE5 >> ./start_mtr$1
 RND_DIR=$(echo $PWD | sed 's|.*/\([0-9][0-9][0-9][0-9][0-9][0-9]\).*|\1|')
 cat trial$1.log | grep -m1 "Running perl" | \
   sed "s|^.* Running perl mysql-test-run|perl lib/v1/mysql-test-run|" | \
@@ -305,7 +306,7 @@ if [ -r $PWD/lib/mysql/plugin/ha_tokudb.so ]; then
 else
   TOKUDB=""
 fi
-echo $JE1 > ./start$1; echo $JE2 >> ./start$1; echo $JE3 >> ./start$1; echo $JE4 >> ./start$1
+echo $JE1 > ./start$1; echo $JE2 >> ./start$1; echo $JE3 >> ./start$1; echo $JE4 >> ./start$1; echo $JE5 >> ./start$1
 log_arch_dir=`cat trial$1.log | grep -m1 'innodb_log_arch_dir' | grep -o 'innodb_log_arch_dir[^ ,]\+' | sed 's/.*_epoch\///'`
 log_group_home_dir=`cat trial$1.log | grep -m1 'innodb_log_group_home_dir' | grep -o 'innodb_log_group_home_dir[^ ,]\+' | sed 's/.*_epoch\///'`
 if [ $log_arch_dir ];then

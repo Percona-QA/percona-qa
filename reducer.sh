@@ -36,7 +36,7 @@ FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped
 FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as sporadic
 
 # === Reduce startup issues (prevents exit when first server start fails)
-DEBUG_STARTUP_ISSUES=1          # Default/normal use: 0. Only set to 1 when debugging mysqld startup issues, caused for example by a misbehaving --option
+DEBUG_STARTUP_ISSUES=0          # Default/normal use: 0. Only set to 1 when debugging mysqld startup issues, caused for example by a misbehaving --option
 
 # === Multi-threaded (auto-sporadic covering) testcase reduction
 PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
@@ -421,14 +421,16 @@ options_check(){
         if echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
         if egrep -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql; then TOKUDB_RUN_DETECTED=1; fi
         if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
-          #if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
-          #  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
           if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
             export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
           else
-            echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
-            echo 'This can be done with a command similar to: $ yum install jemalloc'
-            exit 1
+            if [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+              export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1`
+            else
+              echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
+              echo 'This can be done with a command similar to: $ yum install jemalloc'
+              exit 1
+            fi
           fi
         fi
       fi
