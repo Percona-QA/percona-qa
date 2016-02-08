@@ -29,7 +29,7 @@ TEXT="somebug"                  # Set to the text your are looking for in MODE 1
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
-MYBASE="/sda/Percona-Server-5.6.21-rel70.0-693.Linux.x86_64-debug"
+MYBASE="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"
 
 # === Sporadic testcase reduction options (Used when testcases prove to be sporadic *and* fail to reduce using basic methods)
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
@@ -57,7 +57,7 @@ PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (defaulty=0), unless you fully u
 
 # === pquery options (only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI)
 PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
-PQUERY_LOC=~/percona-qa/pquery/pquery 
+PQUERY_LOC=~/percona-qa/pquery/pquery
 
 # === Other options (not often changed)
 QUERYTIMEOUT=90
@@ -1113,7 +1113,7 @@ init_workdir_and_files(){
       chmod +x $WORK_INIT
       mkdir $WORKD/data/test 2>/dev/null  # test db provisioning if not there already (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
       #start_mysqld_main
-      if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld; fi
+      if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
       if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
         if [ ${DEBUG_STARTUP_ISSUES} -eq 1 ]; then 
           echo_out "[Init] [NOTE] Failed to cleanly start mysqld server (1st boot). Normally this would cause reducer.sh to halt here (and advice you to check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log + check that there is plenty of space on the device being used). However, because DEBUG_STARTUP_ISSUES is set to 1, we continue this reducer run. See above for more info on the DEBUG_STARTUP_ISSUES setting"
@@ -1135,6 +1135,10 @@ init_workdir_and_files(){
       $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
       stop_mysqld_or_pxc
       mkdir $WORKD/data.init
+      if [ ! -d $WORKD/data ]; then
+        echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] data directory at $WORKD/data does not exist... check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
+        exit 1
+      fi
       cp -R $WORKD/data/* $WORKD/data.init/
     fi
   else
@@ -1144,7 +1148,7 @@ init_workdir_and_files(){
 
 generate_run_scripts(){
   # Add various scripts (with {epoch} prefix): _mybase (setup variables), _init (setup), _run (runs the sql), _cl (starts a mysql cli), _stop (stop mysqld). _start (starts mysqld)
-  # (start_mysqld_main and start_valgrind_mysqld). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
+  # (start_mysqld_main and start_valgrind_mysqld_main). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
   echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
   echo "SOURCE_DIR=\$MYBASE # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
   echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. # This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
@@ -1257,10 +1261,11 @@ init_mysql_dir(){
     else
       cp -R $WORKD/../../data.init/* $WORKD/data/
     fi
+
   fi
 }
 
-start_mysqld_or_pxc(){
+start_mysqld_or_valgrind_or_pxc(){
   init_mysql_dir
   if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
     CLUSTER_UP=0
@@ -1271,7 +1276,7 @@ start_mysqld_or_pxc(){
     fi
   else
     if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi
-    start_mysqld_main
+    if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
     if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
       echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
       exit 1
@@ -1352,8 +1357,7 @@ start_mysqld_main(){
 }
 
 #                             --binlog-format=MIXED \
-start_valgrind_mysqld(){
-  init_mysql_dir
+start_valgrind_mysqld_main(){
   if [ -f $WORKD/valgrind.out ]; then mv -f $WORKD/valgrind.out $WORKD/valgrind.prev; fi
   CMD="${TIMEOUT_COMMAND} valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
               ${MYBASE}${BIN} --basedir=${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
@@ -1529,7 +1533,7 @@ cut_threadsync_chunk(){
 }
 
 run_and_check(){
-  if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_or_pxc; else start_valgrind_mysqld; fi
+  start_mysqld_or_valgrind_or_pxc
   run_sql_code
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then stop_mysqld_or_pxc; fi
   process_outcome
@@ -2023,7 +2027,7 @@ stop_mysqld_or_pxc(){
 }
 
 finish(){
-  if [ ${STAGE} != "" -a ${STAGE8_CHK} != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
+  if [ "${STAGE}" != "" -a "${STAGE8_CHK}" != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
     if [ ${STAGE} -eq 8 ]; then
       if [ ${STAGE8_CHK} -eq 0 ]; then
         export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
