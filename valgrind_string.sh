@@ -13,10 +13,6 @@ filter=('???' 'malloc' 'my_malloc' 'alloc_root' 'multi_alloc_root' 'free' 'my_fr
 check_string(){
   FLAG_GOOD=1
   for CHECK_STRING in "${filter[@]}"; do
-#echo "==="
-#head -n$i pquery-run.log
-#echo $CHECK_STRING
-#echo "==/=="
     if [ "${CHECK_STRING}" == "${STRING}" ]; then
       FLAG_GOOD=0
       break

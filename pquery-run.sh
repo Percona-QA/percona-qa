@@ -197,7 +197,7 @@ savetrial(){
       echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
       mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
     else
-      echoit "Could not find core dump : Deleting rundir ${RUNDIR}/${TRIAL}"
+      echoit "Could not find core dump or Valgrind issue: Deleting rundir ${RUNDIR}/${TRIAL}"
       rm -Rf ${RUNDIR}/${TRIAL}
     fi
   else
@@ -540,7 +540,7 @@ pquery_test(){
     echoit "$(cat ${RUNDIR}/${TRIAL}/pquery.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
   fi
   if [ ${VALGRIND_RUN} -eq 1 ]; then
-    VALGRIND_ERRORS_FOUND=0
+    VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
     # What follows next are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
     VALGRIND_CHECK_1=$(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ${RUNDIR}/${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
     if [ "${VALGRIND_CHECK_1}" == "" ]; then VALGRIND_CHECK_1=0; fi

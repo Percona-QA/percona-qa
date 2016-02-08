@@ -6,6 +6,11 @@
 # To aid with correct bug to testcase generation for pquery trials, this script creates a local run script for reducer and sets #VARMOD#.
 # This handles crashes/asserts for the moment only. Could be expanded later for other cases, and to handle more unforseen situations.
 
+# TODO: This script has started to handle Valgrind trials. When a Valgrind bug is detected for a Valgrind trial, a Valgrind bug reducer.sh will be generated instead of a crash
+#       reducer.sh. However, offcourse there can be a Valgrind error AND a crash. The script does not handle this yet. One idea would be to have a reducer<trialnr>.sh generated
+#       for each crash and a reducer_val<trialnr>.sh for each Valgrind bug, or at least the first one from the error log. Also fix [*] hack (should be removed) when fixing this.
+#       IDEA: use VALGRIND_TEXT, and if VALGRIND_CHECK is set, just write two reducer's, each with their own TEXT and MODE (otherwise things remain the same)
+
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 WORKD_PWD=$PWD
@@ -81,7 +86,6 @@ elif [ `ls ./pquery-run.log 2>/dev/null | wc -l` -eq 0 ]; then  # Older (backwar
 else
   MYEXTRA="`grep 'MYEXTRA:' ./pquery-run.log | sed 's|^.*MYEXTRA[: \t]*||'`"
   MYSAFE="`grep 'MYSAFE:' ./pquery-run.log | sed 's|^.*MYSAFE[: \t]*||'`"
-  VALGRIND_CHECK="`grep 'Valgrind run:' ./pquery-run.log | sed 's|^.*Valgrind run[: \t]*||' | awk '{print $1}'`"
   if [ ${REACH} -eq 0 ]; then # Avoid normal output if this is an automated run (REACH=1)
     echo "Using the following MYEXTRA/MYSAFE settings (found in the ./pquery-run.log stored in this directory):"
     echo "======================================================================================================================================================"
@@ -179,7 +183,7 @@ generate_reducer_script(){
     TEXT_STRING1="s|ZERO0|ZERO0|"
     TEXT_STRING2="s|ZERO0|ZERO0|"
   else  # Bug-specific TEXT string found, use MODE=3 to let reducer.sh reduce for that specific string
-    if [ "$VALGRIND_CHECK" == "TRUE" ]; then
+    if [ $VALGRIND_CHECK -eq 1 ]; then
       MODE=1
     else
       MODE=3
@@ -262,12 +266,8 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
   TRIAL=`echo ${SQLLOG} | sed 's|./||;s|/.*||'`
   if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
     MYEXTRA=
-    VALGRIND_CHECK=
     if [ -r ./${TRIAL}/MYEXTRA ]; then
       MYEXTRA=$(cat ./${TRIAL}/MYEXTRA)
-    fi
-    if [ -r ./${TRIAL}/VALGRIND ]; then
-      VALGRIND_CHECK="TRUE"
     fi
   fi
   if [ ${PXC} -eq 1 ]; then
@@ -362,7 +362,37 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
       echo "Assert! Error log at ./${TRIAL}/log/master.err could not be read?"
       exit 1
     fi
-    TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/log/master.err`
+    VALGRIND_CHECK=0
+    VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
+    if [ -r ./${TRIAL}/VALGRIND ]; then
+      VALGRIND_CHECK=1
+      # What follows are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
+      VALGRIND_CHECK_1=$(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ./${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
+      if [ "${VALGRIND_CHECK_1}" == "" ]; then VALGRIND_CHECK_1=0; fi
+      if [ ${VALGRIND_CHECK_1} -gt 0 ]; then
+        VALGRIND_ERRORS_FOUND=1
+      fi
+      if egrep -qi "^[ \t]*==[0-9]+[= \t]+[atby]+[ \t]*0x" ./${TRIAL}/log/master.err; then
+        VALGRIND_ERRORS_FOUND=1
+      fi
+      if egrep -qi "==[0-9]+== ERROR SUMMARY: [1-9]" ./${TRIAL}/log/master.err; then
+        VALGRIND_ERRORS_FOUND=1
+      fi
+      if [ ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then
+        TEXT=`${SCRIPT_PWD}/valgrind_string.sh ./${TRIAL}/log/master.err`
+        if [ "${TEXT}" != "" ]; then
+          echo "* Valgrind string detected: '${TEXT}'"
+        else
+          echo "*** ERROR: No specific Valgrind string was detected in ./${TRIAL}/log/master.err! This may be a bug... Setting TEXT to generic '==    at 0x'"
+          TEXT="==    at 0x"
+        fi
+      else
+        echo "Though ${TRIAL} is a Valgrind trial, no Valgrind errors were found. Not sure how to handle this trial. You may need to delete this trial manually."
+        VALGRIND_CHECK=0  # [*] Temporary hack which ensures that if there is a crash/core, a reducer will still be produced using that data.
+      fi
+    else  # Standard crash issue
+      TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/log/master.err`
+    fi
     echo "* TEXT variable set to: \"${TEXT}\""
     if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
       auto_interleave_failing_sql
@@ -372,7 +402,7 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
   if [ "${MYEXTRA}" != "" ]; then
     echo "* MYEXTRA variable set to: ${MYEXTRA}"
   fi
-  if [ "${VALGRIND_CHECK}" == "TRUE" ]; then
+  if [ ${VALGRIND_CHECK} -eq 1 ]; then
     echo "* Valgrind was used for this trial"
   fi
 done
