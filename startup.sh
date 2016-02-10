@@ -128,7 +128,7 @@ fi
 # Local build mode: only setup scritps for local directory, then exit (used for creating startup scripts in the local directory,
 # for example after using ./build/binary-build.sh & extracing the resulting tarball or when using a yassl-based QA build from Jenkins.)
 if [ "0" == "$1" ]; then
-  echo "Adding scripts: ./start | ./start_gypsy | ./stop | ./setup | ./cl | ./cl_binmode | ./test | ./init | ./wipe (last two without executable attribute)"
+  echo "Adding scripts: ./start | ./start_valgrind | ./start_gypsy | ./stop | ./setup | ./cl | ./cl_binmode | ./test | ./init | ./wipe (last two without executable attribute)"
   mkdir -p ./data ./data/mysql ./data/test ./log
   if [ -r $PWD/bin/mysqld ]; then
     BIN="$PWD/bin/mysqld"
@@ -145,16 +145,19 @@ if [ "0" == "$1" ]; then
   echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --skip-innodb-buffer-page --default-storage-engine=RocksDB"' > ./start
   echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> ./start
   echo $JE1 >> ./start; echo $JE2 >> ./start; echo $JE3 >> ./start; echo $JE4 >> ./start; echo $JE5 >> ./start
-  cp ./start ./start_gypsy  # Just copying jemalloc commands from last line above over to gypsy start also
+  cp ./start ./start_valgrind  # Idem for Valgrind
+  cp ./start ./start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
   echo "$BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start
+  echo " valgrind --suppressions=$PWD/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start_valgrind
   echo "$BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --general_log=1 --general_log_file=$PWD/general.log --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start_gypsy
   echo "echo 'Server socket: $PWD/socket.sock with datadir: $PWD/data'" >> ./start
+  tail -n1 start >> ./start_valgrind
   tail -n1 start >> ./start_gypsy
   echo "$PWD/bin/mysqladmin -uroot -S$PWD/socket.sock shutdown" > ./stop
   echo "echo 'Server on socket $PWD/socket.sock with datadir $PWD/data halted'" >> ./stop
   echo "./init;./start;sleep 5;./cl;./stop;tail ./log/master.err" > ./setup
   echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock test" > ./cl
-  echo "./start; sleep 5; $PWD/bin/mysql -A -uroot -S$PWD/socket.sock -e \"INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';\"; ./stop" > ./tokutek_init
+  echo "./start; sleep 10; $PWD/bin/mysql -A -uroot -S$PWD/socket.sock -e \"INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';\"; ./stop" > ./tokutek_init
   echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test" > ./cl_binmode
   echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test < $PWD/in.sql >> $PWD/mysql.out 2>&1" > ./test
   echo "if [ -r ./stop ]; then ./stop 2>/dev/null 1>&2; fi" > ./wipe
@@ -183,7 +186,7 @@ if [ "0" == "$1" ]; then
     echo "mkdir $PWD/data/test" >> ./init
   fi
   echo "rm -f ./log/master.*" >> ./init
-  chmod +x start start_gypsy stop setup cl cl_binmode test init ./tokutek_init
+  chmod +x start start_valgrind start_gypsy stop setup cl cl_binmode test init ./tokutek_init
   echo "Setting up server with default directories"
   ./init
   if [ -r $PWD/lib/mysql/plugin/ha_tokudb.so ]; then

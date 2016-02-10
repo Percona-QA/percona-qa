@@ -11,6 +11,9 @@
 #       for each crash and a reducer_val<trialnr>.sh for each Valgrind bug, or at least the first one from the error log. Also fix [*] hack (should be removed) when fixing this.
 #       IDEA: use VALGRIND_TEXT, and if VALGRIND_CHECK is set, just write two reducer's, each with their own TEXT and MODE (otherwise things remain the same)
 
+# User configurable variables
+VALGRIND_OVERRIDE=1    # If set to 1, Valgrind issues are handled as if they were a crash (core dump required)
+
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 WORKD_PWD=$PWD
@@ -190,7 +193,27 @@ generate_reducer_script(){
     fi
     TEXT_CLEANUP="0,/^[ \t]*TEXT[ \t]*=.*$/s|^[ \t]*TEXT[ \t]*=.*$|#TEXT=<set_below_in_machine_variables_section>|"
     TEXT_STRING1="0,/#VARMOD#/s:#VARMOD#:# IMPORTANT NOTE; Leave the 3 spaces before TEXT on the next line; pquery-results.sh uses these\n#VARMOD#:"
-    TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"${TEXT}\"\n#VARMOD#:"
+    if [[ "${TEXT}" = *":"* ]]; then 
+      if [[ "${TEXT}" = *"|"* ]]; then 
+        if [[ "${TEXT}" = *"/"* ]]; then 
+          if [[ "${TEXT}" = *"_"* ]]; then 
+            if [[ "${TEXT}" = *"-"* ]]; then
+              echo "Assert! No suitable sed seperator found. TEXT (${TEXT}) contains all of the possibilities, add more!"
+            else
+              TEXT_STRING2="0,/#VARMOD#/s-#VARMOD#-   TEXT=\"${TEXT}\"\n#VARMOD#-"
+            fi
+          else
+            TEXT_STRING2="0,/#VARMOD#/s_#VARMOD#_   TEXT=\"${TEXT}\"\n#VARMOD#_"
+          fi
+        else
+          TEXT_STRING2="0,/#VARMOD#/s/#VARMOD#/   TEXT=\"${TEXT}\"\n#VARMOD#/"
+        fi
+      else
+        TEXT_STRING2="0,/#VARMOD#/s|#VARMOD#|   TEXT=\"${TEXT}\"\n#VARMOD#|"
+      fi
+    else
+      TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"${TEXT}\"\n#VARMOD#:"
+    fi
   fi
   if [ "$MYEXTRA" == "" ]; then  # Empty MYEXTRA string
     MYEXTRA_CLEANUP="s|ZERO0|ZERO0|"
@@ -364,7 +387,7 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
     fi
     VALGRIND_CHECK=0
     VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
-    if [ -r ./${TRIAL}/VALGRIND ]; then
+    if [ -r ./${TRIAL}/VALGRIND -a ${VALGRIND_OVERRIDE} -ne 1 ]; then
       VALGRIND_CHECK=1
       # What follows are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
       VALGRIND_CHECK_1=$(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ./${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
