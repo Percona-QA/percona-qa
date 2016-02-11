@@ -1150,8 +1150,8 @@ generate_run_scripts(){
   # Add various scripts (with {epoch} prefix): _mybase (setup variables), _init (setup), _run (runs the sql), _cl (starts a mysql cli), _stop (stop mysqld). _start (starts mysqld)
   # (start_mysqld_main and start_valgrind_mysqld_main). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
   echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
-  echo "SOURCE_DIR=\$MYBASE # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
-  echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. # This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
+  echo "SOURCE_DIR=\$MYBASE  # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
+  echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_INIT
   echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
@@ -1227,19 +1227,33 @@ generate_run_scripts(){
   echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
   echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
   echo -e "The attached tarball (${EPOCH2}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
-  echo "$ vi ${EPOCH2}_mybase     # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
-  echo "$ ./${EPOCH2}_init        # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
-  echo "$ ./${EPOCH2}_start       # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
-  echo "$ ./${EPOCH2}_cl          # STEP4: To check mysqld is up" >> $WORK_HOW_TO_USE
-  if [ $PQUERY_MOD -eq 1 ]; then
-    echo "$ ./${EPOCH2}_run_pquery  # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
-    echo "$ ./${EPOCH2}_run         # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
+  echo "$ vi ${EPOCH2}_mybase         # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH2}_init            # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
+  if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
+    echo "$ ./${EPOCH2}_start_valgrind  # STEP3: Starts mysqld under Valgrind (make sure to use a Valgrind instrumented build) (note: this can easily take 20-30 seconds or more)" >> $WORK_HOW_TO_USE
   else
-    echo "$ ./${EPOCH2}_run         # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
+    echo "$ ./${EPOCH2}_start           # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
   fi
-  echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP6: Verify the error log" >> $WORK_HOW_TO_USE
-  echo "$ ./${EPOCH2}_gdb         # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE
-  echo "$ ./${EPOCH2}_parse_core  # STEP7: Creates ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH2}_cl              # STEP4: To check mysqld is up" >> $WORK_HOW_TO_USE
+  if [ $PQUERY_MOD -eq 1 ]; then
+    echo "$ ./${EPOCH2}_run_pquery      # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
+    echo "$ ./${EPOCH2}_run             # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
+    if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
+      echo "$ ./${EPOCH2}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
+    fi
+  else
+    echo "$ ./${EPOCH2}_run             # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
+    if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
+      echo "$ ./${EPOCH2}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
+    fi
+  fi
+  if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
+    echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP7: Verify the error log" >> $WORK_HOW_TO_USE
+  else
+    echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP6: Verify the error log" >> $WORK_HOW_TO_USE
+  fi
+  echo "$ ./${EPOCH2}_gdb             # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH2}_parse_core      # OPTIONAL: Creates ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
   chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
 }
 
@@ -1371,7 +1385,7 @@ start_valgrind_mysqld_main(){
   PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START_VALGRIND
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START_VALGRIND
-  echo "echo \"Attempting to start Valgrind-instrumented mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_VALGRIND
+  echo "echo \"Attempting to start mysqld under Valgrind (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_VALGRIND
   echo $JE1 >> $WORK_START_VALGRIND; echo $JE2 >> $WORK_START_VALGRIND; echo $JE3 >> $WORK_START_VALGRIND
   #echo $JE4 >> $WORK_START_VALGRIND; echo $JE5 >> $WORK_START_VALGRIND
   echo $JE4 >> $WORK_START_VALGRIND
@@ -1379,7 +1393,7 @@ start_valgrind_mysqld_main(){
   echo "valgrind --suppressions=\${MYBASE}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
        \$BIN --basedir=\${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-       --socket=$WORKD/socket.sock $MYEXTRA --event-scheduler=ON  > $WORKD/valgrind.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
+       --socket=$WORKD/socket.sock $MYEXTRA --event-scheduler=ON >>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START_VALGRIND
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START_VALGRIND
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START_VALGRIND

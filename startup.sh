@@ -142,13 +142,13 @@ if [ "0" == "$1" ]; then
     TOKUDB=""
   fi
   echo 'MYEXTRA=" --no-defaults"' > ./start
-  echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --skip-innodb-buffer-page --default-storage-engine=RocksDB"' > ./start
+  echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --skip-innodb-buffer-page --default-storage-engine=RocksDB"' >> ./start
   echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> ./start
   echo $JE1 >> ./start; echo $JE2 >> ./start; echo $JE3 >> ./start; echo $JE4 >> ./start; echo $JE5 >> ./start
   cp ./start ./start_valgrind  # Idem for Valgrind
   cp ./start ./start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
   echo "$BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start
-  echo " valgrind --suppressions=$PWD/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start_valgrind
+  echo " valgrind --suppressions=$PWD/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err >>$PWD/log/master.err 2>&1 &" >> ./start_valgrind
   echo "$BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --general_log=1 --general_log_file=$PWD/general.log --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start_gypsy
   echo "echo 'Server socket: $PWD/socket.sock with datadir: $PWD/data'" >> ./start
   tail -n1 start >> ./start_valgrind
