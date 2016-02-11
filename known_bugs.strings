@@ -169,9 +169,11 @@ Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # http
 ## =========== PS 5.7 TokuDB bugs ==========
 #Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
 #Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917 # Fixed 5.7 RC2
+Handlerton: ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
 mh->m_magic == 1234                                                   ## https://tokutek.atlassian.net/browse/DB-920  
 #used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926 # Fixed 5.7 RC2
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb   ## https://tokutek.atlassian.net/browse/DB-921
+Z26toku_xids_can_create_childP6XIDS_S                                  ## https://tokutek.atlassian.net/browse/DB-940
 #TEXT=.r == 0.$                                                        ## PS Bug #1511969 (verified), also see https://tokutek.atlassian.net/browse/DB-933 / DB-737
 # ^^^ debugging
   
