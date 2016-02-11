@@ -191,8 +191,7 @@ ctrl-c(){
 
 savetrial(){
   if [ ${PXC} -eq 0 ]; then
-    if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 ]; then
-      STOREANYWAY=0
+    if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then
       SAVED=$[ $SAVED + 1 ]
       echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
       mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
@@ -210,6 +209,7 @@ savetrial(){
       rm -Rf ${RUNDIR}/${TRIAL}
     fi
   fi
+  STOREANYWAY=0
 }
 
 savesql(){
@@ -490,13 +490,17 @@ pquery_test(){
       sleep 2; sync
     fi
   fi
-  echoit "Cleaning up & saving results as needed..."
+  if [ ${VALGRIND_RUN} -eq 1 ]; then
+    echoit "Cleaning up & saving results as needed. Note that this may take up to 10 minutes because this is a Valgrind run. You may also see a mysqladmin killed message..."
+  else
+    echoit "Cleaning up & saving results as needed..."
+  fi
   TRIAL_SAVED=0;
   sleep 2  # Delay to ensure core was written completely (if any)
   if [ ${PXC} -eq 0 ]; then
     if [ ${VALGRIND_RUN} -eq 1 ]; then # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
-      # Thus, mysqld would have received a shutdown signal (even if the timeout was 2 seconds it would have)
+      # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
       timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log
       VALGRIND_SUMMARY_FOUND=0
       for X in $(seq 0 600); do  # Wait for full Valgrind output in error log
