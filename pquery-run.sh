@@ -45,6 +45,7 @@ QUERY_DURATION_TESTING=0
 # ========================================= User configurable variables to enable Valgrind testing only ==========================
 VALGRIND_RUN=0                                                 # Set to 1 to make this a Valgrind run. Do not change VALGRIND_CMD unless you fully understand the change being made
 VALGRIND_CMD="valgrind --suppressions=${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes --track-origins=yes"
+VALGRIND_ERRORS_FOUND=0
 
 # ========================================= User configurable variables to enable crash recovery testing only ====================
 CRASH_RECOVERY_TESTING=0                                       # Set to 1 to make this a crash recovery test (terminates server after x seconds and then attempts crash recovery)
