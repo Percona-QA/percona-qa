@@ -353,6 +353,7 @@ from->m_byte_count == 0                                           ## Still prese
 hash_not_ok == 0                                                                        ## http://bugs.mysql.com/bug.php?id=74852
 host_length <= 60                                                                       ## http://bugs.mysql.com/bug.php?id=74678
 inited == NONE                                                                          ## http://bugs.mysql.com/bug.php?id=74650
+item_in->left_expr->cols                                                                ## http://bugs.mysql.com/bug.php?id=80440
 InnoDB. log block checksum mismatch. expected                                           ## https://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
 . is_set() .. m_can_overwrite_status                                                    ## http://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## http://bugs.mysql.com/bug.php?id=74646
@@ -506,6 +507,7 @@ ZN9ha_myisam9write_rowEPh                                                       
 ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                                     ## http://bugs.mysql.com/bug.php?id=74953
 ZN10Item_fieldC2EP5Field                                                                ## http://bugs.mysql.com/bug.php?id=74628
 ZN10Item_param22safe_charset_converterEPK15charset_info_st                              ## http://bugs.mysql.com/bug.php?id=76039
+ZN10my_decimalaSERKS_                                                                   ## https://bugs.mysql.com/bug.php?id=80438
 ZN11MDL_context11find_ticketEP11MDL_requestP17enum_mdl_duration                         ## https://bugs.launchpad.net/percona-server/+bug/1403446
 ZN11MDL_request4initEN7MDL_key18enum_mdl_namespaceEPKcS3_13enum_mdl_type17enum_mdl_duration  ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74499 (fixed in 5.5.43)
 ZN11Table_cache12remove_tableEP5TABLE                                                   ## https://bugs.launchpad.net/percona-server/+bug/1444642   
