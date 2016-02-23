@@ -161,6 +161,7 @@ length == 0 .. json_binary..parse_binary.ptr, length     ## RC1   # https://bugs
 trx->undo_no == 0                                        ## MS5.7 # https://bugs.mysql.com/bug.php?id=80062
 type...!                                                 ## MS5.7 # https://bugs.mysql.com/bug.php?id=80094
 Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1538019
+Z18mysql_audit_notifyP3THDjjz                                    ## PS5.6 # https://bugs.launchpad.net/percona-server/+bug/1538019
 ZN17sys_var_pluginvar13global_updateEP3THDP7set_var              ## MS5.7 # http://bugs.mysql.com/bug.php?id=80152
 Z15error_log_print8loglevelPKcP13__va_list_tag                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=80153
 ZN6UniqueD1Ev                                                    ## MS5.7 # http://bugs.mysql.com/bug.php?id=80134
