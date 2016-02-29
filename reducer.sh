@@ -1270,6 +1270,7 @@ init_mysql_dir(){
     fi
   else
     rm -Rf $WORKD/data/*  $WORKD/tmp/*
+    rm -Rf $WORKD/data/.rocksdb 2> /dev/null
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
       cp -R $WORKD/data.init/* $WORKD/data/
     else
