@@ -1329,7 +1329,6 @@ start_mysqld_main(){
   if [ ${STAGE} -eq 8 ]; then
     export -n MYEXTRA=${MYEXTRA_STAGE8}
     COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
-    #echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA";
   fi
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
@@ -3217,11 +3216,11 @@ if [ $SKIPSTAGE -lt 8 ]; then
         ISSUE_CHECK=0
         NEXTACTION="& try removing next mysqld option"
         MYEXTRA_STAGE8=$(cat $FILE1 | tr -s "\n" " ")
-        COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
+        COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA_STAGE8 | wc -w)
         if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
           echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA"
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA";
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8";
         fi
         run_and_check
         if [ "${STAGE8_CHK}" == "1" ]; then
