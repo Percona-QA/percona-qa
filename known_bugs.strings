@@ -161,17 +161,21 @@ length == 0 .. json_binary..parse_binary.ptr, length     ## RC1   # https://bugs
 trx->undo_no == 0                                        ## MS5.7 # https://bugs.mysql.com/bug.php?id=80062
 type...!                                                 ## MS5.7 # https://bugs.mysql.com/bug.php?id=80094
 Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1538019
+Z18mysql_audit_notifyP3THDjjz                                    ## PS5.6 # https://bugs.launchpad.net/percona-server/+bug/1538019
 ZN17sys_var_pluginvar13global_updateEP3THDP7set_var              ## MS5.7 # http://bugs.mysql.com/bug.php?id=80152
 Z15error_log_print8loglevelPKcP13__va_list_tag                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=80153
 ZN6UniqueD1Ev                                                    ## MS5.7 # http://bugs.mysql.com/bug.php?id=80134
 Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1544398 (Valgrind builds only)
 
 ## =========== PS 5.7 TokuDB bugs ==========
-#Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
+Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
 #Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917 # Fixed 5.7 RC2
+Handlerton: ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
 mh->m_magic == 1234                                                   ## https://tokutek.atlassian.net/browse/DB-920  
 #used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926 # Fixed 5.7 RC2
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb   ## https://tokutek.atlassian.net/browse/DB-921
+Z26toku_xids_can_create_childP6XIDS_S                                  ## https://tokutek.atlassian.net/browse/DB-940
+Z17mysql_lock_tablesP3THDPP5TABLEmj                                    ## https://tokutek.atlassian.net/browse/DB-941
 #TEXT=.r == 0.$                                                        ## PS Bug #1511969 (verified), also see https://tokutek.atlassian.net/browse/DB-933 / DB-737
 # ^^^ debugging
   
@@ -350,6 +354,7 @@ from->m_byte_count == 0                                           ## Still prese
 hash_not_ok == 0                                                                        ## http://bugs.mysql.com/bug.php?id=74852
 host_length <= 60                                                                       ## http://bugs.mysql.com/bug.php?id=74678
 inited == NONE                                                                          ## http://bugs.mysql.com/bug.php?id=74650
+item_in->left_expr->cols                                                                ## http://bugs.mysql.com/bug.php?id=80440
 InnoDB. log block checksum mismatch. expected                                           ## https://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
 . is_set() .. m_can_overwrite_status                                                    ## http://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## http://bugs.mysql.com/bug.php?id=74646
@@ -503,6 +508,7 @@ ZN9ha_myisam9write_rowEPh                                                       
 ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                                     ## http://bugs.mysql.com/bug.php?id=74953
 ZN10Item_fieldC2EP5Field                                                                ## http://bugs.mysql.com/bug.php?id=74628
 ZN10Item_param22safe_charset_converterEPK15charset_info_st                              ## http://bugs.mysql.com/bug.php?id=76039
+ZN10my_decimalaSERKS_                                                                   ## https://bugs.mysql.com/bug.php?id=80438
 ZN11MDL_context11find_ticketEP11MDL_requestP17enum_mdl_duration                         ## https://bugs.launchpad.net/percona-server/+bug/1403446
 ZN11MDL_request4initEN7MDL_key18enum_mdl_namespaceEPKcS3_13enum_mdl_type17enum_mdl_duration  ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74499 (fixed in 5.5.43)
 ZN11Table_cache12remove_tableEP5TABLE                                                   ## https://bugs.launchpad.net/percona-server/+bug/1444642   
