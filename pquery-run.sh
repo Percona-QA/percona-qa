@@ -41,7 +41,7 @@ MULTI_THREADED_TESTC_LINES=25000                               # Only takes effe
 
 # ========================================= User configurable variables to enable query correctness testing ======================
 QUERY_CORRECTNESS_TESTING=1                                    # Set to 1 to enable query correctness testing. Normally set to 0 (off)
-QC_NR_OF_STATEMENTS_PER_TRIAL=20                               # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
+QC_NR_OF_STATEMENTS_PER_TRIAL=100                              # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
 QC_PRI_ENGINE=InnoDB                                           # Primary comparison engine for query correctness testing
 QC_SEC_ENGINE=RocksDB                                          # Secondary comparison engine for query correctness testing
 
@@ -108,8 +108,10 @@ else
 fi
 
 # JEMALLOC for PS/TokuDB
+PSORNOT1=$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)
+PSORNOT2=$(${BIN} --version | grep -oi '5.7.[0-9]\+-[0-9]' | cut -f2 -d'-' | head -n1); if [ "${PSORNOT2}" == "" ]; then PSORNOT2=0; fi
 if [ ${SKIP_JEMALLOC_FOR_PS} -ne 1 ]; then
-  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" == "Percona" ] || [ `${BIN} --version | grep -oi '5.7.10-[0-9]' | cut -f2 -d'-' | head -n1` -ge 1 ]; then
+  if [ "${PSORNOT1}" == "Percona" ] || [ ${PSORNOT2} -ge 1 ]; then
     if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
       export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
     else 
@@ -120,7 +122,7 @@ if [ ${SKIP_JEMALLOC_FOR_PS} -ne 1 ]; then
     fi
   fi
 else
-  if [ "$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)" == "Percona" ] || [ `${BIN} --version | grep -oi '5.7.10-[0-9]' | cut -f2 -d'-' | head -n1` -ge 1 ]; then
+  if [ "${PSORNOT1}" == "Percona" ] || [ ${PSORNOT2} -ge 1 ]; then
     echoit "*** IMPORTANT WARNING ***: SKIP_JEMALLOC_FOR_PS was set to 1, and thus JEMALLOC will not be LD_PRELOAD'ed. However, the mysqld binary (${BIN}) reports itself as Percona Server. If you are going to test TokuDB, JEMALLOC should be LD_PRELOAD'ed. If not testing TokuDB, then this warning can be safely ignored."
   fi
 fi
@@ -347,6 +349,7 @@ pquery_test(){
       echoit "Waiting for mysqld (pid: ${MPID}) to fully start (note this is slow for Valgrind runs, and can easily take 35-90 seconds even on an high end server)..."
     fi
     BADVALUE=0
+    FAILEDSTARTABORT=0
     for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
       sleep 1
       if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock ping > /dev/null 2>&1; then
@@ -371,6 +374,7 @@ pquery_test(){
           else  # Do not halt for ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as MYEXTRA was randomly changed
             echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the MYEXTRA startup parameters. As ADD_RANDOM_OPTIONS=1, this is likely to be encountered. Not saving trial. If you see this error for every trial however, set \$ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, your base \$MYEXTRA setting is faulty."
             grep "ERROR" ${RUNDIR}/${TRIAL}/log/master.err | tee -a /${WORKDIR}/pquery-run.log
+            FAILEDSTARTABORT=1
             break
           fi
         fi
@@ -448,44 +452,62 @@ pquery_test(){
         echoit "Taking ${QC_NR_OF_STATEMENTS_PER_TRIAL} lines randomly from ${INFILE} as testcase for this query correctness trial..."
         shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
-        cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1
-        cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2
-        sed -i "s|innodb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|innodb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|tokudb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|tokudb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|myisam|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|myisam|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|memory|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|memory|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|merge|${QC_PRI_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|merge|${QC_SEC_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|csv|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|csv|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|[m]aria|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|[m]aria|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|heap|${QC_PRI_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|heap|${QC_SEC_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|federated|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|federated|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|archive|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|archive|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|mrg_myisam|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|mrg_myisam|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|cassandra|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|cassandra|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|connect|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|connect|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|ndb|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|ndb|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        sed -i "s|ndbcluster|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|ndbcluster|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-        SQL_FILE_1="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1"
-        SQL_FILE_2="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2"
+        cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
+        cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
+        sed -i "s|innodb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|innodb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|tokudb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|tokudb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|myisam|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|myisam|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|memory|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|memory|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|merge|${QC_PRI_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|merge|${QC_SEC_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|csv|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|csv|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|[m]aria|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|[m]aria|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|heap|${QC_PRI_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|heap|${QC_SEC_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|federated|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|federated|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|archive|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|archive|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|mrg_myisam|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|mrg_myisam|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|cassandra|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|cassandra|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|connect|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|connect|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|ndb|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|ndb|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        sed -i "s|ndbcluster|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
+        sed -i "s|ndbcluster|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
+        SQL_FILE_1="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}"
+        SQL_FILE_2="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}"
         mkdir ${RUNDIR}/${TRIAL}/data/test1 ${RUNDIR}/${TRIAL}/data/test2
         if [ ! -d ${RUNDIR}/${TRIAL}/data/test1 ]; then echoit "Something is wrong: this script attempted to create ${RUNDIR}/${TRIAL}/data/test1, but it does not exist after the creation attempt. Please check disk space, privileges, etc."; exit 1; fi
         if [ ! -d ${RUNDIR}/${TRIAL}/data/test2 ]; then echoit "Something is wrong: this script attempted to create ${RUNDIR}/${TRIAL}/data/test2, but it does not exist after the creation attempt. Please check disk space, privileges, etc."; exit 1; fi
         if [ ${PXC} -eq 0 ]; then
-          ${PQUERY_BIN} ${SQL_FILE_1} --database=test1 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
+          ${PQUERY_BIN} ${SQL_FILE_1} --database=test1 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
           mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
-          sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${QC_PRI_ENGINE}.result
-          ${PQUERY_BIN} ${SQL_FILE_2} --database=test2 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
+          #sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result
+          grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result
+          ${PQUERY_BIN} ${SQL_FILE_2} --database=test2 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
           mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
-          sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${QC_SEC_ENGINE}.result
+          #sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result
+          grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result
         else
-          ${PQUERY_BIN} ${SQL_FILE_1} --database=test1 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
+          ${PQUERY_BIN} ${SQL_FILE_1} --database=test1 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
           mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
-          sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${QC_PRI_ENGINE}.result
-          ${PQUERY_BIN} ${SQL_FILE_2} --database=test2 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
+          #sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result
+          grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result
+          ${PQUERY_BIN} ${SQL_FILE_2} --database=test2 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
           mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
-          sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${QC_SEC_ENGINE}.result
+          #sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result
+          grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result
         fi
-        exit 0  # Debug testing
       else  # Not a query correctness testing run
         if [ ${QUERY_DURATION_TESTING} -eq 0 ]; then  # Query duration testing run
           if [ ${PXC} -eq 0 ]; then
@@ -516,30 +538,32 @@ pquery_test(){
       else
         ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       fi
-    fi 
-    PQPID="$!"
-    echoit "pquery running (Max duration: ${PQUERY_RUN_TIMEOUT}s)..."
-    for X in $(seq 0 ${PQUERY_RUN_TIMEOUT}); do
-      if grep -qi "error while loading shared libraries" ${RUNDIR}/${TRIAL}/pquery.log; then
-        echoit "Assert: There was an error loading the shared/dynamic mysql client library linked to from within pquery. Ref. ${RUNDIR}/${TRIAL}/pquery.log to see the error. The solution is to ensure that LD_LIBRARY_PATH is set correctly (for example: execute '$ export LD_LIBRARY_PATH=<your_mysql_base_directory>/lib' in your shell. This will happen only if you use pquery without statically linked client libraries, and this in turn would happen only if you compiled pquery yourself instead of using the pre-built binaries available in https://github.com/Percona-QA/percona-qa (ref subdirectory/files ./pquery/pquery*) - which are normally used by this script (hence this situation is odd to start with). The pquery binaries in percona-qa all include a statically linked mysql client library matching the mysql flavor (PS,MS,MD,WS) it was built for. Another reason for this error may be that (having used pquery without statically linked client binaries as mentioned earlier) the client libraries are not available at the location set in LD_LIBRARY_PATH (which is currently set to '${LD_LIBRARY_PATH}'."
-        exit 1
-      fi
-      Y=$X
-      sleep 1
-      if [ "`ps -ef | grep ${PQPID} | grep -v grep`" == "" ]; then  # pquery ended
-        break
-      fi
-      if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
-        if [ $X -eq $CRASH_RECOVERY_KILL_BEFORE_END_SEC ]; then
-           kill -9 ${MPID} >/dev/null 2>&1;
-           sleep 2
-           echoit "killed for crash testing"
-           break
+    fi
+    if [ ${QUERY_CORRECTNESS_TESTING} -ne 1 ]; then
+      PQPID="$!"
+      echoit "pquery running (Max duration: ${PQUERY_RUN_TIMEOUT}s)..."
+      for X in $(seq 0 ${PQUERY_RUN_TIMEOUT}); do
+        if grep -qi "error while loading shared libraries" ${RUNDIR}/${TRIAL}/pquery.log; then
+          echoit "Assert: There was an error loading the shared/dynamic mysql client library linked to from within pquery. Ref. ${RUNDIR}/${TRIAL}/pquery.log to see the error. The solution is to ensure that LD_LIBRARY_PATH is set correctly (for example: execute '$ export LD_LIBRARY_PATH=<your_mysql_base_directory>/lib' in your shell. This will happen only if you use pquery without statically linked client libraries, and this in turn would happen only if you compiled pquery yourself instead of using the pre-built binaries available in https://github.com/Percona-QA/percona-qa (ref subdirectory/files ./pquery/pquery*) - which are normally used by this script (hence this situation is odd to start with). The pquery binaries in percona-qa all include a statically linked mysql client library matching the mysql flavor (PS,MS,MD,WS) it was built for. Another reason for this error may be that (having used pquery without statically linked client binaries as mentioned earlier) the client libraries are not available at the location set in LD_LIBRARY_PATH (which is currently set to '${LD_LIBRARY_PATH}'."
+          exit 1
         fi
+        Y=$X
+        sleep 1
+        if [ "`ps -ef | grep ${PQPID} | grep -v grep`" == "" ]; then  # pquery ended
+          break
+        fi
+        if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
+          if [ $X -eq $CRASH_RECOVERY_KILL_BEFORE_END_SEC ]; then
+             kill -9 ${MPID} >/dev/null 2>&1;
+             sleep 2
+             echoit "killed for crash testing"
+             break
+          fi
+        fi
+      done
+      if [ $Y -eq ${PQUERY_RUN_TIMEOUT} ]; then 
+        echoit "${PQUERY_RUN_TIMEOUT}s timeout reached. Terminating this trial..."
       fi
-    done
-    if [ $Y -eq ${PQUERY_RUN_TIMEOUT} ]; then 
-      echoit "${PQUERY_RUN_TIMEOUT}s timeout reached. Terminating this trial..."
     fi
   else
     if [ ${PXC} -eq 0 ]; then
@@ -554,9 +578,9 @@ pquery_test(){
     fi
   fi
   if [ ${VALGRIND_RUN} -eq 1 ]; then
-    echoit "Cleaning up & saving results as needed. Note that this may take up to 10 minutes because this is a Valgrind run. You may also see a mysqladmin killed message..."
+    echoit "Cleaning up & saving results if needed. Note that this may take up to 10 minutes because this is a Valgrind run. You may also see a mysqladmin killed message..."
   else
-    echoit "Cleaning up & saving results as needed..."
+    echoit "Cleaning up & saving results if needed..."
   fi
   TRIAL_SAVED=0;
   sleep 2  # Delay to ensure core was written completely (if any)
@@ -587,9 +611,11 @@ pquery_test(){
           TRIAL_SAVED=1
         fi
       fi
-    else
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), may catch shutdown bugs
-      sleep 2
+    else     
+      if [ ${QUERY_CORRECTNESS_TESTING} -ne 1 ]; then
+        timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), may catch shutdown bugs
+        sleep 2
+      fi
     fi
     (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; wait ${MPID} >/dev/null 2>&1) &  # Terminate mysqld
     wait ${MPID} >/dev/null 2>&1
@@ -604,77 +630,94 @@ pquery_test(){
     sudo chown -R `whoami`:`whoami` ${RUNDIR}/${TRIAL}
   fi
   if [ ${ISSTARTED} -eq 1 ]; then  # Do not try and print pquery log for a failed mysqld start
-    echoit "$(cat ${RUNDIR}/${TRIAL}/pquery.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+    if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+      echoit "Pri engine pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery1.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+      echoit "Sec engine pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery2.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+    else
+      echoit "pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+    fi
   fi
-  if [ ${VALGRIND_RUN} -eq 1 ]; then
-    VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
-    # What follows next are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
-    VALGRIND_CHECK_1=$(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ${RUNDIR}/${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
-    if [ "${VALGRIND_CHECK_1}" == "" ]; then VALGRIND_CHECK_1=0; fi
-    if [ ${VALGRIND_CHECK_1} -gt 0 ]; then 
-      VALGRIND_ERRORS_FOUND=1; 
+  if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+    if [ "${FAILEDSTARTABORT}" != "1" ]; then
+      QC_RESULT=$(diff ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result)
+      if [ "${QC_RESULT}" != "" ]; then
+        echoit "Found $(echo ${QC_RESULT} | wc -l) differences between ${QC_PRI_ENGINE} and ${QC_SEC_ENGINE} results. Saving trial..."
+        STOREANYWAY=1
+        savetrial
+        TRIAL_SAVED=1
+      fi
     fi
-    if egrep -qi "^[ \t]*==[0-9]+[= \t]+[atby]+[ \t]*0x" ${RUNDIR}/${TRIAL}/log/master.err; then 
-      VALGRIND_ERRORS_FOUND=1; 
+  else
+    if [ ${VALGRIND_RUN} -eq 1 ]; then
+      VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
+      # What follows next are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
+      VALGRIND_CHECK_1=$(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ${RUNDIR}/${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
+      if [ "${VALGRIND_CHECK_1}" == "" ]; then VALGRIND_CHECK_1=0; fi
+      if [ ${VALGRIND_CHECK_1} -gt 0 ]; then 
+        VALGRIND_ERRORS_FOUND=1; 
+      fi
+      if egrep -qi "^[ \t]*==[0-9]+[= \t]+[atby]+[ \t]*0x" ${RUNDIR}/${TRIAL}/log/master.err; then 
+        VALGRIND_ERRORS_FOUND=1; 
+      fi
+      if egrep -qi "==[0-9]+== ERROR SUMMARY: [1-9]" ${RUNDIR}/${TRIAL}/log/master.err; then 
+        VALGRIND_ERRORS_FOUND=1; 
+      fi
+      if [ ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then
+        VALGRIND_TEXT=`${SCRIPT_PWD}/valgrind_string.sh ${RUNDIR}/${TRIAL}/log/master.err`
+        echoit "Valgrind error detected: ${VALGRIND_TEXT}"
+        if [ ${TRIAL_SAVED} -eq 0 ]; then
+          savetrial
+          TRIAL_SAVED=1
+        fi
+      else
+        # Report that no Valgrnid errors were found & Include ERROR SUMMARY from error log
+        echoit "No Valgrind errors detected. $(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ${RUNDIR}/${TRIAL}/log/master.err | sed 's|.*ERROR S|ERROR S|')"
+      fi
     fi
-    if egrep -qi "==[0-9]+== ERROR SUMMARY: [1-9]" ${RUNDIR}/${TRIAL}/log/master.err; then 
-      VALGRIND_ERRORS_FOUND=1; 
-    fi
-    if [ ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then
-      VALGRIND_TEXT=`${SCRIPT_PWD}/valgrind_string.sh ${RUNDIR}/${TRIAL}/log/master.err`
-      echoit "Valgrind error detected: ${VALGRIND_TEXT}"
+    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
+      echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.*)"
+      if [ ${PXC} -eq 0 ]; then
+        echoit "Bug found (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err`"
+      else
+        CORE1=`ls ${RUNDIR}/${TRIAL}/1/*core.* 2>/dev/null`
+        CORE2=`ls ${RUNDIR}/${TRIAL}/2/*core.* 2>/dev/null`
+        CORE3=`ls ${RUNDIR}/${TRIAL}/3/*core.* 2>/dev/null`
+        if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE1}`"; fi
+        if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE2}`"; fi
+        if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE3}`"; fi
+      fi
       if [ ${TRIAL_SAVED} -eq 0 ]; then
         savetrial
         TRIAL_SAVED=1
       fi
+    elif [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
+      if [ ${TRIAL_SAVED} -eq 0 ]; then
+        echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whetter an issue was detected or not)"
+        savetrial
+        TRIAL_SAVED=1
+      fi
     else
-      # Report that no Valgrnid errors were found & Include ERROR SUMMARY from error log
-      echoit "No Valgrind errors detected. $(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ${RUNDIR}/${TRIAL}/log/master.err | sed 's|.*ERROR S|ERROR S|')"
-    fi
+      if [ ${SAVE_SQL} -eq 1 ]; then 
+        if [ ${VALGRIND_RUN} -eq 1 ]; then
+          if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
+            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump or Valgrind issue was generated), except the SQL trace (as SAVE_SQL=1)"
+          fi
+        else
+          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump was generated), except the SQL trace (as SAVE_SQL=1)"
+        fi
+        savesql
+      else
+        if [ ${VALGRIND_RUN} -eq 1 ]; then
+          if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
+            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump or Valgrind issue was generated)" 
+          fi
+        else
+          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump was generated)" 
+        fi
+      fi
+    fi  
   fi
-  if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
-    echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.*)"
-    if [ ${PXC} -eq 0 ]; then
-      echoit "Bug found (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err`"
-    else
-      CORE1=`ls ${RUNDIR}/${TRIAL}/1/*core.* 2>/dev/null`
-      CORE2=`ls ${RUNDIR}/${TRIAL}/2/*core.* 2>/dev/null`
-      CORE3=`ls ${RUNDIR}/${TRIAL}/3/*core.* 2>/dev/null`
-      if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE1}`"; fi
-      if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE2}`"; fi
-      if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE3}`"; fi
-    fi
-    if [ ${TRIAL_SAVED} -eq 0 ]; then
-      savetrial
-      TRIAL_SAVED=1
-    fi
-  elif [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
-    if [ ${TRIAL_SAVED} -eq 0 ]; then
-      echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whetter an issue was detected or not)"
-      savetrial
-      TRIAL_SAVED=1
-    fi
-  else
-    if [ ${SAVE_SQL} -eq 1 ]; then 
-      if [ ${VALGRIND_RUN} -eq 1 ]; then
-        if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
-          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump or Valgrind issue was generated), except the SQL trace (as SAVE_SQL=1)"
-        fi
-      else
-        echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump was generated), except the SQL trace (as SAVE_SQL=1)"
-      fi
-      savesql
-    else
-      if [ ${VALGRIND_RUN} -eq 1 ]; then
-        if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
-          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump or Valgrind issue was generated)" 
-        fi
-      else
-        echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump was generated)" 
-      fi
-    fi
-  fi  
-}
+} 
 
 # Setup
 rm -Rf ${WORKDIR} ${RUNDIR}
