@@ -39,6 +39,12 @@ MYSAFE="--no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M 
 THREADS=1                                                      # Number of threads to use. Default: 1. Set to >1 to enable multi-threaded runs. Also see MULTI_THREADED_TESTC_LINES
 MULTI_THREADED_TESTC_LINES=25000                               # Only takes effect if THREADS>1. pquery-run will take this amount of lines to form individual testcases for multi-threaded runs. IOW, if THREADS=1, pquery-run will just run one client, continously getting random queries out of INFILE, untill QUERIES_PER_THREAD queries is reached (if mysqld does not crash earlier). On the other hand, if THREADS>1, pquery-run will take a random chunk out of INFILE (to the amount of MULTI_THREADED_TESTC_LINES lines) _before_ starting each trial run. It will then run pquery, with THREADS threads, only using that smaller chunk extracted from INFILE. These individual SQL input files are saved in the trial's dirtory. You may want to keep this number small to ensure that true-multi-threaded testcase reduction using reducer.sh is still sufficiently fast (25K lines takes a few days to reduce), while keeping it large enough to ensure crashes/asserts to start with.
 
+# ========================================= User configurable variables to enable query correctness testing ======================
+QUERY_CORRECTNESS_TESTING=1
+QC_NR_OF_STATEMENTS_PER_TRIAL=20
+QC_PRI_ENGINE=InnoDB
+QC_SEC_ENGINE=RocksDB
+
 # ========================================= User configurable variables to enable query duration testing =========================
 QUERY_DURATION_TESTING=0
 
@@ -148,9 +154,17 @@ if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
     PQUERY_RUN_TIMEOUT=30
   fi
 fi
+if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a ${QUERY_DURATION_TESTING} -eq 1 ]; then
+  echoit "QUERY_CORRECTNESS_TESTING and QUERY_DURATION_TESTING cannot be both active at the same time due to parsing limitations. This is the case. Please disable one of them."
+  exit 1
+fi
+if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+  echoit "Note: As this is a QUERY_CORRECTNESS_TESTING=1 run, and THREADS was set to ${THREADS}, this script is setting the number of threads to the required setting of 1 thread for this run."
+  THREADS=1
+fi
 if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then
-    echoit "Note: As this is a QUERY_DURATION_TESTING=1 run, and THREADS was set to ${THREADS}, this script is setting the number of threads to the required setting of 1 thread for this run. (While multi-threaded query duration testing may be added later, it's priority is low, and it's use case seems small.)"
-    THREADS=1
+  echoit "Note: As this is a QUERY_DURATION_TESTING=1 run, and THREADS was set to ${THREADS}, this script is setting the number of threads to the required setting of 1 thread for this run."
+  THREADS=1
 fi
 if [ ${VALGRIND_RUN} -eq 1 ]; then
   echoit "Note: As this is a VALGRIND_RUN=1 run, this script is increasing MYSQLD_START_TIMEOUT (${MYSQLD_START_TIMEOUT}) by 240 seconds because Valgrind is very slow in starting up mysqld."
@@ -436,14 +450,41 @@ pquery_test(){
           ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
         fi
       else
-        ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+          # Single-threaded run using a chunk from INFILE for query correctness testing
+          echoit "Taking ${QC_NR_OF_STATEMENTS_PER_TRIAL} lines randomly from ${INFILE} as testcase for this query correctness trial..."
+          shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
+          echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
+          cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1
+          cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2
+          sed -i "s|innodb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|innodb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|tokudb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|tokudb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|myisam|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|myisam|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|memory|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|memory|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|merge|${QC_PRI_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|merge|${QC_SEC_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|csv|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|csv|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|[m]aria|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|[m]aria|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|heap|${QC_PRI_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|heap|${QC_SEC_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|federated|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|federated|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|archive|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|archive|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|mrg_myisam|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|mrg_myisam|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|cassandra|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|cassandra|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|connect|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|connect|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|ndb|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|ndb|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          sed -i "s|ndbcluster|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|ndbcluster|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+          SQL_FILE="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql"
+
+
+        else
+          ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        fi
       fi
     else  
       if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
         SQL_FILE="--infile=${INFILE}"
       else
         # Multi-threaded run using a chunk from INFILE (${THREADS} clients)
-        echoit "Taking ${MULTI_THREADED_TESTC_LINES} lines randomly from ${INFILE} as testcase for this trial..."
+        echoit "Taking ${MULTI_THREADED_TESTC_LINES} lines randomly from ${INFILE} as testcase for this multi-threaded trial..."
         shuf --random-source=/dev/urandom ${INFILE} | head -n${MULTI_THREADED_TESTC_LINES} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         SQL_FILE="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql"
       fi
