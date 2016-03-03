@@ -3220,7 +3220,7 @@ if [ $SKIPSTAGE -lt 8 ]; then
         if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
           echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA"
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8";
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8";
         fi
         run_and_check
         if [ "${STAGE8_CHK}" == "1" ]; then
@@ -3229,6 +3229,12 @@ if [ $SKIPSTAGE -lt 8 ]; then
           myextra_check
         else
           MYEXTRA_STAGE8=$(cat $FILE2 | tr -s "\n" " ")
+          COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA_STAGE8 | wc -w)
+          if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA"
+          else
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8";
+          fi
           run_and_check
           if [ "${STAGE8_CHK}" == "1" ]; then
             ISSUE_CHECK=1
