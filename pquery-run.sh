@@ -444,46 +444,62 @@ pquery_test(){
     rm -f ${RUNDIR}/${TRIAL}/pquery_thread-0.sql  # Remove the earlier created fake (SELECT 1; only) pquery_thread-0.sql file present for startup issues (server is started OK now)
     echoit "Starting pquery (log stored in ${RUNDIR}/${TRIAL}/pquery.log)..."
     if [ ${THREADS} -eq 1 ]; then  # Single-threaded run (1 client only)
-      if [ ${PXC} -eq 0 ]; then
-        if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
-          # Single-threaded query correctness run using a chunk from INFILE against two databases (test1/test2) to then compare outcomes
-          echoit "Taking ${QC_NR_OF_STATEMENTS_PER_TRIAL} lines randomly from ${INFILE} as testcase for this query correctness trial..."
-          shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
-          echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
-          cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1
-          cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2
-          sed -i "s|innodb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|innodb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|tokudb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|tokudb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|myisam|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|myisam|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|memory|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|memory|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|merge|${QC_PRI_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|merge|${QC_SEC_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|csv|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|csv|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|[m]aria|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|[m]aria|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|heap|${QC_PRI_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|heap|${QC_SEC_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|federated|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|federated|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|archive|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|archive|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|mrg_myisam|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|mrg_myisam|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|cassandra|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|cassandra|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|connect|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|connect|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|ndb|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|ndb|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          sed -i "s|ndbcluster|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|ndbcluster|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
-          SQL_FILE_1="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1"
-          SQL_FILE_2="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2"
-          mkdir ${RUNDIR}/${TRIAL}/data/test1 ${RUNDIR}/${TRIAL}/data/test2
-          if [ ! -d ${RUNDIR}/${TRIAL}/data/test1 ]; then echoit "Something is wrong: this script attempted to create ${RUNDIR}/${TRIAL}/data/test1, but it does not exist after the creation attempt. Please check disk space, privileges, etc."; exit 1; fi
-          if [ ! -d ${RUNDIR}/${TRIAL}/data/test2 ]; then echoit "Something is wrong: this script attempted to create ${RUNDIR}/${TRIAL}/data/test2, but it does not exist after the creation attempt. Please check disk space, privileges, etc."; exit 1; fi
-          ${PQUERY_BIN} ${SQL_FILE_1} --database=test1 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery1.log 2>&1 &
-          ${PQUERY_BIN} ${SQL_FILE_2} --database=test2 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery2.log 2>&1 &
-          exit 0  # Debug testing
+      if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then # Single-threaded query correctness run using a chunk from INFILE against two db's (test1/test2) to then compare outcomes
+        echoit "Taking ${QC_NR_OF_STATEMENTS_PER_TRIAL} lines randomly from ${INFILE} as testcase for this query correctness trial..."
+        shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
+        echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
+        cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1
+        cp  ${RUNDIR}/${TRIAL}/${TRIAL}.sql  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2
+        sed -i "s|innodb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|innodb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|tokudb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|tokudb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|myisam|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|myisam|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|memory|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|memory|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|merge|${QC_PRI_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|merge|${QC_SEC_ENGINE}|gi"      ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|csv|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|csv|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|[m]aria|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|[m]aria|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|heap|${QC_PRI_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|heap|${QC_SEC_ENGINE}|gi"       ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|federated|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|federated|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|archive|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|archive|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|mrg_myisam|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|mrg_myisam|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|cassandra|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|cassandra|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|connect|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|connect|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|ndb|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|ndb|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        sed -i "s|ndbcluster|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1; sed -i "s|ndbcluster|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2;
+        SQL_FILE_1="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine1"
+        SQL_FILE_2="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.engine2"
+        mkdir ${RUNDIR}/${TRIAL}/data/test1 ${RUNDIR}/${TRIAL}/data/test2
+        if [ ! -d ${RUNDIR}/${TRIAL}/data/test1 ]; then echoit "Something is wrong: this script attempted to create ${RUNDIR}/${TRIAL}/data/test1, but it does not exist after the creation attempt. Please check disk space, privileges, etc."; exit 1; fi
+        if [ ! -d ${RUNDIR}/${TRIAL}/data/test2 ]; then echoit "Something is wrong: this script attempted to create ${RUNDIR}/${TRIAL}/data/test2, but it does not exist after the creation attempt. Please check disk space, privileges, etc."; exit 1; fi
+        if [ ${PXC} -eq 0 ]; then
+          ${PQUERY_BIN} ${SQL_FILE_1} --database=test1 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
+          mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
+          sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${QC_PRI_ENGINE}.result
+          ${PQUERY_BIN} ${SQL_FILE_2} --database=test2 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
+          mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
+          sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${QC_SEC_ENGINE}.result
         else
-          if [ ${QUERY_DURATION_TESTING} -eq 0 ]; then
+          ${PQUERY_BIN} ${SQL_FILE_1} --database=test1 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
+          mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
+          sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${QC_PRI_ENGINE}.result
+          ${PQUERY_BIN} ${SQL_FILE_2} --database=test2 --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-query-duration --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
+          mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
+          sed 's|^.*;||;s|test1|test|g;s|test2|test|g' ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${QC_SEC_ENGINE}.result
+        fi
+        exit 0  # Debug testing
+      else  # Not a query correctness testing run
+        if [ ${QUERY_DURATION_TESTING} -eq 0 ]; then  # Query duration testing run
+          if [ ${PXC} -eq 0 ]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
           else
+            ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+          fi
+        else  # Standard pquery run
+          if [ ${PXC} -eq 0 ]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+          else
+            ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
           fi
         fi
-      else
-        ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --addr=127.0.0.1 --port=10000 >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
       fi
     else  
       if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
