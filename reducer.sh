@@ -1338,27 +1338,36 @@ start_mysqld_main(){
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
-    CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
-                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT"
-    MYSQLD_START_TIME=$(date +'%s')
-    $CMD > $WORKD/mysqld.out 2>&1 &
-     PIDV="$!"
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
-  else
     CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON"
+                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT"
+    if [ "${CHK_ROCKSDB}" == "1" ];then
+      CMD="${CMD} $MYROCKS"
+      sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
+    fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
-     PIDV="$!"
+    PIDV="$!"
+  else
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
+
+    CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
+                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON"
+    if [ "${CHK_ROCKSDB}" == "1" ];then  
+      CMD="${CMD} $MYROCKS"
+      sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
+    fi
+    MYSQLD_START_TIME=$(date +'%s')
+    $CMD > $WORKD/mysqld.out 2>&1 &
+    PIDV="$!"
   fi
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
 #  sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_DIR}/|'))#g" $WORK_START
@@ -1378,7 +1387,10 @@ start_valgrind_mysqld_main(){
                               --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
                               --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                               --event-scheduler=ON"
-                              # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none  
+                              # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none 
+  if [ "${CHK_ROCKSDB}" == "1" ];then
+    CMD="${CMD} $MYROCKS"
+  fi
   MYSQLD_START_TIME=$(date +'%s')
   $CMD > $WORKD/valgrind.out 2>&1 &
   
@@ -1394,6 +1406,9 @@ start_valgrind_mysqld_main(){
        \$BIN --basedir=\${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
        --socket=$WORKD/socket.sock $MYEXTRA --event-scheduler=ON >>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
+  if [ "${CHK_ROCKSDB}" == "1" ];then
+    sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START_VALGRIND
+  fi
   sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START_VALGRIND
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START_VALGRIND
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START_VALGRIND
@@ -2043,6 +2058,9 @@ stop_mysqld_or_pxc(){
 finish(){
   if [ "${STAGE}" != "" -a "${STAGE8_CHK}" != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
     if [ ${STAGE} -eq 8 ]; then
+      if [ "${CHK_ROCKSDB}" == "1" ];then
+        MYEXTRA="$MYEXTRA ${MYROCKS}"
+      fi
       if [ ${STAGE8_CHK} -eq 0 ]; then
         export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
         sed -i "s|--event-scheduler=ON|--event-scheduler=ON $MYEXTRA |" $WORK_START
@@ -3190,6 +3208,17 @@ if [ $SKIPSTAGE -lt 8 ]; then
 
   myextra_check
 
+  rocksdb_startup_chk(){
+   if echo "${MYEXTRA_STAGE8}" | grep '\--rocksdb\|--default-storage-engine=RocksDB\|--skip-innodb\|--default-tmp-storage-engine=MyISAM'; then
+     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--default-tmp-storage-engine=MyISAM||")
+     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--rocksdb||")
+     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--skip-innodb||")
+     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--default-storage-engine=RocksDB||")
+     CHK_ROCKSDB=1
+     ECHO_ROCKSDB=": RocksDB run, server startup will use following mysqld options - $MYROCKS"
+   fi
+  }
+
   myextra_reduction(){
     while read line; do
       NEXTACTION="& try removing next mysqld option"
@@ -3203,7 +3232,7 @@ if [ $SKIPSTAGE -lt 8 ]; then
       fi
       STAGE8_CHK=0
       COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA";
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
       run_and_check
       TRIAL=$[$TRIAL+1]
       STAGE8_OPT=$line
@@ -3216,11 +3245,12 @@ if [ $SKIPSTAGE -lt 8 ]; then
         ISSUE_CHECK=0
         NEXTACTION="& try removing next mysqld option"
         MYEXTRA_STAGE8=$(cat $FILE1 | tr -s "\n" " ")
+        rocksdb_startup_chk
         COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA_STAGE8 | wc -w)
         if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA $ECHO_ROCKSDB"
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8";
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8 $ECHO_ROCKSDB";
         fi
         run_and_check
         if [ "${STAGE8_CHK}" == "1" ]; then
@@ -3229,11 +3259,12 @@ if [ $SKIPSTAGE -lt 8 ]; then
           myextra_check
         else
           MYEXTRA_STAGE8=$(cat $FILE2 | tr -s "\n" " ")
+          rocksdb_startup_chk
           COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA_STAGE8 | wc -w)
           if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA"
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA $ECHO_ROCKSDB"
           else
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8";
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8 $ECHO_ROCKSDB";
           fi
           run_and_check
           if [ "${STAGE8_CHK}" == "1" ]; then
