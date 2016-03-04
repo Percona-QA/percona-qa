@@ -29,6 +29,7 @@ TEXT="somebug"                  # Set to the text your are looking for in MODE 1
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
+MYROCKS="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"
 MYBASE="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"
 
 # === Sporadic testcase reduction options (Used when testcases prove to be sporadic *and* fail to reduce using basic methods)
