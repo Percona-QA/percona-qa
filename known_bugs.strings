@@ -130,8 +130,10 @@ ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_          ## http://bugs.mysql.co
 Z22get_filename_hash_pinsP10PFS_thread                   ## http://bugs.mysql.com/bug.php?id=79042
 
 ## =========== PS 5.7 Beta & GA ===========
+buf0lru.cc line 2259                                     ## https://bugs.launchpad.net/percona-server/+bug/1553166
 #ZN8Item_row7val_strEP6String                   ## Fixed ## alpha # https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
 #btr0cur.cc line 830                            ## Fixed ## beta  # https://bugs.launchpad.net/percona-server/+bug/1517757  ## Fixed in PS 5.7.10-2rc2
+row0ins.cc line 282                                      ## https://bugs.launchpad.net/percona-server/+bug/1553883
 rem0rec.cc line 886                                      ## beta  # https://bugs.launchpad.net/percona-server/+bug/1540903
 trx0trx.cc line 1297                                     ## beta  # http://bugs.mysql.com/bug.php?id=79349
 trx0trx.cc line 1262                                     ## MS5.7 # http://bugs.mysql.com/bug.php?id=79349 (same bug as trx0trx.cc line 1297 on PS)
@@ -171,6 +173,7 @@ Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # http
 Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
 #Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917 # Fixed 5.7 RC2
 Handlerton: ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
+Handlerton. next_key_part < _rec_per_keys                              ## https://tokutek.atlassian.net/browse/DB-944
 mh->m_magic == 1234                                                   ## https://tokutek.atlassian.net/browse/DB-920  
 #used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926 # Fixed 5.7 RC2
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb   ## https://tokutek.atlassian.net/browse/DB-921
@@ -242,6 +245,7 @@ fsp0fsp.cc line 2150                                                            
 fsp0fsp.cc line 2188                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1382758 (with older PS build)
 fsp0fsp.cc line 3208                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1384567 (won't be fixed)
 fsp0fsp.cc line 3246                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1384567 (with older PS build) (idem)
+fts0fts.cc line 2209                                                                    ## http://bugs.mysql.com/bug.php?id=80579
 fts0fts.cc line 2224                                                            ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1384588 (with older PS build)
 fts0fts.cc line 2228                                                            ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1384588
 fts0vlc.ic line 96                                                                      ## http://bugs.mysql.com/bug.php?id=78643
