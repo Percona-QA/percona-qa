@@ -6,13 +6,8 @@
 # To aid with correct bug to testcase generation for pquery trials, this script creates a local run script for reducer and sets #VARMOD#.
 # This handles crashes/asserts for the moment only. Could be expanded later for other cases, and to handle more unforseen situations.
 
-# TODO: This script has started to handle Valgrind trials. When a Valgrind bug is detected for a Valgrind trial, a Valgrind bug reducer.sh will be generated instead of a crash
-#       reducer.sh. However, offcourse there can be a Valgrind error AND a crash. The script does not handle this yet. One idea would be to have a reducer<trialnr>.sh generated
-#       for each crash and a reducer_val<trialnr>.sh for each Valgrind bug, or at least the first one from the error log. Also fix [*] hack (should be removed) when fixing this.
-#       IDEA: use VALGRIND_TEXT, and if VALGRIND_CHECK is set, just write two reducer's, each with their own TEXT and MODE (otherwise things remain the same)
-
 # User configurable variables
-VALGRIND_OVERRIDE=1    # If set to 1, Valgrind issues are handled as if they were a crash (core dump required)
+VALGRIND_OVERRIDE=0    # If set to 1, Valgrind issues are handled as if they were a crash (core dump required)
 
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
@@ -409,18 +404,22 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
           echo "*** ERROR: No specific Valgrind string was detected in ./${TRIAL}/log/master.err! This may be a bug... Setting TEXT to generic '==    at 0x'"
           TEXT="==    at 0x"
         fi
-      else
-        echo "Though ${TRIAL} is a Valgrind trial, no Valgrind errors were found. Not sure how to handle this trial. You may need to delete this trial manually."
-        VALGRIND_CHECK=0  # [*] Temporary hack which ensures that if there is a crash/core, a reducer will still be produced using that data.
+        # generate a valgrind specific reducer and then reset values if standard crash reducer is needed
+        OUTFILE=_val$TRIAL
+        generate_reducer_script
+        VALGRIND_CHECK=0
+        OUTFILE=$TRIAL
       fi
-    else  # Standard crash issue
+    fi
+    # if not a valgrind run process everything, if it is valgrind run only if there's a core
+    if [ ! -r ./${TRIAL}/VALGRIND ] || [ -r ./${TRIAL}/VALGRIND -a "$CORE" != "" ]; then
       TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/log/master.err`
+      echo "* TEXT variable set to: \"${TEXT}\""
+      if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
+        auto_interleave_failing_sql
+      fi
+      generate_reducer_script
     fi
-    echo "* TEXT variable set to: \"${TEXT}\""
-    if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
-      auto_interleave_failing_sql
-    fi
-    generate_reducer_script
   fi
   if [ "${MYEXTRA}" != "" ]; then
     echo "* MYEXTRA variable set to: ${MYEXTRA}"
@@ -432,7 +431,7 @@ done
 
 if [ ${REACH} -eq 0 ]; then # Avoid normal output if this is an automated run (REACH=1)
   echo "======================================================================================================================================================"
-  echo -e "\nDone!! Start reducer scripts like this: './reducerTRIAL.sh' where TRIAL stands for the trial number you would like to reduce"
+  echo -e "\nDone!! Start reducer scripts like this: './reducerTRIAL.sh' or './reducer_valTRIAL.sh' where TRIAL stands for the trial number you would like to reduce"
   echo "Both reducer and the SQL trace file have been pre-prepped with all the crashing queries and settings, ready for you to use without further options!"
   echo -e "\nIMPORTANT!! Remember that settings pre-programmed into reducerTRIAL.sh by this script are in the 'Machine configurable variables' section, not"
   echo "in the 'User configurable variables' section. As such, and for example, if you want to change the settings (for example change MODE=3 to MODE=4), then"
