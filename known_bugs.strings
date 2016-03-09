@@ -124,10 +124,13 @@ ha_innopart.cc line 3526                                 ## http://bugs.mysql.co
 ha_innodb.cc line 1803                                   ## http://bugs.mysql.com/bug.php?id=78732
 
 ## =========== MS 5.7 GA ===========
+ut0ut.cc line 936                                        ## http://bugs.mysql.com/bug.php?id=80668
 pfs_file .= __null                                       ## http://bugs.mysql.com/bug.php?id=79016
 Z8filesortP3THDP8FilesortbPyS3_S3_                       ## http://bugs.mysql.com/bug.php?id=79016
 ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_          ## http://bugs.mysql.com/bug.php?id=79018
 Z22get_filename_hash_pinsP10PFS_thread                   ## http://bugs.mysql.com/bug.php?id=79042
+thd->owned_gtid.is_empty                                 ## http://bugs.mysql.com/bug.php?id=80663
+thd->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS      ## http://bugs.mysql.com/bug.php?id=80665
 
 ## =========== PS 5.7 Beta & GA ===========
 buf0lru.cc line 2259                                     ## https://bugs.launchpad.net/percona-server/+bug/1553166
@@ -172,8 +175,9 @@ Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # http
 ## =========== PS 5.7 TokuDB bugs ==========
 Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
 #Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917 # Fixed 5.7 RC2
-Handlerton: ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
-Handlerton. next_key_part < _rec_per_keys                              ## https://tokutek.atlassian.net/browse/DB-944
+Handlerton: ctx->alter_txn == trx->stmt                               ## https://tokutek.atlassian.net/browse/DB-936
+Handlerton. next_key_part < _rec_per_keys                             ## https://tokutek.atlassian.net/browse/DB-944
+Handlerton. db .= NULL                                                ## https://tokutek.atlassian.net/browse/DB-945 
 mh->m_magic == 1234                                                   ## https://tokutek.atlassian.net/browse/DB-920  
 #used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926 # Fixed 5.7 RC2
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb   ## https://tokutek.atlassian.net/browse/DB-921
