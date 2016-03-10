@@ -124,6 +124,8 @@ ha_innopart.cc line 3526                                 ## http://bugs.mysql.co
 ha_innodb.cc line 1803                                   ## http://bugs.mysql.com/bug.php?id=78732
 
 ## =========== MS 5.7 GA ===========
+.xid->is_null                                            ## http://bugs.mysql.com/bug.php?id=80694
+ut0ut.cc line 921                                        ## http://bugs.mysql.com/bug.php?id=80695 PS
 ut0ut.cc line 936                                        ## http://bugs.mysql.com/bug.php?id=80668
 pfs_file .= __null                                       ## http://bugs.mysql.com/bug.php?id=79016
 Z8filesortP3THDP8FilesortbPyS3_S3_                       ## http://bugs.mysql.com/bug.php?id=79016
@@ -131,6 +133,8 @@ ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_          ## http://bugs.mysql.co
 Z22get_filename_hash_pinsP10PFS_thread                   ## http://bugs.mysql.com/bug.php?id=79042
 thd->owned_gtid.is_empty                                 ## http://bugs.mysql.com/bug.php?id=80663
 thd->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS      ## http://bugs.mysql.com/bug.php?id=80665
+thd->variables.gtid_next.type == AUTOMATIC_GROUP         ## http://bugs.mysql.com/bug.php?id=80670
+
 
 ## =========== PS 5.7 Beta & GA ===========
 buf0lru.cc line 2259                                     ## https://bugs.launchpad.net/percona-server/+bug/1553166
