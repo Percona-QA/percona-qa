@@ -272,7 +272,8 @@
 --debug-sync-timeout=2047
 --debug-sync-timeout=-1125899906842624
 --debug-sync-timeout=1125899906842624
---default-password-lifetime=360
+--default-authentication-plugin=mysql_native_password
+--default-authentication-plugin=sha256_password
 --default-password-lifetime=0
 --default-password-lifetime=1
 --default-password-lifetime=2
@@ -659,6 +660,12 @@
 --innodb-change-buffer-max-size=2047
 --innodb-change-buffer-max-size=-1125899906842624
 --innodb-change-buffer-max-size=1125899906842624
+--innodb-change-buffering=all
+--innodb-change-buffering=none
+--innodb-change-buffering=inserts
+--innodb-change-buffering=deletes
+--innodb-change-buffering=changes
+--innodb-change-buffering=purges
 --innodb-change-buffering-debug=0
 --innodb-change-buffering-debug=1
 --innodb-change-buffering-debug=2
@@ -757,6 +764,9 @@
 --innodb-corrupt-table-action=assert
 --innodb-corrupt-table-action=warn
 --innodb-corrupt-table-action=salvage
+--innodb-default-row-format=dynamic
+--innodb-default-row-format=compact
+--innodb-default-row-format=redundant
 --innodb-dict-stats-disabled-debug=1
 --innodb-dict-stats-disabled-debug=0
 --innodb-disable-background-merge=1
@@ -1589,6 +1599,8 @@
 --interactive-timeout=2047
 --interactive-timeout=-1125899906842624
 --interactive-timeout=1125899906842624
+--internal-tmp-disk-storage-engine=INNODB
+--internal-tmp-disk-storage-engine=MYISAM
 --join-buffer-size=262144
 --join-buffer-size=0
 --join-buffer-size=1
@@ -1679,6 +1691,9 @@
 --log-error-verbosity=2047
 --log-error-verbosity=-1125899906842624
 --log-error-verbosity=1125899906842624
+--log-output=FILE
+--log-output=TABLE
+--log-output=NONE
 --log-queries-not-using-indexes=1
 --log-queries-not-using-indexes=0
 --log-raw=1
@@ -1721,6 +1736,8 @@
 --log-slow-verbosity=full
 --log-slow-verbosity=profiling
 --log-slow-verbosity=profiling_use_getrusageg
+--log-statements-unsafe-for-binlog=1
+--log-statements-unsafe-for-binlog=0
 --log-syslog=1
 --log-syslog=0
 --log-syslog-include-pid=1
@@ -1746,6 +1763,8 @@
 --log-throttle-queries-not-using-indexes=2047
 --log-throttle-queries-not-using-indexes=-1125899906842624
 --log-throttle-queries-not-using-indexes=1125899906842624
+--log-timestamps=UTC
+--log-timestamps=SYSTEM
 --log-warnings=0
 --log-warnings=1
 --log-warnings=2
@@ -1756,7 +1775,6 @@
 --log-warnings=2047
 --log-warnings=-1125899906842624
 --log-warnings=1125899906842624
---log-warnings-suppress=1592
 --long-query-time=10
 --long-query-time=0
 --long-query-time=1
@@ -1780,6 +1798,8 @@
 --lower-case-table-names=2047
 --lower-case-table-names=-1125899906842624
 --lower-case-table-names=1125899906842624
+--master-info-repository=FILE
+--master-info-repository=TABLE
 --master-retry-count=86400
 --master-retry-count=0
 --master-retry-count=1
@@ -2268,7 +2288,7 @@
 --old-passwords=1125899906842624
 --old-style-user-limits=1
 --old-style-user-limits=0
---open-files-limit=5000
+--open-files-limit=1048576
 --open-files-limit=0
 --open-files-limit=1
 --open-files-limit=2
@@ -2694,7 +2714,7 @@
 --performance-schema-max-stage-classes=2047
 --performance-schema-max-stage-classes=-1125899906842624
 --performance-schema-max-stage-classes=1125899906842624
---performance-schema-max-statement-classes=200
+--performance-schema-max-statement-classes=201
 --performance-schema-max-statement-classes=0
 --performance-schema-max-statement-classes=1
 --performance-schema-max-statement-classes=2
@@ -2962,6 +2982,8 @@
 --read-rnd-buffer-size=-1125899906842624
 --read-rnd-buffer-size=1125899906842624
 --relay-log
+--relay-log-info-repository=FILE
+--relay-log-info-repository=TABLE
 --relay-log-purge=1
 --relay-log-purge=0
 --relay-log-recovery=1

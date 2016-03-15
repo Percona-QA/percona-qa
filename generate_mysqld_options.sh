@@ -404,20 +404,44 @@ while read line; do
     echoit "  > Adding possible values 52428800, 1125899906842624 for option '${OPTION}' to the final list..."
     echo "${OPTION}=52428800" >> ${OUTPUT_FILE}
     echo "${OPTION}==1125899906842624" >> ${OUTPUT_FILE}
-  elif [ "${OPTION}" == "--" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-  elif [ "${OPTION}" == "--" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-  elif [ "${OPTION}" == "--" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-  elif [ "${OPTION}" == "--" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-  elif [ "${OPTION}" == "--" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-  elif [ "${OPTION}" == "--" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-  elif [ "${OPTION}" == "--" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--default-authentication-plugin" ]; then
+    echoit "  > Adding possible values mysql_native_password, sha256_password for option '${OPTION}' to the final list..."
+    echo "${OPTION}=mysql_native_password" >> ${OUTPUT_FILE}
+    echo "${OPTION}=sha256_password" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--innodb-change-buffering" ]; then
+    echoit "  > Adding possible values all, none, inserts, deletes, changes, purges for option '${OPTION}' to the final list..."
+    echo "${OPTION}=all" >> ${OUTPUT_FILE}
+    echo "${OPTION}=none" >> ${OUTPUT_FILE}
+    echo "${OPTION}=inserts" >> ${OUTPUT_FILE}
+    echo "${OPTION}=deletes" >> ${OUTPUT_FILE}
+    echo "${OPTION}=changes" >> ${OUTPUT_FILE}
+    echo "${OPTION}=purges" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--innodb-default-row-format" ]; then
+    echoit "  > Adding possible values dynamic, compact, redundant for option '${OPTION}' to the final list..."
+    echo "${OPTION}=dynamic" >> ${OUTPUT_FILE}
+    echo "${OPTION}=compact" >> ${OUTPUT_FILE}
+    echo "${OPTION}=redundant" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--internal-tmp-disk-storage-engine" ]; then
+    echoit "  > Adding possible values INNODB, MYISAM for option '${OPTION}' to the final list..."
+    echo "${OPTION}=INNODB" >> ${OUTPUT_FILE}
+    echo "${OPTION}=MYISAM" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--log-output" ]; then
+    echoit "  > Adding possible values FILE, TABLE, NONE for option '${OPTION}' to the final list..."
+    echo "${OPTION}=FILE" >> ${OUTPUT_FILE}
+    echo "${OPTION}=TABLE" >> ${OUTPUT_FILE}
+    echo "${OPTION}=NONE" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--log-timestamps" ]; then
+    echoit "  > Adding possible values SYSTEM, UTC for option '${OPTION}' to the final list..."
+    echo "${OPTION}=UTC" >> ${OUTPUT_FILE}
+    echo "${OPTION}=SYSTEM" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--master-info-repository" ]; then
+    echoit "  > Adding possible values FILE, TABLE for option '${OPTION}' to the final list..."
+    echo "${OPTION}=FILE" >> ${OUTPUT_FILE}
+    echo "${OPTION}=TABLE" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--relay-log-info-repository" ]; then
+    echoit "  > Adding possible values FILE, TABLE for option '${OPTION}' to the final list..."
+    echo "${OPTION}=FILE" >> ${OUTPUT_FILE}
+    echo "${OPTION}=TABLE" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
 
