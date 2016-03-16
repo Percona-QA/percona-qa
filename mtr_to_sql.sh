@@ -182,6 +182,7 @@ cat ${TESTS_PATH}/*/*.test ${TESTS_PATH}/*/*/*.test ${TESTS_PATH}/*/*/*/*.test $
  sed 's/^[|]\+ //' | sed 's///g' | \
  sed 's|end//;|end //;|gi' | \
  sed 's| t[0-9]\+ | t1 |gi' | \
+ sed 's| m[0-9]\+ | t1 |gi' | \
  sed 's|mysqltest[\.0-9]*@|user@|gi' | \
  sed 's|mysqltest[\.0-9]*||gi' | \
  sed 's|user@|mysqltest@|gi' | \
