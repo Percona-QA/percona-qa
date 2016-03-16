@@ -297,7 +297,11 @@ pquery_test(){
   if [ ${PXC} -eq 0 ]; then
     mkdir -p ${RUNDIR}/${TRIAL}/data/test ${RUNDIR}/${TRIAL}/data/mysql ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log
     echo 'SELECT 1;' > ${RUNDIR}/${TRIAL}/pquery_thread-0.sql  # Add fake pquery_thread-0.sql file enabling pquery-prep-red.sh/reducer.sh to be used with/for mysqld startup issues
-    echoit "Copying datadir from template..."
+    if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+      echoit "Copying datadir from template for Primary mysqld..."
+    else
+      echoit "Copying datadir from template..."
+    fi
     if [ `ls -l ${WORKDIR}/data.template/* | wc -l` -eq 0 ]; then
       echoit "Assert: ${WORKDIR}/data.template/ is empty? Check ${WORKDIR}/log/mysql_install_db.txt to see if the original template creation worked ok. Terminating."
       echoit "Note that this is can be caused by not having perl-Data-Dumper installed (sudo yum install perl-Data-Dumper), which is required for mysql_install_db."
@@ -351,6 +355,8 @@ pquery_test(){
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
       echoit "Starting Secondary mysqld. Error log is stored at ${RUNDIR}/${TRIAL}/log2/master.err"
       mkdir -p ${RUNDIR}/${TRIAL}/data2/test ${RUNDIR}/${TRIAL}/data2/mysql ${RUNDIR}/${TRIAL}/tmp2 ${RUNDIR}/${TRIAL}/log2
+      echoit "Copying datadir from template for Secondary mysqld..."
+      cp -R ${WORKDIR}/data.template/* ${RUNDIR}/${TRIAL}/data
       PORT2=$[ $PORT + 1 ]
       if [ ${VALGRIND_RUN} -eq 0 ]; then
         CMD2="${BIN} ${MYSAFE} ${MYEXTRA2} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data2 --tmpdir=${RUNDIR}/${TRIAL}/tmp2 \
