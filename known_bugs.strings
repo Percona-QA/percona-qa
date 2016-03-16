@@ -412,6 +412,7 @@ table_share->tmp_table .= NO_TMP_TABLE .* m_lock_type .= 2                      
 . table->s->has_old_version                                                             ## https://bugs.launchpad.net/percona-server/+bug/1364707
 .table .* ..table->read_set .* bitmap_is_set.table->read_set, field_index               ## http://bugs.mysql.com/bug.php?id=73869
 .table .* ..table->write_set .* bitmap_is_set.table->write_set, field_index             ## http://bugs.mysql.com/bug.php?id=74848
+table_ref->has_record                                                                   ## https://bugs.mysql.com/bug.php?id=80759
 tab->ref.use_count                                                                      ## http://bugs.mysql.com/bug.php?id=74780
 tab->select->quick->index==.uint                                                        ## http://bugs.mysql.com/bug.php?id=74505
 thd->get_stmt_da()->is_eof()                                                            ## http://bugs.mysql.com/bug.php?id=73868
