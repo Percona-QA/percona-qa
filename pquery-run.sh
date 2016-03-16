@@ -356,7 +356,7 @@ pquery_test(){
       echoit "Starting Secondary mysqld. Error log is stored at ${RUNDIR}/${TRIAL}/log2/master.err"
       mkdir -p ${RUNDIR}/${TRIAL}/data2/test ${RUNDIR}/${TRIAL}/data2/mysql ${RUNDIR}/${TRIAL}/tmp2 ${RUNDIR}/${TRIAL}/log2
       echoit "Copying datadir from template for Secondary mysqld..."
-      cp -R ${WORKDIR}/data.template/* ${RUNDIR}/${TRIAL}/data
+      cp -R ${WORKDIR}/data.template/* ${RUNDIR}/${TRIAL}/data2
       PORT2=$[ $PORT + 1 ]
       if [ ${VALGRIND_RUN} -eq 0 ]; then
         CMD2="${BIN} ${MYSAFE} ${MYEXTRA2} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data2 --tmpdir=${RUNDIR}/${TRIAL}/tmp2 \
