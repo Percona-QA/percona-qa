@@ -523,12 +523,18 @@ pquery_test(){
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
         cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
          sed 's|PRIMARY[ \t]\+KEY||' | \
+         sed 's|UNIQUE[ \t]\+KEY||' | \
+         sed 's|FULLTEXT||' | \
+         sed 's| TEMPORARY||' | \
          sed 's|,[ \t]\+KEY([a-z]\+)||' | \
          grep -vi "variables" | \
          grep -vi "@@" | \
          grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
         cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
          sed 's|PRIMARY[ \t]\+KEY||' | \
+         sed 's|UNIQUE[ \t]\+KEY||' | \
+         sed 's|FULLTEXT||' | \
+         sed 's| TEMPORARY||' | \
          sed 's|,[ \t]\+KEY([a-z]\+)||' | \
          grep -vi "variables" | \
          grep -vi "@@" | \
