@@ -719,17 +719,17 @@ pquery_test(){
   if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -eq 0 ]; then  # If a core is found when query correctness testing is in progress, it will process it as a normal crash (without considering query correctness)
     if [ "${FAILEDSTARTABORT}" != "1" ]; then
       QC_RESULT1=$(diff ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result)
-      QC_RESULT2=$(cat ${RUNDIR}/${TRIAL}/pquery1.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')
-      QC_RESULT3=$(cat ${RUNDIR}/${TRIAL}/pquery2.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')
+      #QC_RESULT2=$(cat ${RUNDIR}/${TRIAL}/pquery1.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')
+      #QC_RESULT3=$(cat ${RUNDIR}/${TRIAL}/pquery2.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')
       QC_DIFF_FOUND=0
       if [ "${QC_RESULT1}" != "" ]; then
         echoit "Found $(echo ${QC_RESULT1} | wc -l) differences between ${QC_PRI_ENGINE} and ${QC_SEC_ENGINE} results. Saving trial..."
         QC_DIFF_FOUND=1
       fi
-      if [ "${QC_RESULT2}" != "${QC_RESULT3}" ]; then
-        echoit "Found differences in pquery execution success between ${QC_PRI_ENGINE} and ${QC_SEC_ENGINE} results. Saving trial..."
-        QC_DIFF_FOUND=1
-      fi
+      #if [ "${QC_RESULT2}" != "${QC_RESULT3}" ]; then
+      #  echoit "Found differences in pquery execution success between ${QC_PRI_ENGINE} and ${QC_SEC_ENGINE} results. Saving trial..."
+      #  QC_DIFF_FOUND=1
+      #fi
       if [ ${QC_DIFF_FOUND} -eq 1 ]; then
         STOREANYWAY=1
         savetrial
