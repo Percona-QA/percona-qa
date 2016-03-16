@@ -41,7 +41,7 @@ MULTI_THREADED_TESTC_LINES=25000                               # Only takes effe
 
 # ========================================= User configurable variables to enable query correctness testing ======================
 QUERY_CORRECTNESS_TESTING=1                                    # Set to 1 to enable query correctness testing. Normally set to 0 (off)
-QC_NR_OF_STATEMENTS_PER_TRIAL=100                              # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
+QC_NR_OF_STATEMENTS_PER_TRIAL=30                               # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
 QC_PRI_ENGINE=RocksDB                                          # Primary comparison engine for query correctness testing. Make sure to match this with MYEXTRA
 QC_SEC_ENGINE=InnoDB                                           # Secondary comparison engine for query correctness testing. Make sure to match this with MYEXTRA2
 MYEXTRA2="--default-tmp-storage-engine=MyISAM --default-storage-engine=InnoDB"                                                       # Used for secondary mysqld (RocksDB testing)
