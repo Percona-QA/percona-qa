@@ -522,10 +522,12 @@ pquery_test(){
         shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
         cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
+         sed 's|PRIMARY[ \t]\+KEY||' | \
          grep -vi "variables" | \
          grep -vi "@@" | \
          grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
         cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
+         sed 's|PRIMARY[ \t]\+KEY||' | \
          grep -vi "variables" | \
          grep -vi "@@" | \
          grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
