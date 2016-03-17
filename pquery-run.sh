@@ -1020,14 +1020,14 @@ pquery_test(){
       fi
     fi
     if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 -o $(ls -l ${RUNDIR}/${TRIAL}/*/mysqld.1/data/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
-      echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.*)"
+      echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.* ${RUNDIR}/${TRIAL}/*/mysqld.1/data/*core.* 2>/dev/null)"
       if [ ${PXC} -eq 0 ]; then
         echoit "Bug found (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err`"
       else
         if [ ${PXC_MTR_STARTUP} -eq 1 ];then
-          CORE1=`ls ${RUNDIR}/${TRIAL}/node1/mysqld.1/data/*core.* 2>/dev/null`
-          CORE2=`ls ${RUNDIR}/${TRIAL}/node2/mysqld.1/data/*core.* 2>/dev/null`
-          CORE3=`ls ${RUNDIR}/${TRIAL}/node3/mysqld.1/data/*core.* 2>/dev/null`
+          CORE1=`ls ${RUNDIR}/${TRIAL}/node1/mysqld.1/data/*core.* 2>/dev/null || true`
+          CORE2=`ls ${RUNDIR}/${TRIAL}/node2/mysqld.1/data/*core.* 2>/dev/null || true`
+          CORE3=`ls ${RUNDIR}/${TRIAL}/node3/mysqld.1/data/*core.* 2>/dev/null || true`
         else
           CORE1=`ls ${RUNDIR}/${TRIAL}/1/*core.* 2>/dev/null`
           CORE2=`ls ${RUNDIR}/${TRIAL}/2/*core.* 2>/dev/null`
