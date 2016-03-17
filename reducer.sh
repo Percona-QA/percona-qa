@@ -3212,7 +3212,7 @@ if [ $SKIPSTAGE -lt 8 ]; then
   rocksdb_startup_chk(){
    if echo "${MYEXTRA_STAGE8}" | grep '\--rocksdb\|--default-storage-engine=RocksDB\|--skip-innodb\|--default-tmp-storage-engine=MyISAM'; then
      MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--default-tmp-storage-engine=MyISAM||")
-     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--rocksdb||")
+     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--rocksdb | |")
      MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--skip-innodb||")
      MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--default-storage-engine=RocksDB||")
      CHK_ROCKSDB=1
