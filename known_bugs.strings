@@ -132,6 +132,7 @@ pfs_file .= __null                                       ## http://bugs.mysql.co
 Z8filesortP3THDP8FilesortbPyS3_S3_                       ## http://bugs.mysql.com/bug.php?id=79016
 ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_          ## http://bugs.mysql.com/bug.php?id=79018
 Z22get_filename_hash_pinsP10PFS_thread                   ## http://bugs.mysql.com/bug.php?id=79042
+refkey_rows_estimate >= 1.0                              ## http://bugs.mysql.com/bug.php?id=80782
 thd->owned_gtid.is_empty                                 ## http://bugs.mysql.com/bug.php?id=80663
 thd->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS      ## http://bugs.mysql.com/bug.php?id=80665
 thd->variables.gtid_next.type == AUTOMATIC_GROUP         ## http://bugs.mysql.com/bug.php?id=80670
