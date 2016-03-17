@@ -728,7 +728,8 @@ pquery_test(){
          sed 's|UNIQUE[ \t]\+KEY||i' | \
          sed 's|FULLTEXT||i' | \
          sed 's|[ \t]\+TEMPORARY||i' | \
-         sed 's|,[ \t]\+KEY([a-z]\+)||i' | \
+         sed 's|,[ \t]\+KEY *[a-z]* *([a-z]\+\(([a-z]+)\)*)||i' | \
+         sed 's|,[ \t]\+INDEX *[a-z]* *([a-z]\+\(([a-z]+)\)*)||i' | \
          grep -vi "variables" | \
          grep -vi "@@" | \
          grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
@@ -737,7 +738,8 @@ pquery_test(){
          sed 's|UNIQUE[ \t]\+KEY||i' | \
          sed 's|FULLTEXT||i' | \
          sed 's|[ \t]\+TEMPORARY||i' | \
-         sed 's|,[ \t]\+KEY([a-z]\+)||i' | \
+         sed 's|,[ \t]\+KEY *[a-z]* *([a-z]\+\(([a-z]+)\)*)||i' | \
+         sed 's|,[ \t]\+INDEX *[a-z]* *([a-z]\+\(([a-z]+)\)*)||i' | \
          grep -vi "variables" | \
          grep -vi "@@" | \
          grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
