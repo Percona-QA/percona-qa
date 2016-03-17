@@ -875,7 +875,7 @@ pquery_test(){
           fi
         fi
       done
-      if [ $Y -eq ${PQUERY_RUN_TIMEOUT} -eq 1 ]; then 
+      if [ $Y -eq ${PQUERY_RUN_TIMEOUT} ]; then 
         echoit "${PQUERY_RUN_TIMEOUT}s timeout reached. Terminating this trial..."
       fi
     fi
@@ -1019,7 +1019,7 @@ pquery_test(){
         echoit "No Valgrind errors detected. $(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ${RUNDIR}/${TRIAL}/log/master.err | sed 's|.*ERROR S|ERROR S|')"
       fi
     fi
-    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 -o $(ls -l ${RUNDIR}/${TRIAL}/*/mysqld.1/data/*core.* 2>/dev/null | wc -l) -ge 1]; then
+    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 -o $(ls -l ${RUNDIR}/${TRIAL}/*/mysqld.1/data/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
       echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.*)"
       if [ ${PXC} -eq 0 ]; then
         echoit "Bug found (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err`"
