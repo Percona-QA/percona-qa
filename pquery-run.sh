@@ -726,22 +726,38 @@ pquery_test(){
         cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
          sed 's|PRIMARY[ \t]\+KEY||i' | \
          sed 's|UNIQUE[ \t]\+KEY||i' | \
+         sed 's|FOREIGN[ \t]\+KEY||i' | \
          sed 's|FULLTEXT||i' | \
+         sed 's|AUTO_INCREMENT||i' | \
          sed 's|[ \t]\+TEMPORARY||i' | \
-         sed 's|,[ \t]\+KEY *[a-z]* *([a-z]\+\(([a-z]+)\)*)||i' | \
-         sed 's|,[ \t]\+INDEX *[a-z]* *([a-z]\+\(([a-z]+)\)*)||i' | \
+         sed 's|,[ \t]*KEY *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
+         sed 's|,[ \t]*INDEX *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
+         sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
          grep -vi "variables" | \
          grep -vi "@@" | \
+         grep -vi "^show" | \
+         grep -vi "^alter" | \
+         grep -vi "^analyze" | \
+         grep -vi "^optimize" | \
+         grep -vi "information_schema" | \
          grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
         cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
          sed 's|PRIMARY[ \t]\+KEY||i' | \
          sed 's|UNIQUE[ \t]\+KEY||i' | \
+         sed 's|FOREIGN[ \t]\+KEY||i' | \
          sed 's|FULLTEXT||i' | \
+         sed 's|AUTO_INCREMENT||i' | \
          sed 's|[ \t]\+TEMPORARY||i' | \
-         sed 's|,[ \t]\+KEY *[a-z]* *([a-z]\+\(([a-z]+)\)*)||i' | \
-         sed 's|,[ \t]\+INDEX *[a-z]* *([a-z]\+\(([a-z]+)\)*)||i' | \
+         sed 's|,[ \t]*KEY *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
+         sed 's|,[ \t]*INDEX *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
+         sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
          grep -vi "variables" | \
          grep -vi "@@" | \
+         grep -vi "^show" | \
+         grep -vi "^alter" | \
+         grep -vi "^analyze" | \
+         grep -vi "^optimize" | \
+         grep -vi "information_schema" | \
          grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         sed -i "s|innodb|${QC_PRI_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE};
         sed -i "s|innodb|${QC_SEC_ENGINE}|gi"     ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE};
