@@ -15,6 +15,8 @@
   date +%s%N | cut -b19-19
 # Random number between 1 and X
   echo $(( RANDOM % 1000 + 1 ))  # Example where X is 1000, change as needed
+# Change all upper case letters to lower case (With thanks, http://www.linuxquestions.org/questions/linux-newbie-8/evaluate-strings-as-case-insensitive-676101/)
+  echo "LoweR CasE" | tr [:upper:] [:lower:]  # Output: lower case
 # Ensure fault-free grep operation when grepping through a file which contains non-ASCII characters
   grep --binary-files=text ...
 # Shuffle lines of a file. Much better then sort -R --random-source=/dev/urandom. sort -R will still sort according to hash, leaving similar lines clustered
