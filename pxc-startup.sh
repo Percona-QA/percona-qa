@@ -188,9 +188,9 @@ echo " set -e" >> ./start_mtr
 echo "popd" >> ./start_mtr
 
 echo "${BUILD}/bin/mysqladmin -uroot -S$node3/socket.sock shutdown" > ./stop_mtr
-echo "echo 'Server on socket $node2/socket.sock with datadir ${BUILD}/node3 halted'" >> ./stop_mtr
+echo "echo 'Server on socket $node3/socket.sock with datadir ${BUILD}/node3 halted'" >> ./stop_mtr
 echo "${BUILD}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown" >> ./stop_mtr
-echo "echo 'Server on socket $node1/socket.sock with datadir ${BUILD}/node2 halted'" >> ./stop_mtr
+echo "echo 'Server on socket $node2/socket.sock with datadir ${BUILD}/node2 halted'" >> ./stop_mtr
 echo "${BUILD}/bin/mysqladmin -uroot -S$node1/socket.sock shutdown" >> ./stop_mtr
 echo "echo 'Server on socket $node1/socket.sock with datadir ${BUILD}/node1 halted'" >> ./stop_mtr
 
