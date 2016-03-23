@@ -54,7 +54,10 @@ if [ ${QC} -ne 1 ]; then
     exit 1
   fi
 else  # Query correctness trials are fully handled here. Then the script continues to handle any crashes.
-  ## handle
+  # Medium quality hack to ensure any trials with a coredump end up with a reducer script
+  ls */data/core* | sed 's|/.*||' | sort -u | xargs -I{} cp ./{}/pquery_thread-0.InnoDB.sql ./{}/pquery_thread-0.sql
+  ls */data/core* | sed 's|/.*||' | sort -u | xargs -I{} cp ./{}/pquery_thread-0.RocksDB.sql ./{}/pquery_thread-0.sql
+  # Handle query correctness trials
 fi
 NEW_MYEXTRA_METHOD=0
 if [ `ls ./*/MYEXTRA 2>/dev/null | wc -l` -gt 0 ]; then  # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)

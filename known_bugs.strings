@@ -39,6 +39,8 @@ os0sync.cc line 490                                      ## https://github.com/f
 trx->has_snapshot                                        ## https://github.com/facebook/mysql-5.6/issues/211
 Z10key_unpackP6StringP5TABLEP6st_key                     ## https://github.com/facebook/mysql-5.6/issues/213
 ZN10Field_long3cmpEPKhS1_                                ## https://github.com/facebook/mysql-5.6/issues/214
+#>> Long CREATE TABLE leads to signal 11 (no string)     ## https://github.com/facebook/mysql-5.6/issues/219
+ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm  ## https://github.com/facebook/mysql-5.6/issues/220
 
 ## =========== Early 5.7 Prepatory Work ===========
 ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
