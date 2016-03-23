@@ -25,6 +25,7 @@ ZNK8Item_ref11used_tablesEv                              ## https://github.com/f
 ZN9__gnu_cxx13new_allocatorImE8allocateEmPKv             ## https://github.com/facebook/mysql-5.6/issues/140
 Z19fill_table_stats_cbPKcS0_bP17my_io_perf_structS2_S2_S2_S2_P17page_stats_structP17comp_stats_structiiS0_  ## https://github.com/facebook/mysql-5.6/issues/141
 Z12mysql_deleteP3THDP10TABLE_LISTP4ItemP10SQL_I_ListI8st_orderEyy  ## https://github.com/facebook/mysql-5.6/issues/142
+ZNKSt6vectorISsSaISsEE14_M_range_checkEm                 ## https://github.com/facebook/mysql-5.6/issues/218
 
 ## =========== Early 5.7 Prepatory Work ===========
 ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
@@ -136,7 +137,6 @@ refkey_rows_estimate >= 1.0                              ## http://bugs.mysql.co
 thd->owned_gtid.is_empty                                 ## http://bugs.mysql.com/bug.php?id=80663
 thd->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS      ## http://bugs.mysql.com/bug.php?id=80665
 thd->variables.gtid_next.type == AUTOMATIC_GROUP         ## http://bugs.mysql.com/bug.php?id=80670
-
 
 ## =========== PS 5.7 Beta & GA ===========
 buf0lru.cc line 2259                                     ## https://bugs.launchpad.net/percona-server/+bug/1553166
