@@ -8,7 +8,7 @@ for i in $(ls */*.result | egrep -i "innodb|rocksdb|tokudb|myisam|memory|csv|ndb
     cd $i >/dev/null 2>&1
     OUT=$(${SCRIPT_PWD}/diffit.sh)
     cd .. 
-    echo "${OUT}" | sed "s|\(.*\)sql: \(.*\)|\2 \[${i}::\1sql\]|"
+    echo "${OUT}" | sed "s|^|\[${i}\]|"
   else
     echo "Error! ${i} is not a directory!"
   fi

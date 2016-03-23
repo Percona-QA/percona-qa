@@ -11,5 +11,5 @@ SQL1=$(echo -n "$(ls pquery_thread*.sql | tail -n1): "
 SQL2=$(echo -n "$(ls pquery_thread*.sql | head -n1): "
        sed "1,${DIFFLINEM1}d" $(ls pquery_thread*.sql | head -n1) | head -n1)
 
-echo "${FIRSTDIFFLINE}:${SQL1}"
-echo "${FIRSTDIFFLINE}:${SQL2}"
+echo "${SQL1}"  | sed "s|\(.*\)sql:\(.*\)|\2 \[\1sql:${FIRSTDIFFLINE}\]|"
+echo "${SQL2}"  | sed "s|\(.*\)sql:\(.*\)|\2 \[\1sql:${FIRSTDIFFLINE}\]|"
