@@ -42,7 +42,7 @@ MULTI_THREADED_TESTC_LINES=25000                               # Only takes effe
 # ========================================= User configurable variables to enable query correctness testing ======================
 # Note: if/when using RocksDB as a primary or secondary engine, it must be spelled correctly as: RocksDB. Variations like: rocksdb will cause failures in this script
 QUERY_CORRECTNESS_TESTING=1                                    # Set to 1 to enable query correctness testing. Normally set to 0 (off)
-QC_NR_OF_STATEMENTS_PER_TRIAL=100                              # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
+QC_NR_OF_STATEMENTS_PER_TRIAL=200                              # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
 QC_PRI_ENGINE=RocksDB                                          # Primary comparison engine for query correctness testing. Make sure to match this with MYEXTRA
 QC_SEC_ENGINE=InnoDB                                           # Secondary comparison engine for query correctness testing. Make sure to match this with MYEXTRA2
 MYEXTRA2="--default-tmp-storage-engine=MyISAM --default-storage-engine=InnoDB"                                                       # Used for secondary mysqld (RocksDB testing)
@@ -196,7 +196,6 @@ if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
 fi
 if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
   echoit "MODE: Query Correctness Testing"
-  if [ "${MYEXTRA2}" != "" ]; then echoit "MYEXTRA2: ${MYEXTRA2}"; fi
   if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then
     echoit "QUERY_CORRECTNESS_TESTING and QUERY_DURATION_TESTING cannot be both active at the same time due to parsing limitations. This is the case. Please disable one of them."
     exit 1
@@ -235,6 +234,7 @@ ctrl-c(){
   rm -Rf ${RUNDIR}
   if [ $SAVED -eq 0 -a ${SAVE_SQL} -eq 0 ]; then
     echoit "There were no coredumps saved, and SAVE_SQL=0, so the workdir can be safely deleted. Doing so..."
+    WORKDIRACTIVE=0
     rm -Rf ${WORKDIR}
   else
     echoit "The results of this run can be found in the workdir ${WORKDIR}..."
@@ -723,11 +723,13 @@ pquery_test(){
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then # Single-threaded query correctness run using a chunk from INFILE against two servers to then compare outcomes
         echoit "Taking ${QC_NR_OF_STATEMENTS_PER_TRIAL} lines randomly from ${INFILE} as testcase for this query correctness trial..."
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
+          echo 'DROP DATABASE test;' > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
           case "$(echo $(( RANDOM % 3 + 1 )))" in
-            1) echo 'DROP DATABASE test; CREATE DATABASE test DEFAULT CHARACTER SET="Binary" DEFAULT COLLATE="Binary"; USE test;' > ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
-            2) echo 'DROP DATABASE test; CREATE DATABASE test DEFAULT CHARACTER SET="utf8" DEFAULT COLLATE="utf8_bin"; USE test;' > ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
-            3) echo 'DROP DATABASE test; CREATE DATABASE test DEFAULT CHARACTER SET="latin1" DEFAULT COLLATE="latin1_bin"; USE test;' > ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
+            1) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="Binary" DEFAULT COLLATE="Binary";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
+            2) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="utf8" DEFAULT COLLATE="utf8_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
+            3) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="latin1" DEFAULT COLLATE="latin1_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
           esac
+          echo 'USE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         fi
         shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
@@ -1095,10 +1097,15 @@ if [ ${PXC} -eq 0 ];then
 else
   echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: Active"
 fi
-echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Queries/Thread: ${QUERIES_PER_THREAD} | Trials: ${TRIALS} | Save coredump/valgrind issue trials only: `if [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 1 ]; then echo -n 'TRUE'; if [ ${SAVE_SQL} -eq 1 ]; then echo ' + save all SQL traces'; else echo ''; fi; else echo 'FALSE'; fi`"
+if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then 
+  echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Trials: ${TRIALS} | Statements per trial: ${QC_NR_OF_STATEMENTS_PER_TRIAL} | Primary Engine: ${QC_PRI_ENGINE} | Secondary Engine: ${QC_SEC_ENGINE}"
+else
+  echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Queries/Thread: ${QUERIES_PER_THREAD} | Trials: ${TRIALS} | Save coredump/valgrind issue trials only: `if [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 1 ]; then echo -n 'TRUE'; if [ ${SAVE_SQL} -eq 1 ]; then echo ' + save all SQL traces'; else echo ''; fi; else echo 'FALSE'; fi`"
+fi
 echoit "Valgrind run: `if [ ${VALGRIND_RUN} -eq 1 ]; then echo -n 'TRUE'; else echo -n 'FALSE'; fi` | pquery timeout: ${PQUERY_RUN_TIMEOUT} | SQL file used: ${INFILE} `if [ ${THREADS} -ne 1 ]; then echo -n "| Testcase size (chunked from infile): ${MULTI_THREADED_TESTC_LINES}"; fi`"
 echoit "pquery Binary: ${PQUERY_BIN}"
 if [ "${MYEXTRA}" != "" ]; then echoit "MYEXTRA: ${MYEXTRA}"; fi
+if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a "${MYEXTRA2}" != "" ]; then echoit "MYEXTRA2: ${MYEXTRA2}"; fi
 if [ "${MYSAFE}" != "" ]; then echoit "MYSAFE: ${MYSAFE}"; fi
 echoit "Making a copy of the pquery binary used (${PQUERY_BIN}) to ${WORKDIR}/ (handy for later re-runs/reference etc.)"
 cp ${PQUERY_BIN} ${WORKDIR}
