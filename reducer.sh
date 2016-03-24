@@ -2075,7 +2075,9 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      return 1 
+      if [ $PXC_MTR_MOD -eq 0 ]; then
+        return 1
+      fi 
     else
       if [ ! "$STAGE" = "V" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [NoErrorLogOutputBug] [$NOISSUEFLOW] Kill server $NEXTACTION"
