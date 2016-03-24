@@ -49,7 +49,7 @@ if [ `ls ./*/pquery_thread-[1-9]*.sql 2>/dev/null | wc -l` -gt 0 ]; then
   MULTI=1
 fi
 if [ ${QC} -ne 1 ]; then
-  if [ `ls ./*/pquery_thread-0.sql 2>/dev/null | wc -l` -eq 0 ]; then
+  if [ `ls ./*/*thread-0.sql 2>/dev/null | wc -l` -eq 0 ]; then
     echo "Something is wrong: there were 0 pquery sql files found (./*/pquery_thread-0.sql) in subdirectories of the current directory. Terminating."
     exit 1
   fi
@@ -119,6 +119,7 @@ fi
 #Check MS/PS pquery binary
 #PQUERY_BIN="`grep 'pquery Binary' ./pquery-run.log | sed 's|^.*pquery Binary[: \t]*||' | head -n1`"    # < swap back to this one once old runs are gone (upd: maybe not. Issues.)
 PQUERY_BIN=$(echo "$(grep -ihm1 "PQUERY_BIN=" *pquery*.sh | sed 's|[ \t]*#.*$||;s|PQUERY_BIN=||')" | sed "s|\${SCRIPT_PWD}|${SCRIPT_PWD}|" | head -n1)
+PXC_MTR_CHK=$(grep -ihm1 "PXC_MTR_STARTUP=" *pquery*.sh | sed 's|[ \t]*#.*$||;s|PQUERY_BIN=||' | cut -d'=' -f2)
 echo "pquery binary used: ${PQUERY_BIN}"
 
 if [ "${PQUERY_BIN}" == "" ]; then
@@ -248,18 +249,27 @@ generate_reducer_script(){
   fi
   if [ ${PXC} -eq 1 ]; then
     PXC_CLEANUP1="0,/^[ \t]*PXC_DOCKER_COMPOSE_MOD[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_COMPOSE_MOD[ \t]*=.*$|#PXC_DOCKER_COMPOSE_MOD=<set_below_in_machine_variables_section>|"
-    PXC_CLEANUP2="0,/^[ \t]*PXC_DOCKER_COMPOSE_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_COMPOSE_LOC[ \t]*=.*$|#PXC_DOCKER_COMPOSE_LOC=<set_below_in_machine_variables_section>|"
-    PXC_CLEANUP3="0,/^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$|#PXC_DOCKER_CLEAN_LOC=<set_below_in_machine_variables_section>|"
-    PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_MOD=1\n#VARMOD#:"
-    PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_YML}\n#VARMOD#:"
-    PXC_STRING3="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_CLEAN_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_LOC}\n#VARMOD#:"
+    PXC_CLEANUP2="0,/^[ \t]*PXC_MTR_MOD[ \t]*=.*$/s|^[ \t]*PXC_MTR_MOD[ \t]*=.*$|#PXC_MTR_MOD=<set_below_in_machine_variables_section>|"
+    PXC_CLEANUP3="0,/^[ \t]*PXC_DOCKER_COMPOSE_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_COMPOSE_LOC[ \t]*=.*$|#PXC_DOCKER_COMPOSE_LOC=<set_below_in_machine_variables_section>|"
+    PXC_CLEANUP4="0,/^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$|#PXC_DOCKER_CLEAN_LOC=<set_below_in_machine_variables_section>|"
+    if [ ${PXC_MTR_CHK} -eq 1 ];then
+      PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_MOD=0\n#VARMOD#:"
+      PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_MTR_MOD=1\n#VARMOD#:"
+    else
+      PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_MOD=1\n#VARMOD#:"
+      PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_MTR_MOD=0\n#VARMOD#:"
+    fi
+    PXC_STRING3="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_YML}\n#VARMOD#:"
+    PXC_STRING4="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_CLEAN_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_LOC}\n#VARMOD#:"
   else
     PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
     PXC_CLEANUP2="s|ZERO0|ZERO0|"
     PXC_CLEANUP3="s|ZERO0|ZERO0|"
+    PXC_CLEANUP4="s|ZERO0|ZERO0|"
     PXC_STRING1="s|ZERO0|ZERO0|"
     PXC_STRING2="s|ZERO0|ZERO0|"
     PXC_STRING3="s|ZERO0|ZERO0|"
+    PXC_STRING4="s|ZERO0|ZERO0|"
   fi
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
@@ -275,6 +285,7 @@ generate_reducer_script(){
    | sed -e "${PXC_CLEANUP1}" \
    | sed -e "${PXC_CLEANUP2}" \
    | sed -e "${PXC_CLEANUP3}" \
+   | sed -e "${PXC_CLEANUP4}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
    | sed -e "${TEXT_STRING2}" \
@@ -289,12 +300,13 @@ generate_reducer_script(){
    | sed -e "${PXC_STRING1}" \
    | sed -e "${PXC_STRING2}" \
    | sed -e "${PXC_STRING3}" \
+   | sed -e "${PXC_STRING4}" \
    > ./reducer${OUTFILE}.sh
   chmod +x ./reducer${OUTFILE}.sh 
 }
 
 # Main pquery results processing
-for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
+for SQLLOG in $(ls ./*/*thread-0.sql 2>/dev/null); do
   TRIAL=`echo ${SQLLOG} | sed 's|./||;s|/.*||'`
   if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
     MYEXTRA=
@@ -303,7 +315,7 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
     fi
   fi
   if [ ${PXC} -eq 1 ]; then
-    for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d'  | awk '{print $8}' | egrep -E '^[0-9]+$'`; do
+    for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d'  | awk '{print $8}' | tr -dc '0-9\n'`; do
       OUTFILE="${TRIAL}-${SUBDIR}"
       rm -Rf  ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
       touch ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
@@ -340,7 +352,11 @@ for SQLLOG in $(ls ./*/pquery_thread-0.sql 2>/dev/null); do
         echo "Assert! Error log at ./${TRIAL}/${SUBDIR}/error.log could not be read?"
         exit 1
       fi
-      TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/${SUBDIR}/error.log`
+      if [ ${PXC_MTR_CHK} -eq 1 ];then
+        TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
+      else
+        TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/${SUBDIR}/error.log`
+      fi
       echo "* TEXT variable set to: \"${TEXT}\""
       if [ "${MULTI}" == "1" ]; then
          if [ -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
