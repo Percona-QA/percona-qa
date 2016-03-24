@@ -910,7 +910,7 @@ pquery_test(){
     else
       if [ ${PXC_MTR_STARTUP} -eq 1 ];then
         echoit "3 Node PXC Cluster failed to start after ${PXC_MTR_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
-        (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1)
+        (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
         sleep 2; sync
       else
         echoit "3 Node PXC Cluster failed to start after ${PXC_DOCKER_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
@@ -971,7 +971,7 @@ pquery_test(){
     sleep 2  # <^ Make sure mysqld is gone
   else
     if [ ${PXC_MTR_STARTUP} -eq 1 ];then
-      (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1)
+      (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
       sleep 2; sync
     else
@@ -1231,7 +1231,7 @@ if [ ${PXC} -eq 0 ]; then
   fi
 else
   if [ ${PXC_MTR_STARTUP} -eq 1 ];then
-    (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1)
+    (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   else
     echoit "Cleaning up remaining Docker containers..."
