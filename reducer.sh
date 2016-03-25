@@ -1519,6 +1519,10 @@ start_mysqld_main(){
                          $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
+                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT"
+    if [ "${CHK_ROCKSDB}" == "1" ];then
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
