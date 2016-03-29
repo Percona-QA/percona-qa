@@ -77,11 +77,11 @@ SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 
-if [ ! -d $WORKDIR/$BASEDIR ]; then
+if [ ! -d ${ROOT_FS}/$BASEDIR ]; then
   echo "Base directory does not exist. Fatal error.";
   exit 1
 else
-  BASEDIR="$WORKDIR/$BASEDIR"
+  BASEDIR="${ROOT_FS}/$BASEDIR"
 fi
 ps -ef | grep 'pxc-pxc-mysql.sock' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 SYSBENCH_LOC="/usr/share/doc/sysbench/tests/db"
