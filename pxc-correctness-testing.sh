@@ -35,6 +35,19 @@ BASEDIR="$(tar tf $TAR | head -1 | tr -d '/')"
 
 tar -xf $TAR
 
+PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
+if [ ! -z $PT_TAR ];then
+  tar -xzf $PT_TAR
+  PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
+else
+  wget https://www.percona.com/downloads/percona-toolkit/2.2.16/tarball/percona-toolkit-2.2.16.tar.gz
+  PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
+  tar -xzf $PT_TAR
+  PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
+fi
+
 # Parameter of parameterized build
 if [ -z ${BUILD_NUMBER} ]; then
   BUILD_NUMBER=1001
@@ -51,7 +64,6 @@ fi
 if [ -z ${TCOUNT} ]; then
   TCOUNT=10
 fi
-mkdir -p $WORKDIR/logs
 
 if [ ! -d $WORKDIR/test_db ]; then
   git clone https://github.com/datacharmer/test_db.git
@@ -76,6 +88,7 @@ function create_emp_db()
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
+mkdir -p $WORKDIR/logs
 
 if [ ! -d ${ROOT_FS}/$BASEDIR ]; then
   echo "Base directory does not exist. Fatal error.";
