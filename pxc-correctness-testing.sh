@@ -67,6 +67,8 @@ if [ -z ${TCOUNT} ]; then
   TCOUNT=10
 fi
 
+EXTSTATUS=0
+
 if [ ! -d ${ROOT_FS}/test_db ]; then
   git clone https://github.com/datacharmer/test_db.git
 fi
@@ -96,7 +98,11 @@ if [ ! -d ${ROOT_FS}/$BASEDIR ]; then
 else
   BASEDIR="${ROOT_FS}/$BASEDIR"
 fi
+
+trap "tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs" EXIT KILL
+
 ps -ef | grep 'pxc-pxc-mysql.sock' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+
 SYSBENCH_LOC="/usr/share/doc/sysbench/tests/db"
 SBENCH="sysbench"
 
@@ -262,6 +268,11 @@ $BASEDIR/bin/mysql -uroot --socket=$node1/pxc-mysql.sock -e "insert into percona
 #Sysbench prepare run
 $SBENCH --test=$SYSBENCH_LOC/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=${node1}/pxc-mysql.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
+if [[ ${PIPESTATUS[0]} -ne 0 ]];then
+  echo "Sysbench run failed"
+  EXTSTATUS=1
+fi
+
 echo "Loading sakila test database"
 $BASEDIR/bin/mysql --socket=$node1/pxc-mysql.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
 
@@ -281,3 +292,4 @@ for i in {1..5}; do
   pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d test --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
 done
 
+exit $EXTSTATUS
