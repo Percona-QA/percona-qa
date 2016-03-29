@@ -67,7 +67,7 @@ if [ -z ${TCOUNT} ]; then
   TCOUNT=10
 fi
 
-if [ ! -d $WORKDIR/test_db ]; then
+if [ ! -d ${ROOT_FS}/test_db ]; then
   git clone https://github.com/datacharmer/test_db.git
 fi
 
@@ -76,14 +76,14 @@ function create_emp_db()
   DB_NAME=$1
   SE_NAME=$2
   SQL_FILE=$3
-  pushd $WORKDIR/test_db
-  cat $WORKDIR/test_db/$SQL_FILE \
+  pushd ${ROOT_FS}/test_db
+  cat ${ROOT_FS}/test_db/$SQL_FILE \
    | sed -e "s|DROP DATABASE IF EXISTS employees|DROP DATABASE IF EXISTS ${DB_NAME}|" \
    | sed -e "s|CREATE DATABASE IF NOT EXISTS employees|CREATE DATABASE IF NOT EXISTS ${DB_NAME}|" \
    | sed -e "s|USE employees|USE ${DB_NAME}|" \
    | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
-   > $WORKDIR/test_db/${DB_NAME}_${SE_NAME}.sql
-   $BASEDIR/bin/mysql --socket=${node1}/pxc-mysql.sock -u root < ${WORKDIR}/test_db/${DB_NAME}_${SE_NAME}.sql || true
+   > ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql
+   $BASEDIR/bin/mysql --socket=${node1}/pxc-mysql.sock -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
    popd
 }
 
