@@ -12,6 +12,8 @@ fi
 
 ROOT_FS=$WORKDIR
 sst_method="rsync"
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
+echo "${SCRIPT_PWD}.."
 
 cd $WORKDIR
 count=$(ls -1ct Percona-XtraDB-Cluster-5.*.tar.gz | wc -l)
@@ -84,8 +86,6 @@ function create_emp_db()
    $BASEDIR/bin/mysql --socket=${node1}/pxc-mysql.sock -u root < ${WORKDIR}/test_db/${DB_NAME}_${SE_NAME}.sql || true
    popd
 }
-
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 mkdir -p $WORKDIR/logs
