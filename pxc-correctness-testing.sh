@@ -2,33 +2,56 @@
 # Created by Ramesh Sivaraman, Percona LLC
 
 if [ -z $1 ]; then
-  echo "No valid parameters were passed. Need relative basedir setting. Retry.";
+  echo "No valid parameters were passed. Need relative workdir setting. Retry.";
   echo "Usage example:"
-  echo "$./pxc-correctness-testing.sh Percona-XtraDB-Cluster-5.6.28-rel76.1-25.14-debug..Linux.x86_64"
+  echo "$./pxc-correctness-testing.sh /sda/pxc-correctness-testing"
   exit 1
 else
-  BASEDIR=$1
+  WORKDIR=$1
 fi
 
+ROOT_FS=$WORKDIR
+sst_method="rsync"
+
+cd $WORKDIR
+count=$(ls -1ct Percona-XtraDB-Cluster-5.*.tar.gz | wc -l)
+
+if [[ $count -gt 1 ]];then
+  for dirs in `ls -1ct Percona-XtraDB-Cluster-5.*.tar.gz | tail -n +2`;do
+     rm -rf $dirs
+  done
+fi
+
+find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.*' -exec rm -rf {} \+
+
+echo "Removing older directories"
+find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+
+
+echo "Removing their symlinks"
+find . -maxdepth 1 -type l -mtime +10 -delete
+
+TAR=`ls -1ct Percona-XtraDB-Cluster-5.*.tar.gz | head -n1`
+BASEDIR="$(tar tf $TAR | head -1 | tr -d '/')"
+
+tar -xf $TAR
+
+# Parameter of parameterized build
+if [ -z ${BUILD_NUMBER} ]; then
+  BUILD_NUMBER=1001
+fi
 if [ -z ${SDURATION} ]; then
   SDURATION=100
 fi
-
 if [ -z ${TSIZE} ]; then
   TSIZE=500
 fi
-
 if [ -z ${NUMT} ]; then
   NUMT=16
 fi
-
 if [ -z ${TCOUNT} ]; then
   TCOUNT=10
 fi
-
-WORKDIR="${PWD}"
 mkdir -p $WORKDIR/logs
-cd $WORKDIR
 
 if [ ! -d $WORKDIR/test_db ]; then
   git clone https://github.com/datacharmer/test_db.git
@@ -51,6 +74,8 @@ function create_emp_db()
 }
 
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
+
+WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 
 if [ ! -d $WORKDIR/$BASEDIR ]; then
   echo "Base directory does not exist. Fatal error.";
@@ -111,7 +136,7 @@ pxc_startup(){
       --mysqld=--wsrep_sst_receive_address=$RADDR1 \
       --mysqld=--wsrep_node_incoming_address=$ADDR \
       --mysqld=--wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1" \
-      --mysqld=--wsrep_sst_method=rsync \
+      --mysqld=--wsrep_sst_method=$sst_method \
       --mysqld=--wsrep_sst_auth=$SUSER:$SPASS \
       --mysqld=--wsrep_node_address=$ADDR \
       --mysqld=--innodb_flush_method=O_DIRECT \
@@ -144,7 +169,7 @@ pxc_startup(){
       --mysqld=--wsrep_sst_receive_address=$RADDR2 \
       --mysqld=--wsrep_node_incoming_address=$ADDR \
       --mysqld=--wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2" \
-      --mysqld=--wsrep_sst_method=rsync \
+      --mysqld=--wsrep_sst_method=$sst_method \
       --mysqld=--wsrep_sst_auth=$SUSER:$SPASS \
       --mysqld=--wsrep_node_address=$ADDR \
       --mysqld=--innodb_flush_method=O_DIRECT \
@@ -177,7 +202,7 @@ pxc_startup(){
       --mysqld=--wsrep_sst_receive_address=$RADDR3 \
       --mysqld=--wsrep_node_incoming_address=$ADDR \
       --mysqld=--wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR3" \
-      --mysqld=--wsrep_sst_method=rsync \
+      --mysqld=--wsrep_sst_method=$sst_method \
       --mysqld=--wsrep_sst_auth=$SUSER:$SPASS \
       --mysqld=--wsrep_node_address=$ADDR \
       --mysqld=--innodb_flush_method=O_DIRECT \
