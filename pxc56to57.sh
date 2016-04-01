@@ -17,9 +17,49 @@ sleep 5
 
 WORKDIR=$1
 ROOT_FS=$WORKDIR
-sst_method="$sst_method"
+
+ Parameter of parameterized build
+if [ -z ${BUILD_NUMBER} ]; then
+  BUILD_NUMBER=1001
+fi
+
+if [ -z $SDURATION ];then
+  SDURATION=300
+fi
+if [ -z $THREEONLY ];then
+  THREEONLY=0
+fi
+if [ -z $AUTOINC ];then
+  AUTOINC=off
+fi
+if [ -z ${TSIZE} ]; then
+  TSIZE=5000
+fi
+if [ -z ${NUMT} ]; then
+  NUMT=16
+fi
+if [ -z ${DIR} ]; then
+  DIR=1
+fi
+if [ -z ${STEST} ]; then
+  STEST=oltp
+fi
+
+if [ -z $SST_METHOD ];then
+  SST_METHOD="rsync"
+fi
 
 cd $WORKDIR
+
+sst_method=$SST_METHOD
+
+if [[ $sst_method == xtrabackup ]];then
+  TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
+  tar -xf $TAR
+  BBASE="$(tar tf $TAR | head -1 | tr -d '/')"
+  export PATH="$ROOT_FS/$BBASE/bin:$PATH"
+fi
+
 count=$(ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | wc -l)
 
 if [[ $count -gt 1 ]];then 
@@ -59,35 +99,6 @@ tar -xf $TAR
 
 
 LPATH=${SPATH:-/usr/share/doc/sysbench/tests/db}
-
-# Parameter of parameterized build
-if [ -z ${BUILD_NUMBER} ]; then
-  BUILD_NUMBER=1001
-fi
- 
-if [ -z $SDURATION ];then 
-  SDURATION=300
-fi
-if [ -z $THREEONLY ];then
-  THREEONLY=0
-fi
-if [ -z $AUTOINC ];then
-  AUTOINC=off
-fi
-if [ -z ${TSIZE} ]; then
-  TSIZE=5000
-fi
-if [ -z ${NUMT} ]; then
-  NUMT=16
-fi
-if [ -z ${DIR} ]; then
-  DIR=1
-fi
-if [ -z ${STEST} ]; then
-  STEST=oltp
-fi
-
-
 
 # User settings
 SENDMAIL="/usr/sbin/sendmail"
