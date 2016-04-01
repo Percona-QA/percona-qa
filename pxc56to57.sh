@@ -17,7 +17,7 @@ sleep 5
 
 WORKDIR=$1
 ROOT_FS=$WORKDIR
-sst_method="rsync"
+sst_method="$sst_method"
 
 cd $WORKDIR
 count=$(ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | wc -l)
@@ -196,7 +196,7 @@ set +e
     --mysqld=--skip-external-locking \
     --mysqld=--core-file \
     --mysqld=--skip-name-resolve \
-    --mysqld=--socket=$node1/socket.sock \
+    --mysqld=--socket=/tmp/node1.socket \
     --mysqld=--log-error=$WORKDIR/logs/node1.err \
     --mysqld=--log-output=none \
     1st
@@ -211,14 +211,14 @@ echo "Sysbench Run: Prepare stage"
 
 sysbench --test=$SDIR/parallel_prepare.lua --report-interval=10  --oltp-auto-inc=$AUTOINC --mysql-engine-trx=yes --mysql-table-engine=innodb \
     --oltp-table-size=$TSIZE --oltp_tables_count=100 --mysql-db=test --mysql-user=root \
-    --db-driver=mysql --mysql-socket=$node1/socket.sock prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt 
+    --db-driver=mysql --mysql-socket=/tmp/node1.socket prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt 
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then 
    echo "Sysbench prepare failed"
    exit 1
 fi
 
-$MYSQL_BASEDIR1/bin/mysql  -S $node1/socket.sock -u root -e "create database testdb;" || true
+$MYSQL_BASEDIR1/bin/mysql  -S /tmp/node1.socket -u root -e "create database testdb;" || true
  
 
 pushd ${MYSQL_BASEDIR1}/mysql-test/
@@ -255,7 +255,7 @@ set +e
       --mysqld=--skip-external-locking \
       --mysqld=--core-file \
       --mysqld=--skip-name-resolve \
-      --mysqld=--socket=$node2/socket.sock \
+      --mysqld=--socket=/tmp/node2.socket \
       --mysqld=--log-error=$WORKDIR/logs/node2-pre.err \
       --mysqld=--log-output=none \
       1st
@@ -265,10 +265,10 @@ echo "Sleeping till SST is complete"
 sleep 10
 
 echo "Version of second node:"
-$MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "show global variables like 'version';"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
 
 echo "Shutting down node2 after SST"
-${MYSQL_BASEDIR1}/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
+${MYSQL_BASEDIR1}/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown
 if [[ $? -ne 0 ]];then 
    echo "Shutdown failed for node2" 
    exit 1
@@ -307,12 +307,12 @@ perl mysql-test-run.pl \
     --mysqld=--loose-innodb \
     --mysqld=--sql-mode=no_engine_substitution \
     --mysqld=--skip-external-locking \
-    --mysqld=--socket=$node2/socket.sock \
+    --mysqld=--socket=/tmp/node2.socket \
     --mysqld=--log-error=$WORKDIR/logs/node2-upgrade.err \
     --mysqld=--log-output=none \
     1st
 
-$MYSQL_BASEDIR2/bin/mysql_upgrade -S $node2/socket.sock -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade.log
+$MYSQL_BASEDIR2/bin/mysql_upgrade -S /tmp/node2.socket -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade.log
 
 if [[ $? -ne 0 ]];then 
   echo "mysql upgrade failed"
@@ -320,10 +320,10 @@ if [[ $? -ne 0 ]];then
 fi
 
 echo "Version of second node:"
-$MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "show global variables like 'version';"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
 
 echo "Shutting down node2 after upgrade"
-$MYSQL_BASEDIR2/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
+$MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown
 
 if [[ $? -ne 0 ]];then 
   echo "Shutdown failed for node2" 
@@ -369,7 +369,7 @@ if [[ $THREEONLY -eq 0 ]];then
     --mysqld=--skip-external-locking \
     --mysqld=--core-file \
     --mysqld=--skip-name-resolve \
-    --mysqld=--socket=$node2/socket.sock \
+    --mysqld=--socket=/tmp/node2.socket \
     --mysqld=--log-error=$WORKDIR/logs/node2-post.err \
     --mysqld=--log-output=none \
     1st
@@ -410,7 +410,7 @@ else
     --mysqld=--skip-external-locking \
     --mysqld=--core-file \
     --mysqld=--skip-name-resolve \
-    --mysqld=--socket=$node2/socket.sock \
+    --mysqld=--socket=/tmp/node2.socket \
     --mysqld=--log-error=$WORKDIR/logs/node2-post.err \
     --mysqld=--log-output=none \
     1st
@@ -419,7 +419,7 @@ fi
 popd
 
 echo "Version of second node:"
-$MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "show global variables like 'version';"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
 
 echo "Sleeping for 10s"
 sleep 10
@@ -429,14 +429,14 @@ STABLE="test.sbtest1"
 
 echo "Before RW testing"
 echo "Rows on node1" 
-$MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "select count(*) from $STABLE;"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "select count(*) from $STABLE;"
 echo "Rows on node2" 
-$MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "select count(*) from $STABLE;"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "select count(*) from $STABLE;"
 
 echo "Version of first node:"
-$MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "show global variables like 'version';"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "show global variables like 'version';"
 echo "Version of second node:"
-$MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "show global variables like 'version';"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
 
 if [[ ! -e $SDIR/${STEST}.lua ]];then 
   pushd /tmp
@@ -448,14 +448,14 @@ fi
 
 set -x
 
-$MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "create database testdb;" || true
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "create database testdb;" || true
 
 if [[ $DIR -eq 1 ]];then 
-  sockets="$node1/socket.sock,$node2/socket.sock"
+  sockets="/tmp/node1.socket,/tmp/node2.socket"
 elif [[ $DIR -eq 2 ]];then 
-  sockets="$node2/socket.sock"
+  sockets="/tmp/node2.socket"
 elif [[ $DIR -eq 3 ]];then 
-  sockets="$node1/socket.sock"
+  sockets="/tmp/node1.socket"
 fi
 
 ## OLTP RW Run
@@ -474,17 +474,17 @@ set +x
 
 
 echo "Version of first node:"
-$MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "show global variables like 'version';"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "show global variables like 'version';"
 echo "Version of second node:"
-$MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "show global variables like 'version';"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
   
 echo "Rows on node1" 
-$MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "select count(*) from $STABLE;"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "select count(*) from $STABLE;"
 echo "Rows on node2" 
-$MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "select count(*) from $STABLE;"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "select count(*) from $STABLE;"
 
-$MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "drop database testdb;" || true
-$MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "drop database test;"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "drop database testdb;" || true
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "drop database test;"
 
 exit $EXTSTATUS
 
