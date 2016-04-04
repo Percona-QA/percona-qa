@@ -479,6 +479,9 @@ pquery_test(){
       done
       echoit "ADD_RANDOM_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
       MYEXTRA="${MYEXTRA} ${OPTIONS_TO_ADD}"
+      if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+        MYEXTRA2="${MYEXTRA2} ${OPTIONS_TO_ADD}"
+      fi
     fi
     if [ ${ADD_RANDOM_TOKUDB_OPTIONS} -eq 1 ]; then  # Add random tokudb --options to MYEXTRA
       OPTIONS_TO_ADD=
@@ -489,6 +492,9 @@ pquery_test(){
       done
       echoit "ADD_RANDOM_TOKUDB_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
       MYEXTRA="${MYEXTRA} ${OPTIONS_TO_ADD}"
+      if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+        MYEXTRA2="${MYEXTRA2} ${OPTIONS_TO_ADD}"
+      fi
     fi
     echo "${MYEXTRA}" | if grep -qi "innodb[_-]log[_-]checksum[_-]algorithm"; then
       # Ensure that mysqld server startup will not fail due to a mismatched checksum algo between the original MID and the changed MYEXTRA options
@@ -682,6 +688,9 @@ pquery_test(){
         done
         echoit "ADD_RANDOM_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
         MYEXTRA=" ${MYEXTRA} ${OPTIONS_TO_ADD} --log-error=error.log"
+        if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+          MYEXTRA2="${MYEXTRA2} ${OPTIONS_TO_ADD}"
+        fi
         sed -i "s|--log-error=error.log|${MYEXTRA}|" ${RUNDIR}/${TRIAL}/docker-compose.yml
       fi
       echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
