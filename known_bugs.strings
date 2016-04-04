@@ -207,6 +207,8 @@ ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb   ## https:/
 Z26toku_xids_can_create_childP6XIDS_S                                  ## https://tokutek.atlassian.net/browse/DB-940
 Z17mysql_lock_tablesP3THDPP5TABLEmj                                    ## https://tokutek.atlassian.net/browse/DB-941
 #TEXT=.r == 0.$                                                        ## PS Bug #1511969 (verified), also see https://tokutek.atlassian.net/browse/DB-933 / DB-737
+join == __null                                                         ## https://tokutek.atlassian.net/browse/DB-985
+part_id < m_tot_part s                                                 ## https://tokutek.atlassian.net/browse/DB-983
 # ^^^ debugging
   
 ## =========== Line number based ===========
