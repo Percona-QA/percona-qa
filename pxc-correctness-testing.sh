@@ -85,7 +85,7 @@ function create_emp_db()
    | sed -e "s|USE employees|USE ${DB_NAME}|" \
    | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
    > ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql
-   $BASEDIR/bin/mysql --socket=${node1}/pxc-mysql.sock -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
+   $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
    popd
 }
 
@@ -99,17 +99,17 @@ else
   BASEDIR="${ROOT_FS}/$BASEDIR"
 fi
 
-trap "tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs" EXIT KILL
+archives() {
+    tar czf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
+    rm -rf $WORKDIR
+}
+
+trap archives EXIT KILL
 
 ps -ef | grep 'pxc-pxc-mysql.sock' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
 SYSBENCH_LOC="/usr/share/doc/sysbench/tests/db"
 SBENCH="sysbench"
-
-# Installing percona tookit
-if ! rpm -qa | grep -qw percona-toolkit ; then 
-  sudo yum install percona-toolkit
-fi
 
 pxc_startup(){
   ADDR="127.0.0.1"
@@ -132,123 +132,147 @@ pxc_startup(){
   node1="${WORKDIR}/node1"
   node2="${WORKDIR}/node2"
   node3="${WORKDIR}/node3"
+  rm -Rf $node1 $node2 $node3
   mkdir -p $node1 $node2 $node3
 
    
-  echo 'Starting PXC nodes....'
-  pushd ${BASEDIR}/mysql-test/
-  
-  set +e 
-   perl mysql-test-run.pl \
-      --start-and-exit \
-      --port-base=$RBASE1 \
-      --nowarnings \
-      --vardir=$node1 \
-      --mysqld=--skip-performance-schema  \
-      --mysqld=--innodb_file_per_table \
-      --mysqld=--binlog-format=ROW \
-      --mysqld=--wsrep-slave-threads=2 \
-      --mysqld=--innodb_autoinc_lock_mode=2 \
-      --mysqld=--innodb_locks_unsafe_for_binlog=1 \
-      --mysqld=--wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-      --mysqld=--wsrep_cluster_address=gcomm:// \
-      --mysqld=--wsrep_sst_receive_address=$RADDR1 \
-      --mysqld=--wsrep_node_incoming_address=$ADDR \
-      --mysqld=--wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1" \
-      --mysqld=--wsrep_sst_method=$sst_method \
-      --mysqld=--wsrep_sst_auth=$SUSER:$SPASS \
-      --mysqld=--wsrep_node_address=$ADDR \
-      --mysqld=--innodb_flush_method=O_DIRECT \
-      --mysqld=--core-file \
-      --mysqld=--loose-new \
-      --mysqld=--sql-mode=no_engine_substitution \
-      --mysqld=--loose-innodb \
-      --mysqld=--secure-file-priv= \
-      --mysqld=--loose-innodb-status-file=1 \
-      --mysqld=--skip-name-resolve \
-      --mysqld=--socket=$node1/pxc-mysql.sock \
-      --mysqld=--log-error=$node1/node1.err \
-      --mysqld=--log-output=none \
-     1st > $node1/node1.err 2>&1 
+  echo "Starting PXC node1"
+  ${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
+    --datadir=$node1 \
+    --socket=/tmp/n1.sock \
+    --log-error=$node1/node.err \
+    --skip-grant-tables --initialize 2>&1 || exit 1;
+
+  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
+    --basedir=${BASEDIR} --datadir=$node1 \
+    --loose-debug-sync-timeout=600 --default-storage-engine=InnoDB \
+    --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+    --innodb_file_per_table $1 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+    --wsrep_cluster_address=gcomm:// \
+    --wsrep_sst_receive_address=$RADDR1 --wsrep_node_incoming_address=$ADDR \
+    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --skip-name-resolve --log-error=$node1/node.err \
+    --socket=/tmp/n1.sock --log-output=none \
+    --port=$RBASE1 --skip-grant-tables \
+    --server-id=1 --wsrep_slave_threads=8 --wsrep_debug=OFF > $node1/node.err 2>&1 &
+
+  echo "Waiting for node-1 to start ....."
+  MPID="$!"
+  while true ; do
+    sleep 10
+    if egrep -qi  "Synchronized with group, ready for connections" $node1/node.err ; then
+     break
+    fi
+    if [ "${MPID}" == "" ]; then
+      echoit "Error! server not started.. Terminating!"
+      egrep -i "ERROR|ASSERTION" $node1/node.err
+      exit 1
+    fi
+  done
+
+  sleep 10
+
+  echo "Starting PXC node2"
+  ${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
+    --datadir=$node2 \
+    --socket=/tmp/n2.sock \
+    --log-error=$node2/node.err \
+    --skip-grant-tables --initialize 2>&1 || exit 1;
+
+  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
+    --basedir=${BASEDIR} --datadir=$node2 \
+    --loose-debug-sync-timeout=600 --default-storage-engine=InnoDB \
+    --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+    --innodb_file_per_table $1 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
+    --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR \
+    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
+    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --skip-name-resolve --log-error=$node2/node.err \
+    --socket=/tmp/n2.sock --log-output=none \
+    --port=$RBASE2 --skip-grant-tables \
+    --server-id=2 --wsrep_slave_threads=8 \
+    --core-file > $node2/node.err 2>&1 &
+
+  echo "Waiting for node-2 to start ....."
+  MPID="$!"
+  while true ; do
+    sleep 10
+    if egrep -qi  "Synchronized with group, ready for connections" $node2/node.err ; then
+     break
+    fi
+    if [ "${MPID}" == "" ]; then
+      echoit "Error! server not started.. Terminating!"
+      egrep -i "ERROR|ASSERTION" $node2/node.err
+      exit 1
+    fi
+  done
+  sleep 10
+
   set -e
-  set +e 
-   perl mysql-test-run.pl \
-      --start-and-exit \
-      --port-base=$RBASE2 \
-      --nowarnings \
-      --vardir=$node2 \
-      --mysqld=--skip-performance-schema  \
-      --mysqld=--innodb_file_per_table  \
-      --mysqld=--binlog-format=ROW \
-      --mysqld=--wsrep-slave-threads=2 \
-      --mysqld=--innodb_autoinc_lock_mode=2 \
-      --mysqld=--innodb_locks_unsafe_for_binlog=1 \
-      --mysqld=--wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-      --mysqld=--wsrep_cluster_address=gcomm://$LADDR1 \
-      --mysqld=--wsrep_sst_receive_address=$RADDR2 \
-      --mysqld=--wsrep_node_incoming_address=$ADDR \
-      --mysqld=--wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2" \
-      --mysqld=--wsrep_sst_method=$sst_method \
-      --mysqld=--wsrep_sst_auth=$SUSER:$SPASS \
-      --mysqld=--wsrep_node_address=$ADDR \
-      --mysqld=--innodb_flush_method=O_DIRECT \
-      --mysqld=--core-file \
-      --mysqld=--loose-new \
-      --mysqld=--sql-mode=no_engine_substitution \
-      --mysqld=--loose-innodb \
-      --mysqld=--secure-file-priv= \
-      --mysqld=--loose-innodb-status-file=1 \
-      --mysqld=--skip-name-resolve \
-      --mysqld=--socket=$node2/pxc-mysql.sock \
-      --mysqld=--log-error=$node2/node2.err \
-      --mysqld=--log-output=none \
-     1st > $node2/node2.err 2>&1
-  set -e
-  set +e 
-   perl mysql-test-run.pl \
-      --start-and-exit \
-      --port-base=$RBASE3 \
-      --nowarnings \
-      --vardir=$node3 \
-      --mysqld=--skip-performance-schema  \
-      --mysqld=--innodb_file_per_table  \
-      --mysqld=--binlog-format=ROW \
-      --mysqld=--wsrep-slave-threads=2 \
-      --mysqld=--innodb_autoinc_lock_mode=2 \
-      --mysqld=--innodb_locks_unsafe_for_binlog=1 \
-      --mysqld=--wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-      --mysqld=--wsrep_cluster_address=gcomm://$LADDR1,$LADDR2 \
-      --mysqld=--wsrep_sst_receive_address=$RADDR3 \
-      --mysqld=--wsrep_node_incoming_address=$ADDR \
-      --mysqld=--wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR3" \
-      --mysqld=--wsrep_sst_method=$sst_method \
-      --mysqld=--wsrep_sst_auth=$SUSER:$SPASS \
-      --mysqld=--wsrep_node_address=$ADDR \
-      --mysqld=--innodb_flush_method=O_DIRECT \
-      --mysqld=--core-file \
-      --mysqld=--loose-new \
-      --mysqld=--sql-mode=no_engine_substitution \
-      --mysqld=--loose-innodb \
-      --mysqld=--secure-file-priv= \
-      --mysqld=--loose-innodb-status-file=1 \
-      --mysqld=--skip-name-resolve \
-      --mysqld=--socket=$node3/pxc-mysql.sock \
-      --mysqld=--log-error=$node3/node3.err \
-      --mysqld=--log-output=none \
-     1st > $node3/node3.err 2>&1
-   set -e
-  popd
-  if $BASEDIR/bin/mysqladmin -uroot --socket=${node1}/pxc-mysql.sock ping > /dev/null 2>&1; then
+
+  set +e
+  echo "Starting PXC node3"
+  # this will get SST.
+  ${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
+    --datadir=$node3 \
+    --socket=/tmp/n3.sock \
+    --log-error=$node3/node.err \
+    --skip-grant-tables --initialize 2>&1 || exit 1;
+
+  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
+    --basedir=${BASEDIR} --datadir=$node3 \
+    --loose-debug-sync-timeout=600 --default-storage-engine=InnoDB \
+    --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+    --innodb_file_per_table $1 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
+    --wsrep_sst_receive_address=$RADDR3 --wsrep_node_incoming_address=$ADDR \
+    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \
+    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --skip-name-resolve --log-error=$node3/node.err \
+    --socket=/tmp/n3.sock --log-output=none \
+    --port=$RBASE3 --skip-grant-tables \
+    --server-id=3 --wsrep_slave_threads=8 --wsrep_debug=OFF > $node3/node.err 2>&1 &
+
+  # ensure that node-3 has started and has joined the group post SST
+  echo "Waiting for node-3 to start ....."
+  MPID="$!"
+  while true ; do
+    sleep 10
+    if egrep -qi  "Synchronized with group, ready for connections" $node3/node.err ; then
+     break
+    fi
+    if [ "${MPID}" == "" ]; then
+      echoit "Error! server not started.. Terminating!"
+      egrep -i "ERROR|ASSERTION" $node3/node.err
+      exit 1
+    fi
+  done
+
+  if $BASEDIR/bin/mysqladmin -uroot --socket=/tmp/n1.sock ping > /dev/null 2>&1; then
    echo 'Started PXC node1...'
   else
    echo 'PXC node1 not stated...'
   fi
-  if $BASEDIR/bin/mysqladmin -uroot --socket=${node2}/pxc-mysql.sock ping > /dev/null 2>&1; then
+  if $BASEDIR/bin/mysqladmin -uroot --socket=/tmp/n2.sock ping > /dev/null 2>&1; then
    echo 'Started PXC node2...'
   else
    echo 'PXC node2 not stated...'
   fi
-  if $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/pxc-mysql.sock ping > /dev/null 2>&1; then
+  if $BASEDIR/bin/mysqladmin -uroot --socket=/tmp/n3.sock ping > /dev/null 2>&1; then
    echo 'Started PXC node3...'
   else
    echo 'PXC node3 not stated...'
@@ -257,16 +281,16 @@ pxc_startup(){
 
 pxc_startup
 
-$BASEDIR/bin/mysql -uroot --socket=$node1/pxc-mysql.sock -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
+$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
 # Create DSNs table to run pt-table-checksum
-$BASEDIR/bin/mysql -uroot --socket=$node1/pxc-mysql.sock -e "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100));"
-$BASEDIR/bin/mysql -uroot --socket=$node1/pxc-mysql.sock -e "insert into percona.dsns (id,dsn) values (1,'h=127.0.0.1,P=$RBASE1,u=root');"
-$BASEDIR/bin/mysql -uroot --socket=$node1/pxc-mysql.sock -e "insert into percona.dsns (id,dsn) values (2,'h=127.0.0.1,P=$RBASE2,u=root');"
-$BASEDIR/bin/mysql -uroot --socket=$node1/pxc-mysql.sock -e "insert into percona.dsns (id,dsn) values (3,'h=127.0.0.1,P=$RBASE3,u=root');"
+$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100));"
+$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id,dsn) values (1,'h=127.0.0.1,P=$RBASE1,u=root');"
+$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id,dsn) values (2,'h=127.0.0.1,P=$RBASE2,u=root');"
+$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id,dsn) values (3,'h=127.0.0.1,P=$RBASE3,u=root');"
 
 
 #Sysbench prepare run
-$SBENCH --test=$SYSBENCH_LOC/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=${node1}/pxc-mysql.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+$SBENCH --test=$SYSBENCH_LOC/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=pxc_test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=/tmp/n1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then
   echo "Sysbench run failed"
@@ -274,10 +298,10 @@ if [[ ${PIPESTATUS[0]} -ne 0 ]];then
 fi
 
 echo "Loading sakila test database"
-$BASEDIR/bin/mysql --socket=$node1/pxc-mysql.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
+$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
 
 echo "Loading world test database"
-$BASEDIR/bin/mysql --socket=$node1/pxc-mysql.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
+$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
 
 echo "Loading employees database with innodb engine.."
 create_emp_db employee_1 innodb employees.sql
@@ -287,9 +311,10 @@ create_emp_db employee_2 innodb employees_partitioned.sql
 
 for i in {1..5}; do
   # Sysbench transaction run
-  $SBENCH --test=$SYSBENCH_LOC/oltp.lua --mysql-socket=${node1}/pxc-mysql.sock  --mysql-user=root --num-threads=$NUMT --oltp-tables-count=$TCOUNT --mysql-db=test --oltp-table-size=$TSIZE --max-time=$SDURATION --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1
+  $SBENCH --test=$SYSBENCH_LOC/oltp.lua --mysql-socket=/tmp/n1.sock  --mysql-user=root --num-threads=$NUMT --oltp-tables-count=$TCOUNT --mysql-db=pxc_test --oltp-table-size=$TSIZE --max-time=$SDURATION --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1
   # Run pt-table-checksum to analyze data consistency 
   pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d test --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
 done
 
 exit $EXTSTATUS
+

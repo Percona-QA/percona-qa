@@ -20,7 +20,9 @@ ROOT_FS=$WORKDIR
 MYSQLD_START_TIMEOUT=180
 
 if [ ! -d ${ROOT_FS}/test_db ]; then
+  pushd ${ROOT_FS}
   git clone https://github.com/datacharmer/test_db.git
+  popd
 fi
 
 function create_emp_db()
