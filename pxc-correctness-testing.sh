@@ -99,6 +99,14 @@ else
   BASEDIR="${ROOT_FS}/$BASEDIR"
 fi
 
+#mysql install db check
+
+if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+  MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+  MID="${BASEDIR}/scripts/mysql_install_db --basedir=${BASEDIR}"
+fi
+
 archives() {
     tar czf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
     rm -rf $WORKDIR
@@ -137,11 +145,7 @@ pxc_startup(){
 
    
   echo "Starting PXC node1"
-  ${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
-    --datadir=$node1 \
-    --socket=/tmp/n1.sock \
-    --log-error=${WORKDIR}/logs/node.err \
-    --skip-grant-tables --initialize 2>&1 || exit 1;
+  ${MID} --datadir=$node1  > ${WORKDIR}/logs/node1.err 2>&1 || exit 1;
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
     --basedir=${BASEDIR} --datadir=$node1 \
@@ -156,21 +160,21 @@ pxc_startup(){
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
     --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --skip-name-resolve --log-error=${WORKDIR}/logs/node.err \
+    --skip-name-resolve --log-error=${WORKDIR}/logs/node1.err \
     --socket=/tmp/n1.sock --log-output=none \
     --port=$RBASE1 --skip-grant-tables \
-    --server-id=1 --wsrep_slave_threads=8 --wsrep_debug=OFF > ${WORKDIR}/logs/node.err 2>&1 &
+    --server-id=1 --wsrep_slave_threads=8 --wsrep_debug=OFF > ${WORKDIR}/logs/node1.err 2>&1 &
 
   echo "Waiting for node-1 to start ....."
   MPID="$!"
   while true ; do
     sleep 10
-    if egrep -qi  "Synchronized with group, ready for connections" ${WORKDIR}/logs/node.err ; then
+    if egrep -qi  "Synchronized with group, ready for connections" ${WORKDIR}/logs/node1.err ; then
      break
     fi
     if [ "${MPID}" == "" ]; then
       echoit "Error! server not started.. Terminating!"
-      egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node.err
+      egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node1.err
       exit 1
     fi
   done
@@ -178,11 +182,7 @@ pxc_startup(){
   sleep 10
 
   echo "Starting PXC node2"
-  ${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
-    --datadir=$node2 \
-    --socket=/tmp/n2.sock \
-    --log-error=${WORKDIR}/logs/node.err \
-    --skip-grant-tables --initialize 2>&1 || exit 1;
+  ${MID} --datadir=$node2  > ${WORKDIR}/logs/node2.err 2>&1 || exit 1;
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
     --basedir=${BASEDIR} --datadir=$node2 \
@@ -197,22 +197,22 @@ pxc_startup(){
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
     --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --skip-name-resolve --log-error=${WORKDIR}/logs/node.err \
+    --skip-name-resolve --log-error=${WORKDIR}/logs/node2.err \
     --socket=/tmp/n2.sock --log-output=none \
     --port=$RBASE2 --skip-grant-tables \
     --server-id=2 --wsrep_slave_threads=8 \
-    --core-file > ${WORKDIR}/logs/node.err 2>&1 &
+    --core-file > ${WORKDIR}/logs/node2.err 2>&1 &
 
   echo "Waiting for node-2 to start ....."
   MPID="$!"
   while true ; do
     sleep 10
-    if egrep -qi  "Synchronized with group, ready for connections" ${WORKDIR}/logs/node.err ; then
+    if egrep -qi  "Synchronized with group, ready for connections" ${WORKDIR}/logs/node2.err ; then
      break
     fi
     if [ "${MPID}" == "" ]; then
       echoit "Error! server not started.. Terminating!"
-      egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node.err
+      egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node2.err
       exit 1
     fi
   done
@@ -222,12 +222,7 @@ pxc_startup(){
 
   set +e
   echo "Starting PXC node3"
-  # this will get SST.
-  ${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
-    --datadir=$node3 \
-    --socket=/tmp/n3.sock \
-    --log-error=${WORKDIR}/logs/node.err \
-    --skip-grant-tables --initialize 2>&1 || exit 1;
+  ${MID} --datadir=$node3  > ${WORKDIR}/logs/node3.err 2>&1 || exit 1;
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
     --basedir=${BASEDIR} --datadir=$node3 \
@@ -242,22 +237,22 @@ pxc_startup(){
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
     --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --skip-name-resolve --log-error=${WORKDIR}/logs/node.err \
+    --skip-name-resolve --log-error=${WORKDIR}/logs/node3.err \
     --socket=/tmp/n3.sock --log-output=none \
     --port=$RBASE3 --skip-grant-tables \
-    --server-id=3 --wsrep_slave_threads=8 --wsrep_debug=OFF > ${WORKDIR}/logs/node.err 2>&1 &
+    --server-id=3 --wsrep_slave_threads=8 --wsrep_debug=OFF > ${WORKDIR}/logs/node3.err 2>&1 &
 
   # ensure that node-3 has started and has joined the group post SST
   echo "Waiting for node-3 to start ....."
   MPID="$!"
   while true ; do
     sleep 10
-    if egrep -qi  "Synchronized with group, ready for connections" ${WORKDIR}/logs/node.err ; then
+    if egrep -qi  "Synchronized with group, ready for connections" ${WORKDIR}/logs/node3.err ; then
      break
     fi
     if [ "${MPID}" == "" ]; then
       echoit "Error! server not started.. Terminating!"
-      egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node.err
+      egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node3.err
       exit 1
     fi
   done
