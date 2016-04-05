@@ -37,7 +37,7 @@ function create_emp_db()
    | sed -e "s|USE employees|USE ${DB_NAME}|" \
    | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
    > ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql
-   $BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
+   $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
    popd
 }
 
