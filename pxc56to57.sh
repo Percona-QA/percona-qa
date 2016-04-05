@@ -182,12 +182,11 @@ else
 fi
 
 archives() {
-    cd ../
     tar czf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz ./${BUILD_NUMBER}/logs || true
     rm -rf $WORKDIR
 }
 
-trap "tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs" EXIT KILL
+trap archives EXIT KILL
 
 if [[ -n ${EXTERNALS:-} ]];then 
   EXTOPTS="$EXTERNALS"
