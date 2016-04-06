@@ -149,21 +149,19 @@ pxc_startup(){
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
     --basedir=${BASEDIR} --datadir=$node1 \
-    --loose-debug-sync-timeout=600 --default-storage-engine=InnoDB \
-    --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table $1 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm:// \
-    --wsrep_sst_receive_address=$RADDR1 --wsrep_node_incoming_address=$ADDR \
+    --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
     --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
     --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --skip-name-resolve --log-error=${WORKDIR}/logs/node1.err \
+    --log-error=${WORKDIR}/logs/node1.err \
     --socket=/tmp/n1.sock --log-output=none \
-    --port=$RBASE1 --skip-grant-tables \
-    --server-id=1 --wsrep_slave_threads=8 --wsrep_debug=OFF > ${WORKDIR}/logs/node1.err 2>&1 &
+    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node1.err 2>&1 &
 
   echo "Waiting for node-1 to start ....."
   MPID="$!"
@@ -186,22 +184,19 @@ pxc_startup(){
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
     --basedir=${BASEDIR} --datadir=$node2 \
-    --loose-debug-sync-timeout=600 --default-storage-engine=InnoDB \
-    --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table $1 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
-    --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR \
+    --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
     --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
     --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --skip-name-resolve --log-error=${WORKDIR}/logs/node2.err \
+    --log-error=${WORKDIR}/logs/node2.err \
     --socket=/tmp/n2.sock --log-output=none \
-    --port=$RBASE2 --skip-grant-tables \
-    --server-id=2 --wsrep_slave_threads=8 \
-    --core-file > ${WORKDIR}/logs/node2.err 2>&1 &
+    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node2.err 2>&1 &
 
   echo "Waiting for node-2 to start ....."
   MPID="$!"
@@ -226,21 +221,19 @@ pxc_startup(){
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
     --basedir=${BASEDIR} --datadir=$node3 \
-    --loose-debug-sync-timeout=600 --default-storage-engine=InnoDB \
-    --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table $1 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
-    --wsrep_sst_receive_address=$RADDR3 --wsrep_node_incoming_address=$ADDR \
+    --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \
     --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
     --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --skip-name-resolve --log-error=${WORKDIR}/logs/node3.err \
+    --log-error=${WORKDIR}/logs/node3.err \
     --socket=/tmp/n3.sock --log-output=none \
-    --port=$RBASE3 --skip-grant-tables \
-    --server-id=3 --wsrep_slave_threads=8 --wsrep_debug=OFF > ${WORKDIR}/logs/node3.err 2>&1 &
+    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node3.err 2>&1 &
 
   # ensure that node-3 has started and has joined the group post SST
   echo "Waiting for node-3 to start ....."
@@ -308,7 +301,7 @@ for i in {1..5}; do
   # Sysbench transaction run
   $SBENCH --test=$SYSBENCH_LOC/oltp.lua --mysql-socket=/tmp/n1.sock  --mysql-user=root --num-threads=$NUMT --oltp-tables-count=$TCOUNT --mysql-db=pxc_test --oltp-table-size=$TSIZE --max-time=$SDURATION --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1
   # Run pt-table-checksum to analyze data consistency 
-  pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d test --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
+  pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d pxc_test,sakila,world,employees_1,employees_2 --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
 done
 
 exit $EXTSTATUS
