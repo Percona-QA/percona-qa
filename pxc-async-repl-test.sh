@@ -189,7 +189,7 @@ ${PXC_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --log-slave-updates --enforce-gtid-consistency \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=${PXC_BASEDIR}/lib/libgalera_smm.so \
-  --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
+  --wsrep_cluster_address=gcomm://$LADDR1 \
   --wsrep_node_incoming_address=$ADDR \
   --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
   --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS \
