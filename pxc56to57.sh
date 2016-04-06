@@ -210,24 +210,22 @@ echo "Starting PXC-5.6 node1"
 
 ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
   --basedir=${MYSQL_BASEDIR1} --datadir=$node1 \
-  --loose-debug-sync-timeout=${MYSQLD_START_TIMEOUT}0 --default-storage-engine=InnoDB \
-  --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+  --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
   --wsrep_cluster_address=gcomm:// \
-  --wsrep_sst_receive_address=$RADDR1 --wsrep_node_incoming_address=$ADDR \
+  --wsrep_node_incoming_address=$ADDR \
   --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
   --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
   --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
   --query_cache_type=0 --query_cache_size=0 \
   --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M --skip-external-locking \
+  --innodb_log_file_size=500M \
   --core-file --loose-new --sql-mode=no_engine_substitution \
   --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --skip-name-resolve --log-error=$WORKDIR/logs/node1.err \
+  --log-error=$WORKDIR/logs/node1.err \
   --socket=/tmp/node1.socket --log-output=none \
-  --port=$RBASE1 --skip-grant-tables \
-  --server-id=1 --wsrep_slave_threads=8 --wsrep_debug=OFF  > $WORKDIR/logs/node1.err 2>&1 &
+  --port=$RBASE1 --server-id=1 --wsrep_slave_threads=8  > $WORKDIR/logs/node1.err 2>&1 &
 
 for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
   sleep 1
@@ -276,24 +274,22 @@ ${MYSQL_BASEDIR1}/scripts/mysql_install_db  --basedir=${MYSQL_BASEDIR1} \
 
 ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR1} --datadir=$node2 \
-  --loose-debug-sync-timeout=${MYSQLD_START_TIMEOUT}0 --default-storage-engine=InnoDB \
-  --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+  --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
   --wsrep_cluster_address=gcomm://$LADDR1 \
-  --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR \
+  --wsrep_node_incoming_address=$ADDR \
   --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
   --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
   --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
   --query_cache_type=0 --query_cache_size=0 \
   --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M --skip-external-locking \
+  --innodb_log_file_size=500M \
   --core-file --loose-new --sql-mode=no_engine_substitution \
   --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --skip-name-resolve --log-error=$WORKDIR/logs/node2-pre.err \
+  --log-error=$WORKDIR/logs/node2-pre.err \
   --socket=/tmp/node2.socket --log-output=none \
-  --port=$RBASE2 --skip-grant-tables \
-  --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-pre.err 2>&1 &
+  --port=$RBASE2 --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-pre.err 2>&1 &
 
 for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
   sleep 1
@@ -329,17 +325,16 @@ echo "Running for upgrade"
 
 ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
-  --loose-debug-sync-timeout=${MYSQLD_START_TIMEOUT}0 --default-storage-engine=InnoDB \
-  --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+  --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider='none' --innodb_flush_method=O_DIRECT \
   --query_cache_type=0 --query_cache_size=0 \
   --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M --skip-external-locking \
+  --innodb_log_file_size=500M \
   --core-file --loose-new --sql-mode=no_engine_substitution \
   --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --skip-name-resolve --log-error=$WORKDIR/logs/node2-upgrade.err \
-  --socket=/tmp/node2.socket --log-output=none --skip-grant-tables  > $WORKDIR/logs/node2-upgrade.err 2>&1 &
+  --log-error=$WORKDIR/logs/node2-upgrade.err \
+  --socket=/tmp/node2.socket --log-output=none > $WORKDIR/logs/node2-upgrade.err 2>&1 &
 
 for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
   sleep 1
@@ -379,25 +374,23 @@ if [[ $THREEONLY -eq 0 ]];then
 
 ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
-  --loose-debug-sync-timeout=${MYSQLD_START_TIMEOUT}0 --default-storage-engine=InnoDB \
-  --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+  --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=$GALERA3 --binlog-format=ROW \
   --wsrep_cluster_address=gcomm://$LADDR1 \
-  --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR \
+  --wsrep_node_incoming_address=$ADDR \
   --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2; socket.checksum=1" \
   --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
   --log_bin_use_v1_row_events=1 --gtid_mode=0 --binlog_checksum=NONE \
   --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
   --query_cache_type=0 --query_cache_size=0 \
   --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M --skip-external-locking \
+  --innodb_log_file_size=500M \
   --core-file --loose-new --sql-mode=no_engine_substitution \
   --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --skip-name-resolve --log-error=$WORKDIR/logs/node2-post.err \
+  --log-error=$WORKDIR/logs/node2-post.err \
   --socket=/tmp/node2.socket --log-output=none \
-  --port=$RBASE2 --skip-grant-tables \
-  --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-post.err 2>&1 &
+  --port=$RBASE2 --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-post.err 2>&1 &
 
   for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
     sleep 1
@@ -416,25 +409,23 @@ else
 
  ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
-  --loose-debug-sync-timeout=${MYSQLD_START_TIMEOUT}0 --default-storage-engine=InnoDB \
-  --default-tmp-storage-engine=InnoDB --skip-performance-schema \
+  --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=$GALERA3 --binlog-format=ROW \
   --wsrep_cluster_address=gcomm://$LADDR1 \
-  --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR \
+  --wsrep_node_incoming_address=$ADDR \
   --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
   --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
   --log_bin_use_v1_row_events=1 --gtid_mode=0 --binlog_checksum=NONE \
   --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
   --query_cache_type=0 --query_cache_size=0 \
   --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M --skip-external-locking \
+  --innodb_log_file_size=500M \
   --core-file --loose-new --sql-mode=no_engine_substitution \
   --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --skip-name-resolve --log-error=$WORKDIR/logs/node2-post.err \
+  --log-error=$WORKDIR/logs/node2-post.err \
   --socket=/tmp/node2.socket --log-output=none \
-  --port=$RBASE2 --skip-grant-tables \
-  --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-post.err 2>&1 &
+  --port=$RBASE2 --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-post.err 2>&1 &
 
   for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
     sleep 1
