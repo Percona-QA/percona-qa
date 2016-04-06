@@ -47,6 +47,7 @@ cleanup(){
 trap cleanup EXIT KILL
 
 if [[ $SST_METHOD == xtrabackup ]];then
+  SST_METHOD=xtrabackup-v2
   TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
   tar -xf $TAR
   BBASE=`ls -1td ?ercona-?trabackup* | grep -v ".tar" | head -n1`
@@ -151,7 +152,7 @@ ${PXC_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
   --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
   --log-error=${WORKDIR}/logs/node1.err \
   --socket=/tmp/n1.sock --log-output=none \
-  --port=$RBASE1 --skip-grant-tables --wsrep_slave_threads=2  > ${WORKDIR}/logs/node1.err 2>&1 &
+  --port=$RBASE1 --wsrep_slave_threads=2  > ${WORKDIR}/logs/node1.err 2>&1 &
 
 echo "Waiting for node-1 to start ....."
 MPID="$!"
@@ -197,7 +198,7 @@ ${PXC_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
   --log-error=${WORKDIR}/logs/node2.err \
   --socket=/tmp/n2.sock --log-output=none \
-  --port=$RBASE2 --skip-grant-tables --wsrep_slave_threads=2 > ${WORKDIR}/logs/node2.err 2>&1 &
+  --port=$RBASE2 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node2.err 2>&1 &
 
 echo "Waiting for node-2 to start ....."
 MPID="$!"
@@ -233,7 +234,7 @@ function master_slave_test(){
     --gtid-mode=ON  --log-slave-updates \
     --enforce-gtid-consistency --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --skip-grant-tables \
+    --loose-innodb --secure-file-priv= \
     --log-error=$WORKDIR/logs/psnode.err \
     --socket=/tmp/n3.sock --init-file=$node1/rpl.sql  --log-output=none \
     --port=$RBASE3 > $WORKDIR/logs/psnode.err 2>&1 &
