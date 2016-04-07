@@ -761,6 +761,12 @@ pquery_test(){
            grep -vi "^analyze" | \
            grep -vi "^optimize" | \
            grep -vi "information_schema" | \
+           grep -vi "^check" | \
+           grep -vi "^repair" | \
+           grep -vi "^explain" | \
+           grep -vi "point" | \
+           grep -vi "geometry" | \
+           grep -vi "unique" | \
            grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         else
