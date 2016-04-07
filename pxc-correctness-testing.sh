@@ -213,9 +213,6 @@ pxc_startup(){
   done
   sleep 10
 
-  set -e
-
-  set +e
   echo "Starting PXC node3"
   ${MID} --datadir=$node3  > ${WORKDIR}/logs/node3.err 2>&1 || exit 1;
 
