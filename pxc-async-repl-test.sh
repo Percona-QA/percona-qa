@@ -99,7 +99,7 @@ PXC_BASEDIR="${ROOT_FS}/$PXCBASE"
 if [ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
   MID="${PXC_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PXC_BASEDIR}"
 elif [ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
-  MID="${PXC_BASEDIR}/scripts/mysql_install_db --basedir=${PXC_BASEDIR}"
+  MID="${PXC_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PXC_BASEDIR}"
 fi
 
 export MYSQL_VARDIR="$WORKDIR/mysqldir"
