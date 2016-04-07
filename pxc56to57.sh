@@ -210,6 +210,7 @@ echo "Starting PXC-5.6 node1"
 
 ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
   --basedir=${MYSQL_BASEDIR1} --datadir=$node1 \
+  --lc-messages-dir=${MYSQL_BASEDIR1}/share/english \
   --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
@@ -274,6 +275,7 @@ ${MYSQL_BASEDIR1}/scripts/mysql_install_db  --basedir=${MYSQL_BASEDIR1} \
 
 ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR1} --datadir=$node2 \
+  --lc-messages-dir=${MYSQL_BASEDIR1}/share/english \
   --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
@@ -325,6 +327,7 @@ echo "Running for upgrade"
 
 ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
+  --lc-messages-dir=${MYSQL_BASEDIR2}/share/english \
   --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider='none' --innodb_flush_method=O_DIRECT \
@@ -374,6 +377,7 @@ if [[ $THREEONLY -eq 0 ]];then
 
 ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
+  --lc-messages-dir=${MYSQL_BASEDIR2}/share/english \
   --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=$GALERA3 --binlog-format=ROW \
@@ -409,6 +413,7 @@ else
 
  ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
+  --lc-messages-dir=${MYSQL_BASEDIR2}/share/english \
   --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=$GALERA3 --binlog-format=ROW \
