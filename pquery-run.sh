@@ -315,11 +315,11 @@ pxc_startup(){
     node1="${RUNDIR}/${TRIAL}/node1"
     node2="${RUNDIR}/${TRIAL}/node2"
     node3="${RUNDIR}/${TRIAL}/node3"
-    start_dirty="--start-dirty"
   fi 
-
-  echo "Starting PXC node1"
-  ${MID} --datadir=$node1  > $node1/node1.err 2>&1 || exit 1;
+  
+  if [ "$1" == "startup" ]; then
+    ${MID} --datadir=$node1  > $node1/node1.err 2>&1 || exit 1;
+  fi
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
     --basedir=${BASEDIR} --datadir=$node1 \
@@ -352,8 +352,9 @@ pxc_startup(){
   done
   sleep 10
 
-  echo "Starting PXC node2"
-  ${MID} --datadir=$node2  > $node2/node2.err 2>&1 || exit 1;
+  if [ "$1" == "startup" ]; then
+    ${MID} --datadir=$node2  > $node2/node2.err 2>&1 || exit 1;
+  fi
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
     --basedir=${BASEDIR} --datadir=$node2 \
@@ -385,9 +386,9 @@ pxc_startup(){
     fi
   done
   sleep 10
-
-  echo "Starting PXC node3"
-  ${MID} --datadir=$node3  > $node3/node3.err 2>&1 || exit 1;
+  if [ "$1" == "startup" ]; then
+    ${MID} --datadir=$node3  > $node3/node3.err 2>&1 || exit 1;
+  fi
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
     --basedir=${BASEDIR} --datadir=$node3 \
