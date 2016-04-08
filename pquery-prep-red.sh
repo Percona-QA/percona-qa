@@ -119,7 +119,6 @@ fi
 #Check MS/PS pquery binary
 #PQUERY_BIN="`grep 'pquery Binary' ./pquery-run.log | sed 's|^.*pquery Binary[: \t]*||' | head -n1`"    # < swap back to this one once old runs are gone (upd: maybe not. Issues.)
 PQUERY_BIN=$(echo "$(grep -ihm1 "PQUERY_BIN=" *pquery*.sh | sed 's|[ \t]*#.*$||;s|PQUERY_BIN=||')" | sed "s|\${SCRIPT_PWD}|${SCRIPT_PWD}|" | head -n1)
-PXC_MTR_CHK=$(grep -ihm1 "PXC_MTR_STARTUP=" *pquery*.sh | sed 's|[ \t]*#.*$||;s|PQUERY_BIN=||' | cut -d'=' -f2)
 echo "pquery binary used: ${PQUERY_BIN}"
 
 if [ "${PQUERY_BIN}" == "" ]; then
@@ -248,28 +247,11 @@ generate_reducer_script(){
     MULTI_STRING3="0,/#VARMOD#/s:#VARMOD#:FORCE_SPORADIC=1\n#VARMOD#:"
   fi
   if [ ${PXC} -eq 1 ]; then
-    PXC_CLEANUP1="0,/^[ \t]*PXC_DOCKER_COMPOSE_MOD[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_COMPOSE_MOD[ \t]*=.*$|#PXC_DOCKER_COMPOSE_MOD=<set_below_in_machine_variables_section>|"
-    PXC_CLEANUP2="0,/^[ \t]*PXC_MTR_MOD[ \t]*=.*$/s|^[ \t]*PXC_MTR_MOD[ \t]*=.*$|#PXC_MTR_MOD=<set_below_in_machine_variables_section>|"
-    PXC_CLEANUP3="0,/^[ \t]*PXC_DOCKER_COMPOSE_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_COMPOSE_LOC[ \t]*=.*$|#PXC_DOCKER_COMPOSE_LOC=<set_below_in_machine_variables_section>|"
-    PXC_CLEANUP4="0,/^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$/s|^[ \t]*PXC_DOCKER_CLEAN_LOC[ \t]*=.*$|#PXC_DOCKER_CLEAN_LOC=<set_below_in_machine_variables_section>|"
-    if [ ${PXC_MTR_CHK} -eq 1 ];then
-      PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_MOD=0\n#VARMOD#:"
-      PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_MTR_MOD=1\n#VARMOD#:"
-    else
-      PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_MOD=1\n#VARMOD#:"
-      PXC_STRING2="0,/#VARMOD#/s:#VARMOD#:PXC_MTR_MOD=0\n#VARMOD#:"
-    fi
-    PXC_STRING3="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_COMPOSE_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_YML}\n#VARMOD#:"
-    PXC_STRING4="0,/#VARMOD#/s:#VARMOD#:PXC_DOCKER_CLEAN_LOC=${SCRIPT_PWD}${DOCKER_COMPOSE_LOC}\n#VARMOD#:"
+    PXC_CLEANUP1="0,/^[ \t]*PXC_MOD[ \t]*=.*$/s|^[ \t]*PXC_MOD[ \t]*=.*$|#PXC_MOD=<set_below_in_machine_variables_section>|"
+    PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_MOD=1\n#VARMOD#:"
   else
     PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
-    PXC_CLEANUP2="s|ZERO0|ZERO0|"
-    PXC_CLEANUP3="s|ZERO0|ZERO0|"
-    PXC_CLEANUP4="s|ZERO0|ZERO0|"
     PXC_STRING1="s|ZERO0|ZERO0|"
-    PXC_STRING2="s|ZERO0|ZERO0|"
-    PXC_STRING3="s|ZERO0|ZERO0|"
-    PXC_STRING4="s|ZERO0|ZERO0|"
   fi
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
@@ -283,9 +265,6 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*PQUERY_MOD[ \t]*=.*$/s|^[ \t]*PQUERY_MOD[ \t]*=.*$|#PQUERY_MOD=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "${PXC_CLEANUP1}" \
-   | sed -e "${PXC_CLEANUP2}" \
-   | sed -e "${PXC_CLEANUP3}" \
-   | sed -e "${PXC_CLEANUP4}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
    | sed -e "${TEXT_STRING2}" \
@@ -298,9 +277,6 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_MOD=1\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
    | sed -e "${PXC_STRING1}" \
-   | sed -e "${PXC_STRING2}" \
-   | sed -e "${PXC_STRING3}" \
-   | sed -e "${PXC_STRING4}" \
    > ./reducer${OUTFILE}.sh
   chmod +x ./reducer${OUTFILE}.sh 
 }
@@ -330,7 +306,7 @@ for SQLLOG in $(ls ./*/*thread-0.sql 2>/dev/null); do
       else
         INPUTFILE=`echo ${SQLLOG} | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
       fi
-      BIN=`ls -1 ${WORKD_PWD}/${TRIAL}/{SUBDIR}/mysqld 2>&1 | head -n1 | grep -v "No such file"`
+      BIN=`ls -1 ${WORKD_PWD}/${TRIAL}/node${SUBDIR}/mysqld 2>&1 | head -n1 | grep -v "No such file"`
       if [ ! -r $BIN ]; then
         echo "Assert! mysqld binary '$BIN' could not be read"
         exit 1
@@ -341,22 +317,18 @@ for SQLLOG in $(ls ./*/*thread-0.sql 2>/dev/null); do
         BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//' | tr -d '[[:space:]]'`"
       fi
       #BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
-      CORE=`ls -1 ./${TRIAL}/${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
+      CORE=`ls -1 ./${TRIAL}/node${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
       if [ "$CORE" != "" ]; then
         extract_queries_core
       fi
-      ERRLOG=./${TRIAL}/${SUBDIR}/error.log
+      ERRLOG=./${TRIAL}/node${SUBDIR}/error.log
       if [ "$ERRLOG" != "" ]; then
         extract_queries_error_log
       else
-        echo "Assert! Error log at ./${TRIAL}/${SUBDIR}/error.log could not be read?"
+        echo "Assert! Error log at ./${TRIAL}/node${SUBDIR}/error.log could not be read?"
         exit 1
       fi
-      if [ ${PXC_MTR_CHK} -eq 1 ];then
-        TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
-      else
-        TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/${SUBDIR}/error.log`
-      fi
+      TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
       echo "* TEXT variable set to: \"${TEXT}\""
       if [ "${MULTI}" == "1" ]; then
          if [ -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then

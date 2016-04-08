@@ -78,11 +78,8 @@ TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
 
 # === Percona XtraDB Cluster options (uses Docker & Docker Compose)
-PXC_DOCKER_COMPOSE_MOD=0        # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster with docker-compose
-PXC_MTR_MOD=0           # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster with MTR 
+PXC_MOD=0           # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster with MTR 
 PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
-PXC_DOCKER_COMPOSE_LOC=~/percona-qa/pxc-pquery/existing/fig.yml
-PXC_DOCKER_CLEAN_LOC=~/percona-qa/pxc-pquery 
 
 # ==== Examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for CLI output (MODE=2 or 5)
@@ -107,8 +104,7 @@ PXC_DOCKER_CLEAN_LOC=~/percona-qa/pxc-pquery
 #   For MODE5, you would use a mysql CLI to get the desired output "string" (see example given above) and then set MODE5_COUNTTEXT
 # - PQUERY_MOD: 1: use pquery, 0: use mysql CLI. Causes reducer.sh to use pquery instead of the mysql client for replays (default=0). Supported for MODE=1,3,4
 # - PQUERY_LOC: Location of the pquery binary (retrieve pquery like this; $ cd ~; bzr branch lp:percona-qa; # then ref ~/percona-qa/pquery/pquery[-ms])
-# - PXC_DOCKER_COMPOSE_MOD: 1: use Docker Compose to bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
-# - PXC_MTR_MOD: 1: use MTR to bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
+# - PXC_MOD: 1: bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
 #   see lp:/percona-qa/pxc-pquery/new/pxc-pquery_info.txt and lp:/percona-qa/docker_info.txt for more information on this. See above for some limitations etc.
 #   IMPORTANT NOTE: If this is set to 1, ftm, these settings (and limitations) are automatically set: INHERENT: PQUERY_MOD=1, LIMTATIONS: FORCE_SPORADIC=0, 
 #   SPORADIC=0, FORCE_SKIPV=0, SKIPV=1, MYEXTRA="", MULTI_THREADS=0 
@@ -330,11 +326,7 @@ ctrl_c(){
     echo_out "[Abort] Best testcase thus far: $INPUTFILE (= input file, no optimizations were successful)"
   fi
   echo_out "[Abort] End of dump stack."
-  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then 
-    echo_out "[Abort] Ensuring any remaining PXC Docker containers are terminated and removed"
-    ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
-  fi
-  if [ $PXC_MTR_MOD -eq 1 ]; then
+  if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining PXC nodes are terminated and removed"
     (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync 
@@ -527,7 +519,7 @@ options_check(){
       exit 1
     fi
   fi
-  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 -o $PXC_MTR_MOD -eq 1 ]; then
+  if [ $PXC_MOD -eq 1 ]; then
     PQUERY_MOD=1
     # ========= These are currently limitations of PXC mode. Feel free to extend reducer.sh to handle these ========
     #export -n MYEXTRA=""  # Serious shortcoming. Work to be done. PQUERY MYEXTRA variables will be added docker-compose.yml
@@ -543,11 +535,6 @@ options_check(){
     fi
     if [ "${TIMEOUT_COMMAND}" != "" ]; then
       echo "Error: PXC mode is set to 1, and TIMEOUT_COMMAND is set, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
-      exit 1
-    fi
-    if [ ! -r "$PXC_DOCKER_COMPOSE_LOC" ]; then
-      echo "Error: PXC_DOCKER_COMPOSE_MOD is set to 1, but the Docker Compose file (as defined by PXC_DOCKER_COMPOSE_LOC; currently set to '$PXC_DOCKER_COMPOSE_LOC') is not available."
-      echo 'Please check script contents/options ($PXC_DOCKER_COMPOSE_MOD and $PXC_DOCKER_COMPOSE_LOC variables)'
       exit 1
     fi
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
@@ -1032,11 +1019,7 @@ init_workdir_and_files(){
     # Initial INPUTFILE to WORKF copy
     (echo "$DROPC"; (cat $INPUTFILE | grep -v "$DROPC")) > $WORKF
   fi
-  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-    echo_out "[Init] PXC Node #1 Client: $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000"
-    echo_out "[Init] PXC Node #2 Client: $MYBASE/bin/mysql -uroot -h127.0.0.1 -P11000"
-    echo_out "[Init] PXC Node #3 Client: $MYBASE/bin/mysql -uroot -h127.0.0.1 -P12000"
-  elif [ $PXC_MTR_MOD -eq 1 ]; then
+  if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Init] PXC Node #1 Client: $MYBASE/bin/mysql -uroot -S${node1}/node1_socket.sock"
     echo_out "[Init] PXC Node #2 Client: $MYBASE/bin/mysql -uroot -S${node2}/node2_socket.sock"
     echo_out "[Init] PXC Node #3 Client: $MYBASE/bin/mysql -uroot -S${node3}/node3_socket.sock"
@@ -1094,7 +1077,7 @@ init_workdir_and_files(){
     fi
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
-    if [ $PXC_DOCKER_COMPOSE_MOD -ne 1 -a  $PXC_MTR_MOD -ne 1 ]; then  # For PXC, we do not need this, Docker Compose/MTR takes care of it
+    if [ $PXC_MOD -ne 1 ]; then  # For PXC, we do not need this, Docker Compose/MTR takes care of it
       echo_out "[Init] Setting up standard working template"
       if [ "`${MYBASE}${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.7" ]; then
         MID_OPTIONS="--initialize-insecure"  # --initialize-insecure prevents random root password in 5.7. --force is no longer supported in new mysql_install_db binary in 5.7
@@ -1152,9 +1135,25 @@ init_workdir_and_files(){
         exit 1
       fi
       cp -R $WORKD/data/* $WORKD/data.init/
+    else
+      echo_out "[Init] Setting up standard working PXC template"
+      if [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+        MID="${MYBASE}/bin/mysqld --no-defaults --initialize-insecure --basedir=${MYBASE}"
+      elif [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+        MID="${MYBASE}/scripts/mysql_install_db --no-defaults --basedir=${MYBASE}"
+      fi
+      node1="${WORKD}/node1"
+      node2="${WORKD}/node2"
+      node3="${WORKD}/node3"
+      mkdir -p $node1 $node2 $node3
+      ${MID} --datadir=$node1  > $node1/error.log 2>&1 || exit 1;
+      ${MID} --datadir=$node2  > $node2/error.log 2>&1 || exit 1;
+      ${MID} --datadir=$node3  > $node3/error.log 2>&1 || exit 1;
+      mkdir $WORKD/node1.init $WORKD/node2.init $WORKD/node3.init
+      cp -R $WORKD/node1/* $WORKD/node1.init/
+      cp -R $WORKD/node2/* $WORKD/node2.init/
+      cp -R $WORKD/node3/* $WORKD/node3.init/
     fi
-#  elif [ $PXC_MTR_MOD -ne 1 ]; then
-#    start_pxc_mtr
   else
     echo_out "[Init] This is a subreducer process; using initialization data from the main process ($WORKD/../../data.init)"
   fi
@@ -1196,19 +1195,7 @@ generate_run_scripts(){
     chmod +x $WORK_RUN
     if [ $PQUERY_MOD -eq 1 ]; then
       cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
-      if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-        echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
-        echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
-        echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
-        echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
-        if [ $PQUERY_MULTI -eq 1 ]; then
-          if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
-        else
-          if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --addr=127.0.0.1 --port=10000" >> $WORK_RUN_PQUERY
-        fi
-      elif [ $PXC_MTR_MOD -eq 1 ]; then
+      if [ $PXC_MOD -eq 1 ]; then
         echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
         echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
         echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
@@ -1284,21 +1271,11 @@ generate_run_scripts(){
 }
 
 init_mysql_dir(){
-  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-    sudo rm -Rf $WORKD/1 $WORKD/2 $WORKD/3 
-    cp $PXC_DOCKER_COMPOSE_LOC $WORKD
-    sed -i "s|/dev/shm/pxc-pquery|$WORKD|" $WORKD/docker-compose.yml
-    if [ ${STAGE} -eq 8 ]; then
-      export -n MYEXTRA=${MYEXTRA_STAGE8}
-      sed -i "s|--log-error=error.log|${MYEXTRA} --log-error=error.log|" $WORKD/docker-compose.yml
-    else
-      sed -i "s|--log-error=error.log|${MYEXTRA}|" $WORKD/docker-compose.yml
-    fi
-  elif [ $PXC_MTR_MOD -eq 1 ]; then
+  if [ $PXC_MOD -eq 1 ]; then
     sudo rm -Rf $WORKD/node1 $WORKD/node2 $WORKD/node3
-    #cp -R ${node1}.init ${node1}
-    #cp -R ${node2}.init ${node2}
-    #cp -R ${node3}.init ${node3}
+    cp -R ${node1}.init ${node1}
+    cp -R ${node2}.init ${node2}
+    cp -R ${node3}.init ${node3}
   else
     rm -Rf $WORKD/data/*  $WORKD/tmp/*
     rm -Rf $WORKD/data/.rocksdb 2> /dev/null
@@ -1313,14 +1290,7 @@ init_mysql_dir(){
 
 start_mysqld_or_valgrind_or_pxc(){
   init_mysql_dir
-  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-    CLUSTER_UP=0
-    start_pxc_main
-    if [ $CLUSTER_UP -ne 6 ]; then
-      echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start 3 node PXC Cluster, check clients on ports 10000, 11000, 12000 (if still live), and error logs for all 3 nodes in $WORKD/{node_nr}/error.log"
-      exit 1
-    fi
-  elif [ $PXC_MTR_MOD -eq 1 ]; then
+  if [ $PXC_MOD -eq 1 ]; then
     start_pxc_mtr
   else
     if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi
@@ -1359,7 +1329,6 @@ start_pxc_main(){
 }
 
 start_pxc_mtr(){
-
   ADDR="127.0.0.1"
   RPORT=$(( RANDOM%21 + 10 ))
   RBASE1="$(( RPORT*1000 ))"
@@ -1376,120 +1345,100 @@ start_pxc_mtr(){
   
   SUSER=root
   SPASS=
-  
-  node1="${WORKD}/node1"
-  mkdir -p $node1
-  node2="${WORKD}/node2"
-  mkdir -p $node2
-  node3="${WORKD}/node3"
-  mkdir -p $node3
-  echo_out "$ATLEASTONCE [Stage $STAGE] Waiting for the 3 node PXC Cluster to fully start..." 
-  pushd ${MYBASE}/mysql-test/
-  
-  set +e 
-   perl mysql-test-run.pl \
-      --start-and-exit $start_dirty \
-      --port-base=$RBASE1 \
-      --nowarnings \
-      --vardir=$node1 \
-      --mysqld=--skip-performance-schema  \
-      --mysqld=--innodb_file_per_table \
-      --mysqld=--binlog-format=ROW \
-      --mysqld=--wsrep-slave-threads=2 \
-      --mysqld=--innodb_autoinc_lock_mode=2 \
-      --mysqld=--innodb_locks_unsafe_for_binlog=1 \
-      --mysqld=--wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
-      --mysqld=--wsrep_cluster_address=gcomm:// \
-      --mysqld=--wsrep_sst_receive_address=$RADDR1 \
-      --mysqld=--wsrep_node_incoming_address=$ADDR \
-      --mysqld=--wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1" \
-      --mysqld=--wsrep_sst_method=rsync \
-      --mysqld=--wsrep_sst_auth=$SUSER:$SPASS \
-      --mysqld=--wsrep_node_address=$ADDR \
-      --mysqld=--innodb_flush_method=O_DIRECT \
-      --mysqld=--core-file \
-      --mysqld=--loose-new \
-      --mysqld=--sql-mode=no_engine_substitution \
-      --mysqld=--loose-innodb \
-      --mysqld=--secure-file-priv= \
-      --mysqld=--loose-innodb-status-file=1 \
-      --mysqld=--skip-name-resolve \
-      --mysqld=--socket=$node1/node1_socket.sock \
-      --mysqld=--log-error=$node1/error.log \
-      --mysqld=--log-output=none $PXC_MYEXTRA \
-     1st > $node1/error.log 2>&1 
-   set -e
-  
-  set +e 
-   perl mysql-test-run.pl \
-      --start-and-exit $start_dirty \
-      --port-base=$RBASE2 \
-      --nowarnings \
-      --vardir=$node2 \
-      --mysqld=--skip-performance-schema  \
-      --mysqld=--innodb_file_per_table  \
-      --mysqld=--binlog-format=ROW \
-      --mysqld=--wsrep-slave-threads=2 \
-      --mysqld=--innodb_autoinc_lock_mode=2 \
-      --mysqld=--innodb_locks_unsafe_for_binlog=1 \
-      --mysqld=--wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
-      --mysqld=--wsrep_cluster_address=gcomm://$LADDR1 \
-      --mysqld=--wsrep_sst_receive_address=$RADDR2 \
-      --mysqld=--wsrep_node_incoming_address=$ADDR \
-      --mysqld=--wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2" \
-      --mysqld=--wsrep_sst_method=rsync \
-      --mysqld=--wsrep_sst_auth=$SUSER:$SPASS \
-      --mysqld=--wsrep_node_address=$ADDR \
-      --mysqld=--innodb_flush_method=O_DIRECT \
-      --mysqld=--core-file \
-      --mysqld=--loose-new \
-      --mysqld=--sql-mode=no_engine_substitution \
-      --mysqld=--loose-innodb \
-      --mysqld=--secure-file-priv= \
-      --mysqld=--loose-innodb-status-file=1 \
-      --mysqld=--skip-name-resolve \
-      --mysqld=--socket=$node2/node2_socket.sock \
-      --mysqld=--log-error=$node2/error.log \
-      --mysqld=--log-output=none $PXC_MYEXTRA \
-     1st > $node2/error.log 2>&1
-   set -e
-  
-  echo_out 'Starting PXC node3...'
-  
-  set +e 
-   perl mysql-test-run.pl \
-      --start-and-exit $start_dirty \
-      --port-base=$RBASE3 \
-      --nowarnings \
-      --vardir=$node3 \
-      --mysqld=--skip-performance-schema  \
-      --mysqld=--innodb_file_per_table  \
-      --mysqld=--binlog-format=ROW \
-      --mysqld=--wsrep-slave-threads=2 \
-      --mysqld=--innodb_autoinc_lock_mode=2 \
-      --mysqld=--innodb_locks_unsafe_for_binlog=1 \
-      --mysqld=--wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
-      --mysqld=--wsrep_cluster_address=gcomm://$LADDR1,$LADDR2 \
-      --mysqld=--wsrep_sst_receive_address=$RADDR3 \
-      --mysqld=--wsrep_node_incoming_address=$ADDR \
-      --mysqld=--wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR3" \
-      --mysqld=--wsrep_sst_method=rsync \
-      --mysqld=--wsrep_sst_auth=$SUSER:$SPASS \
-      --mysqld=--wsrep_node_address=$ADDR \
-      --mysqld=--innodb_flush_method=O_DIRECT \
-      --mysqld=--core-file \
-      --mysqld=--loose-new \
-      --mysqld=--sql-mode=no_engine_substitution \
-      --mysqld=--loose-innodb \
-      --mysqld=--secure-file-priv= \
-      --mysqld=--loose-innodb-status-file=1 \
-      --mysqld=--skip-name-resolve \
-      --mysqld=--socket=$node3/node3_socket.sock \
-      --mysqld=--log-error=$node3/error.log \
-      --mysqld=--log-output=none $PXC_MYEXTRA \
-     1st > $node3/error.log 2>&1
-   set -e
-  popd
+
+  ${MYBASE}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
+    --basedir=${MYBASE} --datadir=$node1 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
+    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
+    --wsrep_cluster_address=gcomm:// \
+    --wsrep_node_incoming_address=$ADDR \
+    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$node1/error.log \
+    --socket=$node1/node1_socket.sock --log-output=none \
+    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/error.log 2>&1 &
+
+  echo "Waiting for node-1 to start ....."
+  MPID="$!"
+  while true ; do
+    sleep 10
+    if egrep -qi  "Synchronized with group, ready for connections" $node1/error.log ; then
+     break
+    fi
+    if [ "${MPID}" == "" ]; then
+      echoit "Error! server not started.. Terminating!"
+      egrep -i "ERROR|ASSERTION" $node1/error.log
+      exit 1
+    fi
+  done
+  sleep 10 
+
+  ${MYBASE}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
+    --basedir=${MYBASE} --datadir=$node2 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
+    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
+    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
+    --wsrep_node_incoming_address=$ADDR \
+    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
+    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$node2/error.log \
+    --socket=$node2/node2_socket.sock --log-output=none \
+    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/error.log 2>&1 &
+
+  echo "Waiting for node-2 to start ....."
+  MPID="$!"
+  while true ; do
+    sleep 10
+    if egrep -qi  "Synchronized with group, ready for connections" $node2/error.log ; then
+     break
+    fi
+    if [ "${MPID}" == "" ]; then
+      echoit "Error! server not started.. Terminating!"
+      egrep -i "ERROR|ASSERTION" $node2/error.log
+      exit 1
+    fi
+  done
+  sleep 10
+
+  ${MYBASE}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
+    --basedir=${MYBASE} --datadir=$node3 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
+    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
+    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
+    --wsrep_node_incoming_address=$ADDR \
+    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \
+    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$node3/error.log \
+    --socket=$node3/node3_socket.sock --log-output=none \
+    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/error.log 2>&1 &
+
+  # ensure that node-3 has started and has joined the group post SST
+  echo "Waiting for node-3 to start ....."
+  MPID="$!"
+  while true ; do
+    sleep 10
+    if egrep -qi  "Synchronized with group, ready for connections" $node3/error.log ; then
+     break
+    fi
+    if [ "${MPID}" == "" ]; then
+      echoit "Error! server not started.. Terminating!"
+      egrep -i "ERROR|ASSERTION" $node3/error.log
+      exit 1
+    fi
+  done
+
   CLUSTER_UP=0
   if $MYBASE/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then
     if [ `$MYBASE/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
@@ -1745,11 +1694,7 @@ run_and_check(){
   OUTCOME="$?"
   if [ $MODE -ne 1 -a $MODE -ne 6 ]; then stop_mysqld_or_pxc; fi
   # Add error log from this trial to the overall run error log
-  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-    sudo cat $WORKD/1/error.log > $WORKD/node1_error.log
-    sudo cat $WORKD/2/error.log > $WORKD/node2_error.log
-    sudo cat $WORKD/3/error.log > $WORKD/node3_error.log
-  elif [ $PXC_MTR_MOD -eq 1 ]; then
+  if [ $PXC_MOD -eq 1 ]; then
     sudo cat $WORKD/node1/error.log > $WORKD/node1_error.log
     sudo cat $WORKD/node2/error.log > $WORKD/node2_error.log
     sudo cat $WORKD/node3/error.log > $WORKD/node3_error.log
@@ -1762,23 +1707,13 @@ run_and_check(){
 
 run_sql_code(){
   if [ -f $WORKD/mysql.out ]; then mv -f $WORKD/mysql.out $WORKD/mysql.prev; fi
-  if [ $PXC_MTR_MOD -eq 0 ]; then
+  if [ $PXC_MOD -eq 0 ]; then
     mkdir $WORKD/data/test > /dev/null 2>&1 # Ensuring reducer can connect to the test database
   fi
 
   # Setting up query timeouts using the MySQL Event Sheduler
   # Place event into the mysql db, not test db as the test db is dropped immediately
-  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-    $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 --force mysql -e"
-      DELIMITER ||
-      CREATE EVENT querytimeout ON SCHEDULE EVERY 20 SECOND DO BEGIN
-      SET @id:='';
-      SET @id:=(SELECT id FROM INFORMATION_SCHEMA.PROCESSLIST WHERE ID<>CONNECTION_ID() AND STATE<>'killed' AND TIME>$QUERYTIMEOUT ORDER BY TIME DESC LIMIT 1);
-      IF @id > 1 THEN KILL QUERY @id; END IF;
-      END ||
-      DELIMITER ;
-    "
-  elif [ $PXC_MTR_MOD -eq 1 ]; then
+  if [ $PXC_MOD -eq 1 ]; then
     $MYBASE/bin/mysql -uroot -S${node1}/node1_socket.sock --force mysql -e"
       DELIMITER ||
       CREATE EVENT querytimeout ON SCHEDULE EVERY 20 SECOND DO BEGIN
@@ -1837,9 +1772,7 @@ run_sql_code(){
     echo_out "$TXT_OUT"
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] All SQL threads have finished/terminated"
   elif [ $MODE -eq 5 ]; then
-    if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-      cat $WORKT | $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 -vvv --force test > $WORKD/mysql.out 2>&1
-    elif [ $PXC_MTR_MOD -eq 1 ]; then
+    if [ $PXC_MOD -eq 1 ]; then
       cat $WORKT | $MYBASE/bin/mysql -uroot -S${node1}/node1_socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
     else
       cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
@@ -1850,9 +1783,7 @@ run_sql_code(){
     # issue was generated by pquery. Reason; pquery is C/API driven, each statement executed is a statement in and by itself. In the CLI OTOH. each
     # statement can be continued on the next line, and a mismatched (i.e. unterminated) single or double quote in the sql file can throw off the replay.
     if [ $MODE -eq 2 ]; then
-      if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-        cat $WORKT | $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 --binary-mode --force test > $WORKD/mysql.out 2>&1
-      elif [ $PXC_MTR_MOD -eq 1 ]; then
+      if [ $PXC_MOD -eq 1 ]; then
         cat $WORKT | $MYBASE/bin/mysql -uroot -S${node1}/node1_socket.sock --binary-mode --force test > $WORKD/mysql.out 2>&1
       else
         cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --binary-mode --force test > $WORKD/mysql.out 2>&1
@@ -1863,15 +1794,7 @@ run_sql_code(){
         if [ -r $WORKD/pquery.out ]; then
           mv $WORKD/pquery.out $WORKD/pquery.prev
         fi
-        if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-          if [ $PQUERY_MULTI -eq 1 ]; then
-            if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-            ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --addr=127.0.0.1 --port=10000 > $WORKD/pquery.out 2>&1
-          else
-            if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-            ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --addr=127.0.0.1 --port=10000 > $WORKD/pquery.out 2>&1
-          fi
-        elif [ $PXC_MTR_MOD -eq 1 ]; then
+        if [ $PXC_MOD -eq 1 ]; then
           if [ $PQUERY_MULTI -eq 1 ]; then
             if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
             ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=${node1}/node1_socket.sock > $WORKD/pquery.out 2>&1
@@ -1889,9 +1812,7 @@ run_sql_code(){
           fi
         fi
       else
-        if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-          cat $WORKT | $MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 --binary-mode --force test > $WORKD/mysql.out 2>&1
-        elif [ $PXC_MTR_MOD -eq 1 ]; then
+        if [ $PXC_MOD -eq 1 ]; then
           cat $WORKT | $MYBASE/bin/mysql -uroot --socket=${node1}/node1_socket.sock --binary-mode --force test > $WORKD/mysql.out 2>&1
         else
           cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --binary-mode --force test > $WORKD/mysql.out 2>&1
@@ -1935,10 +1856,7 @@ cleanup_and_save(){
       TS_init_all_sql_files
     fi
   else
-    if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-      echo_out "[Clean] Ensuring any remaining PXC Docker containers are terminated and removed"
-      ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
-    elif [ $PXC_MTR_MOD -eq 1 ]; then
+    if [ $PXC_MOD -eq 1 ]; then
       (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       sleep 2; sync
     fi
@@ -2042,10 +1960,7 @@ process_outcome(){
   # MODE3: mysqld error output log testing (set TEXT)
   if [ $MODE -eq 3 ]; then
     ERRORLOG=
-    if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-      ERRORLOG=$WORKD/*/error.log
-      sudo chmod 777 $ERRORLOG
-    elif [ $PXC_MTR_MOD -eq 1 ]; then
+    if [ $PXC_MOD -eq 1 ]; then
       ERRORLOG=$WORKD/*/error.log
       sudo chmod 777 $ERRORLOG
     else
@@ -2057,7 +1972,7 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ $PXC_MTR_MOD -eq 0 ]; then
+      if [ $PXC_MOD -eq 0 ]; then
         return 1
       fi 
     else
@@ -2072,17 +1987,7 @@ process_outcome(){
   # MODE4: Crash testing
   if [ $MODE -eq 4 ]; then
     M4_ISSUE_FOUND=0
-    if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-      if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 1 ]; then
-        if ! $MYBASE/bin/mysqladmin -uroot -h127.0.0.1 -P10000 ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
-      fi
-      if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 2 ]; then
-        if ! $MYBASE/bin/mysqladmin -uroot -h127.0.0.1 -P11000 ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
-      fi
-      if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 3 ]; then
-        if ! $MYBASE/bin/mysqladmin -uroot -h127.0.0.1 -P12000 ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
-      fi
-    elif [ $PXC_MTR_MOD -eq 1 ]; then
+    if [ $PXC_MOD -eq 1 ]; then
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 1 ]; then
         if ! $MYBASE/bin/mysqladmin -uroot --socket=${node1}/node1_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
@@ -2236,9 +2141,7 @@ process_outcome(){
 }
 
 stop_mysqld_or_pxc(){
-  if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 ]; then
-    ${PXC_DOCKER_CLEAN_LOC}/cleanup.sh
-  elif [ $PXC_MTR_MOD -eq 1 ]; then
+  if [ $PXC_MOD -eq 1 ]; then
     (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   else
@@ -2334,7 +2237,7 @@ finish(){
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
       echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$DIRVALUE also"
-      if [ $PXC_DOCKER_COMPOSE_MOD -eq 1 -o $PXC_MTR_MOD -eq 1 ]; then
+      if [ $PXC_MOD -eq 1 ]; then
         sudo cp -R $WORKD /tmp/$DIRVALUE
         sudo chown -R `whoami`:`whoami` /tmp/$DIRVALUE
         cp $0 /tmp/$DIRVALUE  # Copy this reducer script
