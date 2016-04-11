@@ -138,11 +138,7 @@ if [ ${PXC} -eq 1 ]; then
   fi
   if [ ${PQUERY_RUN_TIMEOUT} -lt 120 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
     echoit "Note: As this is a PXC=1 run, and PQUERY_RUN_TIMEOUT was set to only ${PQUERY_RUN_TIMEOUT}, this script is setting the timeout to the required minimum of 120 for this run."
-    if [ ${PXC_STARTUP} -eq 1 ]; then
-      PQUERY_RUN_TIMEOUT=60
-    else
-      PQUERY_RUN_TIMEOUT=120
-    fi
+    PQUERY_RUN_TIMEOUT=120
   fi
 fi
 if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then echoit "MODE: Query Duration Testing"; fi
@@ -390,6 +386,8 @@ pxc_startup(){
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
     if ${BASEDIR}/bin/mysqladmin -uroot -S$node3/node3_socket.sock ping > /dev/null 2>&1; then
+      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -e "create database if not exists test" > /dev/null 2>&1
+      sleep 2
       break
     fi
   done
@@ -598,7 +596,7 @@ pquery_test(){
     echo "${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     pxc_startup 
     echoit "Waiting for the 3 node PXC Cluster to fully start..."
-    for X in $(seq 0 ${PXC_MTR_START_TIMEOUT}); do
+    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
       CLUSTER_UP=0;
       if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock ping > /dev/null 2>&1; then
@@ -805,7 +803,7 @@ pquery_test(){
       wait ${MPID} >/dev/null 2>&1
       sleep 2; sync
     else
-      echoit "3 Node PXC Cluster failed to start after ${PXC_MTR_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
+      echoit "3 Node PXC Cluster failed to start after ${PXC_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
       (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       sleep 2; sync
     fi
