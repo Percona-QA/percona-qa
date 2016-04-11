@@ -66,12 +66,7 @@ SKIP_JEMALLOC_FOR_PS=0                                         # Skip LD_PRELOAD
 
 # ========================================= User configurable variables to enable/for PXC testing only ===========================
 PXC=0                                                          # Special use mode: Enable PXC testing
-PXC_MTR_STARTUP=0
-PXC_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_mysqld_options.txt # PXC wsrep mysqld options
-DOCKER_COMPOSE_LOC=${SCRIPT_PWD}/pxc-pquery/pquery-jenkins     # Only used for PXC runs which use Docker Compose
-DOCKER_COMPOSE_YML=${SCRIPT_PWD}/pxc-pquery/pquery-jenkins/pqueryrun/docker-compose.yml
-PXC_DOCKER_START_TIMEOUT=140                                   # Should not be necessary to change. Default: 140
-PXC_MTR_START_TIMEOUT=20                                       # Should not be necessary to change. Default: 20
+PXC_START_TIMEOUT=60                                           # Should not be necessary to change. Default: 60
 
 # ========================================= Improvement ideas ====================================================================
 # * SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 (These likely include some of the 'SIGKILL' issues - no core but terminated)
@@ -337,7 +332,7 @@ pxc_startup(){
     --socket=$node1/node1_socket.sock --log-output=none \
     --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/node1.err 2>&1 &
 
-  for X in $(seq 0 ${PXC_MTR_START_TIMEOUT}); do
+  for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
     if ${BASEDIR}/bin/mysqladmin -uroot -S$node1/node1_socket.sock ping > /dev/null 2>&1; then
       break
@@ -364,7 +359,7 @@ pxc_startup(){
     --socket=$node2/node2_socket.sock --log-output=none \
     --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &
 
-  for X in $(seq 0 ${PXC_MTR_START_TIMEOUT}); do
+  for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
     if ${BASEDIR}/bin/mysqladmin -uroot -S$node2/node2_socket.sock ping > /dev/null 2>&1; then
       break
@@ -391,7 +386,7 @@ pxc_startup(){
     --socket=$node3/node3_socket.sock --log-output=none \
     --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &
 
-  for X in $(seq 0 ${PXC_MTR_START_TIMEOUT}); do
+  for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
     if ${BASEDIR}/bin/mysqladmin -uroot -S$node3/node3_socket.sock ping > /dev/null 2>&1; then
       break
