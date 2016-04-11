@@ -66,7 +66,7 @@ SKIP_JEMALLOC_FOR_PS=0                                         # Skip LD_PRELOAD
 
 # ========================================= User configurable variables to enable/for PXC testing only ===========================
 PXC=0                                                          # Special use mode: Enable PXC testing
-PXC_START_TIMEOUT=60                                           # Should not be necessary to change. Default: 60
+PXC_START_TIMEOUT=200                                          # Should not be necessary to change. Default: 200
 PXC_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_mysqld_options.txt # PXC wsrep mysqld options
 
 # ========================================= Improvement ideas ====================================================================
@@ -138,8 +138,8 @@ if [ ${PXC} -eq 1 ]; then
   fi
   if [ ${PQUERY_RUN_TIMEOUT} -lt 120 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
     echoit "Note: As this is a PXC=1 run, and PQUERY_RUN_TIMEOUT was set to only ${PQUERY_RUN_TIMEOUT}, this script is setting the timeout to the required minimum of 120 for this run."
-    if [ ${PXC_MTR_STARTUP} -eq 1 ]; then
-      PQUERY_RUN_TIMEOUT=30
+    if [ ${PXC_STARTUP} -eq 1 ]; then
+      PQUERY_RUN_TIMEOUT=60
     else
       PQUERY_RUN_TIMEOUT=120
     fi
