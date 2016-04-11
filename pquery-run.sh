@@ -306,19 +306,19 @@ pxc_startup(){
 
   if [ "$1" == "startup" ]; then
     node1="${WORKDIR}/node1.template"
-    mkdir -p $node1
     node2="${WORKDIR}/node2.template"
-    mkdir -p $node2
     node3="${WORKDIR}/node3.template"
-    mkdir -p $node3
+    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      mkdir -p $node1 $node2 $node3
+    fi
   else
     node1="${RUNDIR}/${TRIAL}/node1"
     node2="${RUNDIR}/${TRIAL}/node2"
     node3="${RUNDIR}/${TRIAL}/node3"
-  fi 
-  
+  fi
+
   if [ "$1" == "startup" ]; then
-    ${MID} --datadir=$node1  > $node1/node1.err 2>&1 || exit 1;
+    ${MID} --datadir=$node1  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
   fi
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
@@ -337,23 +337,15 @@ pxc_startup(){
     --socket=$node1/node1_socket.sock --log-output=none \
     --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/node1.err 2>&1 &
 
-  echo "Waiting for node-1 to start ....."
-  MPID="$!"
-  while true ; do
-    sleep 10
-    if egrep -qi  "Synchronized with group, ready for connections" $node1/node1.err ; then
-     break
-    fi
-    if [ "${MPID}" == "" ]; then
-      echoit "Error! server not started.. Terminating!"
-      egrep -i "ERROR|ASSERTION" $node1/node1.err
-      exit 1
+  for X in $(seq 0 ${PXC_MTR_START_TIMEOUT}); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node1/node1_socket.sock ping > /dev/null 2>&1; then
+      break
     fi
   done
-  sleep 10
 
   if [ "$1" == "startup" ]; then
-    ${MID} --datadir=$node2  > $node2/node2.err 2>&1 || exit 1;
+    ${MID} --datadir=$node2  > ${WORKDIR}/startup_node2.err 2>&1 || exit 1;
   fi
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
@@ -372,22 +364,15 @@ pxc_startup(){
     --socket=$node2/node2_socket.sock --log-output=none \
     --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &
 
-  echo "Waiting for node-2 to start ....."
-  MPID="$!"
-  while true ; do
-    sleep 10
-    if egrep -qi  "Synchronized with group, ready for connections" $node2/node2.err ; then
-     break
-    fi
-    if [ "${MPID}" == "" ]; then
-      echoit "Error! server not started.. Terminating!"
-      egrep -i "ERROR|ASSERTION" $node2/node2.err
-      exit 1
+  for X in $(seq 0 ${PXC_MTR_START_TIMEOUT}); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node2/node2_socket.sock ping > /dev/null 2>&1; then
+      break
     fi
   done
-  sleep 10
+  
   if [ "$1" == "startup" ]; then
-    ${MID} --datadir=$node3  > $node3/node3.err 2>&1 || exit 1;
+    ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
   fi
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
@@ -406,18 +391,10 @@ pxc_startup(){
     --socket=$node3/node3_socket.sock --log-output=none \
     --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &
 
-  # ensure that node-3 has started and has joined the group post SST
-  echo "Waiting for node-3 to start ....."
-  MPID="$!"
-  while true ; do
-    sleep 10
-    if egrep -qi  "Synchronized with group, ready for connections" $node3/node3.err ; then
-     break
-    fi
-    if [ "${MPID}" == "" ]; then
-      echoit "Error! server not started.. Terminating!"
-      egrep -i "ERROR|ASSERTION" $node3/node3.err
-      exit 1
+  for X in $(seq 0 ${PXC_MTR_START_TIMEOUT}); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node3/node3_socket.sock ping > /dev/null 2>&1; then
+      break
     fi
   done
 }
