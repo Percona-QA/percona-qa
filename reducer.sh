@@ -1145,7 +1145,9 @@ init_workdir_and_files(){
       node1="${WORKD}/node1"
       node2="${WORKD}/node2"
       node3="${WORKD}/node3"
-      mkdir -p $node1 $node2 $node3
+      if [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+        mkdir -p $node1 $node2 $node3
+      fi
       ${MID} --datadir=$node1  > $node1/error.log 2>&1 || exit 1;
       ${MID} --datadir=$node2  > $node2/error.log 2>&1 || exit 1;
       ${MID} --datadir=$node3  > $node3/error.log 2>&1 || exit 1;
