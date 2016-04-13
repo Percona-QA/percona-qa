@@ -1148,9 +1148,9 @@ init_workdir_and_files(){
       if [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
         mkdir -p $node1 $node2 $node3
       fi
-      ${MID} --datadir=$node1  > $node1/error.log 2>&1 || exit 1;
-      ${MID} --datadir=$node2  > $node2/error.log 2>&1 || exit 1;
-      ${MID} --datadir=$node3  > $node3/error.log 2>&1 || exit 1;
+      ${MID} --datadir=$node1  > ${WORKD}/startup_node1_error.log 2>&1 || exit 1;
+      ${MID} --datadir=$node2  > ${WORKD}/startup_node2_error.log 2>&1 || exit 1;
+      ${MID} --datadir=$node3  > ${WORKD}/startup_node3_error.log 2>&1 || exit 1;
       mkdir $WORKD/node1.init $WORKD/node2.init $WORKD/node3.init
       cp -R $WORKD/node1/* $WORKD/node1.init/
       cp -R $WORKD/node2/* $WORKD/node2.init/
