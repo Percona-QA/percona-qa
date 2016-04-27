@@ -521,8 +521,22 @@ function pxc_msr_test(){
   ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/n1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE5, MASTER_USER='root', MASTER_AUTO_POSITION=1 FOR CHANNEL 'master2';"
   ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/n1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE6, MASTER_USER='root', MASTER_AUTO_POSITION=1 FOR CHANNEL 'master3';"
   ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/n1.sock -e"START SLAVE;"
-  sleep 2
-  
+ 
+  $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
+   --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
+   --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master1 --mysql-user=root --db-driver=mysql \
+   --mysql-socket=/tmp/ps1.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel1_rw.log
+
+  $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
+   --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
+   --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master2 --mysql-user=root --db-driver=mysql \
+   --mysql-socket=/tmp/ps2.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel2_rw.log
+
+  $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
+   --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
+   --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master3 --mysql-user=root --db-driver=mysql \
+   --mysql-socket=/tmp/ps3.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel3_rw.log
+ 
   SB_CHANNEL1=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -Bse "show slave status for channel 'master1'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
   SB_CHANNEL2=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -Bse "show slave status for channel 'master2'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
   SB_CHANNEL3=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -Bse "show slave status for channel 'master3'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -550,7 +564,7 @@ function pxc_msr_test(){
   done
   sleep 5
 
-  pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test,ps_test_1,ps_test_2,master_test,msr_db_master1,msr_db_master2,msr_db_master3 --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns --no-check-binlog-format > $WORKDIR/logs/pxc_msr_checksum.log 2>&1
+  pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d msr_db_master1,msr_db_master2,msr_db_master3 --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns --no-check-binlog-format > $WORKDIR/logs/pxc_msr_checksum.log 2>&1
 }
 
 node1_master_test
@@ -572,7 +586,7 @@ cat $WORKDIR/logs/node2_slave_checksum.log
 echo -e "\n5. PXC - master - and - slave: Checksum result.\n"
 cat  $WORKDIR/logs/pxc_master_slave_checksum.log
 echo -e "\n6. PXC - multi source replication: Checksum result.\n"
-cat  $WORKDIR/logs/pxc_master_slave_checksum.log
+cat  $WORKDIR/logs/pxc_msr_checksum.log
 
 #Shutdown PXC/PS servers
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/n1.sock -u root shutdown
