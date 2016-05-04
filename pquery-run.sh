@@ -636,14 +636,10 @@ pquery_test(){
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
           cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
-           sed 's|PRIMARY[ \t]\+KEY||i' | \
            sed 's|UNIQUE[ \t]\+KEY||i' | \
            sed 's|FOREIGN[ \t]\+KEY||i' | \
            sed 's|FULLTEXT||i' | \
-           sed 's|AUTO_INCREMENT||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
-           sed 's|,[ \t]*KEY *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
-           sed 's|,[ \t]*INDEX *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
@@ -653,7 +649,6 @@ pquery_test(){
            grep -vi "^optimize" | \
            grep -vi "information_schema" | \
            grep -vi "^check" | \
-           grep -vi "^repair" | \
            grep -vi "^explain" | \
            grep -vi "point" | \
            grep -vi "geometry" | \
