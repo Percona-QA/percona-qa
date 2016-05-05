@@ -6,3 +6,6 @@ MyRocks differences from query correctness perspective:
 - no unique index if primary key not defined (ERROR 1105 (HY000): Unique index support is disabled when the table has no primary key.)
 - alter table returns actual number of records in the table while InnoDB just reports 0 records affected
 - index comment specifies column family
+
+Informative resources:
+https://github.com/facebook/mysql-5.6/wiki/Build-Steps
