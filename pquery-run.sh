@@ -662,7 +662,7 @@ pquery_test(){
            grep -vi "point" | \
            grep -vi "geometry" | \
            grep -vi "unique" | \
-           grep -vi "rand" | \
+           grep -vi "rand" | grep -vi "uuid" | \
            grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         else
