@@ -1453,10 +1453,7 @@ start_pxc_mtr(){
 }
 
 start_mysqld_main(){
-  if [ ${STAGE} -eq 8 ]; then
-    export -n MYEXTRA=${MYEXTRA_STAGE8}
-    COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
-  fi
+  COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
@@ -3330,7 +3327,6 @@ if [ $SKIPSTAGE -lt 8 ]; then
   COUNT_MYEXTRA=`echo ${MYEXTRA} | wc -w`
   FILE1="$WORKD/file1"
   FILE2="$WORKD/file2"
-  MYEXTRA_STAGE8=$MYEXTRA
 
   myextra_check(){
     count_mysqld_opt=`cat $WORKD/mysqld_opt.out | wc -l`
@@ -3341,11 +3337,11 @@ if [ $SKIPSTAGE -lt 8 ]; then
   myextra_check
 
   rocksdb_startup_chk(){
-   if echo "${MYEXTRA_STAGE8}" | grep '\--rocksdb\|--default-storage-engine=RocksDB\|--skip-innodb\|--default-tmp-storage-engine=MyISAM'; then
-     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--default-tmp-storage-engine=MyISAM||")
-     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--rocksdb | |")
-     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--skip-innodb||")
-     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--default-storage-engine=RocksDB||")
+   if echo "${MYEXTRA}" | grep '\--rocksdb\|--default-storage-engine=RocksDB\|--skip-innodb\|--default-tmp-storage-engine=MyISAM'; then
+     MYEXTRA=$(echo ${MYEXTRA} | sed "s|--default-tmp-storage-engine=MyISAM||")
+     MYEXTRA=$(echo ${MYEXTRA} | sed "s|--rocksdb | |")
+     MYEXTRA=$(echo ${MYEXTRA} | sed "s|--skip-innodb||")
+     MYEXTRA=$(echo ${MYEXTRA} | sed "s|--default-storage-engine=RocksDB||")
      CHK_ROCKSDB=1
      ECHO_ROCKSDB=": RocksDB run, server startup will use following mysqld options - $MYROCKS"
    fi
@@ -3354,16 +3350,16 @@ if [ $SKIPSTAGE -lt 8 ]; then
   myextra_reduction(){
     while read line; do
       NEXTACTION="& try removing next mysqld option"
-      MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$line||")
+      MYEXTRA=$(echo $MYEXTRA | sed "s|$line||")
       if [ "${STAGE8_CHK}" == "1" ]; then
         if [ "" != "$STAGE8_OPT" ]; then
-          MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$STAGE8_OPT||")
+          MYEXTRA=$(echo $MYEXTRA | sed "s|$STAGE8_OPT||")
         fi
       else
-        MYEXTRA_STAGE8="$MYEXTRA_STAGE8 ${STAGE8_OPT}"
+        MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
       fi
       STAGE8_CHK=0
-      COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
+      COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
       run_and_check
       TRIAL=$[$TRIAL+1]
@@ -3376,32 +3372,32 @@ if [ $SKIPSTAGE -lt 8 ]; then
       while true; do
         ISSUE_CHECK=0
         NEXTACTION="& try removing next mysqld option"
-        MYEXTRA_STAGE8=$(cat $FILE1 | tr -s "\n" " ")
+        MYEXTRA=$(cat $FILE1 | tr -s "\n" " ")
         rocksdb_startup_chk
-        COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA_STAGE8 | wc -w)
+        COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
         if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA $ECHO_ROCKSDB"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8 $ECHO_ROCKSDB";
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
         fi
         run_and_check
         if [ "${STAGE8_CHK}" == "1" ]; then
           ISSUE_CHECK=1
-          echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
+          echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
           myextra_check
         else
-          MYEXTRA_STAGE8=$(cat $FILE2 | tr -s "\n" " ")
+          MYEXTRA=$(cat $FILE2 | tr -s "\n" " ")
           rocksdb_startup_chk
-          COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA_STAGE8 | wc -w)
+          COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
           if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA $ECHO_ROCKSDB"
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
           else
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8 $ECHO_ROCKSDB";
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
           fi
           run_and_check
           if [ "${STAGE8_CHK}" == "1" ]; then
             ISSUE_CHECK=1
-            echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
+            echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
             myextra_check
           fi
         fi
