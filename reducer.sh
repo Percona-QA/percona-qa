@@ -29,7 +29,6 @@ TEXT="somebug"                  # Set to the text your are looking for in MODE 1
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
-MYROCKS="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"
 MYBASE="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"
 
 # === Sporadic testcase reduction options (Used when testcases prove to be sporadic *and* fail to reduce using basic methods)
@@ -1335,7 +1334,7 @@ init_mysql_dir(){
 start_mysqld_or_valgrind_or_pxc(){
   init_mysql_dir
   if [ $PXC_MOD -eq 1 ]; then
-    start_pxc_mtr
+    start_pxc_main
   else
     if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi
     if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
@@ -1349,31 +1348,6 @@ start_mysqld_or_valgrind_or_pxc(){
 }
 
 start_pxc_main(){
-  CURPATH=$PWD
-  cd $WORKD
-  sudo docker-compose up &
-  cd ${CURPATH}
-  CURPATH=
-  echo_out "$ATLEASTONCE [Stage $STAGE] Waiting for the 3 node PXC Cluster to fully start..."
-  for X in $(seq 1 300); do
-    sleep 1
-    CLUSTER_UP=0
-    if $MYBASE/bin/mysqladmin -uroot -h127.0.0.1 -P12000 ping > /dev/null 2>&1; then
-      if [ `$MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-      if [ `$MYBASE/bin/mysql -uroot -h127.0.0.1 -P11000 -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-      if [ `$MYBASE/bin/mysql -uroot -h127.0.0.1 -P12000 -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-      if [ "`$MYBASE/bin/mysql -uroot -h127.0.0.1 -P10000 -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-      if [ "`$MYBASE/bin/mysql -uroot -h127.0.0.1 -P11000 -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-      if [ "`$MYBASE/bin/mysql -uroot -h127.0.0.1 -P12000 -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    fi
-    # If count reached 6 (there are 6 checks), then the Cluster is up & running and consistent in it's Cluster topology views (as seen by each node)
-    if [ $CLUSTER_UP -eq 6 ]; then
-      break
-    fi
-  done
-}
-
-start_pxc_mtr(){
   ADDR="127.0.0.1"
   RPORT=$(( RANDOM%21 + 10 ))
   RBASE1="$(( RPORT*1000 ))"
@@ -1477,6 +1451,7 @@ start_pxc_mtr(){
   while true ; do
     sleep 10
     if egrep -qi  "Synchronized with group, ready for connections" $node3/error.log ; then
+     ${MYBASE}/bin/mysql -uroot -S$node1/node1_socket.sock -e "create database if not exists test" > /dev/null 2>&1
      break
     fi
     if [ "${MPID}" == "" ]; then
@@ -1499,10 +1474,7 @@ start_pxc_mtr(){
 }
 
 start_mysqld_main(){
-  if [ ${STAGE} -eq 8 ]; then
-    export -n MYEXTRA=${MYEXTRA_STAGE8}
-    COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
-  fi
+  COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
@@ -3381,8 +3353,7 @@ if [ $SKIPSTAGE -lt 8 ]; then
   COUNT_MYEXTRA=`echo ${MYEXTRA} | wc -w`
   FILE1="$WORKD/file1"
   FILE2="$WORKD/file2"
-  MYEXTRA_STAGE8=$MYEXTRA
-
+  MYROCKS="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"
   myextra_check(){
     count_mysqld_opt=`cat $WORKD/mysqld_opt.out | wc -l`
     head -n $((count_mysqld_opt/2)) $WORKD/mysqld_opt.out > $FILE1
@@ -3392,11 +3363,8 @@ if [ $SKIPSTAGE -lt 8 ]; then
   myextra_check
 
   rocksdb_startup_chk(){
-   if echo "${MYEXTRA_STAGE8}" | grep '\--rocksdb\|--default-storage-engine=RocksDB\|--skip-innodb\|--default-tmp-storage-engine=MyISAM'; then
-     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--default-tmp-storage-engine=MyISAM||")
-     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--rocksdb | |")
-     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--skip-innodb||")
-     MYEXTRA_STAGE8=$(echo ${MYEXTRA_STAGE8} | sed "s|--default-storage-engine=RocksDB||")
+   if echo "${MYEXTRA}" | grep '\--rocksdb\|--default-storage-engine=RocksDB\|--skip-innodb\|--default-tmp-storage-engine=MyISAM'; then
+     MYEXTRA=$(echo $MYEXTRA | sed 's|--default-storage-engine=RocksDB||;s|--skip-innodb ||;s|--default-tmp-storage-engine=MyISAM||;s|--rocksdb ||')
      CHK_ROCKSDB=1
      ECHO_ROCKSDB=": RocksDB run, server startup will use following mysqld options - $MYROCKS"
    fi
@@ -3405,16 +3373,16 @@ if [ $SKIPSTAGE -lt 8 ]; then
   myextra_reduction(){
     while read line; do
       NEXTACTION="& try removing next mysqld option"
-      MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$line||")
+      MYEXTRA=$(echo $MYEXTRA | sed "s|$line||")
       if [ "${STAGE8_CHK}" == "1" ]; then
         if [ "" != "$STAGE8_OPT" ]; then
-          MYEXTRA_STAGE8=$(echo $MYEXTRA_STAGE8 | sed "s|$STAGE8_OPT||")
+          MYEXTRA=$(echo $MYEXTRA | sed "s|$STAGE8_OPT||")
         fi
       else
-        MYEXTRA_STAGE8="$MYEXTRA_STAGE8 ${STAGE8_OPT}"
+        MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
       fi
       STAGE8_CHK=0
-      COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA_STAGE8} | wc -w`
+      COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
       run_and_check
       TRIAL=$[$TRIAL+1]
@@ -3427,32 +3395,32 @@ if [ $SKIPSTAGE -lt 8 ]; then
       while true; do
         ISSUE_CHECK=0
         NEXTACTION="& try removing next mysqld option"
-        MYEXTRA_STAGE8=$(cat $FILE1 | tr -s "\n" " ")
+        MYEXTRA=$(cat $FILE1 | tr -s "\n" " ")
         rocksdb_startup_chk
-        COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA_STAGE8 | wc -w)
+        COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
         if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA $ECHO_ROCKSDB"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8 $ECHO_ROCKSDB";
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
         fi
         run_and_check
         if [ "${STAGE8_CHK}" == "1" ]; then
           ISSUE_CHECK=1
-          echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
+          echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
           myextra_check
         else
-          MYEXTRA_STAGE8=$(cat $FILE2 | tr -s "\n" " ")
+          MYEXTRA=$(cat $FILE2 | tr -s "\n" " ")
           rocksdb_startup_chk
-          COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA_STAGE8 | wc -w)
+          COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
           if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA_STAGE8 mysqld option from MYEXTRA $ECHO_ROCKSDB"
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
           else
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA_STAGE8 $ECHO_ROCKSDB";
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
           fi
           run_and_check
           if [ "${STAGE8_CHK}" == "1" ]; then
             ISSUE_CHECK=1
-            echo $MYEXTRA_STAGE8 | tr -s " " "\n" > $WORKD/mysqld_opt.out
+            echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
             myextra_check
           fi
         fi
