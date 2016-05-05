@@ -12,7 +12,7 @@
 # ../percona-qa/pxc-startup.sh
 
 # NOTE2
-# Dependency issue -> yum install socat
+# Dependency issue -> yum install socat unzip
 
 #NOTE3
 # With sst_method="xtrabackup"
