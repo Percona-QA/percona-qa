@@ -20,7 +20,7 @@ SYSBENCH_DATALOAD=0                                                  # Sysbench 
 
 # ========================================= User configurable variablesi: generics ===============================================
 TRIALS=100000                                                  # Number of individual trials to execute (one can always interrupt with ctrl+c also)
-ADD_RANDOM_OPTIONS=1                                           # Add random mysqld --options to MYEXTRA using an input file. 1=On, 0=off
+ADD_RANDOM_OPTIONS=0                                           # Add random mysqld --options to MYEXTRA using an input file. 1=On, 0=off
 ADD_RANDOM_TOKUDB_OPTIONS=0                                    # Add random tokudb --options to MYEXTRA using an input file. 1=On, 0=off
 MAX_NR_OF_RND_OPTS_TO_ADD=5                                    # Max nr of random options to add (minimum is always 1). Recommended: 4. Counts per ADD_RANDOM_... option above (x2)
 SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1                       # Save only trials that generate a core file (good for initial few runs where there are lot of crashes/asserts)
@@ -29,7 +29,7 @@ STORE_COPY_OF_INFILE=0                                         # Store a copy of
 PQUERY_RUN_TIMEOUT=15                                          # x sec max trial runtime within which pquery tries to process QUERIES_PER_THREAD x THREADS queries against 1 mysqld
 QUERIES_PER_THREAD=100000                                      # Maximum number of queries executed per thread (THREADS) per trial (small = faster reduction, large = more crashes)
 MYEXTRA=""                                                     # Extra options to pass to mysqld. Examples below
-MYEXTRA="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"                               # Use for RocksDB/fb-mysql testing
+#MYEXTRA="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"                               # Use for generic RocksDB testing
 #MYEXTRA="--plugin-load-add=audit_log=audit_log.so --plugin-load-add=tokudb=ha_tokudb.so --init-file=${SCRIPT_PWD}/TokuDB.sql"        # Use for PS: TokuDB & audit-log testing
 #MYEXTRA="--plugin-load-add=audit_log=audit_log.so --plugin-load-add=tokudb=ha_tokudb.so --init-file=${SCRIPT_PWD}/plugins.sql"       # Use for PS: enables all testable plugins
 #MYEXTRA="--innodb_file_per_table=1 --innodb_flush_method=O_DIRECT --log-bin=binlog --binlog_format=MIXED"                            # Example of InnoDB & binlog options 
@@ -486,6 +486,7 @@ pquery_test(){
       fi
       $CMD2 > ${RUNDIR}/${TRIAL}/log2/master.err 2>&1 &
       MPID2="$!"
+      sleep 1
     fi
     echo "## Good for reproducing mysqld (5.7+) startup issues only (full issues need a data dir, so use mysql_install_db or mysqld --init for those)" > ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Setting up directories...'" >> ${RUNDIR}/${TRIAL}/start
@@ -532,7 +533,13 @@ pquery_test(){
     for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
       sleep 1
       if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock ping > /dev/null 2>&1; then
-        break
+        if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+          if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket2.sock ping > /dev/null 2>&1; then
+            break
+          fi
+        else
+          break
+        fi
       fi
       if [ "${MPID}" == "" ]; then echoit "Assert! ${MPID} empty. Terminating!"; exit 1; fi
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
@@ -565,14 +572,11 @@ pquery_test(){
       ISSTARTED=1
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
         echoit "Primary Server started ok. Client:  `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
+        if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket2.sock ping > /dev/null 2>&1; then
+          echoit "Secondary server started ok. Client:  `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
+        fi
       else
         echoit "Server started ok. Client:  `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
-      fi
-    fi
-    if [ ${QUERY_CORRECTNESS_TESTING} -a ${ISSTARTED} -eq 1 ]; then
-      if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket2.sock ping > /dev/null 2>&1; then
-        ISSTARTED=1
-        echoit "Secondary server started ok. Client:  `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
       fi
     fi
   else
