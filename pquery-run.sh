@@ -640,14 +640,10 @@ pquery_test(){
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
           cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
-           sed 's|PRIMARY[ \t]\+KEY||i' | \
            sed 's|UNIQUE[ \t]\+KEY||i' | \
            sed 's|FOREIGN[ \t]\+KEY||i' | \
            sed 's|FULLTEXT||i' | \
-           sed 's|AUTO_INCREMENT||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
-           sed 's|,[ \t]*KEY *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
-           sed 's|,[ \t]*INDEX *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
@@ -657,7 +653,6 @@ pquery_test(){
            grep -vi "^optimize" | \
            grep -vi "information_schema" | \
            grep -vi "^check" | \
-           grep -vi "^repair" | \
            grep -vi "^explain" | \
            grep -vi "point" | \
            grep -vi "geometry" | \
@@ -869,10 +864,16 @@ pquery_test(){
   fi
   if [ ${ISSTARTED} -eq 1 ]; then  # Do not try and print pquery log for a failed mysqld start
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
-      echoit "Pri engine pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery1.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
-      echoit "Sec engine pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery2.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+      if egrep -qi "SUMMARY" ${RUNDIR}/${TRIAL}/pquery1.log; then
+        echoit "Pri engine pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery1.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+      fi
+      if egrep -qi "SUMMARY" ${RUNDIR}/${TRIAL}/pquery2.log; then
+        echoit "Sec engine pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery2.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+      fi
     else
-      echoit "pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+      if egrep -qi "SUMMARY" ${RUNDIR}/${TRIAL}/pquery.log; then
+        echoit "pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+      fi
     fi
   fi
   if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -eq 0 ]; then  # If a core is found when query correctness testing is in progress, it will process it as a normal crash (without considering query correctness)

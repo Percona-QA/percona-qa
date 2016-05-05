@@ -1,0 +1,8 @@
+MyRocks differences from query correctness perspective:
+- foreign, fulltext and spatial indexes are not supported
+- only binary (case sensitive) collations supported for indexes
+- tablespace is not supported (ERROR 1478 (HY000): Table storage engine 'ROCKSDB' does not support the create option 'TABLESPACE or LOGFILE GROUP')
+- temporary table in rocksdb is not supported, they can only be created in different SE (ERROR 1478 (HY000): Table storage engine 'ROCKSDB' does not support the create option 'TEMPORARY')
+- no unique index if primary key not defined (ERROR 1105 (HY000): Unique index support is disabled when the table has no primary key.)
+- alter table returns actual number of records in the table while InnoDB just reports 0 records affected
+- index comment specifies column family
