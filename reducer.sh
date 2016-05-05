@@ -343,11 +343,18 @@ ctrl_c(){
 
 options_check(){
   # $1 to this procedure = $1 to the program - i.e. the SQL file to reduce
+  if [ "$1" == "" -a "$INFILE" == "" ]; then
+    echo "Error: no input file given. Please give an SQL file to reduce as the first option to this script, or set inside the script as INFILE=file_to_reduce.sql"
+    echo "Terminating now."
+    exit 1
+  fi
+  # Sudo check
   if [ "$(sudo -A echo 'test' 2>/dev/null)" != "test" ]; then 
     echo "Error: sudo is not available or requires a password. This script needs to be able to use sudo, without password, from the userID that invokes it ($(whoami))"
     echo "To get your setup correct, you may like to use a tool like visudo (use 'sudo visudo' or 'su' and then 'visudo') and consider adding the following line to the file:"
     echo "$(whoami)   ALL=(ALL)      NOPASSWD:ALL"
     echo "If you do not have sudo installed yet, try 'su' and then 'yum install sudo' or the apt-get equivalent"
+    echo "Terminating now."
     exit 1
   fi
   # Note that instead of giving the SQL file on the cmd line, $INPUTFILE can be set (./process does so automaticaly using the #VARMOD# marker above)
@@ -375,6 +382,7 @@ options_check(){
       echo 'Note: this assertion currently shows for ramfs as well, yet it has not been established if ramfs also'        #
       echo '      shows the same problem. If it does not (modify the script in this section to get it to run with ramfs'  # ramfs, delete if ramfs is affected
       echo '      as a trial/test), then please remove ramfs, or, if it does, then please remove these 3 last lines.'     # 
+      echo "Terminating now."
       exit 1
     fi
   fi 
@@ -398,12 +406,14 @@ options_check(){
     if [ ! -d "$1" ]; then
         echo 'Error: A file name was given as input, but a directory name was expected.'
         echo "(MODE $MODE is set. Where you trying to use MODE 4 or lower?)"
+        echo "Terminating now."
         exit 1
     fi
     if ! [ -d "$1/log/" -a -x "$1/log/" ]; then
       echo 'Error: No input directory containing a "/log" subdirectory was given, or the input directory could not be read.'
       echo 'Please specify a correct RQG vardir to reduce a multi-threaded testcase.'
       echo 'Example: ./reducer /starfish/data_WL1/vardir1_1000 -> to reduce ThreadSync trial 1000'
+      echo "Terminating now."
       exit 1
     else
       TS_THREADS=$(ls -l $1/log/C[0-9]*T[0-9]*.sql | wc -l | tr -d '[\t\n ]*')
@@ -414,6 +424,7 @@ options_check(){
         echo "Please check the directory at $1"
         echo 'For the presence of 'C[0-9]*T[0-9]*.sql' files (for example, C1T10.sql).'
         echo 'Note: a data load file (such as CT2.sql or CT3.sql) alone is not sufficient: thread sql data would be missing.'
+        echo "Terminating now."
         exit 1
       else
         TS_INPUTDIR="$1/log"
@@ -429,6 +440,7 @@ options_check(){
             else
               echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
               echo 'This can be done with a command similar to: $ yum install jemalloc'
+              echo "Terminating now."
               exit 1
             fi
           fi
@@ -439,6 +451,7 @@ options_check(){
     if [ -d "$1" ]; then
         echo 'Error: A directory was given as input, but a filename was expected.'
         echo "(MODE $MODE is set. Where you trying to use MODE 6 or higher?)"
+        echo "Terminating now."
         exit 1
     fi
     if [ ! -s "$1" ]; then
@@ -447,6 +460,7 @@ options_check(){
         echo 'Please specify a single SQL file to reduce.'
         echo 'Example: ./reducer ~/1.sql     --> to process ~/1.sql'
         echo 'Also, please ensure input file name only contains [0-9a-zA-Z_-] characters'
+        echo "Terminating now."
         exit 1
       fi
     else
@@ -463,6 +477,7 @@ options_check(){
       else
         echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
         echo 'This can be done with a command similar to: $ yum install jemalloc'
+        echo "Terminating now."
         exit 1
       fi
     fi
@@ -471,21 +486,25 @@ options_check(){
     if [ "${TIMEOUT_COMMAND}" != "" ]; then
       echo "Error: MODE is set to 0, and TIMEOUT_COMMAND is set. Both functions should not be used at the same time"
       echo "Use either MODE=0 (and set TIMEOUT_CHECK), or TIMEOUT_COMMAND in combination with some other MODE, for example MODE=2 or MODE=3"
+      echo "Terminating now."
       exit 1
     fi
     if [ ${TIMEOUT_CHECK} -le 30 ]; then
       echo "Error: MODE=0 and TIMEOUT_CHECK<=30. When using MODE=0, set TIMEOUT_CHECK at least to: (2x the expected testcase duration lenght in seconds)+30 seconds extra!"
+      echo "Terminating now."
       exit 1
     fi
     TIMEOUT_CHECK_REAL=$[ ${TIMEOUT_CHECK} - 30 ];
     if [ ${TIMEOUT_CHECK_REAL} -le 0 ]; then
       echo "Assert: TIMEOUT_CHECK_REAL<=0"
+      echo "Terminating now."
       exit 1
     fi
     TIMEOUT_COMMAND="timeout --signal=SIGKILL ${TIMEOUT_CHECK}s"  # TIMEOUT_COMMAND var is used (hack) instead of adding yet another MODE0 specific variable
   fi
   if [ "${TIMEOUT_COMMAND}" != "" -a "$(timeout 2>&1 | grep -o 'information')" != "information" ]; then
     echo "Error: TIMEOUT_COMMAND is set, yet the timeout command does not seem to be available"
+    echo "Terminating now."
     exit 1
   fi
   BIN="/bin/mysqld"
@@ -498,6 +517,7 @@ options_check(){
           echo -e "${MYBASE}/bin/mysqld\n${MYBASE}/bin/mysqld-debug"
           echo -e "/mysql/${MYBASE}/bin/mysqld\n/mysql/${MYBASE}/bin/mysqld-debug"
           echo 'Please check script contents/options (set $MYBASE variable correctly)'
+          echo "Terminating now."
           exit 1
         else
           export -n MYBASE="/mysql/$MYBASE"
@@ -510,12 +530,14 @@ options_check(){
   if [ $MODE -ne 0 -a $MODE -ne 1 -a $MODE -ne 2 -a $MODE -ne 3 -a $MODE -ne 4 -a $MODE -ne 5 -a $MODE -ne 6 -a $MODE -ne 7 -a $MODE -ne 8 -a $MODE -ne 9 ]; then
     echo "Error: Invalid MODE set: $MODE (valid range: 1-9)"
     echo 'Please check script contents/options ($MODE variable)'
+    echo "Terminating now."
     exit 1
   fi
   if [ $MODE -eq 1 -o $MODE -eq 2 -o $MODE -eq 3 -o $MODE -eq 5 -o $MODE -eq 6 -o $MODE -eq 7 -o $MODE -eq 8 ]; then
     if [ ! -n "$TEXT" ]; then 
       echo "Error: MODE set to $MODE, but no \$TEXT variable was defined, or \$TEXT is blank"
       echo 'Please check script contents/options ($TEXT variable)'
+      echo "Terminating now."
       exit 1
     fi
   fi
@@ -531,19 +553,23 @@ options_check(){
     # /==========
     if [ $MODE -eq 0 ]; then
       echo "Error: PXC mode is set to 1, and MODE=0 set to 0, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
+      echo "Terminating now."
       exit 1
     fi
     if [ "${TIMEOUT_COMMAND}" != "" ]; then
       echo "Error: PXC mode is set to 1, and TIMEOUT_COMMAND is set, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
+      echo "Terminating now."
       exit 1
     fi
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
       echo "Error: Valgrind for 3 node PXC replay has not been implemented yet. Please do so! Free cookies afterwards!"
+      echo "Terminating now."
       exit 1
     fi
     if [ $MODE -ge 6 -a $MODE -le 9 ]; then
       echo "Error: wrong option combination: MODE is set to $MODE (ThreadSync) and PXC mode is active"
       echo 'Please check script contents/options ($MODE and $PXC mode variables)'
+      echo "Terminating now."
       exit 1
     fi
     if [ $MODE -eq 5 -o $MODE -eq 3 ]; then
@@ -568,6 +594,7 @@ options_check(){
     if [ ! -r "$PQUERY_LOC" ]; then
       echo "Error: PQUERY_MOD is set to 1, but the pquery binary (as defined by PQUERY_LOC; currently set to '$PQUERY_LOC') is not available."
       echo 'Please check script contents/options ($PQUERY_MOD and $PQUERY_LOC variables)'
+      echo "Terminating now."
       exit 1
     fi
   fi
@@ -576,6 +603,7 @@ options_check(){
     MULTI_THREADS=$PQUERY_MULTI_THREADS
     if [ $PQUERY_MULTI_CLIENT_THREADS -lt 1 ]; then
       echo_out "Error: PQUERY_MULTI_CLIENT_THREADS is set to less then 1 ($PQUERY_MULTI_CLIENT_THREADS), while PQUERY_MULTI is turned on, this does not work; reducer needs threads to be able to replay the issue"
+      echo "Terminating now."
       exit 1
     elif [ $PQUERY_MULTI_CLIENT_THREADS -eq 1 ]; then
       echo_out "Warning: PQUERY_MULTI is turned on, and PQUERY_MULTI_CLIENT_THREADS is set to 1; 1 thread for a multi-threaded issue does not seem logical. Proceeding, but this is highly likely incorrect. Please check. NOTE: There is at least one possible use case for this: proving that a sporadic mysqld startup can be reproduced (with a near-empty SQL file; i.e. the run is concerned with reproducing the startup issue, not reducing the SQL file)"
@@ -664,6 +692,7 @@ multi_reducer(){
   sync; sleep 0.5
   if [ -d $WORKD/subreducer/ ]; then
     echo_out "ASSERT: $WORKD/subreducer/ still exists after it has been deleted"
+    echo "Terminating now."
     exit 1
   fi
   mkdir $WORKD/subreducer/
@@ -866,6 +895,7 @@ TS_init_all_sql_files(){
     TS_DATAINPUTFILE=$(ls $TS_INPUTDIR/CT[0-9]*.sql)
   else
     echo 'ASSERT: do not know how to handle more than one ThreadSync data input file [yet].'
+    echo "Terminating now."
     exit 1
   fi
 
@@ -877,6 +907,7 @@ TS_init_all_sql_files(){
   done
   if [ ! $TS_REAL_THREAD -eq $TS_THREADS ]; then
     echo 'ASSERT: $TS_REAL_THREAD != $TS_THREADS: '"$TS_REAL_THREAD != $TS_THREADS"
+    echo "Terminating now."
     exit 1
   fi
   if [ $TS_ORIG_VARS_FLAG -eq 0 ]; then
@@ -924,10 +955,12 @@ init_workdir_and_files(){
     if [ $WORKDIR_LOCATION -eq 3 ]; then
       if ! [ -d "$WORKDIR_M3_DIRECTORY/" -a -x "$WORKDIR_M3_DIRECTORY/" ]; then
         echo 'Error: WORKDIR_LOCATION=3 (a specific storage location) is set, yet WORKDIR_M3_DIRECTORY (set to $WORKDIR_M3_DIRECTORY) does not exist, or could not be read.'
+        echo "Terminating now."
         exit 1
       fi
       if [ $(df -k -P 2>&1 | grep -v "docker.devicemapper" | grep "$WORKDIR_M3_DIRECTORY" | awk '{print $4}') -lt 3500000 ]; then
         echo "Error: $WORKDIR_M3_DIRECTORY does not have enough free space (3.5Gb free space required)"
+        echo "Terminating now."
         exit 1
       fi
       WORKD="$WORKDIR_M3_DIRECTORY/$DIRVALUE"
@@ -936,10 +969,12 @@ init_workdir_and_files(){
         echo 'Error: ramfs storage usage was specified (WORKDIR_LOCATION=2), yet /mnt/ram/ does not exist, or could not be read.'
         echo 'Suggestion: setup a ram drive using the following commands at your shell prompt:'
         echo 'sudo mkdir -p /mnt/ram; sudo mount -t ramfs -o size=4g ramfs /mnt/ram; sudo chmod -R 777 /mnt/ram;'
+        echo "Terminating now."
         exit 1
       fi
       if [ $(df -k -P 2>&1 | grep -v "docker/devicemapper.*Permission denied" | grep "/mnt/ram$" | awk '{print $4}' | grep -v 'docker.devicemapper') -lt 3500000 ]; then
         echo 'Error: /mnt/ram/ does not have enough free space (3.5Gb free space required)'
+        echo "Terminating now."
         exit 1
       fi
       WORKD="/mnt/ram/$DIRVALUE"
@@ -947,20 +982,24 @@ init_workdir_and_files(){
       if ! [ -d "/dev/shm/" -a -x "/dev/shm/" ]; then
         echo 'Error: tmpfs storage usage was specified (WORKDIR_LOCATION=1), yet /dev/shm/ does not exist, or could not be read.'
         echo 'Suggestion: check the location of tmpfs using the 'df -h' command at your shell prompt and change the script to match'
+        echo "Terminating now."
         exit 1
       fi
       if [ $(df -k -P 2>&1 | grep -v "docker/devicemapper.*Permission denied" | grep "/dev/shm$" | awk '{print $4}' | grep -v 'docker.devicemapper') -lt 3500000 ]; then
         echo 'Error: /dev/shm/ does not have enough free space (3.5Gb free space required)'
+        echo "Terminating now."
         exit 1
       fi
       WORKD="/dev/shm/$DIRVALUE"
     else
       if ! [ -d "/tmp/" -a -x "/tmp/" ]; then
         echo 'Error: /tmp/ storage usage was specified (WORKDIR_LOCATION=0), yet /tmp/ does not exist, or could not be read.'
+        echo "Terminating now."
         exit 1
       fi
       if [ $(df -k -P 2>&1 | grep -v "docker/devicemapper.*Permission denied" | grep "[ \t]/$" | awk '{print $4}' | grep -v 'docker.devicemapper') -lt 3500000 ]; then
         echo 'Error: The drive mounted as / does not have enough free space (3.5Gb free space required)'
+        echo "Terminating now."
         exit 1
       fi
       WORKD="/tmp/$DIRVALUE"
@@ -1102,6 +1141,7 @@ init_workdir_and_files(){
       else
         echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/."
         rm -f $WORK_INIT
+        echo "Terminating now."
         exit 1
       fi
       echo "mkdir -p /dev/shm/${EPOCH2}/data/test" >> $WORK_INIT
@@ -1115,6 +1155,7 @@ init_workdir_and_files(){
         else
           echo_out "[Init] [ERROR] Failed to start mysqld server (1st boot), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
           echo_out "[Init] [INFO] If however you want to debug a mysqld startup issue, for example caused by a misbehaving --option to mysqld, set DEBUG_STARTUP_ISSUES=1 and restart reducer.sh"
+          echo "Terminating now."
           exit 1
         fi
       fi
@@ -1132,6 +1173,7 @@ init_workdir_and_files(){
       mkdir $WORKD/data.init
       if [ ! -d $WORKD/data ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] data directory at $WORKD/data does not exist... check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
+        echo "Terminating now."
         exit 1
       fi
       cp -R $WORKD/data/* $WORKD/data.init/
@@ -1299,6 +1341,7 @@ start_mysqld_or_valgrind_or_pxc(){
     if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
     if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
       echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
+      echo "Terminating now."
       exit 1
     fi
   fi
@@ -1374,6 +1417,7 @@ start_pxc_mtr(){
     if [ "${MPID}" == "" ]; then
       echoit "Error! server not started.. Terminating!"
       egrep -i "ERROR|ASSERTION" $node1/error.log
+      echo "Terminating now."
       exit 1
     fi
   done
@@ -1405,6 +1449,7 @@ start_pxc_mtr(){
     if [ "${MPID}" == "" ]; then
       echoit "Error! server not started.. Terminating!"
       egrep -i "ERROR|ASSERTION" $node2/error.log
+      echo "Terminating now."
       exit 1
     fi
   done
@@ -1437,6 +1482,7 @@ start_pxc_mtr(){
     if [ "${MPID}" == "" ]; then
       echoit "Error! server not started.. Terminating!"
       egrep -i "ERROR|ASSERTION" $node3/error.log
+      echo "Terminating now."
       exit 1
     fi
   done
@@ -1545,6 +1591,7 @@ start_valgrind_mysqld_main(){
   done
   if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
     echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server under Valgrind, check $WORKD/error.log.out, $WORKD/valgrind.out and $WORKD/mysql_install_db.init"
+    echo "Terminating now."
     exit 1
   fi
 }
@@ -1898,6 +1945,7 @@ process_outcome(){
   if [ $MODE -eq 0 ]; then
     if [ "${MYSQLD_START_TIME}" == '' ]; then
       echo "Assert: MYSQLD_START_TIME==''"
+      echo "Terminating now."
       exit 1
     fi
     RUN_TIME=$[ $(date +'%s') - ${MYSQLD_START_TIME} ]
@@ -2615,7 +2663,8 @@ if [ $MODE -ge 6 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] Now starting re-verification in $MODE (this enables INSERT splitting in initial simplification etc.)"
     verify $WORKO
   else
-     echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] More than one thread remaining. Implement multi-threaded simplification here"
+    echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] More than one thread remaining. Implement multi-threaded simplification here"
+    echo "Terminating now."
     exit 1 
   fi
 fi
@@ -3059,7 +3108,9 @@ if [ $SKIPSTAGE -lt 6 ]; then
             cp -f $WORKT3 $WORKT2
             rm $WORKT3
           else 
-            echo "ASSERT: NUMOFINVOLVEDTABLES!=1||2: $NUMOFINVOLVEDTABLES!=1||2"; exit 1
+            echo "ASSERT: NUMOFINVOLVEDTABLES!=1||2: $NUMOFINVOLVEDTABLES!=1||2"; 
+            echo "Terminating now."
+            exit 1
           fi
 
           # First count how many actual INSERT rows there are
