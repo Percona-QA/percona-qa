@@ -29,9 +29,10 @@ fi
 
 #Kill existing mysqld process
 ps -ef | grep 'n[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+ps -ef | grep garbd | grep -v grep | awk '{print $2}' | xargs kill -9
 
 cleanup(){
-  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs $node*/node*.err || true
+  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
 }
 
 trap cleanup EXIT KILL
@@ -44,8 +45,8 @@ if [ ! -z $PXC_TAR ];then
   export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
 fi
 
-if [ ! -a $ROOT_FS/garbd ];then
-  wget http://jenkins.percona.com/job/pxc56.buildandtest.galera3/Btype=release,label_exp=centos6-32/lastSuccessfulBuild/artifact/garbd
+if [ ! -e $ROOT_FS/garbd ];then
+  wget http://jenkins.percona.com/job/pxc56.buildandtest.galera3/Btype=release,label_exp=centos6-64/lastSuccessfulBuild/artifact/garbd
   cp garbd $ROOT_FS/$PXCBASE/bin/
   export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
 fi
@@ -80,7 +81,7 @@ mkdir -p $WORKDIR  $WORKDIR/logs
 pxc_add_nodes(){
   node_count=$1
   if [ $node_count -eq 3 ]; then
-    if ${BASEDIR}/bin/mysqladmin -uroot -S$node3/node3_socket.sock ping > /dev/null 2>&1; then
+    if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node3.sock ping > /dev/null 2>&1; then
       echo "PXC node3 already started.. "
     else
       ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
@@ -96,14 +97,14 @@ pxc_add_nodes(){
         --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
         --core-file --loose-new --sql-mode=no_engine_substitution \
         --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-        --log-error=$node3/node3.err \
-        --socket=$node3/node3_socket.sock --log-output=none \
-        --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &
+        --log-error=${WORKDIR}/logs/node3.err \
+        --socket=/tmp/node3.sock --log-output=none \
+        --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node3.err 2>&1 &
 
       for X in $(seq 0 ${PXC_START_TIMEOUT}); do
         sleep 1
-        if ${BASEDIR}/bin/mysqladmin -uroot -S$node3/node3_socket.sock ping > /dev/null 2>&1; then
-          ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -e "create database if not exists test" > /dev/null 2>&1
+        if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node3.sock ping > /dev/null 2>&1; then
+          ${BASEDIR}/bin/mysql -uroot -S/tmp/node1.sock -e "create database if not exists test" > /dev/null 2>&1
           sleep 2
           break
         fi
@@ -111,7 +112,7 @@ pxc_add_nodes(){
    fi
   fi
   if [ $node_count -eq 4 ]; then
-    if ${BASEDIR}/bin/mysqladmin -uroot -S$node4/node4_socket.sock ping > /dev/null 2>&1; then
+    if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node4.sock ping > /dev/null 2>&1; then
       echo "PXC node4 already started.. "
     else
       ${MID} --datadir=$node4  > ${WORKDIR}/startup_node4.err 2>&1 || exit 1;
@@ -127,13 +128,13 @@ pxc_add_nodes(){
         --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
         --core-file --loose-new --sql-mode=no_engine_substitution \
         --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-        --log-error=$node4/node4.err \
-        --socket=$node4/node4_socket.sock --log-output=none \
-        --port=$RBASE4 --server-id=4 --wsrep_slave_threads=2 > $node4/node4.err 2>&1 &
+        --log-error=${WORKDIR}/logs/node4.err \
+        --socket=/tmp/node4.sock --log-output=none \
+        --port=$RBASE4 --server-id=4 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node4.err 2>&1 &
 
       for X in $(seq 0 ${PXC_START_TIMEOUT}); do
         sleep 1
-        if ${BASEDIR}/bin/mysqladmin -uroot -S$node4/node4_socket.sock ping > /dev/null 2>&1; then
+        if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node4.sock ping > /dev/null 2>&1; then
           sleep 2
           break
         fi
@@ -141,7 +142,7 @@ pxc_add_nodes(){
     fi
   fi
   if [ $node_count -eq 5 ]; then
-    if ${BASEDIR}/bin/mysqladmin -uroot -S$node5/node5_socket.sock ping > /dev/null 2>&1; then
+    if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node5.sock ping > /dev/null 2>&1; then
       echo "PXC node5 already started.. "
     else
       ${MID} --datadir=$node5  > ${WORKDIR}/startup_node5.err 2>&1 || exit 1;
@@ -157,13 +158,13 @@ pxc_add_nodes(){
         --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
         --core-file --loose-new --sql-mode=no_engine_substitution \
         --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-        --log-error=$node5/node5.err \
-        --socket=$node5/node5_socket.sock --log-output=none \
-        --port=$RBASE5 --server-id=5 --wsrep_slave_threads=2 > $node5/node5.err 2>&1 &
+        --log-error=${WORKDIR}/logs/node5.err \
+        --socket=/tmp/node5.sock --log-output=none \
+        --port=$RBASE5 --server-id=5 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node5.err 2>&1 &
 
       for X in $(seq 0 ${PXC_START_TIMEOUT}); do
         sleep 1
-        if ${BASEDIR}/bin/mysqladmin -uroot -S$node5/node5_socket.sock ping > /dev/null 2>&1; then
+        if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node5.sock ping > /dev/null 2>&1; then
           sleep 2
           break
         fi
@@ -201,14 +202,14 @@ pxc_startup(){
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
     --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=$node1/node1.err \
-    --socket=$node1/node1_socket.sock --log-output=none \
-    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/node1.err 2>&1 &
+    --log-error=${WORKDIR}/logs/node1.err \
+    --socket=/tmp/node1.sock --log-output=none \
+    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node1.err 2>&1 &
 
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
-    if ${BASEDIR}/bin/mysqladmin -uroot -S$node1/node1_socket.sock ping > /dev/null 2>&1; then
-      ${BASEDIR}/bin/mysql -uroot --socket=$node1/node1_socket.sock -e "drop database if exists test;create database test;"
+    if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node1.sock ping > /dev/null 2>&1; then
+      ${BASEDIR}/bin/mysql -uroot --socket=/tmp/node1.sock -e "drop database if exists test;create database test;"
       break
     fi
   done
@@ -227,13 +228,13 @@ pxc_startup(){
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
     --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=$node2/node2.err \
-    --socket=$node2/node2_socket.sock --log-output=none \
-    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &
+    --log-error=${WORKDIR}/logs/node2.err \
+    --socket=/tmp/node2.sock --log-output=none \
+    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node2.err 2>&1 &
 
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
-    if ${BASEDIR}/bin/mysqladmin -uroot -S$node2/node2_socket.sock ping > /dev/null 2>&1; then
+    if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node2.sock ping > /dev/null 2>&1; then
       break
     fi
   done
@@ -242,7 +243,7 @@ pxc_startup(){
   #Sysbench data load
   $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
     --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-    --mysql-socket=$node1/node1_socket.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+    --mysql-socket=/tmp/node1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
   
   $ROOT_FS/garbd --address gcomm://$LADDR1,$LADDR2,$LADDR3 --group "my_wsrep_cluster" --options "gmcast.listen_addr=tcp://$GARBDP" --log /tmp/garbd.log --daemon
 }
@@ -255,7 +256,7 @@ garbd_run(){
   $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 \
     --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql \
-    --mysql-socket=$node1/node1_socket.sock run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
+    --mysql-socket=/tmp/node1.sock run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
 }
 
 garbd_run 3
@@ -263,9 +264,10 @@ garbd_run 4
 garbd_run 5
 
 #Shutdown PXC servers
-$BASEDIR/bin/mysqladmin  --socket=$node1/node1_socket.sock -u root shutdown
-$BASEDIR/bin/mysqladmin  --socket=$node2/node2_socket.sock -u root shutdown
-$BASEDIR/bin/mysqladmin  --socket=$node3/node3_socket.sock -u root shutdown
-$BASEDIR/bin/mysqladmin  --socket=$node4/node4_socket.sock -u root shutdown
-$BASEDIR/bin/mysqladmin  --socket=$node5/node5_socket.sock -u root shutdown
+$BASEDIR/bin/mysqladmin  --socket=/tmp/node1.sock -u root shutdown
+$BASEDIR/bin/mysqladmin  --socket=/tmp/node2.sock -u root shutdown
+$BASEDIR/bin/mysqladmin  --socket=/tmp/node3.sock -u root shutdown
+$BASEDIR/bin/mysqladmin  --socket=/tmp/node4.sock -u root shutdown
+$BASEDIR/bin/mysqladmin  --socket=/tmp/node5.sock -u root shutdown
 ps -ef | grep garbd | grep -v grep | awk '{print $2}' | xargs kill -9 
+
