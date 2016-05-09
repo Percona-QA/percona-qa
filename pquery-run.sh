@@ -43,7 +43,7 @@ MULTI_THREADED_TESTC_LINES=25000                               # Only takes effe
 # Note: if/when using RocksDB as a primary or secondary engine, it must be spelled correctly as: RocksDB. Variations like: rocksdb will cause failures in this script
 QUERY_CORRECTNESS_TESTING=1                                    # Set to 1 to enable query correctness testing. Normally set to 0 (off)
 QUERY_CORRECTNESS_MODE=2                                       # Sets the result comparison modes: 0: errors/warnings, 1: 'changed rows' comparision, 2: actual query results
-QC_NR_OF_STATEMENTS_PER_TRIAL=200                              # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
+QC_NR_OF_STATEMENTS_PER_TRIAL=5000                              # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
 QC_PRI_ENGINE=RocksDB                                          # Primary comparison engine for query correctness testing. Make sure to match this with MYEXTRA
 QC_SEC_ENGINE=InnoDB                                           # Secondary comparison engine for query correctness testing. Make sure to match this with MYEXTRA2
 MYEXTRA2="--default-tmp-storage-engine=MyISAM --default-storage-engine=InnoDB"                                                       # Used for secondary mysqld (RocksDB testing)
@@ -627,19 +627,23 @@ pquery_test(){
     if [ ${THREADS} -eq 1 ]; then  # Single-threaded run (1 client only)
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then # Single-threaded query correctness run using a chunk from INFILE against two servers to then compare outcomes
         echoit "Taking ${QC_NR_OF_STATEMENTS_PER_TRIAL} lines randomly from ${INFILE} as testcase for this query correctness trial..."
+        # Make sure that the code below generates exactly 3 lines (DROP/CREATE/USE) -OR- change the "head -n3" and "sed '1,3d'" (both below) to match any updates made
+        echo 'DROP DATABASE test;' > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
-          echo 'DROP DATABASE test;' > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
           case "$(echo $(( RANDOM % 3 + 1 )))" in
             1) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="Binary" DEFAULT COLLATE="Binary";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
             2) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="utf8" DEFAULT COLLATE="utf8_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
             3) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="latin1" DEFAULT COLLATE="latin1_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
           esac
-          echo 'USE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
+        else
+          echo 'CREATE DATABASE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         fi
+        echo 'USE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
-          cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
+          head -n3 ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}  # Setup testcase with DROP/CREATE/USE test db
+          sed '1,3d' ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
            sed 's|PRIMARY[ \t]\+KEY||i' | \
            sed 's|UNIQUE[ \t]\+KEY||i' | \
            sed 's|FOREIGN[ \t]\+KEY||i' | \
@@ -671,7 +675,8 @@ pquery_test(){
            grep -vi "gen_clust_index" | \
            grep -vi "current_time" | \
            grep -vi "now[ \t]*()" | \
-           grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
+           grep -vi "select 1 from t1,t1 as t2,t1 as t3,t1 as t4,t1 as t5" | \
+           grep -vi "^SET" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         else
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
