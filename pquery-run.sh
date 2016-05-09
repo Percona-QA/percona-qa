@@ -68,6 +68,8 @@ SKIP_JEMALLOC_FOR_PS=0                                         # Skip LD_PRELOAD
 PXC=0                                                          # Special use mode: Enable PXC testing
 PXC_START_TIMEOUT=200                                          # Should not be necessary to change. Default: 200
 PXC_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_mysqld_options.txt # PXC wsrep mysqld options
+PXC_CLUSTER_RUN=0
+PXC_CLUSTER_CONFIG=${SCRIPT_PWD}/pquery/pquery-cluster.cfg
 
 # ========================================= Improvement ideas ====================================================================
 # * SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 (These likely include some of the 'SIGKILL' issues - no core but terminated)
@@ -754,13 +756,29 @@ pquery_test(){
           if [ ${PXC} -eq 0 ]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
           else
-            ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            if [ ${PXC_CLUSTER_RUN} -eq 1 ];then
+              cat ${PXC_CLUSTER_CONFIG} \
+                | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
+                | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
+                > ${RUNDIR}/${TRIAL}/pquer-cluster.cfg
+              ${SCRIPT_PWD}/pquery/pquery2-ps --config=${RUNDIR}/${TRIAL}/pquer-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            else
+              ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            fi
           fi
         else  # Standard pquery run
           if [ ${PXC} -eq 0 ]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
           else
-            ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            if [ ${PXC_CLUSTER_RUN} -eq 1 ];then
+              cat ${PXC_CLUSTER_CONFIG} \
+                | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
+                | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
+                > ${RUNDIR}/${TRIAL}/pquer-cluster.cfg
+              ${SCRIPT_PWD}/pquery/pquery2-ps --config=${RUNDIR}/${TRIAL}/pquer-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            else
+              ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            fi
           fi
         fi
       fi
