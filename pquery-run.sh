@@ -675,7 +675,7 @@ pquery_test(){
            grep -vi "gen_clust_index" | \
            grep -vi "current_time" | \
            grep -vi "now[ \t]*()" | \
-           grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]*2[ \t]*,[ \t]*t1[ast \t]*3[ \t]*" | \
+           grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2b]\+[ \t]*,[ \t]*t1[ast \t]\+[3c]\+" | \
            grep -vi "^SET" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         else
