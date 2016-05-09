@@ -701,8 +701,6 @@ pquery_test(){
         sed -i "s|mrg_myisam|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         sed -i "s|cassandra|${QC_PRI_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
         sed -i "s|cassandra|${QC_SEC_ENGINE}|gi"  ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
-        sed -i "s|connect|${QC_PRI_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
-        sed -i "s|connect|${QC_SEC_ENGINE}|gi"    ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         sed -i "s|ndb|${QC_PRI_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
         sed -i "s|ndb|${QC_SEC_ENGINE}|gi"        ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         sed -i "s|ndbcluster|${QC_PRI_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
