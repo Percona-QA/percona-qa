@@ -662,14 +662,15 @@ pquery_test(){
            grep -vi "point" | \
            grep -vi "geometry" | \
            grep -vi "unique" | \
-           grep -vi "rand" | grep -vi "uuid" | \
+           grep -vi "rand" | \
+           grep -vi "uuid" | \
            grep -vi "charset" | \
            grep -vi "character" | \
            grep -vi "collate" | \
-           grep -vi "DB_ROW_ID" | \
-           grep -vi "GEN_CLUST_INDEX" | \
-           grep -vi "CURRENT_TIME" | \
-           grep -vi "NOW" | \
+           grep -vi "db_row_id" | \
+           grep -vi "gen_clust_index" | \
+           grep -vi "current_time" | \
+           grep -vi "now[ \t]*()" | \
            grep -vi "^SET" > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         else
