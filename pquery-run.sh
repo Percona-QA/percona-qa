@@ -43,7 +43,7 @@ MULTI_THREADED_TESTC_LINES=25000                               # Only takes effe
 # Note: if/when using RocksDB as a primary or secondary engine, it must be spelled correctly as: RocksDB. Variations like: rocksdb will cause failures in this script
 QUERY_CORRECTNESS_TESTING=1                                    # Set to 1 to enable query correctness testing. Normally set to 0 (off)
 QUERY_CORRECTNESS_MODE=2                                       # Sets the result comparison modes: 0: errors/warnings, 1: 'changed rows' comparision, 2: actual query results
-QC_NR_OF_STATEMENTS_PER_TRIAL=5000                              # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
+QC_NR_OF_STATEMENTS_PER_TRIAL=100                              # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
 QC_PRI_ENGINE=RocksDB                                          # Primary comparison engine for query correctness testing. Make sure to match this with MYEXTRA
 QC_SEC_ENGINE=InnoDB                                           # Secondary comparison engine for query correctness testing. Make sure to match this with MYEXTRA2
 MYEXTRA2="--default-tmp-storage-engine=MyISAM --default-storage-engine=InnoDB"                                                       # Used for secondary mysqld (RocksDB testing)
@@ -678,6 +678,9 @@ pquery_test(){
            grep -vi "current_time" | \
            grep -vi "now[ \t]*()" | \
            grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
+           grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
+           grep -vi "from[ \t]*t1[inerjoin( \t]*t1[ast \t]\+[2ab]\+[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
+           grep -vi "from[( \t]*t1[ast \t]\+[2ab]\+[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "^SET" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         else
