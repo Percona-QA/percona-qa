@@ -669,10 +669,7 @@ pquery_test(){
            grep -vi "geometry" | \
            grep -vi "linestring" | \
            grep -vi "polygon" | \
-           grep -vi "multipoint" | \
-           grep -vi "multilinestring" | \
-           grep -vi "multipolygon" | \
-           grep -vi "geometrycollection" | \
+           grep -vi "multipo" | \
            grep -vi "unique" | \
            grep -vi "rand" | \
            grep -vi "uuid" | \
