@@ -43,7 +43,7 @@ MULTI_THREADED_TESTC_LINES=25000                               # Only takes effe
 # Note: if/when using RocksDB as a primary or secondary engine, it must be spelled correctly as: RocksDB. Variations like: rocksdb will cause failures in this script
 QUERY_CORRECTNESS_TESTING=1                                    # Set to 1 to enable query correctness testing. Normally set to 0 (off)
 QUERY_CORRECTNESS_MODE=2                                       # Sets the result comparison modes: 0: errors/warnings, 1: 'changed rows' comparision, 2: actual query results
-QC_NR_OF_STATEMENTS_PER_TRIAL=100                              # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
+QC_NR_OF_STATEMENTS_PER_TRIAL=2000                             # Number of queries sampled/used per trial (executed against both engines below, then results are compared)
 QC_PRI_ENGINE=RocksDB                                          # Primary comparison engine for query correctness testing. Make sure to match this with MYEXTRA
 QC_SEC_ENGINE=InnoDB                                           # Secondary comparison engine for query correctness testing. Make sure to match this with MYEXTRA2
 MYEXTRA2="--default-tmp-storage-engine=MyISAM --default-storage-engine=InnoDB --collation-server=latin1_bin"                          # Used for secondary mysqld (RocksDB testing)
@@ -725,22 +725,28 @@ pquery_test(){
             ${PQUERY_BIN} ${SQL_FILE_1} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
             PQPID="$!"
             mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
+            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out
             grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result
           else
             ${PQUERY_BIN} ${SQL_FILE_1} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
             PQPID="$!"
+            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
             mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out
+            diff ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out > ${RUNDIR}/${TRIAL}/diff.result
           fi
           echoit "Starting Secondary pquery run for engine ${QC_SEC_ENGINE} (log stored in ${RUNDIR}/${TRIAL}/pquery2.log)..."
           if [ ${QUERY_CORRECTNESS_MODE} -ne 2 ]; then
             ${PQUERY_BIN} ${SQL_FILE_2} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${RUNDIR}/${TRIAL}/socket2.sock >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
             PQPID2="$!"
             mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
+            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out
             grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result
           else
             ${PQUERY_BIN} ${SQL_FILE_2} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output --user=root --socket=${RUNDIR}/${TRIAL}/socket2.sock >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
             PQPID2="$!"
+            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
             mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out
+            diff ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out > ${RUNDIR}/${TRIAL}/diff.result
           fi
         else
           ## TODO: Add QUERY_CORRECTNESS_MODE checks (as seen above) to the code below also. FTM, the code below only does "changed rows" comparison
