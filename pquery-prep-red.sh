@@ -4,7 +4,7 @@
 
 # To aid with correct bug to testcase generation for pquery trials, this script creates a local run script for reducer and sets #VARMOD#.
 # This handles crashes/asserts/Valgrind issues for the moment only. Could be expanded later for other cases, and to handle more unforseen situations.
-# Query correctness trial handling was also added 11 May 2016
+# Query correctness: data (output) correctness (QC DC) trial handling was also added 11 May 2016
 
 # User configurable variables
 VALGRIND_OVERRIDE=0    # If set to 1, Valgrind issues are handled as if they were a crash (core dump required)
@@ -32,7 +32,11 @@ fi
 
 # Check if this is a query correctness run
 if [ $(ls */*.out */*.sql | egrep -oi "innodb|rocksdb|tokudb|myisam|memory|csv|ndb|merge" | wc -l) -gt 0 ]; then
-  QC=1
+  if [ "$1" == "noqc" ]; then  # Even though query correctness trials were found, process this run as a crash/assert run only
+    QC=0
+  else
+    QC=1
+  fi
 else
   QC=0
 fi
@@ -53,7 +57,10 @@ if [ ${QC} -eq 0 ]; then
     echo "Something is wrong: there were 0 pquery sql files found (./*/pquery_thread-0.sql) in subdirectories of the current directory. Terminating."
     exit 1
   fi
+else
+  echo "Query correctness trials found! Only processing query correctness results. To process crashes/asserts pass 'noqc' as the first option to this script (pquery-prep-red.sh noqc)"
 fi
+
 NEW_MYEXTRA_METHOD=0
 if [ `ls ./*/MYEXTRA 2>/dev/null | wc -l` -gt 0 ]; then  # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
   echo "Using the new (2015-07-28) method for MYEXTRA/MYSAFE variables pass & VALGRIND run check method. All settings will be set automatically for each trial (and can be checked below)!"
@@ -184,16 +191,25 @@ auto_interleave_failing_sql(){
 }
 
 generate_reducer_script(){
+  if [ ${QC} -eq 0 ]; then
+    PQUERY_EXTRA_OPTIONS="s|ZERO0|ZERO0|"
+  else
+    PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--log-client-output\"\n#VARMOD#|"
+  fi
   if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" ]; then  # Too general strings, or no TEXT found, use MODE=4
     MODE=4
-    TEXT_CLEANUP="s|ZERO0|ZERO0|"  # A zero-effect change (de-duplicates #VARMOD# code below)
+    TEXT_CLEANUP="s|ZERO0|ZERO0|"  # A zero-effect change dummy (de-duplicates #VARMOD# code below)
     TEXT_STRING1="s|ZERO0|ZERO0|"
     TEXT_STRING2="s|ZERO0|ZERO0|"
   else  # Bug-specific TEXT string found, use MODE=3 to let reducer.sh reduce for that specific string
     if [ $VALGRIND_CHECK -eq 1 ]; then
       MODE=1
     else
-      MODE=3
+      if [ ${QC} -eq 0 ]; then
+        MODE=3
+      else
+        MODE=2
+      fi
     fi
     TEXT_CLEANUP="0,/^[ \t]*TEXT[ \t]*=.*$/s|^[ \t]*TEXT[ \t]*=.*$|#TEXT=<set_below_in_machine_variables_section>|"
     TEXT_STRING1="0,/#VARMOD#/s:#VARMOD#:# IMPORTANT NOTE; Leave the 3 spaces before TEXT on the next line; pquery-results.sh uses these\n#VARMOD#:"
@@ -260,6 +276,11 @@ generate_reducer_script(){
     PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
     PXC_STRING1="s|ZERO0|ZERO0|"
   fi
+  if [ ${QC} -eq 0 ]; then
+    REDUCER_FILENAME=reducer${OUTFILE}.sh
+  else
+    REDUCER_FILENAME=qcreducer${OUTFILE}.sh
+  fi
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*MODE[ \t]*=.*$/s|^[ \t]*MODE[ \t]*=.*$|#MODE=<set_below_in_machine_variables_section>|" \
@@ -284,27 +305,80 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_MOD=1\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
    | sed -e "${PXC_STRING1}" \
-   > ./reducer${OUTFILE}.sh
-  chmod +x ./reducer${OUTFILE}.sh 
+   | sed -e "${PQUERY_EXTRA_OPTIONS}" \
+   > ${REDUCER_FILENAME}
+  chmod +x ${REDUCER_FILENAME}
 }
 
 # Main pquery results processing
-for SQLLOG in $(ls ./*/*thread-0.sql 2>/dev/null); do
-  TRIAL=`echo ${SQLLOG} | sed 's|./||;s|/.*||'`
-  if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
-    MYEXTRA=
-    if [ -r ./${TRIAL}/MYEXTRA ]; then
-      MYEXTRA=$(cat ./${TRIAL}/MYEXTRA)
+if [ ${QC} -eq 0 ]; then
+  for SQLLOG in $(ls ./*/*thread-0.sql 2>/dev/null); do
+    TRIAL=`echo ${SQLLOG} | sed 's|./||;s|/.*||'`
+    if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
+      MYEXTRA=
+      if [ -r ./${TRIAL}/MYEXTRA ]; then
+        MYEXTRA=$(cat ./${TRIAL}/MYEXTRA)
+      fi
     fi
-  fi
-  if [ ${PXC} -eq 1 ]; then
-    for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d'  | awk '{print $8}' | tr -dc '0-9\n'`; do
-      OUTFILE="${TRIAL}-${SUBDIR}"
-      rm -Rf  ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
-      touch ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
-      echo "========== Processing pquery trial $TRIAL"
-      if [ -r ./reducer${TRIAL}_${SUBDIR}.sh ]; then
-        echo "* Reducer for this trial (./reducer${TRIAL}_${SUBDIR}.sh) already exists. Skipping to next trial."
+    if [ ${PXC} -eq 1 ]; then
+      for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d'  | awk '{print $8}' | tr -dc '0-9\n'`; do
+        OUTFILE="${TRIAL}-${SUBDIR}"
+        rm -Rf  ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
+        touch ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
+        echo "========== Processing pquery trial $TRIAL"
+        if [ -r ./reducer${TRIAL}_${SUBDIR}.sh ]; then
+          echo "* Reducer for this trial (./reducer${TRIAL}_${SUBDIR}.sh) already exists. Skipping to next trial."
+          continue
+        fi
+        if [ "${MULTI}" == "1" ]; then
+          INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}.sql
+          cp ${INPUTFILE} ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup
+        else
+          INPUTFILE=`echo ${SQLLOG} | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
+        fi
+        BIN=`ls -1 ${WORKD_PWD}/${TRIAL}/node${SUBDIR}/mysqld 2>&1 | head -n1 | grep -v "No such file"`
+        if [ ! -r $BIN ]; then
+          echo "Assert! mysqld binary '$BIN' could not be read"
+          exit 1
+        fi
+        if [ `ls ./pquery-run.log 2>/dev/null | wc -l` -eq 0 ]; then
+          BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
+        else
+          BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//' | tr -d '[[:space:]]'`"
+        fi
+        #BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
+        CORE=`ls -1 ./${TRIAL}/node${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
+        if [ "$CORE" != "" ]; then
+          extract_queries_core
+        fi
+        ERRLOG=./${TRIAL}/node${SUBDIR}/error.log
+        if [ "$ERRLOG" != "" ]; then
+          extract_queries_error_log
+        else
+          echo "Assert! Error log at ./${TRIAL}/node${SUBDIR}/error.log could not be read?"
+          exit 1
+        fi
+        TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
+        echo "* TEXT variable set to: \"${TEXT}\""
+        if [ "${MULTI}" == "1" ]; then
+           if [ -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
+             auto_interleave_failing_sql
+           fi
+        fi
+        generate_reducer_script
+      done
+    else
+      OUTFILE=$TRIAL
+      rm -Rf ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
+      if [ ${REACH} -eq 0 ]; then # Avoid normal output if this is an automated run (REACH=1)
+        echo "========== Processing pquery trial $TRIAL"
+      fi
+      if [ ! -r ./${TRIAL}/start ]; then
+        echo "* No ./${TRIAL}/start detected, so this was likely a SAVE_SQL=1, SAVE_TRIALS_WITH_CORE_ONLY=1 trial with no core generated. Skipping to next trial."
+        continue
+      fi
+      if [ -r ./reducer${TRIAL}.sh ]; then
+        echo "* Reducer for this trial (./reducer${TRIAL}.sh) already exists. Skipping to next trial."
         continue
       fi
       if [ "${MULTI}" == "1" ]; then
@@ -313,135 +387,102 @@ for SQLLOG in $(ls ./*/*thread-0.sql 2>/dev/null); do
       else
         INPUTFILE=`echo ${SQLLOG} | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
       fi
-      BIN=`ls -1 ${WORKD_PWD}/${TRIAL}/node${SUBDIR}/mysqld 2>&1 | head -n1 | grep -v "No such file"`
-      if [ ! -r $BIN ]; then
-        echo "Assert! mysqld binary '$BIN' could not be read"
+      BIN=$(grep "\/mysqld" ./${TRIAL}/start | head -n1 | sed 's|mysqld .*|mysqld|;s|.* \(.*bin/mysqld\)|\1|') 
+      if [ "${BIN}" == "" ]; then 
+        echo "Assert \$BIN is empty"
         exit 1
       fi
-      if [ `ls ./pquery-run.log 2>/dev/null | wc -l` -eq 0 ]; then
-        BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
-      else
-        BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//' | tr -d '[[:space:]]'`"
+      if [ ! -r "${BIN}" ]; then
+        echo "Assert! mysqld binary '${BIN}' could not be read"
+        exit 1
       fi
-      #BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
-      CORE=`ls -1 ./${TRIAL}/node${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
+      BASE=`echo ${BIN} | sed 's|/bin/mysqld||'`
+      if [ ! -d "${BASE}" ]; then
+        echo "Assert! Basedir '${BASE}' does not look to be a directory"
+        exit 1
+      fi
+      CORE=`ls -1 ./${TRIAL}/data/*core* 2>&1 | head -n1 | grep -v "No such file"`
       if [ "$CORE" != "" ]; then
         extract_queries_core
       fi
-      ERRLOG=./${TRIAL}/node${SUBDIR}/error.log
+      ERRLOG=./${TRIAL}/log/master.err
       if [ "$ERRLOG" != "" ]; then
         extract_queries_error_log
       else
-        echo "Assert! Error log at ./${TRIAL}/node${SUBDIR}/error.log could not be read?"
+        echo "Assert! Error log at ./${TRIAL}/log/master.err could not be read?"
         exit 1
       fi
-      TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
-      echo "* TEXT variable set to: \"${TEXT}\""
-      if [ "${MULTI}" == "1" ]; then
-         if [ -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
-           auto_interleave_failing_sql
-         fi
-      fi
-      generate_reducer_script
-    done
-  else
-    OUTFILE=$TRIAL
-    rm -Rf ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
-    if [ ${REACH} -eq 0 ]; then # Avoid normal output if this is an automated run (REACH=1)
-      echo "========== Processing pquery trial $TRIAL"
-    fi
-    if [ ! -r ./${TRIAL}/start ]; then
-      echo "* No ./${TRIAL}/start detected, so this was likely a SAVE_SQL=1, SAVE_TRIALS_WITH_CORE_ONLY=1 trial with no core generated. Skipping to next trial."
-      continue
-    fi
-    if [ -r ./reducer${TRIAL}.sh ]; then
-      echo "* Reducer for this trial (./reducer${TRIAL}.sh) already exists. Skipping to next trial."
-      continue
-    fi
-    if [ "${MULTI}" == "1" ]; then
-      INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}.sql
-      cp ${INPUTFILE} ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup
-    else
-      INPUTFILE=`echo ${SQLLOG} | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
-    fi
-    BIN=$(grep "\/mysqld" ./${TRIAL}/start | head -n1 | sed 's|mysqld .*|mysqld|;s|.* \(.*bin/mysqld\)|\1|') 
-    if [ "${BIN}" == "" ]; then 
-      echo "Assert \$BIN is empty"
-      exit 1
-    fi
-    if [ ! -r "${BIN}" ]; then
-      echo "Assert! mysqld binary '${BIN}' could not be read"
-      exit 1
-    fi
-    BASE=`echo ${BIN} | sed 's|/bin/mysqld||'`
-    if [ ! -d "${BASE}" ]; then
-      echo "Assert! Basedir '${BASE}' does not look to be a directory"
-      exit 1
-    fi
-    CORE=`ls -1 ./${TRIAL}/data/*core* 2>&1 | head -n1 | grep -v "No such file"`
-    if [ "$CORE" != "" ]; then
-      extract_queries_core
-    fi
-    ERRLOG=./${TRIAL}/log/master.err
-    if [ "$ERRLOG" != "" ]; then
-      extract_queries_error_log
-    else
-      echo "Assert! Error log at ./${TRIAL}/log/master.err could not be read?"
-      exit 1
-    fi
-    VALGRIND_CHECK=0
-    VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
-    if [ -r ./${TRIAL}/VALGRIND -a ${VALGRIND_OVERRIDE} -ne 1 ]; then
-      VALGRIND_CHECK=1
-      # What follows are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
-      VALGRIND_CHECK_1=$(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ./${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
-      if [ "${VALGRIND_CHECK_1}" == "" ]; then VALGRIND_CHECK_1=0; fi
-      if [ ${VALGRIND_CHECK_1} -gt 0 ]; then
-        VALGRIND_ERRORS_FOUND=1
-      fi
-      if egrep -qi "^[ \t]*==[0-9]+[= \t]+[atby]+[ \t]*0x" ./${TRIAL}/log/master.err; then
-        VALGRIND_ERRORS_FOUND=1
-      fi
-      if egrep -qi "==[0-9]+== ERROR SUMMARY: [1-9]" ./${TRIAL}/log/master.err; then
-        VALGRIND_ERRORS_FOUND=1
-      fi
-      if [ ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then
-        TEXT=`${SCRIPT_PWD}/valgrind_string.sh ./${TRIAL}/log/master.err`
-        if [ "${TEXT}" != "" ]; then
-          echo "* Valgrind string detected: '${TEXT}'"
-        else
-          echo "*** ERROR: No specific Valgrind string was detected in ./${TRIAL}/log/master.err! This may be a bug... Setting TEXT to generic '==    at 0x'"
-          TEXT="==    at 0x"
+      VALGRIND_CHECK=0
+      VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
+      if [ -r ./${TRIAL}/VALGRIND -a ${VALGRIND_OVERRIDE} -ne 1 ]; then
+        VALGRIND_CHECK=1
+        # What follows are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
+        VALGRIND_CHECK_1=$(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ./${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
+        if [ "${VALGRIND_CHECK_1}" == "" ]; then VALGRIND_CHECK_1=0; fi
+        if [ ${VALGRIND_CHECK_1} -gt 0 ]; then
+          VALGRIND_ERRORS_FOUND=1
         fi
-        # generate a valgrind specific reducer and then reset values if standard crash reducer is needed
-        OUTFILE=_val$TRIAL
+        if egrep -qi "^[ \t]*==[0-9]+[= \t]+[atby]+[ \t]*0x" ./${TRIAL}/log/master.err; then
+          VALGRIND_ERRORS_FOUND=1
+        fi
+        if egrep -qi "==[0-9]+== ERROR SUMMARY: [1-9]" ./${TRIAL}/log/master.err; then
+          VALGRIND_ERRORS_FOUND=1
+        fi
+        if [ ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then
+          TEXT=`${SCRIPT_PWD}/valgrind_string.sh ./${TRIAL}/log/master.err`
+          if [ "${TEXT}" != "" ]; then
+            echo "* Valgrind string detected: '${TEXT}'"
+          else
+            echo "*** ERROR: No specific Valgrind string was detected in ./${TRIAL}/log/master.err! This may be a bug... Setting TEXT to generic '==    at 0x'"
+            TEXT="==    at 0x"
+          fi
+          # generate a valgrind specific reducer and then reset values if standard crash reducer is needed
+          OUTFILE=_val$TRIAL
+          generate_reducer_script
+          VALGRIND_CHECK=0
+          OUTFILE=$TRIAL
+        fi
+      fi
+      # if not a valgrind run process everything, if it is valgrind run only if there's a core
+      if [ ! -r ./${TRIAL}/VALGRIND ] || [ -r ./${TRIAL}/VALGRIND -a "$CORE" != "" ]; then
+        TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/log/master.err`
+        echo "* TEXT variable set to: \"${TEXT}\""
+        if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
+          auto_interleave_failing_sql
+        fi
         generate_reducer_script
-        VALGRIND_CHECK=0
-        OUTFILE=$TRIAL
       fi
     fi
-    # if not a valgrind run process everything, if it is valgrind run only if there's a core
-    if [ ! -r ./${TRIAL}/VALGRIND ] || [ -r ./${TRIAL}/VALGRIND -a "$CORE" != "" ]; then
-      TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/log/master.err`
-      echo "* TEXT variable set to: \"${TEXT}\""
-      if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
-        auto_interleave_failing_sql
-      fi
-      generate_reducer_script
+    if [ "${MYEXTRA}" != "" ]; then
+      echo "* MYEXTRA variable set to: ${MYEXTRA}"
     fi
-  fi
-  if [ "${MYEXTRA}" != "" ]; then
-    echo "* MYEXTRA variable set to: ${MYEXTRA}"
-  fi
-  if [ ${VALGRIND_CHECK} -eq 1 ]; then
-    echo "* Valgrind was used for this trial"
-  fi
-done
+    if [ ${VALGRIND_CHECK} -eq 1 ]; then
+      echo "* Valgrind was used for this trial"
+    fi
+  done
+else
+  for TRIAL in $(ls ./*/diff.result 2>/dev/null | sed 's|./||;s|/.*||'); do
+    if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
+      MYEXTRA=
+      if [ -r ./${TRIAL}/MYEXTRA ]; then
+        MYEXTRA=$(cat ./${TRIAL}/MYEXTRA)
+      fi
+    fi
+    TEXT=$(grep "^[<>]" ./${TRIAL}/diff.result | awk '{print length, $0;}' | sort -nr | head -n1 | sed 's/^[0-9]\+[ \t]\+[<>] //' )
+    echo "* Query Correctness: Data Correctness (QC DC) TEXT variable set to: \"${TEXT}\""
+    OUTFILE=$TRIAL
+    generate_reducer_script
+  done
+fi
 
 if [ ${REACH} -eq 0 ]; then # Avoid normal output if this is an automated run (REACH=1)
   echo "======================================================================================================================================================"
-  echo -e "\nDone!! Start reducer scripts like this: './reducerTRIAL.sh' or './reducer_valTRIAL.sh' where TRIAL stands for the trial number you would like to reduce"
-  echo "Both reducer and the SQL trace file have been pre-prepped with all the crashing queries and settings, ready for you to use without further options!"
+  if [ ${QC} -eq 0 ]; then
+    echo -e "\nDone!! Start reducer scripts like this: './reducerTRIAL.sh' or './reducer_valTRIAL.sh' where TRIAL stands for the trial number you would like to reduce"
+    echo "Both reducer and the SQL trace file have been pre-prepped with all the crashing queries and settings, ready for you to use without further options!"
+  else
+    echo -e "\nDone!! Start reducer scripts like this: './qcreducerTRIAL.sh' where TRIAL stands for the trial number you would like to reduce"
+  fi
   echo -e "\nIMPORTANT!! Remember that settings pre-programmed into reducerTRIAL.sh by this script are in the 'Machine configurable variables' section, not"
   echo "in the 'User configurable variables' section. As such, and for example, if you want to change the settings (for example change MODE=3 to MODE=4), then"
   echo "please make such changes in the 'Machine configurable variables' section which is a bit lower in the file (search for 'Machine' to find it easily)."

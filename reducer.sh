@@ -90,12 +90,12 @@ PXC_ISSUE_NODE=0                # The node on which the issue would/should show 
 # - MODE: 
 #   - MODE=0: Timeout testing (server hangs, shutdown issues, excessive command duration etc.) (set TIMEOUT_CHECK)
 #   - MODE=1: Valgrind output testing (set TEXT)
-#   - MODE=2: mysql CLI (Command Line Interface, i.e. the mysql client) output testing (set TEXT) 
+#   - MODE=2: mysql CLI (Command Line Interface, i.e. the mysql client)/pquery client output testing (set TEXT) 
 #   - MODE=3: mysqld error output log testing (set TEXT)
 #   - MODE=4: Crash testing
 #   - MODE=5 [BETA]: MTR testcase reduction (set TEXT) (Can also be used for multi-occurence CLI output testing - see MODE5_COUNTTEXT below)
 #   - MODE=6 [ALPHA]: Multi threaded (ThreadSync) Valgrind output testing (set TEXT)
-#   - MODE=7 [ALPHA]: Multi threaded (ThreadSync) mysql CLI output testing (set TEXT)
+#   - MODE=7 [ALPHA]: Multi threaded (ThreadSync) mysql CLI/pquery client output testing (set TEXT)
 #   - MODE=8 [ALPHA]: Multi threaded (ThreadSync) mysqld error output log testing (set TEXT)
 #   - MODE=9 [ALPHA]: Multi threaded (ThreadSync) crash testing
 # - SKIPSTAGE: Stages up to and including this one are skipped (default=0). 
