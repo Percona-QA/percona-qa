@@ -344,8 +344,8 @@ ctrl_c(){
 
 options_check(){
   # $1 to this procedure = $1 to the program - i.e. the SQL file to reduce
-  if [ "$1" == "" -a "$INFILE" == "" ]; then
-    echo "Error: no input file given. Please give an SQL file to reduce as the first option to this script, or set inside the script as INFILE=file_to_reduce.sql"
+  if [ "$1" == "" -a "$INPUTFILE" == "" ]; then
+    echo "Error: no input file given. Please give an SQL file to reduce as the first option to this script, or set inside the script as INPUTFILE=file_to_reduce.sql"
     echo "Terminating now."
     exit 1
   fi
