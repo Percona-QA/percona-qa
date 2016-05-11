@@ -646,14 +646,10 @@ pquery_test(){
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
           head -n3 ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}  # Setup testcase with DROP/CREATE/USE test db
           sed '1,3d' ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
-           sed 's|PRIMARY[ \t]\+KEY||i' | \
            sed 's|UNIQUE[ \t]\+KEY||i' | \
            sed 's|FOREIGN[ \t]\+KEY||i' | \
            sed 's|FULLTEXT||i' | \
-           sed 's|AUTO_INCREMENT||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
-           sed 's|,[ \t]*KEY *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
-           sed 's|,[ \t]*INDEX *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
@@ -669,7 +665,6 @@ pquery_test(){
            grep -vi "geometry" | \
            grep -vi "linestring" | \
            grep -vi "polygon" | \
-           grep -vi "multipo" | \
            grep -vi "unique" | \
            grep -vi "rand" | \
            grep -vi "uuid" | \
@@ -682,6 +677,8 @@ pquery_test(){
            grep -vi "curtime" | \
            grep -vi "timestamp" | \
            grep -vi "now[ \t]*()" | \
+           grep -vi "flush[ \t]*tables.*for[ \t]*export" | \
+           grep -vi "encrypt[ \t]*(.*)" | \
            grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[inerjoin( \t]*t1[ast \t]\+[2ab]\+[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
