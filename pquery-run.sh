@@ -679,6 +679,7 @@ pquery_test(){
            grep -vi "now[ \t]*()" | \
            grep -vi "flush[ \t]*tables.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
+           grep -vi "select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(" | \
            grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[inerjoin( \t]*t1[ast \t]\+[2ab]\+[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
@@ -733,6 +734,8 @@ pquery_test(){
             mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
             mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out
             diff ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out > ${RUNDIR}/${TRIAL}/diff.result
+            echo "${QC_PRI_ENGINE}" > ${RUNDIR}/${TRIAL}/diff.LEFT
+            echo "${QC_SEC_ENGINE}" > ${RUNDIR}/${TRIAL}/diff.RIGHT
           fi
           echoit "Starting Secondary pquery run for engine ${QC_SEC_ENGINE} (log stored in ${RUNDIR}/${TRIAL}/pquery2.log)..."
           if [ ${QUERY_CORRECTNESS_MODE} -ne 2 ]; then
@@ -747,6 +750,8 @@ pquery_test(){
             mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
             mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out
             diff ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out > ${RUNDIR}/${TRIAL}/diff.result
+            echo "${QC_PRI_ENGINE}" > ${RUNDIR}/${TRIAL}/diff.LEFT
+            echo "${QC_SEC_ENGINE}" > ${RUNDIR}/${TRIAL}/diff.RIGHT
           fi
         else
           ## TODO: Add QUERY_CORRECTNESS_MODE checks (as seen above) to the code below also. FTM, the code below only does "changed rows" comparison

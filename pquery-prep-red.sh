@@ -284,6 +284,7 @@ generate_reducer_script(){
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*MODE[ \t]*=.*$/s|^[ \t]*MODE[ \t]*=.*$|#MODE=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$/s|^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$|#PQUERY_EXTRA_OPTIONS=<set_below_in_machine_variables_section>|" \
    | sed -e "${MYEXTRA_CLEANUP}" \
    | sed -e "${TEXT_CLEANUP}" \
    | sed -e "${MULTI_CLEANUP1}" \
@@ -462,13 +463,37 @@ if [ ${QC} -eq 0 ]; then
   done
 else
   for TRIAL in $(ls ./*/diff.result 2>/dev/null | sed 's|./||;s|/.*||'); do
+    BIN=$(grep "\/mysqld" ./${TRIAL}/start | head -n1 | sed 's|mysqld .*|mysqld|;s|.* \(.*bin/mysqld\)|\1|') 
+    if [ "${BIN}" == "" ]; then 
+      echo "Assert \$BIN is empty"
+      exit 1
+    fi
+    if [ ! -r "${BIN}" ]; then
+      echo "Assert! mysqld binary '${BIN}' could not be read"
+      exit 1
+    fi
+    BASE=`echo ${BIN} | sed 's|/bin/mysqld||'`
+    if [ ! -d "${BASE}" ]; then
+      echo "Assert! Basedir '${BASE}' does not look to be a directory"
+      exit 1
+    fi
     if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
       MYEXTRA=
       if [ -r ./${TRIAL}/MYEXTRA ]; then
         MYEXTRA=$(cat ./${TRIAL}/MYEXTRA)
       fi
     fi
-    TEXT=$(grep "^[<>]" ./${TRIAL}/diff.result | awk '{print length, $0;}' | sort -nr | head -n1 | sed 's/^[0-9]\+[ \t]\+[<>] //' )
+    TEXT=$(grep "^[<>]" ./${TRIAL}/diff.result | awk '{print length, $0;}' | sort -nr | head -n1 | sed 's/^[0-9]\+[ \t]\+//')
+    LEFTRIGHT=$(echo ${TEXT} | sed 's/\(^.\).*/\1/')
+    TEXT=$(echo ${TEXT} | sed 's/[<>][ \t]\+//')
+    if [ "${LEFTRIGHT}" == "<" ]; then
+      ENGINE=$(echo ./${TRIAL}/diff.left)
+    elif [ "${LEFTRIGHT}" == ">" ]; then
+      ENGINE=$(echo ./${TRIAL}/diff.right)
+    else
+      echo "Warning! \$LEFTRIGHT != '<' or '>' but '${LEFTRIGHT}' for trial ${TRIAL} which should be impossible"
+    fi 
+    INPUTFILE=`echo ${TRIAL} | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
     echo "* Query Correctness: Data Correctness (QC DC) TEXT variable set to: \"${TEXT}\""
     OUTFILE=$TRIAL
     generate_reducer_script
