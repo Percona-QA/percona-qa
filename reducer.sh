@@ -49,6 +49,7 @@ TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seco
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
 MULTI_THREADS_INCREASE=5        # Do not change (default=5),  unless you fully understand the change (increase of above, both for std and PQUERY_MULTI)
+PQUERY_EXTRA_OPTIONS=""         # Do not change (default=""), unless you fully understand the change (adds extra options to pquery replay, used for QC trials)
 PQUERY_MULTI_THREADS=3          # Do not change (default=3),  unless you fully understand the change (x mysqld servers + 1 pquery client with x threads)
 PQUERY_MULTI_CLIENT_THREADS=30  # Do not change (default=30), unless you fully understand the change (x [client] threads mentioned above)
 PQUERY_MULTI_QUERIES=400000     # Do not change (default=400000), unless you fully understand the change (queries to be executed per client per trial)
@@ -103,6 +104,7 @@ PXC_ISSUE_NODE=0                # The node on which the issue would/should show 
 #   For MODE5, you would use a mysql CLI to get the desired output "string" (see example given above) and then set MODE5_COUNTTEXT
 # - PQUERY_MOD: 1: use pquery, 0: use mysql CLI. Causes reducer.sh to use pquery instead of the mysql client for replays (default=0). Supported for MODE=1,3,4
 # - PQUERY_LOC: Location of the pquery binary (retrieve pquery like this; $ cd ~; bzr branch lp:percona-qa; # then ref ~/percona-qa/pquery/pquery[-ms])
+# - PQUERY_EXTRA_OPTIONS: Extra options to pquery which will be added to the pquery command line. This is used for query correctness trials
 # - PXC_MOD: 1: bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
 #   see lp:/percona-qa/pxc-pquery/new/pxc-pquery_info.txt and lp:/percona-qa/docker_info.txt for more information on this. See above for some limitations etc.
 #   IMPORTANT NOTE: If this is set to 1, ftm, these settings (and limitations) are automatically set: INHERENT: PQUERY_MOD=1, LIMTATIONS: FORCE_SPORADIC=0, 
@@ -1247,10 +1249,10 @@ generate_run_scripts(){
         echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/node1/node1_socket.sock" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/node1/node1_socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/node1/node1_socket.sock" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/node1/node1_socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         fi
       else
         echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
@@ -1259,10 +1261,10 @@ generate_run_scripts(){
         echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          echo "$(echo ${PQUERY_LOC} | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/socket.sock" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         fi
       fi
       chmod +x $WORK_RUN_PQUERY
@@ -1820,18 +1822,18 @@ run_sql_code(){
         if [ $PXC_MOD -eq 1 ]; then
           if [ $PQUERY_MULTI -eq 1 ]; then
             if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-            ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=${node1}/node1_socket.sock > $WORKD/pquery.out 2>&1
+            $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=${node1}/node1_socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
           else
             if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-            ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=${node1}/node1_socket.sock > $WORKD/pquery.out 2>&1
+            $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=${node1}/node1_socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
           fi
         else
           if [ $PQUERY_MULTI -eq 1 ]; then
             if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-            ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=$WORKD/socket.sock > $WORKD/pquery.out 2>&1
+            $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=$WORKD/socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
           else
             if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-            ${PQUERY_LOC} --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=$WORKD/socket.sock > $WORKD/pquery.out 2>&1
+            $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=$WORKD/socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
           fi
         fi
       else
