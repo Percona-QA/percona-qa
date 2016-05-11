@@ -3,8 +3,10 @@
 
 # Edited by Shahriyar Rzayev, Percona LLC
 
+# Tested from /root directory
+
 # NOTE1
-# This script should be run from PXC base dir!
+# This script should be run from PXC base dir! (tested under /root/PXC_base_dir)
 # General usage in CentOS 7:
 # wget http://jenkins.percona.com/job/pxc56.build/BUILD_TYPE=release,label_exp=centos7-64/lastSuccessfulBuild/artifact/target/Percona-XtraDB-Cluster-5.6.28-rel76.1-25.14..Linux.x86_64.tar.gz
 # tar -xvf Percona-XtraDB-Cluster-5.6.28-rel76.1-25.14..Linux.x86_64.tar.gz
@@ -22,6 +24,10 @@
 #[ERROR] Aborting
 # Fix is using sst_method="xtrabackup-v2"
 
+# NOTE4
+# Adding keyring plugin installation
+#early_plugin_load=
+#keyring_file_data=
 
 
 
@@ -52,14 +58,14 @@ if [[ $sst_method == "xtrabackup-v2" ]];then
     export PATH="$BUILD/$PXB_BASE/bin:$PATH"
   else
 
-    if [ -f archive.zip ]; then
-	unzip archive.zip
+    if [ -f percona-xtrabackup-2.4.2-Linux-x86_64.tar.gz ]; then
+	tar -xzf percona-xtrabackup-2.4.2-Linux-x86_64.tar.gz
     else
-	wget http://jenkins.percona.com/job/percona-xtrabackup-2.4-binary-tarball/label_exp=centos5-64/lastSuccessfulBuild/artifact/*zip*/archive.zip
-	unzip archive.zip
+	wget http://jenkins.percona.com/job/percona-xtrabackup-2.4-binary-tarball/label_exp=centos5-64/lastSuccessfulBuild/artifact/TARGET/percona-xtrabackup-2.4.2-Linux-x86_64.tar.gz
+	tar -xzf percona-xtrabackup-2.4.2-Linux-x86_64.tar.gz
     fi
 
-    tar -xzf archive/TARGET/*.tar.gz 
+     
     PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
     export PATH="$BUILD/$PXB_BASE/bin:$PATH"
   fi
@@ -133,6 +139,8 @@ echo "    --mysqld=--skip-name-resolve \\" >> ./start_mtr
 echo "    --mysqld=--socket=$node1/socket.sock \\" >> ./start_mtr
 echo "    --mysqld=--log-error=$node1/node.err \\" >> ./start_mtr
 echo "    --mysqld=--log-output=none \\" >> ./start_mtr
+echo "    --mysqld=--early-plugin-load=keyring_file.so \\" >> ./start_mtr
+echo "    --mysqld=--keyring_file_data=/root/Percona-XtraDB-Cluster-5.7.11-rel4-25.14.1.Linux.x86_64/node1/mysqld.1/mysql-keyring/keyring \\" >> ./start_mtr
 echo "   1st" >> ./start_mtr
 echo " set -e" >> ./start_mtr
 echo "popd" >> ./start_mtr
@@ -173,6 +181,8 @@ echo "    --mysqld=--skip-name-resolve \\" >> ./start_mtr
 echo "    --mysqld=--socket=$node2/socket.sock \\" >> ./start_mtr
 echo "    --mysqld=--log-error=$node2/node.err \\" >> ./start_mtr
 echo "    --mysqld=--log-output=none \\" >> ./start_mtr
+echo "    --mysqld=--early-plugin-load=keyring_file.so \\" >> ./start_mtr
+echo "    --mysqld=--keyring_file_data=/root/Percona-XtraDB-Cluster-5.7.11-rel4-25.14.1.Linux.x86_64/node2/mysqld.1/mysql-keyring/keyring \\" >> ./start_mtr
 echo "   1st" >> ./start_mtr
 echo " set -e" >> ./start_mtr
 echo "popd" >> ./start_mtr
@@ -213,6 +223,8 @@ echo "    --mysqld=--skip-name-resolve \\" >> ./start_mtr
 echo "    --mysqld=--socket=$node3/socket.sock \\" >> ./start_mtr
 echo "    --mysqld=--log-error=$node3/node.err \\" >> ./start_mtr
 echo "    --mysqld=--log-output=none \\" >> ./start_mtr
+echo "    --mysqld=--early-plugin-load=keyring_file.so \\" >> ./start_mtr
+echo "    --mysqld=--keyring_file_data=/root/Percona-XtraDB-Cluster-5.7.11-rel4-25.14.1.Linux.x86_64/node3/mysqld.1/mysql-keyring/keyring \\" >> ./start_mtr
 echo "   1st" >> ./start_mtr
 echo " set -e" >> ./start_mtr
 echo "popd" >> ./start_mtr

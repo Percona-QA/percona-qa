@@ -667,6 +667,12 @@ pquery_test(){
            grep -vi "^explain" | \
            grep -vi "point" | \
            grep -vi "geometry" | \
+           grep -vi "linestring" | \
+           grep -vi "polygon" | \
+           grep -vi "multipoint" | \
+           grep -vi "multilinestring" | \
+           grep -vi "multipolygon" | \
+           grep -vi "geometrycollection" | \
            grep -vi "unique" | \
            grep -vi "rand" | \
            grep -vi "uuid" | \
@@ -676,6 +682,8 @@ pquery_test(){
            grep -vi "db_row_id" | \
            grep -vi "gen_clust_index" | \
            grep -vi "current_time" | \
+           grep -vi "curtime" | \
+           grep -vi "timestamp" | \
            grep -vi "now[ \t]*()" | \
            grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \

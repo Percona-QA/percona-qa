@@ -93,7 +93,7 @@ export PATH="$ROOT_FS/$BBASE/bin:$ROOT_FS:$PATH"
 
 MYSQL_BASEDIR="${ROOT_FS}/$BASE"
 #export XB_TESTDIR="$ROOT_FS/$BBASE/share/percona-xtrabackup-test/"
-export XB_TESTDIR="$ROOT_FS/$BASE/percona-xtradb-cluster-tests/"
+export XB_TESTDIR="$ROOT_FS/$BASE/percona-xtradb-cluster-tests/sst"
 #trap "cp -R $XB_TESTDIR/results $WORKDIR/results-${BUILD_NUMBER}" EXIT
 trap "cp -R $XB_TESTDIR/results $WORKDIR/results-${BUILD_NUMBER} && tar czf $WORKDIR/results-${BUILD_NUMBER}.tar.gz $WORKDIR/results-${BUILD_NUMBER} " EXIT KILL
 
