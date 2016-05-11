@@ -679,11 +679,11 @@ pquery_test(){
            grep -vi "now[ \t]*()" | \
            grep -vi "flush[ \t]*tables.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
+           grep -vi 'start transaction .*with consistent snapshot' | \
            grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[inerjoin( \t]*t1[ast \t]\+[2ab]\+[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
-           grep -vi "from[( \t]*t1[ast \t]\+[2ab]\+[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
-           grep -vi "^SET" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
+           grep -vi "from[( \t]*t1[ast \t]\+[2ab]\+[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         else
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
