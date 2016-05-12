@@ -498,6 +498,9 @@ else
     TEXT=$(echo ${TEXT} | sed 's/[<>][ \t]\+//')
     ENGINE=
     FAULT=0
+    # Pre-processing all possible sql files to make it suitable for reducer.sh and manual replay - this can be handled in pquery core < TODO
+    sed -i "s/;|NOERROR/;#NOERROR/" ${WORKD_PWD}/${TRIAL}/pquery_thread-0.*.sql
+    sed -i "s/;|ERROR/;#ERROR/" ${WORKD_PWD}/${TRIAL}/pquery_thread-0.*.sql
     if [ "${LEFTRIGHT}" == "<" ]; then
       ENGINE=$(cat ./${TRIAL}/diff.left)
       MYEXTRA=$(cat ./${TRIAL}/MYEXTRA.left 2>/dev/null)
