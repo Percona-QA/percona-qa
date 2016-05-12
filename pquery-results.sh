@@ -15,7 +15,7 @@ else
 fi
 
 # Current location checks
-if [ `ls ./*/pquery_thread-0.sql 2>/dev/null | wc -l` -eq 0 ]; then
+if [ `ls ./*/pquery_thread-0*.sql 2>/dev/null | wc -l` -eq 0 ]; then
   echo "Something is wrong: no pquery trials (with logging - i.e. ./*/pquery_thread-0.sql) were found in this directory (or they were all cleaned up already)"
   echo "Please make sure to execute this script from within the pquery working directory!"
   exit 1

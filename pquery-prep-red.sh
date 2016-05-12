@@ -220,19 +220,39 @@ generate_reducer_script(){
             if [[ "${TEXT}" = *"-"* ]]; then
               echo "Assert (#1)! No suitable sed seperator found. TEXT (${TEXT}) contains all of the possibilities, add more!"
             else
-              TEXT_STRING2="0,/#VARMOD#/s-#VARMOD#-   TEXT=\"${TEXT}\"\n#VARMOD#-"
+              if [ ${QC} -eq 0 ]; then
+                TEXT_STRING2="0,/#VARMOD#/s-#VARMOD#-   TEXT=\"${TEXT}\"\n#VARMOD#-"
+              else
+                TEXT_STRING2="0,/#VARMOD#/s-#VARMOD#-   TEXT=\"^${TEXT}\$\"\n#VARMOD#-"
+              fi
             fi
           else
-            TEXT_STRING2="0,/#VARMOD#/s_#VARMOD#_   TEXT=\"${TEXT}\"\n#VARMOD#_"
+            if [ ${QC} -eq 0 ]; then
+              TEXT_STRING2="0,/#VARMOD#/s_#VARMOD#_   TEXT=\"${TEXT}\"\n#VARMOD#_"
+            else
+              TEXT_STRING2="0,/#VARMOD#/s_#VARMOD#_   TEXT=\"^${TEXT}\$\"\n#VARMOD#_"
+            fi
           fi
         else
-          TEXT_STRING2="0,/#VARMOD#/s/#VARMOD#/   TEXT=\"${TEXT}\"\n#VARMOD#/"
+          if [ ${QC} -eq 0 ]; then
+            TEXT_STRING2="0,/#VARMOD#/s/#VARMOD#/   TEXT=\"${TEXT}\"\n#VARMOD#/"
+          else
+            TEXT_STRING2="0,/#VARMOD#/s/#VARMOD#/   TEXT=\"^${TEXT}\$\"\n#VARMOD#/"
+          fi
         fi
       else
-        TEXT_STRING2="0,/#VARMOD#/s|#VARMOD#|   TEXT=\"${TEXT}\"\n#VARMOD#|"
+        if [ ${QC} -eq 0 ]; then
+          TEXT_STRING2="0,/#VARMOD#/s|#VARMOD#|   TEXT=\"${TEXT}\"\n#VARMOD#|"
+        else
+          TEXT_STRING2="0,/#VARMOD#/s|#VARMOD#|   TEXT=\"^${TEXT}\$\"\n#VARMOD#|"
+        fi
       fi
     else
-      TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"${TEXT}\"\n#VARMOD#:"
+      if [ ${QC} -eq 0 ]; then
+        TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"${TEXT}\"\n#VARMOD#:"
+      else
+        TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"^${TEXT}\$\"\n#VARMOD#:"
+      fi
     fi
   fi
   if [ "$MYEXTRA" == "" ]; then  # Empty MYEXTRA string
@@ -486,14 +506,15 @@ else
     TEXT=$(grep "^[<>]" ./${TRIAL}/diff.result | awk '{print length, $0;}' | sort -nr | head -n1 | sed 's/^[0-9]\+[ \t]\+//')
     LEFTRIGHT=$(echo ${TEXT} | sed 's/\(^.\).*/\1/')
     TEXT=$(echo ${TEXT} | sed 's/[<>][ \t]\+//')
+    ENGINE=
     if [ "${LEFTRIGHT}" == "<" ]; then
-      ENGINE=$(echo ./${TRIAL}/diff.left)
+      ENGINE=$(cat ./${TRIAL}/diff.left)
     elif [ "${LEFTRIGHT}" == ">" ]; then
-      ENGINE=$(echo ./${TRIAL}/diff.right)
+      ENGINE=$(cat ./${TRIAL}/diff.right)
     else
       echo "Warning! \$LEFTRIGHT != '<' or '>' but '${LEFTRIGHT}' for trial ${TRIAL} which should be impossible"
     fi 
-    INPUTFILE=`echo ${TRIAL} | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
+    INPUTFILE=$(echo ${TRIAL} | sed "s|^|${WORKD_PWD}/|" | sed "s|$|/pquery_thread-0.${ENGINE}.sql|")
     echo "* Query Correctness: Data Correctness (QC DC) TEXT variable set to: \"${TEXT}\""
     OUTFILE=$TRIAL
     generate_reducer_script

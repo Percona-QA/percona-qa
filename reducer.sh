@@ -1941,7 +1941,6 @@ process_outcome(){
     fi
   fi
 
-
   # MODE1: Valgrind output testing (set TEXT) 
   if [ $MODE -eq 1 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Waiting for Valgrind to terminate analysis" 
@@ -1965,18 +1964,30 @@ process_outcome(){
     fi
   fi
 
-  # MODE2: mysql CLI output testing (set TEXT)
+  # MODE2: mysql CLI/pquery client output testing (set TEXT)
   if [ $MODE -eq 2 ]; then
-    if egrep -iq "$TEXT" $WORKD/mysql.out; then
+    FILETOCHECK=
+    # Check if this is a pquery client output testing run
+    if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run
+      if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -io "log-client-output")" == "log-client-output" ]; then
+        FILETOCHECK=$WORKD/pquery_thread-*.InnoDB.out
+      else
+        echo_out "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain log-client-output, so not sure what file reducer.sh should check for TEXT occurence."
+        exit 1
+      fi
+    else  # mysql CLI output testing run
+      FILETOCHECK=$WORKD/mysql.out
+    fi
+    if egrep -iq "$TEXT" $FILETOCHECK; then
       if [ ! "$STAGE" = "V" ]; then
-        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*CLIOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good mysql CLI output issue in $WORKO" 
+        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ClientOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good client output issue in $WORKO"
         control_backtrack_flow
       fi
       cleanup_and_save
-      return 1 
+      return 1
     else
       if [ ! "$STAGE" = "V" ]; then
-        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [NoCLIOutputBug] [$NOISSUEFLOW] Kill server $NEXTACTION"
+        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [NoClientOutputBug] [$NOISSUEFLOW] Kill server $NEXTACTION"
         NOISSUEFLOW=$[$NOISSUEFLOW+1]
       fi
       return 0
