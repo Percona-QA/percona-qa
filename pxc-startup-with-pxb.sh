@@ -140,7 +140,7 @@ echo "    --mysqld=--socket=$node1/socket.sock \\" >> ./start_mtr
 echo "    --mysqld=--log-error=$node1/node.err \\" >> ./start_mtr
 echo "    --mysqld=--log-output=none \\" >> ./start_mtr
 echo "    --mysqld=--early-plugin-load=keyring_file.so \\" >> ./start_mtr
-echo "    --mysqld=--keyring_file_data=/root/Percona-XtraDB-Cluster-5.7.11-rel4-25.14.1.Linux.x86_64/node1/mysqld.1/mysql-keyring/keyring \\" >> ./start_mtr
+echo "    --mysqld=--keyring_file_data=$node1/mysqld.1/mysql-keyring/keyring \\" >> ./start_mtr
 echo "    --mysqld=--innodb_page_size=64K \\" >> ./start_mtr
 echo "   1st" >> ./start_mtr
 echo " set -e" >> ./start_mtr
@@ -183,7 +183,7 @@ echo "    --mysqld=--socket=$node2/socket.sock \\" >> ./start_mtr
 echo "    --mysqld=--log-error=$node2/node.err \\" >> ./start_mtr
 echo "    --mysqld=--log-output=none \\" >> ./start_mtr
 echo "    --mysqld=--early-plugin-load=keyring_file.so \\" >> ./start_mtr
-echo "    --mysqld=--keyring_file_data=/root/Percona-XtraDB-Cluster-5.7.11-rel4-25.14.1.Linux.x86_64/node2/mysqld.1/mysql-keyring/keyring \\" >> ./start_mtr
+echo "    --mysqld=--keyring_file_data=$node2/mysqld.1/mysql-keyring/keyring \\" >> ./start_mtr
 echo "    --mysqld=--innodb_page_size=64K \\" >> ./start_mtr
 echo "   1st" >> ./start_mtr
 echo " set -e" >> ./start_mtr
@@ -226,7 +226,7 @@ echo "    --mysqld=--socket=$node3/socket.sock \\" >> ./start_mtr
 echo "    --mysqld=--log-error=$node3/node.err \\" >> ./start_mtr
 echo "    --mysqld=--log-output=none \\" >> ./start_mtr
 echo "    --mysqld=--early-plugin-load=keyring_file.so \\" >> ./start_mtr
-echo "    --mysqld=--keyring_file_data=/root/Percona-XtraDB-Cluster-5.7.11-rel4-25.14.1.Linux.x86_64/node3/mysqld.1/mysql-keyring/keyring \\" >> ./start_mtr
+echo "    --mysqld=--keyring_file_data=$node3/mysqld.1/mysql-keyring/keyring \\" >> ./start_mtr
 echo "    --mysqld=--innodb_page_size=64K \\" >> ./start_mtr
 echo "   1st" >> ./start_mtr
 echo " set -e" >> ./start_mtr
