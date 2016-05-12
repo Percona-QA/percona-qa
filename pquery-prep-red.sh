@@ -336,10 +336,7 @@ if [ ${QC} -eq 0 ]; then
   for SQLLOG in $(ls ./*/*thread-0.sql 2>/dev/null); do
     TRIAL=`echo ${SQLLOG} | sed 's|./||;s|/.*||'`
     if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
-      MYEXTRA=
-      if [ -r ./${TRIAL}/MYEXTRA ]; then
-        MYEXTRA=$(cat ./${TRIAL}/MYEXTRA)
-      fi
+      MYEXTRA=$(cat ./${TRIAL}/MYEXTRA 2>/dev/null)
     fi
     if [ ${PXC} -eq 1 ]; then
       for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d'  | awk '{print $8}' | tr -dc '0-9\n'`; do
@@ -497,27 +494,32 @@ else
       echo "Assert! Basedir '${BASE}' does not look to be a directory"
       exit 1
     fi
-    if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
-      MYEXTRA=
-      if [ -r ./${TRIAL}/MYEXTRA ]; then
-        MYEXTRA=$(cat ./${TRIAL}/MYEXTRA)
-      fi
-    fi
     TEXT=$(grep "^[<>]" ./${TRIAL}/diff.result | awk '{print length, $0;}' | sort -nr | head -n1 | sed 's/^[0-9]\+[ \t]\+//')
     LEFTRIGHT=$(echo ${TEXT} | sed 's/\(^.\).*/\1/')
     TEXT=$(echo ${TEXT} | sed 's/[<>][ \t]\+//')
     ENGINE=
+    FAULT=0
     if [ "${LEFTRIGHT}" == "<" ]; then
       ENGINE=$(cat ./${TRIAL}/diff.left)
+      MYEXTRA=$(cat ./${TRIAL}/MYEXTRA.left 2>/dev/null)
     elif [ "${LEFTRIGHT}" == ">" ]; then
       ENGINE=$(cat ./${TRIAL}/diff.right)
+      MYEXTRA=$(cat ./${TRIAL}/MYEXTRA.right 2>/dev/null)
     else
-      echo "Warning! \$LEFTRIGHT != '<' or '>' but '${LEFTRIGHT}' for trial ${TRIAL} which should be impossible"
+      # Possible reasons for this can be: interrupted or crashed trial, ... ???
+      echo "Warning! \$LEFTRIGHT != '<' or '>' but '${LEFTRIGHT}' for trial ${TRIAL}! NOTE: qcreducer${TRIAL}.sh will not be complete: renaming to qcreducer${TRIAL}_notcomplete.sh!"
+      FAULT=1
     fi 
+    if [ "${MYEXTRA}" != "" ]; then
+      echo "* MYEXTRA variable set to: ${MYEXTRA}"
+    fi
     INPUTFILE=$(echo ${TRIAL} | sed "s|^|${WORKD_PWD}/|" | sed "s|$|/pquery_thread-0.${ENGINE}.sql|")
     echo "* Query Correctness: Data Correctness (QC DC) TEXT variable set to: \"${TEXT}\""
     OUTFILE=$TRIAL
     generate_reducer_script
+    if [ ${FAULT} -eq 1 ]; then
+      mv ./qcreducer${TRIAL}.sh ./qcreducer${TRIAL}_notcomplete.sh
+    fi
   done
 fi
 
