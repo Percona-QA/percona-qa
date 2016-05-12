@@ -62,7 +62,7 @@ else
 fi
 
 NEW_MYEXTRA_METHOD=0
-if [ `ls ./*/MYEXTRA 2>/dev/null | wc -l` -gt 0 ]; then  # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
+if [ `ls ./*/MYEXTRA* 2>/dev/null | wc -l` -gt 0 ]; then  # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
   echo "Using the new (2015-07-28) method for MYEXTRA/MYSAFE variables pass & VALGRIND run check method. All settings will be set automatically for each trial (and can be checked below)!"
   NEW_MYEXTRA_METHOD=1
   MYEXTRA=
@@ -107,7 +107,6 @@ else
     echo "MYSAFE: $MYSAFE"
     echo "======================================================================================================================================================"
     echo "If you agree that these look correct, hit enter twice. If something looks wrong, press CTRL+C to abort."
-    echo "(Note that MYSAFE was only introduced around 13-10-2014, so it would be empty for earlier runs before this date"
     echo "(To learn more, you may want to read some of the info/code in this script (pquery-prep-red.sh) in the 'Current location checks' var checking section.)"
     echo "Btw, note that only MYEXTRA is used by reducer, so MYSAFE string will be merged into MYEXTRA for the resulting reducer<nr>.sh scripts."
     echo "======================================================================================================================================================"
@@ -194,7 +193,7 @@ generate_reducer_script(){
   if [ ${QC} -eq 0 ]; then
     PQUERY_EXTRA_OPTIONS="s|ZERO0|ZERO0|"
   else
-    PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--log-client-output\"\n#VARMOD#|"
+    PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--logdir=. --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output\"\n#VARMOD#|"
   fi
   if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" ]; then  # Too general strings, or no TEXT found, use MODE=4
     MODE=4
@@ -510,11 +509,12 @@ else
       echo "Warning! \$LEFTRIGHT != '<' or '>' but '${LEFTRIGHT}' for trial ${TRIAL}! NOTE: qcreducer${TRIAL}.sh will not be complete: renaming to qcreducer${TRIAL}_notcomplete.sh!"
       FAULT=1
     fi 
-    if [ "${MYEXTRA}" != "" ]; then
-      echo "* MYEXTRA variable set to: ${MYEXTRA}"
-    fi
+    # Output of the following is too verbose
+    #if [ "${MYEXTRA}" != "" ]; then
+    #  echo "* MYEXTRA variable set to: ${MYEXTRA}"
+    #fi
     INPUTFILE=$(echo ${TRIAL} | sed "s|^|${WORKD_PWD}/|" | sed "s|$|/pquery_thread-0.${ENGINE}.sql|")
-    echo "* Query Correctness: Data Correctness (QC DC) TEXT variable set to: \"${TEXT}\""
+    echo "* Query Correctness: Data Correctness (QC DC) TEXT variable for trial ${TRIAL} set to: \"${TEXT}\""
     OUTFILE=$TRIAL
     generate_reducer_script
     if [ ${FAULT} -eq 1 ]; then

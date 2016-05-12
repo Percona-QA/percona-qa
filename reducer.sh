@@ -510,6 +510,19 @@ options_check(){
     echo "Terminating now."
     exit 1
   fi
+  if [ $MODE -eq 2 ]; then
+    if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run in MODE=2 - we need to make sure we have pquery client logging activated
+      if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -io "log-client-output")" != "log-client-output" ]; then
+        echo_out "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain log-client-output, so not sure what file reducer.sh should check for TEXT occurence."
+        exit 1
+      fi
+      if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -io "logdir")" != "logdir" ]; then
+        echo_out "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain logdir, so not sure what file reducer.sh should check for TEXT occurence."
+        # This could possibly be covered in pquery core code by assuming that logdir=. when no logdir is specified < TODO 
+        exit 1
+      fi
+    fi
+  fi
   BIN="/bin/mysqld"
   if [ ! -s "${MYBASE}${BIN}" ]; then
     if [ ! -s "/mysql/${MYBASE}${BIN}" ]; then 
@@ -1961,12 +1974,7 @@ process_outcome(){
     FILETOCHECK=
     # Check if this is a pquery client output testing run
     if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run
-      if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -io "log-client-output")" == "log-client-output" ]; then
-        FILETOCHECK=$WORKD/pquery_thread-*.InnoDB.out
-      else
-        echo_out "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain log-client-output, so not sure what file reducer.sh should check for TEXT occurence."
-        exit 1
-      fi
+      FILETOCHECK=$WORKD/pquery_thread-0.out  # Could use improvement for multi-threaded runs
     else  # mysql CLI output testing run
       FILETOCHECK=$WORKD/mysql.out
     fi
@@ -2256,8 +2264,12 @@ finish(){
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     if [ "" != "$MYEXTRA" ]; then
       echo_out "[Finish] mysqld options required for replay: $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
-      sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
-      sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORKO
+      if [ -r $WORK_OUT ]; then
+        sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
+      fi
+      if [ -r $WORKO ]; then
+        sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORKO
+      fi
     fi
     if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
       echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
@@ -2326,12 +2338,16 @@ verify_not_found(){
   echo_out "[Finish] Verification failed. It may help to check the following files to get an idea as to why this run did not reproduce the issue (if these files do not give any further hints, please check variable/initialization differences, enviroment differences etc.):"
   if [ $MODE -ge 6 ]; then
     if [ $TS_DBG_CLI_OUTPUT -eq 1 ]; then
-      echo_out "[Finish] mysql CLI outputs       : $WORKD/${EXTRA_PATH}mysql<threadid>.out   (Look for clear signs of non-replay or a terminated connection)"
+      echo_out "[Finish] mysql CLI client output : $WORKD/${EXTRA_PATH}mysql<threadid>.out   (Look for clear signs of non-replay or a terminated connection)"
     else
-      echo_out "[Finish] mysql CLI outputs       : not recorded                 (You may want to *TEMPORARY* turn on TS_DBG_CLI_OUTPUT to debug. Ensure to turn it back off before re-testing if the issue exists as it will likely not show with debug on if this is a multi-threaded issue)"
+      echo_out "[Finish] mysql CLI client output : not recorded                 (You may want to *TEMPORARY* turn on TS_DBG_CLI_OUTPUT to debug. Ensure to turn it back off before re-testing if the issue exists as it will likely not show with debug on if this is a multi-threaded issue)"
      fi
   else
-    echo_out "[Finish] mysql CLI output        : $WORKD/${EXTRA_PATH}mysql.out             (Look for clear signs of non-replay or a terminated connection"
+    if [ $PQUERY_MOD -eq 1 ]; then
+      echo_out "[Finish] pquery client output    : $WORKD/${EXTRA_PATH}pquery_thread-0.out   (Look for clear signs of non-replay or a terminated connection"
+    else
+      echo_out "[Finish] mysql CLI client output : $WORKD/${EXTRA_PATH}mysql.out             (Look for clear signs of non-replay or a terminated connection"
+    fi
   fi
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
     echo_out "[Finish] Valgrind output         : $WORKD/${EXTRA_PATH}valgrind.out          (Check if there are really 0 errors)"
@@ -2527,8 +2543,12 @@ verify(){
                            echo_out "[Init] Looking for any mysqld crash"; fi
   if [ $MODE -eq 3 ]; then echo_out "[Init] Run mode: MODE=3: mysqld error log"   
                            echo_out "[Init] Looking for this string: '$TEXT' in mysqld error log output (@ $WORKD/error.log.out when MULTI mode is not active)"; fi
-  if [ $MODE -eq 2 ]; then echo_out "[Init] Run mode: MODE=2: mysql CLI output"
-                           echo_out "[Init] Looking for this string: '$TEXT' in mysql CLI output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi
+  if [ $MODE -eq 2 ]; then 
+    if [ $PQUERY_MOD -eq 1 ]; then 
+                           echo_out "[Init] Run mode: MODE=2: pquery client output"
+                           echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/pquery_thread-0.out when MULTI mode is not active)"; else
+                           echo_out "[Init] Run mode: MODE=2: mysql CLI output"
+                           echo_out "[Init] Looking for this string: '$TEXT' in mysql CLI output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi; fi 
   if [ $MODE -eq 1 ]; then echo_out "[Init] Run mode: MODE=1: Valgrind output"
                            echo_out "[Init] Looking for this string: '$TEXT' in Valgrind output (@ $WORKD/valgrind.out when MULTI mode is not active)"; fi
   if [ $MODE -eq 0 ]; then echo_out "[Init] Run mode: MODE=0: Timeout/hang"
