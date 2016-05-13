@@ -67,6 +67,7 @@ if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7
   mkdir -p $node1 $node2 $node3
 fi
 echo "PXC_MYEXTRA=\"\"" > ./start_pxc
+echo "PXC_START_TIMEOUT=300"  >> ./start_pxc
 echo -e "\n" >> ./start_pxc
 echo "echo 'Starting PXC nodes..'" >> ./start_pxc
 echo -e "\n" >> ./start_pxc
