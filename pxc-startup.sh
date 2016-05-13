@@ -35,7 +35,7 @@ if [[ $sst_method == "xtrabackup" ]];then
   fi
 fi
 
-echo "Adding scripts: ./start_mtr | ./ stop_pxc | ./node1_cl | ./node2_cl | ./node3_cl | ./wipe"
+echo "Adding scripts: ./start_pxc | ./ stop_pxc | ./node1_cl | ./node2_cl | ./node3_cl | ./wipe"
 
 if [ ! -r $BUILD/mysql-test/mysql-test-run.pl ]; then
     echo "mysql test suite is not available, please check.."
@@ -64,7 +64,7 @@ node2="${BUILD}/node2"
 node3="${BUILD}/node3"
 
 if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
-  mkdir -p $node1 $node2 $node3 $node4 $node5
+  mkdir -p $node1 $node2 $node3
 fi
 echo "PXC_MYEXTRA=\"\"" > ./start_pxc
 echo -e "\n" >> ./start_pxc
