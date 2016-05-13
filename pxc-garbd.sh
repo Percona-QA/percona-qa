@@ -29,7 +29,7 @@ fi
 
 #Kill existing mysqld process
 ps -ef | grep 'n[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
-ps -ef | grep garbd | grep -v grep | awk '{print $2}' | xargs kill -9 || true
+ps -ef | grep garbd | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
 cleanup(){
   tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
