@@ -29,7 +29,8 @@
 #early_plugin_load=
 #keyring_file_data=
 
-
+#NOTE5
+# This script must be run under root user
 
 BUILD=$(pwd)
 SKIP_RQG_AND_BUILD_EXTRACT=0
@@ -109,8 +110,22 @@ echo -e "\n" >> ./start_pxc
 echo "echo 'Starting PXC nodes..'" >> ./start_pxc
 echo -e "\n" >> ./start_pxc
 
+# Leave empty if you want to initialize datadir with default innodb_page_size=16K
+# Refer to doc for valid values -> http://dev.mysql.com/doc/refman/5.7/en/innodb-parameters.html#sysvar_innodb_page_size
+DB_PAGE_SIZE=64K
+
 echo "if [ \"$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)\" == \"5.7\" ]; then" >> ./start_pxc
-echo "  MID=\"${BUILD}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BUILD}\"" >> ./start_pxc
+echo "  if [[ $(id -u) -ne 0 ]]; then" >> ./start_pxc
+echo "     Please run this script under root user!" >> ./start_pxc
+echo "     exit 1" >> ./start_pxc
+#echo "     MID=\"${BUILD}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BUILD}\"" >> ./start_pxc
+echo "  else" >> ./start_pxc
+echo "      if [[ -z $DB_PAGE_SIZE ]]; then" >> ./start_pxc
+echo "             MID=\"${BUILD}/bin/mysqld --no-defaults --user=root --initialize-insecure --basedir=${BUILD}\"" >> ./start_pxc
+echo "      else " >> ./start_pxc
+echo "             MID=\"${BUILD}/bin/mysqld --no-defaults --user=root --initialize-insecure --innodb_page_size=$DB_PAGE_SIZE --basedir=${BUILD}\"" >> ./start_pxc
+echo "       fi" >> ./start_pxc
+echo "  fi" >> ./start_pxc
 echo "elif [ \"$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)\" == \"5.6\" ]; then" >> ./start_pxc
 echo "  MID=\"${BUILD}/scripts/mysql_install_db --no-defaults --basedir=${BUILD}\"" >> ./start_pxc
 echo "fi" >> ./start_pxc
@@ -122,6 +137,7 @@ echo "\${MID} --datadir=$node1  > ${BUILD}/startup_node1.err 2>&1 || exit 1;" >>
 echo -e "\n" >> ./start_pxc
 
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
+echo "    --user=root \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node1 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
 echo "    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
@@ -129,7 +145,7 @@ echo "    --wsrep-provider=${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
 echo "    --wsrep_cluster_address=gcomm:// \\" >> ./start_pxc
 echo "    --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
 echo "    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \\" >> ./start_pxc
-echo "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
+echo "    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
 echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
@@ -137,7 +153,7 @@ echo "    --log-error=$node1/node1.err \\" >> ./start_pxc
 echo "    --socket=$node1/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
 echo "    --keyring_file_data=$node1/mysqld.1/mysql-keyring/keyring \\" >> ./start_pxc
-echo "    --innodb_page_size=64K \\" >> ./start_pxc
+echo "    --innodb_page_size=$DB_PAGE_SIZE \\" >> ./start_pxc
 echo "    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/node1.err 2>&1 &" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
@@ -154,6 +170,7 @@ echo "\${MID} --datadir=$node2  > ${BUILD}/startup_node2.err 2>&1 || exit 1;" >>
 echo -e "\n" >> ./start_pxc
 
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
+echo "    --user=root \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node2 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
 echo "    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
@@ -161,7 +178,7 @@ echo "    --wsrep-provider=${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
 echo "    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \\" >> ./start_pxc
 echo "    --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
 echo "    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \\" >> ./start_pxc
-echo "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
+echo "    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
 echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
@@ -169,7 +186,7 @@ echo "    --log-error=$node2/node2.err \\" >> ./start_pxc
 echo "    --socket=$node2/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
 echo "    --keyring_file_data=$node1/mysqld.1/mysql-keyring/keyring \\" >> ./start_pxc
-echo "    --innodb_page_size=64K \\" >> ./start_pxc
+echo "    --innodb_page_size=$DB_PAGE_SIZE \\" >> ./start_pxc
 echo "    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
@@ -187,6 +204,7 @@ echo "\${MID} --datadir=$node3  > ${BUILD}/startup_node2.err 2>&1 || exit 1;" >>
 echo -e "\n" >> ./start_pxc
 
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
+echo "    --user=root \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node3 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
 echo "    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
@@ -194,7 +212,7 @@ echo "    --wsrep-provider=${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
 echo "    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \\" >> ./start_pxc
 echo "    --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
 echo "    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \\" >> ./start_pxc
-echo "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
+echo "    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
 echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
@@ -202,7 +220,7 @@ echo "    --log-error=$node3/node3.err \\" >> ./start_pxc
 echo "    --socket=$node3/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
 echo "    --keyring_file_data=$node1/mysqld.1/mysql-keyring/keyring \\" >> ./start_pxc
-echo "    --innodb_page_size=64K \\" >> ./start_pxc
+echo "    --innodb_page_size=$DB_PAGE_SIZE \\" >> ./start_pxc
 echo "    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
