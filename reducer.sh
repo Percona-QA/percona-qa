@@ -516,11 +516,6 @@ options_check(){
         echo_out "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain log-client-output, so not sure what file reducer.sh should check for TEXT occurence."
         exit 1
       fi
-      if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -io "logdir")" != "logdir" ]; then
-        echo_out "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain logdir, so not sure what file reducer.sh should check for TEXT occurence."
-        # This could possibly be covered in pquery core code by assuming that logdir=. when no logdir is specified < TODO 
-        exit 1
-      fi
     fi
   fi
   BIN="/bin/mysqld"
@@ -1274,10 +1269,10 @@ generate_run_scripts(){
         echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         fi
       fi
       chmod +x $WORK_RUN_PQUERY
@@ -1836,10 +1831,10 @@ run_sql_code(){
       else
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=$WORKD/socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=$WORKD/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=$WORKD/socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=$WORKD/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         fi
       fi
     else

@@ -193,7 +193,7 @@ generate_reducer_script(){
   if [ ${QC} -eq 0 ]; then
     PQUERY_EXTRA_OPTIONS="s|ZERO0|ZERO0|"
   else
-    PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--logdir=. --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output\"\n#VARMOD#|"
+    PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output\"\n#VARMOD#|"
   fi
   if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" ]; then  # Too general strings, or no TEXT found, use MODE=4
     MODE=4
