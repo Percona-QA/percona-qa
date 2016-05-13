@@ -127,7 +127,7 @@ echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./sta
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node2/node2.err \\" >> ./start_pxc
 echo "    --socket=$node2/socket.sock --log-output=none \\" >> ./start_pxc
-echo "    --port=$RBASE2 --server-id=1 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &" >> ./start_pxc
+echo "    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 
@@ -157,7 +157,7 @@ echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./sta
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node3/node3.err \\" >> ./start_pxc
 echo "    --socket=$node3/socket.sock --log-output=none \\" >> ./start_pxc
-echo "    --port=$RBASE3 --server-id=1 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &" >> ./start_pxc
+echo "    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 
