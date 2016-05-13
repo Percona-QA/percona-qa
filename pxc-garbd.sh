@@ -36,6 +36,7 @@ cleanup(){
 }
 
 trap cleanup EXIT KILL
+cd $ROOT_FS
 
 PXC_TAR=`ls -1td ?ercona-?tra??-?luster* | grep ".tar" | head -n1`
 
@@ -69,7 +70,8 @@ RBASE5="$(( RBASE1 + 400 ))"
 RADDR5="$ADDR:$(( RBASE5 + 7 ))"
 LADDR5="$ADDR:$(( RBASE5 + 8 ))"
 
-GARBDP="$(( LADDR5 + 100 ))"
+GARBDBASE="$(( RBASE1 + 500 ))"
+GARBDP="$ADDR:$GARBDBASE"
 
 SUSER=root
 SPASS=
