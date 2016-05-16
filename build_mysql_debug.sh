@@ -48,7 +48,7 @@ rm -Rf ${CURDIR}_dbg   # Remark this line for debugging
 
 tar -xf $TAR_dbg_new > /dev/null
 DIR_dbg=$(echo $TAR_dbg | sed 's|.tar.gz||')
-cp ${DIR_dbg}/bin/mysqld-debug ${DIR_dbg}/bin/mysqld # Workaround for http://bugs.mysql.com/bug.php?id=69856 (MS only, or PS build in MS-way)
+cp ${DIR_dbg}/bin/mysqld-debug ${DIR_dbg}/bin/mysqld 2>/dev/null  # Workaround for http://bugs.mysql.com/bug.php?id=69856 (MS only, or PS build in MS-way)
 mv ${DIR_dbg} ${DIR_dbg}-debug
 
 echo "Done! There is not a debug build ready as follows:"

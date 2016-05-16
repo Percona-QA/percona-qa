@@ -222,6 +222,9 @@ PXC_ISSUE_NODE=0                # The node on which the issue would/should show 
 #VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
 
 # ======== Ideas for improvement
+# - STAGE8 does currently know/consider whetter an issue is sporadic (alike to other STAGES, except STAGE 1). We could have an additional option like
+#   STAGE8_FORCE_SPORADIC=0/1 Which would - specifically for STAGE 8 - try each option x times (STAGE8_SPORADIC_ATTEMPTS) when an issue is found to be (by the
+#   auto-sporadic issue detection) or is forced to be (by STAGE8_FORCE_SPORADIC=1) sporadic. This allows easier reduction of mysqld options for sporadic issues)
 # - A new mode could do this; main thread (single): run SQL, secondary thread (new functionality): check SHOW PROCESSLIST for certain regex TEXT regularly. This
 #   would allow creating testcases for queries that have a long runtime. This new functionality likely will live outside process_outcome() as it is a live check
 # - Incorporate 3+ different playback options: SOURCE ..., redirection with <, redirection with cat, (stretch goal; replay via MTR), etc. (there may be more)
@@ -640,6 +643,7 @@ set_internal_options(){
   RANDOM=$SEED
   EPOCH=$(date +%s)  # Used for /dev/shm work directory name
   sleep 0.1$RANDOM
+  DIRVALUE=$EPOCH
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main/parent reducer, so create a new EPOCH2 directory name
     EPOCH2=$(date +%s)  # Used for /dev/shm test directory name (i.e. this directory is used in the WORK_INIT, WORK_START etc. scripts for after-reducer replay)
   fi
@@ -957,7 +961,6 @@ init_empty_port(){
 
 init_workdir_and_files(){
   # Make sure that the directory does not exist yet
-  DIRVALUE=$EPOCH
   while :; do
     if [ "$MULTI_REDUCER" == "1" ]; then  # This is a subreducer
       WORKD=$(dirname $0)
