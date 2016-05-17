@@ -164,7 +164,7 @@ echo -e "\n" >> ./start_pxc
 echo "for X in $(seq 0 ${PXC_START_TIMEOUT}); do" >> ./start_pxc
 echo "  sleep 1" >> ./start_pxc
 echo "  if ${BUILD}/bin/mysqladmin -uroot -S$node3/socket.sock ping > /dev/null 2>&1; then" >> ./start_pxc
-echo "    ${BUILD}/bin/mysql -uroot -S$node3/socket.sock -e\"drop database if exists test;create database test;\"" >> ./start_pxc
+echo "    ${BUILD}/bin/mysql -uroot -S$node1/socket.sock -e\"drop database if exists test;create database test;\"" >> ./start_pxc
 echo "    break" >> ./start_pxc
 echo "  fi" >> ./start_pxc
 echo "done" >> ./start_pxc
