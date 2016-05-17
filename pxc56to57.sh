@@ -202,44 +202,81 @@ else
   DBG=""
 fi
 
-echo "Starting 5.6 node"
+ps_56_start(){
+  echo "Starting 5.6 node"
+  echo "Starting PXC-5.6 node1"
+  ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults  --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1.err 2>&1 || exit 1;
 
-echo "Starting PXC-5.6 node1"
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults  --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1.err 2>&1 || exit 1;
+  ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
+    --basedir=${MYSQL_BASEDIR1} --datadir=$node1 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
+    --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
+    --wsrep_cluster_address=gcomm:// \
+    --wsrep_node_incoming_address=$ADDR \
+    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+    --query_cache_type=0 --query_cache_size=0 \
+    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
+    --innodb_log_file_size=500M \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$WORKDIR/logs/node1.err \
+    --socket=/tmp/node1.socket --log-output=none \
+    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=8  > $WORKDIR/logs/node1.err 2>&1 &
 
-${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
-  --basedir=${MYSQL_BASEDIR1} --datadir=$node1 \
-  --loose-debug-sync-timeout=600 --skip-performance-schema \
-  --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-  --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
-  --wsrep_cluster_address=gcomm:// \
-  --wsrep_node_incoming_address=$ADDR \
-  --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-  --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
-  --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-  --query_cache_type=0 --query_cache_size=0 \
-  --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M \
-  --core-file --loose-new --sql-mode=no_engine_substitution \
-  --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --log-error=$WORKDIR/logs/node1.err \
-  --socket=/tmp/node1.socket --log-output=none \
-  --port=$RBASE1 --server-id=1 --wsrep_slave_threads=8  > $WORKDIR/logs/node1.err 2>&1 &
+  for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+    sleep 1
+    if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node1.socket ping > /dev/null 2>&1; then
+      break
+    fi
+  done
 
-for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
-  sleep 1
   if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node1.socket ping > /dev/null 2>&1; then
-    break
+    echo "PXC node1 started ok.."
+  else
+    echo "PXC node1 startup failed.. Please check error log : $WORKDIR/logs/node1.err"
   fi
-done
 
-if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node1.socket ping > /dev/null 2>&1; then
-  echo "PXC node1 started ok.."
-else
-  echo "PXC node1 startup failed.. Please check error log : $WORKDIR/logs/node1.err"
-fi
+  sleep 10
 
-sleep 10
+  ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults  --basedir=${MYSQL_BASEDIR1} --datadir=$node2 > $WORKDIR/logs/node2-pre.err 2>&1 || exit 1;
+
+  ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
+    --basedir=${MYSQL_BASEDIR1} --datadir=$node2 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
+    --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
+    --wsrep_cluster_address=gcomm://$LADDR1 \
+    --wsrep_node_incoming_address=$ADDR \
+    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
+    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+    --query_cache_type=0 --query_cache_size=0 \
+    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
+    --innodb_log_file_size=500M \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$WORKDIR/logs/node2-pre.err \
+    --socket=/tmp/node2.socket --log-output=none \
+    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-pre.err 2>&1 &
+
+  for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+    sleep 1
+    if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
+      break
+    fi
+  done
+  if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
+    echo "PXC node2 started ok.."
+  else
+    echo "PXC node2 startup failed.. Please check error log : $WORKDIR/logs/node2-pre.err"
+  fi
+
+  sleep 10
+}
+ps_56_start
 # Sysbench Runs
 ## Prepare/setup
 echo "Sysbench Run: Prepare stage"
@@ -266,42 +303,6 @@ echo "Loading employees partitioned database with innodb engine.."
 create_emp_db employee_2 innodb employees_partitioned.sql
 
 
-$MYSQL_BASEDIR1/bin/mysql  -S /tmp/node1.socket -u root -e "create database testdb;" || true
-
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults  --basedir=${MYSQL_BASEDIR1} --datadir=$node2 > $WORKDIR/logs/node2-pre.err 2>&1 || exit 1;
-
-${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-  --basedir=${MYSQL_BASEDIR1} --datadir=$node2 \
-  --loose-debug-sync-timeout=600 --skip-performance-schema \
-  --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-  --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
-  --wsrep_cluster_address=gcomm://$LADDR1 \
-  --wsrep_node_incoming_address=$ADDR \
-  --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
-  --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
-  --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-  --query_cache_type=0 --query_cache_size=0 \
-  --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M \
-  --core-file --loose-new --sql-mode=no_engine_substitution \
-  --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --log-error=$WORKDIR/logs/node2-pre.err \
-  --socket=/tmp/node2.socket --log-output=none \
-  --port=$RBASE2 --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-pre.err 2>&1 &
-
-for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
-  sleep 1
-  if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-    break
-  fi
-done
-if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-  echo "PXC node2 started ok.."
-else
-  echo "PXC node2 startup failed.. Please check error log : $WORKDIR/logs/node2-pre.err"
-fi
-
-sleep 10
 echo "Version of second node:"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
 
@@ -471,7 +472,6 @@ fi
 
 set -x
 
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "create database testdb;" || true
 
 if [[ $DIR -eq 1 ]];then 
   sockets="/tmp/node1.socket,/tmp/node2.socket"
@@ -484,7 +484,7 @@ fi
 ## OLTP RW Run
 echo "Sysbench Run: OLTP RW testing"
 sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SDURATION --max-requests=1870000000 \
-    --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=100 --mysql-db=test \
+    --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
     --mysql-user=root --db-driver=mysql --mysql-socket=$sockets \
     run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run.txt 
 
@@ -506,10 +506,28 @@ $MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "select count(*) from
 echo "Rows on node2" 
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "select count(*) from $STABLE;"
 
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "drop database testdb;" || true
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "drop database test;"
+#Taking backup for downgrade testing
 
-$MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
+$MYSQL_BASEDIR2/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=/tmp/node1.socket -uroot --databases `$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
+
+$MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
 $MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1
 
+rm -Rf $node1/* $node2/*
+
+#Downgrade testing
+
+ps_56_start
+
+${MYSQL_BASEDIR1}/bin/mysql --socket=/tmp/node1.socket -uroot < $WORKDIR/dbdump.sql 2>&1
+
+CHECK_DBS=`$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"`
+
+echo "Checking table status..."
+${MYSQL_BASEDIR1}/bin/mysqlcheck -uroot --socket=/tmp/node1.socket --check-upgrade --databases $CHECK_DBS 2>&1
+
+$MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
+$MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1
+
 exit $EXTSTATUS
+
