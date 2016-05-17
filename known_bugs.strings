@@ -228,6 +228,8 @@ btr0cur.cc line 899                                                             
 btr0cur.cc line 899                                                                     ## http://bugs.mysql.com/bug.php?id=74747, MS Build 
 btr0cur.cc line 981                                                                     ## http://bugs.mysql.com/bug.php?id=74747, PS Build (old LP #1384596)
 btr0cur.cc line 983                                                                     ## http://bugs.mysql.com/bug.php?id=74682, PS build (with oldPS)
+btr0cur.c line 991                                                                      ## http://bugs.mysql.com/bug.php?id=81452, MS build #5.5.49
+btr0cur.c line 1089                                                                     ## http://bugs.mysql.com/bug.php?id=81452, PS build #5.5.49
 btr0cur.cc line 1132                                                                    ## http://bugs.mysql.com/bug.php?id=74682, PS build
 btr0cur.cc line 2208                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1385028 (Dup of MS #74682/MS #74663)
 #btr0cur.cc line 2730                                                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1226534
@@ -604,7 +606,15 @@ ZNK7handler22ha_statistic_incrementEM17system_status_vary                       
 ZNK8Item_row4typeEv                                                                     ## http://bugs.mysql.com/bug.php?id=81408
 ZNK11Gis_polygon4areaEPdPPKc                                                            ## http://bugs.mysql.com/bug.php?id=81409
 Z14get_all_tablesP3THDP10TABLE_LISTP4Item                                               ## http://bugs.mysql.com/bug.php?id=81412
-is_last_prefix <= 0
+is_last_prefix <= 0                                                                     ## http://bugs.mysql.com/bug.php?id=81412
+Z34set_field_to_null_with_conversionsP5Fieldb                                           ## https://bugs.launchpad.net/percona-server/+bug/1582055 and MS Bug 81446 below
+Z17store_create_infoP3THDP10TABLE_LISTP6StringP24st_ha_create_informationb              ## http://bugs.mysql.com/bug.php?id=81446
+Z19create_schema_tableP3THDP10TABLE_LIST                                                ## http://bugs.mysql.com/bug.php?id=81446
+ZN10Item_field13save_in_fieldEP5Fieldb                                                  ## http://bugs.mysql.com/bug.php?id=81446
+Z14servers_reloadP3THD                                                                  ## http://bugs.mysql.com/bug.php?id=81447
+ZN11Query_cache13end_of_resultEP3THD                                                    ## http://bugs.mysql.com/bug.php?id=81448
+Z15mysql_drop_userP3THDR4ListI11st_lex_userE                                            ## http://bugs.mysql.com/bug.php?id=81449
+Z8filesortP3THDP5TABLEP13st_sort_fieldjP10SQL_SELECTybPy                                ## http://bugs.mysql.com/bug.php?id=81450
 
 ## =========== Error log crashing query based ===========
 ^Query ([0-9a-f]\+): SELECT.*FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG$                  ## https://bugs.launchpad.net/percona-server/+bug/1375153
@@ -625,3 +635,5 @@ TEXT=.strlen.db.$                                                               
 TEXT=.thd.$                                                                             ## https://bugs.launchpad.net/percona-server/+bug/1372675 (pquery) # May need review
 TEXT=.thread .= __null.$                                                                ## http://bugs.mysql.com/bug.php?id=79802 (5.7.10)
 TEXT=.i == .uint16.$                                                                    ## http://bugs.mysql.com/bug.php?id=79829
+TEXT=.\.create_info->options \. 1.                                                      ## http://bugs.mysql.com/bug.php?id=81451
+TEXT=.fd >= 0.                                                                          ## http://bugs.mysql.com/bug.php?id=81453
