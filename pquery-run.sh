@@ -686,6 +686,7 @@ pquery_test(){
            grep -vi "flush[ \t]*tables.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
            grep -vi 'start transaction .*with consistent snapshot' | \
+           grep -vi 'limit rows examined' | \
            grep -vi "select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(" | \
            grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
