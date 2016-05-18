@@ -60,6 +60,8 @@ echoit "> Stage 1: Generating SQL with approach #1..."
 egrep --binary-files=text -ih "^SELECT |^INSERT |^UPDATE |^DROP |^CREATE |^RENAME |^TRUNCATE |^REPLACE |^START |^SAVEPOINT |^ROLLBACK |^RELEASE |^LOCK |^XA |^PURGE |^RESET |^SHOW |^CHANGE |^START |^STOP |^PREPARE |^EXECUTE |^DEALLOCATE |^BEGIN |^DECLARE |^FETCH |^CASE |^IF |^ITERATE |^LEAVE |^LOOP |^REPEAT |^RETURN |^WHILE |^CLOSE |^GET |^RESIGNAL |^SIGNAL |^EXPLAIN |^DESCRIBE |^HELP |^USE |^GRANT |^ANALYZE |^CHECK |^CHECKSUM |^OPTIMIZE |^REPAIR |^INSTALL |^UNINSTALL |^BINLOG |^CACHE |^FLUSH |^KILL |^LOAD |^CALL |^DELETE |^DO |^HANDLER |^LOAD DATA |^LOAD XML |^ALTER |^SET " ${TESTS_PATH}/*/*.test ${TESTS_PATH}/*/*/*.test ${TESTS_PATH}/*/*/*/*.test ${TESTS_PATH}/*/*/*/*/*.test ${BASEDIR}/*/*/*.inc ${BASEDIR}/*/*/*/*.inc ${BASEDIR}*/*/*/*/*.inc ${BASEDIR}/*/*/*/*/*/*.inc ${BASEDIR}/plugin/*/*/*/*.test | \
  egrep --binary-files=text -vi "Is a directory" | \
  sort -u | \
+  grep --binary-files=text -vi "innodb_fil_make_page_dirty_debug" | \
+  grep --binary-files=text -vi "innodb_trx_rseg_n_slots_debug" | \
   grep --binary-files=text -vi "strict" | \
   grep --binary-files=text -vi "restart_server_args" | \
   grep --binary-files=text -vi "\-\-error" | \
@@ -116,8 +118,11 @@ cat ${TESTS_PATH}/*/*.test ${TESTS_PATH}/*/*/*.test ${TESTS_PATH}/*/*/*/*.test $
  sed 's|ENGINE[= \t]*NDB|ENGINE=INNODB|gi' | \
  sed 's|^.$|FILTERTHIS|' | sed 's|^..$|FILTERTHIS|' | sed 's|^...$|FILTERTHIS|' | \
  sed 's|^[-0-9]*$|FILTERTHIS|' | sed 's|^c[0-9]*$|FILTERTHIS|' | sed 's|^t[0-9]*$|FILTERTHIS|' | \
- grep --binary-files=text -v "FILTERTHIS" | tr '\n' ' ' | sed 's|;|;\n|g;s|//|//\n|g;s/END\([|]\+\)/END\1\n/g;' | \
+ grep --binary-files=text -v "FILTERTHIS" | tr '\n' ' ' | sed 's|;|;\nesg;s|//|//\n|g;s/END\([|]\+\)/END\1\n/g;' | \
  sort -u | \
+  grep --binary-files=text -vi "innodb_fil_make_page_dirty_debug" | \
+  grep --binary-files=text -vi "innodb_trx_rseg_n_slots_debug" | \
+  grep --binary-files=text -vi "restart_server_args" | \
   grep --binary-files=text -vi "restart_server_args" | \
   grep --binary-files=text -vi "\-\-error" | \
   grep --binary-files=text -vi "\-\-let" | \
