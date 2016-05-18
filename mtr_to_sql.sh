@@ -118,7 +118,7 @@ cat ${TESTS_PATH}/*/*.test ${TESTS_PATH}/*/*/*.test ${TESTS_PATH}/*/*/*/*.test $
  sed 's|ENGINE[= \t]*NDB|ENGINE=INNODB|gi' | \
  sed 's|^.$|FILTERTHIS|' | sed 's|^..$|FILTERTHIS|' | sed 's|^...$|FILTERTHIS|' | \
  sed 's|^[-0-9]*$|FILTERTHIS|' | sed 's|^c[0-9]*$|FILTERTHIS|' | sed 's|^t[0-9]*$|FILTERTHIS|' | \
- grep --binary-files=text -v "FILTERTHIS" | tr '\n' ' ' | sed 's|;|;\nesg;s|//|//\n|g;s/END\([|]\+\)/END\1\n/g;' | \
+ grep --binary-files=text -v "FILTERTHIS" | tr '\n' ' ' | sed 's|;|;\n|g;s|//|//\n|g;s/END\([|]\+\)/END\1\n/g;' | \
  sort -u | \
   grep --binary-files=text -vi "innodb_fil_make_page_dirty_debug" | \
   grep --binary-files=text -vi "innodb_trx_rseg_n_slots_debug" | \
