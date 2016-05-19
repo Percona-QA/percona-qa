@@ -678,6 +678,7 @@ pquery_test(){
            grep -vi "character" | \
            grep -vi "collate" | \
            grep -vi "db_row_id" | \
+           grep -vi "db_trx_id" | \
            grep -vi "gen_clust_index" | \
            grep -vi "current_time" | \
            grep -vi "curtime" | \
