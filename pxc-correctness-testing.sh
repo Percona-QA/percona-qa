@@ -276,8 +276,8 @@ $BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id
 
 #Sysbench prepare run
 $SBENCH --test=$SYSBENCH_LOC/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=pxc_test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=/tmp/n1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
-MPID="$!"
-if [ "${MPID}" == "" ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
+MPID="$?"
+if [ ${MPID} -eq 1 ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then
   echo "Sysbench run failed"
@@ -286,33 +286,33 @@ fi
 
 #echo "Loading sakila test database"
 #$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
-#MPID="$!"
-#if [ "${MPID}" == "" ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
+#MPID="$?"
+#if [ ${MPID} -eq 1 ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
 
 echo "Loading world test database"
 $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
-MPID="$!"
-if [ "${MPID}" == "" ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
+MPID="$?"
+if [ ${MPID} -eq 1 ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
 
 echo "Loading employees database with innodb engine.."
 create_emp_db employee_1 innodb employees.sql
-MPID="$!"
-if [ "${MPID}" == "" ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
+MPID="$?"
+if [ ${MPID} -eq 1 ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
 
 echo "Loading employees partitioned database with innodb engine.."
 create_emp_db employee_2 innodb employees_partitioned.sql
-MPID="$!"
-if [ "${MPID}" == "" ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
+MPID="$?"
+if [ ${MPID} -eq 1 ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
 
 for i in {1..5}; do
   # Sysbench transaction run
   $SBENCH --test=$SYSBENCH_LOC/oltp.lua --mysql-socket=/tmp/n1.sock  --mysql-user=root --num-threads=$NUMT --oltp-tables-count=$TCOUNT --mysql-db=pxc_test --oltp-table-size=$TSIZE --max-time=$SDURATION --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1
-  MPID="$!"
-  if [ "${MPID}" == "" ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
+  MPID="$?"
+  if [ ${MPID} -eq 1 ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
   # Run pt-table-checksum to analyze data consistency 
   pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d pxc_test,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
-  MPID="$!"
-  if [ "${MPID}" == "" ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
+  MPID="$?"
+  if [ ${MPID} -eq 1 ]; then echoit "Assert! ${MPID} empty. Terminating! Please check error log"; exit 1; fi
 done
 
 exit $EXTSTATUS
