@@ -258,8 +258,9 @@ buf0buf.cc line 4361                                                            
 #buf0buf.cc line 4362                                                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1385030
 #buf0buf.cc line 4369                                                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1385030
 #buf0buf.cc line 4377                                                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1385030 
-dict0dict.cc line 1202                                             ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74900 (Fixed in 5.6.24, 5.7.6)
+dict0dict.ic line 220                                                                   ## http://bugs.mysql.com/bug.php?id=81495
 dict0dict.ic line 786                                                                   ## http://bugs.mysql.com/bug.php?id=73926
+dict0dict.cc line 1202                                             ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74900 (Fixed in 5.6.24, 5.7.6)
 fil0fil.cc line 3412                                                                    ## http://bugs.mysql.com/bug.php?id=74873
 fil0fil.cc line 5594                                                                    ## http://bugs.mysql.com/bug.php?id=74422, MS build
 fil0fil.cc line 5594                                                                    ## http://bugs.mysql.com/bug.php?id=74730
@@ -280,6 +281,7 @@ fts0fts.cc line 2209                                                            
 fts0fts.cc line 2224                                                            ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1384588 (with older PS build)
 fts0fts.cc line 2228                                                            ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1384588
 fts0vlc.ic line 96                                                                      ## http://bugs.mysql.com/bug.php?id=78643
+gis0sea.cc line 1329                                                                    ## http://bugs.mysql.com/bug.php?id=81497  # Sakila import bug (sql line 880)
 ha_innodb.cc line 1588                                                                  ## http://bugs.mysql.com/bug.php?id=74585, PS build (old LP #1384616)
 ha_innodb.cc line 16152                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1381913 (dup of PS #1368552)
 #ha_innodb.cc line 16159                                                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552 (with oldPS) 
