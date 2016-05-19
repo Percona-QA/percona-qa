@@ -683,7 +683,7 @@ pquery_test(){
            grep -vi "curtime" | \
            grep -vi "timestamp" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
-           grep -vi "flush[ \t]*table.*for[ \t]*export" | \
+           grep -vi "flush.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
            grep -vi 'start transaction .*with consistent snapshot' | \
            grep -vi 'limit rows examined' | \
