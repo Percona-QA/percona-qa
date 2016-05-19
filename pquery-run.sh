@@ -687,7 +687,7 @@ pquery_test(){
            grep -vi "encrypt[ \t]*(.*)" | \
            grep -vi 'start transaction .*with consistent snapshot' | \
            grep -vi 'limit rows examined' | \
-           grep -vi 'set .*read uncomitted' | \
+           grep -vi 'set .*read[ -]uncommitted' | \
            grep -vi 'set .*serializable' | \
            grep -vi 'max_join_size' | \
            grep -vi "select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(" | \
