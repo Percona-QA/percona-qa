@@ -147,7 +147,7 @@ fi
 
 check_script(){
   MPID=$1
-  if [ ${MPID} -eq 1 ]; then echoit "Assert! ${MPID} empty. Terminating!"; exit 1; fi
+  if [ ${MPID} -eq 1 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
 }
 
 function pxc_start(){

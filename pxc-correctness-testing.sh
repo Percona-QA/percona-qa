@@ -267,7 +267,7 @@ pxc_startup(){
 pxc_startup
 check_script(){
   MPID=$1
-  if [ ${MPID} -eq 1 ]; then echoit "Assert! ${MPID} empty. Terminating!"; exit 1; fi
+  if [ ${MPID} -eq 1 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
 }
 
 $BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
