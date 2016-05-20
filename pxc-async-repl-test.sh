@@ -675,8 +675,8 @@ function async_rpl_test(){
       ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE6, MASTER_USER='root', MASTER_AUTO_POSITION=1 FOR CHANNEL 'master3';"
     else
       ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE4, MASTER_USER='root', MASTER_LOG_FILE='$MASTER_LOG_FILE_PS1', MASTER_LOG_POS=4  FOR CHANNEL 'master1';"
-      ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE5, MASTER_USER='root', MASTER_LOG_FILE='$MASTER_LOG_FILE_PS2', MASTER_LOG_POS=4  FOR CHANNEL 'master1';"
-      ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE6, MASTER_USER='root', MASTER_LOG_FILE='$MASTER_LOG_FILE_PS3', MASTER_LOG_POS=4  FOR CHANNEL 'master1';"
+      ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE5, MASTER_USER='root', MASTER_LOG_FILE='$MASTER_LOG_FILE_PS2', MASTER_LOG_POS=4  FOR CHANNEL 'master2';"
+      ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE6, MASTER_USER='root', MASTER_LOG_FILE='$MASTER_LOG_FILE_PS3', MASTER_LOG_POS=4  FOR CHANNEL 'master3';"
     fi
 
 #    ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE4, MASTER_USER='root', MASTER_AUTO_POSITION=1 FOR CHANNEL 'master1';"
