@@ -3468,6 +3468,11 @@ if [ $SKIPSTAGE -lt 8 ]; then
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
         fi
+        if echo "${MYEXTRA}" | grep 'tokudb'; then
+          if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
+            MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
+          fi
+        fi
         run_and_check
         if [ "${STAGE8_CHK}" == "1" ]; then
           ISSUE_CHECK=1
@@ -3481,6 +3486,11 @@ if [ $SKIPSTAGE -lt 8 ]; then
             echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
           else
             echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
+          fi
+          if echo "${MYEXTRA}" | grep 'tokudb'; then
+            if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
+              MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
+            fi
           fi
           run_and_check
           if [ "${STAGE8_CHK}" == "1" ]; then

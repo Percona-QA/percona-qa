@@ -201,6 +201,10 @@ if [[ $DEBUG -eq 1 ]];then
 else 
   DBG=""
 fi
+check_script(){
+  MPID=$1
+  if [ ${MPID} -eq 1 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
+}
 
 ps_56_start(){
   echo "Starting 5.6 node"
@@ -284,6 +288,7 @@ echo "Sysbench Run: Prepare stage"
 sysbench --test=$SDIR/parallel_prepare.lua --report-interval=10  --oltp-auto-inc=$AUTOINC --mysql-engine-trx=yes --mysql-table-engine=innodb \
     --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root \
     --db-driver=mysql --mysql-socket=/tmp/node1.socket prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt 
+check_script $?
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then 
    echo "Sysbench prepare failed"
@@ -292,16 +297,19 @@ fi
 
 echo "Loading sakila test database"
 $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
+eck_script $?
 
 echo "Loading world test database"
 $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/sample_db/world.sql
+check_script $?
 
 echo "Loading employees database with innodb engine.."
 create_emp_db employee_1 innodb employees.sql
+check_script $?
 
 echo "Loading employees partitioned database with innodb engine.."
 create_emp_db employee_2 innodb employees_partitioned.sql
-
+check_script $?
 
 echo "Version of second node:"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
@@ -487,6 +495,7 @@ sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --
     --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
     --mysql-user=root --db-driver=mysql --mysql-socket=$sockets \
     run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run.txt 
+check_script $?
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then 
   echo "Sysbench run failed"
@@ -509,6 +518,7 @@ $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "select count(*) from
 #Taking backup for downgrade testing
 
 $MYSQL_BASEDIR2/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=/tmp/node1.socket -uroot --databases `$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
+check_script $?
 
 $MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
 $MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1
@@ -525,6 +535,7 @@ CHECK_DBS=`$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SEL
 
 echo "Checking table status..."
 ${MYSQL_BASEDIR1}/bin/mysqlcheck -uroot --socket=/tmp/node1.socket --check-upgrade --databases $CHECK_DBS 2>&1
+check_script $?
 
 $MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
 $MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1

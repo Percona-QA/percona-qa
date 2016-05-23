@@ -265,6 +265,10 @@ pxc_startup(){
 }
 
 pxc_startup
+check_script(){
+  MPID=$1
+  if [ ${MPID} -eq 1 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
+}
 
 $BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
 # Create DSNs table to run pt-table-checksum
@@ -276,29 +280,36 @@ $BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id
 
 #Sysbench prepare run
 $SBENCH --test=$SYSBENCH_LOC/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=pxc_test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=/tmp/n1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+check_script $?
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then
   echo "Sysbench run failed"
   EXTSTATUS=1
 fi
 
-echo "Loading sakila test database"
-$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
+#echo "Loading sakila test database"
+#$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
+#check_script $?
 
 echo "Loading world test database"
 $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
+check_script $?
 
 echo "Loading employees database with innodb engine.."
 create_emp_db employee_1 innodb employees.sql
+check_script $?
 
 echo "Loading employees partitioned database with innodb engine.."
 create_emp_db employee_2 innodb employees_partitioned.sql
+check_script $?
 
 for i in {1..5}; do
   # Sysbench transaction run
   $SBENCH --test=$SYSBENCH_LOC/oltp.lua --mysql-socket=/tmp/n1.sock  --mysql-user=root --num-threads=$NUMT --oltp-tables-count=$TCOUNT --mysql-db=pxc_test --oltp-table-size=$TSIZE --max-time=$SDURATION --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1
+  check_script $?
   # Run pt-table-checksum to analyze data consistency 
-  pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d pxc_test,sakila,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
+  pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d pxc_test,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
+  check_script $?
 done
 
 exit $EXTSTATUS

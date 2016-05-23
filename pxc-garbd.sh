@@ -53,6 +53,10 @@ if [ ! -e $ROOT_FS/garbd ];then
   cp garbd $ROOT_FS/$PXCBASE/bin/
   export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
 fi
+check_script(){
+  MPID=$1
+  if [ ${MPID} -eq 1 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
+}
 
 ADDR="127.0.0.1"
 RPORT=$(( RANDOM%21 + 10 ))
@@ -248,8 +252,10 @@ pxc_startup(){
   $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
     --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
     --mysql-socket=/tmp/node1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+  check_script $?
   
   $ROOT_FS/garbd --address gcomm://$LADDR1,$LADDR2,$LADDR3 --group "my_wsrep_cluster" --options "gmcast.listen_addr=tcp://$GARBDP" --log /tmp/garbd.log --daemon
+  check_script $?
 }
 
 pxc_startup
@@ -261,6 +267,7 @@ garbd_run(){
     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 \
     --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql \
     --mysql-socket=/tmp/node1.sock run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
+  check_script $?
 }
 
 garbd_run 3

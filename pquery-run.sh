@@ -678,16 +678,17 @@ pquery_test(){
            grep -vi "character" | \
            grep -vi "collate" | \
            grep -vi "db_row_id" | \
+           grep -vi "db_trx_id" | \
            grep -vi "gen_clust_index" | \
            grep -vi "current_time" | \
            grep -vi "curtime" | \
            grep -vi "timestamp" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
-           grep -vi "flush[ \t]*table.*for[ \t]*export" | \
+           grep -vi "flush.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
            grep -vi 'start transaction .*with consistent snapshot' | \
            grep -vi 'limit rows examined' | \
-           grep -vi 'set .*read uncomitted' | \
+           grep -vi 'set .*read[ -]uncommitted' | \
            grep -vi 'set .*serializable' | \
            grep -vi 'max_join_size' | \
            grep -vi "select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(" | \
