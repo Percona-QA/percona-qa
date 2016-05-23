@@ -36,7 +36,10 @@ FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped
 FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as sporadic
 
 # === Reduce startup issues (prevents exit when first server start fails)
-DEBUG_STARTUP_ISSUES=0          # Default/normal use: 0. Only set to 1 when debugging mysqld startup issues, caused for example by a misbehaving --option
+REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce the testcase based on mysqld startup issues, caused for example by a failing --option to mysqld
+
+# === Reduce GLIBC crashes (beta)
+REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. Auto sets MODE=4
 
 # === Multi-threaded (auto-sporadic covering) testcase reduction
 PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
@@ -71,15 +74,15 @@ MODE5_COUNTTEXT=1
 MODE5_ADDITIONAL_TEXT=""
 MODE5_ADDITIONAL_COUNTTEXT=1
 
+# === Percona XtraDB Cluster options
+PXC_MOD=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables PQUERY_MODE=1
+PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
+
 # === Old ThreadSync related options (no longer commonly used)
 TS_TRXS_SETS=0
 TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
-
-# === Percona XtraDB Cluster options (uses Docker & Docker Compose)
-PXC_MOD=0           # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster with MTR 
-PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 
 # ==== Examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for CLI output (MODE=2 or 5)
@@ -516,7 +519,7 @@ options_check(){
   if [ $MODE -eq 2 ]; then
     if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run in MODE=2 - we need to make sure we have pquery client logging activated
       if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -io "log-client-output")" != "log-client-output" ]; then
-        echo_out "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain log-client-output, so not sure what file reducer.sh should check for TEXT occurence."
+        echo "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain log-client-output, so not sure what file reducer.sh should check for TEXT occurence."
         exit 1
       fi
     fi
@@ -556,6 +559,7 @@ options_check(){
     fi
   fi
   if [ $PXC_MOD -eq 1 ]; then
+    echo_out "PXC_MOD is turned on, so turning on PQUERY_MOD=1"
     PQUERY_MOD=1
     # ========= These are currently limitations of PXC mode. Feel free to extend reducer.sh to handle these ========
     #export -n MYEXTRA=""  # Serious shortcoming. Work to be done. PQUERY MYEXTRA variables will be added docker-compose.yml
@@ -624,7 +628,16 @@ options_check(){
     elif [ $PQUERY_MULTI_CLIENT_THREADS -lt 5 ]; then
       echo_out "Warning: PQUERY_MULTI is turned on, and PQUERY_MULTI_CLIENT_THREADS is set to $PQUERY_MULTI_CLIENT_THREADS, $PQUERY_MULTI_CLIENT_THREADS threads for reproducing a multi-threaded issue via random replay seems insufficient. You may want to increase PQUERY_MULTI_CLIENT_THREADS. Proceeding, but this is likely incorrect. Please check"
     fi
- 
+  fi
+  if [ $REDUCE_GLIBC_CRASHES -gt 0 -a $MODE -ne 4 ]; then
+    echo_out "REDUCE_GLIBC_CRASHES is turned on, so automatically changing MODE=$MODE to MODE=4: testcase reduction will be based on a GLIBC crash being detected or not"
+    export -n MODE=4
+  fi
+  if [ $REDUCE_GLIBC_CRASHES -gt 0 -a $PXC_MOD -eq 1 ]; then
+    echo "GLIBC testcase reduction is not yet supported for PXC_MOD=1 yet. It should not be hard to code/add this, search for 'LIBC_FATAL_STDERR' to see example mysqld code. Please add."
+    echo "Another workaround may be to see if this GLIBC crash reproduces on standard (non-cluster) mysqld also, which is likely."
+    echo "Terminating now."
+    exit 1
   fi
   if [ $FORCE_SKIPV -gt 0 ]; then
     export -n FORCE_SPORADIC=1
@@ -1112,9 +1125,9 @@ init_workdir_and_files(){
     fi
     echo_out "[Init] FORCE_SPORADIC, FORCE_SKIPV and/or PQUERY_MULTI active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
   fi
-  if [ ${DEBUG_STARTUP_ISSUES} -eq 1 ]; then
-    echo_out "[Init] DEBUG_STARTUP_ISSUES active. Issue is assumed to be a startup issue"
-    echo_out "[Info] Note: DEBUG_STARTUP_ISSUES is normally used for debugging mysqld startup issues only; for example caused by a misbehaving --option to mysqld. You may want to make the SQL input file really small (for example 'SELECT 1;' only) to ensure that when the particular issue being debugged is not seen, reducer will not spent a long time on executing SQL unrelated to the real issue, i.e. failing mysqld startup"
+  if [ ${REDUCE_STARTUP_ISSUES} -eq 1 ]; then
+    echo_out "[Init] REDUCE_STARTUP_ISSUES active. Issue is assumed to be a startup issue"
+    echo_out "[Info] Note: REDUCE_STARTUP_ISSUES is normally used for debugging mysqld startup issues only; for example caused by a misbehaving --option to mysqld. You may want to make the SQL input file really small (for example 'SELECT 1;' only) to ensure that when the particular issue being debugged is not seen, reducer will not spent a long time on executing SQL unrelated to the real issue, i.e. failing mysqld startup"
   fi
   echo_out "[Init] Querytimeout: $QUERYTIMEOUT seconds (ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
   if [ -n "$MYEXTRA" ]; then echo_out "[Init] Passing the following additional options to mysqld: $MYEXTRA"; fi
@@ -1164,11 +1177,11 @@ init_workdir_and_files(){
       #start_mysqld_main
       if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
       if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
-        if [ ${DEBUG_STARTUP_ISSUES} -eq 1 ]; then 
-          echo_out "[Init] [NOTE] Failed to cleanly start mysqld server (1st boot). Normally this would cause reducer.sh to halt here (and advice you to check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log + check that there is plenty of space on the device being used). However, because DEBUG_STARTUP_ISSUES is set to 1, we continue this reducer run. See above for more info on the DEBUG_STARTUP_ISSUES setting"
+        if [ ${REDUCE_STARTUP_ISSUES} -eq 1 ]; then 
+          echo_out "[Init] [NOTE] Failed to cleanly start mysqld server (1st boot). Normally this would cause reducer.sh to halt here (and advice you to check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log + check that there is plenty of space on the device being used). However, because REDUCE_STARTUP_ISSUES is set to 1, we continue this reducer run. See above for more info on the REDUCE_STARTUP_ISSUES setting"
         else
           echo_out "[Init] [ERROR] Failed to start mysqld server (1st boot), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
-          echo_out "[Init] [INFO] If however you want to debug a mysqld startup issue, for example caused by a misbehaving --option to mysqld, set DEBUG_STARTUP_ISSUES=1 and restart reducer.sh"
+          echo_out "[Init] [INFO] If however you want to debug a mysqld startup issue, for example caused by a misbehaving --option to mysqld, set REDUCE_STARTUP_ISSUES=1 and restart reducer.sh"
           echo "Terminating now."
           exit 1
         fi
@@ -1511,8 +1524,23 @@ start_mysqld_main(){
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
-    $CMD > $WORKD/mysqld.out 2>&1 &
-    PIDV="$!"
+    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+      # With thanks 
+      # - http://stackoverflow.com/questions/2821577/is-there-a-way-to-make-linux-cli-io-redirection-persistent 
+      # - http://stackoverflow.com/questions/4616061/glibc-backtrace-cant-redirect-output-to-file
+      # - http://stackoverflow.com/questions/4290336/how-to-redirect-runtime-errors-to-stderr
+      # - https://sourceware.org/git/?p=glibc.git;a=patch;h=1327439fc6ef182c3ab8c69a55d3bee15b3c62a7
+      rm -f $WORKD/stderr.prev
+      mv $WORKD/stderr.log $WORKD/stderr.prev 2>/dev/null
+      $( export LIBC_FATAL_STDERR_=1 
+         exec 2>$WORKD/stderr.log
+         $CMD > $WORKD/mysqld.out 2>&1 &
+       )
+      PIDV="$!"
+    else
+      $CMD > $WORKD/mysqld.out 2>&1 &
+      PIDV="$!"
+    fi
   else
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
@@ -2033,16 +2061,28 @@ process_outcome(){
         if ! $MYBASE/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
     else
-      if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then
-        M4_ISSUE_FOUND=1
+      if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+        # A glibc crash looks like: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
+        if egrep -iq '*** Error in' $WORKD/stderr.log; then
+          M4_ISSUE_FOUND=1
+        fi
+      else
+        if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then
+          M4_ISSUE_FOUND=1
+        fi
       fi
     fi
+    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+      M4_OUTPUT_TEXT="GlibcCrash"
+    else
+      M4_OUTPUT_TEXT="Crash"
+    fi 
     if [ $M4_ISSUE_FOUND -eq 1 ]; then
       if [ ! "$STAGE" = "V" ]; then
         if [ $STAGE -eq 6 ]; then 
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] [*Crash*] Swapping files & saving last known good crash in $WORKO"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] [*$M4_OUTPUT_TEXT*] Swapping files & saving last known good crash in $WORKO"
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*Crash*] [$NOISSUEFLOW] Swapping files & saving last known good crash in $WORKO"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*$M4_OUTPUT_TEXT*] [$NOISSUEFLOW] Swapping files & saving last known good crash in $WORKO"
         fi
         control_backtrack_flow
       fi
@@ -2051,9 +2091,9 @@ process_outcome(){
     else
       if [ ! "$STAGE" = "V" ]; then
         if [ $STAGE -eq 6 ]; then 
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] [NoCrash] Kill server $NEXTACTION"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] [No$M4_OUTPUT_TEXT] Kill server $NEXTACTION"
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [NoCrash] [$NOISSUEFLOW] Kill server $NEXTACTION"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [No$M4_OUTPUT_TEXT] [$NOISSUEFLOW] Kill server $NEXTACTION"
         fi
         NOISSUEFLOW=$[$NOISSUEFLOW+1]
       fi

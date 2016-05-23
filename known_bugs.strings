@@ -283,6 +283,7 @@ fts0fts.cc line 2228                                                            
 fts0vlc.ic line 96                                                                      ## http://bugs.mysql.com/bug.php?id=78643
 gis0sea.cc line 1329                                                                    ## http://bugs.mysql.com/bug.php?id=81497  # Sakila import bug (sql line 880)
 ha_innodb.cc line 1588                                                                  ## http://bugs.mysql.com/bug.php?id=74585, PS build (old LP #1384616)
+ha_innodb.cc line 3455                                                                  ## https://bugs.launchpad.net/percona-server/+bug/1584556
 ha_innodb.cc line 16152                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1381913 (dup of PS #1368552)
 #ha_innodb.cc line 16159                                                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552 (with oldPS) 
 #ha_innodb.cc line 16169                                                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552
@@ -584,6 +585,7 @@ ZN23Gcalc_operation_reducer10end_coupleEPNS_13active_threadES1_PKN10Gcalc_heap4I
 ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## http://bugs.mysql.com/bug.php?id=78201
 ZN4JOIN8optimizeEv                                                                      ## http://bugs.mysql.com/bug.php?id=74783
 ZN5QueueI16PROF_MEASUREMENTE3popEv                                                      ## https://bugs.launchpad.net/percona-server/+bug/1441139
+Z21find_or_create_digestP10PFS_threadPK18sql_digest_storagePKcj                         ## https://bugs.launchpad.net/percona-server/+bug/1441139
 ZN5QueueI16PROF_MEASUREMENTE14iterator_valueEPv                                         ## https://bugs.launchpad.net/percona-server/+bug/1441447
 ZN5TABLE4initEP3THDP10TABLE_LIST                                                        ## https://bugs.launchpad.net/percona-server/+bug/1463381
 ZN6String4copyERKS_                                                ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74644 (Fixed in 5.5.47, 5.6.28)
@@ -627,6 +629,7 @@ ZN22subselect_union_engine7no_rowsEv                                            
 Z7sortcmpPK6StringS1_P15charset_info_st                                                 ## http://bugs.mysql.com/bug.php?id=81457
 Z10find_type2PK10st_typelibPKcjP15charset_info_st                                       ## http://bugs.mysql.com/bug.php?id=81457
 ZN8Item_row7val_strEP6String                                                            ## http://bugs.mysql.com/bug.php?id=57552 and 76468
+ZNK4Item10field_typeEv                                                                  ## http://bugs.mysql.com/bug.php?id=81532
 
 ## =========== Error log crashing query based ===========
 ^Query ([0-9a-f]\+): SELECT.*FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG$                  ## https://bugs.launchpad.net/percona-server/+bug/1375153
