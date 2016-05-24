@@ -1,0 +1,42 @@
+This is a simple pty runner developed by Elliott Slaughter.
+
+To build it run:
+
+$ make
+
+And use it as follows:
+
+$ ./pty <program> <arg>*
+
+What is the purpose of a pty runner, you might ask? Suppose you want
+to run a program you know might crash. If you run it interactively on
+the command line, you will see anything printed to stdout (since it is
+line buffered). But if you pipe stdout to a file, it will become block
+buffered, and thus you probably won't get any output. The traditional
+solution to this problem is to add a setvbuf call to the target program
+to make it line buffer its stdout. My pty runner allows you to do the
+same thing without having to modify or recompile the program.
+
+For example:
+
+$ ./test_bad
+output
+errput
+Segmentation fault
+$ ./test_bad 1>out 2>err
+Segmentation fault
+$ cat out
+$ cat err
+errput
+$ ./pty ./test_bad
+errput
+output
+
+Program terminated with exit code 11.
+$ ./pty ./test_bad 1>out 2>err
+$ cat out
+output
+
+Program terminated with exit code 11.
+$ cat err
+errput
