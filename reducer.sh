@@ -559,7 +559,6 @@ options_check(){
     fi
   fi
   if [ $PXC_MOD -eq 1 ]; then
-    echo_out "PXC_MOD is turned on, so turning on PQUERY_MOD=1"
     PQUERY_MOD=1
     # ========= These are currently limitations of PXC mode. Feel free to extend reducer.sh to handle these ========
     #export -n MYEXTRA=""  # Serious shortcoming. Work to be done. PQUERY MYEXTRA variables will be added docker-compose.yml
@@ -590,20 +589,6 @@ options_check(){
       echo "Terminating now."
       exit 1
     fi
-    if [ $MODE -eq 5 -o $MODE -eq 3 ]; then
-      echo_out "[Warning] MODE=$MODE is set, as well as PXC mode active. This combination will likely work, but has not been tested yet. Removing this warning (for MODE=$MODE only please) when it was tested a number of times"
-    fi
-    if [ $MODE -eq 4 ]; then
-      if [ $PXC_ISSUE_NODE -eq 0 ]; then
-        echo_out "[Info] All PXC nodes will be checked for the issue. As long as one node reproduces, testcase reduction will continue (PXC_ISSUE_NODE=0)"
-      elif [ $PXC_ISSUE_NODE -eq 1 ]; then
-        echo_out "[Info] Important: PXC_ISSUE_NODE is set to 1, so only PXC node 1 will be checked for the presence of the issue"
-      elif [ $PXC_ISSUE_NODE -eq 2 ]; then
-        echo_out "[Info] Important: PXC_ISSUE_NODE is set to 2, so only PXC node 2 will be checked for the presence of the issue"
-      elif [ $PXC_ISSUE_NODE -eq 3 ]; then
-        echo_out "[Info] Important: PXC_ISSUE_NODE is set to 3, so only PXC node 3 will be checked for the presence of the issue"
-      fi
-    fi
   fi
   if [ $PQUERY_MULTI -eq 1 ]; then
     PQUERY_MOD=1
@@ -630,7 +615,6 @@ options_check(){
     fi
   fi
   if [ $REDUCE_GLIBC_CRASHES -gt 0 -a $MODE -ne 4 ]; then
-    echo_out "REDUCE_GLIBC_CRASHES is turned on, so automatically changing MODE=$MODE to MODE=4: testcase reduction will be based on a GLIBC crash being detected or not"
     export -n MODE=4
   fi
   if [ $REDUCE_GLIBC_CRASHES -gt 0 -a $PXC_MOD -eq 1 ]; then
@@ -1116,6 +1100,12 @@ init_workdir_and_files(){
       echo_out "[Init] FORCE_SKIPV active. Verify stage skipped, and immediately commencing simplification"
     fi
   fi
+  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    echo_out "[Init] REDUCE_GLIBC_CRASHES is turned on, so automatically set MODE=4: testcase reduction will be based on a GLIBC crash being detected or not"
+  fi
+  if [ $PQUERY_MULTI -eq 1 ]; then
+    echo_out "[Init] PQUERY_MULTI turned on, so automatically set PQUERY_MOD=1: testcase reduction will be done using pquery"
+  fi
   if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active, so FORCE_SPORADIC is automatically set active also" ; fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
     if [ $FORCE_SKIPV -gt 0 ]; then
@@ -1140,6 +1130,23 @@ init_workdir_and_files(){
     if [ $TS_DBG_CLI_OUTPUT -eq 1 ]; then 
       echo_out "[Init] ThreadSync: using debug (-vvv) mysql CLI output logging"
       echo_out "[Warning] ThreadSync: ONLY use -vvv logging for debugging, as this *will* cause issue non-reproducilbity due to excessive disk logging!"
+    fi
+  fi
+  if [ $PXC_MOD -gt 0 ]; then
+    echo_out "[Init] PXC_MOD is turned on, so automatically set PQUERY_MOD=1: Percona XtraDB Cluster testcase reduction is currently supported only with pquery"
+    if [ $MODE -eq 5 -o $MODE -eq 3 ]; then
+      echo_out "[Warning] MODE=$MODE is set, as well as PXC mode active. This combination will likely work, but has not been tested yet. Please remove this warning (for MODE=$MODE only please) when it was tested succesfully"
+    fi
+    if [ $MODE -eq 4 ]; then
+      if [ $PXC_ISSUE_NODE -eq 0 ]; then
+        echo_out "[Info] All PXC nodes will be checked for the issue. As long as one node reproduces, testcase reduction will continue (PXC_ISSUE_NODE=0)"
+      elif [ $PXC_ISSUE_NODE -eq 1 ]; then
+        echo_out "[Info] Important: PXC_ISSUE_NODE is set to 1, so only PXC node 1 will be checked for the presence of the issue"
+      elif [ $PXC_ISSUE_NODE -eq 2 ]; then
+        echo_out "[Info] Important: PXC_ISSUE_NODE is set to 2, so only PXC node 2 will be checked for the presence of the issue"
+      elif [ $PXC_ISSUE_NODE -eq 3 ]; then
+        echo_out "[Info] Important: PXC_ISSUE_NODE is set to 3, so only PXC node 3 will be checked for the presence of the issue"
+      fi
     fi
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
