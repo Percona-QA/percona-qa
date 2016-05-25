@@ -38,8 +38,10 @@ FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as spo
 # === Reduce startup issues (prevents exit when first server start fails)
 REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce the testcase based on mysqld startup issues, caused for example by a failing --option to mysqld
 
-# === Reduce GLIBC crashes (beta)
+# === Reduce GLIBC crashes (beta) 
 REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. Auto sets MODE=4
+SCRIPT_BIN=/usr/bin/script      # Script binary (part of util-linux package), which is required when/for reducing GLIBC crashes
+TYPESCRIPT_UNIQUE_FILESUFFIX=1  # IMPORTANT: when reducing multiple GLIBC crashes, each reducer.sh (only those with REDUCE_GLIBC_CRASHES=1 activated) needs a unique number here!
 
 # === Multi-threaded (auto-sporadic covering) testcase reduction
 PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
@@ -321,6 +323,28 @@ TS_VARIABILITY_SLEEP=1
 # $WORK_INIT, WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN, $WORK_RUN_PQUERY: Vars that point to various start/run scripts that get added to testcase working dir
 # WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
 #   of them use ${EPOCH2} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
+
+# For GLIBC crash reduction, we need to capture the output of the console from which reducer.sh is started. Currently only a SINGLE threaded solution using the 'scrip'
+# binary from the util-linux package was found. The script binary is able to capture the GLIC output from the main console. It may be interesting to review the source C
+# code for script, if available, to see how this is done. The following URL's may help with other possible solutions. However, LIBC_FATAL_STDERR_=1 has been found not to
+# work at all. Perhaps this is due to mysqld being a setuid program (which is not confirmed). exec 2> and exec 1> redirections as well as process substitution i.e. >() have
+# also been found not to work at all. Either the GLIBC trace will still be sent to the main console (and this may be the problem to start with), or it does not display at
+# all when testing various interactions. To further complicate things, subshells $() and & may have interesting redirection dynamics. Many combinations were tried. Complex.
+# * http://stackoverflow.com/questions/2821577/is-there-a-way-to-make-linux-cli-io-redirection-persistent
+# * http://stackoverflow.com/questions/4616061/glibc-backtrace-cant-redirect-output-to-file
+# * http://stackoverflow.com/questions/4290336/how-to-redirect-runtime-errors-to-stderr
+# * https://sourceware.org/git/?p=glibc.git;a=patch;h=1327439fc6ef182c3ab8c69a55d3bee15b3c62a7
+if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+  if [ ! -r $SCRIPT_BIN ]; then
+    echo "Error: REDUCE_GLIBC_CRASHES is activated, which requires the 'script' binary (part of the util-linux package), but this binary could not be found at $SCRIPT_BIN"
+    echo "Please install it and/or set the correct path/binary name using the SCRIPT_BIN variable."
+    echo "Terminating now."
+    exit 1
+  fi
+  # Ensure the output of this console is logged. For this, reducer.sh is restarted with self-logging activated using script
+  # With thanks, http://stackoverflow.com/a/26308092 from http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session
+  [ -z "$REDUCER_TYPESCRIPT" ] && REDUCER_TYPESCRIPT=1 exec $SCRIPT_BIN -q -f /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log -c "TYPESCRIPT=1 $0 $@"
+fi
 
 echo_out(){
   echo "$(date +'%F %T') $1"
@@ -1538,10 +1562,6 @@ start_mysqld_main(){
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-      if [ -f $WORKD/libc.log ]; then mv -f $WORKD/libc.log $WORKD/libc.prev; fi
-      script -a -f $WORKD/libc.log
-    fi
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
   else
@@ -1556,10 +1576,6 @@ start_mysqld_main(){
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-      if [ -f $WORKD/libc.log ]; then mv -f $WORKD/libc.log $WORKD/libc.prev; fi
-      script -a -f $WORKD/libc.log
-    fi
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
   fi
@@ -2070,8 +2086,9 @@ process_outcome(){
     else
       if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
         # A glibc crash looks like: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
-        if egrep -iq '*** Error in' $WORKD/stderr.log; then
+        if egrep -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
           M4_ISSUE_FOUND=1
+          echo "" > /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log
         fi
       else
         if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then

@@ -108,6 +108,8 @@
   if [[ "test::test" = *":"* ]]; then echo "y"; else echo "n"; fi
 # Sent all stdout/stderr output to a file while still on screen (With thanks http://stackoverflow.com/questions/692000/how-do-i-write-stderr-to-a-file-while-using-tee-with-a-pipe)
   exec 1>> >(tee /tmp/stdout.log >&1); exec 2>> >(tee /tmp/stderr.log >&2)
+# Start console selflogging from inside a script (With thanks http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session)
+  [ -z "$TYPESCRIPTLOG" ] && TYPESCRIPTLOG=1 exec /usr/bin/script -a -q -f /tmp/console_typescript.log -c "TYPESCRIPTLOG=1 $0 $@"  # http://stackoverflow.com/a/26308092
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
