@@ -63,9 +63,15 @@ node1="${BUILD}/node1"
 node2="${BUILD}/node2"
 node3="${BUILD}/node3"
 
+keyring_node1="${BUILD}/keyring_node1"
+keyring_node2="${BUILD}/keyring_node2"
+keyring_node3="${BUILD}/keyring_node3"
+
 if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
   mkdir -p $node1 $node2 $node3
+  mkdir -p $keyring_node1 $keyring_node2 $keyring_node3
 fi
+
 echo "PXC_MYEXTRA=\"\"" > ./start_pxc
 echo "PXC_START_TIMEOUT=300"  >> ./start_pxc
 echo -e "\n" >> ./start_pxc
@@ -87,7 +93,7 @@ echo -e "\n" >> ./start_pxc
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node1 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
-echo "    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
+echo "    --innodb_file_per_table \$PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
 echo "    --wsrep-provider=${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
 echo "    --wsrep_cluster_address=gcomm:// \\" >> ./start_pxc
 echo "    --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
@@ -97,6 +103,8 @@ echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./sta
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node1/node1.err \\" >> ./start_pxc
+echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
+echo "    --keyring_file_data=$keyring_node1/keyring \\" >> ./start_pxc
 echo "    --socket=$node1/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/node1.err 2>&1 &" >> ./start_pxc
 
@@ -116,7 +124,7 @@ echo -e "\n" >> ./start_pxc
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node2 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
-echo "    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
+echo "    --innodb_file_per_table \$PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
 echo "    --wsrep-provider=${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
 echo "    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \\" >> ./start_pxc
 echo "    --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
@@ -126,6 +134,8 @@ echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./sta
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node2/node2.err \\" >> ./start_pxc
+echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
+echo "    --keyring_file_data=$keyring_node2/keyring \\" >> ./start_pxc
 echo "    --socket=$node2/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &" >> ./start_pxc
 
@@ -146,7 +156,7 @@ echo -e "\n" >> ./start_pxc
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node3 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
-echo "    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
+echo "    --innodb_file_per_table \$PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
 echo "    --wsrep-provider=${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
 echo "    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \\" >> ./start_pxc
 echo "    --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
@@ -156,6 +166,8 @@ echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./sta
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node3/node3.err \\" >> ./start_pxc
+echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
+echo "    --keyring_file_data=$keyring_node3/keyring \\" >> ./start_pxc
 echo "    --socket=$node3/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &" >> ./start_pxc
 
@@ -182,8 +194,8 @@ echo "if [ -d $BUILD/node1.PREV ]; then rm -Rf $BUILD/node1.PREV.older; mv $BUIL
 echo "if [ -d $BUILD/node2.PREV ]; then rm -Rf $BUILD/node2.PREV.older; mv $BUILD/node2.PREV $BUILD/node2.PREV.older; fi;mv $BUILD/node2 $BUILD/node2.PREV" >> ./wipe
 echo "if [ -d $BUILD/node3.PREV ]; then rm -Rf $BUILD/node3.PREV.older; mv $BUILD/node3.PREV $BUILD/node3.PREV.older; fi;mv $BUILD/node3 $BUILD/node3.PREV" >> ./wipe
 
-echo "$BUILD/bin/mysql -A -uroot -S$node1/socket.sock test" > ./node1_cl
-echo "$BUILD/bin/mysql -A -uroot -S$node2/socket.sock test" > ./node2_cl
-echo "$BUILD/bin/mysql -A -uroot -S$node3/socket.sock test" > ./node3_cl
+echo "$BUILD/bin/mysql -A -uroot -S$node1/socket.sock" > ./node1_cl
+echo "$BUILD/bin/mysql -A -uroot -S$node2/socket.sock" > ./node2_cl
+echo "$BUILD/bin/mysql -A -uroot -S$node3/socket.sock" > ./node3_cl
 
 chmod +x ./start_pxc ./stop_pxc ./node1_cl ./node2_cl ./node3_cl ./wipe

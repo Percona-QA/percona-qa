@@ -1378,6 +1378,7 @@ start_mysqld_or_valgrind_or_pxc(){
     start_pxc_main
   else
     if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi
+    if [ -f $WORKD/pquery_thread-0.out ]; then mv -f $WORKD/pquery_thread-0.out $WORKD/pquery_thread-0.prev; fi
     if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
     if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
       echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
@@ -1776,6 +1777,7 @@ run_and_check(){
 
 run_sql_code(){
   if [ -f $WORKD/mysql.out ]; then mv -f $WORKD/mysql.out $WORKD/mysql.prev; fi
+  if [ -f $WORKD/pquery_thread-0.out ]; then mv -f $WORKD/pquery_thread-0.out $WORKD/pquery_thread-0.prev; fi
   if [ $PXC_MOD -eq 0 ]; then
     mkdir $WORKD/data/test > /dev/null 2>&1 # Ensuring reducer can connect to the test database
   fi
