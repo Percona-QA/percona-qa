@@ -341,7 +341,8 @@ ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --core-file --loose-new --sql-mode=no_engine_substitution \
   --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
   --log-error=$WORKDIR/logs/node2-upgrade.err \
-  --socket=/tmp/node2.socket --log-output=none > $WORKDIR/logs/node2-upgrade.err 2>&1 &
+  --socket=/tmp/node2.socket --log-output=none \
+  --port=$RBASE2  > $WORKDIR/logs/node2-upgrade.err 2>&1 &
 
 for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
   sleep 1

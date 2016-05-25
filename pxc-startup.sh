@@ -93,7 +93,7 @@ echo -e "\n" >> ./start_pxc
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node1 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
-echo "    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
+echo "    --innodb_file_per_table \$PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
 echo "    --wsrep-provider=${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
 echo "    --wsrep_cluster_address=gcomm:// \\" >> ./start_pxc
 echo "    --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
@@ -124,7 +124,7 @@ echo -e "\n" >> ./start_pxc
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node2 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
-echo "    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
+echo "    --innodb_file_per_table \$PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
 echo "    --wsrep-provider=${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
 echo "    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \\" >> ./start_pxc
 echo "    --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
@@ -156,7 +156,7 @@ echo -e "\n" >> ./start_pxc
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node3 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
-echo "    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
+echo "    --innodb_file_per_table \$PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_pxc
 echo "    --wsrep-provider=${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
 echo "    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \\" >> ./start_pxc
 echo "    --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
