@@ -222,6 +222,7 @@ generate_reducer_script(){
               if [ ${QC} -eq 0 ]; then
                 TEXT_STRING2="0,/#VARMOD#/s-#VARMOD#-   TEXT=\"${TEXT}\"\n#VARMOD#-"
               else
+                TEXT=$(echo "$TEXT"|sed -e "s-|-\\\\\\\|-g")
                 TEXT_STRING2="0,/#VARMOD#/s-#VARMOD#-   TEXT=\"^${TEXT}\$\"\n#VARMOD#-"
               fi
             fi
@@ -229,6 +230,7 @@ generate_reducer_script(){
             if [ ${QC} -eq 0 ]; then
               TEXT_STRING2="0,/#VARMOD#/s_#VARMOD#_   TEXT=\"${TEXT}\"\n#VARMOD#_"
             else
+              TEXT=$(echo "$TEXT"|sed -e "s_|_\\\\\\\|_g")
               TEXT_STRING2="0,/#VARMOD#/s_#VARMOD#_   TEXT=\"^${TEXT}\$\"\n#VARMOD#_"
             fi
           fi
@@ -236,6 +238,7 @@ generate_reducer_script(){
           if [ ${QC} -eq 0 ]; then
             TEXT_STRING2="0,/#VARMOD#/s/#VARMOD#/   TEXT=\"${TEXT}\"\n#VARMOD#/"
           else
+            TEXT=$(echo "$TEXT"|sed -e "s/|/\\\\\\\|/g")
             TEXT_STRING2="0,/#VARMOD#/s/#VARMOD#/   TEXT=\"^${TEXT}\$\"\n#VARMOD#/"
           fi
         fi
@@ -250,6 +253,7 @@ generate_reducer_script(){
       if [ ${QC} -eq 0 ]; then
         TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"${TEXT}\"\n#VARMOD#:"
       else
+        TEXT=$(echo "$TEXT"|sed -e "s:|:\\\\\\\|:g")
         TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"^${TEXT}\$\"\n#VARMOD#:"
       fi
     fi
@@ -297,8 +301,12 @@ generate_reducer_script(){
   fi
   if [ ${QC} -eq 0 ]; then
     REDUCER_FILENAME=reducer${OUTFILE}.sh
+    QC_STRING1="s|ZERO0|ZERO0|"
+    QC_STRING2="s|ZERO0|ZERO0|"
   else
     REDUCER_FILENAME=qcreducer${OUTFILE}.sh
+    QC_STRING1="s|CURRENTLINE=2|CURRENTLINE=5|g"
+    QC_STRING2="s|REALLINE=2|REALLINE=5|g"
   fi
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
@@ -325,6 +333,8 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_MOD=1\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
    | sed -e "${PXC_STRING1}" \
+   | sed -e "${QC_STRING1}" \
+   | sed -e "${QC_STRING2}" \
    | sed -e "${PQUERY_EXTRA_OPTIONS}" \
    > ${REDUCER_FILENAME}
   chmod +x ${REDUCER_FILENAME}
