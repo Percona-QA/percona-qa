@@ -672,12 +672,11 @@ options_check(){
       echo "Terminating now."
       exit 1
     fi
-  else
-    if [ $FORCE_SKIPV -gt 0 ]; then
-      export -n FORCE_SPORADIC=1
-      export -n SKIPV=1
-    fi  
   fi
+  if [ $FORCE_SKIPV -gt 0 ]; then
+    export -n FORCE_SPORADIC=1
+    export -n SKIPV=1
+  fi  
   if [ $FORCE_SPORADIC -gt 0 ]; then
     export -n STAGE1_LINES=3
     export -n SPORADIC=1
@@ -1165,12 +1164,14 @@ init_workdir_and_files(){
       echo_out "[Init] FORCE_SKIPV active. Verify stage skipped, and immediately commencing simplification"
     fi
   fi
+  if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active, so FORCE_SPORADIC is automatically set active also" ; fi
   if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping verify mode (as GLIBC crashes may be sporadic more often)"
-    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically set SLOW_DOWN_CHUNK_SCALING=1 to slow down the chunk size scaling (both for reductions and increases)"
-    if [ $FORCE_SKIPV -gt 0 ]; then
-      echo_out "[Info] FORCE_SKIPV active, which is meaningless. The verify stage is skipped automatically when REDUCE_GLIBC_CRASHES=1 and FORCE_SKIV is not evaluated."
+    if [ $FORCE_SKIPV -gt 0 ]; then 
+      echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often (this happens irrespective of FORCE_SKIPV=1)"
+    else
+      echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often"
     fi
+    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically set SLOW_DOWN_CHUNK_SCALING=1 to slow down the chunk size scaling (both for reductions and increases)"
     if [ $FORCE_SPORADIC -gt 0 ]; then
       echo_out "[Info] FORCE_SPORADIC active, issue is assumed to be sporadic"
       echo_out "[Init] FORCE_SPORADIC active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
@@ -1178,12 +1179,11 @@ init_workdir_and_files(){
     if [ $MODE -eq 3 ]; then
       if grep -qi "Leave the 3 spaces" $0; then
         echo_out "[WARNING] ---------------------"
-        echo_out "[WARNING] REDUCE_GLIBC_CRASHES active, MODE=3, and this is a pquery-run.sh originating run. Have you updated the TEXT=\"...\" to a search string matching the console output of a GLIBC crash instead of the default TEXT string procured from the error log by pquery-prep-red.sh? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***. For the TEXT search string, do not use the hex address but instead, for example, 'corrupted double-linked list', or a specfic frame from the stack trace which is normally shown below this intro line. Alternatively, set MODE=4 to look for any GLIBC crash."
+        echo_out "[WARNING] REDUCE_GLIBC_CRASHES active, MODE=3, and this is a pquery-run.sh originating run. Have you updated the TEXT=\"...\" to a search string matching the console output of a GLIBC crash instead of the default TEXT string procured from the error log by pquery-prep-red.sh? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***. For the TEXT search string, do not use the hex address but instead, for example, 'corrupted double-linked list', or a specfic frame from the stack trace which is normally shown below this intro line. Alternatively, set MODE=4 to look for any GLIBC crash"
         echo_out "[WARNING] ---------------------"
       fi
     fi       
   else
-    if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active, so FORCE_SPORADIC is automatically set active also" ; fi
     if [ $FORCE_SPORADIC -gt 0 ]; then
       if [ $FORCE_SKIPV -gt 0 ]; then
         echo_out "[Init] FORCE_SPORADIC active. Issue is assumed to be sporadic"
@@ -1246,7 +1246,7 @@ init_workdir_and_files(){
         MID_OPTIONS="--force"
       else
         MID_OPTIONS="" 
-        echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set the variable \$MID_OPTIONS manually. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning."
+        echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set the variable \$MID_OPTIONS manually. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning"
       fi
       # MID_OPTIONS='--initialize-insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
       generate_run_scripts      
@@ -1259,7 +1259,7 @@ init_workdir_and_files(){
           $MYBASE/bin/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
         fi
       else
-        echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/."
+        echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/"
         rm -f $WORK_INIT
         echo "Terminating now."
         exit 1
@@ -1330,7 +1330,7 @@ generate_run_scripts(){
   # (start_mysqld_main and start_valgrind_mysqld_main). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
   echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
   echo "SOURCE_DIR=\$MYBASE  # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
-  echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked." >> $WORK_MYBASE
+  echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked" >> $WORK_MYBASE
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
   echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_INIT
   echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
@@ -1349,8 +1349,8 @@ generate_run_scripts(){
   echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; fi" >> $WORK_INIT
   if [ $MODE -ge 6 ]; then
     # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
-    echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet."
-    echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet." > $WORK_RUN
+    echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet"
+    echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet" > $WORK_RUN
     echo "#${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
     chmod +x $WORK_RUN
   else
@@ -1508,7 +1508,7 @@ start_pxc_main(){
     --socket=$node1/node1_socket.sock --log-output=none \
     --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/error.log 2>&1 &
 
-  echo "Waiting for node-1 to start ....."
+  echo_out "Waiting for node-1 to start ....."
   MPID="$!"
   while true ; do
     sleep 10
@@ -1516,7 +1516,7 @@ start_pxc_main(){
      break
     fi
     if [ "${MPID}" == "" ]; then
-      echoit "Error! server not started.. Terminating!"
+      echo "Error! server not started.. Terminating!"
       egrep -i "ERROR|ASSERTION" $node1/error.log
       echo "Terminating now."
       exit 1
@@ -1540,7 +1540,7 @@ start_pxc_main(){
     --socket=$node2/node2_socket.sock --log-output=none \
     --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/error.log 2>&1 &
 
-  echo "Waiting for node-2 to start ....."
+  echo_out "Waiting for node-2 to start ....."
   MPID="$!"
   while true ; do
     sleep 10
@@ -1548,7 +1548,7 @@ start_pxc_main(){
      break
     fi
     if [ "${MPID}" == "" ]; then
-      echoit "Error! server not started.. Terminating!"
+      echo "Error! server not started.. Terminating!"
       egrep -i "ERROR|ASSERTION" $node2/error.log
       echo "Terminating now."
       exit 1
@@ -1573,7 +1573,7 @@ start_pxc_main(){
     --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/error.log 2>&1 &
 
   # ensure that node-3 has started and has joined the group post SST
-  echo "Waiting for node-3 to start ....."
+  echo_out "Waiting for node-3 to start ....."
   MPID="$!"
   while true ; do
     sleep 10
@@ -1582,7 +1582,7 @@ start_pxc_main(){
      break
     fi
     if [ "${MPID}" == "" ]; then
-      echoit "Error! server not started.. Terminating!"
+      echo_out "Error! server not started.. Terminating!"
       egrep -i "ERROR|ASSERTION" $node3/error.log
       echo "Terminating now."
       exit 1
