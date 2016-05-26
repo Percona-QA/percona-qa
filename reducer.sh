@@ -1442,7 +1442,9 @@ init_mysql_dir(){
     else
       cp -R $WORKD/../../data.init/* $WORKD/data/
     fi
-
+  fi
+  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    echo "" > /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log
   fi
 }
 
@@ -2100,6 +2102,7 @@ process_outcome(){
 
   # MODE3: mysqld error output log testing (set TEXT)
   if [ $MODE -eq 3 ]; then
+    M3_ISSUE_FOUND=0
     ERRORLOG=
     if [ $PXC_MOD -eq 1 ]; then
       ERRORLOG=$WORKD/*/error.log
@@ -2107,7 +2110,17 @@ process_outcome(){
     else
       ERRORLOG=$WORKD/error.log.out
     fi
-    if egrep -iq "$TEXT" $ERRORLOG; then
+    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+      # A glibc crash looks like: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
+      if egrep -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
+        if egrep -iq "$TEXT" /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
+          M3_ISSUE_FOUND=1
+        fi
+      fi
+    else
+      if egrep -iq "$TEXT" $ERRORLOG; then M3_ISSUE_FOUND=1; fi
+    fi
+    if [ $M3_ISSUE_FOUND -eq 1 ]; then
       if [ ! "$STAGE" = "V" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ErrorLogOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good mysqld error log output issue in $WORKO" 
         control_backtrack_flow
@@ -2143,12 +2156,9 @@ process_outcome(){
         # A glibc crash looks like: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
         if egrep -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
           M4_ISSUE_FOUND=1
-          echo "" > /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log
         fi
       else
-        if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then
-          M4_ISSUE_FOUND=1
-        fi
+        if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
     fi
     if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
