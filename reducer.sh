@@ -54,7 +54,7 @@ TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to my
 TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout in TIMEOUT_COMMAND here. Do not set too small (e.g. >600 sec)
                                 # Note: TIMEOUT_CHECK + MODE=0 is better for hanging mysqld's whereas TIMEOUT_COMMAND is better for "checkable" (i.e. use MODE=2 or =3) issues 
 
-# === Advanced options
+# === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for reductions and increases) by not modifying the chunk for SLOW_DOWN_CHUNK_SCALING_NR of trials. Default=3
 
@@ -1089,7 +1089,7 @@ init_workdir_and_files(){
   touch $WORKD/reducer.log
   echo_out "[Init] Workdir: $WORKD"
   export TMP=$WORKD/tmp
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then echo_out "[Init] Console TypeScript Log: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
+  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then echo_out "[Init] Console typescript log for REDUCE_GLIBC_CRASHES: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
   echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
   # jemalloc configuration for TokuDB plugin
   JE1="if [ \"\${JEMALLOC}\" != \"\" -a -r \"\${JEMALLOC}\" ]; then export LD_PRELOAD=\${JEMALLOC}"
@@ -1178,7 +1178,7 @@ init_workdir_and_files(){
     if [ $MODE -eq 3 ]; then
       if grep -qi "Leave the 3 spaces" $0; then
         echo_out "[WARNING] ---------------------"
-        echo_out "[WARNING] REDUCE_GLIBC_CRASHES active, MODE=3, and this is a pquery-run.sh originating run. Have you updated the TEXT=\"...\" to a search string matching the console output of a GLIBC crash instead of the default TEXT string procured from the error log by pquery-prep-red.sh? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***. Alternatively, set MODE=4 to look for any GLIBC crash."
+        echo_out "[WARNING] REDUCE_GLIBC_CRASHES active, MODE=3, and this is a pquery-run.sh originating run. Have you updated the TEXT=\"...\" to a search string matching the console output of a GLIBC crash instead of the default TEXT string procured from the error log by pquery-prep-red.sh? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***. For the TEXT search string, do not use the hex address but instead, for example, 'corrupted double-linked list', or a specfic frame from the stack trace which is normally shown below this intro line. Alternatively, set MODE=4 to look for any GLIBC crash."
         echo_out "[WARNING] ---------------------"
       fi
     fi       
