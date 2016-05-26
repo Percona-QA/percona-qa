@@ -24,7 +24,7 @@
 # With contributions from & thanks to: Andrew Dalgleish, Ramesh Sivaraman, Tomislav Plavcic
 # With thanks to the team at Oracle for open sourcing the original internal version
 
-# ======== User configurable variables section (see 'User configurable variable reference' for more detail)
+# ======== User configurable variables section (see 'User configurable variable reference' below for more detail)
 # === Basic options
 INPUTFILE=                      # The SQL file to be reduced. This can also be given as the first option to reducer.sh. Do not use double quotes
 MODE=4                          # Always required. Most often used modes: 4=any crash, 3=look for specific text (set TEXT)
@@ -34,9 +34,12 @@ WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3,
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced)
 MYBASE="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"              # Path to the MySQL BASE directory to be used
 
-# === Sporadic testcase reduction options (Used when testcases prove to be sporadic *and* fail to reduce using basic methods)
+# === Sporadic testcases        # Used when testcases prove to be sporadic *and* fail to reduce using basic methods
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
 FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as sporadic
+
+# === True Multi-Threaded       # True multi-threaded testcase reduction (only program in the world that does this) based on random replay (auto-covers sporadic testcases)
+PQUERY_MULTI=0                  # On/off (1/0) Enables true multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
 
 # === Reduce startup issues     # This mode prevents reducer.sh exit when first server start fails, thereby reducing mysqld startup issues
 REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce the testcase based on mysqld startup issues, caused for example by a failing --option to mysqld
@@ -46,13 +49,14 @@ REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the 
 SCRIPT_LOC=/usr/bin/script      # Script binary (part of util-linux package), which is required when/for reducing GLIBC crashes
 TYPESCRIPT_UNIQUE_FILESUFFIX=1  # IMPORTANT: when reducing multiple GLIBC crashes, each reducer.sh (only those with REDUCE_GLIBC_CRASHES=1 activated) needs a unique number here!
 
-# === Multi-threaded (auto-sporadic covering) testcase reduction
-PQUERY_MULTI=0                  # On/off (1/0) True multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
-
-# === Shutdown/hanging issues options (specifically here for when a problem is only reproducible at shutdown and/or for hanging mysqld's)
+# === Shutdown/hanging issues   # For mysqld hang testcas reduction (use TIMEOUT_CHECK + MODE=0) and for 'only reproducible at shutdown' testcase reduction (use TIMEOUT_COMMAND)
 TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
-                                # TIMEOUT_COMMAND is better for "checkable" (i.e. use MODE=2 or =3) issues whereas TIMEOUT_CHECK + MODE=0 is better for hanging mysqld's
 TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout in TIMEOUT_COMMAND here. Do not set too small (e.g. >600 sec)
+                                # Note: TIMEOUT_CHECK + MODE=0 is better for hanging mysqld's whereas TIMEOUT_COMMAND is better for "checkable" (i.e. use MODE=2 or =3) issues 
+
+# === Advanced options
+SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
+SLOW_DOWN_CHUNK_SCALING_NR=3    # Number of failed attempts/loops before the chunk size is scaled (both for reductions and increases). Default=3
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -64,27 +68,28 @@ PQUERY_MULTI_QUERIES=400000     # Do not change (default=400000), unless you ful
 PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (defaulty=0), unless you fully understand the change (reverses --no-shuffle into shuffle and vice versa)
                                 # On/Off (1/0) (Default=0: --no-shuffle is used for standard pquery replay, shuffle is used for PQUERY_MULTI. =1 reverses this)
 
-# === pquery options (only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI)
+# === pquery options            # Note: only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI
 PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
 PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary
 
-# === Other options (not often changed)
-ENABLE_QUERYTIMEOUT=0           # On/Off (1/0) Enable the Query Timeout function (enables and uses the MySQL event scheduler) (turned off by default=0)
+# === Other options             # The options are not often changed
+ENABLE_QUERYTIMEOUT=0           # On/Off (1/0) Enable the Query Timeout function (enables and uses the MySQL event scheduler) (turned off by default=0 since 26.05.2016)
 QUERYTIMEOUT=90                 # Querytimeout (mostly outdated: this was mainly applicable in RQG times where the RQG runs also had a query timeout)
+LOAD_TIMEZONE_DATA=0            # On/Off (1/0) Enable loading Timezone data into the database (mainly applicable for RQG runs) (turned off by default=0 since 26.05.2016)
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
 SKIPSTAGE=0                     # Usually not changed (default=0), skips one or more stages in the program
 FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully terminate mysqld instead of using proper mysqladmin shutdown etc.
 
-# === Percona XtraDB Cluster options
+# === Percona XtraDB Cluster
 PXC_MOD=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables PQUERY_MODE=1
 PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 
-# === MODE=5 Settings (only applicable when MODE5 is used)
+# === MODE=5 Settings           # Only applicable when MODE5 is used
 MODE5_COUNTTEXT=1               # Number of times the text should appear (default=minimum=1). Currently only used for MODE=5
 MODE5_ADDITIONAL_TEXT=""        # An additional string to look for in the CLI output when using MODE 5. When not using this set to "" (=default)
 MODE5_ADDITIONAL_COUNTTEXT=1    # Number of times the additional text should appear (default=minimum=1). Only used for MODE=5 and where MODE5_ADDITIONAL_TEXT is not ""
 
-# === Old ThreadSync related options (no longer commonly used)
+# === Old ThreadSync options    # No longer commonly used
 TS_TRXS_SETS=0
 TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
@@ -597,7 +602,7 @@ options_check(){
     export -n SPORADIC=0
     export -n FORCE_SKIPV=0
     export -n SKIPV=1
-    export -n MULTI_THREADS=0  # Minor (let's not run dozens of triple docker containers)
+    export -n MULTI_THREADS=0  # Original thought here was to avoid dozens of 3-container docker setups. This needs reviewing now that mysqld is used directly.
     # /==========
     if [ $MODE -eq 0 ]; then
       echo "Error: PXC mode is set to 1, and MODE=0 set to 0, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
@@ -646,8 +651,9 @@ options_check(){
     fi
   fi
   if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-    export -n MULTI_THREADS=1
-    export -n MULTI_THREADS_INCREASE=0 
+    export -n MULTI_THREADS=1            # Likely not needed, because MULTI mode should never become active for REDUCE_GLIBC_CRASHES=1 (and there is a matching assert), 
+    export -n MULTI_THREADS_INCREASE=0   # so it is here as a safety measure only FTM.
+    export -n SLOW_DOWN_CHUNK_SCALING=1  # Significantly slow down the chunk size scaling (both for reductions and increases)
     export -n SKIPV=1
     if [ $MODE -ne 3 -a $MODE -ne 4 ]; then
       echo "REDUCE_GLIBC_CRASHES is active, and MODE is set to MODE=$MODE, which is not supported (yet). Currently only modes 3 and 4 are supported when reducing GLIBC crashes"
@@ -697,6 +703,8 @@ set_internal_options(){
   STAGE='0'
   STUCKTRIAL=0
   NOISSUEFLOW=0
+  SKIPV=0
+  SPORADIC=0
   C_COL_COUNTER=1
   TS_ELIMINATED_THREAD_COUNT=0
   TS_ORIG_VARS_FLAG=0
@@ -732,6 +740,9 @@ multi_reducer(){
   # thereby telling reducer it is a child process)
   # This function does not need to know if reducer is reducing a single or multi-threaded testcase and what MODE is used as all these options are passed
   # verbatim to the child ($1 to the program is $1 to the child, and all ather settings are copied into the child process below)
+  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    echo_out "ASSERT: REDUCE_GLIBC_CRASHES is active, and we ended up in multi_reducer() function. This should not be possible as REDUCE_GLIBC_CRASHES uses a single thread only."
+  fi
   if [ "$STAGE" = "V" ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Starting $MULTI_THREADS verification subreducer threads to verify if the issue is sporadic ($WORKD/subreducer/)"
     SKIPV=0
@@ -1120,7 +1131,11 @@ init_workdir_and_files(){
     echo_out "[Init] PXC Node #3 Client: $MYBASE/bin/mysql -uroot -S${node3}/node3_socket.sock"
   else
     echo_out "[Init] Server: ${MYBASE}${BIN} (as $MYUSER)"
-    echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
+    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+      echo_out "[Init] Client: $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
+    else
+      echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
+    fi
   fi
   if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] SKIPSTAGE active. Stages up to and including $SKIPSTAGE are skipped"; fi
   if [ $PQUERY_MULTI -gt 0 ]; then
@@ -1146,8 +1161,8 @@ init_workdir_and_files(){
     fi
   fi
   if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically set MULTI_THREADS=1 and MULTI_THREADS_INCREASE=0: testcase reduction will be using a single thread only"
     echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping verify mode (as GLIBC crashes may be sporadic more often)"
+    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically set SLOW_DOWN_CHUNK_SCALING=1 to slow down the chunk size scaling (both for reductions and increases)"
     if [ $FORCE_SKIPV -gt 0 ]; then
       echo_out "[Info] FORCE_SKIPV active, which is meaningless. The verify stage is skipped automatically when REDUCE_GLIBC_CRASHES=1 and FORCE_SKIV is not evaluated."
     fi
@@ -1155,6 +1170,13 @@ init_workdir_and_files(){
       echo_out "[Info] FORCE_SPORADIC active, issue is assumed to be sporadic."
       echo_out "[Init] FORCE_SPORADIC active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
     fi
+    if [ $MODE -eq 3 ]; then
+      if grep -qi "Leave the 3 spaces" $0; then
+        echo_out "[WARNING] ---------------------"
+        echo_out "[WARNING] REDUCE_GLIBC_CRASHES active, MODE=3, and this is a pquery-run.sh originating run. Have you updated the TEXT=\"...\" to a search string matching the console output of a GLIBC crash instead of the default TEXT string procured from the error log by pquery-prep-red.sh? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks like this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***"
+        echo_out "[WARNING] ---------------------"
+      fi
+    fi       
   else
     if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active, so FORCE_SPORADIC is automatically set active also" ; fi
     if [ $FORCE_SPORADIC -gt 0 ]; then
@@ -1249,16 +1271,18 @@ init_workdir_and_files(){
           exit 1
         fi
       fi
-      echo_out "[Init] Loading timezone data into mysql database"
-      # echo_out "[Info] You may safely ignore any 'Warning: Unable to load...' messages, unless there are very many (Ref. BUG#13563952)"
-      # The ones listed in BUG#13563952 are now filterered out to make output nicer
-      $MYBASE/bin/mysql_tzinfo_to_sql /usr/share/zoneinfo > $WORKD/timezone.init 2> $WORKD/timezone.err
-      egrep -v "Riyadh8[789]'|zoneinfo/iso3166.tab|zoneinfo/zone.tab" $WORKD/timezone.err > $WORKD/timezone.err.tmp 
-      for A in $(cat $WORKD/timezone.err.tmp|sed 's/ /=DUMMY=/g'); do 
-        echo_out "$(echo "[Warning from mysql_tzinfo_to_sql] $A" | sed 's/=DUMMY=/ /g')"
-      done
-      echo_out "[Info] If you see a [GLIBC] crash above, change reducer to use a non-Valgrind-instrumented build of mysql_tzinfo_to_sql (Ref. BUG#13498842)"
-      $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
+      if [ $LOAD_TIMEZONE_DATA -gt 0 ]; then
+        echo_out "[Init] Loading timezone data into mysql database"
+        # echo_out "[Info] You may safely ignore any 'Warning: Unable to load...' messages, unless there are very many (Ref. BUG#13563952)"
+        # The ones listed in BUG#13563952 are now filterered out to make output nicer
+        $MYBASE/bin/mysql_tzinfo_to_sql /usr/share/zoneinfo > $WORKD/timezone.init 2> $WORKD/timezone.err
+        egrep -v "Riyadh8[789]'|zoneinfo/iso3166.tab|zoneinfo/zone.tab" $WORKD/timezone.err > $WORKD/timezone.err.tmp 
+        for A in $(cat $WORKD/timezone.err.tmp|sed 's/ /=DUMMY=/g'); do 
+          echo_out "$(echo "[Warning from mysql_tzinfo_to_sql] $A" | sed 's/=DUMMY=/ /g')"
+        done
+        echo_out "[Info] If you see a [GLIBC] crash above, change reducer to use a non-Valgrind-instrumented build of mysql_tzinfo_to_sql (Ref. BUG#13498842)"
+        $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
+      fi
       stop_mysqld_or_pxc
       mkdir $WORKD/data.init
       if [ ! -d $WORKD/data ]; then
@@ -1662,6 +1686,14 @@ start_valgrind_mysqld_main(){
 }
 
 determine_chunk(){
+  if [ $SLOW_DOWN_CHUNK_SCALING -gt 0 ]; then
+    DETERMINE_CHUNK_LOOPS=$[DETERMINE_CHUNK_LOOPS+1]
+    if [ $DETERMINE_CHUNK_LOOPS -gt $SLOW_DOWN_CHUNK_SCALING_LOOPS ]; then
+      DETERMINE_CHUNK_LOOPS=0
+    else
+      break  # Slow down chunk size scaling (both for reductions and increases)
+    fi
+  fi
   if [ $LINECOUNTF -ge 1000 ]; then
     if [ $NOISSUEFLOW -ge 20 ]; then CHUNK=0
     elif [ $NOISSUEFLOW -ge 18 ]; then CHUNK=$[$LINECOUNTF/500]
@@ -2606,8 +2638,8 @@ verify(){
 
 #Init
   trap ctrl_c SIGINT
+  set_internal_options  # Should come before options_check
   options_check $1
-  set_internal_options
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
     init_empty_port
   fi
