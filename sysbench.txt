@@ -1,0 +1,1 @@
+http://repo.percona.com/release/6/RPMS/x86_64/sysbench-0.5-6.el6.x86_64.rpm
