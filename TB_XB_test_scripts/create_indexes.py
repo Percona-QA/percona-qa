@@ -1,15 +1,22 @@
 import mysql.connector
 
-cnx = mysql.connector.connect(user='root', password='Baku12345#',
+cnx = mysql.connector.connect(user='root', password='',
                               host='127.0.0.1',
-                              database='dbtest')
+                              database='dbtest',
+			      port=22000)
 cursor = cnx.cursor()
 
-alter_stmt = "alter table sbtest1 add index(`k`)"
+#alter_index = "alter table sbtest1 add index(`k`)"
+drop_index = "alter table sbtest1 drop index k_{}"
 
-for i in range(1000):
-	cursor.execute(alter_stmt)
-	print "Added index %s", i
+
+for i in range(6,1000):
+	#cursor.execute(alter_index)
+	#print "Added index %s", i
+        drop_index = drop_index.format(i)
+        cursor.execute(drop_index)
+        print "Dropped index"
+	
 
 
 
