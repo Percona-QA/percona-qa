@@ -17,9 +17,12 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-# ======== Script Info
-# Script developer: Roel Van de Paar <roel A.T vandepaar D.O.T com>
+# In active development: 2012-2016
 
+# ======== Dev Contacts
+# Main developer: Roel Van de Paar <roel A.T vandepaar D.O.T com>
+# With contributions from & thanks to: Andrew Dalgleish, Ramesh Sivaraman, Tomislav Plavcic
+# With thanks to the team at Oracle for open sourcing the original internal version
 
 # ======== User configurable variables section (see 'User configurable variable reference' for more detail)
 # === Basic options
@@ -28,18 +31,18 @@ MODE=4                          # Always required. Most often used modes: 4=any 
 TEXT="somebug"                  # The text you are looking for. Regex capable. TEXT is searched for in specific location depending on MODE. Use with MODE=1,2,3,5,6,7,8
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
-MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
-MYBASE="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"
+MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced)
+MYBASE="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"              # Path to the MySQL BASE directory to be used
 
 # === Sporadic testcase reduction options (Used when testcases prove to be sporadic *and* fail to reduce using basic methods)
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
 FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as sporadic
 
-# === Reduce startup issues (prevents exit when first server start fails)
+# === Reduce startup issues     # This mode prevents reducer.sh exit when first server start fails, thereby reducing mysqld startup issues
 REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce the testcase based on mysqld startup issues, caused for example by a failing --option to mysqld
 
-# === Reduce GLIBC crashes (beta) 
-REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. Auto sets MODE=4
+# === Reduce GLIBC crashes      # Remember that if you use REDUCE_GLIBC_CRASHES=1 with MODE=3, then the console/typescript log is searched for TEXT, not the mysqld error log!
+REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. MODE=3 and MODE=4 are supported
 SCRIPT_LOC=/usr/bin/script      # Script binary (part of util-linux package), which is required when/for reducing GLIBC crashes
 TYPESCRIPT_UNIQUE_FILESUFFIX=1  # IMPORTANT: when reducing multiple GLIBC crashes, each reducer.sh (only those with REDUCE_GLIBC_CRASHES=1 activated) needs a unique number here!
 
@@ -66,19 +69,20 @@ PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of t
 PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary
 
 # === Other options (not often changed)
-QUERYTIMEOUT=90
+ENABLE_QUERYTIMEOUT=0           # On/Off (1/0) Enable the Query Timeout function (enables and uses the MySQL event scheduler) (turned off by default=0)
+QUERYTIMEOUT=90                 # Querytimeout (mostly outdated: this was mainly applicable in RQG times where the RQG runs also had a query timeout)
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
 SKIPSTAGE=0                     # Usually not changed (default=0), skips one or more stages in the program
 FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully terminate mysqld instead of using proper mysqladmin shutdown etc.
+
+# === Percona XtraDB Cluster options
+PXC_MOD=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables PQUERY_MODE=1
+PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 
 # === MODE=5 Settings (only applicable when MODE5 is used)
 MODE5_COUNTTEXT=1               # Number of times the text should appear (default=minimum=1). Currently only used for MODE=5
 MODE5_ADDITIONAL_TEXT=""        # An additional string to look for in the CLI output when using MODE 5. When not using this set to "" (=default)
 MODE5_ADDITIONAL_COUNTTEXT=1    # Number of times the additional text should appear (default=minimum=1). Only used for MODE=5 and where MODE5_ADDITIONAL_TEXT is not ""
-
-# === Percona XtraDB Cluster options
-PXC_MOD=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables PQUERY_MODE=1
-PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 
 # === Old ThreadSync related options (no longer commonly used)
 TS_TRXS_SETS=0
@@ -86,9 +90,9 @@ TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
 
-# ==== Examples
-#TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for CLI output (MODE=2 or 5)
-#TEXT=                       "\| i      \|"            # Idem, text instead of number (text is left-aligned, numbers are right-aligned)
+# ==== MySQL command line (CLI) output TEXT search examples
+#TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for MySQL CLI output (for MODE=2 or 5)
+#TEXT=                       "\| i      \|"            # Idem, text instead of number (text is left-aligned, numbers are right-aligned in the MySQL CLI output)
 
 # ======== User configurable variable reference
 # - INPUTFILE: the SQL trace to be reduced by reducer.sh. This can also be given as the fisrt option to reducer.sh (i.e. $ ./reducer.sh {inputfile.sql})
@@ -1169,7 +1173,9 @@ init_workdir_and_files(){
     echo_out "[Init] REDUCE_STARTUP_ISSUES active. Issue is assumed to be a startup issue"
     echo_out "[Info] Note: REDUCE_STARTUP_ISSUES is normally used for debugging mysqld startup issues only; for example caused by a misbehaving --option to mysqld. You may want to make the SQL input file really small (for example 'SELECT 1;' only) to ensure that when the particular issue being debugged is not seen, reducer will not spent a long time on executing SQL unrelated to the real issue, i.e. failing mysqld startup"
   fi
-  echo_out "[Init] Querytimeout: $QUERYTIMEOUT seconds (ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
+  if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then 
+    echo_out "[Init] Querytimeout: ${QUERYTIMEOUT}s (For RQG-originating testcase reductions, ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
+  fi
   if [ -n "$MYEXTRA" ]; then echo_out "[Init] Passing the following additional options to mysqld: $MYEXTRA"; fi
   if [ $MODE -ge 6 ]; then 
     if [ $TS_TRXS_SETS -eq 1 ]; then echo_out "[Init] ThreadSync: using last transaction set (accross threads) only"; fi
@@ -1567,16 +1573,17 @@ start_mysqld_main(){
   #echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
+  SCHEDULER_OR_NOT=
+  if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT"
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
@@ -1586,11 +1593,11 @@ start_mysqld_main(){
     PIDV="$!"
   else
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
-                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
+                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out --event-scheduler=ON"
+                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then  
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
@@ -1612,11 +1619,12 @@ start_mysqld_main(){
 #                             --binlog-format=MIXED \
 start_valgrind_mysqld_main(){
   if [ -f $WORKD/valgrind.out ]; then mv -f $WORKD/valgrind.out $WORKD/valgrind.prev; fi
+  SCHEDULER_OR_NOT=
+  if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
   CMD="${TIMEOUT_COMMAND} valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
               ${MYBASE}${BIN} --basedir=${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
-                              --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-                              --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
-                              --event-scheduler=ON"
+                              --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
+                              --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none 
   if [ "${CHK_ROCKSDB}" == "1" ];then
     CMD="${CMD} $MYROCKS"
@@ -1635,7 +1643,7 @@ start_valgrind_mysqld_main(){
   echo "valgrind --suppressions=\${MYBASE}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
        \$BIN --basedir=\${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-       --socket=$WORKD/socket.sock $MYEXTRA --event-scheduler=ON >>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
+       --socket=$WORKD/socket.sock $MYEXTRA ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   if [ "${CHK_ROCKSDB}" == "1" ];then
     sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START_VALGRIND
   fi
@@ -1817,21 +1825,16 @@ run_sql_code(){
   if [ $PXC_MOD -eq 0 ]; then
     mkdir $WORKD/data/test > /dev/null 2>&1 # Ensuring reducer can connect to the test database
   fi
-
-  # Setting up query timeouts using the MySQL Event Sheduler
-  # Place event into the mysql db, not test db as the test db is dropped immediately
-  if [ $PXC_MOD -eq 1 ]; then
-    $MYBASE/bin/mysql -uroot -S${node1}/node1_socket.sock --force mysql -e"
-      DELIMITER ||
-      CREATE EVENT querytimeout ON SCHEDULE EVERY 20 SECOND DO BEGIN
-      SET @id:='';
-      SET @id:=(SELECT id FROM INFORMATION_SCHEMA.PROCESSLIST WHERE ID<>CONNECTION_ID() AND STATE<>'killed' AND TIME>$QUERYTIMEOUT ORDER BY TIME DESC LIMIT 1);
-      IF @id > 1 THEN KILL QUERY @id; END IF;
-      END ||
-      DELIMITER ;
-    "
-  else
-    $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force mysql -e"
+  if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then 
+    # Setting up query timeouts using the MySQL Event Scheduler
+    # Place event into the mysql db, not test db as the test db is dropped immediately
+    SOCKET_TO_BE_USED=
+    if [ $PXC_MOD -eq 1 ]; then
+      SOCKET_TO_BE_USED=${node1}/node1_socket.sock
+    else
+      SOCKET_TO_BE_USED=$WORKD/socket.sock
+    fi
+    $MYBASE/bin/mysql -uroot -S${SOCKET_TO_BE_USED} --force mysql -e"
       DELIMITER ||
       CREATE EVENT querytimeout ON SCHEDULE EVERY 20 SECOND DO BEGIN
       SET @id:='';
@@ -2312,7 +2315,7 @@ finish(){
       fi
       if [ ${STAGE8_CHK} -eq 0 ]; then
         export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
-        sed -i "s|--event-scheduler=ON|--event-scheduler=ON $MYEXTRA |" $WORK_START
+        sed -i "s|error.log.out|error.log.out $MYEXTRA |" $WORK_START
       fi
     fi
   fi
