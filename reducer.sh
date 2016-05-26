@@ -1173,7 +1173,7 @@ init_workdir_and_files(){
     if [ $MODE -eq 3 ]; then
       if grep -qi "Leave the 3 spaces" $0; then
         echo_out "[WARNING] ---------------------"
-        echo_out "[WARNING] REDUCE_GLIBC_CRASHES active, MODE=3, and this is a pquery-run.sh originating run. Have you updated the TEXT=\"...\" to a search string matching the console output of a GLIBC crash instead of the default TEXT string procured from the error log by pquery-prep-red.sh? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks like this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***"
+        echo_out "[WARNING] REDUCE_GLIBC_CRASHES active, MODE=3, and this is a pquery-run.sh originating run. Have you updated the TEXT=\"...\" to a search string matching the console output of a GLIBC crash instead of the default TEXT string procured from the error log by pquery-prep-red.sh? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***"
         echo_out "[WARNING] ---------------------"
       fi
     fi       
@@ -2111,18 +2111,20 @@ process_outcome(){
       ERRORLOG=$WORKD/error.log.out
     fi
     if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-      # A glibc crash looks like: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
+      # A glibc crash looks similar to: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
       if egrep -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
         if egrep -iq "$TEXT" /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
           M3_ISSUE_FOUND=1
         fi
       fi
+      M3_OUTPUT_TEXT="ConsoleTypescript"
     else
       if egrep -iq "$TEXT" $ERRORLOG; then M3_ISSUE_FOUND=1; fi
+      M3_OUTPUT_TEXT="ErrorLog"
     fi
     if [ $M3_ISSUE_FOUND -eq 1 ]; then
       if [ ! "$STAGE" = "V" ]; then
-        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ErrorLogOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good mysqld error log output issue in $WORKO" 
+        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*${M3_OUTPUT_TEXT}OutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good mysqld error log output issue in $WORKO" 
         control_backtrack_flow
       fi
       cleanup_and_save
@@ -2131,7 +2133,7 @@ process_outcome(){
       fi 
     else
       if [ ! "$STAGE" = "V" ]; then
-        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [NoErrorLogOutputBug] [$NOISSUEFLOW] Kill server $NEXTACTION"
+        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [No${M3_OUTPUT_TEXT}OutputBug] [$NOISSUEFLOW] Kill server $NEXTACTION"
         NOISSUEFLOW=$[$NOISSUEFLOW+1]
       fi
       return 0
@@ -2153,7 +2155,7 @@ process_outcome(){
       fi
     else
       if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-        # A glibc crash looks like: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
+        # A glibc crash looks similar to: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
         if egrep -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
           M4_ISSUE_FOUND=1
         fi
