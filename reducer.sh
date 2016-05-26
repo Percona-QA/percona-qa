@@ -25,7 +25,7 @@
 # === Basic options
 INPUTFILE=                      # The SQL file to be reduced. This can also be given as the first option to reducer.sh. Do not use double quotes
 MODE=4                          # Always required. Most often used modes: 4=any crash, 3=look for specific text (set TEXT)
-TEXT="somebug"                  # Set to the text your are looking for in MODE 1,2,3,5 (ref below),6,7,8. Regex capable
+TEXT="somebug"                  # The text you are looking for. Regex capable. TEXT is searched for in specific location depending on MODE. Use with MODE=1,2,3,5,6,7,8
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"
@@ -40,7 +40,7 @@ REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce the 
 
 # === Reduce GLIBC crashes (beta) 
 REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. Auto sets MODE=4
-SCRIPT_BIN=/usr/bin/script      # Script binary (part of util-linux package), which is required when/for reducing GLIBC crashes
+SCRIPT_LOC=/usr/bin/script      # Script binary (part of util-linux package), which is required when/for reducing GLIBC crashes
 TYPESCRIPT_UNIQUE_FILESUFFIX=1  # IMPORTANT: when reducing multiple GLIBC crashes, each reducer.sh (only those with REDUCE_GLIBC_CRASHES=1 activated) needs a unique number here!
 
 # === Multi-threaded (auto-sporadic covering) testcase reduction
@@ -63,7 +63,7 @@ PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (defaulty=0), unless you fully u
 
 # === pquery options (only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI)
 PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
-PQUERY_LOC=~/percona-qa/pquery/pquery
+PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary
 
 # === Other options (not often changed)
 QUERYTIMEOUT=90
@@ -72,9 +72,9 @@ SKIPSTAGE=0                     # Usually not changed (default=0), skips one or 
 FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully terminate mysqld instead of using proper mysqladmin shutdown etc.
 
 # === MODE=5 Settings (only applicable when MODE5 is used)
-MODE5_COUNTTEXT=1
-MODE5_ADDITIONAL_TEXT=""
-MODE5_ADDITIONAL_COUNTTEXT=1
+MODE5_COUNTTEXT=1               # Number of times the text should appear (default=minimum=1). Currently only used for MODE=5
+MODE5_ADDITIONAL_TEXT=""        # An additional string to look for in the CLI output when using MODE 5. When not using this set to "" (=default)
+MODE5_ADDITIONAL_COUNTTEXT=1    # Number of times the additional text should appear (default=minimum=1). Only used for MODE=5 and where MODE5_ADDITIONAL_TEXT is not ""
 
 # === Percona XtraDB Cluster options
 PXC_MOD=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables PQUERY_MODE=1
@@ -96,9 +96,9 @@ TS_VARIABILITY_SLEEP=1
 #   - MODE=0: Timeout testing (server hangs, shutdown issues, excessive command duration etc.) (set TIMEOUT_CHECK)
 #   - MODE=1: Valgrind output testing (set TEXT)
 #   - MODE=2: mysql CLI (Command Line Interface, i.e. the mysql client)/pquery client output testing (set TEXT) 
-#   - MODE=3: mysqld error output log testing (set TEXT)
-#   - MODE=4: Crash testing
-#   - MODE=5 [BETA]: MTR testcase reduction (set TEXT) (Can also be used for multi-occurence CLI output testing - see MODE5_COUNTTEXT below)
+#   - MODE=3: mysqld error output log or console/typescript log (when REDUCE_GLIBC_CRASHES=1) testing (set TEXT)
+#   - MODE=4: Crash or GLIBC crash (when REDUCE_GLIBC_CRASHES=1) testing
+#   - MODE=5 [BETA]: MTR testcase reduction (set TEXT) (Can also be used for multi-occurence CLI output testing - see MODE5_COUNTTEXT)
 #   - MODE=6 [ALPHA]: Multi threaded (ThreadSync) Valgrind output testing (set TEXT)
 #   - MODE=7 [ALPHA]: Multi threaded (ThreadSync) mysql CLI/pquery client output testing (set TEXT)
 #   - MODE=8 [ALPHA]: Multi threaded (ThreadSync) mysqld error output log testing (set TEXT)
@@ -117,9 +117,6 @@ TS_VARIABILITY_SLEEP=1
 # - PXC_ISSUE_NODE: This indicates which node you would like to be checked for presence of the issue. 0 = Any node. Valid options: 0, 1, 2, or 3. Only works
 #   for MODE=4 currently.
 # - PXC_DOCKER_COMPOSE_LOC: Location of the Docker Compose file used to bring up 3 node Percona XtraDB Cluster (using images previously prepared by "new" method) 
-# - MODE5_COUNTTEXT: Number of times the text should appear (default=minimum=1). Currently only used for MODE 5
-# - MODE5_ADDITIONAL_TEXT: An additional string to look for in the CLI output when using MODE 5. When not using this set to "" (=default)
-# - MODE5_ADDITIONAL_COUNTTEXT: Number of times the additional text should appear (default=minimum=1). Only used for MODE 5
 # - QUERYTIMEOUT: Number of seconds to wait before terminating a query (similar to RQG's querytimeout option). Do not set < 40 to avoid initial DDL failure
 #   Warning: do not set this smaller then 1.5x what was used in RQG. If set smaller, the bug may not reproduce. 1.5x instead of 1x is a simple precaution
 # - TS_TRXS_SETS [ALPHA]: For ThreadSync simplification (MODE 6+), use the last x set of thread actions only
@@ -335,15 +332,15 @@ TS_VARIABILITY_SLEEP=1
 # * http://stackoverflow.com/questions/4290336/how-to-redirect-runtime-errors-to-stderr
 # * https://sourceware.org/git/?p=glibc.git;a=patch;h=1327439fc6ef182c3ab8c69a55d3bee15b3c62a7
 if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-  if [ ! -r $SCRIPT_BIN ]; then
-    echo "Error: REDUCE_GLIBC_CRASHES is activated, which requires the 'script' binary (part of the util-linux package), but this binary could not be found at $SCRIPT_BIN"
-    echo "Please install it and/or set the correct path/binary name using the SCRIPT_BIN variable."
+  if [ ! -r $SCRIPT_LOC ]; then
+    echo "Error: REDUCE_GLIBC_CRASHES is activated, which requires the 'script' binary (part of the util-linux package), but this binary could not be found at $SCRIPT_LOC"
+    echo "Please install it and/or set the correct path/binary name using the SCRIPT_LOC variable."
     echo "Terminating now."
     exit 1
   fi
   # Ensure the output of this console is logged. For this, reducer.sh is restarted with self-logging activated using script
   # With thanks, http://stackoverflow.com/a/26308092 from http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session
-  [ -z "$REDUCER_TYPESCRIPT" ] && REDUCER_TYPESCRIPT=1 exec $SCRIPT_BIN -q -f /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log -c "TYPESCRIPT=1 $0 $@"
+  [ -z "$REDUCER_TYPESCRIPT" ] && REDUCER_TYPESCRIPT=1 exec $SCRIPT_LOC -q -f /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log -c "TYPESCRIPT=1 $0 $@"
 fi
 
 echo_out(){
@@ -635,32 +632,46 @@ options_check(){
     export -n FORCE_SKIPV=1
     MULTI_THREADS=$PQUERY_MULTI_THREADS
     if [ $PQUERY_MULTI_CLIENT_THREADS -lt 1 ]; then
-      echo_out "Error: PQUERY_MULTI_CLIENT_THREADS is set to less then 1 ($PQUERY_MULTI_CLIENT_THREADS), while PQUERY_MULTI is turned on, this does not work; reducer needs threads to be able to replay the issue"
+      echo_out "Error: PQUERY_MULTI_CLIENT_THREADS is set to less then 1 ($PQUERY_MULTI_CLIENT_THREADS), while PQUERY_MULTI active, this does not work; reducer needs threads to be able to replay the issue"
       echo "Terminating now."
       exit 1
     elif [ $PQUERY_MULTI_CLIENT_THREADS -eq 1 ]; then
-      echo_out "Warning: PQUERY_MULTI is turned on, and PQUERY_MULTI_CLIENT_THREADS is set to 1; 1 thread for a multi-threaded issue does not seem logical. Proceeding, but this is highly likely incorrect. Please check. NOTE: There is at least one possible use case for this: proving that a sporadic mysqld startup can be reproduced (with a near-empty SQL file; i.e. the run is concerned with reproducing the startup issue, not reducing the SQL file)"
+      echo_out "Warning: PQUERY_MULTI active, and PQUERY_MULTI_CLIENT_THREADS is set to 1; 1 thread for a multi-threaded issue does not seem logical. Proceeding, but this is highly likely incorrect. Please check. NOTE: There is at least one possible use case for this: proving that a sporadic mysqld startup can be reproduced (with a near-empty SQL file; i.e. the run is concerned with reproducing the startup issue, not reducing the SQL file)"
     elif [ $PQUERY_MULTI_CLIENT_THREADS -lt 5 ]; then
-      echo_out "Warning: PQUERY_MULTI is turned on, and PQUERY_MULTI_CLIENT_THREADS is set to $PQUERY_MULTI_CLIENT_THREADS, $PQUERY_MULTI_CLIENT_THREADS threads for reproducing a multi-threaded issue via random replay seems insufficient. You may want to increase PQUERY_MULTI_CLIENT_THREADS. Proceeding, but this is likely incorrect. Please check"
+      echo_out "Warning: PQUERY_MULTI active, and PQUERY_MULTI_CLIENT_THREADS is set to $PQUERY_MULTI_CLIENT_THREADS, $PQUERY_MULTI_CLIENT_THREADS threads for reproducing a multi-threaded issue via random replay seems insufficient. You may want to increase PQUERY_MULTI_CLIENT_THREADS. Proceeding, but this is likely incorrect. Please check"
     fi
   fi
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 -a $MODE -ne 4 ]; then
-    export -n MODE=4
-  fi
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 -a $PXC_MOD -eq 1 ]; then
-    echo "GLIBC testcase reduction is not yet supported for PXC_MOD=1 yet. It should not be hard to code/add this, search for 'LIBC_FATAL_STDERR' to see example mysqld code. Please add."
-    echo "Another workaround may be to see if this GLIBC crash reproduces on standard (non-cluster) mysqld also, which is likely."
-    echo "Terminating now."
-    exit 1
-  fi
-  if [ $FORCE_SKIPV -gt 0 ]; then
-    export -n FORCE_SPORADIC=1
+  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    export -n MULTI_THREADS=1
+    export -n MULTI_THREADS_INCREASE=0 
     export -n SKIPV=1
-  fi  
+    if [ $MODE -ne 3 -a $MODE -ne 4 ]; then
+      echo "REDUCE_GLIBC_CRASHES is active, and MODE is set to MODE=$MODE, which is not supported (yet). Currently only modes 3 and 4 are supported when reducing GLIBC crashes"
+      echo "Terminating now."
+      exit 1
+    fi
+    if [ $PXC_MOD -gt 0 ]; then
+      echo "GLIBC testcase reduction is not yet supported for PXC_MOD=1. This would be very complex to code, except perhaps for a single node cluster or for one node only. See source code for details. Search for 'GLIBC crash reduction'"
+      echo "A workaround may be to see if this GLIBC crash reproduces on standard (non-cluster) mysqld also, which is likely."
+      echo "Terminating now."
+      exit 1
+    fi
+    if [ $PQUERY_MULTI -gt 0 ]; then
+      echo "GLIBC testcase reduction is not yet supported for PQUERY_MULTI=1. This would be very complex to code. See source code for details. Search for 'GLIBC crash reduction'"
+      echo "A workaround may be to see if this GLIBC crash reproduces using a single threaded execution, which in most cases is somewhat likely."
+      echo "Terminating now."
+      exit 1
+    fi
+  else
+    if [ $FORCE_SKIPV -gt 0 ]; then
+      export -n FORCE_SPORADIC=1
+      export -n SKIPV=1
+    fi  
+  fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
     export -n STAGE1_LINES=3
     export -n SPORADIC=1
-  fi
+  fi   
   export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|--no-defaults||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
 
@@ -1131,19 +1142,28 @@ init_workdir_and_files(){
     fi
   fi
   if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-    echo_out "[Init] REDUCE_GLIBC_CRASHES is turned on, so automatically set MODE=4: testcase reduction will be based on a GLIBC crash being detected or not"
+    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically set MULTI_THREADS=1 and MULTI_THREADS_INCREASE=0: testcase reduction will be using a single thread only"
+    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping verify mode (as GLIBC crashes may be sporadic more often)"
+    if [ $FORCE_SKIPV -gt 0 ]; then
+      echo_out "[Info] FORCE_SKIPV active, which is meaningless. The verify stage is skipped automatically when REDUCE_GLIBC_CRASHES=1 and FORCE_SKIV is not evaluated."
+    fi
+    if [ $FORCE_SPORADIC -gt 0 ]; then
+      echo_out "[Info] FORCE_SPORADIC active, issue is assumed to be sporadic."
+      echo_out "[Init] FORCE_SPORADIC active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
+    fi
+  else
+    if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active, so FORCE_SPORADIC is automatically set active also" ; fi
+    if [ $FORCE_SPORADIC -gt 0 ]; then
+      if [ $FORCE_SKIPV -gt 0 ]; then
+        echo_out "[Init] FORCE_SPORADIC active. Issue is assumed to be sporadic"
+      else
+        echo_out "[Init] FORCE_SPORADIC active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
+      fi
+      echo_out "[Init] FORCE_SPORADIC, FORCE_SKIPV and/or PQUERY_MULTI active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
+    fi
   fi
   if [ $PQUERY_MULTI -eq 1 ]; then
     echo_out "[Init] PQUERY_MULTI turned on, so automatically set PQUERY_MOD=1: testcase reduction will be done using pquery"
-  fi
-  if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active, so FORCE_SPORADIC is automatically set active also" ; fi
-  if [ $FORCE_SPORADIC -gt 0 ]; then
-    if [ $FORCE_SKIPV -gt 0 ]; then
-      echo_out "[Init] FORCE_SPORADIC active. Issue is assumed to be sporadic"
-    else
-      echo_out "[Init] FORCE_SPORADIC active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
-    fi
-    echo_out "[Init] FORCE_SPORADIC, FORCE_SKIPV and/or PQUERY_MULTI active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
   fi
   if [ ${REDUCE_STARTUP_ISSUES} -eq 1 ]; then
     echo_out "[Init] REDUCE_STARTUP_ISSUES active. Issue is assumed to be a startup issue"
@@ -1163,7 +1183,7 @@ init_workdir_and_files(){
     fi
   fi
   if [ $PXC_MOD -gt 0 ]; then
-    echo_out "[Init] PXC_MOD is turned on, so automatically set PQUERY_MOD=1: Percona XtraDB Cluster testcase reduction is currently supported only with pquery"
+    echo_out "[Init] PXC_MOD active, so automatically set PQUERY_MOD=1: Percona XtraDB Cluster testcase reduction is currently supported only with pquery"
     if [ $MODE -eq 5 -o $MODE -eq 3 ]; then
       echo_out "[Warning] MODE=$MODE is set, as well as PXC mode active. This combination will likely work, but has not been tested yet. Please remove this warning (for MODE=$MODE only please) when it was tested succesfully"
     fi
@@ -2601,10 +2621,18 @@ verify(){
                            echo_out "[Init] Looking for "$MODE5_COUNTTEXT"x this string: '$TEXT' in mysql CLI verbose output (@ $WORKD/mysql.out when MULTI mode is not active)"
     if [ "$MODE5_ADDITIONAL_TEXT" != "" -a $MODE5_ADDITIONAL_COUNTTEXT -ge 1 ]; then 
                            echo_out "[Init] Looking additionally for "$MODE5_ADDITIONAL_COUNTTEXT"x this string: '$MODE5_ADDITIONAL_TEXT' in mysql CLI verbose output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi; fi
-  if [ $MODE -eq 4 ]; then echo_out "[Init] Run mode: MODE=4: Crash"
-                           echo_out "[Init] Looking for any mysqld crash"; fi
-  if [ $MODE -eq 3 ]; then echo_out "[Init] Run mode: MODE=3: mysqld error log"   
-                           echo_out "[Init] Looking for this string: '$TEXT' in mysqld error log output (@ $WORKD/error.log.out when MULTI mode is not active)"; fi
+  if [ $MODE -eq 4 ]; then 
+    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+                           echo_out "[Init] Run mode: MODE=4: GLIBC crash"
+                           echo_out "[Init] Looking for any GLIBC crash"; else
+                           echo_out "[Init] Run mode: MODE=4: Crash"
+                           echo_out "[Init] Looking for any mysqld crash"; fi; fi
+  if [ $MODE -eq 3 ]; then
+    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+                           echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_CRASHES=1: console typscript log"
+                           echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)"; else
+                           echo_out "[Init] Run mode: MODE=3: mysqld error log"   
+                           echo_out "[Init] Looking for this string: '$TEXT' in mysqld error log output (@ $WORKD/error.log.out when MULTI mode is not active)"; fi; fi
   if [ $MODE -eq 2 ]; then 
     if [ $PQUERY_MOD -eq 1 ]; then 
                            echo_out "[Init] Run mode: MODE=2: pquery client output"
