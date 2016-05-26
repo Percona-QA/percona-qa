@@ -1089,6 +1089,7 @@ init_workdir_and_files(){
   touch $WORKD/reducer.log
   echo_out "[Init] Workdir: $WORKD"
   export TMP=$WORKD/tmp
+  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then echo_out "[Init] Console TypeScript Log: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
   echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
   # jemalloc configuration for TokuDB plugin
   JE1="if [ \"\${JEMALLOC}\" != \"\" -a -r \"\${JEMALLOC}\" ]; then export LD_PRELOAD=\${JEMALLOC}"
@@ -1461,6 +1462,7 @@ start_mysqld_or_valgrind_or_pxc(){
     start_pxc_main
   else
     if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi
+    if [ -f $WORKD/mysql.out ]; then mv -f $WORKD/mysql.out $WORKD/mysql.prev; fi
     if [ -f $WORKD/pquery_thread-0.out ]; then mv -f $WORKD/pquery_thread-0.out $WORKD/pquery_thread-0.prev; fi
     if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
     if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
@@ -1704,7 +1706,9 @@ determine_chunk(){
         CHUNK_LOOPS_DONE=0
       fi
     else
-      return  # Slow down chunk size scaling (both for reductions and increases) by not modifying the chunk for SLOW_DOWN_CHUNK_SCALING_NR loops of determine_chunk() i.e. trials
+      if [ $LINECOUNTF -le $CHUNK ]; then  # Overload protection: CHUNK should not >= linecount. If it is, then this will ensure a new CHUNK size will still be determined below
+        return  # Slow down chunk size scaling (both for reductions and increases) by not modifying the chunk for SLOW_DOWN_CHUNK_SCALING_NR loops of determine_chunk() i.e. trials
+      fi
     fi
   fi
   if [ $LINECOUNTF -ge 1000 ]; then
@@ -1865,8 +1869,6 @@ run_and_check(){
 }
 
 run_sql_code(){
-  if [ -f $WORKD/mysql.out ]; then mv -f $WORKD/mysql.out $WORKD/mysql.prev; fi
-  if [ -f $WORKD/pquery_thread-0.out ]; then mv -f $WORKD/pquery_thread-0.out $WORKD/pquery_thread-0.prev; fi
   if [ $PXC_MOD -eq 0 ]; then
     mkdir $WORKD/data/test > /dev/null 2>&1 # Ensuring reducer can connect to the test database
   fi
