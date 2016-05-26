@@ -27,7 +27,7 @@
 # ======== User configurable variables section (see 'User configurable variable reference' below for more detail)
 # === Basic options
 INPUTFILE=                      # The SQL file to be reduced. This can also be given as the first option to reducer.sh. Do not use double quotes
-MODE=4                          # Always required. Most often used modes: 4=any crash, 3=look for specific text (set TEXT)
+MODE=4                          # Always required. Most often used modes: 4=any crash, 3=look for specific text (set TEXT search string for this mode)
 TEXT="somebug"                  # The text you are looking for. Regex capable. TEXT is searched for in specific location depending on MODE. Use with MODE=1,2,3,5,6,7,8
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
@@ -56,7 +56,7 @@ TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seco
 
 # === Advanced options
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
-SLOW_DOWN_CHUNK_SCALING_NR=3    # Number of failed attempts/loops before the chunk size is scaled (both for reductions and increases). Default=3
+SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for reductions and increases) by not modifying the chunk for SLOW_DOWN_CHUNK_SCALING_NR of trials. Default=3
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -73,8 +73,8 @@ PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of t
 PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary
 
 # === Other options             # The options are not often changed
-ENABLE_QUERYTIMEOUT=0           # On/Off (1/0) Enable the Query Timeout function (enables and uses the MySQL event scheduler) (turned off by default=0 since 26.05.2016)
-QUERYTIMEOUT=90                 # Querytimeout (mostly outdated: this was mainly applicable in RQG times where the RQG runs also had a query timeout)
+ENABLE_QUERYTIMEOUT=1           # On/Off (1/0) Enable the Query Timeout function (enables and uses the MySQL event scheduler)
+QUERYTIMEOUT=90                 # Query timeout in sec. Note: queries terminated by the query timeout did not fully replay, and thus overall issue reproducibility may be affected
 LOAD_TIMEZONE_DATA=0            # On/Off (1/0) Enable loading Timezone data into the database (mainly applicable for RQG runs) (turned off by default=0 since 26.05.2016)
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
 SKIPSTAGE=0                     # Usually not changed (default=0), skips one or more stages in the program
@@ -705,6 +705,7 @@ set_internal_options(){
   NOISSUEFLOW=0
   SKIPV=0
   SPORADIC=0
+  CHUNK_LOOPS_DONE=99999999999   # Has to be large to that determine_chunk() at least runs once
   C_COL_COUNTER=1
   TS_ELIMINATED_THREAD_COUNT=0
   TS_ORIG_VARS_FLAG=0
@@ -1173,7 +1174,7 @@ init_workdir_and_files(){
     if [ $MODE -eq 3 ]; then
       if grep -qi "Leave the 3 spaces" $0; then
         echo_out "[WARNING] ---------------------"
-        echo_out "[WARNING] REDUCE_GLIBC_CRASHES active, MODE=3, and this is a pquery-run.sh originating run. Have you updated the TEXT=\"...\" to a search string matching the console output of a GLIBC crash instead of the default TEXT string procured from the error log by pquery-prep-red.sh? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***"
+        echo_out "[WARNING] REDUCE_GLIBC_CRASHES active, MODE=3, and this is a pquery-run.sh originating run. Have you updated the TEXT=\"...\" to a search string matching the console output of a GLIBC crash instead of the default TEXT string procured from the error log by pquery-prep-red.sh? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***. Alternatively, set MODE=4 to look for any GLIBC crash."
         echo_out "[WARNING] ---------------------"
       fi
     fi       
@@ -1689,11 +1690,15 @@ start_valgrind_mysqld_main(){
 
 determine_chunk(){
   if [ $SLOW_DOWN_CHUNK_SCALING -gt 0 ]; then
-    DETERMINE_CHUNK_LOOPS=$[DETERMINE_CHUNK_LOOPS+1]
-    if [ $DETERMINE_CHUNK_LOOPS -gt $SLOW_DOWN_CHUNK_SCALING_LOOPS ]; then
-      DETERMINE_CHUNK_LOOPS=0
+    CHUNK_LOOPS_DONE=$[CHUNK_LOOPS_DONE+1]
+    if [ $CHUNK_LOOPS_DONE -gt $SLOW_DOWN_CHUNK_SCALING_NR ]; then
+      if [ $CHUNK_LOOPS_DONE -ge 99999999999 ]; then
+        CHUNK_LOOPS_DONE=1
+      else
+        CHUNK_LOOPS_DONE=0
+      fi
     else
-      break  # Slow down chunk size scaling (both for reductions and increases)
+      return  # Slow down chunk size scaling (both for reductions and increases) by not modifying the chunk for SLOW_DOWN_CHUNK_SCALING_NR loops of determine_chunk() i.e. trials
     fi
   fi
   if [ $LINECOUNTF -ge 1000 ]; then
@@ -2811,12 +2816,13 @@ if [ $SKIPSTAGE -lt 1 ]; then
   NEXTACTION="& try removing next random line(set)"
   STAGE=1
   TRIAL=1
-  if [ $LINECOUNTF -ge $STAGE1_LINES -o $PQUERY_MULTI -eq 1 -o $FORCE_SKIPV -eq 1 ]; then
+  if [ $LINECOUNTF -ge $STAGE1_LINES -o $PQUERY_MULTI -gt 0 -o $FORCE_SKIPV -gt 0 -o $REDUCE_GLIBC_CRASHES -gt 0 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE (duration depends on initial input file size)"
     while [ $LINECOUNTF -ge $STAGE1_LINES ]; do 
       if [ $LINECOUNTF -eq $STAGE1_LINES  ]; then NEXTACTION="& Progress to the next stage"; fi
       if [ $TRIAL -gt 1 ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining number of lines in input file: $LINECOUNTF"; fi 
-      if [ "$MULTI_REDUCER" != "1" -a $SPORADIC -eq 1 ]; then  # This is the parent/main reducer AND the issue is sporadic (so; need to use multiple threads)
+      if [ "$MULTI_REDUCER" != "1" -a $SPORADIC -eq 1 -a $REDUCE_GLIBC_CRASHES -le 0 ]; then  
+        # This is the parent/main reducer AND the issue is sporadic (so; need to use multiple threads). Disabled for REDUCE_GLIBC_CRASHES as it is always single-threaded
         multi_reducer $WORKF  # $WORKT is not used by the main reducer in this case. The subreducer uses $WORKT it's own session however (in the else below) 
       else
         determine_chunk

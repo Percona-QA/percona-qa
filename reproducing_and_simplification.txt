@@ -16,6 +16,8 @@ However, for issues that fail to reproduce, try these things (in this order):
 
 * If you have replay uses CLI vs MTR vs pquery note that MTR by default sets --default-storage-engine=MyISAM, which may lead to significant replay differences
 
+* Note that QUERYTIMEOUT may potentially affect overall issue reproducibility for issues where queries get terminated by the timeout (90 seconds by default)
+
 * Change the TEXT="..." to a much more simplified form. Regex capable. You can also use another string then the one suggested (like a stack excerpt) An example:
   Change "scale >= 0 .... precision > 0 .... scale <= precision" to "scale.*precision". If it works, verify correct functioning of percona-qa/text_string.sh
 
