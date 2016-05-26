@@ -653,7 +653,7 @@ options_check(){
   if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
     export -n MULTI_THREADS=1            # Likely not needed, because MULTI mode should never become active for REDUCE_GLIBC_CRASHES=1 (and there is a matching assert), 
     export -n MULTI_THREADS_INCREASE=0   # so it is here as a safety measure only FTM.
-    export -n SLOW_DOWN_CHUNK_SCALING=1  # Significantly slow down the chunk size scaling (both for reductions and increases)
+    export -n SLOW_DOWN_CHUNK_SCALING=1
     export -n SKIPV=1
     if [ $MODE -ne 3 -a $MODE -ne 4 ]; then
       echo "REDUCE_GLIBC_CRASHES is active, and MODE is set to MODE=$MODE, which is not supported (yet). Currently only modes 3 and 4 are supported when reducing GLIBC crashes"
@@ -681,6 +681,7 @@ options_check(){
   if [ $FORCE_SPORADIC -gt 0 ]; then
     export -n STAGE1_LINES=3
     export -n SPORADIC=1
+    export -n SLOW_DOWN_CHUNK_SCALING=1
   fi   
   export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|--no-defaults||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
@@ -928,6 +929,8 @@ multi_reducer(){
     elif [ $MULTI_FOUND -lt $MULTI_THREADS ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Only $MULTI_FOUND out of $MULTI_THREADS threads reproduced the issue: this issue is sporadic"
+      SLOW_DOWN_CHUNK_SCALING=1
+      echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Automatically enabled SLOW_DOWN_CHUNK_SCALING to speed up testcase reduction (SLOW_DOWN_CHUNK_SCALING_NR is set to $SLOW_DOWN_CHUNK_SCALING_NR)"
     fi
     return $MULTI_FOUND
   fi
@@ -1168,7 +1171,7 @@ init_workdir_and_files(){
       echo_out "[Info] FORCE_SKIPV active, which is meaningless. The verify stage is skipped automatically when REDUCE_GLIBC_CRASHES=1 and FORCE_SKIV is not evaluated."
     fi
     if [ $FORCE_SPORADIC -gt 0 ]; then
-      echo_out "[Info] FORCE_SPORADIC active, issue is assumed to be sporadic."
+      echo_out "[Info] FORCE_SPORADIC active, issue is assumed to be sporadic"
       echo_out "[Init] FORCE_SPORADIC active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
     fi
     if [ $MODE -eq 3 ]; then
@@ -1188,6 +1191,9 @@ init_workdir_and_files(){
       fi
       echo_out "[Init] FORCE_SPORADIC, FORCE_SKIPV and/or PQUERY_MULTI active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
     fi
+  fi
+  if [ $FORCE_SPORADIC -gt 0 ]; then
+    echo_out "[Init] FORCE_SPORADIC active, so automatically enabled SLOW_DOWN_CHUNK_SCALING to speed up testcase reduction (SLOW_DOWN_CHUNK_SCALING_NR is set to $SLOW_DOWN_CHUNK_SCALING_NR)"
   fi
   if [ $PQUERY_MULTI -eq 1 ]; then
     echo_out "[Init] PQUERY_MULTI turned on, so automatically set PQUERY_MOD=1: testcase reduction will be done using pquery"
@@ -1691,7 +1697,7 @@ start_valgrind_mysqld_main(){
 determine_chunk(){
   if [ $SLOW_DOWN_CHUNK_SCALING -gt 0 ]; then
     CHUNK_LOOPS_DONE=$[CHUNK_LOOPS_DONE+1]
-    if [ $CHUNK_LOOPS_DONE -gt $SLOW_DOWN_CHUNK_SCALING_NR ]; then
+    if [ $CHUNK_LOOPS_DONE -gt $SLOW_DOWN_CHUNK_SCALING_NR -o $NOISSUEFLOW -le 0 ]; then
       if [ $CHUNK_LOOPS_DONE -ge 99999999999 ]; then
         CHUNK_LOOPS_DONE=1
       else
