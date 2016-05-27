@@ -105,9 +105,9 @@ echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./sta
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node1/node1.err \\" >> ./start_pxc
-if [ $KEY_RING_OPTIONS -eq 1 ];
-  echo "    --early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node1/keyring \\" >> ./start_pxc
-fi
+echo "if [ \$KEY_RING_OPTIONS -eq 1 ]; then" >> ./start_pxc
+echo "    --early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node1/keyring \\" >> ./start_pxc
+echo "fi" >> ./start_pxc
 echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
 echo "    --keyring_file_data=$keyring_node1/keyring \\" >> ./start_pxc
 echo "    --socket=$node1/socket.sock --log-output=none \\" >> ./start_pxc
@@ -139,9 +139,9 @@ echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./sta
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node2/node2.err \\" >> ./start_pxc
-if [ $KEY_RING_OPTIONS -eq 1 ];
-  echo "    --early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node2/keyring \\" >> ./start_pxc
-fi
+echo "if [ \$KEY_RING_OPTIONS -eq 1 ]; then" >> ./start_pxc
+echo "    --early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node2/keyring \\" >> ./start_pxc
+echo "fi" >> ./start_pxc
 echo "    --socket=$node2/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &" >> ./start_pxc
 
@@ -172,9 +172,9 @@ echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./sta
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node3/node3.err \\" >> ./start_pxc
-if [ $KEY_RING_OPTIONS -eq 1 ];
-  echo "    --early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node3/keyring \\" >> ./start_pxc
-fi
+echo "if [ \$KEY_RING_OPTIONS -eq 1 ]; then" >> ./start_pxc
+echo "    --early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node3/keyring \\" >> ./start_pxc
+echo "fi" >> ./start_pxc
 echo "    --socket=$node3/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &" >> ./start_pxc
 
