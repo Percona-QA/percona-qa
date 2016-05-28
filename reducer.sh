@@ -3564,6 +3564,12 @@ if [ $SKIPSTAGE -lt 8 ]; then
       STAGE8_CHK=0
       COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
+      if echo "${MYEXTRA}" | grep 'tokudb'; then
+        if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
+          MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variable"
+        fi
+      fi
       run_and_check
       TRIAL=$[$TRIAL+1]
       STAGE8_OPT=$line
@@ -3586,6 +3592,7 @@ if [ $SKIPSTAGE -lt 8 ]; then
         if echo "${MYEXTRA}" | grep 'tokudb'; then
           if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
             MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variables"
           fi
         fi
         run_and_check
@@ -3605,6 +3612,7 @@ if [ $SKIPSTAGE -lt 8 ]; then
           if echo "${MYEXTRA}" | grep 'tokudb'; then
             if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
               MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
+              echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variables"
             fi
           fi
           run_and_check
