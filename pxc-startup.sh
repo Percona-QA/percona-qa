@@ -66,10 +66,12 @@ node3="${BUILD}/node3"
 keyring_node1="${BUILD}/keyring_node1"
 keyring_node2="${BUILD}/keyring_node2"
 keyring_node3="${BUILD}/keyring_node3"
-
+KEY_RING_CHECK=0
 if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
   mkdir -p $node1 $node2 $node3
   mkdir -p $keyring_node1 $keyring_node2 $keyring_node3
+elif [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+  KEY_RING_CHECK=1
 fi
 
 echo "PXC_MYEXTRA=\"\"" > ./start_pxc
@@ -90,6 +92,10 @@ echo "\${MID} --datadir=$node1  > ${BUILD}/startup_node1.err 2>&1 || exit 1;" >>
 
 echo -e "\n" >> ./start_pxc
 
+if [ $KEY_RING_CHECK -eq 1 ]; then
+  KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node1/keyring"
+fi
+
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node1 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
@@ -102,9 +108,7 @@ echo "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start
 echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
-echo "    --log-error=$node1/node1.err \\" >> ./start_pxc
-echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
-echo "    --keyring_file_data=$keyring_node1/keyring \\" >> ./start_pxc
+echo "    --log-error=$node1/node1.err $KEY_RING_OPTIONS \\" >> ./start_pxc
 echo "    --socket=$node1/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/node1.err 2>&1 &" >> ./start_pxc
 
@@ -121,6 +125,10 @@ echo "\${MID} --datadir=$node2  > ${BUILD}/startup_node2.err 2>&1 || exit 1;" >>
 
 echo -e "\n" >> ./start_pxc
 
+if [ $KEY_RING_CHECK -eq 1 ]; then
+  KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node2/keyring"
+fi
+
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node2 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
@@ -133,9 +141,7 @@ echo "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start
 echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
-echo "    --log-error=$node2/node2.err \\" >> ./start_pxc
-echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
-echo "    --keyring_file_data=$keyring_node2/keyring \\" >> ./start_pxc
+echo "    --log-error=$node2/node2.err $KEY_RING_OPTIONS \\" >> ./start_pxc
 echo "    --socket=$node2/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &" >> ./start_pxc
 
@@ -153,6 +159,10 @@ echo "\${MID} --datadir=$node3  > ${BUILD}/startup_node2.err 2>&1 || exit 1;" >>
 
 echo -e "\n" >> ./start_pxc
 
+if [ $KEY_RING_CHECK -eq 1 ]; then
+  KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node3/keyring"
+fi
+
 echo "${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
 echo "    --basedir=${BUILD} --datadir=$node3 \\" >> ./start_pxc
 echo "    --loose-debug-sync-timeout=600 --skip-performance-schema \\" >> ./start_pxc
@@ -165,9 +175,7 @@ echo "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start
 echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo "    --core-file --loose-new --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo "    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
-echo "    --log-error=$node3/node3.err \\" >> ./start_pxc
-echo "    --early-plugin-load=keyring_file.so \\" >> ./start_pxc
-echo "    --keyring_file_data=$keyring_node3/keyring \\" >> ./start_pxc
+echo "    --log-error=$node3/node3.err $KEY_RING_OPTIONS \\" >> ./start_pxc
 echo "    --socket=$node3/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &" >> ./start_pxc
 
