@@ -56,7 +56,7 @@ TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seco
 
 # === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
-SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for reductions and increases) by not modifying the chunk for SLOW_DOWN_CHUNK_SCALING_NR of trials. Default=3
+SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -705,7 +705,7 @@ set_internal_options(){
   NOISSUEFLOW=0
   SKIPV=0
   SPORADIC=0
-  CHUNK_LOOPS_DONE=99999999999   # Has to be large to that determine_chunk() at least runs once
+  CHUNK_LOOPS_DONE=99999999999   # Has to be exactly 99999999999 to ensure that determine_chunk() at least runs once
   C_COL_COUNTER=1
   TS_ELIMINATED_THREAD_COUNT=0
   TS_ORIG_VARS_FLAG=0
@@ -1171,7 +1171,7 @@ init_workdir_and_files(){
     else
       echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often"
     fi
-    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically set SLOW_DOWN_CHUNK_SCALING=1 to slow down the chunk size scaling (both for reductions and increases)"
+    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically set SLOW_DOWN_CHUNK_SCALING=1 to slow down chunk size scaling (both for chunk reductions and increases)"
     if [ $FORCE_SPORADIC -gt 0 ]; then
       echo_out "[Info] FORCE_SPORADIC active, issue is assumed to be sporadic"
       echo_out "[Init] FORCE_SPORADIC active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
@@ -1697,20 +1697,23 @@ start_valgrind_mysqld_main(){
 }
 
 determine_chunk(){
+  if [ $NOISSUEFLOW -lt 0 ]; then NOISSUEFLOW=0; fi
+  # Slow down chunk size scaling (both for CHUNK reductions and increases) by not modifying the chunk for SLOW_DOWN_CHUNK_SCALING_NR loops of determine_chunk() i.e. trials
   if [ $SLOW_DOWN_CHUNK_SCALING -gt 0 ]; then
     CHUNK_LOOPS_DONE=$[CHUNK_LOOPS_DONE+1]
-    if [ $CHUNK_LOOPS_DONE -gt $SLOW_DOWN_CHUNK_SCALING_NR -o $NOISSUEFLOW -le 0 ]; then
-      if [ $CHUNK_LOOPS_DONE -ge 99999999999 ]; then
-        CHUNK_LOOPS_DONE=1
-      else
-        CHUNK_LOOPS_DONE=0
-      fi
-    else
-      if [ $LINECOUNTF -le $CHUNK ]; then  # Overload protection: CHUNK should not >= linecount. If it is, then this will ensure a new CHUNK size will still be determined below
-        return  # Slow down chunk size scaling (both for reductions and increases) by not modifying the chunk for SLOW_DOWN_CHUNK_SCALING_NR loops of determine_chunk() i.e. trials
+    if [ $CHUNK_LOOPS_DONE -le $SLOW_DOWN_CHUNK_SCALING_NR ]; then  # Need to ensure we can exit determine_chunk() early (have had enough _NR rounds/loops)
+      if [ $CHUNK_LOOPS_DONE -lt 99999999999 ]; then  # Need to ensure that this is not the very first loop (where first CHUNK determination) (see set_internal_options())
+        if [ $CHUNK -lt $LINECOUNTF ]; then  # Need to ensure that CHUNK is less then the filesize (to avoid wiping the whole testcase away)
+          if [ $NOISSUEFLOW -gt 0 ]; then  # Need to ensure we haven't just seen the issue (in which case new CHUNK determination is best)
+            if [ $CHUNK -gt 0 ]; then  # Need to ensure we do not have a negative CHUNK size
+              return;  # Exit determine_chunk() early to do another loop with the same pre-established CHUNK size (i.e. SLOW_DOWN_CHUNK_SCALING in action)
+            fi
+          fi
+        fi
       fi
     fi
   fi
+  CHUNK_LOOPS_DONE=1
   if [ $LINECOUNTF -ge 1000 ]; then
     if [ $NOISSUEFLOW -ge 20 ]; then CHUNK=0
     elif [ $NOISSUEFLOW -ge 18 ]; then CHUNK=$[$LINECOUNTF/500]
@@ -1742,7 +1745,6 @@ determine_chunk(){
     else CHUNK=$[$LINECOUNTF/4]                                    # 25% delete
     fi
   fi
-  if [ $NOISSUEFLOW -lt 0 ]; then NOISSUEFLOW=0; fi
   # For issues which are sporadic, gradually reducing the CHUNK is ok, as long as reduction is done much slower (reducer should not end up with single 
   # line removals per trial too quickly since this leads to very slow testcase reduction. So, a smarter algorithm can be used here based on the remaining
   # testcase size and a much slower/much less important $NOISSUEFLOW input ($NOISSUEFLOW 1/100th % input; if 50 no-issue-runs then reduce chunk by 50%)
