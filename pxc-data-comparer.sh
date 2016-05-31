@@ -1,5 +1,4 @@
 #!/bin/bash
-# This script is for PXC Testing ChaosMonkey Style
 # Please install PXC on your machine and execute this script from node1
 # Also install following tools
 # sysbench 0.5, percona-toolkit
