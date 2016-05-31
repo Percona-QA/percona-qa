@@ -319,7 +319,7 @@ pxc_startup(){
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
     --basedir=${BASEDIR} --datadir=$node1 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm:// \
     --wsrep_node_incoming_address=$ADDR \
@@ -346,7 +346,7 @@ pxc_startup(){
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
     --basedir=${BASEDIR} --datadir=$node2 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
     --wsrep_node_incoming_address=$ADDR \
@@ -373,7 +373,7 @@ pxc_startup(){
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
     --basedir=${BASEDIR} --datadir=$node3 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
     --wsrep_node_incoming_address=$ADDR \
@@ -607,7 +607,7 @@ pquery_test(){
       echoit "ADD_RANDOM_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
       PXC_MYEXTRA="${OPTIONS_TO_ADD}"
     fi
-    echo "${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
+    echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     pxc_startup 
     echoit "Waiting for the 3 node PXC Cluster to fully start..."
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
