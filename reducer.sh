@@ -935,8 +935,7 @@ multi_reducer(){
     elif [ $MULTI_FOUND -lt $MULTI_THREADS ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Only $MULTI_FOUND out of $MULTI_THREADS threads reproduced the issue: this issue is sporadic"
-      SLOW_DOWN_CHUNK_SCALING=1
-      echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Automatically enabled SLOW_DOWN_CHUNK_SCALING to speed up testcase reduction (SLOW_DOWN_CHUNK_SCALING_NR is set to $SLOW_DOWN_CHUNK_SCALING_NR)"
+      # Do not enable SLOW_DOWN_CHUNK_SCALING=1 here! It is not suited for MULTI mode, as subreducers will then have a fully-static chunck size because of the main reducer.sh keeping the same chunk size, and the subreducers initially take a copy, and instead of scaling their chunks, they keep the chunks from the main one... or something. The visual effect of enabling this here is that x in "Remaining number of lines in input file: x" remains static, acrross many "Thread #y reproduced the issue" trials.
     fi
     return $MULTI_FOUND
   fi
