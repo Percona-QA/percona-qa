@@ -136,7 +136,11 @@ SPASS=
 
 check_script(){
   MPID=$1
-  if [ ${MPID} -eq 1 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
+  if [ ${MPID} -eq 1 ]; then 
+    echo "Assert! ${MPID} empty. Terminating!"; 
+    grep "ERROR" ${WORKDIR}/logs/*.err
+    exit 1; 
+  fi
 }
 
 function async_rpl_test(){
@@ -184,6 +188,10 @@ function async_rpl_test(){
          break
       fi
     done
+    if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc1.sock ping > /dev/null 2>&1; then
+      echo "PXC startup failed.."
+      grep "ERROR" ${WORKDIR}/logs/node1.err
+    fi
     sleep 10
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"FLUSH LOGS"
     MASTER_LOG_FILE=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show master logs" | awk '{print $1}' | tail -1`
@@ -227,7 +235,10 @@ function async_rpl_test(){
          break
       fi
     done
-  
+    if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc2.sock ping > /dev/null 2>&1; then
+      echo "PXC startup failed.."
+      grep "ERROR" ${WORKDIR}/logs/node2.err
+    fi
     sleep 10
     
     echo "Starting PXC node3"
@@ -257,6 +268,10 @@ function async_rpl_test(){
          break
       fi
     done
+    if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc3.sock ping > /dev/null 2>&1; then
+      echo "PXC startup failed.."
+      grep "ERROR" ${WORKDIR}/logs/node3.err
+    fi
   }
   ## Start PXC nodes
   pxc_start
@@ -285,7 +300,10 @@ function async_rpl_test(){
         break
       fi
     done
-
+    if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps1.sock ping > /dev/null 2>&1; then
+      echo "PS startup failed.."
+      grep "ERROR" ${WORKDIR}/logs/psnode1.err
+    fi
     echo "Starting independent PS node2.."
     ${MID} --datadir=$psnode2  > $WORKDIR/logs/psnode2.err 2>&1 || exit 1;
     pushd ${PXC_BASEDIR}/mysql-test/
@@ -306,6 +324,10 @@ function async_rpl_test(){
         break
       fi
     done
+    if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps2.sock ping > /dev/null 2>&1; then
+      echo "PS startup failed.."
+      grep "ERROR" ${WORKDIR}/logs/psnode2.err
+    fi
 
     echo "Starting independent PS node3.."
     ${MID} --datadir=$psnode3  > $WORKDIR/logs/psnode3.err 2>&1 || exit 1;
@@ -327,6 +349,10 @@ function async_rpl_test(){
         break
       fi
     done
+    if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps3.sock ping > /dev/null 2>&1; then
+      echo "PS startup failed.."
+      grep "ERROR" ${WORKDIR}/logs/psnode3.err
+    fi
     sleep 5
   
     #Creating dsns table for table checkum
@@ -339,6 +365,7 @@ function async_rpl_test(){
   ps_start
 
   function node1_master_test(){
+    echo "******************** $MYEXTRA_CHECK PXC node-1 as master ************************"
     #OLTP RW run
     $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
       --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
@@ -365,9 +392,12 @@ function async_rpl_test(){
     pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns \
       --no-check-binlog-format > $WORKDIR/logs/node1_master_checksum.log 2>&1
     check_script $?
+    echo -e "\n1 pxc1. PXC node-1 as master: Checksum result.\n"
+    cat $WORKDIR/logs/node1_master_checksum.log
   }
 
   function node2_master_test(){
+    echo "******************** $MYEXTRA_CHECK PXC-node-2 becomes master (take over from node-1) ************************"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e"stop slave; reset slave all"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -e"FLUSH LOGS"
     MASTER_LOG_FILE=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show master logs" | awk '{print $1}' | tail -1`
@@ -404,10 +434,12 @@ function async_rpl_test(){
 
     pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns --no-check-binlog-format > $WORKDIR/logs/node2_master_checksum.log 2>&1
     check_script $?
+    echo -e "\n2. pxc2. PXC-node-2 becomes master (took over from node-1): Checksum result.\n"
+    cat $WORKDIR/logs/node2_master_checksum.log
   }
 
   function node1_slave_test(){
-
+    echo "********************$MYEXTRA_CHECK PXC-as-slave (node-1) from independent master ************************"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e"FLUSH LOGS"
     MASTER_LOG_FILE=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -Bse "show master logs" | awk '{print $1}' | tail -1`
     if [ "$MYEXTRA_CHECK" == "GTID" ]; then
@@ -452,9 +484,12 @@ function async_rpl_test(){
     pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test,ps_test_1 --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns \
      --no-check-binlog-format > $WORKDIR/logs/node1_slave_checksum.log 2>&1
     check_script $?
+    echo -e "\n3. pxc3. PXC-as-slave (node-1) from independent master: Checksum result.\n"
+    cat $WORKDIR/logs/node1_slave_checksum.log
   }
 
   function node2_slave_test(){
+    echo "********************$MYEXTRA_CHECK PXC-as-slave (node-2) from independent master ************************"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e"FLUSH LOGS"
     MASTER_LOG_FILE=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -Bse "show master logs" | awk '{print $1}' | tail -1`
     if [ "$MYEXTRA_CHECK" == "GTID" ]; then
@@ -498,9 +533,12 @@ function async_rpl_test(){
     pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test,ps_test_1,ps_test_2 --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns \
      --no-check-binlog-format > $WORKDIR/logs/node2_slave_checksum.log 2>&1
     check_script $?
+    echo -e "\n4. PXC-as-slave (node-2) from independent master: Checksum result.\n"
+    cat $WORKDIR/logs/node2_slave_checksum.log
   }
 
   function pxc_master_slave_test(){
+    echo "********************$MYEXTRA_CHECK PXC - master - and - slave ************************"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -e"FLUSH LOGS"
     MASTER_LOG_FILE=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show master logs" | awk '{print $1}' | tail -1`
 
@@ -548,9 +586,12 @@ function async_rpl_test(){
     pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test,ps_test_1,ps_test_2,master_test --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns \
      --no-check-binlog-format > $WORKDIR/logs/pxc_master_slave_checksum.log 2>&1
     check_script $?
+    echo -e "\n5. PXC - master - and - slave: Checksum result.\n"
+    cat  $WORKDIR/logs/pxc_master_slave_checksum.log
   }
 
   function pxc_ps_master_slave_shuffle_test(){
+    echo "********************$MYEXTRA_CHECK PXC - master - and - slave shuffle test ************************"
     echo "Stopping PXC node1 for shuffle test"
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown > /dev/null 2>&1
 
@@ -616,9 +657,12 @@ function async_rpl_test(){
     pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d test --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns \
       --no-check-binlog-format > $WORKDIR/logs/pxc_master_slave_shuffle_checksum.log 2>&1
     check_script $?
+    echo -e "\n6. PXC shuffle master - and - slave : Checksum result.\n"
+    cat  $WORKDIR/logs/pxc_master_slave_shuffle_checksum.log
   }
   
   function pxc_msr_test(){
+    echo "********************$MYEXTRA_CHECK PXC - multi source replication test ************************"
     #Shutdown PXC/PS servers for MSR test
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
@@ -728,9 +772,12 @@ function async_rpl_test(){
   
     pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d msr_db_master1,msr_db_master2,msr_db_master3 --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns --no-check-binlog-format > $WORKDIR/logs/pxc_msr_checksum.log 2>&1
     check_script $?
+    echo -e "\n7. PXC - multi source replication: Checksum result.\n"
+    cat  $WORKDIR/logs/pxc_msr_checksum.log
   }
   
   function pxc_mtr_test(){
+    echo "********************$MYEXTRA_CHECK PXC - multi thread replication test ************************"
     #Shutdown PXC/PS servers for MSR test
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
@@ -913,6 +960,8 @@ function async_rpl_test(){
 
     pt-table-checksum h=${ADDR},P=$RBASE1,u=root -d mtr_db_pxc1,mtr_db_pxc2,mtr_db_pxc3,mtr_db_pxc4,mtr_db_pxc5,mtr_db_ps1,mtr_db_ps2,mtr_db_ps3,mtr_db_ps4,mtr_db_ps5 --recursion-method dsn=h=${ADDR},P=$RBASE1,u=root,D=percona,t=dsns --no-check-binlog-format > $WORKDIR/logs/pxc_mtr_checksum.log 2>&1
     check_script $?
+    echo -e "\n8. PXC - multi thread replication: Checksum result.\n"
+    cat  $WORKDIR/logs/pxc_mtr_checksum.log
   }
 
   node1_master_test
@@ -930,25 +979,6 @@ async_rpl_test GTID
 
 async_rpl_test 
 
-#Checksum result.
-echo -e "\pxc1. PXC node-1 as master: Checksum result.\n"
-cat $WORKDIR/logs/node1_master_checksum.log
-echo -e "\pxc2. PXC-node-2 becomes master (took over from node-1): Checksum result.\n"
-cat $WORKDIR/logs/node2_master_checksum.log
-echo -e "\pxc3. PXC-as-slave (node-1) from independent master: Checksum result.\n"
-cat $WORKDIR/logs/node1_slave_checksum.log
-echo -e "\n4. PXC-as-slave (node-2) from independent master: Checksum result.\n"
-cat $WORKDIR/logs/node2_slave_checksum.log
-echo -e "\n5. PXC - master - and - slave: Checksum result.\n"
-cat  $WORKDIR/logs/pxc_master_slave_checksum.log
-echo -e "\n6. PXC shuffle master - and - slave : Checksum result.\n"
-cat  $WORKDIR/logs/pxc_master_slave_shuffle_checksum.log
-echo -e "\n7. PXC - multi source replication: Checksum result.\n"
-cat  $WORKDIR/logs/pxc_msr_checksum.log
-echo -e "\n8. PXC - multi thread replication: Checksum result.\n"
-cat  $WORKDIR/logs/pxc_mtr_checksum.log
-
-
 #Shutdown PXC/PS servers
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
@@ -959,24 +989,6 @@ $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
 
 echo "**************** ASYNC REPLICATION TEST RUN WITHOUT GTID ***************"
 async_rpl_test 
-
-#Checksum result.
-echo -e "\pxc1. PXC node-1 as master: Checksum result.\n"
-cat $WORKDIR/logs/node1_master_checksum.log
-echo -e "\pxc2. PXC-node-2 becomes master (took over from node-1): Checksum result.\n"
-cat $WORKDIR/logs/node2_master_checksum.log
-echo -e "\pxc3. PXC-as-slave (node-1) from independent master: Checksum result.\n"
-cat $WORKDIR/logs/node1_slave_checksum.log
-echo -e "\n4. PXC-as-slave (node-2) from independent master: Checksum result.\n"
-cat $WORKDIR/logs/node2_slave_checksum.log
-echo -e "\n5. PXC - master - and - slave: Checksum result.\n"
-cat  $WORKDIR/logs/pxc_master_slave_checksum.log
-echo -e "\n6. PXC shuffle master - and - slave : Checksum result.\n"
-cat  $WORKDIR/logs/pxc_master_slave_shuffle_checksum.log
-echo -e "\n7. PXC - multi source replication: Checksum result.\n"
-cat  $WORKDIR/logs/pxc_msr_checksum.log
-echo -e "\n8. PXC - multi thread replication: Checksum result.\n"
-cat  $WORKDIR/logs/pxc_mtr_checksum.log
 
 
 #Shutdown PXC/PS servers
