@@ -694,25 +694,25 @@ set_internal_options(){  # Internal options: do not modify!
   RANDOM=$SEED
   sleep 0.1$RANDOM  # Subreducer OS slicing?
   WHOAMI=$(whoami)
-  if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer. For subreducers, EPOCH is set in #VARMOD#
+  if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer. For subreducers, EPOCH, SKIPV, SPORADIC is set in #VARMOD#
     EPOCH=$(date +%s)  # Used for /dev/shm work directory name and WORK_INIT, WORK_START etc. file names
+    SKIPV=0
+    SPORADIC=0
+    MYUSER=$(whoami)
   else
-    if [ "${EPOCH}" == "" ]; then
-      echo "Assert: EPOCH is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"
-      exit 1
-    fi
+    if [ "${EPOCH}" == "" ];    then echo "Assert: \$EPOCH is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"; exit 1; fi
+    if [ "${SKIPV}" == "" ];    then echo "Assert: \$SKIPV is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"; exit 1; fi
+    if [ "${SPORADIC}" == "" ]; then echo "Assert: \$SPORADIC is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"; exit 1; fi
+    if [ "${MYUSER}" == "" ];   then echo "Assert: \$MYUSER is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"; exit 1; fi
   fi
   trap ctrl_c SIGINT  # Requires ${EPOCH} to be set already
   DROPC="DROP DATABASE transforms;CREATE DATABASE transforms;DROP DATABASE test;CREATE DATABASE test;USE test;"
-  MYUSER=$(whoami)
   STARTUPCOUNT=0
   ATLEASTONCE="[]"
   TRIAL=1
   STAGE='0'
   STUCKTRIAL=0
   NOISSUEFLOW=0
-  SKIPV=0
-  SPORADIC=0
   CHUNK_LOOPS_DONE=99999999999   # Has to be exactly 99999999999 to ensure that determine_chunk() at least runs once
   C_COL_COUNTER=1
   TS_ELIMINATED_THREAD_COUNT=0
