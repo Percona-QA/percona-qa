@@ -607,7 +607,7 @@ pquery_test(){
       echoit "ADD_RANDOM_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
       PXC_MYEXTRA="${OPTIONS_TO_ADD}"
     fi
-    echo "${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
+    echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     pxc_startup 
     echoit "Waiting for the 3 node PXC Cluster to fully start..."
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
