@@ -494,13 +494,15 @@ pquery_test(){
     echo "## Good for reproducing mysqld (5.7+) startup issues only (full issues need a data dir, so use mysql_install_db or mysqld --init for those)" > ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Setting up directories...'" >> ${RUNDIR}/${TRIAL}/start
     echo "rm -Rf ${RUNDIR}/${TRIAL}" >> ${RUNDIR}/${TRIAL}/start
-    echo "mkdir -p ${RUNDIR}/${TRIAL}/data ${RUNDIR}/${TRIAL}/tmp" >> ${RUNDIR}/${TRIAL}/start
+    echo "mkdir -p ${RUNDIR}/${TRIAL}/data ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Data dir init...'" >> ${RUNDIR}/${TRIAL}/start
     echo "${BIN} --no-defaults --initialize-insecure --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${RUNDIR}/${TRIAL}/socket.sock --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Starting mysqld...'" >> ${RUNDIR}/${TRIAL}/start
     echo "${CMD} > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" >> ${RUNDIR}/${TRIAL}/start
     echo "# Same startup command, but without MYEXTRA included:" >> ${RUNDIR}/${TRIAL}/start 
-    echo "#$(echo ${CMD} | sed 's|${MYEXTRA}||')" >> ${RUNDIR}/${TRIAL}/start
+    echo "#$(echo ${CMD} | sed "s|${MYEXTRA}||")" >> ${RUNDIR}/${TRIAL}/start
+    echo "# Same startup command, but without MYEXTRA and MYSAFE included:" >> ${RUNDIR}/${TRIAL}/start 
+    echo "#$(echo ${CMD} | sed "s|${MYEXTRA}||" | sed "s|${MYSAFE}||")" >> ${RUNDIR}/${TRIAL}/start
     chmod +x ${RUNDIR}/${TRIAL}/start
     echo "BASEDIR=$BASEDIR" > ${RUNDIR}/${TRIAL}/start_recovery
     echo "if [ -r /usr/lib64/libjemalloc.so.1 ]; then" >> ${RUNDIR}/${TRIAL}/start_recovery

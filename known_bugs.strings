@@ -630,6 +630,7 @@ Z7sortcmpPK6StringS1_P15charset_info_st                                         
 Z10find_type2PK10st_typelibPKcjP15charset_info_st                                       ## http://bugs.mysql.com/bug.php?id=81457
 ZN8Item_row7val_strEP6String                                                            ## http://bugs.mysql.com/bug.php?id=57552 and 76468
 ZNK4Item10field_typeEv                                                                  ## http://bugs.mysql.com/bug.php?id=81532
+ZN15Event_scheduler5startEPi                                                            ## https://bugs.launchpad.net/percona-server/+bug/1587195
 
 ## =========== Error log crashing query based ===========
 ^Query ([0-9a-f]\+): SELECT.*FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG$                  ## https://bugs.launchpad.net/percona-server/+bug/1375153

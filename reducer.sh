@@ -41,13 +41,13 @@ FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as spo
 # === True Multi-Threaded       # True multi-threaded testcase reduction (only program in the world that does this) based on random replay (auto-covers sporadic testcases)
 PQUERY_MULTI=0                  # On/off (1/0) Enables true multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
 
-# === Reduce startup issues     # This mode prevents reducer.sh exit when first server start fails, thereby reducing mysqld startup issues
-REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce the testcase based on mysqld startup issues, caused for example by a failing --option to mysqld
+# === Reduce startup issues     # Reduces startup issues. This will only work if a clean start (mysqld --no-defaults) works correctly; otherwise template creation will fail also
+REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce mysqld startup issues (without SQL simplication), caused for example by a failing --option to mysqld
 
-# === Reduce GLIBC crashes      # Remember that if you use REDUCE_GLIBC_CRASHES=1 with MODE=3, then the console/typescript log is searched for TEXT, not the mysqld error log!
+# === Reduce GLIBC crashes      # Remember that if you use REDUCE_GLIBC_CRASHES=1 with MODE=3, then the console/typescript log is searched for TEXT, not the mysqld error log
 REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. MODE=3 and MODE=4 are supported
 SCRIPT_LOC=/usr/bin/script      # Script binary (part of util-linux package), which is required when/for reducing GLIBC crashes
-TYPESCRIPT_UNIQUE_FILESUFFIX=1  # IMPORTANT: when reducing multiple GLIBC crashes, each reducer.sh (only those with REDUCE_GLIBC_CRASHES=1 activated) needs a unique number here!
+TYPESCRIPT_UNIQUE_FILESUFFIX=1  # IMPORTANT: when reducing multiple GLIBC crashes, each reducer.sh (only those with REDUCE_GLIBC_CRASHES=1 activated) needs a unique number here
 
 # === Shutdown/hanging issues   # For mysqld hang testcas reduction (use TIMEOUT_CHECK + MODE=0) and for 'only reproducible at shutdown' testcase reduction (use TIMEOUT_COMMAND)
 TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
@@ -328,7 +328,7 @@ TS_VARIABILITY_SLEEP=1
 #   outf   This file definitely causes the same issue as $WORKO can, while being smaller
 # $WORK_INIT, WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN, $WORK_RUN_PQUERY: Vars that point to various start/run scripts that get added to testcase working dir
 # WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
-#   of them use ${EPOCH2} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
+#   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
 # For GLIBC crash reduction, we need to capture the output of the console from which reducer.sh is started. Currently only a SINGLE threaded solution using the 'scrip'
 # binary from the util-linux package was found. The script binary is able to capture the GLIC output from the main console. It may be interesting to review the source C
@@ -364,20 +364,24 @@ echo_out_overwrite(){
 
 ctrl_c(){
   echo_out "[Abort] CTRL+C Was pressed. Dumping variable stack"
-  echo_out "[Abort] WORKD: $WORKD (reducer log @ $WORKD/reducer.log)"
+  echo_out "[Abort] WORKD: $WORKD (reducer log @ $WORKD/reducer.log) | EPOCH: $EPOCH"
   if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
     echo_out "[Abort] Best testcase thus far: $WORKO"
   else
     echo_out "[Abort] Best testcase thus far: $INPUTFILE (= input file, no optimizations were successful)"
   fi
-  echo_out "[Abort] End of dump stack."
+  echo_out "[Abort] End of dump stack"
   if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining PXC nodes are terminated and removed"
     (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync 
   fi
-  echo_out "[Abort] Ensuring any remaining live processes are terminated"
-  PIDS_TO_TERMINATE=$(ps -ef | grep "$DIRVALUE" | grep -v "grep" | awk '{print $2}' | tr '\n' ' ')
+  echo_out "[Abort] Ensuring any remaining processes are terminated"
+  if [ "$EPOCH" != "" ]; then  
+    PIDS_TO_TERMINATE=$(ps -ef | grep $WHOAMI | grep $EPOCH | grep -v "grep" | awk '{print $2}' | tr '\n' ' ')
+  else
+    echo_out "Assert: \$EPOCH is empty! in ctrl_c()!"
+  fi
   echo_out "[Abort] Terminating these PID's: $PIDS_TO_TERMINATE"
   kill -9 $PIDS_TO_TERMINATE >/dev/null 2>&1
   echo_out "[Abort] What follows below is a call of finish(), the results are likely correct, but may be mangled due to the interruption"
@@ -685,16 +689,20 @@ options_check(){
   export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|--no-defaults||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
 
-set_internal_options(){
-  # Internal options: do not modify!
+set_internal_options(){  # Internal options: do not modify!
   SEED=$(head -1 /dev/urandom | od -N 1 | awk '{print $2 }') 
   RANDOM=$SEED
-  EPOCH=$(date +%s)  # Used for /dev/shm work directory name
-  sleep 0.1$RANDOM
-  DIRVALUE=$EPOCH
-  if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main/parent reducer, so create a new EPOCH2 directory name
-    EPOCH2=$(date +%s)  # Used for /dev/shm test directory name (i.e. this directory is used in the WORK_INIT, WORK_START etc. scripts for after-reducer replay)
+  sleep 0.1$RANDOM  # Subreducer OS slicing?
+  WHOAMI=$(whoami)
+  if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer. For subreducers, EPOCH is set in #VARMOD#
+    EPOCH=$(date +%s)  # Used for /dev/shm work directory name and WORK_INIT, WORK_START etc. file names
+  else
+    if [ "${EPOCH}" == "" ]; then
+      echo "Assert: EPOCH is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"
+      exit 1
+    fi
   fi
+  trap ctrl_c SIGINT  # Requires ${EPOCH} to be set already
   DROPC="DROP DATABASE transforms;CREATE DATABASE transforms;DROP DATABASE test;CREATE DATABASE test;USE test;"
   MYUSER=$(whoami)
   STARTUPCOUNT=0
@@ -714,20 +722,19 @@ set_internal_options(){
 }
 
 kill_multi_reducer(){
-  WHOAMI=`whoami`
-  if [ $(ps -ef | grep subreducer | grep $WHOAMI | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
-    PIDS_TO_TERMINATE=$(ps -ef | grep subreducer | grep $WHOAMI | grep $DIRVALUE | grep -v grep | awk '{print $2}' | sort -u | tr '\n' ' ')
+  if [ $(ps -ef | grep subreducer | grep $WHOAMI | grep $EPOCH | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
+    PIDS_TO_TERMINATE=$(ps -ef | grep subreducer | grep $WHOAMI | grep $EPOCH | grep -v grep | awk '{print $2}' | sort -u | tr '\n' ' ')
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating these PID's: $PIDS_TO_TERMINATE"
-    while [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; do
-      for t in $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | sort -u); do
+    while [ $(ps -ef | grep subreducer | grep `whoami` | grep $EPOCH | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; do
+      for t in $(ps -ef | grep subreducer | grep `whoami` | grep $EPOCH | grep -v grep | awk '{print $2}' | sort -u); do
         kill -9 $t 2>/dev/null
         wait $t 2>/dev/null  # Prevents "<process id> Killed" messages
       done
       sync; sleep 3
-      if [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
+      if [ $(ps -ef | grep subreducer | grep `whoami` | grep $EPOCH | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
         sync; sleep 20  # Extended wait for processes to terminate
-        if [ $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: $(ps -ef | grep subreducer | grep `whoami` | grep $DIRVALUE | grep -v grep | wc -l) subreducer processes still exists after they were killed, re-attempting kill"
+        if [ $(ps -ef | grep subreducer | grep `whoami` | grep $EPOCH | grep -v grep | awk '{print $2}' | wc -l) -ge 1 ]; then
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: $(ps -ef | grep subreducer | grep `whoami` | grep $EPOCH | grep -v grep | wc -l) subreducer processes still exists after they were killed, re-attempting kill"
         fi
       fi
     done
@@ -787,7 +794,7 @@ multi_reducer(){
     FIXED_TEXT=$(echo "$TEXT" | sed "s|:|\\\:|g")
     cat $0 \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MULTI_REDUCER=1\n#VARMOD#:" \
-      | sed -e "0,/#VARMOD#/s:#VARMOD#:EPOCH2=$EPOCH2\n#VARMOD#:" \
+      | sed -e "0,/#VARMOD#/s:#VARMOD#:EPOCH=$EPOCH\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=$MODE\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:TEXT=\"$FIXED_TEXT\"\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE5_COUNTTEXT=$MODE5_COUNTTEXT\n#VARMOD#:" \
@@ -1033,7 +1040,7 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      WORKD="$WORKDIR_M3_DIRECTORY/$DIRVALUE"
+      WORKD="$WORKDIR_M3_DIRECTORY/$EPOCH"
     elif [ $WORKDIR_LOCATION -eq 2 ]; then
       if ! [ -d "/mnt/ram/" -a -x "/mnt/ram/" ]; then
         echo 'Error: ramfs storage usage was specified (WORKDIR_LOCATION=2), yet /mnt/ram/ does not exist, or could not be read.'
@@ -1047,7 +1054,7 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      WORKD="/mnt/ram/$DIRVALUE"
+      WORKD="/mnt/ram/$EPOCH"
     elif [ $WORKDIR_LOCATION -eq 1 ]; then
       if ! [ -d "/dev/shm/" -a -x "/dev/shm/" ]; then
         echo 'Error: tmpfs storage usage was specified (WORKDIR_LOCATION=1), yet /dev/shm/ does not exist, or could not be read.'
@@ -1060,7 +1067,7 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      WORKD="/dev/shm/$DIRVALUE"
+      WORKD="/dev/shm/$EPOCH"
     else
       if ! [ -d "/tmp/" -a -x "/tmp/" ]; then
         echo 'Error: /tmp/ storage usage was specified (WORKDIR_LOCATION=0), yet /tmp/ does not exist, or could not be read.'
@@ -1072,15 +1079,15 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      WORKD="/tmp/$DIRVALUE"
+      WORKD="/tmp/$EPOCH"
     fi
     if [ -d $WORKD ]; then
-      DIRVALUE=$[DIRVALUE-1]
+      EPOCH=$[EPOCH-1]
     else
       break
     fi
   done
-  if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
+  if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer
     mkdir $WORKD
   fi
   mkdir $WORKD/data $WORKD/tmp
@@ -1096,25 +1103,25 @@ init_workdir_and_files(){
   #JE3=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
   JE2=" elif [ -r \`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1\` ]; then export LD_PRELOAD=\`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1\`"
   JE3=" elif [ -r \${MYBASE}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=\${MYBASE}/lib/mysql/libjemalloc.so.1"
-  JE4=" else echo 'Warning: jemalloc was not loaded as it was not found (this is fine for MS, but do check ./${EPOCH2}_mybase to set correct jemalloc location for PS)'; fi" 
+  JE4=" else echo 'Warning: jemalloc was not loaded as it was not found (this is fine for MS, but do check ./${EPOCH}_mybase to set correct jemalloc location for PS)'; fi" 
 
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
-  WORK_MYBASE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_mybase|")
-  WORK_INIT=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_init|")
-  WORK_START=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_start|")
-  WORK_START_VALGRIND=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_start_valgrind|")
-  WORK_STOP=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_stop|")
-  WORK_RUN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_run|")
-  WORK_GDB=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_gdb|")
-  WORK_PARSE_CORE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_parse_core|")
-  WORK_HOW_TO_USE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_how_to_use.txt|")
+  WORK_MYBASE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_mybase|")
+  WORK_INIT=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_init|")
+  WORK_START=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_start|")
+  WORK_START_VALGRIND=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_start_valgrind|")
+  WORK_STOP=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_stop|")
+  WORK_RUN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_run|")
+  WORK_GDB=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_gdb|")
+  WORK_PARSE_CORE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_parse_core|")
+  WORK_HOW_TO_USE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_how_to_use.txt|")
   if [ $PQUERY_MOD -eq 1 ]; then
-    WORK_RUN_PQUERY=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_run_pquery|")
-    WORK_PQUERY_BIN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_|" | sed "s|$|$(echo $PQUERY_LOC | sed 's|.*/||')|")
+    WORK_RUN_PQUERY=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_run_pquery|")
+    WORK_PQUERY_BIN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_|" | sed "s|$|$(echo $PQUERY_LOC | sed 's|.*/||')|")
   fi
-  WORK_CL=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}_cl|")
-  WORK_OUT=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH2}.sql|")
+  WORK_CL=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_cl|")
+  WORK_OUT=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}.sql|")
   if [ $MODE -ge 6 ]; then
     mkdir $WORKD/out
     mkdir $WORKD/log
@@ -1264,7 +1271,7 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      echo "mkdir -p /dev/shm/${EPOCH2}/data/test" >> $WORK_INIT
+      echo "mkdir -p /dev/shm/${EPOCH}/data/test" >> $WORK_INIT
       chmod +x $WORK_INIT
       mkdir $WORKD/data/test 2>/dev/null  # test db provisioning if not there already (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
       #start_mysqld_main
@@ -1332,10 +1339,10 @@ generate_run_scripts(){
   echo "SOURCE_DIR=\$MYBASE  # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
   echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked" >> $WORK_MYBASE
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_INIT
-  echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH2}...\"" >> $WORK_INIT
-  echo "rm -Rf /dev/shm/${EPOCH2}" >> $WORK_INIT
-  echo "mkdir -p /dev/shm/${EPOCH2}/tmp" >> $WORK_INIT
+  echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_INIT
+  echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH}...\"" >> $WORK_INIT
+  echo "rm -Rf /dev/shm/${EPOCH}" >> $WORK_INIT
+  echo "mkdir -p /dev/shm/${EPOCH}/tmp" >> $WORK_INIT
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`" >> $WORK_INIT
   echo "if [ -n \"\$BIN\"  ]; then" >> $WORK_INIT
   echo "  if [ \"\$BIN\" != \"\${MYBASE}/bin/mysqld\" -a \"\$BIN\" != \"\${MYBASE}/bin/mysqld-debug\" ];then" >> $WORK_INIT
@@ -1346,93 +1353,93 @@ generate_run_scripts(){
   echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
   echo "MID=\`find \${MYBASE} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
   echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
-  echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH2}/data \$MID_OPTIONS; fi" >> $WORK_INIT
+  echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
   if [ $MODE -ge 6 ]; then
     # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
     echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet"
     echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet" > $WORK_RUN
-    echo "#${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
+    echo "#${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
     chmod +x $WORK_RUN
   else
     echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
-    echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN
-    echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using the mysql CLI client...\"" >> $WORK_RUN
-    echo "\${MYBASE}/bin/mysql -uroot --binary-mode --force -S/dev/shm/${EPOCH2}/socket.sock < ./${EPOCH2}.sql" >> $WORK_RUN
+    echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_RUN
+    echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld with socket /dev/shm/${EPOCH}/socket.sock using the mysql CLI client...\"" >> $WORK_RUN
+    echo "\${MYBASE}/bin/mysql -uroot --binary-mode --force -S/dev/shm/${EPOCH}/socket.sock < ./${EPOCH}.sql" >> $WORK_RUN
     chmod +x $WORK_RUN
     if [ $PQUERY_MOD -eq 1 ]; then
       cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
       if [ $PXC_MOD -eq 1 ]; then
-        echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
+        echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
         echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
-        echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
+        echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_RUN_PQUERY
         echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/node1/node1_socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH}/node1/node1_socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/node1/node1_socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH}/node1/node1_socket.sock $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         fi
       else
-        echo "echo \"Executing testcase ./${EPOCH2}.sql against mysqld with socket /dev/shm/${EPOCH2}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
+        echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld with socket /dev/shm/${EPOCH}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
         echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
-        echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_RUN_PQUERY
+        echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_RUN_PQUERY
         echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH2}/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH}/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH2}_|") --infile=./${EPOCH2}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH2}/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH}/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         fi
       fi
       chmod +x $WORK_RUN_PQUERY
     fi
   fi 
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_GDB
-  echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*)" >> $WORK_GDB
+  echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_GDB
+  echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*)" >> $WORK_GDB
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_PARSE_CORE
-  echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH2}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
-  echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH2}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH2}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
+  echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_PARSE_CORE
+  echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
+  echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_STOP
-  echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH2}/socket.sock...\"" >> $WORK_STOP
+  echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_STOP
+  echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH}/socket.sock...\"" >> $WORK_STOP
   echo "MYADMIN=\`find \${MYBASE} -maxdepth 2 -type f -name mysqladmin\`" >> $WORK_STOP
-  echo "\$MYADMIN -uroot -S/dev/shm/${EPOCH2}/socket.sock shutdown" >> $WORK_STOP
+  echo "\$MYADMIN -uroot -S/dev/shm/${EPOCH}/socket.sock shutdown" >> $WORK_STOP
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_CL
-  echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH2}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
-  echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH2}/socket.sock test" >> $WORK_CL
-  echo -e "The attached tarball (${EPOCH2}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
-  echo "$ vi ${EPOCH2}_mybase         # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
-  echo "$ ./${EPOCH2}_init            # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
+  echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_CL
+  echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
+  echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock test" >> $WORK_CL
+  echo -e "The attached tarball (${EPOCH}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
+  echo "$ vi ${EPOCH}_mybase         # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH}_init            # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-    echo "$ ./${EPOCH2}_start_valgrind  # STEP3: Starts mysqld under Valgrind (make sure to use a Valgrind instrumented build) (note: this can easily take 20-30 seconds or more)" >> $WORK_HOW_TO_USE
+    echo "$ ./${EPOCH}_start_valgrind  # STEP3: Starts mysqld under Valgrind (make sure to use a Valgrind instrumented build) (note: this can easily take 20-30 seconds or more)" >> $WORK_HOW_TO_USE
   else
-    echo "$ ./${EPOCH2}_start           # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
+    echo "$ ./${EPOCH}_start           # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
   fi
-  echo "$ ./${EPOCH2}_cl              # STEP4: To check mysqld is up" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH}_cl              # STEP4: To check mysqld is up" >> $WORK_HOW_TO_USE
   if [ $PQUERY_MOD -eq 1 ]; then
-    echo "$ ./${EPOCH2}_run_pquery      # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
-    echo "$ ./${EPOCH2}_run             # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
+    echo "$ ./${EPOCH}_run_pquery      # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
+    echo "$ ./${EPOCH}_run             # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-      echo "$ ./${EPOCH2}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
+      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
     fi
   else
-    echo "$ ./${EPOCH2}_run             # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
+    echo "$ ./${EPOCH}_run             # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-      echo "$ ./${EPOCH2}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
+      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
     fi
   fi
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-    echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP7: Verify the error log" >> $WORK_HOW_TO_USE
+    echo "$ vi /dev/shm/${EPOCH}/error.log.out  # STEP7: Verify the error log" >> $WORK_HOW_TO_USE
   else
-    echo "$ vi /dev/shm/${EPOCH2}/error.log.out  # STEP6: Verify the error log" >> $WORK_HOW_TO_USE
+    echo "$ vi /dev/shm/${EPOCH}/error.log.out  # STEP6: Verify the error log" >> $WORK_HOW_TO_USE
   fi
-  echo "$ ./${EPOCH2}_gdb             # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE
-  echo "$ ./${EPOCH2}_parse_core      # OPTIONAL: Creates ${EPOCH2}_STD.gdb and ${EPOCH2}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH}_gdb             # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH}_parse_core      # OPTIONAL: Creates ${EPOCH}_STD.gdb and ${EPOCH}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
   chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
 }
 
@@ -1603,8 +1610,8 @@ start_pxc_main(){
 start_mysqld_main(){
   COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START
-  echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START
+  echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_START
+  echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH}/socket.sock)...\"" >> $WORK_START
   #echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
   echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
@@ -1641,7 +1648,7 @@ start_mysqld_main(){
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
   fi
-  sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START
+  sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START
 #  sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_DIR}/|'))#g" $WORK_START
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START
@@ -1669,8 +1676,8 @@ start_valgrind_mysqld_main(){
   
   PIDV="$!"; STARTUPCOUNT=$[$STARTUPCOUNT+1]
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START_VALGRIND
-  echo "source \$SCRIPT_DIR/${EPOCH2}_mybase" >> $WORK_START_VALGRIND
-  echo "echo \"Attempting to start mysqld under Valgrind (socket /dev/shm/${EPOCH2}/socket.sock)...\"" >> $WORK_START_VALGRIND
+  echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_START_VALGRIND
+  echo "echo \"Attempting to start mysqld under Valgrind (socket /dev/shm/${EPOCH}/socket.sock)...\"" >> $WORK_START_VALGRIND
   echo $JE1 >> $WORK_START_VALGRIND; echo $JE2 >> $WORK_START_VALGRIND; echo $JE3 >> $WORK_START_VALGRIND
   #echo $JE4 >> $WORK_START_VALGRIND; echo $JE5 >> $WORK_START_VALGRIND
   echo $JE4 >> $WORK_START_VALGRIND
@@ -1682,7 +1689,7 @@ start_valgrind_mysqld_main(){
   if [ "${CHK_ROCKSDB}" == "1" ];then
     sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START_VALGRIND
   fi
-  sed -i "s|$WORKD|/dev/shm/${EPOCH2}|g" $WORK_START_VALGRIND
+  sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START_VALGRIND
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START_VALGRIND
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START_VALGRIND
   chmod +x $WORK_START_VALGRIND
@@ -2021,8 +2028,8 @@ cleanup_and_save(){
     cp -f $WORKO $WORK_OUT
     # Save a tarball of full self-contained testcase on each successful reduction
     BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
-    rm -f $BUGTARDIR/${EPOCH2}_bug_bundle.tar.gz
-    $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
+    rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
+    $(cd $BUGTARDIR; tar -zhcf ${EPOCH}_bug_bundle.tar.gz ${EPOCH}*)
   fi
   ATLEASTONCE="[*]"  # The issue was seen at least once (this is used to permanently mark lines with '[*]' suffix as soon as this happens)
   if [ ${STAGE} -eq 8 ]; then
@@ -2390,12 +2397,12 @@ finish(){
     echo_out "[Finish] Final testcase                    : $INPUTFILE (= input file, no optimizations were successful)"
   fi
   BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
-  rm -f $BUGTARDIR/${EPOCH2}_bug_bundle.tar.gz
-  $(cd $BUGTARDIR; tar -zhcf ${EPOCH2}_bug_bundle.tar.gz ${EPOCH2}*)
-  echo_out "[Finish] Final testcase bundle + scripts in: $BUGTARDIR/${EPOCH2}"
+  rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
+  $(cd $BUGTARDIR; tar -zhcf ${EPOCH}_bug_bundle.tar.gz ${EPOCH}*)
+  echo_out "[Finish] Final testcase bundle + scripts in: $BUGTARDIR/${EPOCH}"
   echo_out "[Finish] Final testcase for script use     : $WORK_OUT (handy to use in combination with the scripts below)"
   echo_out "[Finish] File containing datadir           : $WORK_MYBASE (All scripts below use this. Update this when basedir changes)"
-  echo_out "[Finish] Matching data dir init script     : $WORK_INIT (This script will use /dev/shm/${EPOCH2} as working directory)"
+  echo_out "[Finish] Matching data dir init script     : $WORK_INIT (This script will use /dev/shm/${EPOCH} as working directory)"
   echo_out "[Finish] Matching startup script           : $WORK_START (Starts mysqld with same options as used in reducer)"
   if [ $MODE -ge 6 ]; then
     # See init_workdir_and_files() and search for WORK_RUN for more info. Also more info in improvements section at top
@@ -2404,7 +2411,7 @@ finish(){
     echo_out "[Finish] Matching run script (CLI)         : $WORK_RUN (executes the testcase via the mysql CLI)"
     echo_out "[Finish] Matching startup script (pquery)  : $WORK_RUN_PQUERY (executes the testcase via the pquery binary)"
   fi
-  echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH2}_bug_bundle.tar.gz (handy for upload to bug reports)"
+  echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     if [ "" != "$MYEXTRA" ]; then
       echo_out "[Finish] mysqld options required for replay: $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
@@ -2420,25 +2427,25 @@ finish(){
     fi
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
-      echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
-      echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$DIRVALUE also"
+      echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
+      echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$EPOCH also"
       if [ $PXC_MOD -eq 1 ]; then
-        sudo cp -R $WORKD /tmp/$DIRVALUE
-        sudo chown -R `whoami`:`whoami` /tmp/$DIRVALUE
-        cp $0 /tmp/$DIRVALUE  # Copy this reducer script
-        cp $INPUTFILE /tmp/$DIRVALUE  # Copy the original input file
+        sudo cp -R $WORKD /tmp/$EPOCH
+        sudo chown -R `whoami`:`whoami` /tmp/$EPOCH
+        cp $0 /tmp/$EPOCH  # Copy this reducer script
+        cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
       else
-        cp -R $WORKD /tmp/$DIRVALUE
-        cp $0 /tmp/$DIRVALUE  # Copy this reducer script
-        cp $INPUTFILE /tmp/$DIRVALUE  # Copy the original input file
+        cp -R $WORKD /tmp/$EPOCH
+        cp $0 /tmp/$EPOCH  # Copy this reducer script
+        cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
       fi
       SPACE_WORKD=$(du -s $WORKD 2>/dev/null | sed 's|[ \t].*||')
-      SPACE_TMPCP=$(du -s /tmp/$DIRVALUE 2>/dev/null | sed 's|[ \t].*||')
-      if [ -d /tmp/$DIRVALUE -a ${SPACE_TMPCP} -gt ${SPACE_WORKD} ]; then
-        echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$DIRVALUE now deleting temporary work directory $WORKD"
+      SPACE_TMPCP=$(du -s /tmp/$EPOCH 2>/dev/null | sed 's|[ \t].*||')
+      if [ -d /tmp/$EPOCH -a ${SPACE_TMPCP} -gt ${SPACE_WORKD} ]; then
+        echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$EPOCH now deleting temporary work directory $WORKD"
         rm -Rf $WORKD
       else 
-        echo_out "[Non-fatal Error] Reducer tried saving a copy of $WORKD, $INPUTFILE and $0 in /tmp/$DIRVALUE, but on checkup after the copy, either the target directory /tmp/$DIRVALUE was not found, or it's size was not larger then the original work directory $WORKD (which should not be the case, as $INPUTFILE and $0 were added unto it). Please check that the filesystem on which /tmp is stored is not full, and that this script has write rights to /tmp. Note this error is non-fatal, the original work directory $WORKD was left, and $INPUTFILE and $0, if necessary, can still be accessed from their original location."
+        echo_out "[Non-fatal Error] Reducer tried saving a copy of $WORKD, $INPUTFILE and $0 in /tmp/$EPOCH, but on checkup after the copy, either the target directory /tmp/$EPOCH was not found, or it's size was not larger then the original work directory $WORKD (which should not be the case, as $INPUTFILE and $0 were added unto it). Please check that the filesystem on which /tmp is stored is not full, and that this script has write rights to /tmp. Note this error is non-fatal, the original work directory $WORKD was left, and $INPUTFILE and $0, if necessary, can still be accessed from their original location."
       fi
     fi
   fi
@@ -2500,8 +2507,8 @@ verify_not_found(){
   echo_out "[Finish] initialization output   : $WORKD/${EXTRA_PATH}mysql_install_db.init (Check if the inital server initalization happened correctly)"
   echo_out "[Finish] time init output        : $WORKD/${EXTRA_PATH}timezone.init         (Check if the timezone information was installed correctly)"
   if [ $WORKDIR_LOCATION -eq 1 ]; then
-    echo_out "[Cleanup] Since tmpfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$DIRVALUE"
-    cp -R $WORKD /tmp/$DIRVALUE
+    echo_out "[Cleanup] Since tmpfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
+    cp -R $WORKD /tmp/$EPOCH
   fi
   exit 1
 }
@@ -2664,7 +2671,6 @@ verify(){
 }
 
 #Init
-  trap ctrl_c SIGINT
   set_internal_options  # Should come before options_check
   options_check $1
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer

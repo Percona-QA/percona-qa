@@ -162,6 +162,16 @@ extract_queries_error_log(){
   fi
 }
 
+add_select_ones_to_trace(){  # Improve issue reproducibility by adding 3x SELECT 1; to the sql trace
+  echo "* Adding additional 'SELECT 1;' queries to improve issue reproducibility"
+  for i in {1..3}; do
+    BEFORESIZE=`cat ${INPUTFILE} | wc -l`
+    echo "SELECT 1;" >> ${INPUTFILE}
+    AFTERSIZE=`cat ${INPUTFILE} | wc -l`
+  done
+  echo "  > 'SELECT 1;' query added 3x to the SQL trace"
+}
+
 auto_interleave_failing_sql(){
   # sql interleave function based on actual input file size
   INPUTLINECOUNT=`cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup | wc -l`
@@ -385,6 +395,7 @@ if [ ${QC} -eq 0 ]; then
           echo "Assert! Error log at ./${TRIAL}/node${SUBDIR}/error.log could not be read?"
           exit 1
         fi
+        add_select_ones_to_trace
         TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
         echo "* TEXT variable set to: \"${TEXT}\""
         if [ "${MULTI}" == "1" ]; then
@@ -397,6 +408,7 @@ if [ ${QC} -eq 0 ]; then
     else
       OUTFILE=$TRIAL
       rm -Rf ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
+      touch ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
       if [ ${REACH} -eq 0 ]; then # Avoid normal output if this is an automated run (REACH=1)
         echo "========== Processing pquery trial $TRIAL"
       fi
@@ -439,6 +451,7 @@ if [ ${QC} -eq 0 ]; then
         echo "Assert! Error log at ./${TRIAL}/log/master.err could not be read?"
         exit 1
       fi
+      add_select_ones_to_trace
       VALGRIND_CHECK=0
       VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
       if [ -r ./${TRIAL}/VALGRIND -a ${VALGRIND_OVERRIDE} -ne 1 ]; then
