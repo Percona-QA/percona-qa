@@ -977,8 +977,6 @@ function async_rpl_test(){
 echo "**************** ASYNC REPLICATION TEST RUN WITH GTID ***************"
 async_rpl_test GTID
 
-async_rpl_test 
-
 #Shutdown PXC/PS servers
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
