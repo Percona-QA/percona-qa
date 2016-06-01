@@ -1245,7 +1245,7 @@ init_workdir_and_files(){
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
     if [ $PXC_MOD -ne 1 ]; then 
-      echo_out "[Init] Setting up standard working template"
+      echo_out "[Init] Setting up standard working template (without using MYEXTRA options)"
       if [ "`${MYBASE}${BIN} --version | grep -oe '[^0]5\.[1567]' | sed 's/^.//' | head -n1`" == "5.7" ]; then
         MID_OPTIONS="--initialize-insecure"  # --initialize-insecure prevents random root password in 5.7. --force is no longer supported in new mysql_install_db binary in 5.7
       elif [ "`${MYBASE}${BIN} --version | grep -oe '[^0]5\.[1567]' | sed 's/^.//' | head -n1`" == "5.6" ]; then
@@ -1276,12 +1276,13 @@ init_workdir_and_files(){
       chmod +x $WORK_INIT
       mkdir $WORKD/data/test 2>/dev/null  # test db provisioning if not there already (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
       #start_mysqld_main
+      echo_out "[Init] Attempting first mysqld startup with full MYEXTRA options passed to mysqld"
       if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
       if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
         if [ ${REDUCE_STARTUP_ISSUES} -eq 1 ]; then 
-          echo_out "[Init] [NOTE] Failed to cleanly start mysqld server (1st boot). Normally this would cause reducer.sh to halt here (and advice you to check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log + check that there is plenty of space on the device being used). However, because REDUCE_STARTUP_ISSUES is set to 1, we continue this reducer run. See above for more info on the REDUCE_STARTUP_ISSUES setting"
+          echo_out "[Init] [NOTE] Failed to cleanly start mysqld server (This was the 1st startup attempt with full MYEXTRA options passed to mysqld). Normally this would cause reducer.sh to halt here (and advice you to check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log + check that there is plenty of space on the device being used). However, because REDUCE_STARTUP_ISSUES is set to 1, we continue this reducer run. See above for more info on the REDUCE_STARTUP_ISSUES setting"
         else
-          echo_out "[Init] [ERROR] Failed to start mysqld server (1st boot), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
+          echo_out "[Init] [ERROR] Failed to start mysqld server (This was the 1st startup attempt with full MYEXTRA options passed to mysqld), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
           echo_out "[Init] [INFO] If however you want to debug a mysqld startup issue, for example caused by a misbehaving --option to mysqld, set REDUCE_STARTUP_ISSUES=1 and restart reducer.sh"
           echo "Terminating now."
           exit 1
@@ -1308,7 +1309,7 @@ init_workdir_and_files(){
       fi
       cp -R $WORKD/data/* $WORKD/data.init/
     else
-      echo_out "[Init] Setting up standard working PXC template"
+      echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
       if [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
         MID="${MYBASE}/bin/mysqld --no-defaults --initialize-insecure --basedir=${MYBASE}"
       elif [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
@@ -1329,7 +1330,7 @@ init_workdir_and_files(){
       cp -R $WORKD/node3/* $WORKD/node3.init/
     fi
   else
-    echo_out "[Init] This is a subreducer process; using initialization data from the main process ($WORKD/../../data.init)"
+    echo_out "[Init] This is a subreducer process; using initialization data template from the main process ($WORKD/../../data.init)"
   fi
 }
 
