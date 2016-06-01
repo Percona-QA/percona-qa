@@ -2427,6 +2427,13 @@ finish(){
       echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
     fi
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
+    copy_workdir_to_tmp
+  fi
+  exit 0
+}
+
+copy_workdir_to_tmp(){
+  if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
       echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$EPOCH also"
@@ -2450,7 +2457,6 @@ finish(){
       fi
     fi
   fi
-  exit 0
 }
 
 report_linecounts(){
@@ -2507,10 +2513,7 @@ verify_not_found(){
   echo_out "[Finish] mysqld error log output : $WORKD/${EXTRA_PATH}error.log(.out)       (Check if the mysqld server output looks normal. ".out" = last startup)"
   echo_out "[Finish] initialization output   : $WORKD/${EXTRA_PATH}mysql_install_db.init (Check if the inital server initalization happened correctly)"
   echo_out "[Finish] time init output        : $WORKD/${EXTRA_PATH}timezone.init         (Check if the timezone information was installed correctly)"
-  if [ $WORKDIR_LOCATION -eq 1 ]; then
-    echo_out "[Cleanup] Since tmpfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
-    cp -R $WORKD /tmp/$EPOCH
-  fi
+  copy_workdir_to_tmp
   exit 1
 }
 
