@@ -47,7 +47,6 @@ REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce mysq
 # === Reduce GLIBC crashes      # Remember that if you use REDUCE_GLIBC_CRASHES=1 with MODE=3, then the console/typescript log is searched for TEXT, not the mysqld error log
 REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. MODE=3 and MODE=4 are supported
 SCRIPT_LOC=/usr/bin/script      # Script binary (part of util-linux package), which is required when/for reducing GLIBC crashes
-TYPESCRIPT_UNIQUE_FILESUFFIX=1  # IMPORTANT: when reducing multiple GLIBC crashes, each reducer.sh (only those with REDUCE_GLIBC_CRASHES=1 activated) needs a unique number here
 
 # === Shutdown/hanging issues   # For mysqld hang testcas reduction (use TIMEOUT_CHECK + MODE=0) and for 'only reproducible at shutdown' testcase reduction (use TIMEOUT_COMMAND)
 TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
@@ -349,7 +348,10 @@ if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
   fi
   # Ensure the output of this console is logged. For this, reducer.sh is restarted with self-logging activated using script
   # With thanks, http://stackoverflow.com/a/26308092 from http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session
-  [ -z "$REDUCER_TYPESCRIPT" ] && REDUCER_TYPESCRIPT=1 exec $SCRIPT_LOC -q -f /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log -c "TYPESCRIPT=1 $0 $@"
+  if [ -z "$REDUCER_TYPESCRIPT" ]; then
+    TYPESCRIPT_UNIQUE_FILESUFFIX=$RANDOM
+    exec $SCRIPT_LOC -q -f /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log -c "REDUCER_TYPESCRIPT=1 TYPESCRIPT_UNIQUE_FILESUFFIX=${TYPESCRIPT_UNIQUE_FILESUFFIX} $0 $@"
+  fi
 fi
 
 echo_out(){
