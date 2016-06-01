@@ -1,6 +1,6 @@
 INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
 INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
-INSTALL PLUGIN scalability_metrics SONAME 'scalability_metrics.so';
+# INSTALL PLUGIN scalability_metrics SONAME 'scalability_metrics.so';  # Disabled, until https://bugs.launchpad.net/percona-server/+bug/1441139 is fixed
 INSTALL PLUGIN auth_pam SONAME 'auth_pam.so';
 INSTALL PLUGIN auth_pam_compat SONAME 'auth_pam_compat.so';
 INSTALL PLUGIN QUERY_RESPONSE_TIME SONAME 'query_response_time.so';
