@@ -53,3 +53,12 @@
 --wsrep-slave-FK-checks=0
 --wsrep-slave-UK-checks=1
 --wsrep-slave-UK-checks=0
+--wsrep-slave-threads=1
+--wsrep-slave-threads=2
+--wsrep-slave-threads=12
+--wsrep-slave-threads=24
+--wsrep-slave-threads=254
+--wsrep-slave-threads=1023
+--wsrep-slave-threads=2047
+--wsrep-slave-threads=-1125899906842624
+--wsrep-slave-threads=1125899906842624

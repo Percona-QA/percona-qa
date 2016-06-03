@@ -69,8 +69,9 @@ SKIP_JEMALLOC_FOR_PS=0                                         # Skip LD_PRELOAD
 PXC=0                                                          # Special use mode: Enable PXC testing
 PXC_START_TIMEOUT=200                                          # Should not be necessary to change. Default: 200
 PXC_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_mysqld_options.txt # PXC wsrep mysqld options
-PXC_CLUSTER_RUN=0
-PXC_CLUSTER_CONFIG=${SCRIPT_PWD}/pquery/pquery-cluster.cfg
+PXC_WSREP_PROVIDER_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_wsrep_provider_options.txt  # PXC wsrep provider options
+PXC_CLUSTER_RUN=0                                              # Set 1 to make pxc pquery cluster run
+PXC_CLUSTER_CONFIG=${SCRIPT_PWD}/pquery/pquery-cluster.cfg     # Default pquery cluster configuration file.
 
 # ========================================= Improvement ideas ====================================================================
 # * SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 (These likely include some of the 'SIGKILL' issues - no core but terminated)
@@ -323,7 +324,7 @@ pxc_startup(){
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm:// \
     --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+    --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT" \
     --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
@@ -350,7 +351,7 @@ pxc_startup(){
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
     --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
+    --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2;$WSREP_PROVIDER_OPT" \
     --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
@@ -377,7 +378,7 @@ pxc_startup(){
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
     --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \
+    --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR3;$WSREP_PROVIDER_OPT" \
     --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
@@ -606,6 +607,13 @@ pquery_test(){
       done
       echoit "ADD_RANDOM_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
       PXC_MYEXTRA="${OPTIONS_TO_ADD}"
+      OPTIONS_TO_ADD=
+      NR_OF_OPTIONS_TO_ADD=$(( RANDOM % MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
+      for X in $(seq 1 ${NR_OF_OPTIONS_TO_ADD}); do
+        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${PXC_WSREP_PROVIDER_OPTIONS_INFILE} | head -n1)"
+        OPTIONS_TO_ADD="${OPTION_TO_ADD};${OPTIONS_TO_ADD}"
+      done
+      WSREP_PROVIDER_OPT="$OPTIONS_TO_ADD"
     fi
     echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     pxc_startup 
