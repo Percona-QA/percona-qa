@@ -1474,10 +1474,12 @@ start_mysqld_or_valgrind_or_pxc(){
     if [ -f $WORKD/mysql.out ]; then mv -f $WORKD/mysql.out $WORKD/mysql.prev; fi
     if [ -f $WORKD/pquery_thread-0.out ]; then mv -f $WORKD/pquery_thread-0.out $WORKD/pquery_thread-0.prev; fi
     if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
-    if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
-      echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
-      echo "Terminating now."
-      exit 1
+    if [ ${REDUCE_STARTUP_ISSUES} -le 0 ]; then
+      if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
+        echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
+        echo "Terminating now."
+        exit 1
+      fi
     fi
   fi
   STARTUPCOUNT=$[$STARTUPCOUNT+1]
