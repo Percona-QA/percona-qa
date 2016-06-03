@@ -1272,9 +1272,19 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
+      # test db provisioning if not there already (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
+      mkdir $WORKD/data/test 2>/dev/null  
       echo "mkdir -p /dev/shm/${EPOCH}/data/test" >> $WORK_INIT
       chmod +x $WORK_INIT
-      mkdir $WORKD/data/test 2>/dev/null  # test db provisioning if not there already (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
+      if [ ! -d $WORKD/data ]; then
+        echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] data directory at $WORKD/data does not exist... check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
+        echo "Terminating now."
+        exit 1
+      else
+        # Note that 'mv data data.init' needs to come BEFORE first mysqld startup attempt, to not pollute the template with an actual mysqld startup (think --init-file and tokudb)
+        mv ${WORKD}/data ${WORKD}/data.init
+        cp -a ${WORKD}/data.init ${WORKD}/data  # We need this for the first mysqld startup attempt just below
+      fi
       #start_mysqld_main
       echo_out "[Init] Attempting first mysqld startup with full MYEXTRA options passed to mysqld"
       if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
@@ -1301,13 +1311,6 @@ init_workdir_and_files(){
         $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
       fi
       stop_mysqld_or_pxc
-      mkdir $WORKD/data.init
-      if [ ! -d $WORKD/data ]; then
-        echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] data directory at $WORKD/data does not exist... check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
-        echo "Terminating now."
-        exit 1
-      fi
-      cp -a $WORKD/data/* $WORKD/data.init/
     else
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
       if [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
