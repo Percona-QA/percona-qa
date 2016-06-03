@@ -789,7 +789,7 @@ pquery_test(){
                 | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
                 | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquer-cluster.cfg
-              ${SCRIPT_PWD}/pquery/pquery2-ps --config=${RUNDIR}/${TRIAL}/pquer-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+              ${SCRIPT_PWD}/pquery/pquery2-ps --config-file=${RUNDIR}/${TRIAL}/pquer-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             else
               ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             fi
@@ -803,7 +803,7 @@ pquery_test(){
                 | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
                 | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquer-cluster.cfg
-              ${SCRIPT_PWD}/pquery/pquery2-ps --config=${RUNDIR}/${TRIAL}/pquer-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+              ${SCRIPT_PWD}/pquery/pquery2-ps --config-file=${RUNDIR}/${TRIAL}/pquer-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             else
               ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             fi
