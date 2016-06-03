@@ -1307,7 +1307,7 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      cp -R $WORKD/data/* $WORKD/data.init/
+      cp -a $WORKD/data/* $WORKD/data.init/
     else
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
       if [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
@@ -1325,9 +1325,9 @@ init_workdir_and_files(){
       ${MID} --datadir=$node2  > ${WORKD}/startup_node2_error.log 2>&1 || exit 1;
       ${MID} --datadir=$node3  > ${WORKD}/startup_node3_error.log 2>&1 || exit 1;
       mkdir $WORKD/node1.init $WORKD/node2.init $WORKD/node3.init
-      cp -R $WORKD/node1/* $WORKD/node1.init/
-      cp -R $WORKD/node2/* $WORKD/node2.init/
-      cp -R $WORKD/node3/* $WORKD/node3.init/
+      cp -a $WORKD/node1/* $WORKD/node1.init/
+      cp -a $WORKD/node2/* $WORKD/node2.init/
+      cp -a $WORKD/node3/* $WORKD/node3.init/
     fi
   else
     echo_out "[Init] This is a subreducer process; using initialization data template from the main process ($WORKD/../../data.init)"
@@ -1448,16 +1448,16 @@ generate_run_scripts(){
 init_mysql_dir(){
   if [ $PXC_MOD -eq 1 ]; then
     sudo rm -Rf $WORKD/node1 $WORKD/node2 $WORKD/node3
-    cp -R ${node1}.init ${node1}
-    cp -R ${node2}.init ${node2}
-    cp -R ${node3}.init ${node3}
+    cp -a ${node1}.init ${node1}
+    cp -a ${node2}.init ${node2}
+    cp -a ${node3}.init ${node3}
   else
     rm -Rf $WORKD/data/*  $WORKD/tmp/*
     rm -Rf $WORKD/data/.rocksdb 2> /dev/null
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
-      cp -R $WORKD/data.init/* $WORKD/data/
+      cp -a $WORKD/data.init/* $WORKD/data/
     else
-      cp -R $WORKD/../../data.init/* $WORKD/data/
+      cp -a $WORKD/../../data.init/* $WORKD/data/
     fi
   fi
   if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
@@ -1657,6 +1657,11 @@ start_mysqld_main(){
   chmod +x $WORK_START
   for X in $(seq 1 120); do
     sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
+    # Check if the server crashed or shutdown, then there is no need to wait any longer (new beta feature as of 1 July 16)
+    if grep -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
+    if grep -qi "Writing a core file" $WORKD/error.log.out; then break; fi
+    if grep -qi "terribly wrong" $WORKD/error.log.out; then break; fi
+    if grep -qi "Shutdown complete" $WORKD/error.log.out; then break; fi
   done
 }
 
@@ -2439,12 +2444,12 @@ copy_workdir_to_tmp(){
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
       echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$EPOCH also"
       if [ $PXC_MOD -eq 1 ]; then
-        sudo cp -R $WORKD /tmp/$EPOCH
+        sudo cp -a $WORKD /tmp/$EPOCH
         sudo chown -R `whoami`:`whoami` /tmp/$EPOCH
         cp $0 /tmp/$EPOCH  # Copy this reducer script
         cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
       else
-        cp -R $WORKD /tmp/$EPOCH
+        cp -a $WORKD /tmp/$EPOCH
         cp $0 /tmp/$EPOCH  # Copy this reducer script
         cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
       fi
