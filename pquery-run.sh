@@ -314,21 +314,22 @@ pxc_startup(){
   fi
 
   pxc_startup_chk(){
-    if grep -qi "ERROR. Aborting" ${RUNDIR}/${TRIAL}/node*/node*.err; then
-      if grep -qi "TCP.IP port. Address already in use" ${RUNDIR}/${TRIAL}/node*/node*.err; then
+    ERROR_LOG=$1
+    if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
+      if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
         echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
         savetrial
       else
         if [ ${ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for ADD_RANDOM_OPTIONS=0 runs, they should not produce errors like these, as MYEXTRA should be high-quality/non-faulty
           echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MEXTRA startup parameters. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against the \$MYEXTRA settings. You may also want to try setting \$MYEXTRA=\"\"..."
-          grep "ERROR" ${RUNDIR}/${TRIAL}/node*/node*.err | tee -a /${WORKDIR}/pquery-run.log
+          grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
           STOREANYWAY=1
           savetrial
           echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
           exit 1
         else  # Do not halt for ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA (or \$WSREP_PROVIDER_OPT) was randomly changed
           echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the PXC_MYEXTRA (or \$WSREP_PROVIDER_OPT) startup parameters. As ADD_RANDOM_OPTIONS=1, this is likely to be encountered. Not saving trial. If you see this error for every trial however, set \$ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, your base \$MYEXTRA setting is faulty."
-          grep "ERROR" ${RUNDIR}/${TRIAL}/node*/node*.err | tee -a /${WORKDIR}/pquery-run.log
+          grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
           FAILEDSTARTABORT=1
           break
         fi
@@ -361,7 +362,7 @@ pxc_startup(){
     if ${BASEDIR}/bin/mysqladmin -uroot -S$node1/node1_socket.sock ping > /dev/null 2>&1; then
       break
     fi
-    pxc_startup_chk
+    pxc_startup_chk $node1/node1.err
   done
 
   if [ "$1" == "startup" ]; then
@@ -389,7 +390,7 @@ pxc_startup(){
     if ${BASEDIR}/bin/mysqladmin -uroot -S$node2/node2_socket.sock ping > /dev/null 2>&1; then
       break
     fi
-    pxc_startup_chk
+    pxc_startup_chk $node2/node2.err
   done
   
   if [ "$1" == "startup" ]; then
@@ -419,7 +420,7 @@ pxc_startup(){
       sleep 2
       break
     fi
-    pxc_startup_chk
+    pxc_startup_chk $node3/node3.err
   done
 }
 
