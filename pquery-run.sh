@@ -645,27 +645,25 @@ pquery_test(){
     echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     pxc_startup 
     echoit "Waiting for the 3 node PXC Cluster to fully start..."
-    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
-      sleep 1
-      CLUSTER_UP=0;
-      if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock ping > /dev/null 2>&1; then
-        if [ `${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
-        if [ `${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
-        if [ `${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
-        if [ "`${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
-        if [ "`${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
-        if [ "`${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
-      fi
-      # If count reached 6 (there are 6 checks), then the Cluster is up & running and consistent in it's Cluster topology views (as seen by each node)
-      if [ ${CLUSTER_UP} -eq 6 ]; then
-        ISSTARTED=1
-        echoit "3 Node PXC Cluster started ok. Clients:"
-        echoit "Node #1: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock"
-        echoit "Node #2: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock"
-        echoit "Node #3: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock"
-        break
-      fi
-    done
+    sleep 1
+    CLUSTER_UP=0;
+    if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock ping > /dev/null 2>&1; then
+      if [ `${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
+      if [ `${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
+      if [ `${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
+      if [ "`${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
+      if [ "`${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
+      if [ "`${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ ${CLUSTER_UP} + 1]; fi
+    fi
+    # If count reached 6 (there are 6 checks), then the Cluster is up & running and consistent in it's Cluster topology views (as seen by each node)
+    if [ ${CLUSTER_UP} -eq 6 ]; then
+      ISSTARTED=1
+      echoit "3 Node PXC Cluster started ok. Clients:"
+      echoit "Node #1: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock"
+      echoit "Node #2: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock"
+      echoit "Node #3: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock"
+      break
+    fi
   fi
   if [ ${ISSTARTED} -eq 1 ]; then
     rm -f ${RUNDIR}/${TRIAL}/pquery_thread-0.sql  # Remove the earlier created fake (SELECT 1; only) pquery_thread-0.sql file present for startup issues (server is started OK now)
