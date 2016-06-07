@@ -68,7 +68,7 @@ SKIP_JEMALLOC_FOR_PS=0                                         # Skip LD_PRELOAD
 # ========================================= User configurable variables to enable/for PXC testing only ===========================
 PXC=0                                                          # Special use mode: Enable PXC testing
 PXC_START_TIMEOUT=200                                          # Should not be necessary to change. Default: 200
-PXC_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_mysqld_options.txt # PXC wsrep mysqld options
+PXC_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/mysqld_options_pxc_56.txt # PXC wsrep mysqld options
 PXC_WSREP_PROVIDER_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_wsrep_provider_options.txt  # PXC wsrep provider options
 PXC_CLUSTER_RUN=0                                              # Set 1 to make pxc pquery cluster run
 PXC_CLUSTER_CONFIG=${SCRIPT_PWD}/pquery/pquery-cluster.cfg     # Default pquery cluster configuration file.
