@@ -20,8 +20,8 @@ SYSBENCH_DATALOAD=0                                                  # Sysbench 
 
 # ========================================= User configurable variablesi: generics ===============================================
 TRIALS=100000                                                  # Number of individual trials to execute (one can always interrupt with ctrl+c also)
-ADD_RANDOM_OPTIONS=0                                           # Add random mysqld --options to MYEXTRA using an input file. 1=On, 0=off
-ADD_RANDOM_TOKUDB_OPTIONS=0                                    # Add random tokudb --options to MYEXTRA using an input file. 1=On, 0=off
+ADD_RANDOM_OPTIONS=0                                           # Add random mysqld --options to MYEXTRA using an input file. 1=On, 0=off. (Ignored if PXC=1)
+ADD_RANDOM_TOKUDB_OPTIONS=0                                    # Add random tokudb --options to MYEXTRA using an input file. 1=On, 0=off. (Ignored if PXC=1)
 MAX_NR_OF_RND_OPTS_TO_ADD=5                                    # Max nr of random options to add (minimum is always 1). Recommended: 4. Counts per ADD_RANDOM_... option above (x2)
 SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1                       # Save only trials that generate a core file (good for initial few runs where there are lot of crashes/asserts)
 SAVE_SQL=0                                                     # Saves per-trial SQL even if SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1. Main usecase: full server lockups/hangs
@@ -70,6 +70,9 @@ PXC=0                                                          # Set to 1 to mak
 PXC_CLUSTER_RUN=0                                              # Set to 1 to make this a pxc pquery cluster run (enables multi-node SQL instead of using a single node only)
 PXC_CLUSTER_CONFIG=${SCRIPT_PWD}/pquery/pquery-cluster.cfg     # Default pquery cluster configuration file.
 PXC_START_TIMEOUT=200                                          # Should not be necessary to change. Default: 200
+PXC_ADD_RANDOM_OPTIONS=1                                       # Set to 1 to add PXC mysqld options
+PXC_MAX_NR_OF_RND_OPTS_TO_ADD=4                                # Max nr of random PXC mysqld options to add (minimum is always 1). Recommended: 4
+PXC_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/mysqld_options_pxc_56.txt  # PXC mysqld options list
 PXC_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS=1                    # Set to 1 to add PXC wsrep mysqld options 
 PXC_WSREP_MAX_NR_OF_RND_OPTS_TO_ADD=2                          # Maximum number of PXC wsrep mysqld options to add 
 PXC_WSREP_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/mysqld_options_pxc_wsrep_56.txt  # PXC wsrep mysqld options list
@@ -328,15 +331,15 @@ pxc_startup(){
         echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
         savetrial
       else
-        if [ ${ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for ADD_RANDOM_OPTIONS=0 runs, they should not produce errors like these, as MYEXTRA should be high-quality/non-faulty
+        if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs, they should not produce errors like these, as MYEXTRA should be high-quality/non-faulty
           echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MEXTRA startup parameters. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against the \$MYEXTRA settings. You may also want to try setting \$MYEXTRA=\"\"..."
           grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
           STOREANYWAY=1
           savetrial
           echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
           exit 1
-        else  # Do not halt for ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA (or \$WSREP_PROVIDER_OPT) was randomly changed
-          echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the PXC_MYEXTRA (or \$WSREP_PROVIDER_OPT) startup parameters. As ADD_RANDOM_OPTIONS=1, this is likely to be encountered. Not saving trial. If you see this error for every trial however, set \$ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, your base \$MYEXTRA setting is faulty."
+        else  # Do not halt for PXC_ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA (or \$WSREP_PROVIDER_OPT) was randomly changed
+          echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the PXC_MYEXTRA (or \$WSREP_PROVIDER_OPT) startup parameters. As ADD_RANDOM_OPTIONS=1, this is likely to be encountered. Not saving trial. If you see this error for every trial however, set \$PXC_ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, your base \$MYEXTRA setting is faulty."
           grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
           FAILEDSTARTABORT=1
           break
@@ -465,7 +468,7 @@ pquery_test(){
           OPTIONS_TO_ADD="${OPTIONS_TO_ADD} ${OPTION_TO_ADD}"
         fi
       done
-      echoit "ADD_RANDOM_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
+      echoit "ADD_RANDOM_OPTIONS=1: adding mysqld option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
       MYEXTRA="${MYEXTRA} ${OPTIONS_TO_ADD}"
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
         MYEXTRA2="${MYEXTRA2} ${OPTIONS_TO_ADD}"
@@ -478,7 +481,7 @@ pquery_test(){
         OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${TOKUDB_OPTIONS_INFILE} | head -n1)"
         OPTIONS_TO_ADD="${OPTIONS_TO_ADD} ${OPTION_TO_ADD}"
       done
-      echoit "ADD_RANDOM_TOKUDB_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
+      echoit "ADD_RANDOM_TOKUDB_OPTIONS=1: adding TokuDB mysqld option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
       MYEXTRA="${MYEXTRA} ${OPTIONS_TO_ADD}"
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
         MYEXTRA2="${MYEXTRA2} ${OPTIONS_TO_ADD}"
@@ -628,39 +631,42 @@ pquery_test(){
     cp -R ${WORKDIR}/node2.template ${RUNDIR}/${TRIAL}/node2
     cp -R ${WORKDIR}/node3.template ${RUNDIR}/${TRIAL}/node3
 
-    # Add random mysqld options to MYEXTRA 
-    if [ ${ADD_RANDOM_OPTIONS} -eq 1 ]; then  # Add random mysqld --options to MYEXTRA
+    # === PXC Options Stage 1: Add random mysqld options to MYEXTRA 
+    if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 1 ]; then
       OPTIONS_TO_ADD=
-      NR_OF_OPTIONS_TO_ADD=$(( RANDOM % MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
+      NR_OF_OPTIONS_TO_ADD=$(( RANDOM % PXC_MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
       for X in $(seq 1 ${NR_OF_OPTIONS_TO_ADD}); do
-        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${OPTIONS_INFILE} | head -n1)"
+        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${PXC_OPTIONS_INFILE} | head -n1)"
         if [ "$(echo ${OPTION_TO_ADD} | sed 's| ||g;s|.*query.alloc.block.size=1125899906842624.*||' )" != "" ]; then  # http://bugs.mysql.com/bug.php?id=78238
           OPTIONS_TO_ADD="${OPTIONS_TO_ADD} ${OPTION_TO_ADD}"
         fi
       done
-      echoit "ADD_RANDOM_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
+      echoit "PXC_ADD_RANDOM_OPTIONS=1: adding mysqld option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
       MYEXTRA="${MYEXTRA} ${OPTIONS_TO_ADD}"
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
         MYEXTRA2="${MYEXTRA2} ${OPTIONS_TO_ADD}"
       fi
     fi
-    # Adding random PXC wsrep related mysqld options to MYEXTRA 
-    if [ ${ADD_RANDOM_OPTIONS} -eq 1 ]; then  # Add random mysqld --options to MYEXTRA
+    # === PXC Options Stage 2: Add random wsrep mysqld options to MYEXTRA 
+    if [ ${PXC_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS} -eq 1 ]; then
       OPTIONS_TO_ADD=
-      NR_OF_OPTIONS_TO_ADD=$(( RANDOM % MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
+      NR_OF_OPTIONS_TO_ADD=$(( RANDOM % PXC_WSREP_MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
       for X in $(seq 1 ${NR_OF_OPTIONS_TO_ADD}); do
-        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${PXC_OPTIONS_INFILE} | head -n1)"
-        OPTION_TO_ADD="$OPTION_TO_ADD"
+        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${PXC_WSREP_OPTIONS_INFILE} | head -n1)"
         OPTIONS_TO_ADD="${OPTIONS_TO_ADD} ${OPTION_TO_ADD}"
       done
-      echoit "ADD_RANDOM_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
+      echoit "PXC_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS=1: adding wsrep provider mysqld option(s) ${OPTIONS_TO_ADD} to this run..."
       PXC_MYEXTRA="${OPTIONS_TO_ADD}"
+    fi
+    # === PXC Options Stage 3: Add random wsrep (Galera) configuration options
+    if [ ${PXC_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS} -eq 1]; then
       OPTIONS_TO_ADD=
-      NR_OF_OPTIONS_TO_ADD=$(( RANDOM % MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
+      NR_OF_OPTIONS_TO_ADD=$(( RANDOM % PXC_WSREP_PROVIDER_MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
       for X in $(seq 1 ${NR_OF_OPTIONS_TO_ADD}); do
         OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${PXC_WSREP_PROVIDER_OPTIONS_INFILE} | head -n1)"
         OPTIONS_TO_ADD="${OPTION_TO_ADD};${OPTIONS_TO_ADD}"
       done
+      echoit "PXC_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS=1: adding wsrep provider configuration option(s) ${OPTIONS_TO_ADD} to this run..."
       WSREP_PROVIDER_OPT="$OPTIONS_TO_ADD"
     fi
     echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
