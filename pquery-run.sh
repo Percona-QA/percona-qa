@@ -79,6 +79,9 @@ PXC_WSREP_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/mysqld_options_pxc_wsrep_56.txt  #
 PXC_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS=1  # Set to 1 to add PXC wsrep provider (Galera) configuration options
 PXC_WSREP_PROVIDER_MAX_NR_OF_RND_OPTS_TO_ADD=2                 # Maximum number of PXC wsrep provider (Galera) configuration options to add 
 PXC_WSREP_PROVIDER_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/wsrep_provider_options_pxc_56.txt  # PXC wsrep provider (Galera) configuration options list
+PXC_IGNORE_ALL_OPTION_ISSUES=1                                 # Never end a run if wsrep mysqld or wsrep configuration option issues were detected. This is a powerful option, 
+                                                               # which does come with responsibility: you should check that your runs are running fine without them all ending
+                                                               # immediately on mysqld startup, due to some faulty base MYEXTRA setting for example!
 
 # ========================================= Improvement ideas ====================================================================
 # * SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 (These likely include some of the 'SIGKILL' issues - no core but terminated)
@@ -338,8 +341,12 @@ pxc_startup(){
           grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
           STOREANYWAY=1
           savetrial
-          echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
-          exit 1
+          if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
+            echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
+          else
+            echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
+            exit 1
+          fi
         else  # Do not halt for PXC_ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA was randomly changed
           echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup options. As \$PXC_ADD_RANDOM_OPTIONS=1, this is likely to be encountered given the random addition of mysqld options. Not saving trial. If you see this error for every trial however, set \$PXC_ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, it is likely that your base \$MYEXTRA (${MYEXTRA}) setting is faulty."
           grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
