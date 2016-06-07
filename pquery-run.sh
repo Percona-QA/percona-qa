@@ -66,12 +66,16 @@ CRASH_RECOVERY_KILL_BEFORE_END_SEC=25                          # Kill the server
 SKIP_JEMALLOC_FOR_PS=0                                         # Skip LD_PRELOAD'ing of JEMALLOC. Only indicated for testing PS without TokuDB against default memory manager
 
 # ========================================= User configurable variables to enable/for PXC testing only ===========================
-PXC=0                                                          # Special use mode: Enable PXC testing
-PXC_START_TIMEOUT=200                                          # Should not be necessary to change. Default: 200
-PXC_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/mysqld_options_pxc_56.txt # PXC wsrep mysqld options
-PXC_WSREP_PROVIDER_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_wsrep_provider_options.txt  # PXC wsrep provider options
-PXC_CLUSTER_RUN=0                                              # Set 1 to make pxc pquery cluster run
+PXC=0                                                          # Set to 1 to make this a PXC testing run
+PXC_CLUSTER_RUN=0                                              # Set to 1 to make this a pxc pquery cluster run (enables multi-node SQL instead of using a single node only)
 PXC_CLUSTER_CONFIG=${SCRIPT_PWD}/pquery/pquery-cluster.cfg     # Default pquery cluster configuration file.
+PXC_START_TIMEOUT=200                                          # Should not be necessary to change. Default: 200
+PXC_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS=1                    # Set to 1 to add PXC wsrep mysqld options 
+PXC_WSREP_MAX_NR_OF_RND_OPTS_TO_ADD=2                          # Maximum number of PXC wsrep mysqld options to add 
+PXC_WSREP_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/mysqld_options_pxc_56.txt  # PXC wsrep mysqld options list
+PXC_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS=1  # Set to 1 to add PXC wsrep provider (Galera) configuration options
+PXC_WSREP_PROVIDER_MAX_NR_OF_RND_OPTS_TO_ADD=2                 # Maximum number of PXC wsrep provider (Galera) configuration options to add 
+PXC_WSREP_PROVIDER_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_wsrep_provider_options.txt  # PXC wsrep provider (Galera) configuration options list
 
 # ========================================= Improvement ideas ====================================================================
 # * SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 (These likely include some of the 'SIGKILL' issues - no core but terminated)
@@ -212,6 +216,10 @@ if [ ${VALGRIND_RUN} -eq 1 ]; then
   echoit "Note: As this is a VALGRIND_RUN=1 run, this script is increasing PQUERY_RUN_TIMEOUT (${PQUERY_RUN_TIMEOUT}) by 180 seconds because Valgrind is very slow in processing SQL."
   PQUERY_RUN_TIMEOUT=$[ ${PQUERY_RUN_TIMEOUT} + 180 ] 
 fi
+if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
+  echoit "As PXC_CLUSTER_RUN=1, this script is auto-assuming this is a PXC run and will set PXC=1"
+  PXC=1
+fi 
 
 # Trap ctrl-c 
 trap ctrl-c SIGINT
@@ -620,6 +628,22 @@ pquery_test(){
     cp -R ${WORKDIR}/node2.template ${RUNDIR}/${TRIAL}/node2
     cp -R ${WORKDIR}/node3.template ${RUNDIR}/${TRIAL}/node3
 
+    # Add random mysqld options to MYEXTRA 
+    if [ ${ADD_RANDOM_OPTIONS} -eq 1 ]; then  # Add random mysqld --options to MYEXTRA
+      OPTIONS_TO_ADD=
+      NR_OF_OPTIONS_TO_ADD=$(( RANDOM % MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
+      for X in $(seq 1 ${NR_OF_OPTIONS_TO_ADD}); do
+        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${OPTIONS_INFILE} | head -n1)"
+        if [ "$(echo ${OPTION_TO_ADD} | sed 's| ||g;s|.*query.alloc.block.size=1125899906842624.*||' )" != "" ]; then  # http://bugs.mysql.com/bug.php?id=78238
+          OPTIONS_TO_ADD="${OPTIONS_TO_ADD} ${OPTION_TO_ADD}"
+        fi
+      done
+      echoit "ADD_RANDOM_OPTIONS=1: adding option(s) ${OPTIONS_TO_ADD} to this run's MYEXTRA..."
+      MYEXTRA="${MYEXTRA} ${OPTIONS_TO_ADD}"
+      if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+        MYEXTRA2="${MYEXTRA2} ${OPTIONS_TO_ADD}"
+      fi
+    fi
     # Adding random PXC wsrep related mysqld options to MYEXTRA 
     if [ ${ADD_RANDOM_OPTIONS} -eq 1 ]; then  # Add random mysqld --options to MYEXTRA
       OPTIONS_TO_ADD=
