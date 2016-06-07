@@ -72,10 +72,10 @@ PXC_CLUSTER_CONFIG=${SCRIPT_PWD}/pquery/pquery-cluster.cfg     # Default pquery 
 PXC_START_TIMEOUT=200                                          # Should not be necessary to change. Default: 200
 PXC_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS=1                    # Set to 1 to add PXC wsrep mysqld options 
 PXC_WSREP_MAX_NR_OF_RND_OPTS_TO_ADD=2                          # Maximum number of PXC wsrep mysqld options to add 
-PXC_WSREP_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/mysqld_options_pxc_56.txt  # PXC wsrep mysqld options list
+PXC_WSREP_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/mysqld_options_pxc_wsrep_56.txt  # PXC wsrep mysqld options list
 PXC_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS=1  # Set to 1 to add PXC wsrep provider (Galera) configuration options
 PXC_WSREP_PROVIDER_MAX_NR_OF_RND_OPTS_TO_ADD=2                 # Maximum number of PXC wsrep provider (Galera) configuration options to add 
-PXC_WSREP_PROVIDER_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/pxc_wsrep_provider_options.txt  # PXC wsrep provider (Galera) configuration options list
+PXC_WSREP_PROVIDER_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/wsrep_provider_options_pxc_56.txt  # PXC wsrep provider (Galera) configuration options list
 
 # ========================================= Improvement ideas ====================================================================
 # * SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 (These likely include some of the 'SIGKILL' issues - no core but terminated)
