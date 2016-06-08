@@ -285,7 +285,7 @@ savesql(){
   cp ${RUNDIR}/${TRIAL}/*.sql ${WORKDIR}/${TRIAL}/
   rm -Rf ${RUNDIR}/${TRIAL}
   sync; sleep 0.2
-  if [ -d ${RUNDIR}/${TRIAL} -eq 1 ]; then
+  if [ -d ${RUNDIR}/${TRIAL} ]; then
     echoit "Something is wrong: tried to remove ${RUNDIR}/${TRIAL}, but it looks like removal failed. Check what is holding lock? (lsof tool may help)."
     echoit "As this is not necessarily a fatal error (there is likely enough space on ${RUNDIR} to continue working), pquery-run.sh will NOT terminate."
     echoit "However, this looks like a shortcoming in pquery-run.sh (likely in the mysqld termination code) which needs debugging and fixing. Please do."
