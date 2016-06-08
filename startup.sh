@@ -128,7 +128,7 @@ fi
 # Local build mode: only setup scritps for local directory, then exit (used for creating startup scripts in the local directory,
 # for example after using ./build/binary-build.sh & extracing the resulting tarball or when using a yassl-based QA build from Jenkins.)
 if [ "0" == "$1" ]; then
-  echo "Adding scripts: ./start | ./start_valgrind | ./start_gypsy | ./stop | ./setup | ./cl | ./cl_binmode | ./test | ./init | ./wipe (last two without executable attribute)"
+  echo "Adding scripts: ./start | ./start_valgrind | ./start_gypsy | ./stop | ./setup | ./cl | ./test | ./init | ./wipe (last two without executable attribute)"
   mkdir -p ./data ./data/mysql ./data/test ./log
   if [ -r $PWD/bin/mysqld ]; then
     BIN="$PWD/bin/mysqld"
@@ -156,9 +156,8 @@ if [ "0" == "$1" ]; then
   echo "$PWD/bin/mysqladmin -uroot -S$PWD/socket.sock shutdown" > ./stop
   echo "echo 'Server on socket $PWD/socket.sock with datadir $PWD/data halted'" >> ./stop
   echo "./init;./start;sleep 5;./cl;./stop;tail ./log/master.err" > ./setup
-  echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock test" > ./cl
   echo "./start; sleep 10; $PWD/bin/mysql -A -uroot -S$PWD/socket.sock -e \"INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';\"; ./stop" > ./tokutek_init
-  echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test" > ./cl_binmode
+  echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test" > ./cl
   echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test < $PWD/in.sql >> $PWD/mysql.out 2>&1" > ./test
   echo "if [ -r ./stop ]; then ./stop 2>/dev/null 1>&2; fi" > ./wipe
   echo "if [ -d $PWD/data.PREV ]; then rm -Rf $PWD/data.PREV.older; mv $PWD/data.PREV $PWD/data.PREV.older; fi;mv $PWD/data $PWD/data.PREV" >> ./wipe
@@ -189,7 +188,7 @@ if [ "0" == "$1" ]; then
     echo "mkdir $PWD/data/test" >> ./init
   fi
   echo "rm -f ./log/master.*" >> ./init
-  chmod +x start start_valgrind start_gypsy stop setup cl cl_binmode test init prepare run measure ./tokutek_init
+  chmod +x start start_valgrind start_gypsy stop setup cl test init prepare run measure ./tokutek_init
   echo "Setting up server with default directories"
   ./init
   if [ -r $PWD/lib/mysql/plugin/ha_tokudb.so ]; then
@@ -260,7 +259,7 @@ if [ "$2" != "man2" -a -r ./vardir1_$1.tar.gz ]; then    # the -a -r clause is j
 fi
 
 # MTR details copy (for accuracy runs, now with socket [old port cmds left ftm, remarked])
-echo "Adding scripts: ./start_mtr$1 | start_wipe_mtr$1 | ./stop_mtr$1 | ./cl_mtr$1 | ./cl_binmode_mtr$1 | ./test_mtr$1 | ./dump_mtr$1"
+echo "Adding scripts: ./start_mtr$1 | start_wipe_mtr$1 | ./stop_mtr$1 | ./cl_mtr$1 | ./test_mtr$1 | ./dump_mtr$1"
 echo " -> These bring up the server (using MTR) with the vardir from the original run, and all mysqld options are preseved"
 echo " -> These MTR scripts also preseve the --valgrind option (normal scripts need a ./valgrind$1 addition still)"
 echo "cd $BASE/mysql-test/" > ./start_mtr$1
@@ -283,8 +282,7 @@ echo "$BASE/bin/mysqladmin -uroot -S$PWD/vardir1_$1/tmp/master.sock shutdown" > 
 #echo "echo 'Server on port $PORT with vardir $PWD/vardir1_$1 halted'" >> ./stop_mtr$1
 echo "echo 'Server on socket $PWD/vardir1_$1/tmp/master.sock with vardir $PWD/vardir1_$1 halted'" >> ./stop_mtr$1
 #echo "$BASE/bin/mysql -uroot -h127.0.0.1 -P$PORT test" > ./cl_mtr$1
-echo "$BASE/bin/mysql -A -uroot -S$PWD/vardir1_$1/tmp/master.sock test" > ./cl_mtr$1
-echo "$BASE/bin/mysql -A -uroot -S$PWD/vardir1_$1/tmp/master.sock --force --binary-mode test" > ./cl_binmode_mtr$1
+echo "$BASE/bin/mysql -A -uroot -S$PWD/vardir1_$1/tmp/master.sock --force --binary-mode test" > ./cl_mtr$1
 echo "if [ ! -a $PWD/$1.sql ]; then" > ./test_mtr$1
 echo "  cp trial$1.log $PWD/$1.sql" >> ./test_mtr$1
 echo "else" >> ./test_mtr$1
@@ -294,10 +292,10 @@ echo 'echo "=========== NEW RUN @ `date` ===========" >> $PWD/$1.out' >> ./test_
 #echo "$BASE/bin/mysql -A -uroot -h127.0.0.1 -P$PORT --force test < $PWD/$1.sql >> $PWD/$1.out 2>&1" >> ./test_mtr$1
 echo "$BASE/bin/mysql -A -uroot -S$PWD/vardir1_$1/tmp/master.sock --force --binary-mode test < $PWD/$1.sql >> $PWD/$1.out 2>&1" >> ./test_mtr$1
 echo "$BASE/bin/mysqldump -uroot -S$PWD/vardir1_$1/tmp/master.sock --force --add-drop-database --flush-logs --routines --events --triggers --all-databases > $1.sql" > ./dump_mtr$1
-chmod +x start_mtr$1 start_wipe_mtr$1 stop_mtr$1 cl_mtr$1 cl_binmode_mtr$1 test_mtr$1 dump_mtr$1
+chmod +x start_mtr$1 start_wipe_mtr$1 stop_mtr$1 cl_mtr$1 test_mtr$1 dump_mtr$1
 
 # SOCKET + NO MTR IS FASTER TWICE (BUT MAY NOT REPRODUCE ISSUES AS ALL MYSQLD OPTIONS ARE NOT PASSED!)
-echo "Adding scripts: ./start$1 | ./stop$1 | ./cl$1 | ./cl_binmode$1 | ./test$1 | ./wipe$1 (w/o exe attrib) | ./init$1 (w/o exe attrib) | ./dump$1"
+echo "Adding scripts: ./start$1 | ./stop$1 | ./cl$1 | ./test$1 | ./wipe$1 (w/o exe attrib) | ./init$1 (w/o exe attrib) | ./dump$1"
 echo " -> These quickly bring up the server with the same vardir (but no original run mysqld options are passed)"
 echo " -> Use for testing if an issues reproduces without specific mysqld options passed at startup. For more info on this, see the extra (# remarked) at the top of startup.sh"
 echo " -> Not using MTR also results in a faster startup, and finally, this uses socket connections which gives faster SQL replay, thereby reducing the probability of non-reproducibility"
@@ -326,15 +324,14 @@ echo "echo 'Server socket: $PWD/vardir1_$1/socket.sock with vardir: $PWD/vardir1
 echo "echo 'Base Directory: $BASE'" >> ./start$1
 echo "$BASE/bin/mysqladmin -uroot -S$PWD/vardir1_$1/socket.sock shutdown" > ./stop$1
 echo "echo 'Server on socket $PWD/vardir1_$1/socket.sock with vardir $PWD/vardir1_$1 halted'" >> ./stop$1
-echo "$BASE/bin/mysql -A -uroot -S$PWD/vardir1_$1/socket.sock test" > ./cl$1
-echo "$BASE/bin/mysql -A -uroot -S$PWD/vardir1_$1/socket.sock --force --binary-mode test" > ./cl_binmode$1
+echo "$BASE/bin/mysql -A -uroot -S$PWD/vardir1_$1/socket.sock --force --binary-mode test" > ./cl$1
 echo "cat trial$1.log | sed 's/^\(.*\)\(\bPROCEDURE\|FUNCTION\b\)\(.*\)$/DELIMITER |\n\1\2\3 |\nDELIMITER ;/i' > $PWD/$1.sql" > ./test$1   # Temp hack for RQG BUG#1074485
 echo 'echo "=========== NEW RUN @ `date` ===========" >> '"$PWD/$1.out" >> ./test$1
 echo "$BASE/bin/mysql -A -uroot -S$PWD/vardir1_$1/socket.sock --force --binary-mode test < $PWD/$1.sql >> $PWD/$1.out 2>&1" >> ./test$1
 echo "if [ -d $PWD/vardir1_$1/master-data.PREV ]; then rm -Rf $PWD/vardir1_$1/master-data.PREV.older; mv $PWD/vardir1_$1/master-data.PREV $PWD/vardir1_$1/master-data.PREV.older; fi; mv $PWD/vardir1_$1/master-data $PWD/vardir1_$1/master-data.PREV; mkdir $PWD/vardir1_$1/master-data $PWD/vardir1_$1/master-data/test $PWD/vardir1_$1/master-data/mysql; if [ -r $BASE/scipts/mysql_install_db ]; then $BASE/scripts/mysql_install_db ${MID_OPT} --basedir=$BASE --datadir=$PWD/vardir1_$1/master-data; elif [ -r $BASE/bin/mysql_install_db ]; then $BASE/bin/mysql_install_db ${MID_OPT} --basedir=$BASE --datadir=$PWD/vardir1_$1/master-data; else echo 'mysql_install_db not found in scripts nor bin directories'; fi" > ./wipe$1
 echo "rm -Rf $PWD/vardir1_$1/master-data; mkdir $PWD/vardir1_$1/master-data $PWD/vardir1_$1/master-data/test $PWD/vardir1_$1/master-data/mysql; if [ -r $BASE/scripts/mysql_install_db ]; then $BASE/scripts/mysql_install_db ${MID_OPT} --basedir=$BASE --datadir=$PWD/vardir1_$1/master-data; elif [ -r $BASE/bin/mysql_install_db ]; then $BASE/bin/mysql_install_db ${MID_OPT} --basedir=$BASE --datadir=$PWD/vardir1_$1/master-data; else echo 'mysql_install_db not found in scripts nor bin directories'; fi" > ./init$1
 echo "$BASE/bin/mysqldump -uroot -S$PWD/vardir1_$1/tmp/master.sock --force --add-drop-database --flush-logs --routines --events --triggers --all-databases > $1.sql" > ./dump$1
-chmod +x start$1 stop$1 cl$1 cl_binmode$1 test$1 dump$1
+chmod +x start$1 stop$1 cl$1 test$1 dump$1
 
 # Make an RQG trial run cmd also
 echo "Adding RQG trial run scripts: ./cmd$1 ./cmdtrace$1"
