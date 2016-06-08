@@ -382,6 +382,7 @@ pxc_startup(){
     if ${BASEDIR}/bin/mysqladmin -uroot -S$node1/node1_socket.sock ping > /dev/null 2>&1; then
       break
     fi
+    pxc_startup_chk $node1/node1.err
   done
 
   if [ "$1" == "startup" ]; then
@@ -409,6 +410,7 @@ pxc_startup(){
     if ${BASEDIR}/bin/mysqladmin -uroot -S$node2/node2_socket.sock ping > /dev/null 2>&1; then
       break
     fi
+    pxc_startup_chk $node2/node2.err
   done
   
   if [ "$1" == "startup" ]; then
@@ -438,6 +440,7 @@ pxc_startup(){
       sleep 2
       break
     fi
+    pxc_startup_chk $node3/node3.err
   done
 }
 
