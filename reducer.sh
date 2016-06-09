@@ -1379,7 +1379,7 @@ generate_run_scripts(){
     if [ "$CLI_MODE" == "" ]; then CLI_MODE=99; fi  # Leads to assert below
     case $CLI_MODE in
       0) echo "cat ./${EPOCH}.sql | \${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test" >> $WORK_RUN ;;
-      1) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --force --execute=\"SOURCE ./${EPOCH}.sql;\" test" >> $WORK_RUN ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command.
+      1) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --execute=\"SOURCE ./${EPOCH}.sql;\" --force test" >> $WORK_RUN ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
       2) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test < ./${EPOCH}.sql" >> $WORK_RUN ;;
       *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in generate_run_scripts). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
     esac
@@ -2005,7 +2005,7 @@ run_sql_code(){
       fi
       case $CLI_MODE in
         0) cat $WORKT | $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test > $WORKD/mysql.out 2>&1 ;;
-        1) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --force --execute="SOURCE ${WORKT};" test > $WORKD/mysql.out 2>&1 ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command.
+        1) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --execute="SOURCE ${WORKT};" --force test > $WORKD/mysql.out 2>&1 ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
         2) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test < ${WORKT} > $WORKD/mysql.out 2>&1 ;;
         *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in run_sql_code). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
       esac
