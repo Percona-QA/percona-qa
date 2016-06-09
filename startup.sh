@@ -147,9 +147,10 @@ if [ "0" == "$1" ]; then
   echo $JE1 >> ./start; echo $JE2 >> ./start; echo $JE3 >> ./start; echo $JE4 >> ./start; echo $JE5 >> ./start
   cp ./start ./start_valgrind  # Idem for Valgrind
   cp ./start ./start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
-  echo "$BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start
-  echo " valgrind --suppressions=$PWD/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err >>$PWD/log/master.err 2>&1 &" >> ./start_valgrind
-  echo "$BIN \${MYEXTRA} ${START_OPT} --innodb_buffer_pool_size=2147483648 --general_log=1 --general_log_file=$PWD/general.log --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start_gypsy
+  # RV Update 09-06-16: the start commands below (3 of them) used to contain --innodb_buffer_pool_size=2147483648, but as this may affect issue reproducibility it has been removed
+  echo "$BIN \${MYEXTRA} ${START_OPT} --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start
+  echo " valgrind --suppressions=$PWD/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err >>$PWD/log/master.err 2>&1 &" >> ./start_valgrind
+  echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=$PWD/general.log --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> ./start_gypsy
   echo "echo 'Server socket: $PWD/socket.sock with datadir: $PWD/data'" >> ./start
   tail -n1 start >> ./start_valgrind
   tail -n1 start >> ./start_gypsy
