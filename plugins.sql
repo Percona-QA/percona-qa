@@ -34,3 +34,4 @@ INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so';
 INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';
 INSTALL PLUGIN tokudb_background_job_status SONAME 'ha_tokudb.so';
 #INSTALL PLUGIN audit_log SONAME 'audit_log.so';  # Disabled, because pquery-run.sh preloads this (it does so to enable TokuDB --options to be used with mysqld) (if set in MYEXTRA)
+INSTALL PLUGIN mysqlx SONAME 'mysqlx.so';
