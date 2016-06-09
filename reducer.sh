@@ -72,6 +72,7 @@ PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of t
 PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary
 
 # === Other options             # The options are not often changed
+CLI_MODE=0                      # When using the CLI; 0: sent SQL using a pipe, 1: sent SQL using --execute="SOURCE ..." command, 2: sent SQL using redirection (mysql < input.sql)
 ENABLE_QUERYTIMEOUT=1           # On/Off (1/0) Enable the Query Timeout function (enables and uses the MySQL event scheduler)
 QUERYTIMEOUT=90                 # Query timeout in sec. Note: queries terminated by the query timeout did not fully replay, and thus overall issue reproducibility may be affected
 LOAD_TIMEZONE_DATA=0            # On/Off (1/0) Enable loading Timezone data into the database (mainly applicable for RQG runs) (turned off by default=0 since 26.05.2016)
@@ -1369,7 +1370,13 @@ generate_run_scripts(){
     echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
     echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_RUN
     echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld with socket /dev/shm/${EPOCH}/socket.sock using the mysql CLI client...\"" >> $WORK_RUN
-    echo "\${MYBASE}/bin/mysql -uroot --binary-mode --force -S/dev/shm/${EPOCH}/socket.sock < ./${EPOCH}.sql" >> $WORK_RUN
+    if [ "$CLI_MODE" == "" ]; then CLI_MODE=99; fi  # Leads to assert below
+    case $CLI_MODE in
+      0) echo "cat ./${EPOCH}.sql | \${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test" >> $WORK_RUN ;;
+      1) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force --execute=\"SOURCE ./${EPOCH}.sql;\" test" >> $WORK_RUN ;;
+      2) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test < ./${EPOCH}.sql" >> $WORK_RUN ;;
+      *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in generate_run_scripts). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
+    esac
     chmod +x $WORK_RUN
     if [ $PQUERY_MOD -eq 1 ]; then
       cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
@@ -1983,11 +1990,19 @@ run_sql_code(){
         fi
       fi
     else
+      if [ "$CLI_MODE" == "" ]; then CLI_MODE=99; fi  # Leads to assert below
+      CLIENT_SOCKET=
       if [ $PXC_MOD -eq 1 ]; then
-        cat $WORKT | $MYBASE/bin/mysql -uroot -S${node1}/node1_socket.sock --binary-mode --force test > $WORKD/mysql.out 2>&1
+        CLIENT_SOCKET=${node1}/node1_socket.sock
       else
-        cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --binary-mode --force test > $WORKD/mysql.out 2>&1
+        CLIENT_SOCKET=$WORKD/socket.sock 
       fi
+      case $CLI_MODE in
+        0) cat $WORKT | $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test > $WORKD/mysql.out 2>&1 ;;
+        1) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force --execute="SOURCE ${WORKT};" test > $WORKD/mysql.out 2>&1 ;;
+        2) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test < ${WORKT} > $WORKD/mysql.out 2>&1 ;;
+        *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in run_sql_code). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
+      esac
     fi
   fi
   sleep 1
