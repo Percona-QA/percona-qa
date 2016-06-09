@@ -245,6 +245,7 @@ TS_VARIABILITY_SLEEP=1
 # - A new mode could do this; main thread (single): run SQL, secondary thread (new functionality): check SHOW PROCESSLIST for certain regex TEXT regularly. This
 #   would allow creating testcases for queries that have a long runtime. This new functionality likely will live outside process_outcome() as it is a live check
 # - Incorporate 3+ different playback options: SOURCE ..., redirection with <, redirection with cat, (stretch goal; replay via MTR), etc. (there may be more)
+#   THIS FUNCTIONALITY WAS ADDED 09-06-2016. "An expansion of this..." below is not implmeneted yet
 #   - It has been clearly shown that different ways of replaying SQL may trigger a bug where other replay options do not. This looks to be more related to for 
 #     example timing/server access method then to an inherent/underlying bug in for example the mysql client (CLI) workings. As such, the "resolution" is not 
 #     to change ("fix") the client instead exploit this difference between replay options to trigger/reproduce bugs/replay test cases in multiple ways.
@@ -1215,6 +1216,11 @@ init_workdir_and_files(){
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then 
     echo_out "[Init] Querytimeout: ${QUERYTIMEOUT}s (For RQG-originating testcase reductions, ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
   fi
+  if [ $PQUERY_MOD -eq 0 ]; then
+    echo_out "[Init] Using the mysql client for SQL replay. CLI_MODE: ${CLI_MODE}"
+  else
+    echo_out "[Init] Using the pquery client for SQL replay"
+  fi
   if [ -n "$MYEXTRA" ]; then echo_out "[Init] Passing the following additional options to mysqld: $MYEXTRA"; fi
   if [ $MODE -ge 6 ]; then 
     if [ $TS_TRXS_SETS -eq 1 ]; then echo_out "[Init] ThreadSync: using last transaction set (accross threads) only"; fi
@@ -1373,7 +1379,7 @@ generate_run_scripts(){
     if [ "$CLI_MODE" == "" ]; then CLI_MODE=99; fi  # Leads to assert below
     case $CLI_MODE in
       0) echo "cat ./${EPOCH}.sql | \${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test" >> $WORK_RUN ;;
-      1) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force --execute=\"SOURCE ./${EPOCH}.sql;\" test" >> $WORK_RUN ;;
+      1) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --force --execute=\"SOURCE ./${EPOCH}.sql;\" test" >> $WORK_RUN ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command.
       2) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test < ./${EPOCH}.sql" >> $WORK_RUN ;;
       *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in generate_run_scripts). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
     esac
@@ -1999,7 +2005,7 @@ run_sql_code(){
       fi
       case $CLI_MODE in
         0) cat $WORKT | $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test > $WORKD/mysql.out 2>&1 ;;
-        1) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force --execute="SOURCE ${WORKT};" test > $WORKD/mysql.out 2>&1 ;;
+        1) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --force --execute="SOURCE ${WORKT};" test > $WORKD/mysql.out 2>&1 ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command.
         2) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test < ${WORKT} > $WORKD/mysql.out 2>&1 ;;
         *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in run_sql_code). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
       esac
