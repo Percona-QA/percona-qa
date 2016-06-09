@@ -31,8 +31,9 @@ MODE=4                          # Always required. Most often used modes: 4=any 
 TEXT="somebug"                  # The text you are looking for. Regex capable. TEXT is searched for in specific location depending on MODE. Use with MODE=1,2,3,5,6,7,8
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
-MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: tokudb plugin loading is checked/done automatically
+MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
 MYBASE="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"              # Path to the MySQL BASE directory to be used
+DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
 
 # === Sporadic testcases        # Used when testcases prove to be sporadic *and* fail to reduce using basic methods
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
@@ -483,10 +484,14 @@ options_check(){
         TS_INPUTDIR="$1/log"
         TOKUDB_RUN_DETECTED=0
         if echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
-        if egrep -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql; then TOKUDB_RUN_DETECTED=1; fi
+        if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
+          if egrep -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql; then TOKUDB_RUN_DETECTED=1; fi
+        fi
         if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
-          if ! echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
-          if ! echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
+          if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then  # Just here for extra safety
+            if ! echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
+            if ! echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
+          fi
           #if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
           #  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
           if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
@@ -525,10 +530,14 @@ options_check(){
     fi 
     TOKUDB_RUN_DETECTED=0
     if echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
-    if egrep -qi "tokudb" ${INPUTFILE}; then TOKUDB_RUN_DETECTED=1; fi
+    if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
+      if egrep -qi "tokudb" ${INPUTFILE}; then TOKUDB_RUN_DETECTED=1; fi
+    fi
     if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
-      if ! echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
-      if ! echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
+      if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then  # Just here for extra safety
+        if ! echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
+        if ! echo "${MYSAFE} ${MYEXTRA}" | egrep -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
+      fi
       #if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
       #  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
       if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
