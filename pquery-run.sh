@@ -736,14 +736,13 @@ pquery_test(){
            sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
-           grep -vi "^show" | \
-           grep -vi "^alter" | \
-           grep -vi "^analyze" | \
-           grep -vi "^optimize" | \
+           grep -viE "show[ \t]+" | \
+           grep -viE "analyze[ \t]+" | \
+           grep -viE "optimize[ \t]+" | \
            grep -vi "information_schema" | \
-           grep -vi "^check" | \
-           grep -vi "^repair" | \
-           grep -vi "^explain" | \
+           grep -viE "check[ \t]+" | \
+           grep -viE "repair[ \t]+" | \
+           grep -viE "explain[ \t]+" | \
            grep -vi "point" | \
            grep -vi "geometry" | \
            grep -vi "linestring" | \
@@ -770,6 +769,10 @@ pquery_test(){
            grep -vi 'max_join_size' | \
            grep -vi "^create table.*unicode" | \
            grep -vi "^create table.*/tmp/not-existing" | \
+           grep -vi "^use " | \
+           grep -vi "password[ \t]*(.*)" | \
+           grep -vi "row_count[ \t]*(.*)" | \
+           grep -vi "^create tablespace" | \
            grep -vi "select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(" | \
            grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
