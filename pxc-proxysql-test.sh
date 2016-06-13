@@ -62,6 +62,26 @@ if [ ! -e $ROOT_FS/garbd ];then
   export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
 fi
 
+if [ ! -d ${ROOT_FS}/test_db ]; then
+  git clone https://github.com/datacharmer/test_db.git
+fi
+
+function create_emp_db()
+{
+  DB_NAME=$1
+  SE_NAME=$2
+  SQL_FILE=$3
+  pushd ${ROOT_FS}/test_db
+  cat ${ROOT_FS}/test_db/$SQL_FILE \
+   | sed -e "s|DROP DATABASE IF EXISTS employees|DROP DATABASE IF EXISTS ${DB_NAME}|" \
+   | sed -e "s|CREATE DATABASE IF NOT EXISTS employees|CREATE DATABASE IF NOT EXISTS ${DB_NAME}|" \
+   | sed -e "s|USE employees|USE ${DB_NAME}|" \
+   | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
+   > ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql
+   $PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
+   popd
+}
+
 if [[ ! -e `which proxysql` ]];then 
   echo "proxysql not found" 
   exit 1
@@ -218,8 +238,44 @@ $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-t
 
 check_script $?
 
-#Shutdown PXC servers
+#echo "Loading sakila test database"
+#$BASEDIR/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila.sql
+#check_script $?
+
+echo "Loading world test database"
+$PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/world.sql
+check_script $?
+
+echo "Loading employees database with innodb engine.."
+create_emp_db employee_1 innodb employees.sql
+check_script $?
+
+echo "Loading employees partitioned database with innodb engine.."
+create_emp_db employee_2 innodb employees_partitioned.sql
+check_script $?
+
+
+#Sysbench RW run
+for i in `seq 1 10`; do
+  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  sleep 1
+done
+
+${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e"select srv_host,srv_port,status,Queries from stats_mysql_connection_pool;"
+
+#Shutdown PXC node1
 $BASEDIR/bin/mysqladmin  --socket=/tmp/node1.sock -u root shutdown
+
+
+#Sysbench RW run
+for i in `seq 1 10`; do
+  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  sleep 1
+done
+
+${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e"select srv_host,srv_port,status,Queries from stats_mysql_connection_pool;"
+
+#Shutdown remaining PXC nodes
 $BASEDIR/bin/mysqladmin  --socket=/tmp/node2.sock -u root shutdown
 $BASEDIR/bin/mysqladmin  --socket=/tmp/node3.sock -u root shutdown
 
