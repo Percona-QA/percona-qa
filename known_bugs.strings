@@ -93,7 +93,6 @@ i == uint2korr.part_rec_buf_ptr                          ## http://bugs.mysql.co
 row0mysql.cc line 3339                                   ## http://bugs.mysql.com/bug.php?id=75945
 ZN13MYSQL_BIN_LOG12find_log_posEP11st_log_infoPKcb       ## http://bugs.mysql.com/bug.php?id=76420
 #thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE ## Fixed in 5.7.8 http://bugs.mysql.com/bug.php?id=76424
-TEXT=.is_started.$                                       ## http://bugs.mysql.com/bug.php?id=76425
 dict0priv.ic line 44                                     ## http://bugs.mysql.com/bug.php?id=76430
 ha_innodb.cc line 9833                                   ## http://bugs.mysql.com/bug.php?id=76431
 ZN14Rpl_info_tableC2EjPKcS1_                             ## http://bugs.mysql.com/bug.php?id=76432
@@ -645,12 +644,13 @@ TEXT=.ds_control.$                                                              
 TEXT=.false.$                                                                           ## http://bugs.mysql.com/bug.php?id=74877
 TEXT=.fd .= -1.$                                                                        ## http://bugs.mysql.com/bug.php?id=74641
 TEXT=.my_b_write.$                                                 ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74950 (fixed in 5.6.27, 5.7.9)
-### CHECK TEXT=.r == 0.$                                                     ## Still present ftm ## https://tokutek.atlassian.net/browse/DB-737 (fixed in 5.6.23/Tk7.5.6) 
+TEXT=.r == 0.$                                                                          ## https://tokutek.atlassian.net/browse/FT-723 also see DB-737 (fixed in 5.6.23/Tk7.5.6) 
 TEXT=.res.$                                                                             ## http://bugs.mysql.com/bug.php?id=76745
 TEXT=.src.$                                                        ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74500 (fixed in 5.7.6)
 TEXT=.strlen.db.$                                                                       ## http://bugs.mysql.com/bug.php?id=76467
 TEXT=.thd.$                                                                             ## https://bugs.launchpad.net/percona-server/+bug/1372675 (pquery) # May need review
 TEXT=.thread .= __null.$                                                                ## http://bugs.mysql.com/bug.php?id=79802 (5.7.10)
 TEXT=.i == .uint16.$                                                                    ## http://bugs.mysql.com/bug.php?id=79829
-TEXT=.\.create_info->options \. 1.                                                      ## http://bugs.mysql.com/bug.php?id=81451
-TEXT=.fd >= 0.                                                                          ## http://bugs.mysql.com/bug.php?id=81453
+TEXT=.\.create_info->options \. 1.$                                                     ## http://bugs.mysql.com/bug.php?id=81451
+TEXT=.fd >= 0.$                                                                         ## http://bugs.mysql.com/bug.php?id=81453
+TEXT=.is_started.$                                                                      ## http://bugs.mysql.com/bug.php?id=76425
