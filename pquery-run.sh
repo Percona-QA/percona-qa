@@ -772,7 +772,6 @@ pquery_test(){
            grep -vi "^use " | \
            grep -vi "password[ \t]*(.*)" | \
            grep -vi "row_count[ \t]*(.*)" | \
-           grep -vi "^create tablespace" | \
            grep -vi "select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(" | \
            grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
