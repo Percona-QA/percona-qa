@@ -14,7 +14,6 @@ echoit(){ echo "[$(date +'%T')] $1"; }
 # RANDOM: Random entropy pool init
 RANDOM=$(date +%s%N | cut -b14-19)
 
-function blabla(){
 # Work directory setup & check main SQL input is available
 rm -Rf ${WORKDIR}; mkdir ${WORKDIR}
 if [ ! -d ${WORKDIR} ]; then echo "Assert: ${WORKDIR} does not exist after creation"; exit 1; fi
@@ -93,8 +92,6 @@ for FILE in $(ls ?.sql1 ??.sql1); do
   if [ $(wc -c ${FILE}) -eq 0 ]; then rm ${FILE}; continue; fi
   shuf --random-source=/dev/urandom ${FILE} > ${FILE}2
 done
-}
-cd ${WORKDIR}
 
 generate(){
   PID_OF_SUBSHELL=$BASHPID  # Hack makes variables subshell-dependent, with thanks, http://askubuntu.com/questions/305858/how-to-know-process-pid-of-bash-function-running-as-child

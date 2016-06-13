@@ -110,6 +110,8 @@
   exec 1>> >(tee /tmp/stdout.log >&1); exec 2>> >(tee /tmp/stderr.log >&2)
 # Start console selflogging from inside a script (With thanks http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session)
   [ -z "$TYPESCRIPTLOG" ] && TYPESCRIPTLOG=1 exec /usr/bin/script -a -q -f /tmp/console_typescript.log -c "TYPESCRIPTLOG=1 $0 $@"  # http://stackoverflow.com/a/26308092
+# Hack for per-subshell variables to ensure 'thread'(subshell) safety (With thanks http://askubuntu.com/questions/305858/how-to-know-process-pid-of-bash-function-running-as-child)
+  function_runs_in_subshell(){ PID_OF_SUBSHELL=$BASHPID; VARIABLE[${PID_OF_SUBSHELL}]="some_var_value"; echo ${VARIABLE[${PID_OF_SUBSHELL}]}; }  function_runs_in_subshell &
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
