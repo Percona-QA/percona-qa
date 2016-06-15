@@ -45,6 +45,11 @@ PXC_TAR=`ls -1td ?ercona-?tra??-?luster* | grep ".tar" | head -n1`
 if [ ! -z $PXC_TAR ];then
   tar -xzf $PXC_TAR
   PXCBASE=`ls -1td ?ercona-?tra??-?luster* | grep -v ".tar" | head -n1`
+  #Checking proxysql binary
+  PROXYSQL_BIN=`ls -1t proxysql | head -n1`
+  if [ ! -z $PROXYSQL_BIN ];then
+    cp $PROXYSQL_BIN $PXCBASE/bin/
+  fi
   export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
 fi
 
