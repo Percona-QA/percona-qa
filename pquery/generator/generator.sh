@@ -3,7 +3,7 @@
 
 # Note: the many backticks used in this script are not SQL/MySQL column-surrounding backticks, but rather subshells which call a function, for example `table` calls table()
 # To debug the SQL generated (it outputs the line numbers: "ERROR 1264 (22003) at line 47 in file" - so it easy to see which line (47 in example) failed in the SQL) use:
-# echo '';echo '';./bin/mysql -A -uroot -S./socket.sock -e"SOURCE ~/percona-qa/pquery/generator/out.sql" --force test 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB|Out of range value|Incorrect prefix key|Incorrect.*value|Data too long|Truncated incorrect.*value|Column.*cannot be null|Cannot get geometry object from data you send|doesn't support GEOMETRY"
+# echo '';echo '';./bin/mysql -A -uroot -S./socket.sock --force --binary-mode test < ~/percona-qa/pquery/generator/out.sql 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB|Out of range value|Incorrect prefix key|Incorrect.*value|Data too long|Truncated incorrect.*value|Column.*cannot be null|Cannot get geometry object from data you send|doesn't support GEOMETRY|Cannot execute statement in a READ ONLY transaction"
 
 if [ "" == "$1" -o "$2" != "" ]; then
   echo "Please specify the number of queries to generate as the first (and only) option to this script"
@@ -26,7 +26,7 @@ mapfile -t n100      < 1-100.txt    ; N100=${#n100[*]}
 mapfile -t n1000     < 1-1000.txt   ; N1000=${#n1000[*]}
 mapfile -t trx       < trx.txt      ; TRX=${#trx[*]}
 mapfile -t flush     < flush.txt    ; FLUSH=${#flush[*]}
-mapfile -t isolation < isolation.txt; ISOL=${#isolation[*]}
+mapfile -t isolation < isolation.txt; ISOL=${#isolation[*]}  # Excluses `COMMIT...RELEASE` SQL, as this drops CLI connection, though would be fine for pquery runs in principle
 mapfile -t lock      < lock.txt     ; LOCK=${#lock[*]}
 mapfile -t reset     < reset.txt    ; RESET=${#reset[*]}
 
@@ -78,39 +78,40 @@ for i in `eval echo {1..${queries}}`; do
           3) echo "UPDATE `table` SET c1=`data` WHERE c2=`data`;" >> out.sql ;;
           4) echo "UPDATE `table` SET c1=`data` WHERE c2=`data` ORDER BY c3;" >> out.sql ;;
           5) echo "UPDATE `table` SET c1=`data` WHERE c2=`data` ORDER BY c3 LIMIT `n10`;" >> out.sql ;;
-          *)  echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
+          *) echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
         esac ;;
-    1[3-4]) case $[$RANDOM % 5 + 1] in  # Generic statements
-          1)  echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
-          2)  echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
-          3)  echo "`lock`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
-          4)  echo "`reset`;" >> out.sql ;;
-          5)  echo "`isol`;" >> out.sql ;;
-          *)  echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
+    1[3-4]) case $[$RANDOM % 10 + 1] in  # Generic statements
+          [1-3]) echo "UNLOCK TABLES;" >> out.sql ;;
+          [4-6]) echo "SET AUTOCOMMIT = ON;"  >> out.sql ;;
+           7) echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
+           8) echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
+           9) echo "`reset`;" >> out.sql ;;
+          10) echo "`isol`;" >> out.sql ;;
+           *) echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
         esac ;;
     15) case $[$RANDOM % 21 + 1] in  # Alter
-          1)  echo "ALTER TABLE `table` ADD COLUMN c4 `ctype`;" >> out.sql ;;
-          2)  echo "ALTER TABLE `table` DROP COLUMN c1;" >> out.sql ;;
-          3)  echo "ALTER TABLE `table` DROP COLUMN c2;" >> out.sql ;;
-          4)  echo "ALTER TABLE `table` DROP COLUMN c3;" >> out.sql ;;
-          5)  echo "ALTER TABLE `table` ENGINE=`engin`;" >> out.sql ;;
-          6)  echo "ALTER TABLE `table` DROP PRIMARY KEY;" >> out.sql ;;
-          7)  echo "ALTER TABLE `table` ADD INDEX (c1);" >> out.sql ;;
-          8)  echo "ALTER TABLE `table` ADD INDEX (c2);" >> out.sql ;;
-          9)  echo "ALTER TABLE `table` ADD INDEX (c3);" >> out.sql ;;
-         10)  echo "ALTER TABLE `table` ADD UNIQUE (c1);" >> out.sql ;;
-         11)  echo "ALTER TABLE `table` ADD UNIQUE (c2);" >> out.sql ;;
-         12)  echo "ALTER TABLE `table` ADD UNIQUE (c3);" >> out.sql ;;
-         13)  echo "ALTER TABLE `table` ADD INDEX (c1), ADD UNIQUE (c2);" >> out.sql ;;
-         14)  echo "ALTER TABLE `table` ADD INDEX (c2), ADD UNIQUE (c3);" >> out.sql ;;
-         15)  echo "ALTER TABLE `table` ADD INDEX (c3), ADD UNIQUE (c1);" >> out.sql ;;
-         16)  echo "ALTER TABLE `table` MODIFY c1 `ctype` CHARACTER SET "Binary" COLLATE "Binary";" >> out.sql ;;
-         17)  echo "ALTER TABLE `table` MODIFY c2 `ctype` CHARACTER SET "utf8" COLLATE "utf8_bin";" >> out.sql ;;
-         18)  echo "ALTER TABLE `table` MODIFY c3 `ctype` CHARACTER SET "latin1" COLLATE "latin1_bin";" >> out.sql ;;
-         19)  echo "ALTER TABLE `table` MODIFY c1 `ctype`;" >> out.sql ;;
-         20)  echo "ALTER TABLE `table` MODIFY c2 `ctype`;" >> out.sql ;;
-         21)  echo "ALTER TABLE `table` MODIFY c3 `ctype`;" >> out.sql ;;
-          *)  echo "Assert: invalid random case selection in ALTER subcase"; exit 1 ;;
+           1) echo "ALTER TABLE `table` ADD COLUMN c4 `ctype`;" >> out.sql ;;
+           2) echo "ALTER TABLE `table` DROP COLUMN c1;" >> out.sql ;;
+           3) echo "ALTER TABLE `table` DROP COLUMN c2;" >> out.sql ;;
+           4) echo "ALTER TABLE `table` DROP COLUMN c3;" >> out.sql ;;
+           5) echo "ALTER TABLE `table` ENGINE=`engin`;" >> out.sql ;;
+           6) echo "ALTER TABLE `table` DROP PRIMARY KEY;" >> out.sql ;;
+           7) echo "ALTER TABLE `table` ADD INDEX (c1);" >> out.sql ;;
+           8) echo "ALTER TABLE `table` ADD INDEX (c2);" >> out.sql ;;
+           9) echo "ALTER TABLE `table` ADD INDEX (c3);" >> out.sql ;;
+          10) echo "ALTER TABLE `table` ADD UNIQUE (c1);" >> out.sql ;;
+          11) echo "ALTER TABLE `table` ADD UNIQUE (c2);" >> out.sql ;;
+          12) echo "ALTER TABLE `table` ADD UNIQUE (c3);" >> out.sql ;;
+          13) echo "ALTER TABLE `table` ADD INDEX (c1), ADD UNIQUE (c2);" >> out.sql ;;
+          14) echo "ALTER TABLE `table` ADD INDEX (c2), ADD UNIQUE (c3);" >> out.sql ;;
+          15) echo "ALTER TABLE `table` ADD INDEX (c3), ADD UNIQUE (c1);" >> out.sql ;;
+          16) echo "ALTER TABLE `table` MODIFY c1 `ctype` CHARACTER SET "Binary" COLLATE "Binary";" >> out.sql ;;
+          17) echo "ALTER TABLE `table` MODIFY c2 `ctype` CHARACTER SET "utf8" COLLATE "utf8_bin";" >> out.sql ;;
+          18) echo "ALTER TABLE `table` MODIFY c3 `ctype` CHARACTER SET "latin1" COLLATE "latin1_bin";" >> out.sql ;;
+          19) echo "ALTER TABLE `table` MODIFY c1 `ctype`;" >> out.sql ;;
+          20) echo "ALTER TABLE `table` MODIFY c2 `ctype`;" >> out.sql ;;
+          21) echo "ALTER TABLE `table` MODIFY c3 `ctype`;" >> out.sql ;;
+           *) echo "Assert: invalid random case selection in ALTER subcase"; exit 1 ;;
         esac ;;
      *) echo "Assert: invalid random case selection in main case"; exit 1 ;;
   esac
