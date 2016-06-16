@@ -21,6 +21,7 @@ mapfile -t types   < types.txt   ; TYPES=${#types[*]}
 mapfile -t data    < data.txt    ; DATA=${#data[*]}
 mapfile -t engines < engines.txt ; ENGINES=${#engines[*]}
 mapfile -t onoff   < onoff.txt   ; ONOFF=${#onoff[*]}
+mapfile -t n3      < 1-3.txt     ; N3=${#n3[*]}
 mapfile -t n10     < 1-10.txt    ; N10=${#n10[*]}
 mapfile -t n100    < 1-100.txt   ; N100=${#n100[*]}
 mapfile -t n1000   < 1-1000.txt  ; N1000=${#n1000[*]}
@@ -31,6 +32,7 @@ ctype(){ echo "${types[$[$RANDOM % $TYPES]]}"; }
 data() { echo "${data[$[$RANDOM % $DATA]]}"; }
 engin(){ echo "${engines[$[$RANDOM % $ENGINES]]}"; }
 onoff(){ echo "${onoff[$[$RANDOM % $ONOFF]]}"; }
+n3()   { echo "${n3[$[$RANDOM % $N3]]}"; }
 n10()  { echo "${n10[$[$RANDOM % $N10]]}"; }
 n100() { echo "${n100[$[$RANDOM % $N100]]}"; }
 n1000(){ echo "${n1000[$[$RANDOM % $N1000]]}"; }
@@ -98,7 +100,7 @@ for i in `eval echo {1..${queries}}`; do
          21)  echo "ALTER TABLE `table` MODIFY c3 `ctype`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in ALTER subcase"; exit 1 ;;
         esac ;;
-    *)  echo "Assert: invalid random case selection in main case"; exit 1 ;;
+     *) echo "Assert: invalid random case selection in main case"; exit 1 ;;
   esac
 done
 
