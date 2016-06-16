@@ -28,7 +28,7 @@ mapfile -t trx       < trx.txt      ; TRX=${#trx[*]}
 mapfile -t flush     < flush.txt    ; FLUSH=${#flush[*]}
 mapfile -t isolation < isolation.txt; ISOL=${#isolation[*]}
 mapfile -t lock      < lock.txt     ; LOCK=${#lock[*]}
-mapfile -t reset     < reset.txt    ; RESET=${#lock[*]}
+mapfile -t reset     < reset.txt    ; RESET=${#reset[*]}
 
 table(){ echo "${tables[$[$RANDOM % $TABLES]]}"; }
 pk()   { echo "${pk[$[$RANDOM % $PK]]}"; }
@@ -84,7 +84,7 @@ for i in `eval echo {1..${queries}}`; do
           1)  echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
           2)  echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
           3)  echo "`lock`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
-          4)  echo "`reset`" | sed "s|DUMMY|`reset`|;s|$|;|" >> out.sql ;;
+          4)  echo "`reset`;" >> out.sql ;;
           5)  echo "`isol`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
         esac ;;
@@ -116,3 +116,4 @@ for i in `eval echo {1..${queries}}`; do
   esac
 done
 
+sed -i "s|[ \t][ \t]\+| |" out.sql  # Replace double spaces/tabs with single space
