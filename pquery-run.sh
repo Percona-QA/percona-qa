@@ -323,6 +323,7 @@ pxc_startup(){
     if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
       mkdir -p $node1 $node2 $node3
     fi
+    WSREP_PROVIDER_OPT=""
   else
     node1="${RUNDIR}/${TRIAL}/node1"
     node2="${RUNDIR}/${TRIAL}/node2"
@@ -672,7 +673,7 @@ pquery_test(){
       PXC_MYEXTRA="${PXC_MYEXTRA} ${OPTIONS_TO_ADD}"
     fi
     # === PXC Options Stage 3: Add random wsrep (Galera) configuration options
-    if [ ${PXC_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS} -eq 1]; then
+    if [ ${PXC_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS} -eq 1 ]; then
       OPTIONS_TO_ADD=
       NR_OF_OPTIONS_TO_ADD=$(( RANDOM % PXC_WSREP_PROVIDER_MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
       for X in $(seq 1 ${NR_OF_OPTIONS_TO_ADD}); do
