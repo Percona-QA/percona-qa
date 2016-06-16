@@ -112,6 +112,8 @@
   [ -z "$TYPESCRIPTLOG" ] && TYPESCRIPTLOG=1 exec /usr/bin/script -a -q -f /tmp/console_typescript.log -c "TYPESCRIPTLOG=1 $0 $@"  # http://stackoverflow.com/a/26308092
 # Hack for per-subshell variables to ensure 'thread'(subshell) safety (With thanks http://askubuntu.com/questions/305858/how-to-know-process-pid-of-bash-function-running-as-child)
   function_runs_in_subshell(){ PID_OF_SUBSHELL=$BASHPID; VARIABLE[${PID_OF_SUBSHELL}]="some_var_value"; echo ${VARIABLE[${PID_OF_SUBSHELL}]}; }  function_runs_in_subshell &
+# Read a file into an array (With thanks http://stackoverflow.com/questions/30988586/creating-an-array-from-a-text-file-in-bash)
+  mapfile -t somearray < file.txt  # -t drops newline chars. See http://wiki.bash-hackers.org/commands/builtin/mapfile for more options
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
@@ -178,5 +180,7 @@
   file, ldd, nm, objdump, readelf, strings
 # On Redirection
   http://www.tldp.org/LDP/abs/html/io-redirection.html
+# On Arrays
+  http://wiki.bash-hackers.org/syntax/arrays
 # On using a named pipe
   http://stackoverflow.com/a/14893732

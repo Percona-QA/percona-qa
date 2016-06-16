@@ -16,15 +16,26 @@ fi
 
 RANDOM=`date +%s%N | cut -b13-19`
 
-table(){ echo "$(shuf --random-source=/dev/urandom tables.txt  | head -n1)"; }
-pk()   { echo "$(shuf --random-source=/dev/urandom pk.txt      | head -n1)"; }
-ctype(){ echo "$(shuf --random-source=/dev/urandom types.txt   | head -n1)"; }
-data() { echo "$(shuf --random-source=/dev/urandom data.txt    | head -n1)"; }
-engin(){ echo "$(shuf --random-source=/dev/urandom engines.txt | head -n1)"; }
-onoff(){ echo "$(shuf --random-source=/dev/urandom onoff.txt   | head -n1)"; }
-n10()  { echo "$(shuf --random-source=/dev/urandom 1-10.txt    | head -n1)"; }
-n100() { echo "$(shuf --random-source=/dev/urandom 1-100.txt   | head -n1)"; }
-n1000(){ echo "$(shuf --random-source=/dev/urandom 1-1000.txt  | head -n1)"; }
+# Read data files
+mapfile -t tables  < tables.txt  ; TABLES=${#tables[*]}
+mapfile -t pk      < pk.txt      ; PK=${#pk[*]}
+mapfile -t types   < types.txt   ; TYPES=${#types[*]}
+mapfile -t data    < data.txt    ; DATA=${#data[*]}
+mapfile -t engines < engines.txt ; ENGINES=${#engines[*]}
+mapfile -t onoff   < onoff.txt   ; ONOFF=${#onoff[*]}
+mapfile -t n10     < 1-10.txt    ; N10=${#n10[*]}
+mapfile -t n100    < 1-100.txt   ; N100=${#n100[*]}
+mapfile -t n1000   < 1-1000.txt  ; N1000=${#n1000[*]}
+
+table(){ echo "${tables[$[$RANDOM % $TABLES]]}"; }
+pk()   { echo "${pk[$[$RANDOM % $PK]]}"; }
+ctype(){ echo "${types[$[$RANDOM % $TYPES]]}"; }
+data() { echo "${data[$[$RANDOM % $DATA]]}"; }
+engin(){ echo "${engines[$[$RANDOM % $ENGINES]]}"; }
+onoff(){ echo "${onoff[$[$RANDOM % $ONOFF]]}"; }
+n10()  { echo "${n10[$[$RANDOM % $N10]]}"; }
+n100() { echo "${n100[$[$RANDOM % $N100]]}"; }
+n1000(){ echo "${n1000[$[$RANDOM % $N1000]]}"; }
 
 create_table(){
   case $[$RANDOM % 3 + 1] in
