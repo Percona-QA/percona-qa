@@ -5,7 +5,7 @@
 # To debug the SQL generated (it outputs the line numbers: "ERROR 1264 (22003) at line 47 in file" - so it easy to see which line (47 in example) failed in the SQL) use:
 # echo '';echo '';./bin/mysql -A -uroot -S./socket.sock -e"SOURCE ~/percona-qa/pquery/generator/out.sql" --force test 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB"
 # Or, a bit more restrictive (may miss some issues):
-# echo '';echo '';./bin/mysql -A -uroot -S./socket.sock -e"SOURCE ~/percona-qa/pquery/generator/out.sql" --force test 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB|Out of range value|Incorrect prefix key|Incorrect.*value|Data too long"
+# echo '';echo '';./bin/mysql -A -uroot -S./socket.sock -e"SOURCE ~/percona-qa/pquery/generator/out.sql" --force test 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB|Out of range value|Incorrect prefix key|Incorrect.*value|Data too long|Truncated incorrect.*value|Column.*cannot be null"
 
 if [ "" == "$1" -o "$2" != "" ]; then
   echo "Please specify the number of queries to generate as the first (and only) option to this script"
@@ -55,13 +55,13 @@ if [ -r out.sql ]; then rm out.sql; fi
 touch out.sql
 
 for i in `eval echo {1..${queries}}`; do
-  case $[$RANDOM % 10 + 1] in
+  case $[$RANDOM % 13 + 1] in
     [1-4]) create_table ;; 
     [5-6]) echo "DROP TABLE `table`;" >> out.sql ;;
-    7)  echo "SELECT c1 FROM `table`;" >> out.sql ;;
-    8)  echo "INSERT INTO `table` VALUES (`data`,`data`,`data`);" >> out.sql ;;
-    9)  echo "DELETE FROM `table` LIMIT `n10`;" >> out.sql ;;
-    10) case $[$RANDOM % 5 + 1] in
+    [7-9]) echo "INSERT INTO `table` VALUES (`data`,`data`,`data`);" >> out.sql ;;
+    10) echo "SELECT c1 FROM `table`;" >> out.sql ;;
+    11) echo "DELETE FROM `table` LIMIT `n10`;" >> out.sql ;;
+    12) case $[$RANDOM % 5 + 1] in
           1) echo "UPDATE `table` SET c1=`data`;" >> out.sql ;;
           2) echo "UPDATE `table` SET c1=`data` LIMIT `n10`;" >> out.sql ;;
           3) echo "UPDATE `table` SET c1=`data` WHERE c2=`data`;" >> out.sql ;;
@@ -69,7 +69,7 @@ for i in `eval echo {1..${queries}}`; do
           5) echo "UPDATE `table` SET c1=`data` WHERE c2=`data` ORDER BY c3 LIMIT `n10`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
         esac ;;
-    11) case $[$RANDOM % 5 + 1] in  # Generic statements
+    13) case $[$RANDOM % 5 + 1] in  # Generic statements
           [1-2]) echo "COMMIT;" >> out.sql ;;
           3)  echo "START TRANSACTION;" >> out.sql ;;
           4)  echo "FLUSH TABLES;" >> out.sql ;;
