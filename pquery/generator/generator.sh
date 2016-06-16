@@ -3,9 +3,7 @@
 
 # Note: the many backticks used in this script are not SQL/MySQL column-surrounding backticks, but rather subshells which call a function, for example `table` calls table()
 # To debug the SQL generated (it outputs the line numbers: "ERROR 1264 (22003) at line 47 in file" - so it easy to see which line (47 in example) failed in the SQL) use:
-# echo '';echo '';./bin/mysql -A -uroot -S./socket.sock -e"SOURCE ~/percona-qa/pquery/generator/out.sql" --force test 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB"
-# Or, a bit more restrictive (may miss some issues):
-# echo '';echo '';./bin/mysql -A -uroot -S./socket.sock -e"SOURCE ~/percona-qa/pquery/generator/out.sql" --force test 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB|Out of range value|Incorrect prefix key|Incorrect.*value|Data too long|Truncated incorrect.*value|Column.*cannot be null"
+# echo '';echo '';./bin/mysql -A -uroot -S./socket.sock -e"SOURCE ~/percona-qa/pquery/generator/out.sql" --force test 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB|Out of range value|Incorrect prefix key|Incorrect.*value|Data too long|Truncated incorrect.*value|Column.*cannot be null|Cannot get geometry object from data you send|doesn't support GEOMETRY"
 
 if [ "" == "$1" -o "$2" != "" ]; then
   echo "Please specify the number of queries to generate as the first (and only) option to this script"
