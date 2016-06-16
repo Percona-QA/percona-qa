@@ -15,19 +15,20 @@ fi
 RANDOM=`date +%s%N | cut -b13-19`
 
 # Read data files
-mapfile -t tables  < tables.txt  ; TABLES=${#tables[*]}
-mapfile -t pk      < pk.txt      ; PK=${#pk[*]}
-mapfile -t types   < types.txt   ; TYPES=${#types[*]}
-mapfile -t data    < data.txt    ; DATA=${#data[*]}
-mapfile -t engines < engines.txt ; ENGINES=${#engines[*]}
-mapfile -t n3      < 1-3.txt     ; N3=${#n3[*]}
-mapfile -t n10     < 1-10.txt    ; N10=${#n10[*]}
-mapfile -t n100    < 1-100.txt   ; N100=${#n100[*]}
-mapfile -t n1000   < 1-1000.txt  ; N1000=${#n1000[*]}
-mapfile -t trx     < trx.txt     ; TRX=${#trx[*]}
-mapfile -t flush   < flush.txt   ; FLUSH=${#flush[*]}
-mapfile -t isolation  < isolation.txt   ; FLUSH=${#isolation[*]}
-mapfile -t lock    < lock.txt   ; FLUSH=${#lock[*]}
+mapfile -t tables    < tables.txt   ; TABLES=${#tables[*]}
+mapfile -t pk        < pk.txt       ; PK=${#pk[*]}
+mapfile -t types     < types.txt    ; TYPES=${#types[*]}
+mapfile -t data      < data.txt     ; DATA=${#data[*]}
+mapfile -t engines   < engines.txt  ; ENGINES=${#engines[*]}
+mapfile -t n3        < 1-3.txt      ; N3=${#n3[*]}
+mapfile -t n10       < 1-10.txt     ; N10=${#n10[*]}
+mapfile -t n100      < 1-100.txt    ; N100=${#n100[*]}
+mapfile -t n1000     < 1-1000.txt   ; N1000=${#n1000[*]}
+mapfile -t trx       < trx.txt      ; TRX=${#trx[*]}
+mapfile -t flush     < flush.txt    ; FLUSH=${#flush[*]}
+mapfile -t isolation < isolation.txt; ISOL=${#isolation[*]}
+mapfile -t lock      < lock.txt     ; LOCK=${#lock[*]}
+mapfile -t reset     < reset.txt    ; RESET=${#lock[*]}
 
 table(){ echo "${tables[$[$RANDOM % $TABLES]]}"; }
 pk()   { echo "${pk[$[$RANDOM % $PK]]}"; }
@@ -42,8 +43,9 @@ onoff(){ if $[$RANDOM % 20 +1 ] -le 15; then echo "ON"; else echo "OFF"; fi }  #
 temp() { if $[$RANDOM % 20 +1 ] -le 4 ; then echo "TEMPORARY "; else echo ""; fi }  # 20% TEMPORARY tables
 trx()  { echo "${trx[$[$RANDOM % $TRX]]}"; }
 flush(){ echo "${flush[$[$RANDOM % $FLUSH]]}"; }
-isolation(){ echo "${isolation[$[$RANDOM % $ISOLATION]]}"; }
-lock(){ echo "${lock[$[$RANDOM % $LOCK]]}"; }
+isol() { echo "${isolation[$[$RANDOM % $ISOL]]}"; }
+lock() { echo "${lock[$[$RANDOM % $LOCK]]}"; }
+reset(){ echo "${reset[$[$RANDOM % $RESET]]}"; }
 
 create_table(){
   case $[$RANDOM % 3 + 1] in
@@ -78,11 +80,11 @@ for i in `eval echo {1..${queries}}`; do
           *)  echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
         esac ;;
     13) case $[$RANDOM % 5 + 1] in  # Generic statements
-          1)  echo "`flush | sed 's|DUMMY|`table`|'`" >> out.sql ;;
-          2)  echo "`trx | sed 's|DUMMY|`table`|'`" >> out.sql ;;
-          3)  echo "`isolation`" >> out.sql ;;
-          4)  echo "`lock | sed 's|DUMMY|`table`|'`" >> out.sql ;;
-          5)  echo "DROP TABLE `table`;" >> out.sql ;;
+          1)  echo "`flush | sed "s|DUMMY|`table`|"`;" >> out.sql ;;
+          2)  echo "`trx | sed "s|DUMMY|`table`|"`;" >> out.sql ;;
+          3)  echo "`isol`;" >> out.sql ;;
+          4)  echo "`lock | sed "s|DUMMY|`table`|"`;" >> out.sql ;;
+          5)  echo "`reset | sed "s|DUMMY|`reset`|"`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
         esac ;;
     14) case $[$RANDOM % 21 + 1] in  # Alter
