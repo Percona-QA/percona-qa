@@ -74,7 +74,7 @@ for i in `eval echo {1..${queries}}`; do
           5)  echo "DROP TABLE `table`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
         esac ;;
-    14) case $[$RANDOM % 21 + 1] in  # Alter
+    14) case $[$RANDOM % 24 + 1] in  # Alter
           1)  echo "ALTER TABLE `table` ADD COLUMN c4 `ctype`;" >> out.sql ;;
           2)  echo "ALTER TABLE `table` DROP COLUMN c1;" >> out.sql ;;
           3)  echo "ALTER TABLE `table` DROP COLUMN c2;" >> out.sql ;;
@@ -96,6 +96,9 @@ for i in `eval echo {1..${queries}}`; do
          19)  echo "ALTER TABLE `table` MODIFY c1 `ctype` CHARACTER SET "Binary" COLLATE "Binary";" >> out.sql ;;
          20)  echo "ALTER TABLE `table` MODIFY c2 `ctype` CHARACTER SET "utf8" COLLATE "utf8_bin";" >> out.sql ;;
          21)  echo "ALTER TABLE `table` MODIFY c3 `ctype` CHARACTER SET "latin1" COLLATE "latin1_bin";" >> out.sql ;;
+         22)  echo "ALTER TABLE `table` MODIFY c1 `ctype`;" >> out.sql ;;
+         23)  echo "ALTER TABLE `table` MODIFY c2 `ctype`;" >> out.sql ;;
+         24)  echo "ALTER TABLE `table` MODIFY c3 `ctype`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in ALTER subcase"; exit 1 ;;
         esac ;;
     *)  echo "Assert: invalid random case selection in main case"; exit 1 ;;
