@@ -80,7 +80,7 @@ for i in `eval echo {1..${queries}}`; do
           5) echo "UPDATE `table` SET c1=`data` WHERE c2=`data` ORDER BY c3 LIMIT `n10`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
         esac ;;
-    [13-14]) case $[$RANDOM % 5 + 1] in  # Generic statements
+    1[3-4]) case $[$RANDOM % 5 + 1] in  # Generic statements
           1)  echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
           2)  echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
           3)  echo "`lock`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
