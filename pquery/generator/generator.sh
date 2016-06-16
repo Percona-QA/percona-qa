@@ -39,13 +39,14 @@ n3()   { echo "${n3[$[$RANDOM % $N3]]}"; }
 n10()  { echo "${n10[$[$RANDOM % $N10]]}"; }
 n100() { echo "${n100[$[$RANDOM % $N100]]}"; }
 n1000(){ echo "${n1000[$[$RANDOM % $N1000]]}"; }
-onoff(){ if $[$RANDOM % 20 +1 ] -le 15; then echo "ON"; else echo "OFF"; fi }  # 75% ON, 25% OFF
-temp() { if $[$RANDOM % 20 +1 ] -le 4 ; then echo "TEMPORARY "; else echo ""; fi }  # 20% TEMPORARY tables
 trx()  { echo "${trx[$[$RANDOM % $TRX]]}"; }
 flush(){ echo "${flush[$[$RANDOM % $FLUSH]]}"; }
 isol() { echo "${isolation[$[$RANDOM % $ISOL]]}"; }
 lock() { echo "${lock[$[$RANDOM % $LOCK]]}"; }
 reset(){ echo "${reset[$[$RANDOM % $RESET]]}"; }
+
+onoff(){ if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }  # 75% ON, 25% OFF
+temp() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; else echo ""; fi }  # 20% TEMPORARY tables
 
 create_table(){
   case $[$RANDOM % 3 + 1] in
@@ -65,7 +66,7 @@ if [ -r out.sql ]; then rm out.sql; fi
 touch out.sql
 
 for i in `eval echo {1..${queries}}`; do
-  case $[$RANDOM % 14 + 1] in
+  case $[$RANDOM % 15 + 1] in
     [1-4]) create_table ;; 
     [5-6]) echo "DROP TABLE `table`;" >> out.sql ;;
     [7-9]) echo "INSERT INTO `table` VALUES (`data`,`data`,`data`);" >> out.sql ;;
@@ -79,15 +80,15 @@ for i in `eval echo {1..${queries}}`; do
           5) echo "UPDATE `table` SET c1=`data` WHERE c2=`data` ORDER BY c3 LIMIT `n10`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
         esac ;;
-    13) case $[$RANDOM % 5 + 1] in  # Generic statements
-          1)  echo "`flush | sed "s|DUMMY|`table`|"`;" >> out.sql ;;
-          2)  echo "`trx | sed "s|DUMMY|`table`|"`;" >> out.sql ;;
-          3)  echo "`isol`;" >> out.sql ;;
-          4)  echo "`lock | sed "s|DUMMY|`table`|"`;" >> out.sql ;;
-          5)  echo "`reset | sed "s|DUMMY|`reset`|"`;" >> out.sql ;;
+    [13-14]) case $[$RANDOM % 5 + 1] in  # Generic statements
+          1)  echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
+          2)  echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
+          3)  echo "`lock`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
+          4)  echo "`reset`" | sed "s|DUMMY|`reset`|;s|$|;|" >> out.sql ;;
+          5)  echo "`isol`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
         esac ;;
-    14) case $[$RANDOM % 21 + 1] in  # Alter
+    15) case $[$RANDOM % 21 + 1] in  # Alter
           1)  echo "ALTER TABLE `table` ADD COLUMN c4 `ctype`;" >> out.sql ;;
           2)  echo "ALTER TABLE `table` DROP COLUMN c1;" >> out.sql ;;
           3)  echo "ALTER TABLE `table` DROP COLUMN c2;" >> out.sql ;;
