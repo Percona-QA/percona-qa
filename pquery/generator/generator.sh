@@ -20,7 +20,6 @@ mapfile -t pk      < pk.txt      ; PK=${#pk[*]}
 mapfile -t types   < types.txt   ; TYPES=${#types[*]}
 mapfile -t data    < data.txt    ; DATA=${#data[*]}
 mapfile -t engines < engines.txt ; ENGINES=${#engines[*]}
-mapfile -t onoff   < onoff.txt   ; ONOFF=${#onoff[*]}
 mapfile -t n3      < 1-3.txt     ; N3=${#n3[*]}
 mapfile -t n10     < 1-10.txt    ; N10=${#n10[*]}
 mapfile -t n100    < 1-100.txt   ; N100=${#n100[*]}
@@ -31,21 +30,22 @@ pk()   { echo "${pk[$[$RANDOM % $PK]]}"; }
 ctype(){ echo "${types[$[$RANDOM % $TYPES]]}"; }
 data() { echo "${data[$[$RANDOM % $DATA]]}"; }
 engin(){ echo "${engines[$[$RANDOM % $ENGINES]]}"; }
-onoff(){ echo "${onoff[$[$RANDOM % $ONOFF]]}"; }
 n3()   { echo "${n3[$[$RANDOM % $N3]]}"; }
 n10()  { echo "${n10[$[$RANDOM % $N10]]}"; }
 n100() { echo "${n100[$[$RANDOM % $N100]]}"; }
 n1000(){ echo "${n1000[$[$RANDOM % $N1000]]}"; }
+onoff(){ if $[$RANDOM % 20 +1 ] -le 15; then echo "ON"; else echo "OFF"; fi }  # 75% ON, 25% OFF
+temp() { if $[$RANDOM % 20 +1 ] -le 4 ; then echo "TEMPORARY "; else echo ""; fi }  # 20% TEMPORARY tables
 
 create_table(){
   case $[$RANDOM % 3 + 1] in
-    1)  echo "CREATE TABLE `table` (c1 `pk`,c2 `ctype`,c3 `ctype`) ENGINE=`engin`;" >> out.sql ;;
-    2)  echo "CREATE TABLE `table` (c1 `ctype`,c2 `ctype`,c3 `ctype`) ENGINE=`engin`;" >> out.sql ;;
+    1)  echo "CREATE `temp` TABLE `table` (c1 `pk`,c2 `ctype`,c3 `ctype`) ENGINE=`engin`;" >> out.sql ;;
+    2)  echo "CREATE `temp` TABLE `table` (c1 `ctype`,c2 `ctype`,c3 `ctype`) ENGINE=`engin`;" >> out.sql ;;
     3)  C1TYPE=`ctype`
         if [ "`echo ${C1TYPE} | grep -o 'CHAR'`" == "CHAR" -o "`echo ${C1TYPE} | grep -o 'BLOB'`" == "BLOB" -o "`echo ${C1TYPE} | grep -o 'TEXT'`" == "TEXT" ]; then 
-          echo "CREATE TABLE `table` (c1 ${C1TYPE},c2 `ctype`,c3 `ctype`, PRIMARY KEY(c1(`n10`))) ENGINE=`engin`;" >> out.sql
+          echo "CREATE `temp` TABLE `table` (c1 ${C1TYPE},c2 `ctype`,c3 `ctype`, PRIMARY KEY(c1(`n10`))) ENGINE=`engin`;" >> out.sql
         else
-          echo "CREATE TABLE `table` (c1 ${C1TYPE},c2 `ctype`,c3 `ctype`, PRIMARY KEY(c1)) ENGINE=`engin`;" >> out.sql
+          echo "CREATE `temp` TABLE `table` (c1 ${C1TYPE},c2 `ctype`,c3 `ctype`, PRIMARY KEY(c1)) ENGINE=`engin`;" >> out.sql
         fi;;
     *)  echo "Assert: invalid random case selection in main create_table() case"; exit ;;
   esac
