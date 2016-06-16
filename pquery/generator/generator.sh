@@ -53,7 +53,7 @@ if [ -r out.sql ]; then rm out.sql; fi
 touch out.sql
 
 for i in `eval echo {1..${queries}}`; do
-  case $[$RANDOM % 13 + 1] in
+  case $[$RANDOM % 14 + 1] in
     [1-4]) create_table ;; 
     [5-6]) echo "DROP TABLE `table`;" >> out.sql ;;
     [7-9]) echo "INSERT INTO `table` VALUES (`data`,`data`,`data`);" >> out.sql ;;
@@ -73,6 +73,30 @@ for i in `eval echo {1..${queries}}`; do
           4)  echo "FLUSH TABLES;" >> out.sql ;;
           5)  echo "DROP TABLE `table`;" >> out.sql ;;
           *)  echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
+        esac ;;
+    14) case $[$RANDOM % 21 + 1] in  # Alter
+          1)  echo "ALTER TABLE `table` ADD COLUMN c4 `ctype`;" >> out.sql ;;
+          2)  echo "ALTER TABLE `table` DROP COLUMN c1;" >> out.sql ;;
+          3)  echo "ALTER TABLE `table` DROP COLUMN c2;" >> out.sql ;;
+          4)  echo "ALTER TABLE `table` DROP COLUMN c3;" >> out.sql ;;
+          5)  echo "ALTER TABLE `table` DROP COLUMN c1,c2;" >> out.sql ;;
+          6)  echo "ALTER TABLE `table` DROP COLUMN c2,c3;" >> out.sql ;;
+          7)  echo "ALTER TABLE `table` DROP COLUMN c1,c3;" >> out.sql ;;
+          8)  echo "ALTER TABLE `table` ENGINE=`engin`;" >> out.sql ;;
+          9)  echo "ALTER TABLE `table` DROP PRIMARY KEY;" >> out.sql ;;
+         10)  echo "ALTER TABLE `table` ADD INDEX (c1);" >> out.sql ;;
+         11)  echo "ALTER TABLE `table` ADD INDEX (c2);" >> out.sql ;;
+         12)  echo "ALTER TABLE `table` ADD INDEX (c3);" >> out.sql ;;
+         13)  echo "ALTER TABLE `table` ADD UNIQUE (c1);" >> out.sql ;;
+         14)  echo "ALTER TABLE `table` ADD UNIQUE (c2);" >> out.sql ;;
+         15)  echo "ALTER TABLE `table` ADD UNIQUE (c3);" >> out.sql ;;
+         16)  echo "ALTER TABLE `table` ADD INDEX (c1), ADD UNIQUE (c2);" >> out.sql ;;
+         17)  echo "ALTER TABLE `table` ADD INDEX (c2), ADD UNIQUE (c3);" >> out.sql ;;
+         18)  echo "ALTER TABLE `table` ADD INDEX (c3), ADD UNIQUE (c1);" >> out.sql ;;
+         19)  echo "ALTER TABLE `table` MODIFY c1 `ctype` CHARACTER SET "Binary" COLLATE "Binary";" >> out.sql ;;
+         20)  echo "ALTER TABLE `table` MODIFY c2 `ctype` CHARACTER SET "utf8" COLLATE "utf8_bin";" >> out.sql ;;
+         21)  echo "ALTER TABLE `table` MODIFY c3 `ctype` CHARACTER SET "latin1" COLLATE "latin1_bin";" >> out.sql ;;
+          *)  echo "Assert: invalid random case selection in ALTER subcase"; exit 1 ;;
         esac ;;
     *)  echo "Assert: invalid random case selection in main case"; exit 1 ;;
   esac
