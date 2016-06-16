@@ -76,7 +76,7 @@ INTEGER(1)
 INTEGER(1) UNSIGNED
 INTEGER(1) ZEROFILL
 INTEGER(1) UNSIGNED ZEROFILL
-INTEGER(2)	
+INTEGER(2)
 INTEGER(10)
 INTEGER(40)
 INTEGER(254)
@@ -92,7 +92,7 @@ BIGINT(1)
 BIGINT(1) UNSIGNED
 BIGINT(1) ZEROFILL
 BIGINT(1) UNSIGNED ZEROFILL
-BIGINT(2)	
+BIGINT(2)
 BIGINT(10)
 BIGINT(40)
 BIGINT(254)
@@ -144,13 +144,13 @@ DOUBLE(1,1)
 DOUBLE(1,1) UNSIGNED
 DOUBLE(1,1) ZEROFILL
 DOUBLE(1,1) UNSIGNED ZEROFILL
-DOUBLE(2,2)	
-DOUBLE(2,2) UNSIGNED	
-DOUBLE(2,2) ZEROFILL	
+DOUBLE(2,2)
+DOUBLE(2,2) UNSIGNED
+DOUBLE(2,2) ZEROFILL
 DOUBLE(2,2) UNSIGNED ZEROFILL
 DOUBLE(10,10)
-DOUBLE(10,10) UNSIGNED	
-DOUBLE(10,10) ZEROFILL	
+DOUBLE(10,10) UNSIGNED
+DOUBLE(10,10) ZEROFILL
 DOUBLE(10,10) UNSIGNED ZEROFILL
 DOUBLE(40,30)
 DOUBLE(40,30) UNSIGNED
@@ -614,19 +614,19 @@ LONGTEXT BINARY
 LONGTEXT BINARY CHARACTER SET "Binary" COLLATE "Binary"
 LONGTEXT BINARY CHARACTER SET "utf8" COLLATE "utf8_bin"
 LONGTEXT BINARY CHARACTER SET "latin1" COLLATE "latin1_bin"
-ENUM('a','b','c') 
+ENUM('a','b','c')
 ENUM('a','b','c') CHARACTER SET "Binary" COLLATE "Binary"
 ENUM('a','b','c') CHARACTER SET "utf8" COLLATE "utf8_bin"
 ENUM('a','b','c') CHARACTER SET "latin1" COLLATE "latin1_bin"
-ENUM('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc') 
+ENUM('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc')
 ENUM('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc') CHARACTER SET "Binary" COLLATE "Binary"
 ENUM('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc') CHARACTER SET "utf8" COLLATE "utf8_bin"
 ENUM('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc') CHARACTER SET "latin1" COLLATE "latin1_bin"
-SET('a','b','c') 
+SET('a','b','c')
 SET('a','b','c') CHARACTER SET "Binary" COLLATE "Binary"
 SET('a','b','c') CHARACTER SET "utf8" COLLATE "utf8_bin"
 SET('a','b','c') CHARACTER SET "latin1" COLLATE "latin1_bin"
-SET('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc') 
+SET('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc')
 SET('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc') CHARACTER SET "Binary" COLLATE "Binary"
 SET('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc') CHARACTER SET "utf8" COLLATE "utf8_bin"
 SET('aaaaaaaaaaaaaaaaaaaaaaaaaaaa','bbbbbbbbbbbbbbbbbbbbbbbbbbbbb','cccccccccccccccccccccccccccc') CHARACTER SET "latin1" COLLATE "latin1_bin"

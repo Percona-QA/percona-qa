@@ -116,4 +116,5 @@ for i in `eval echo {1..${queries}}`; do
   esac
 done
 
-sed -i "s|[ \t][ \t]\+| |" out.sql  # Replace double spaces/tabs with single space
+sed -i "s|\t| |g" out.sql    # Replace tabs to spaces
+sed -i "s|  \+| |g" out.sql  # Replace double or more spaces with single space
