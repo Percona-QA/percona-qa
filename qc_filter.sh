@@ -34,3 +34,7 @@ move
 DIRLIST=$(grep -i "ERROR: 1105 - Unique index support is disabled when the table has no primary key" */pquery_thread-0.*.sql|awk -F '/' '{print $1}'|uniq)
 move
 
+# Filter where in the output storage engine name was mentioned
+DIRLIST=$(grep -i "Rocks" */pquery_thread-0.*.out|awk -F '/' '{print $1}'|uniq)
+move
+
