@@ -225,9 +225,15 @@ proxysql_startup(){
   check_script $?
   sleep 10
   ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'proxysql'@'%' IDENTIFIED BY 'proxysql'"
+  check_script $?
   echo  "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '127.0.0.1', $RBASE1, 20),(0, '127.0.0.1', $RBASE2, 20),(0, '127.0.0.1', $RBASE3, 20)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  check_script $?
   echo  "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 200)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin 
-  echo "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin 
+  check_script $?
+  echo  "UPDATE global_variables SET variable_value='root' WHERE variable_name='mysql-monitor_username" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo  "UPDATE global_variables SET variable_value='' WHERE variable_name='mysql-monitor_password'" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;LOAD MYSQL VARIABLES TO RUNTIME;SAVE MYSQL VARIABLES TO DISK;" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin 
+  check_script $?
 }
 
 #PXC startup
