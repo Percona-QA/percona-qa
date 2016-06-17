@@ -62,6 +62,8 @@ egrep --binary-files=text -ih "^SELECT |^INSERT |^UPDATE |^DROP |^CREATE |^RENAM
  sort -u | \
   grep --binary-files=text -vi "innodb_fil_make_page_dirty_debug" | \
   grep --binary-files=text -vi "innodb_trx_rseg_n_slots_debug" | \
+  grep --binary-files=text -vi "innodb_spin_wait_delay" | \
+  grep --binary-files=text -vi "innodb_replication_delay" | \
   grep --binary-files=text -vi "strict" | \
   grep --binary-files=text -vi "restart_server_args" | \
   grep --binary-files=text -vi "\-\-error" | \
@@ -122,6 +124,8 @@ cat ${TESTS_PATH}/*/*.test ${TESTS_PATH}/*/*/*.test ${TESTS_PATH}/*/*/*/*.test $
  sort -u | \
   grep --binary-files=text -vi "innodb_fil_make_page_dirty_debug" | \
   grep --binary-files=text -vi "innodb_trx_rseg_n_slots_debug" | \
+  grep --binary-files=text -vi "innodb_spin_wait_delay" | \
+  grep --binary-files=text -vi "innodb_replication_delay" | \
   grep --binary-files=text -vi "restart_server_args" | \
   grep --binary-files=text -vi "restart_server_args" | \
   grep --binary-files=text -vi "\-\-error" | \
