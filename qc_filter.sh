@@ -30,3 +30,7 @@ move
 DIRLIST=$(find . -maxdepth 2 -size 0|grep "diff.result"|awk -F "/" '{print $2}')
 move
 
+# MyRocks doesn't support unique indexes when table doesn't have primary key
+DIRLIST=$(grep -i "ERROR: 1105 - Unique index support is disabled when the table has no primary key" */pquery_thread-0.*.sql|awk -F '/' '{print $1}'|uniq)
+move
+
