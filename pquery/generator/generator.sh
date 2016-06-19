@@ -12,6 +12,8 @@ else
   queries=$1
 fi
 
+MYSQL_VERSION="56"                 # Default MySQL version 56, Please change if needed.
+
 RANDOM=`date +%s%N | cut -b13-19`
 
 # Read data files
@@ -29,7 +31,9 @@ mapfile -t flush     < flush.txt    ; FLUSH=${#flush[*]}
 mapfile -t isolation < isolation.txt; ISOL=${#isolation[*]}  # Excluses `COMMIT...RELEASE` SQL, as this drops CLI connection, though would be fine for pquery runs in principle
 mapfile -t lock      < lock.txt     ; LOCK=${#lock[*]}
 mapfile -t reset     < reset.txt    ; RESET=${#reset[*]}
-
+mapfile -t setvars    < setvar_$MYSQL_VERSION.txt  ; SETVARS=${#setvars[*]}
+mapfile -t setvalues  < setvalues.txt ; SETVALUES=${#setvalues[*]}
+   
 table(){ echo "${tables[$[$RANDOM % $TABLES]]}"; }
 pk()   { echo "${pk[$[$RANDOM % $PK]]}"; }
 ctype(){ echo "${types[$[$RANDOM % $TYPES]]}"; }
@@ -44,6 +48,8 @@ flush(){ echo "${flush[$[$RANDOM % $FLUSH]]}"; }
 isol() { echo "${isolation[$[$RANDOM % $ISOL]]}"; }
 lock() { echo "${lock[$[$RANDOM % $LOCK]]}"; }
 reset(){ echo "${reset[$[$RANDOM % $RESET]]}"; }
+setvar(){ echo "${setvars[$[$RANDOM % $SETVARS]]}"; }
+setvalue(){ echo "${setvalues[$[$RANDOM % $SETVALUES]]}"; }
 
 onoff(){ if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }  # 75% ON, 25% OFF
 temp() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; else echo ""; fi }  # 20% TEMPORARY tables
@@ -72,7 +78,8 @@ for i in `eval echo {1..${queries}}`; do
     [7-9]) echo "INSERT INTO `table` VALUES (`data`,`data`,`data`);" >> out.sql ;;
     10) echo "SELECT c1 FROM `table`;" >> out.sql ;;
     11) echo "DELETE FROM `table` LIMIT `n10`;" >> out.sql ;;
-    12) case $[$RANDOM % 5 + 1] in
+    12) echo "TRUNCATE `table`;" >> out.sql ;;
+    13) case $[$RANDOM % 5 + 1] in
           1) echo "UPDATE `table` SET c1=`data`;" >> out.sql ;;
           2) echo "UPDATE `table` SET c1=`data` LIMIT `n10`;" >> out.sql ;;
           3) echo "UPDATE `table` SET c1=`data` WHERE c2=`data`;" >> out.sql ;;
@@ -80,16 +87,18 @@ for i in `eval echo {1..${queries}}`; do
           5) echo "UPDATE `table` SET c1=`data` WHERE c2=`data` ORDER BY c3 LIMIT `n10`;" >> out.sql ;;
           *) echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
         esac ;;
-    1[3-4]) case $[$RANDOM % 10 + 1] in  # Generic statements
+    1[4-5]) case $[$RANDOM % 12 + 1] in  # Generic statements
           [1-3]) echo "UNLOCK TABLES;" >> out.sql ;;
           [4-6]) echo "SET AUTOCOMMIT = ON;"  >> out.sql ;;
            7) echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
            8) echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
            9) echo "`reset`;" >> out.sql ;;
           10) echo "`isol`;" >> out.sql ;;
+          11) echo "SET `setvar`" | sed "s|DUMMY|`setvalue`|;s|$|;|" >> out.sql ;;
+          12) echo "SET @@GLOBAL.`setvar`" | sed "s|DUMMY|`setvalue`|;s|$|;|" >> out.sql ;;
            *) echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
         esac ;;
-    15) case $[$RANDOM % 21 + 1] in  # Alter
+    16) case $[$RANDOM % 21 + 1] in  # Alter
            1) echo "ALTER TABLE `table` ADD COLUMN c4 `ctype`;" >> out.sql ;;
            2) echo "ALTER TABLE `table` DROP COLUMN c1;" >> out.sql ;;
            3) echo "ALTER TABLE `table` DROP COLUMN c2;" >> out.sql ;;
