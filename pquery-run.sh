@@ -1076,7 +1076,7 @@ pquery_test(){
         CORE3=`ls ${RUNDIR}/${TRIAL}/node3/*core.* 2>/dev/null || true`
         if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err`"; fi
         if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err`"; fi
-        if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err``"; fi
+        if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err`"; fi
       fi
       if [ ${TRIAL_SAVED} -eq 0 ]; then
         savetrial
