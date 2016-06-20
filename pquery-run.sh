@@ -340,11 +340,11 @@ pxc_startup(){
         if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the PXC_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
           echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${PXC_WSREP_OPTIONS_INFILE} and ${PXC_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
           grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
-          #STOREANYWAY=1
-          savetrial
           if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
             echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
           else
+            STOREANYWAY=1
+            savetrial
             echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
             exit 1
           fi
@@ -1074,9 +1074,9 @@ pquery_test(){
         CORE1=`ls ${RUNDIR}/${TRIAL}/node1/*core.* 2>/dev/null || true`
         CORE2=`ls ${RUNDIR}/${TRIAL}/node2/*core.* 2>/dev/null || true`
         CORE3=`ls ${RUNDIR}/${TRIAL}/node3/*core.* 2>/dev/null || true`
-        if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE1}`"; fi
-        if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE2}`"; fi
-        if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${CORE3}`"; fi
+        if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err`"; fi
+        if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err`"; fi
+        if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err``"; fi
       fi
       if [ ${TRIAL_SAVED} -eq 0 ]; then
         savetrial
