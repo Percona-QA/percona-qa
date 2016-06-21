@@ -684,6 +684,7 @@ pquery_test(){
       WSREP_PROVIDER_OPT="$OPTIONS_TO_ADD"
     fi
     echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
+    echo "$WSREP_PROVIDER_OPT" > ${RUNDIR}/${TRIAL}/WSREP_PROVIDER_OPT
     pxc_startup 
     echoit "Checking 3 node PXC Cluster startup..."
     for X in $(seq 0 10); do
