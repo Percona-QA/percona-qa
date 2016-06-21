@@ -202,8 +202,8 @@ echo "if [ -d $BUILD/node1.PREV ]; then rm -Rf $BUILD/node1.PREV.older; mv $BUIL
 echo "if [ -d $BUILD/node2.PREV ]; then rm -Rf $BUILD/node2.PREV.older; mv $BUILD/node2.PREV $BUILD/node2.PREV.older; fi;mv $BUILD/node2 $BUILD/node2.PREV" >> ./wipe
 echo "if [ -d $BUILD/node3.PREV ]; then rm -Rf $BUILD/node3.PREV.older; mv $BUILD/node3.PREV $BUILD/node3.PREV.older; fi;mv $BUILD/node3 $BUILD/node3.PREV" >> ./wipe
 
-echo "$BUILD/bin/mysql -A -uroot -S$node1/socket.sock" > ./node1_cl
-echo "$BUILD/bin/mysql -A -uroot -S$node2/socket.sock" > ./node2_cl
-echo "$BUILD/bin/mysql -A -uroot -S$node3/socket.sock" > ./node3_cl
+echo "$BUILD/bin/mysql -A -uroot -S$node1/socket.sock --prompt \"node1> \"" > ./node1_cl
+echo "$BUILD/bin/mysql -A -uroot -S$node2/socket.sock --prompt \"node2> \"" > ./node2_cl
+echo "$BUILD/bin/mysql -A -uroot -S$node3/socket.sock --prompt \"node3> \"" > ./node3_cl
 
 chmod +x ./start_pxc ./stop_pxc ./node1_cl ./node2_cl ./node3_cl ./wipe
