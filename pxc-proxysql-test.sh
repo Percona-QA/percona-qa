@@ -249,9 +249,10 @@ $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-t
 
 check_script $?
 
-#echo "Loading sakila test database"
+echo "Loading sakila test database"
 #$BASEDIR/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila.sql
-#check_script $?
+$BASEDIR/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
+check_script $?
 
 echo "Loading world test database"
 $PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/world.sql
