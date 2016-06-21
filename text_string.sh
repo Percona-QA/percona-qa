@@ -18,10 +18,10 @@ echo \
   $( \
     egrep -i 'Assertion failure.*in file.*line' $1 | sed 's|.*in file ||;s| |DUMMY|g'; \
     egrep 'Assertion.*failed' $1 | grep -v 'Assertion .0. failed' | sed 's/|/./g;s/\&/./g;s/"/./g;s/:/./g;s|^.*Assertion .||;s|. failed.*$||;s| |DUMMY|g'; \
-    egrep 'mysqld\(_|ha_tokudb.so\(_' $1; \
-    egrep 'mysqld\(|ha_tokudb.so\(' $1 | egrep -v 'mysqld\(_|ha_tokudb.so\(_' \
+    egrep 'libgalera_smm\.so\(_|mysqld\(_|ha_tokudb.so\(_' $1; \
+    egrep 'libgalera_smm\.so\(|mysqld\(|ha_tokudb.so\(' $1 | egrep -v 'mysqld\(_|ha_tokudb.so\(_' \
   ) | \
   tr ' ' '\n' | \
-  sed 's|.*mysqld[\(_]*||;s|.*ha_tokudb.so[\(_]*||;s|).*||;s|+.*$||;s|DUMMY| |g;s|($||;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g' | \
+  sed 's|.*libgalera_smm\.so[\(_]*||;s|.*mysqld[\(_]*||;s|.*ha_tokudb.so[\(_]*||;s|).*||;s|+.*$||;s|DUMMY| |g;s|($||;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g' | \
   grep -v '^[ \t]*$' | \
   head -n1 | sed 's|^[ \t]\+||;s|[ \t]\+$||;'

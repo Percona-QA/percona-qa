@@ -287,9 +287,10 @@ if [[ ${PIPESTATUS[0]} -ne 0 ]];then
   EXTSTATUS=1
 fi
 
-#echo "Loading sakila test database"
+echo "Loading sakila test database"
 #$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
-#check_script $?
+$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
+check_script $?
 
 echo "Loading world test database"
 $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
