@@ -17,6 +17,27 @@ fi
 
 RANDOM=`date +%s%N | cut -b13-19`
 
+# Check all needed data files are present
+if [ ! -r tables.txt ]; then echo "Assert: tables.txt not found!"; exit 1; fi
+if [ ! -r pk.txt ]; then echo "Assert: pk.txt not found!"; exit 1; fi
+if [ ! -r types.txt ]; then echo "Assert: types.txt not found!"; exit 1; fi
+if [ ! -r data.txt ]; then echo "Assert: data.txt not found!"; exit 1; fi
+if [ ! -r engines.txt ]; then echo "Assert: engines.txt not found!"; exit 1; fi
+if [ ! -r 1-3.txt ]; then echo "Assert: 1-3.txt not found!"; exit 1; fi
+if [ ! -r 1-10.txt ]; then echo "Assert: 1-10.txt not found!"; exit 1; fi
+if [ ! -r 1-100.txt ]; then echo "Assert: 1-100.txt not found!"; exit 1; fi
+if [ ! -r 1-1000.txt ]; then echo "Assert: 1-1000.txt not found!"; exit 1; fi
+if [ ! -r trx.txt ]; then echo "Assert: trx.txt not found!"; exit 1; fi
+if [ ! -r flush.txt ]; then echo "Assert: flush.txt not found!"; exit 1; fi
+if [ ! -r isolation.txt ]; then echo "Assert: isolation.txt not found!"; exit 1; fi
+if [ ! -r lock.txt ]; then echo "Assert: lock.txt not found!"; exit 1; fi
+if [ ! -r reset.txt ]; then echo "Assert: reset.txt not found!"; exit 1; fi
+if [ ! -r setvar_session_$MYSQL_VERSION.txt ]; then echo "Assert: setvar_session_$MYSQL_VERSION.txt not found!"; exit 1; fi
+if [ ! -r setvar_global_$MYSQL_VERSION.txt ]; then echo "Assert: setvar_global_$MYSQL_VERSION.txt not found!"; exit 1; fi
+if [ ! -r setvalues.txt ]; then echo "Assert: setvalues.txt not found!"; exit 1; fi
+if [ ! -r sqlmode.txt ]; then echo "Assert: sqlmode.txt not found!"; exit 1; fi
+if [ ! -r optimizersw.txt ]; then echo "Assert: optimizersw.txt not found!"; exit 1; fi
+
 # Read data files
 mapfile -t tables    < tables.txt   ; TABLES=${#tables[*]}
 mapfile -t pk        < pk.txt       ; PK=${#pk[*]}
@@ -34,7 +55,7 @@ mapfile -t lock      < lock.txt     ; LOCK=${#lock[*]}
 mapfile -t reset     < reset.txt    ; RESET=${#reset[*]}
 mapfile -t setvarss  < setvar_session_$MYSQL_VERSION.txt; SETVARSS=${#setvars[*]}
 mapfile -t setvarsg  < setvar_global_$MYSQL_VERSION.txt ; SETVARSG=${#setvarg[*]}
-mapfile -t setvals   < setvals.txt  ; SETVALUES=${#setvals[*]}
+mapfile -t setvals   < setvalues.txt; SETVALUES=${#setvals[*]}
 mapfile -t sqlmode   < sqlmode.txt  ; SQLMODE=${#sqlmode[*]}
    
 table()  { echo "${tables[$[$RANDOM % $TABLES]]}"; }
@@ -57,9 +78,6 @@ setval() { echo "${setvals[$[$RANDOM % $SETVALUES]]}"; }
 sqlmode(){ echo "${sqlmode[$[$RANDOM % $SQLMODE]]}"; }
 onoff()  { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }  # 75% ON, 25% OFF
 temp()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; else echo ""; fi }  # 20% TEMPORARY tables
-
-create_table(){
-}
 
 if [ -r out.sql ]; then rm out.sql; fi
 touch out.sql
