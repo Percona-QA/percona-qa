@@ -78,7 +78,11 @@
   echo ls | xargs | sh -x  # Conceptually similar to echo ls | xargs bash -c
   echo -n "echo\necho" | xargs | sed 's|DUMMY|NO ACTION|'  # When used like this, a \n is added to the output. This is not the case if 'xargs |' is dropped
 # Check a string variable for the occurence of a particular search term. Note that -qi can also be used on a file, i.e.  if grep -qi "search string" file.txt; 
-  echo "this is a short search string" | if grep -qi "search string"; then echo "found"; else echo "not found"; fi  # Returns "found"
+  echo "this is a short search string" | if grep -qi "search string"; then echo "found"; else echo "not found"; fi  # Returns "found"    # BUG FOUND, ref below for better method
+  WARNING: bash bug (logged 22-6-16): Test this:  LINE='test'; DONE=0; echo ${LINE} | if grep -q 'test'; then DONE=1; echo "DONE"; fi; echo $DONE  # DONE is 0?!
+# Two better methods to check a string variable for the occurence of a particular search term. With thanks, http://timmurphy.org/2013/05/13/string-contains-substring-in-bash/
+  if [[ "$string" == *"$searchstring"* ]]; then echo "found"; else echo "not found"; fi  # This method is also much faster then the grep -qi above.
+  if [[ "$string" =~ $searchstring ]]; then echo "found"; else echo "not found"; fi
 # For all lines in a file, action something. Note that the for loop has limitations (spaces) which require IFS to be set. This is not so with the while loop 
   ORIG_IFS=${IFS}; IFS=$'\n'; for LINE in $(cat ./file.txt); do echo ${LINE}; done; IFS=${ORIG_IFS}   #OR#  while read line; do echo ${line}; done < ./file.txt
 # Obtain a fully qualified directory and script name 
@@ -114,6 +118,8 @@
   function_runs_in_subshell(){ PID_OF_SUBSHELL=$BASHPID; VARIABLE[${PID_OF_SUBSHELL}]="some_var_value"; echo ${VARIABLE[${PID_OF_SUBSHELL}]}; }  function_runs_in_subshell &
 # Read a file into an array (With thanks http://stackoverflow.com/questions/30988586/creating-an-array-from-a-text-file-in-bash)
   mapfile -t somearray < file.txt  # -t drops newline chars. See http://wiki.bash-hackers.org/commands/builtin/mapfile for more options
+# Make a file unique/sort it without using a temporary file (similar to the -i function in sed). Note that something like: cat file.txt | sort -u > file.txt does NOT work.
+  sort -u -o file.txt file.txt
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
