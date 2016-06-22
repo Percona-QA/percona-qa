@@ -15,24 +15,26 @@ fi
 #mkdir /tmp/get_all_options
 #if [ ! -d /tmp/get_all_options ]; then echo "Assert: /tmp/get_all_options does not exist after creation!"; exit 1; fi
 cd /tmp/get_all_options
+rm *.txt *.out 2>/dev/null
 
 #wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/server-system-variables.html
+#wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/innodb-parameters.html
+#wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-binary-log.html
+#wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-slave.html
+
 grep '<colgroup><col class="name">' server-system-variables.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Session" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' > session.txt
 grep '<colgroup><col class="name">' server-system-variables.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Global" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' > global.txt
-grep -o "Command-Line Format.*\-\-[^<]\+" server-system-variables.html | grep -o "\-\-.*" | sed 's|_|-|g' > commandlines.txt
 
-#wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/innodb-parameters.html
 grep '<colgroup><col class="name">' innodb-parameters.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Session" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' >> session.txt
 grep '<colgroup><col class="name">' innodb-parameters.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Global" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' >> global.txt
-grep -o "Command-Line Format.*\-\-[^<]\+" innodb-parameters.html | grep -o "\-\-.*" | sed 's|_|-|g' >> commandlines.txt
+
+grep -o "Command-Line Format.*\-\-[^<]\+" *.html | grep -o "\-\-.*" | sed 's|_|-|g' >> commandlines.txt
 
 # varlist syntax:   Name (1) Cmd-Line (2)  Option File (3)  System Var (4)  Var Scope (5)  Dynamic (6)  (can use awk '{print $x}')
 VERSION_CHECK=`echo $VERSION_CHECK | sed 's|\.||g'`  # Only change this after retrieving the pages above
 sed -i "s/=\[={OFF|ON}\]/[={OFF|ON}]/" commandlines.txt
 sed -i "s|\[|@|g;s|\]|@|g" commandlines.txt  # Change [ and ] to @
 sort -u -o commandlines.txt commandlines.txt  # Unique self-sort; ensures right order for PRLINE grep
-
-rm as_yet_to_handle.txt todo.txt 2>/dev/null
 
 charsets(){
   echo "${PRLINE}" | sed 's|=name|=binary|' >> ${VARFILE}.out
@@ -146,14 +148,15 @@ optimizerswitch(){
 parse_set_vars(){
   rm ${VARFILE}.out 2>/dev/null
   for line in $(cat ${VARFILE}); do
-    PRLINE=$(grep "^\-\-$line" ./commandlines.txt | sed "s|[ \t]\+||" | head -n1); HANDLED=0
+    HANDLED=0
+    PRLINE=$(grep "^\-\-$line" ./commandlines.txt | sed "s|[ \t]\+||" | head -n1)
     if [ "${PRLINE}" != "" ]; then  # ================= STAGE 0: Line is present in "Command-Line Format" capture file; use this to handle setting variables
       if [[ "${PRLINE}" == *"=dir-name"* ]] || [[ "${PRLINE}" == *"=path"* ]] || [[ "${PRLINE}" == *"=directory"* ]]; then
         # These variables (--datadir, --character-sets-dir, --basedir etc.) are skipped as they do not make sense to modify, and they are unlikely to be dynamic;
         # Note that this ifthen may not even be hit for all cases present in commandlines.txt. For example, --datadir is not dynamic and so it will not be in global/session txt
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"debug@=debug-options@"* ]] || [[ "${PRLINE}" == *"log-output=name"* ]] || [[ "${PRLINE}" == *"slow-query-log-file=file-name"* ]] || [[ "${PRLINE}" == *"innodb-buffer-pool-filename=file"* ]] || [[ "${PRLINE}" == *"general-log-file=file-name"* ]] || [[ "${PRLINE}" == *"keyring-file-data=file-name"* ]]; then
+      if [[ "${PRLINE}" == *"debug@=debug-options@"* ]] || [[ "${PRLINE}" == *"log-output=name"* ]] || [[ "${PRLINE}" == *"slow-query-log-file=file-name"* ]] || [[ "${PRLINE}" == *"innodb-buffer-pool-filename=file"* ]] || [[ "${PRLINE}" == *"general-log-file=file-name"* ]] || [[ "${PRLINE}" == *"keyring-file-data=file-name"* ]] || [[ "${PRLINE}" == *"init-connect=name"* ]]; then
         # The variables are not handled as they do not make much sense to modify/test
         HANDLED=1
       fi
@@ -184,8 +187,8 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"@=#@"* ]]; then
-        echo "${PRLINE}" | sed 's|@=#@|=DUMMY|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=#@||' >> ${VARFILE}.out  # Without anything, ref above
+        echo "${PRLINE}" | sed 's|@=#@|=DUMMY|' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [ ${HANDLED} -eq 0 ]; then
@@ -230,17 +233,17 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"event-scheduler@=value@"* ]]; then
+        echo "${PRLINE}" | sed 's|@=value@||' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=ON|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=OFF|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=DISABLED|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|@=value@||' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"character-set-filesystem=name"* ]]; then
         charsets
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"innodb-ft-user-stopword-table=db-name/table-name"* ]]; then
+      if [[ "${PRLINE}" == *"innodb-ft-user-stopword-table=db-name/table-name"* ]] || [[ "${PRLINE}" == *"innodb-ft-stopword-table=db-name/table-name"* ]] || [[ "${PRLINE}" == *"innodb-ft-server-stopword-table"* ]]; then
         echo "${PRLINE}" | sed 's|=db-name/table-name|=test/t1|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=db-name/table-name|=test/t2|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=db-name/table-name|=test/t3|' >> ${VARFILE}.out
@@ -257,7 +260,7 @@ parse_set_vars(){
         sqlmode
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"myisam-stats-method=name"* ]]; then
+      if [[ "${PRLINE}" == *"innodb-stats-method=name"* ]] || [[ "${PRLINE}" == *"myisam-stats-method=name"* ]]; then
         echo "${PRLINE}" | sed 's|=name|=nulls_equal|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=name|=nulls_unequal|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=name|=nulls_ignored|' >> ${VARFILE}.out
@@ -267,45 +270,151 @@ parse_set_vars(){
         echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"=N"* ]]; then
+        echo "${PRLINE}" | sed 's|=N|=DUMMY|' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"session-track-gtids=@value@"* ]]; then
+        echo "${PRLINE}" | sed 's|=@value@|=OFF|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=@value@|=OWN_GTID|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=@value@|=ALL_GTIDS|' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"transaction-write-set-extraction=@value@"* ]]; then
+        echo "${PRLINE}" | sed 's|=@value@|=OFF|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=@value@|=MURMUR32|' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"delay-key-write@=name@"* ]]; then
+        echo "${PRLINE}" | sed 's|@=name@||' >> ${VARFILE}.out
+	echo "${PRLINE}" | sed 's|@=name@|=ON|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=name@|=OFF|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=name@|=ALL|' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"ft-boolean-syntax=name"* ]]; then
+        echo "${PRLINE}" | sed "s/=name/='+ -><()~*:\"\"&|'/" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s/=name/=' +-><()~*:\"\"&|'/" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s/=name/=' *:\"\"&|+-><()~'/" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s/=name/=' ()~*:\"\"&|+-><'/" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s/=name/='( ><)\"~*:\"&|+-'/" >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"offline-mode=val"* ]]; then
+        echo "${PRLINE}" | sed 's|=val|0|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=val|1|' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"max-points-in-geometry=integer"* ]]; then
+        echo "${PRLINE}" | sed 's|=integer|=DUMMY|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"log-syslog-facility=value"* ]]; then
+        echo "${PRLINE}" | sed 's|=value|=deamon|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=value|=syslog|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=value|=syslogd|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=value|=echo|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=value|=mysqld|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"log-syslog-tag=value"* ]]; then
+        echo "${PRLINE}" | sed 's|=value|='abc'|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=value|='123'|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"master-verify-checksum=name"* ]]; then
+        echo "${PRLINE}" | sed 's|=name||' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=0|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=1|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"binlog-checksum=type"* ]]; then
+        echo "${PRLINE}" | sed 's|=type|=NONE|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=type|=CRC32|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"binlog-direct-non-transactional-updates@=value@"* ]]; then
+        echo "${PRLINE}" | sed 's|@=value@||' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=value@|=0|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=value@|=1|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"binlog-error-action@=value@"* ]] || [[ "${PRLINE}" == *"binlogging-impossible-mode@=value@"* ]]; then
+        echo "${PRLINE}" | sed 's|@=value@||' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=value@|=IGNORE_ERROR|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=value@|=ABORT_SERVER|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"binlog-format=format"* ]]; then
+        echo "${PRLINE}" | sed 's|=format|=ROW|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=format|=STATEMENT|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=format|=MIXED|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"binlog-row-image=image-type"* ]]; then
+        echo "${PRLINE}" | sed 's|=image-type|=full|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=image-type|=minimal|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=image-type|=noblob|' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [ ${HANDLED} -eq 0 ]; then
-        echo $PRLINE >> todo.txt
+        echo "Not handled yet (stage #0): $PRLINE"
       fi
-    else
-      echo $line >> as_yet_to_handle.txt
+    else  # ================= STAGE 1: Line is not present in "Command-Line Format" capture file; handle some 1-by-1
+      LINE=$(echo ${line} | sed "s|[ \t]\+||")
+      if [[ "${LINE}" == "ndb"* ]]; then
+        # No need to include/handle NDB related variables
+        HANDLED=1
+      fi
+      if [[ "${LINE}" == *"auto-increment-increment"* ]]; then
+        echo "auto-increment-increment=DUMMY" >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${LINE}" == *"auto-increment-offset"* ]]; then
+        echo "auto-increment-offset=DUMMY" >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${LINE}" == *"character-set-"* ]]; then
+        PRLINE="${LINE}=name"
+        charsets
+        HANDLED=1
+      fi
+      #  ================= STAGE 2: Look through HTML to see if a default value is present
+      TYPE=
+      TYPE=$(grep "${LINE}.*Permitted Values" *.html | head -n1 | sed 's|<td>|\n|;s|<[^>]\+>| |g;s|[ \t]\+| |g' | grep -o "Type.*Default" | sed 's|Type||;s|Default||;s| ||g' | head -n1)
+      if [ "${TYPE}" == "" ]; then
+        TYPE=$(grep "$(echo ${LINE}|sed 's|\-|_|g').*Permitted Values" *.html | head -n1 | sed 's|<td>|\n|;s|<[^>]\+>| |g;s|[ \t]\+| |g' | grep -o "Type.*Default" | sed 's|Type||;s|Default||;s| ||g' | head -n1)
+      fi
+      if [ "${TYPE}" == "boolean" ]; then
+        echo "${LINE}" >> ${VARFILE}.out
+        echo "${LINE}=0" >> ${VARFILE}.out
+        echo "${LINE}=1" >> ${VARFILE}.out
+        HANDLED=1
+      elif [ "${TYPE}" == "integer" ]; then
+        echo "${LINE}=DUMMY" >> ${VARFILE}.out
+        HANDLED=1
+      elif [ "${TYPE}" == "numeric" ]; then
+        echo "${LINE}=DUMMY" >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [ ${HANDLED} -eq 0 ]; then
+        echo "Not handled yet (stage #1/2): $LINE" 
+      fi
     fi
   done
 }
 
 VARFILE=session.txt; parse_set_vars
 VARFILE=global.txt;  parse_set_vars
+
+# Remove preceding --
+sed -i "s|^\-\-||" session.txt.out
+sed -i "s|^\-\-||" global.txt.out
+
+# Final rename to version
+rm session.txt global.txt 2>/dev/null
+mv session.txt.out session_${VERSION_CHECK}.txt
+mv global.txt.out global_${VERSION_CHECK}.txt
 
 #  if [ $(grep -c $line $SCRIPT_PWD/pquery/mysqld_options_ms_${VERSION_CHECK}.txt ) -ne 0 ];then
 #    if [ $(grep -c $line $SCRIPT_PWD/pquery/mysqld_options_ms_${VERSION_CHECK}.txt ) -eq 2 ];then

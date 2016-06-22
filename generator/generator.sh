@@ -32,8 +32,8 @@ if [ ! -r flush.txt ]; then echo "Assert: flush.txt not found!"; exit 1; fi
 if [ ! -r isolation.txt ]; then echo "Assert: isolation.txt not found!"; exit 1; fi
 if [ ! -r lock.txt ]; then echo "Assert: lock.txt not found!"; exit 1; fi
 if [ ! -r reset.txt ]; then echo "Assert: reset.txt not found!"; exit 1; fi
-if [ ! -r setvar_session_$MYSQL_VERSION.txt ]; then echo "Assert: setvar_session_$MYSQL_VERSION.txt not found!"; exit 1; fi
-if [ ! -r setvar_global_$MYSQL_VERSION.txt ]; then echo "Assert: setvar_global_$MYSQL_VERSION.txt not found!"; exit 1; fi
+if [ ! -r session_$MYSQL_VERSION.txt ]; then echo "Assert: session_$MYSQL_VERSION.txt not found!"; exit 1; fi
+if [ ! -r global_$MYSQL_VERSION.txt ]; then echo "Assert: global_$MYSQL_VERSION.txt not found!"; exit 1; fi
 if [ ! -r setvalues.txt ]; then echo "Assert: setvalues.txt not found!"; exit 1; fi
 if [ ! -r sqlmode.txt ]; then echo "Assert: sqlmode.txt not found!"; exit 1; fi
 if [ ! -r optimizersw.txt ]; then echo "Assert: optimizersw.txt not found!"; exit 1; fi
@@ -53,8 +53,8 @@ mapfile -t flush     < flush.txt      ; FLUSH=${#flush[*]}
 mapfile -t isolation < isolation.txt  ; ISOL=${#isolation[*]}  # Excluses `COMMIT...RELEASE` SQL, as this drops CLI connection, though would be fine for pquery runs in principle
 mapfile -t lock      < lock.txt       ; LOCK=${#lock[*]}
 mapfile -t reset     < reset.txt      ; RESET=${#reset[*]}
-mapfile -t setvarss  < setvar_session_$MYSQL_VERSION.txt; SETVARSS=${#setvars[*]}
-mapfile -t setvarsg  < setvar_global_$MYSQL_VERSION.txt ; SETVARSG=${#setvarg[*]}
+mapfile -t setvarss  < session_$MYSQL_VERSION.txt; SETVARSS=${#setvars[*]}
+mapfile -t setvarsg  < global_$MYSQL_VERSION.txt ; SETVARSG=${#setvarg[*]}
 mapfile -t setvals   < setvalues.txt  ; SETVALUES=${#setvals[*]}
 mapfile -t sqlmode   < sqlmode.txt    ; SQLMODE=${#sqlmode[*]}
 mapfile -t optsw     < optimizersw.txt; OPTSW=${#optimizersw[*]}
