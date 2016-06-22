@@ -35,6 +35,7 @@ mapfile -t reset     < reset.txt    ; RESET=${#reset[*]}
 mapfile -t setvarss  < setvar_session_$MYSQL_VERSION.txt; SETVARSS=${#setvars[*]}
 mapfile -t setvarsg  < setvar_global_$MYSQL_VERSION.txt ; SETVARSG=${#setvarg[*]}
 mapfile -t setvals   < setvals.txt  ; SETVALUES=${#setvals[*]}
+mapfile -t sqlmode   < sqlmode.txt  ; SQLMODE=${#sqlmode[*]}
    
 table()  { echo "${tables[$[$RANDOM % $TABLES]]}"; }
 pk()     { echo "${pk[$[$RANDOM % $PK]]}"; }
@@ -53,6 +54,7 @@ reset()  { echo "${reset[$[$RANDOM % $RESET]]}"; }
 setvars(){ echo "${setvarss[$[$RANDOM % $SETVARS]]}"; }
 setvarg(){ echo "${setvarsg[$[$RANDOM % $SETVARG]]}"; }
 setval() { echo "${setvals[$[$RANDOM % $SETVALUES]]}"; }
+sqlmode(){ echo "${sqlmode[$[$RANDOM % $SQLMODE]]}"; }
 onoff()  { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }  # 75% ON, 25% OFF
 temp()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; else echo ""; fi }  # 20% TEMPORARY tables
 
@@ -88,15 +90,17 @@ for i in `eval echo {1..${queries}}`; do
         5) echo "UPDATE `table` SET c1=`data` WHERE c2=`data` ORDER BY c3 LIMIT `n10`;" >> out.sql ;;
         *) echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
       esac ;;
-    1[4-6]) case $[$RANDOM % 14 + 1] in  # Generic statements
+    1[4-6]) case $[$RANDOM % 20 + 1] in  # Generic statements
         [1-3]) echo "UNLOCK TABLES;" >> out.sql ;;
         [4-6]) echo "SET AUTOCOMMIT = ON;"  >> out.sql ;;
          7) echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
          8) echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
          9) echo "`reset`;" >> out.sql ;;
-        10) echo "`isol`;" >> out.sql ;;
-        1[1-2]) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;
-        1[3-4]) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;
+        1[0-2]) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;; # The global/session vars also include sql_mode, which is like a 'reset'
+        1[3-5]) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;
+        1[6-7]) echo "SET sql_mode=(SELECT CONCAT(@@sql_mode,',`sqlmode`'));" >> out.sql ;;   # Add or remove a mode, with thanks:
+        1[8-9]) echo "SET sql_mode=(SELECT REPLACE(@@sql_mode,',`sqlmode`',''));" >>out.sql;; # http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
+        20) echo "`isol`;" >> out.sql ;;
          *) echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
       esac ;;
     17) case $[$RANDOM % 21 + 1] in  # Alter

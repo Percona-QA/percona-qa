@@ -77,11 +77,8 @@
   echo "INPUT" | xargs | sed "s/INPUT/PROCESSOR/"
   echo ls | xargs | sh -x  # Conceptually similar to echo ls | xargs bash -c
   echo -n "echo\necho" | xargs | sed 's|DUMMY|NO ACTION|'  # When used like this, a \n is added to the output. This is not the case if 'xargs |' is dropped
-# Check a string variable for the occurence of a particular search term. Note that -qi can also be used on a file, i.e.  if grep -qi "search string" file.txt; 
-  echo "this is a short search string" | if grep -qi "search string"; then echo "found"; else echo "not found"; fi  # Returns "found"    # BUG FOUND, ref below for better method
-  WARNING: bash bug (logged 22-6-16): Test this:  LINE='test'; DONE=0; echo ${LINE} | if grep -q 'test'; then DONE=1; echo "DONE"; fi; echo $DONE  # DONE is 0?!
-# Two better methods to check a string variable for the occurence of a particular search term. With thanks, http://timmurphy.org/2013/05/13/string-contains-substring-in-bash/
-  if [[ "$string" == *"$searchstring"* ]]; then echo "found"; else echo "not found"; fi  # This method is also much faster then the grep -qi above.
+# Check a string variable for the occurence of a particular search term. With thanks, http://timmurphy.org/2013/05/13/string-contains-substring-in-bash/
+  if [[ "$string" == *"$searchstring"* ]]; then echo "found"; else echo "not found"; fi  # This method is much faster then grep -q
   if [[ "$string" =~ $searchstring ]]; then echo "found"; else echo "not found"; fi
 # For all lines in a file, action something. Note that the for loop has limitations (spaces) which require IFS to be set. This is not so with the while loop 
   ORIG_IFS=${IFS}; IFS=$'\n'; for LINE in $(cat ./file.txt); do echo ${LINE}; done; IFS=${ORIG_IFS}   #OR#  while read line; do echo ${line}; done < ./file.txt
@@ -154,6 +151,10 @@
   cp -a  # Always use cp -a instead of cp -R (or -r) which does not copy hidden files/directories
 # The first echo below will output an asterix, the second will output a directory listing
   echo "$(echo "*")"; echo "----"; echo $(echo "*");
+# Except for searching files (if grep -qi "search string" file.txt...), it's best not to use: echo "text" | grep -q "text" to search strings for substrings. It is very slow, and 
+  has a gotcha: Test this:  LINE='test'; DONE=0; echo ${LINE} | if grep -q 'test'; then DONE=1; echo "DONE"; fi; echo $DONE  # DONE is 0 because (as per Bash team); 'All elements
+  of a pipeline are executed in subshells.  A subshell cannot affect its parent's environment. The 'lastpipe' shell option can change this when job control is not active.'
+
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)

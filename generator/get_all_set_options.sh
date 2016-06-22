@@ -29,19 +29,140 @@ grep -o "Command-Line Format.*\-\-[^<]\+" innodb-parameters.html | grep -o "\-\-
 # varlist syntax:   Name (1) Cmd-Line (2)  Option File (3)  System Var (4)  Var Scope (5)  Dynamic (6)  (can use awk '{print $x}')
 VERSION_CHECK=`echo $VERSION_CHECK | sed 's|\.||g'`  # Only change this after retrieving the pages above
 sed -i "s/=\[={OFF|ON}\]/[={OFF|ON}]/" commandlines.txt
+sed -i "s|\[|@|g;s|\]|@|g" commandlines.txt  # Change [ and ] to @
+sort -u -o commandlines.txt commandlines.txt  # Unique self-sort; ensures right order for PRLINE grep
 
 rm as_yet_to_handle.txt todo.txt 2>/dev/null
+
+charsets(){
+  echo "${PRLINE}" | sed 's|=name|=binary|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=big5|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=dec8|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp850|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=hp8|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=koi8r|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin1|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin2|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=swe7|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ascii|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ujis|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=sjis|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=hebrew|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=tis620|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=euckr|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=koi8u|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=gb2312|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=greek|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1250|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=gbk|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin5|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=armscii8|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp866|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=keybcs2|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=macce|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=macroman|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp852|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin7|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1251|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16le|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1256|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1257|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=geostd8|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp932|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=eucjpms|' >> ${VARFILE}.out
+}
+
+sqlmode(){
+  echo "${PRLINE}" | sed 's|=name|=ALLOW_INVALID_DATES|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ANSI_QUOTES|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ERROR_FOR_DIVISION_BY_ZERO|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=HIGH_NOT_PRECEDENCE|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=IGNORE_SPACE|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_AUTO_CREATE_USER|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_AUTO_VALUE_ON_ZERO|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_BACKSLASH_ESCAPES|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_DIR_IN_CREATE|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_ENGINE_SUBSTITUTION|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_FIELD_OPTIONS|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_KEY_OPTIONS|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_TABLE_OPTIONS|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_UNSIGNED_SUBTRACTION|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_ZERO_DATE|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=NO_ZERO_IN_DATE|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ONLY_FULL_GROUP_BY|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=PAD_CHAR_TO_FULL_LENGTH|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=PIPES_AS_CONCAT|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=REAL_AS_FLOAT|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=STRICT_ALL_TABLES|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=STRICT_TRANS_TABLES|' >> ${VARFILE}.out
+}
+
+optimizerswitch(){
+  echo "${PRLINE}" | sed 's|=value|="batched_key_access=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="block_nested_loop=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="condition_fanout_filter=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="derived_merge=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="duplicateweedout=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="engine_condition_pushdown=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="firstmatch=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_condition_pushdown=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge_intersection=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge_sort_union=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge_union=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="loosescan=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="materialization=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="mrr=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="mrr_cost_based=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="semijoin=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="subquery_materialization_cost_based=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="use_index_extensions=on"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="batched_key_access=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="block_nested_loop=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="coffditioff_fanout_filter=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="derived_merge=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="duplicateweedout=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="engine_coffditioff_pushdown=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="firstmatch=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_coffditioff_pushdown=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge_intersectioff=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge_sort_unioff=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge_unioff=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="loosescan=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="materializatioff=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="mrr=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="mrr_cost_based=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="semijoin=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="subquery_materializatioff_cost_based=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="use_index_extensioffs=off"|' >> ${VARFILE}.out
+}
+
 parse_set_vars(){
   rm ${VARFILE}.out 2>/dev/null
-  while read line; do
-    if grep -q $line ./commandlines.txt; then  # ================= STAGE 0: Line is present in "Command-Line Format" capture file; use this to handle setting variables
-      PRLINE=$(grep $line ./commandlines.txt); HANDLED=0
+  for line in $(cat ${VARFILE}); do
+    PRLINE=$(grep "^\-\-$line" ./commandlines.txt | sed "s|[ \t]\+||" | head -n1); HANDLED=0
+    if [ "${PRLINE}" != "" ]; then  # ================= STAGE 0: Line is present in "Command-Line Format" capture file; use this to handle setting variables
+      if [[ "${PRLINE}" == *"=dir-name"* ]] || [[ "${PRLINE}" == *"=path"* ]] || [[ "${PRLINE}" == *"=directory"* ]]; then
+        # These variables (--datadir, --character-sets-dir, --basedir etc.) are skipped as they do not make sense to modify, and they are unlikely to be dynamic;
+        # Note that this ifthen may not even be hit for all cases present in commandlines.txt. For example, --datadir is not dynamic and so it will not be in global/session txt
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"debug@=debug-options@"* ]] || [[ "${PRLINE}" == *"log-output=name"* ]] || [[ "${PRLINE}" == *"slow-query-log-file=file-name"* ]] || [[ "${PRLINE}" == *"innodb-buffer-pool-filename=file"* ]] || [[ "${PRLINE}" == *"general-log-file=file-name"* ]] || [[ "${PRLINE}" == *"keyring-file-data=file-name"* ]]; then
+        # The variables are not handled as they do not make much sense to modify/test
+        HANDLED=1
+      fi
       if ! [[ "${PRLINE}" == *"="* ]]; then  # Variable without any options, for example --general-log
         echo "${PRLINE}" >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"[={OFF|ON}]"* ]]; then
-        PRLINE=$(echo ${PRLINE} | sed 's/\[={OFF|ON}\]//')
+      if [[ "${PRLINE}" == *"@={OFF|ON}@"* ]]; then
+        PRLINE=$(echo ${PRLINE} | sed 's/@={OFF|ON}@//')
         echo "${PRLINE}" >> ${VARFILE}.out  # Without anything (as [x] means x is optional)
         echo "${PRLINE}=0" >> ${VARFILE}.out
         echo "${PRLINE}=1" >> ${VARFILE}.out
@@ -55,9 +176,16 @@ parse_set_vars(){
           HANDLED=1
         fi
       fi
-      if [[ "${PRLINE}" == *"[=#]"* ]]; then
-        echo "${PRLINE}" | sed 's|\[=#\]|=DUMMY|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|\[=#\]||' >> ${VARFILE}.out  # Without anything, ref above
+      if [[ "${PRLINE}" == *"@={0|1}@"* ]]; then
+        PRLINE=$(echo ${PRLINE} | sed 's/@={0|1}@//')
+        echo "${PRLINE}" >> ${VARFILE}.out
+        echo "${PRLINE}=0" >> ${VARFILE}.out
+        echo "${PRLINE}=1" >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"@=#@"* ]]; then
+        echo "${PRLINE}" | sed 's|@=#@|=DUMMY|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=#@||' >> ${VARFILE}.out  # Without anything, ref above
         HANDLED=1
       fi
       if [ ${HANDLED} -eq 0 ]; then
@@ -66,19 +194,34 @@ parse_set_vars(){
           HANDLED=1
         fi
       fi
-      if [[ "${PRLINE}" == *"=engine[,engine]..."* ]]; then
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=MyISAM|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=InnoDB|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=CSV|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=MRG_MYISAM|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=TokuDB|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=RocksDB|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=BLACKHOLE|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=PERFORMANCE_SCHEMA|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=MEMORY|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=FEDERATED|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=CSV,FEDERATED|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=engine\[,engine\]...|=CSV,MRG_MYISAM|' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"=engine@,engine@..."* ]]; then
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=MyISAM|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=InnoDB|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=CSV|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=MRG_MYISAM|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=TokuDB|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=RocksDB|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=BLACKHOLE|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=PERFORMANCE_SCHEMA|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=MEMORY|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=FEDERATED|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=CSV,FEDERATED|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=engine@,engine@...|=CSV,MRG_MYISAM|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"default-storage-engine=name"* ]] || [[ "${PRLINE}" == *"default-tmp-storage-engine=name"* ]] ; then
+        echo "${PRLINE}" | sed 's|=name|=MyISAM|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=InnoDB|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=CSV|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=MRG_MYISAM|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=TokuDB|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=RocksDB|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=BLACKHOLE|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=PERFORMANCE_SCHEMA|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=MEMORY|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=FEDERATED|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=CSV,FEDERATED|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=CSV,MRG_MYISAM|' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"default-authentication-plugin=plugin-name"* ]]; then
@@ -86,38 +229,41 @@ parse_set_vars(){
         echo "${PRLINE}" | sed 's|=plugin-name|=sha256_password|' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"=dir-name"* ]] || [[ "${PRLINE}" == *"=path"* ]] || [[ "${PRLINE}" == *"=directory"* ]]; then
-        # These variables (--datadir, --character-sets-dir, --basedir etc.) are skipped as they do not make sense to modify, and they are unlikely to be dynamic;
-        # Note that this ifthen may not even be hit for all cases present in commandlines.txt. For example, --datadir is not dynamic and so it will not be in global/session txt
+      if [[ "${PRLINE}" == *"event-scheduler@=value@"* ]]; then
+        echo "${PRLINE}" | sed 's|@=value@|=ON|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=value@|=OFF|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=value@|=DISABLED|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|@=value@||' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"event-scheduler[=value]"* ]]; then
-        echo "${PRLINE}" | sed 's|=[value]|=ON|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=[value]|=OFF|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=[value]|=DISABLED|' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"character-set-filesystem=name"* ]]; then
+        charsets
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"innodb-ft-user-stopword-table=db-name/table-name"* ]]; then
+        echo "${PRLINE}" | sed 's|=db-name/table-name|=test/t1|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=db-name/table-name|=test/t2|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=db-name/table-name|=test/t3|' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"innodb-monitor-reset-all"* ]] || [[ "${PRLINE}" == *"innodb-monitor-disable"* ]] || [[ "${PRLINE}" == *"innodb-monitor-enable"* ]]; then
+        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/counter/' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/module/' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/pattern/' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/all/' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"sql-mode=name"* ]]; then
+        sqlmode
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+      if [[ "${PRLINE}" == *"myisam-stats-method=name"* ]]; then
+        echo "${PRLINE}" | sed 's|=name|=nulls_equal|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=nulls_unequal|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=name|=nulls_ignored|' >> ${VARFILE}.out
         HANDLED=1
       fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
-        HANDLED=1
-      fi
-      if [[ "${PRLINE}" == *"7"* ]]; then
+      if [[ "${PRLINE}" == *"optimizer-switch=value"* ]]; then
         echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
         HANDLED=1
       fi
@@ -155,7 +301,7 @@ parse_set_vars(){
     else
       echo $line >> as_yet_to_handle.txt
     fi
-  done < ${VARFILE}
+  done
 }
 
 VARFILE=session.txt; parse_set_vars
