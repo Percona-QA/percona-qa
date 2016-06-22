@@ -39,24 +39,25 @@ if [ ! -r sqlmode.txt ]; then echo "Assert: sqlmode.txt not found!"; exit 1; fi
 if [ ! -r optimizersw.txt ]; then echo "Assert: optimizersw.txt not found!"; exit 1; fi
 
 # Read data files
-mapfile -t tables    < tables.txt   ; TABLES=${#tables[*]}
-mapfile -t pk        < pk.txt       ; PK=${#pk[*]}
-mapfile -t types     < types.txt    ; TYPES=${#types[*]}
-mapfile -t data      < data.txt     ; DATA=${#data[*]}
-mapfile -t engines   < engines.txt  ; ENGINES=${#engines[*]}
-mapfile -t n3        < 1-3.txt      ; N3=${#n3[*]}
-mapfile -t n10       < 1-10.txt     ; N10=${#n10[*]}
-mapfile -t n100      < 1-100.txt    ; N100=${#n100[*]}
-mapfile -t n1000     < 1-1000.txt   ; N1000=${#n1000[*]}
-mapfile -t trx       < trx.txt      ; TRX=${#trx[*]}
-mapfile -t flush     < flush.txt    ; FLUSH=${#flush[*]}
-mapfile -t isolation < isolation.txt; ISOL=${#isolation[*]}  # Excluses `COMMIT...RELEASE` SQL, as this drops CLI connection, though would be fine for pquery runs in principle
-mapfile -t lock      < lock.txt     ; LOCK=${#lock[*]}
-mapfile -t reset     < reset.txt    ; RESET=${#reset[*]}
+mapfile -t tables    < tables.txt     ; TABLES=${#tables[*]}
+mapfile -t pk        < pk.txt         ; PK=${#pk[*]}
+mapfile -t types     < types.txt      ; TYPES=${#types[*]}
+mapfile -t data      < data.txt       ; DATA=${#data[*]}
+mapfile -t engines   < engines.txt    ; ENGINES=${#engines[*]}
+mapfile -t n3        < 1-3.txt        ; N3=${#n3[*]}
+mapfile -t n10       < 1-10.txt       ; N10=${#n10[*]}
+mapfile -t n100      < 1-100.txt      ; N100=${#n100[*]}
+mapfile -t n1000     < 1-1000.txt     ; N1000=${#n1000[*]}
+mapfile -t trx       < trx.txt        ; TRX=${#trx[*]}
+mapfile -t flush     < flush.txt      ; FLUSH=${#flush[*]}
+mapfile -t isolation < isolation.txt  ; ISOL=${#isolation[*]}  # Excluses `COMMIT...RELEASE` SQL, as this drops CLI connection, though would be fine for pquery runs in principle
+mapfile -t lock      < lock.txt       ; LOCK=${#lock[*]}
+mapfile -t reset     < reset.txt      ; RESET=${#reset[*]}
 mapfile -t setvarss  < setvar_session_$MYSQL_VERSION.txt; SETVARSS=${#setvars[*]}
 mapfile -t setvarsg  < setvar_global_$MYSQL_VERSION.txt ; SETVARSG=${#setvarg[*]}
-mapfile -t setvals   < setvalues.txt; SETVALUES=${#setvals[*]}
-mapfile -t sqlmode   < sqlmode.txt  ; SQLMODE=${#sqlmode[*]}
+mapfile -t setvals   < setvalues.txt  ; SETVALUES=${#setvals[*]}
+mapfile -t sqlmode   < sqlmode.txt    ; SQLMODE=${#sqlmode[*]}
+mapfile -t optsw     < optimizersw.txt; OPTSW=${#optimizersw[*]}
    
 table()  { echo "${tables[$[$RANDOM % $TABLES]]}"; }
 pk()     { echo "${pk[$[$RANDOM % $PK]]}"; }
@@ -76,8 +77,10 @@ setvars(){ echo "${setvarss[$[$RANDOM % $SETVARS]]}"; }
 setvarg(){ echo "${setvarsg[$[$RANDOM % $SETVARG]]}"; }
 setval() { echo "${setvals[$[$RANDOM % $SETVALUES]]}"; }
 sqlmode(){ echo "${sqlmode[$[$RANDOM % $SQLMODE]]}"; }
-onoff()  { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }  # 75% ON, 25% OFF
-temp()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; else echo ""; fi }  # 20% TEMPORARY tables
+optsw()  { echo "${optsw[$[$RANDOM % $OPTSW]]}"; }
+onoff()  { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }          # 75% ON, 25% OFF
+globses(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi }  # 50% GLOBAL, 50% SESSION
+temp()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; else echo ""; fi }     # 20% TEMPORARY tables
 
 if [ -r out.sql ]; then rm out.sql; fi
 touch out.sql
@@ -108,17 +111,19 @@ for i in `eval echo {1..${queries}}`; do
         5) echo "UPDATE `table` SET c1=`data` WHERE c2=`data` ORDER BY c3 LIMIT `n10`;" >> out.sql ;;
         *) echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
       esac ;;
-    1[4-6]) case $[$RANDOM % 20 + 1] in  # Generic statements
+    1[4-6]) case $[$RANDOM % 21 + 1] in  # Generic statements
         [1-3]) echo "UNLOCK TABLES;" >> out.sql ;;
-        [4-6]) echo "SET AUTOCOMMIT = ON;"  >> out.sql ;;
-         7) echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
-         8) echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
-         9) echo "`reset`;" >> out.sql ;;
-        1[0-2]) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;; # The global/session vars also include sql_mode, which is like a 'reset'
-        1[3-5]) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;
-        1[6-7]) echo "SET sql_mode=(SELECT CONCAT(@@sql_mode,',`sqlmode`'));" >> out.sql ;;   # Add or remove a mode, with thanks:
-        1[8-9]) echo "SET sql_mode=(SELECT REPLACE(@@sql_mode,',`sqlmode`',''));" >>out.sql;; # http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
-        20) echo "`isol`;" >> out.sql ;;
+        [4-5]) echo "SET AUTOCOMMIT = ON;"  >> out.sql ;;
+         6) echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
+         7) echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
+         8) echo "`reset`;" >> out.sql ;;
+         9) echo "`isol`;" >> out.sql ;;
+        1[0-2]) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # The global/session vars also include sql_mode, which is like a 'reset'
+        1[3-5]) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # Note the servarS vs setvarG difference
+         # Add or remove an SQL_MODE, with thanks http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
+        1[6-7]) echo "SET @@`globses`.SQL_MODE=(SELECT CONCAT(@@SQL_MODE,',`sqlmode`'));" >> out.sql ;;
+        1[8-9]) echo "SET @@`globses`.SQL_MODE=(SELECT REPLACE(@@SQL_MODE,',`sqlmode`',''));" >> out.sql ;;
+        2[0-1]) echo "SET @@`globses`.OPTIMIZER_SWITCH=\"`optsw`=`onoff`\";" >> out.sql ;;
          *) echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
       esac ;;
     17) case $[$RANDOM % 21 + 1] in  # Alter
