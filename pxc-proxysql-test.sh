@@ -230,9 +230,10 @@ proxysql_startup(){
   check_script $?
   echo  "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 200)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin 
   check_script $?
-  echo  "UPDATE global_variables SET variable_value='root' WHERE variable_name='mysql-monitor_username" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
-  echo  "UPDATE global_variables SET variable_value='' WHERE variable_name='mysql-monitor_password'" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
-  echo "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;LOAD MYSQL VARIABLES TO RUNTIME;SAVE MYSQL VARIABLES TO DISK;" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin 
+  echo  "UPDATE global_variables SET variable_value='proxysql' WHERE variable_name='mysql-monitor_username" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo  "UPDATE global_variables SET variable_value='proxysql' WHERE variable_name='mysql-monitor_password'" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo "INSERT INTO mysql_query_rules(active,match_pattern,destination_hostgroup,apply) VALUES(1,'^SELECT',0,1),(1,'^DELETE',0,1),(1,'^UPDATE',1,1),(1,'^INSERT',1,1)'" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;LOAD MYSQL VARIABLES TO RUNTIME;SAVE MYSQL VARIABLES TO DISK;LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin 
   check_script $?
 }
 
@@ -242,51 +243,80 @@ pxc_startup
 proxysql_startup
 check_script $?
 
+get_connection_pool(){
+  echo -e "ProxySQL connection pool status\n"
+  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -t -e"select srv_host,srv_port,status,Queries,Bytes_data_sent,Bytes_data_recv from stats_mysql_connection_pool;"
+
+}
 #Sysbench data load
 $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
   --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --num-threads=$NUMT --db-driver=mysql \
   prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
 check_script $?
+get_connection_pool
 
 echo "Loading sakila test database"
 #$BASEDIR/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila.sql
 $BASEDIR/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
 check_script $?
+get_connection_pool
 
 echo "Loading world test database"
 $PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/world.sql
 check_script $?
+get_connection_pool
 
 echo "Loading employees database with innodb engine.."
 create_emp_db employee_1 innodb employees.sql
 check_script $?
+get_connection_pool
 
 echo "Loading employees partitioned database with innodb engine.."
 create_emp_db employee_2 innodb employees_partitioned.sql
 check_script $?
+get_connection_pool
 
 
-#Sysbench RW run
-for i in `seq 1 10`; do
-  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+#Sysbench run
+echo -e "Sysbench readonly run...\n"
+for i in `seq 1 5`; do
+  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --oltp-read-only --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  check_script $?
   sleep 1
+  get_connection_pool
 done
 
-${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e"select srv_host,srv_port,status,Queries from stats_mysql_connection_pool;"
+echo -e "Sysbench read write run...\n"
+for i in `seq 1 5`; do
+  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  check_script $?
+  sleep 1
+  get_connection_pool
+done
 
+echo -e "Shutting down node3 to check proxysql connection pooling status"
 #Shutdown PXC node1
 $BASEDIR/bin/mysqladmin  --socket=/tmp/node1.sock -u root shutdown
 
-
-#Sysbench RW run
-for i in `seq 1 10`; do
-  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+#Sysbench run
+echo -e "Sysbench readonly run...\n"
+for i in `seq 1 5`; do
+  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --oltp-read-only --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  check_script $?
   sleep 1
+  get_connection_pool
 done
 
-${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e"select srv_host,srv_port,status,Queries from stats_mysql_connection_pool;"
+echo -e "Sysbench read write run...\n"
+for i in `seq 1 5`; do
+  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  check_script $?
+  sleep 1
+  get_connection_pool
+done
 
+echo -e "Shutting down remaining PXC nodes\n"
 #Shutdown remaining PXC nodes
 $BASEDIR/bin/mysqladmin  --socket=/tmp/node2.sock -u root shutdown
 $BASEDIR/bin/mysqladmin  --socket=/tmp/node3.sock -u root shutdown
