@@ -9,18 +9,19 @@ elif [ "`echo $1 | grep -oe '5\.[67]'`" != "5.6" ] && [ "`echo $1 | grep -oe '5\
   echo "Invalid option. Valid options are: 5.6 and 5.7, e.g. ./get_all_set_options.sh 5.7"
   echo "If no option is given, 5.7 will be used by default"
   exit 1
+else
+  VERSION_CHECK=$1
 fi
 
-#rm -Rf /tmp/get_all_set_options
-#mkdir /tmp/get_all_set_options
+rm -Rf /tmp/get_all_set_options
+mkdir /tmp/get_all_set_options
 if [ ! -d /tmp/get_all_set_options ]; then echo "Assert: /tmp/get_all_set_options does not exist after creation!"; exit 1; fi
 cd /tmp/get_all_set_options
-rm *.txt *.out 2>/dev/null
 
-#wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/server-system-variables.html
-#wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/innodb-parameters.html
-#wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-binary-log.html
-#wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-slave.html
+wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/server-system-variables.html
+wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/innodb-parameters.html
+wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-binary-log.html
+wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-slave.html
 
 grep '<colgroup><col class="name">' server-system-variables.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Session" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' > session.txt
 grep '<colgroup><col class="name">' server-system-variables.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Global" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' > global.txt
@@ -31,7 +32,7 @@ grep '<colgroup><col class="name">' innodb-parameters.html | sed 's|<tr>|\n|g;s|
 grep -o "Command-Line Format.*\-\-[^<]\+" *.html | grep -o "\-\-.*" | sed 's|_|-|g' >> commandlines.txt
 
 # varlist syntax:   Name (1) Cmd-Line (2)  Option File (3)  System Var (4)  Var Scope (5)  Dynamic (6)  (can use awk '{print $x}')
-VERSION_CHECK=`echo $VERSION_CHECK | sed 's|\.||g'`  # Only change this after retrieving the pages above
+VERSION_CHECK=`echo ${VERSION_CHECK} | sed 's|\.||g'`  # Only change this after retrieving the pages above
 sed -i "s/=\[={OFF|ON}\]/[={OFF|ON}]/" commandlines.txt
 sed -i "s|\[|@|g;s|\]|@|g" commandlines.txt  # Change [ and ] to @
 sort -u -o commandlines.txt commandlines.txt  # Unique self-sort; ensures right order for PRLINE grep
@@ -77,6 +78,231 @@ charsets(){
   echo "${PRLINE}" | sed 's|=name|=geostd8|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=name|=cp932|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=name|=eucjpms|' >> ${VARFILE}.out
+}
+
+collations(){
+  echo "${PRLINE}" | sed 's|=name|=big5_chinese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=big5_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=dec8_swedish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=dec8_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp850_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp850_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=hp8_english_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=hp8_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=koi8r_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=koi8r_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin1_german1_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin1_swedish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin1_danish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin1_german2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin1_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin1_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin1_general_cs|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin1_spanish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin2_czech_cs|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin2_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin2_hungarian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin2_croatian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin2_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=swe7_swedish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=swe7_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ascii_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ascii_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ujis_japanese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ujis_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=sjis_japanese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=sjis_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=hebrew_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=hebrew_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=tis620_thai_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=tis620_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=euckr_korean_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=euckr_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=koi8u_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=koi8u_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=gb2312_chinese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=gb2312_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=greek_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=greek_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1250_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1250_czech_cs|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1250_croatian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1250_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1250_polish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=gbk_chinese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=gbk_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin5_turkish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin5_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=armscii8_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=armscii8_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_unicode_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_icelandic_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_latvian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_romanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_slovenian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_polish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_estonian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_spanish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_swedish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_turkish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_czech_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_danish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_lithuanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_slovak_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_spanish2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_roman_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_persian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_esperanto_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_hungarian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_sinhala_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_german2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_croatian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_unicode_520_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_vietnamese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8_general_mysql500_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_unicode_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_icelandic_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_latvian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_romanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_slovenian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_polish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_estonian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_spanish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_swedish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_turkish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_czech_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_danish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_lithuanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_slovak_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_spanish2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_roman_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_persian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_esperanto_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_hungarian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_sinhala_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_german2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_croatian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_unicode_520_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_vietnamese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=ucs2_general_mysql500_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp866_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp866_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=keybcs2_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=keybcs2_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=macce_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=macce_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=macroman_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=macroman_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp852_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp852_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin7_estonian_cs|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin7_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin7_general_cs|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=latin7_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_unicode_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_icelandic_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_latvian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_romanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_slovenian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_polish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_estonian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_spanish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_swedish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_turkish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_czech_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_danish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_lithuanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_slovak_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_spanish2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_roman_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_persian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_esperanto_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_hungarian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_sinhala_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_german2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_croatian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_unicode_520_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf8mb4_vietnamese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1251_bulgarian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1251_ukrainian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1251_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1251_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1251_general_cs|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_unicode_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_icelandic_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_latvian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_romanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_slovenian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_polish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_estonian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_spanish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_swedish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_turkish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_czech_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_danish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_lithuanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_slovak_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_spanish2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_roman_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_persian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_esperanto_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_hungarian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_sinhala_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_german2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_croatian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_unicode_520_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16_vietnamese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16le_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf16le_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1256_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1256_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1257_lithuanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1257_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp1257_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_unicode_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_icelandic_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_latvian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_romanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_slovenian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_polish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_estonian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_spanish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_swedish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_turkish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_czech_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_danish_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_lithuanian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_slovak_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_spanish2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_roman_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_persian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_esperanto_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_hungarian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_sinhala_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_german2_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_croatian_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_unicode_520_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=utf32_vietnamese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=binary|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=geostd8_general_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=geostd8_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp932_japanese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=cp932_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=eucjpms_japanese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=eucjpms_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=gb18030_chinese_ci|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=gb18030_bin|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=name|=gb18030_unicode_520_ci|' >> ${VARFILE}.out
 }
 
 sqlmode(){
@@ -432,6 +658,18 @@ parse_set_vars(){
         charsets
         HANDLED=1
       fi
+      if [[ "${LINE}" == *"collation-"* ]]; then
+        PRLINE="${LINE}=name"
+        collations 
+        HANDLED=1
+      fi
+      if [[ "${LINE}" == *"tx-isolation"* ]]; then
+        echo "tx-isolation=READ-UNCOMMITTED" >> ${VARFILE}.out
+        echo "tx-isolation=READ-COMMITTED" >> ${VARFILE}.out
+        echo "tx-isolation=REPEATABLE-READ" >> ${VARFILE}.out
+        echo "tx-isolation=SERIALIZABLE" >> ${VARFILE}.out
+        HANDLED=1
+      fi
       #  ================= STAGE 2: Look through HTML to see if a default value is present
       TYPE=
       TYPE=$(grep "${LINE}.*Permitted Values" *.html | head -n1 | sed 's|<td>|\n|;s|<[^>]\+>| |g;s|[ \t]\+| |g' | grep -o "Type.*Default" | sed 's|Type||;s|Default||;s| ||g' | head -n1)
@@ -451,7 +689,7 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [ ${HANDLED} -eq 0 ]; then
-        echo "Not handled yet (stage #1/2): $LINE" 
+        echo "Not handled yet (stage #1): $LINE"  # This says 'stage #1' as that is where the options need to be added above, i.e. not in THIS stage stage #2. But the check can only be done here once stage #2 is complete.
       fi
     fi
   done
@@ -469,6 +707,11 @@ rm session.txt global.txt 2>/dev/null
 mv session.txt.out session_${VERSION_CHECK}.txt
 mv global.txt.out global_${VERSION_CHECK}.txt
 
+echo ""
+echo "Done! Results are in; /tmp/get_all_set_options/global_${VERSION_CHECK}.txt and /tmp/get_all_set_options/session_${VERSION_CHECK}.txt"
+echo "Please copy these files to the generator directory, overwriting any file already there:"
+echo "cp /tmp/get_all_set_options/global_${VERSION_CHECK}.txt /tmp/get_all_set_options/session_${VERSION_CHECK}.txt ."
+
 #  if [ $(grep -c $line $SCRIPT_PWD/pquery/mysqld_options_ms_${VERSION_CHECK}.txt ) -ne 0 ];then
 #    if [ $(grep -c $line $SCRIPT_PWD/pquery/mysqld_options_ms_${VERSION_CHECK}.txt ) -eq 2 ];then
 #      grep $line $SCRIPT_PWD/pquery/mysqld_options_ms_${VERSION_CHECK}.txt | sed 's|--||g;s|-|_|g' >> setvar_$VERSION_CHECK.txt
@@ -484,5 +727,4 @@ mv global.txt.out global_${VERSION_CHECK}.txt
 #    echo $line >> missing_setvar_$VERSION_CHECK.txt
 #  fi
 #done < varlist.txt
-#echo "Done! Results are in; /tmp/get_all_set_options/setvar_$VERSION_CHECK.txt"
 
