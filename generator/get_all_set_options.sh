@@ -1,6 +1,6 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman & Roel Van de Paar, Percona LLC
-# This script processes dynamic variables (global + session) and writes generator.sh compatible files for them into /tmp/get_all_options
+# This script processes dynamic variables (global + session) and writes generator.sh compatible files for them into /tmp/get_all_set_options
 
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 if [ "$1" == "" ]; then
@@ -11,10 +11,10 @@ elif [ "`echo $1 | grep -oe '5\.[67]'`" != "5.6" ] && [ "`echo $1 | grep -oe '5\
   exit 1
 fi
 
-#rm -Rf /tmp/get_all_options
-#mkdir /tmp/get_all_options
-#if [ ! -d /tmp/get_all_options ]; then echo "Assert: /tmp/get_all_options does not exist after creation!"; exit 1; fi
-cd /tmp/get_all_options
+#rm -Rf /tmp/get_all_set_options
+#mkdir /tmp/get_all_set_options
+if [ ! -d /tmp/get_all_set_options ]; then echo "Assert: /tmp/get_all_set_options does not exist after creation!"; exit 1; fi
+cd /tmp/get_all_set_options
 rm *.txt *.out 2>/dev/null
 
 #wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/server-system-variables.html
@@ -431,5 +431,5 @@ mv global.txt.out global_${VERSION_CHECK}.txt
 #    echo $line >> missing_setvar_$VERSION_CHECK.txt
 #  fi
 #done < varlist.txt
-#echo "Done! Results are in; /tmp/get_all_options/setvar_$VERSION_CHECK.txt"
+#echo "Done! Results are in; /tmp/get_all_set_options/setvar_$VERSION_CHECK.txt"
 
