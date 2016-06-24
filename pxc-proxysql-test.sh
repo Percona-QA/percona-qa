@@ -145,7 +145,7 @@ pxc_startup(){
   ${MID} --datadir=$node1  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
-    --basedir=${BASEDIR} --datadir=$node1 \
+    --basedir=${BASEDIR} --datadir=$node1 --max-connections=2048 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
@@ -171,7 +171,7 @@ pxc_startup(){
   ${MID} --datadir=$node2  > ${WORKDIR}/startup_node2.err 2>&1 || exit 1;
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-    --basedir=${BASEDIR} --datadir=$node2 \
+    --basedir=${BASEDIR} --datadir=$node2 --max-connections=2048 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
@@ -195,7 +195,7 @@ pxc_startup(){
 
   ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
-    --basedir=${BASEDIR} --datadir=$node3 \
+    --basedir=${BASEDIR} --datadir=$node3 --max-connections=2048 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
