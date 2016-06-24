@@ -357,6 +357,59 @@ parse_set_vars(){
         echo "${PRLINE}" | sed 's|=image-type|=noblob|' >> ${VARFILE}.out
         HANDLED=1
       fi
+      if [[ "${PRLINE}" == *"master-info-repository=FILE|TABLE"* ]] || [[ "${PRLINE}" == *"relay-log-info-repository=FILE|TABLE"* ]]; then
+        echo "${PRLINE}" | sed 's/=FILE|TABLE/=FILE/' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's/=FILE|TABLE/=TABLE/' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"rpl-stop-slave-timeout=seconds"* ]]; then
+        echo "${PRLINE}" | sed 's|=seconds|DUMMY|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"init-slave=name"* ]]; then
+        echo "${PRLINE}" | sed "s|=name|='SELECT 1'|" >> ${VARFILE}.out  # This can likely be improved and made recursive by using something like SQLDUMMY and replacing that with random SQL by generator.sh (via for example grabbing an already-generated line if an output file is already present)
+        echo "${PRLINE}" | sed "s|=name|='CREATE TABLE t1 (c1 INT)'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=name|='DROP TABLE t1'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=name|='FLUSH TABLES'|" >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"slave-exec-mode=mode"* ]]; then
+        echo "${PRLINE}" | sed 's|=mode|=IDEMPOTENT|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=mode|=STRICT|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"slave-parallel-type=type"* ]]; then
+        echo "${PRLINE}" | sed 's|=type|=DATABASE|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=type|=LOGICAL_CLOCK|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"slave-preserve-commit-order=value"* ]]; then
+        echo "${PRLINE}" | sed 's|=value||' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=value|=0|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=value|=1|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"slave-rows-search-algorithms=list"* ]]; then
+        echo "${PRLINE}" | sed 's|=list|TABLE_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|TABLE_SCAN,INDEX_SCAN,HASH_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|INDEX_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|INDEX_SCAN,TABLE_SCAN,HASH_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|TABLE_SCAN,HASH_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|TABLE_SCAN,HASH_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|HASH_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|HASH_SCAN,TABLE_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|INDEX_SCAN,HASH_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|INDEX_SCAN,HASH_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|HASH_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|HASH_SCAN,INDEX_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [[ "${PRLINE}" == *"slave-sql-verify-checksum=value"* ]]; then
+        echo "${PRLINE}" | sed 's|=value||' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=value|=0|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=value|=1|' >> ${VARFILE}.out
+        HANDLED=1
+      fi
       if [ ${HANDLED} -eq 0 ]; then
         echo "Not handled yet (stage #0): $PRLINE"
       fi

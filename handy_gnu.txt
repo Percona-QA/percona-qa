@@ -180,6 +180,10 @@
 # Pquery, single-threaded run, mysqld pre-started, socket, testcase and ./lib/ in this directory, percona-qa bzr tree pulled to ~/percona-qa/
   export LD_LIBRARY_PATH=${PWD}/lib;~/percona-qa/pquery/pquery --infile=./testc.sql --database=test --threads=1 --no-shuffle --user=root --socket=./socket.sock
 
+# ------ Git ------
+# Store git credentials
+  git config credential.helper store
+
 # ------ Must read's ------
 # http://tldp.org/LDP/abs/html/globbingref.html on globbing (and not regex) and filename expansion
   echo *  # expands "*" to all filenames     ls -l [^ab]*  # Lists all files not starting with a or b, but [^ab]* is not a regex, it's globbing
