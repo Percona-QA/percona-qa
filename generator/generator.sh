@@ -2,7 +2,7 @@
 # Created by Roel Van de Paar, Percona LLC
 
 # User Variables
-MYSQL_VERSION="56"  # Valid options: 56, 57
+MYSQL_VERSION="56"  # Valid options: 56, 57. Do not use dot (.)
 
 # Note: the many backticks used in this script are not SQL/MySQL column-surrounding backticks, but rather subshells which call a function, for example `table` calls table()
 # To debug the SQL generated (it outputs the line numbers: "ERROR 1264 (22003) at line 47 in file" - so it easy to see which line (47 in example) failed in the SQL) use:
@@ -53,11 +53,11 @@ mapfile -t flush     < flush.txt      ; FLUSH=${#flush[*]}
 mapfile -t isolation < isolation.txt  ; ISOL=${#isolation[*]}  # Excluses `COMMIT...RELEASE` SQL, as this drops CLI connection, though would be fine for pquery runs in principle
 mapfile -t lock      < lock.txt       ; LOCK=${#lock[*]}
 mapfile -t reset     < reset.txt      ; RESET=${#reset[*]}
-mapfile -t setvarss  < session_$MYSQL_VERSION.txt; SETVARSS=${#setvars[*]}
-mapfile -t setvarsg  < global_$MYSQL_VERSION.txt ; SETVARSG=${#setvarg[*]}
+mapfile -t setvars   < session_$MYSQL_VERSION.txt; SETVARS=${#setvars[*]}
+mapfile -t setvarg   < global_$MYSQL_VERSION.txt ; SETVARG=${#setvarg[*]}
 mapfile -t setvals   < setvalues.txt  ; SETVALUES=${#setvals[*]}
 mapfile -t sqlmode   < sqlmode.txt    ; SQLMODE=${#sqlmode[*]}
-mapfile -t optsw     < optimizersw.txt; OPTSW=${#optimizersw[*]}
+mapfile -t optsw     < optimizersw.txt; OPTSW=${#optsw[*]}
    
 table()  { echo "${tables[$[$RANDOM % $TABLES]]}"; }
 pk()     { echo "${pk[$[$RANDOM % $PK]]}"; }
@@ -73,8 +73,8 @@ flush()  { echo "${flush[$[$RANDOM % $FLUSH]]}"; }
 isol()   { echo "${isolation[$[$RANDOM % $ISOL]]}"; }
 lock()   { echo "${lock[$[$RANDOM % $LOCK]]}"; }
 reset()  { echo "${reset[$[$RANDOM % $RESET]]}"; }
-setvars(){ echo "${setvarss[$[$RANDOM % $SETVARS]]}"; }
-setvarg(){ echo "${setvarsg[$[$RANDOM % $SETVARG]]}"; }
+setvars(){ echo "${setvars[$[$RANDOM % $SETVARS]]}"; }
+setvarg(){ echo "${setvarg[$[$RANDOM % $SETVARG]]}"; }
 setval() { echo "${setvals[$[$RANDOM % $SETVALUES]]}"; }
 sqlmode(){ echo "${sqlmode[$[$RANDOM % $SQLMODE]]}"; }
 optsw()  { echo "${optsw[$[$RANDOM % $OPTSW]]}"; }
@@ -86,7 +86,7 @@ if [ -r out.sql ]; then rm out.sql; fi
 touch out.sql
 
 for i in `eval echo {1..${queries}}`; do
-  case $[$RANDOM % 17 + 1] in
+  case $[$RANDOM % 20 + 1] in
     [1-4]) case $[$RANDOM % 3 + 1] in
         1) echo "CREATE `temp` TABLE `table` (c1 `pk`,c2 `ctype`,c3 `ctype`) ENGINE=`engine`;" >> out.sql ;;
         2) echo "CREATE `temp` TABLE `table` (c1 `ctype`,c2 `ctype`,c3 `ctype`) ENGINE=`engine`;" >> out.sql ;;
@@ -111,22 +111,24 @@ for i in `eval echo {1..${queries}}`; do
         5) echo "UPDATE `table` SET c1=`data` WHERE c2=`data` ORDER BY c3 LIMIT `n10`;" >> out.sql ;;
         *) echo "Assert: invalid random case selection in UPDATE subcase"; exit 1 ;;
       esac ;;
-    1[4-6]) case $[$RANDOM % 21 + 1] in  # Generic statements
-        [1-3]) echo "UNLOCK TABLES;" >> out.sql ;;
-        [4-5]) echo "SET AUTOCOMMIT = ON;"  >> out.sql ;;
-         6) echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
-         7) echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
-         8) echo "`reset`;" >> out.sql ;;
-         9) echo "`isol`;" >> out.sql ;;
-        1[0-2]) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # The global/session vars also include sql_mode, which is like a 'reset'
-        1[3-5]) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # Note the servarS vs setvarG difference
-         # Add or remove an SQL_MODE, with thanks http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
-        1[6-7]) echo "SET @@`globses`.SQL_MODE=(SELECT CONCAT(@@SQL_MODE,',`sqlmode`'));" >> out.sql ;;
-        1[8-9]) echo "SET @@`globses`.SQL_MODE=(SELECT REPLACE(@@SQL_MODE,',`sqlmode`',''));" >> out.sql ;;
-        2[0-1]) echo "SET @@`globses`.OPTIMIZER_SWITCH=\"`optsw`=`onoff`\";" >> out.sql ;;
+    1[4-6]) case $[$RANDOM % 8 + 1] in  # Generic statements
+        [1-2]) echo "UNLOCK TABLES;" >> out.sql ;;
+        [3-4]) echo "SET AUTOCOMMIT=ON;"  >> out.sql ;;
+         5) echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
+         6) echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|" >> out.sql ;;
+         7) echo "`reset`;" >> out.sql ;;
+         8) echo "`isol`;" >> out.sql ;;
+      esac;;
+    1[7-9]) case $[$RANDOM % 5 + 1] in  # SET statements 
+        1) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # The global/session vars also include sql_mode, which is like a 'reset'
+        2) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # Note the servarS vs setvarG difference
+           # Add or remove an SQL_MODE, with thanks http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
+        3) echo "SET @@`globses`.SQL_MODE=(SELECT CONCAT(@@SQL_MODE,',`sqlmode`'));" >> out.sql ;;
+        4) echo "SET @@`globses`.SQL_MODE=(SELECT REPLACE(@@SQL_MODE,',`sqlmode`',''));" >> out.sql ;;
+        5) echo "SET @@`globses`.OPTIMIZER_SWITCH=\"`optsw`=`onoff`\";" >> out.sql ;;
          *) echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
       esac ;;
-    17) case $[$RANDOM % 21 + 1] in  # Alter
+    20) case $[$RANDOM % 21 + 1] in  # Alter
          1) echo "ALTER TABLE `table` ADD COLUMN c4 `ctype`;" >> out.sql ;;
          2) echo "ALTER TABLE `table` DROP COLUMN c1;" >> out.sql ;;
          3) echo "ALTER TABLE `table` DROP COLUMN c2;" >> out.sql ;;
