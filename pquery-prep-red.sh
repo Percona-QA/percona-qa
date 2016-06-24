@@ -200,6 +200,15 @@ auto_interleave_failing_sql(){
 }
 
 generate_reducer_script(){
+  if [ "${BASE}" == "" ]; then 
+    echo "Assert! \$BASE is empty at start of generate_reducer_script()"
+    exit 1
+  fi
+  if [ -r ${BASE}/lib/mysql/plugin/ha_tokudb.so ]; then
+    DISABLE_TOKUDB_AUTOLOAD=0
+  else
+    DISABLE_TOKUDB_AUTOLOAD=1
+  fi
   if [ ${QC} -eq 0 ]; then
     PQUERY_EXTRA_OPTIONS="s|ZERO0|ZERO0|"
   else
@@ -321,6 +330,7 @@ generate_reducer_script(){
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*MODE[ \t]*=.*$/s|^[ \t]*MODE[ \t]*=.*$|#MODE=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$/s|^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$|#DISABLE_TOKUDB_AUTOLOAD=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$/s|^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$|#PQUERY_EXTRA_OPTIONS=<set_below_in_machine_variables_section>|" \
    | sed -e "${MYEXTRA_CLEANUP}" \
    | sed -e "${TEXT_CLEANUP}" \
@@ -332,6 +342,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "${PXC_CLEANUP1}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:DISABLE_TOKUDB_AUTOLOAD=${DISABLE_TOKUDB_AUTOLOAD}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
    | sed -e "${TEXT_STRING2}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MYBASE=\"${BASE}\"\n#VARMOD#:" \
@@ -380,7 +391,7 @@ if [ ${QC} -eq 0 ]; then
           exit 1
         fi
         if [ `ls ./pquery-run.log 2>/dev/null | wc -l` -eq 0 ]; then
-          BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
+          BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"  # Should never really happen, but just in case, so that something "is there"? Needs review.
         else
           BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//' | tr -d '[[:space:]]'`"
         fi

@@ -2,7 +2,7 @@
 # Created by Roel Van de Paar, Percona LLC
 
 # User Variables
-MYSQL_VERSION="56"  # Valid options: 56, 57. Do not use dot (.)
+MYSQL_VERSION="57"  # Valid options: 56, 57. Do not use dot (.)
 
 # Note: the many backticks used in this script are not SQL/MySQL column-surrounding backticks, but rather subshells which call a function, for example `table` calls table()
 # To debug the SQL generated (it outputs the line numbers: "ERROR 1264 (22003) at line 47 in file" - so it easy to see which line (47 in example) failed in the SQL) use:
@@ -119,13 +119,15 @@ for i in `eval echo {1..${queries}}`; do
          7) echo "`reset`;" >> out.sql ;;
          8) echo "`isol`;" >> out.sql ;;
       esac;;
-    1[7-9]) case $[$RANDOM % 5 + 1] in  # SET statements 
-        1) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # The global/session vars also include sql_mode, which is like a 'reset'
-        2) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # Note the servarS vs setvarG difference
-           # Add or remove an SQL_MODE, with thanks http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
-        3) echo "SET @@`globses`.SQL_MODE=(SELECT CONCAT(@@SQL_MODE,',`sqlmode`'));" >> out.sql ;;
-        4) echo "SET @@`globses`.SQL_MODE=(SELECT REPLACE(@@SQL_MODE,',`sqlmode`',''));" >> out.sql ;;
-        5) echo "SET @@`globses`.OPTIMIZER_SWITCH=\"`optsw`=`onoff`\";" >> out.sql ;;
+    1[7-9]) case $[$RANDOM % 7 + 1] in  # SET statements 
+         1) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # The global/session vars also include sql_mode, which is like a 'reset' of sql_mode
+         2) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|;s|$|;|" >> out.sql ;;  # Note the servarS vs setvarG difference
+         3) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`n100`|;s|$|;|" >> out.sql ;;    # The global/session vars also include sql_mode, which is like a 'reset' of sql_mode
+         4) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`n100`|;s|$|;|" >> out.sql ;;    # Note the servarS vs setvarG difference
+         5) echo "SET @@`globses`.OPTIMIZER_SWITCH=\"`optsw`=`onoff`\";" >> out.sql ;;
+            # 6+7: Add or remove an SQL_MODE, with thanks http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
+         6) echo "SET @@`globses`.SQL_MODE=(SELECT CONCAT(@@SQL_MODE,',`sqlmode`'));" >> out.sql ;;
+         7) echo "SET @@`globses`.SQL_MODE=(SELECT REPLACE(@@SQL_MODE,',`sqlmode`',''));" >> out.sql ;;
          *) echo "Assert: invalid random case selection in generic statements subcase"; exit 1 ;;
       esac ;;
     20) case $[$RANDOM % 21 + 1] in  # Alter
@@ -158,3 +160,6 @@ done
 
 sed -i "s|\t| |g" out.sql    # Replace tabs to spaces
 sed -i "s|  \+| |g" out.sql  # Replace double or more spaces with single space
+
+echo "Done! Generated ${queries} queries and saved the results in out.sql"
+echo "Please note you may want to do something like:  \$ sed -i \"s|RocksDB|InnoDB|\" out.sql"
