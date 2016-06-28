@@ -380,20 +380,20 @@ generate_reducer_script(){
 if [ ${QC} -eq 0 ]; then
   if [ ${PXC} -eq 1 ]; then
     for TRIAL in $(ls ./*/node*/core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | uniq); do
-      if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
-        MYEXTRA=$(cat ./${TRIAL}/MYEXTRA 2>/dev/null)
-      fi
-      if [ ${WSREP_OPTION_CHECK} -eq 1 ]; then
-        WSREP_PROVIDER_OPTIONS=$(cat ./${TRIAL}/WSREP_PROVIDER_OPT 2>/dev/null)
-      fi 
       for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d'  | awk '{print $8}' | tr -dc '0-9\n'`; do
         OUTFILE="${TRIAL}-${SUBDIR}"
         rm -Rf  ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
         touch ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
-        echo "========== Processing pquery trial $TRIAL"
+        echo "========== Processing pquery trial ${TRIAL}-${SUBDIR}"
         if [ -r ./reducer${TRIAL}-${SUBDIR}.sh ]; then
           echo "* Reducer for this trial (./reducer${TRIAL}_${SUBDIR}.sh) already exists. Skipping to next trial."
           continue
+        fi
+        if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
+          MYEXTRA=$(cat ./${TRIAL}/MYEXTRA 2>/dev/null)
+        fi
+        if [ ${WSREP_OPTION_CHECK} -eq 1 ]; then
+          WSREP_PROVIDER_OPTIONS=$(cat ./${TRIAL}/WSREP_PROVIDER_OPT 2>/dev/null)
         fi
         if [ "${MULTI}" == "1" ]; then
           INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}.sql
@@ -421,7 +421,7 @@ if [ ${QC} -eq 0 ]; then
         if [ "$CORE" != "" ]; then
           extract_queries_core
         fi
-        ERRLOG=./${TRIAL}/node${SUBDIR}/error.log
+        ERRLOG=./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err
         if [ "$ERRLOG" != "" ]; then
           extract_queries_error_log
         else
