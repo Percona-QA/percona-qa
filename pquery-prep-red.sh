@@ -61,6 +61,12 @@ else
   echo "Query correctness trials found! Only processing query correctness results. To process crashes/asserts pass 'noqc' as the first option to this script (pquery-prep-red.sh noqc)"
 fi
 
+WSREP_OPTION_CHECK=0
+if [ `ls ./*/WSREP_PROVIDER_OPT* 2>/dev/null | wc -l` -gt 0 ];then
+  WSREP_OPTION_CHECK=1
+  WSREP_PROVIDER_OPTIONS=
+fi
+
 NEW_MYEXTRA_METHOD=0
 if [ `ls ./*/MYEXTRA* 2>/dev/null | wc -l` -gt 0 ]; then  # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
   echo "Using the new (2015-07-28) method for MYEXTRA/MYSAFE variables pass & VALGRIND run check method. All settings will be set automatically for each trial (and can be checked below)!"
@@ -296,6 +302,12 @@ generate_reducer_script(){
       MYEXTRA_STRING1="0,/#VARMOD#/s:#VARMOD#:MYEXTRA=\"${MYEXTRA}\"\n#VARMOD#:"
     fi
   fi
+  if [ "$WSREP_PROVIDER_OPTIONS" == "" ]; then  # Empty MYEXTRA string
+    WSREP_OPT_CLEANUP="s|ZERO0|ZERO0|"
+    WSREP_OPT_STRING="s|ZERO0|ZERO0|"  # Idem as above
+  else
+    WSREP_OPT_STRING="0,/#VARMOD#/s:#VARMOD#:WSREP_PROVIDER_OPTIONS=\"${WSREP_PROVIDER_OPTIONS}\"\n#VARMOD#:"
+  fi
   if [ "$MULTI" != "1" ]; then  # Not a multi-threaded pquery run
     MULTI_CLEANUP="s|ZERO0|ZERO0|"  # Idem as above
     MULTI_CLEANUP2="s|ZERO0|ZERO0|"
@@ -333,6 +345,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$/s|^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$|#DISABLE_TOKUDB_AUTOLOAD=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$/s|^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$|#PQUERY_EXTRA_OPTIONS=<set_below_in_machine_variables_section>|" \
    | sed -e "${MYEXTRA_CLEANUP}" \
+   | sed -e "${WSREP_OPT_CLEANUP}" \
    | sed -e "${TEXT_CLEANUP}" \
    | sed -e "${MULTI_CLEANUP1}" \
    | sed -e "${MULTI_CLEANUP2}" \
@@ -348,6 +361,7 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MYBASE=\"${BASE}\"\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:INPUTFILE=\"${INPUTFILE}\"\n#VARMOD#:" \
    | sed -e "${MYEXTRA_STRING1}" \
+   | sed -e "${WSREP_OPT_STRING}" \
    | sed -e "${MULTI_STRING1}" \
    | sed -e "${MULTI_STRING2}" \
    | sed -e "${MULTI_STRING3}" \
@@ -364,7 +378,13 @@ generate_reducer_script(){
 # Main pquery results processing
 if [ ${QC} -eq 0 ]; then
   if [ ${PXC} -eq 1 ]; then
-    for TRIAL in $(ls ./*/node*/core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | uniq); do 
+    for TRIAL in $(ls ./*/node*/core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | uniq); do
+      if [ ${NEW_MYEXTRA_METHOD} -eq 1 ]; then
+        MYEXTRA=$(cat ./${TRIAL}/MYEXTRA 2>/dev/null)
+      fi
+      if [ ${WSREP_OPTION_CHECK} -eq 1 ]; then
+        WSREP_PROVIDER_OPTIONS=$(cat ./${TRIAL}/WSREP_PROVIDER_OPT 2>/dev/null)
+      fi 
       for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d'  | awk '{print $8}' | tr -dc '0-9\n'`; do
         OUTFILE="${TRIAL}-${SUBDIR}"
         rm -Rf  ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
@@ -419,6 +439,9 @@ if [ ${QC} -eq 0 ]; then
       done
       if [ "${MYEXTRA}" != "" ]; then
         echo "* MYEXTRA variable set to: ${MYEXTRA}"
+      fi
+      if [ "${WSREP_PROVIDER_OPTIONS}" != "" ]; then
+        echo "* WSREP_PROVIDER_OPTIONS variable set to: ${WSREP_PROVIDER_OPTIONS}"
       fi
       if [ ${VALGRIND_CHECK} -eq 1 ]; then
         echo "* Valgrind was used for this trial"
