@@ -306,6 +306,7 @@ generate_reducer_script(){
     WSREP_OPT_CLEANUP="s|ZERO0|ZERO0|"
     WSREP_OPT_STRING="s|ZERO0|ZERO0|"  # Idem as above
   else
+    WSREP_OPT_CLEANUP="0,/^[ \t]*WSREP_PROVIDER_OPTIONS[ \t]*=.*$/s|^[ \t]*WSREP_PROVIDER_OPTIONS[ \t]*=.*$|#WSREP_PROVIDER_OPTIONS=<set_below_in_machine_variables_section>|"
     WSREP_OPT_STRING="0,/#VARMOD#/s:#VARMOD#:WSREP_PROVIDER_OPTIONS=\"${WSREP_PROVIDER_OPTIONS}\"\n#VARMOD#:"
   fi
   if [ "$MULTI" != "1" ]; then  # Not a multi-threaded pquery run

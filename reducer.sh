@@ -1542,11 +1542,11 @@ start_pxc_main(){
   ${MYBASE}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
     --basedir=${MYBASE} --datadir=$node1 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm:// \
     --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+    --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPTIONS" \
     --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
@@ -1574,11 +1574,11 @@ start_pxc_main(){
   ${MYBASE}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
     --basedir=${MYBASE} --datadir=$node2 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
     --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
+    --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2;$WSREP_PROVIDER_OPTIONS" \
     --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
@@ -1606,11 +1606,11 @@ start_pxc_main(){
   ${MYBASE}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
     --basedir=${MYBASE} --datadir=$node3 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
     --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \
+    --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR3;$WSREP_PROVIDER_OPTIONS" \
     --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --core-file --loose-new --sql-mode=no_engine_substitution \
