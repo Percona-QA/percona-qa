@@ -162,4 +162,4 @@ sed -i "s|\t| |g" out.sql    # Replace tabs to spaces
 sed -i "s|  \+| |g" out.sql  # Replace double or more spaces with single space
 
 echo "Done! Generated ${queries} queries and saved the results in out.sql"
-echo "Please note you may want to do something like:  \$ sed -i \"s|RocksDB|InnoDB|\" out.sql"
+echo "Please note you may want to do something like:  \$ sed -i \"s|RocksDB|InnoDB|gi\" out.sql  (or note that you could change engines.txt before running generator.sh)"

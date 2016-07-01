@@ -36,7 +36,7 @@ if [ "$TAR_val}" != "" ]; then
   mv ${DIR_val} ${DIR_val_new}
   echo "Done! Now run;"
   echo "mv ../${DIR_val_new} /sda"  # The script will end still in $PWD, hence we will need ../ (output only)
-  rm -Rf ${CURPATH}_val
+  #rm -Rf ${CURPATH}_val  # Best not to delete it; this way gdb debugging is better quality as source will be available!
   exit 0
 else
   echo "There was some build issue... Have a nice day!"
