@@ -1,0 +1,19 @@
+[mysqld]
+innodb_buffer_pool_size         = 500M
+innodb_flush_log_at_trx_commit  = 0
+innodb_flush_method             = O_DIRECT
+innodb_log_file_size            = 20M
+innodb_file_per_table           = 1
+
+wsrep_cluster_address=gcomm://
+
+innodb_locks_unsafe_for_binlog=1
+max-connections=2048
+innodb_file_per_table=1
+innodb_autoinc_lock_mode=2
+core-file
+wsrep_slave_threads=2
+
+[client]
+user=root
+password=
