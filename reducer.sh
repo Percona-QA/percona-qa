@@ -1506,9 +1506,10 @@ start_mysqld_or_valgrind_or_pxc(){
   if [ $PXC_MOD -eq 1 ]; then
     start_pxc_main
   else
-    if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi
-    if [ -f $WORKD/mysql.out ]; then mv -f $WORKD/mysql.out $WORKD/mysql.prev; fi
-    if [ -f $WORKD/pquery_thread-0.out ]; then mv -f $WORKD/pquery_thread-0.out $WORKD/pquery_thread-0.prev; fi
+    if [ -f $WORKD/error.log.out ]; then mv -f $WORKD/error.log.out $WORKD/error.log.prev; fi                    # mysqld error log
+    if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi                             # mysqld stdout & stderr output, as well as some mysqladmin output
+    if [ -f $WORKD/mysql.out ]; then mv -f $WORKD/mysql.out $WORKD/mysql.prev; fi                                # mysql client output
+    if [ -f $WORKD/pquery_thread-0.out ]; then mv -f $WORKD/pquery_thread-0.out $WORKD/pquery_thread-0.prev; fi  # pquery client output
     if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
     if [ ${REDUCE_STARTUP_ISSUES} -le 0 ]; then
       if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
