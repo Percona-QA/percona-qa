@@ -297,7 +297,7 @@ fi
 
 echo "Loading sakila test database"
 $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
-eck_script $?
+check_script $?
 
 echo "Loading world test database"
 $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/sample_db/world.sql
