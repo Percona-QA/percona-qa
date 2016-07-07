@@ -196,6 +196,7 @@ Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## PS5.7 # http
 #log0log.cc line 1251                                   ## Fixed ## PS5.7 # http://bugs.launchpad.net/percona-server/+bug/1597143
 #log0log.cc line 1256                                   ## Fixed ## PS5.7 # http://bugs.launchpad.net/percona-server/+bug/1597143
 Handlerton. share->file == NULL                                  ## PS5.7 # https://tokutek.atlassian.net/browse/FT-725
+ZN6tokudb6memory4freeEPv                                         ## PS5.7 $ https://tokutek.atlassian.net/browse/FT-727
 
 ## =========== PS 5.7 TokuDB bugs ==========
 Handlerton. error == 0                                                ## http://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
