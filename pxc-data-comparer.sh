@@ -34,7 +34,7 @@ function verifyPXC {
  done
  mysql -u$dbuser -p$dbpass -h${nodes[0]} -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
  # Create DSNs table to run pt-table-checksum
- mysql -u$dbuser -p$dbpass -h${nodes[0]} -e "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100));"
+ mysql -u$dbuser -p$dbpass -h${nodes[0]} -e "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100), primary key(id));"
  for i in {0..2};do
    mysql -u$dbuser -p$dbpass -h${nodes[0]} -e "insert into percona.dsns (id,dsn) values ($i,'h=${nodes[$i]},P=3306,u=root,p=root');"
  done
