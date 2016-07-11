@@ -145,7 +145,7 @@ check_script(){
 
 set_pxc_strict_mode(){
   MODE=$1
-  $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root -e "set global pxc_strict_mode=$MODE"
+  $PXC_BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root -e "set global pxc_strict_mode=$MODE"
 }
 
 function async_rpl_test(){
