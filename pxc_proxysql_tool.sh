@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 # Prerequisites
-#  * Installed Percona-Server-client-56 should be installed
+#  * Percona-Server-client-56 should be installed
 #  * proxysql should be running with default port.
 
 #Check Percona client is installed or not
