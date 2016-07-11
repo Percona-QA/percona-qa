@@ -159,7 +159,7 @@ if [ "0" == "$1" ]; then
   echo "./init;./start;sleep 5;./cl;./stop;tail ./log/master.err" > ./setup
   echo "./start; sleep 10; $PWD/bin/mysql -A -uroot -S$PWD/socket.sock -e \"INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';\"; ./stop" > ./tokutek_init
   echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test" > ./cl
-  echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test < $PWD/in.sql >> $PWD/mysql.out 2>&1" > ./test
+  echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test < $PWD/in.sql > $PWD/mysql.out 2>&1" > ./test
   echo "if [ -r ./stop ]; then ./stop 2>/dev/null 1>&2; fi" > ./wipe
   echo "if [ -d $PWD/data.PREV ]; then rm -Rf $PWD/data.PREV.older; mv $PWD/data.PREV $PWD/data.PREV.older; fi;mv $PWD/data $PWD/data.PREV" >> ./wipe
   if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" != "5.7" ]; then

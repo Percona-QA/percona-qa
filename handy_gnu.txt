@@ -117,6 +117,10 @@
   mapfile -t somearray < file.txt  # -t drops newline chars. See http://wiki.bash-hackers.org/commands/builtin/mapfile for more options
 # Make a file unique/sort it without using a temporary file (similar to the -i function in sed). Note that something like: cat file.txt | sort -u > file.txt does NOT work.
   sort -u -o file.txt file.txt
+# Using sed, replace any '-' into '_' in 'a-a-a=b-b_b' but only before the '=', which is definitely not straighforward. (With thanks http://stackoverflow.com/a/6637457)
+  echo "a-a-a=b-b_b" | sed 'h;s|-|_|g;s|=.*|=|;x;s|.*=||;x;G;s|\n||';  # Output: a_a_a=b-b_b # h: place copy in hold buffer, x: swap buffers; G: dump buffers
+# The same as the line above, but this one a bit more robust: ensure that if there is a secondary '=', it will still only change the first part
+  echo 'a-a-a=b-b_b=c-c_c' | sed 'h;s|-|_|g;s|\([^=]\+\).*|\1|;x;s|[^=]\+||;x;G;s|\n||'  # Output: a_a_a=b-b_b=c-c_c # \([^=]\+\) : select the part, any char not =, upto first =
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging

@@ -2,6 +2,8 @@
 # Created by Ramesh Sivaraman & Roel Van de Paar, Percona LLC
 # This script processes dynamic variables (global + session) and writes generator.sh compatible files for them into /tmp/get_all_set_options
 
+WGET_SKIP=1  # Default: 0. Use 0 when you do not have the HTML files downloaded to /tmp yet (first run). Afterwards, you can set this to 1 to speed up things
+
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 if [ "$1" == "" ]; then
   VERSION_CHECK="5.7"
@@ -13,15 +15,23 @@ else
   VERSION_CHECK=$1
 fi
 
-rm -Rf /tmp/get_all_set_options
-mkdir /tmp/get_all_set_options
-if [ ! -d /tmp/get_all_set_options ]; then echo "Assert: /tmp/get_all_set_options does not exist after creation!"; exit 1; fi
-cd /tmp/get_all_set_options
-
-wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/server-system-variables.html
-wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/innodb-parameters.html
-wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-binary-log.html
-wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-slave.html
+if [ ${WGET_SKIP} -ne 1 ]; then
+  rm -Rf /tmp/get_all_set_options
+  mkdir /tmp/get_all_set_options
+  if [ ! -d /tmp/get_all_set_options ]; then echo "Assert: /tmp/get_all_set_options does not exist after creation!"; exit 1; fi
+  cd /tmp/get_all_set_options
+  wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/server-system-variables.html
+  wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/innodb-parameters.html
+  wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-binary-log.html
+  wget http://dev.mysql.com/doc/refman/$VERSION_CHECK/en/replication-options-slave.html
+else
+  if [ ! -d /tmp/get_all_set_options ]; then echo "Assert: /tmp/get_all_set_options does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+  cd /tmp/get_all_set_options
+  if [ ! -r server-system-variables.html ]; then echo "Assert: /tmp/server-system-variables.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+  if [ ! -r innodb-parameters.html ]; then echo "Assert: /tmp/innodb-parameters.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+  if [ ! -r replication-options-binary-log.html ]; then echo "Assert: /tmp/replication-options-binary-log.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+  if [ ! -r replication-options-slave.html ]; then echo "Assert: /tmp/replication-options-slave.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+fi
 
 grep '<colgroup><col class="name">' server-system-variables.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Session" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' > session.txt
 grep '<colgroup><col class="name">' server-system-variables.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Global" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' > global.txt
@@ -386,13 +396,14 @@ parse_set_vars(){
         # The variables are not handled as they do not make much sense to modify/test
         HANDLED=1
       fi
-      if ! [[ "${PRLINE}" == *"="* ]]; then  # Variable without any options, for example --general-log
-        echo "${PRLINE}" >> ${VARFILE}.out
+      if ! [[ "${PRLINE}" == *"="* ]]; then  # Variable without any options, for example --general-log. These need to get =0 and =1 because:
+        # echo "${LINE}" >> ${VARFILE}.out  # SET does not work like --option eg. --innodb_file_per_table works, SET @@GLOBAL.innodb_file_per_table doesn't
+        echo "${PRLINE}=0" >> ${VARFILE}.out
+        echo "${PRLINE}=1" >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"@={OFF|ON}@"* ]]; then
         PRLINE=$(echo ${PRLINE} | sed 's/@={OFF|ON}@//')
-        echo "${PRLINE}" >> ${VARFILE}.out  # Without anything (as [x] means x is optional)
         echo "${PRLINE}=0" >> ${VARFILE}.out
         echo "${PRLINE}=1" >> ${VARFILE}.out
         HANDLED=1
@@ -407,13 +418,11 @@ parse_set_vars(){
       fi
       if [[ "${PRLINE}" == *"@={0|1}@"* ]]; then
         PRLINE=$(echo ${PRLINE} | sed 's/@={0|1}@//')
-        echo "${PRLINE}" >> ${VARFILE}.out
         echo "${PRLINE}=0" >> ${VARFILE}.out
         echo "${PRLINE}=1" >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"@=#@"* ]]; then
-        echo "${PRLINE}" | sed 's|@=#@||' >> ${VARFILE}.out  # Without anything, ref above
         echo "${PRLINE}" | sed 's|@=#@|=DUMMY|' >> ${VARFILE}.out
         HANDLED=1
       fi
@@ -459,7 +468,6 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"event-scheduler@=value@"* ]]; then
-        echo "${PRLINE}" | sed 's|@=value@||' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=ON|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=OFF|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=DISABLED|' >> ${VARFILE}.out
@@ -476,10 +484,10 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"innodb-monitor-reset-all"* ]] || [[ "${PRLINE}" == *"innodb-monitor-disable"* ]] || [[ "${PRLINE}" == *"innodb-monitor-enable"* ]]; then
-        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/counter/' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/module/' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/pattern/' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/all/' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/=counter/' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/=module/' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/=pattern/' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's/=@counter|module|pattern|all@/=all/' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"sql-mode=name"* ]]; then
@@ -493,7 +501,7 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"optimizer-switch=value"* ]]; then
-        echo "${PRLINE}" | sed 's|=||' >> ${VARFILE}.out
+        optimizerswitch
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"=N"* ]]; then
@@ -512,7 +520,6 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"delay-key-write@=name@"* ]]; then
-        echo "${PRLINE}" | sed 's|@=name@||' >> ${VARFILE}.out
 	echo "${PRLINE}" | sed 's|@=name@|=ON|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=name@|=OFF|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=name@|=ALL|' >> ${VARFILE}.out
@@ -527,8 +534,8 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"offline-mode=val"* ]]; then
-        echo "${PRLINE}" | sed 's|=val|0|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=val|1|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=val|=0|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=val|=1|' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"max-points-in-geometry=integer"* ]]; then
@@ -544,12 +551,11 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"log-syslog-tag=value"* ]]; then
-        echo "${PRLINE}" | sed 's|=value|='abc'|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=value|='123'|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=value|='abc'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=value|='123'|" >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"master-verify-checksum=name"* ]]; then
-        echo "${PRLINE}" | sed 's|=name||' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=name|=0|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=name|=1|' >> ${VARFILE}.out
         HANDLED=1
@@ -560,13 +566,11 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"binlog-direct-non-transactional-updates@=value@"* ]]; then
-        echo "${PRLINE}" | sed 's|@=value@||' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=0|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=1|' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"binlog-error-action@=value@"* ]] || [[ "${PRLINE}" == *"binlogging-impossible-mode@=value@"* ]]; then
-        echo "${PRLINE}" | sed 's|@=value@||' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=IGNORE_ERROR|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|@=value@|=ABORT_SERVER|' >> ${VARFILE}.out
         HANDLED=1
@@ -589,7 +593,7 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"rpl-stop-slave-timeout=seconds"* ]]; then
-        echo "${PRLINE}" | sed 's|=seconds|DUMMY|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=seconds|=DUMMY|' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"init-slave=name"* ]]; then
@@ -610,28 +614,26 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"slave-preserve-commit-order=value"* ]]; then
-        echo "${PRLINE}" | sed 's|=value||' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=value|=0|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=value|=1|' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"slave-rows-search-algorithms=list"* ]]; then
-        echo "${PRLINE}" | sed 's|=list|TABLE_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|TABLE_SCAN,INDEX_SCAN,HASH_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|INDEX_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|INDEX_SCAN,TABLE_SCAN,HASH_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|TABLE_SCAN,HASH_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|TABLE_SCAN,HASH_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|HASH_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|HASH_SCAN,TABLE_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|INDEX_SCAN,HASH_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|INDEX_SCAN,HASH_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|HASH_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|HASH_SCAN,INDEX_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=TABLE_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=TABLE_SCAN,INDEX_SCAN,HASH_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=INDEX_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=INDEX_SCAN,TABLE_SCAN,HASH_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=TABLE_SCAN,HASH_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=TABLE_SCAN,HASH_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=HASH_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=HASH_SCAN,TABLE_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=INDEX_SCAN,HASH_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=INDEX_SCAN,HASH_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=HASH_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed 's|=list|=HASH_SCAN,INDEX_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
         HANDLED=1
       fi
       if [[ "${PRLINE}" == *"slave-sql-verify-checksum=value"* ]]; then
-        echo "${PRLINE}" | sed 's|=value||' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=value|=0|' >> ${VARFILE}.out
         echo "${PRLINE}" | sed 's|=value|=1|' >> ${VARFILE}.out
         HANDLED=1
@@ -664,10 +666,10 @@ parse_set_vars(){
         HANDLED=1
       fi
       if [[ "${LINE}" == *"tx-isolation"* ]]; then
-        echo "tx-isolation=READ-UNCOMMITTED" >> ${VARFILE}.out
-        echo "tx-isolation=READ-COMMITTED" >> ${VARFILE}.out
-        echo "tx-isolation=REPEATABLE-READ" >> ${VARFILE}.out
-        echo "tx-isolation=SERIALIZABLE" >> ${VARFILE}.out
+        echo 'tx-isolation="READ-UNCOMMITTED"' >> ${VARFILE}.out
+        echo 'tx-isolation="READ-COMMITTED"' >> ${VARFILE}.out
+        echo 'tx-isolation="REPEATABLE-READ"' >> ${VARFILE}.out
+        echo 'tx-isolation="SERIALIZABLE"' >> ${VARFILE}.out
         HANDLED=1
       fi
       #  ================= STAGE 2: Look through HTML to see if a default value is present
@@ -677,7 +679,6 @@ parse_set_vars(){
         TYPE=$(grep "$(echo ${LINE}|sed 's|\-|_|g').*Permitted Values" *.html | head -n1 | sed 's|<td>|\n|;s|<[^>]\+>| |g;s|[ \t]\+| |g' | grep -o "Type.*Default" | sed 's|Type||;s|Default||;s| ||g' | head -n1)
       fi
       if [ "${TYPE}" == "boolean" ]; then
-        echo "${LINE}" >> ${VARFILE}.out
         echo "${LINE}=0" >> ${VARFILE}.out
         echo "${LINE}=1" >> ${VARFILE}.out
         HANDLED=1
@@ -701,7 +702,14 @@ VARFILE=global.txt;  parse_set_vars
 # Remove preceding --
 sed -i "s|^\-\-||" session.txt.out
 sed -i "s|^\-\-||" global.txt.out
+:
+# Changing variable names '-' into '_' which works by default
+sed -i 'h;s|-|_|g;s|\([^=]\+\).*|\1|;x;s|[^=]\+||;x;G;s|\n||' session.txt.out
+sed -i 'h;s|-|_|g;s|\([^=]\+\).*|\1|;x;s|[^=]\+||;x;G;s|\n||' global.txt.out
 
+# Fixes/workarounds for buggy variables (errors in manual - log DOC bugs later)
+sed -i "s|innodb_print_all_deadlocks=DUMMY|innodb_print_all_deadlocks=0\ninnodb_print_all_deadlocks=1|" global.txt.out  # innodb_print_all_deadlocks is global variable only
+      
 # Final rename to version
 rm session.txt global.txt 2>/dev/null
 mv session.txt.out session_${VERSION_CHECK}.txt
