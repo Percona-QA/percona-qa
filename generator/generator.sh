@@ -36,6 +36,7 @@ if [ ! -r global_$MYSQL_VERSION.txt ]; then echo "Assert: global_$MYSQL_VERSION.
 if [ ! -r setvalues.txt ]; then echo "Assert: setvalues.txt not found!"; exit 1; fi
 if [ ! -r sqlmode.txt ]; then echo "Assert: sqlmode.txt not found!"; exit 1; fi
 if [ ! -r optimizersw.txt ]; then echo "Assert: optimizersw.txt not found!"; exit 1; fi
+if [ ! -r inmetrics.txt ]; then echo "Assert: inmetrics.txt not found!"; exit 1; fi
 
 # Read data files
 mapfile -t tables    < tables.txt     ; TABLES=${#tables[*]}
@@ -56,6 +57,7 @@ mapfile -t setvarg   < global_$MYSQL_VERSION.txt ; SETVARG=${#setvarg[*]}
 mapfile -t setvals   < setvalues.txt  ; SETVALUES=${#setvals[*]}
 mapfile -t sqlmode   < sqlmode.txt    ; SQLMODE=${#sqlmode[*]}
 mapfile -t optsw     < optimizersw.txt; OPTSW=${#optsw[*]}
+mapfile -t inmetrics < inmetrics.txt  ; INMETRICS=${#inmetrics[*]}
 
 if [ ${TABLES} -lt 2 ]; then echo "Assert: number of tables less then 2. A minimum of two tables is required for proper operation. Please ensure tables.txt has at least two tables"; exit 1; fi
    
@@ -78,6 +80,7 @@ setvarg()  { echo "${setvarg[$[$RANDOM % $SETVARG]]}"; }
 setval()   { echo "${setvals[$[$RANDOM % $SETVALUES]]}"; }
 sqlmode()  { echo "${sqlmode[$[$RANDOM % $SQLMODE]]}"; }
 optsw()    { echo "${optsw[$[$RANDOM % $OPTSW]]}"; }
+inmetrics(){ echo "${inmetrics[$[$RANDOM % $INMETRICS]]}"; }
 # ========================================= Single, random
 n2()       { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }             # 50% 1, 50% 2
 temp()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; fi }                   # 20% TEMPORARY
@@ -219,6 +222,20 @@ for i in `eval echo {1..${queries}}`; do
             fi;;
          9) echo "ALTER TABLE `table` MODIFY c`n3` `ctype`;" >> out.sql;;
          *) echo "Assert: invalid random case selection in ALTER subcase"; exit 1;;
+       esac;;
+    21) case $[$RANDOM % 6 + 1] in  # Alter
+         1) echo "SHOW TABLES;" >> out.sql;;
+         2) echo "SHOW ENGINE `engine` STATUS;" >> out.sql;;
+         3) echo "SHOW ENGINE `engine` MUTEX;" >> out.sql;;
+         5) echo "SHOW ENGINES;" >> out.sql;;
+         6) echo "SHOW WARNINGS;" >> out.sql;;
+         *) echo "Assert: invalid random case selection in SHOW subcase"; exit 1;;
+       esac;;
+    22) case $[$RANDOM % 3 + 1] in  # Alter
+         1) echo "SET GLOBAL innodb_monitor_enable='`inmetrics`';" >> out.sql;;
+         2) echo "SET GLOBAL innodb_monitor_reset='`inmetrics`';" >> out.sql;;
+         3) echo "SET GLOBAL innodb_monitor_disable='`inmetrics`';" >> out.sql;;
+         *) echo "Assert: invalid random case selection in InnoDB metrics subcase"; exit 1;;
        esac;;
      *) echo "Assert: invalid random case selection in main case"; exit 1;;
   esac
