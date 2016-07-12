@@ -88,7 +88,9 @@ echo "fi" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 
-echo "\${MID} --datadir=$node1  > ${BUILD}/startup_node1.err 2>&1 || exit 1;" >> ./start_pxc
+echo "if [ ! -d $node1 ]; then" >> ./start_pxc
+echo "  \${MID} --datadir=$node1  > ${BUILD}/startup_node1.err 2>&1 || exit 1;" >> ./start_pxc
+echo "fi" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 
@@ -121,7 +123,9 @@ echo "  fi" >> ./start_pxc
 echo "done" >> ./start_pxc
 
 echo -e "\n\n" >> ./start_pxc
-echo "\${MID} --datadir=$node2  > ${BUILD}/startup_node2.err 2>&1 || exit 1;" >> ./start_pxc
+echo "if [ ! -d $node2 ]; then" >> ./start_pxc
+echo "  \${MID} --datadir=$node2  > ${BUILD}/startup_node2.err 2>&1 || exit 1;" >> ./start_pxc
+echo "fi" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 
@@ -155,7 +159,9 @@ echo "  fi" >> ./start_pxc
 echo "done" >> ./start_pxc
 
 echo -e "\n\n" >> ./start_pxc
-echo "\${MID} --datadir=$node3  > ${BUILD}/startup_node3.err 2>&1 || exit 1;" >> ./start_pxc
+echo "if [ ! -d $node3 ]; then" >> ./start_pxc
+echo "  \${MID} --datadir=$node3  > ${BUILD}/startup_node3.err 2>&1 || exit 1;" >> ./start_pxc
+echo "fi" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 
