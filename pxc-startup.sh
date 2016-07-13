@@ -21,9 +21,8 @@ if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   fi
 fi
 
-PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
-
 if [[ $sst_method == "xtrabackup" ]];then
+  PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
   if [ ! -z $PXB_BASE ];then
     export PATH="$BUILD/$PXB_BASE/bin:$PATH"
   else
@@ -74,7 +73,8 @@ elif [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5
   KEY_RING_CHECK=1
 fi
 
-echo "PXC_MYEXTRA=\"\"" > ./start_pxc
+echo "#!/bin/bash" > ./start_pxc
+echo "PXC_MYEXTRA=\"\"" >> ./start_pxc
 echo "PXC_START_TIMEOUT=300"  >> ./start_pxc
 echo -e "\n" >> ./start_pxc
 echo "echo 'Starting PXC nodes..'" >> ./start_pxc
@@ -88,7 +88,9 @@ echo "fi" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 
-echo "\${MID} --datadir=$node1  > ${BUILD}/startup_node1.err 2>&1 || exit 1;" >> ./start_pxc
+echo "if [ ! -d $node1 ]; then" >> ./start_pxc
+echo "  \${MID} --datadir=$node1  > ${BUILD}/startup_node1.err 2>&1 || exit 1;" >> ./start_pxc
+echo "fi" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 
@@ -121,7 +123,9 @@ echo "  fi" >> ./start_pxc
 echo "done" >> ./start_pxc
 
 echo -e "\n\n" >> ./start_pxc
-echo "\${MID} --datadir=$node2  > ${BUILD}/startup_node2.err 2>&1 || exit 1;" >> ./start_pxc
+echo "if [ ! -d $node2 ]; then" >> ./start_pxc
+echo "  \${MID} --datadir=$node2  > ${BUILD}/startup_node2.err 2>&1 || exit 1;" >> ./start_pxc
+echo "fi" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 
@@ -155,7 +159,9 @@ echo "  fi" >> ./start_pxc
 echo "done" >> ./start_pxc
 
 echo -e "\n\n" >> ./start_pxc
-echo "\${MID} --datadir=$node3  > ${BUILD}/startup_node3.err 2>&1 || exit 1;" >> ./start_pxc
+echo "if [ ! -d $node3 ]; then" >> ./start_pxc
+echo "  \${MID} --datadir=$node3  > ${BUILD}/startup_node3.err 2>&1 || exit 1;" >> ./start_pxc
+echo "fi" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
 

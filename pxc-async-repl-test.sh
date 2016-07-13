@@ -145,7 +145,7 @@ check_script(){
 
 set_pxc_strict_mode(){
   MODE=$1
-  $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root -e "set global pxc_strict_mode=$MODE"
+  $PXC_BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root -e "set global pxc_strict_mode=$MODE"
 }
 
 function async_rpl_test(){
@@ -362,7 +362,7 @@ function async_rpl_test(){
   
     #Creating dsns table for table checkum
     echo "drop database if exists percona;create database percona;" | mysql -h${ADDR} -P$RBASE1 -uroot
-    echo "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100));" | mysql -h${ADDR} -P$RBASE1 -uroot
+    echo "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100),  primary key(id));" | mysql -h${ADDR} -P$RBASE1 -uroot
     echo "insert into percona.dsns (id,dsn) values (1,'h=${ADDR},P=$RBASE1,u=root'),(2,'h=${ADDR},P=$RBASE2,u=root'),(3,'h=${ADDR},P=$RBASE3,u=root');" | mysql -h${ADDR} -P$RBASE1 -uroot
   }
 
