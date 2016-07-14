@@ -7,10 +7,10 @@ sst_method="rsync"
 
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
-  if [ "$(sudo apt-get -s install libaio1 | grep 'is already')" == "" ]; then
+  if [ "$(dpkg -l | grep 'libaio1')" == "" ]; then
     sudo apt-get install libaio1 
   fi
-  if [ "$(sudo apt-get -s install libjemalloc1 | grep 'is already')" == "" ]; then
+  if [ "$(dpkg -l | grep 'libjemalloc1')" == "" ]; then
     sudo apt-get install libjemalloc1
   fi
   if [ ! -r /lib/x86_64-linux-gnu/libssl.so.6 ]; then
