@@ -230,7 +230,7 @@ check_script(){
 #
 # Install cluster from previous version
 #
-echo "\n\n#### Installing cluster from previous version\n"
+echo -e "\n\n#### Installing cluster from previous version\n"
 ps_56_start(){
   echo "Starting PXC-5.6 node1"
   ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults  --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1.err 2>&1 || exit 1;
@@ -347,7 +347,7 @@ ps_56_start
 # Sysbench run on previous version on node1
 #
 ## Prepare/setup
-echo "\n\n#### Sysbench run on previous version on node1\n"
+echo -e "\n\n#### Sysbench run on previous version on node1\n"
 
 sysbench --test=$SDIR/parallel_prepare.lua --report-interval=10  --oltp-auto-inc=$AUTOINC --mysql-engine-trx=yes --mysql-table-engine=innodb \
     --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root \
@@ -381,7 +381,7 @@ $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variable
 #
 # Upgrading node2 to the new version
 #
-echo "\n\n#### Upgrade node2 to the new version\n"
+echo -e "\n\n#### Upgrade node2 to the new version\n"
 echo "Shutting down node2 after SST"
 ${MYSQL_BASEDIR1}/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown
 if [[ $? -ne 0 ]];then 
@@ -551,7 +551,7 @@ set -x
 #
 # OLTP RW run after node2 upgrade
 #
-echo "\n\n#### Sysbench OLTP RW test after node2 upgrade\n"
+echo -e "\n\n#### Sysbench OLTP RW test after node2 upgrade\n"
 sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SDURATION --max-requests=1870000000 \
     --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
     --mysql-user=root --db-driver=mysql --mysql-socket=$sockets \
@@ -582,7 +582,7 @@ $MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "select count(*) from
 #
 # Taking backup for downgrade testing
 #
-echo "\n\n#### Backup before downgrade test\n"
+echo -e "\n\n#### Backup before downgrade test\n"
 
 $MYSQL_BASEDIR2/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=/tmp/node1.socket -uroot --databases `$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
 check_script $?
@@ -596,7 +596,7 @@ rm -Rf $node1/* $node2/* $node3/*
 #
 # Downgrade testing
 #
-echo "\n\n#### Downgrade test\n"
+echo -e "\n\n#### Downgrade test\n"
 
 ps_56_start
 
