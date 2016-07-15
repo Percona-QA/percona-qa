@@ -102,25 +102,20 @@ if [[ $sst_method == xtrabackup ]];then
 fi
 
 count=$(ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | wc -l)
-
 if [[ $count -gt 1 ]];then 
   for dirs in `ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | tail -n +2`;do 
      rm -rf $dirs
   done 
 fi
-
 find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.7*' -exec rm -rf {} \+
 
 count=$(ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | wc -l)
-
 if [[ $count -gt 1 ]];then 
   for dirs in `ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | tail -n +2`;do 
     rm -rf $dirs
   done 
 fi
-
 find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.6*' -exec rm -rf {} \+
-
 
 echo "Removing older directories"
 find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+
@@ -130,21 +125,15 @@ find . -maxdepth 1 -type l -mtime +10 -delete
 
 TAR=`ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | head -n1`
 BASE1="$(tar tf $TAR | head -1 | tr -d '/')"
-
 tar -xf $TAR
 
 TAR=`ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | head -n1`
 BASE2="$(tar tf $TAR | head -1 | tr -d '/')"
-
 tar -xf $TAR
-
 
 LPATH=${SPATH:-/usr/share/doc/sysbench/tests/db}
 
 # User settings
-SENDMAIL="/usr/sbin/sendmail"
-
-
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 mkdir -p $WORKDIR/logs
 
@@ -168,7 +157,6 @@ echo "Basedirs: $MYSQL_BASEDIR1 $MYSQL_BASEDIR2"
 #    GALERA2="${MYSQL_BASEDIR1}/lib/galera2/libgalera_smm.so"
 #    GALERA3="${MYSQL_BASEDIR2}/lib/libgalera_smm.so"
 #fi
-
 
 ADDR="127.0.0.1"
 RPORT=$(( RANDOM%21 + 10 ))
@@ -231,18 +219,26 @@ check_script(){
 # Install cluster from previous version
 #
 echo -e "\n\n#### Installing cluster from previous version\n"
-ps_56_start(){
-  echo "Starting PXC-5.6 node1"
-  ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults  --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1.err 2>&1 || exit 1;
+pxc_start_node(){
+  local FUN_NODE_NR=$1
+  local FUN_NODE_VER=$2
+  local FUN_NODE_PATH=$3
+  local FUN_CLUSTER_ADDRESS=$4
+  local FUN_WSREP_PROVIDER_OPTIONS=$5
+  local FUN_RBASE=$6
+  local FUN_WSREP_PROVIDER=$7
+  local FUN_LOG_ERR=$8
+  local FUN_BASE_DIR=$9
 
-  ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
-    --basedir=${MYSQL_BASEDIR1} --datadir=$node1 \
+  echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR}"
+  ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
+    --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm:// \
+    --wsrep-provider=${FUN_WSREP_PROVIDER} \
+    --wsrep_cluster_address=${FUN_CLUSTER_ADDRESS} \
     --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+    --wsrep_provider_options=${FUN_WSREP_PROVIDER_OPTIONS} \
     --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --query_cache_type=0 --query_cache_size=0 \
@@ -250,98 +246,33 @@ ps_56_start(){
     --innodb_log_file_size=500M \
     --core-file --loose-new --sql-mode=no_engine_substitution \
     --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=$WORKDIR/logs/node1.err \
-    --socket=/tmp/node1.socket --log-output=none \
-    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=8  > $WORKDIR/logs/node1.err 2>&1 &
+    --log-error=${FUN_LOG_ERR} \
+    --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
+    --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} --wsrep_slave_threads=8 > ${FUN_LOG_ERR} 2>&1 &
 
   for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
     sleep 1
-    if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node1.socket ping > /dev/null 2>&1; then
+    if $FUN_BASE_DIR/bin/mysqladmin -uroot -S/tmp/node${FUN_NODE_NR}.socket ping > /dev/null 2>&1; then
       break
     fi
   done
-
-  if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node1.socket ping > /dev/null 2>&1; then
-    echo "PXC node1 started ok.."
+  if $FUN_BASE_DIR/bin/mysqladmin -uroot -S/tmp/node${FUN_NODE_NR}.socket ping > /dev/null 2>&1; then
+    echo "PXC node${FUN_NODE_NR} started ok.."
   else
-    echo "PXC node1 startup failed.. Please check error log : $WORKDIR/logs/node1.err"
-  fi
-
-  sleep 10
-
-  echo "Starting PXC-5.6 node2"
-  ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults  --basedir=${MYSQL_BASEDIR1} --datadir=$node2 > $WORKDIR/logs/node2-pre.err 2>&1 || exit 1;
-
-  ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-    --basedir=${MYSQL_BASEDIR1} --datadir=$node2 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
-    --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
-    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --query_cache_type=0 --query_cache_size=0 \
-    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-    --innodb_log_file_size=500M \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=$WORKDIR/logs/node2-pre.err \
-    --socket=/tmp/node2.socket --log-output=none \
-    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-pre.err 2>&1 &
-
-  for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
-    sleep 1
-    if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-      break
-    fi
-  done
-  if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-    echo "PXC node2 started ok.."
-  else
-    echo "PXC node2 startup failed.. Please check error log : $WORKDIR/logs/node2-pre.err"
-  fi
-
-  sleep 10
-
-  echo "Starting PXC-5.6 node3"
-  ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults  --basedir=${MYSQL_BASEDIR1} --datadir=$node3 > $WORKDIR/logs/node3-pre.err 2>&1 || exit 1;
-
-  ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
-    --basedir=${MYSQL_BASEDIR1} --datadir=$node3 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
-    --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \
-    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --query_cache_type=0 --query_cache_size=0 \
-    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-    --innodb_log_file_size=500M \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=$WORKDIR/logs/node3-pre.err \
-    --socket=/tmp/node3.socket --log-output=none \
-    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=8 > $WORKDIR/logs/node3-pre.err 2>&1 &
-
-  for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
-    sleep 1
-    if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node3.socket ping > /dev/null 2>&1; then
-      break
-    fi
-  done
-  if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node3.socket ping > /dev/null 2>&1; then
-    echo "PXC node3 started ok.."
-  else
-    echo "PXC node3 startup failed.. Please check error log : $WORKDIR/logs/node3-pre.err"
+    echo "PXC node${FUN_NODE_NR} startup failed.. Please check error log : $WORKDIR/logs/node${FUN_NODE_NR}-pre.err"
   fi
 
   sleep 10
 }
-ps_56_start
+
+${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1-pre.err 2>&1 || exit 1;
+pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-pre.err" "${MYSQL_BASEDIR1}"
+
+${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node2-pre.err 2>&1 || exit 1;
+pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-pre.err" "${MYSQL_BASEDIR1}"
+
+${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node3-pre.err 2>&1 || exit 1;
+pxc_start_node 3 "5.6" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://${LADDR3}" "$RBASE3" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-pre.err" "${MYSQL_BASEDIR1}"
 
 #
 # Sysbench run on previous version on node1
@@ -587,19 +518,26 @@ echo -e "\n\n#### Backup before downgrade test\n"
 $MYSQL_BASEDIR2/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=/tmp/node1.socket -uroot --databases `$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
 check_script $?
 
+#
+# Downgrade testing
+#
+echo -e "\n\n#### Downgrade test\n"
 $MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
 $MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1
 $MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node3.socket -u root shutdown  > /dev/null 2>&1
 
 rm -Rf $node1/* $node2/* $node3/*
 
-#
-# Downgrade testing
-#
-echo -e "\n\n#### Downgrade test\n"
+${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1-pre.err 2>&1 || exit 1;
+pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-pre.err" "${MYSQL_BASEDIR1}"
 
-ps_56_start
+${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node2-pre.err 2>&1 || exit 1;
+pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-pre.err" "${MYSQL_BASEDIR1}"
 
+${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node3-pre.err 2>&1 || exit 1;
+pxc_start_node 3 "5.6" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://${LADDR3}" "$RBASE3" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-pre.err" "${MYSQL_BASEDIR1}"
+
+# Import database
 ${MYSQL_BASEDIR1}/bin/mysql --socket=/tmp/node1.socket -uroot < $WORKDIR/dbdump.sql 2>&1
 
 CHECK_DBS=`$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"`
