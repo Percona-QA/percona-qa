@@ -362,23 +362,23 @@ optimizerswitch(){
   echo "${PRLINE}" | sed 's|=value|="use_index_extensions=on"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="batched_key_access=off"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="block_nested_loop=off"|' >> ${VARFILE}.out
-  echo "${PRLINE}" | sed 's|=value|="coffditioff_fanout_filter=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="condition_fanout_filter=off"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="derived_merge=off"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="duplicateweedout=off"|' >> ${VARFILE}.out
-  echo "${PRLINE}" | sed 's|=value|="engine_coffditioff_pushdown=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="engine_conditioff_pushdown=off"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="firstmatch=off"|' >> ${VARFILE}.out
-  echo "${PRLINE}" | sed 's|=value|="index_coffditioff_pushdown=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_condition_pushdown=off"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="index_merge=off"|' >> ${VARFILE}.out
-  echo "${PRLINE}" | sed 's|=value|="index_merge_intersectioff=off"|' >> ${VARFILE}.out
-  echo "${PRLINE}" | sed 's|=value|="index_merge_sort_unioff=off"|' >> ${VARFILE}.out
-  echo "${PRLINE}" | sed 's|=value|="index_merge_unioff=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge_intersection=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge_sort_union=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="index_merge_union=off"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="loosescan=off"|' >> ${VARFILE}.out
-  echo "${PRLINE}" | sed 's|=value|="materializatioff=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="materialization=off"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="mrr=off"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="mrr_cost_based=off"|' >> ${VARFILE}.out
   echo "${PRLINE}" | sed 's|=value|="semijoin=off"|' >> ${VARFILE}.out
-  echo "${PRLINE}" | sed 's|=value|="subquery_materializatioff_cost_based=off"|' >> ${VARFILE}.out
-  echo "${PRLINE}" | sed 's|=value|="use_index_extensioffs=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="subquery_materialization_cost_based=off"|' >> ${VARFILE}.out
+  echo "${PRLINE}" | sed 's|=value|="use_index_extension=off"|' >> ${VARFILE}.out
 }
 
 parse_set_vars(){
@@ -654,6 +654,21 @@ parse_set_vars(){
       if [[ "${LINE}" == *"auto-increment-offset"* ]]; then
         echo "auto-increment-offset=DUMMY" >> ${VARFILE}.out
         HANDLED=1
+      fi
+      if [[ "${LINE}" == *"profiling-history-size"* ]]; then
+        echo "profiling-history-size=0" >> ${VARFILE}.out
+        echo "profiling-history-size=1" >> ${VARFILE}.out
+        echo "profiling-history-size=10" >> ${VARFILE}.out
+        echo "profiling-history-size=50" >> ${VARFILE}.out
+        echo "profiling-history-size=100" >> ${VARFILE}.out
+        HANDLED=1
+      fi
+      if [ ${HANDLED} -eq 0 ]; then
+        if [[ "${LINE}" == *"profiling"* ]]; then
+          echo "profiling=ON" >> ${VARFILE}.out
+          echo "profiling=OFF" >> ${VARFILE}.out
+          HANDLED=1
+        fi
       fi
       if [[ "${LINE}" == *"character-set-"* ]]; then
         PRLINE="${LINE}=name"

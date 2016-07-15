@@ -159,7 +159,6 @@
   has a gotcha: Test this:  LINE='test'; DONE=0; echo ${LINE} | if grep -q 'test'; then DONE=1; echo "DONE"; fi; echo $DONE  # DONE is 0 because (as per Bash team); 'All elements
   of a pipeline are executed in subshells.  A subshell cannot affect its parent's environment. The 'lastpipe' shell option can change this when job control is not active.'
 
-
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
   ## sudo umount -flv /dev/<device>                         ## Make sure you know what you are doing before executing this!   Another possible method is:
@@ -187,6 +186,10 @@
 # ------ Git ------
 # Store git credentials
   git config credential.helper store
+# Diff ALL changes, including newly added (i.e. staged) files (with thanks, http://stackoverflow.com/a/27299842)
+  git diff HEAD
+# Apply a diff and then patch (with thanks, http://www.thegeekstuff.com/2014/03/git-patch-create-and-apply/)
+  git diff HEAD > patch.diff; # swap to another location #; git apply < patch.diff
 
 # ------ Must read's ------
 # http://tldp.org/LDP/abs/html/globbingref.html on globbing (and not regex) and filename expansion
