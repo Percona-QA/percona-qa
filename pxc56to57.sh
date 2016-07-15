@@ -19,6 +19,9 @@ WORKDIR=$1
 ROOT_FS=$WORKDIR
 MYSQLD_START_TIMEOUT=180
 
+# Table for sysbench oltp rw test
+STABLE="test.sbtest1"
+
 if [ ! -d ${ROOT_FS}/test_db ]; then
   pushd ${ROOT_FS}
   git clone https://github.com/datacharmer/test_db.git
@@ -37,8 +40,8 @@ function create_emp_db()
    | sed -e "s|USE employees|USE ${DB_NAME}|" \
    | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
    > ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql
-   $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
-   popd
+  $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
+  popd
 }
 
 # Parameter of parameterized build
@@ -65,7 +68,7 @@ if [ -z ${NUMT} ]; then
   NUMT=16
 fi
 if [ -z ${DIR} ]; then
-  DIR=1
+  DIR=0
 fi
 if [ -z ${STEST} ]; then
   STEST=oltp
@@ -73,6 +76,17 @@ fi
 
 if [ -z $SST_METHOD ];then
   SST_METHOD="rsync"
+fi
+
+# This parameter selects on which nodes the sysbench run will take place
+if [[ $DIR -eq 0 ]]; then
+  sockets="/tmp/node1.socket,/tmp/node2.socket,/tmp/node3.socket"
+elif [[ $DIR -eq 1 ]]; then
+  sockets="/tmp/node1.socket"
+elif [[ $DIR -eq 2 ]]; then
+  sockets="/tmp/node2.socket"
+elif [[ $DIR -eq 3 ]]; then
+  sockets="/tmp/node3.socket"
 fi
 
 cd $WORKDIR
@@ -167,6 +181,10 @@ RBASE2="$(( RBASE1 + 100 ))"
 RADDR2="$ADDR:$(( RBASE2 + 7 ))"
 LADDR2="$ADDR:$(( RBASE2 + 8 ))"
 
+RBASE3="$(( RBASE2 + 100 ))"
+RADDR3="$ADDR:$(( RBASE3 + 7 ))"
+LADDR3="$ADDR:$(( RBASE3 + 8 ))"
+
 SUSER=root
 SPASS=
 
@@ -174,6 +192,8 @@ node1="${MYSQL_VARDIR}/node1"
 rm -rf $node1;mkdir -p $node1
 node2="${MYSQL_VARDIR}/node2"
 rm -rf $node2;mkdir -p $node2
+node2="${MYSQL_VARDIR}/node3"
+rm -rf $node3;mkdir -p $node3
 
 EXTSTATUS=0
 
@@ -201,11 +221,15 @@ if [[ $DEBUG -eq 1 ]];then
 else 
   DBG=""
 fi
+
 check_script(){
   MPID=$1
   if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
 }
 
+#
+# Install cluster from previous version
+#
 ps_56_start(){
   echo "Starting 5.6 node"
   echo "Starting PXC-5.6 node1"
@@ -252,7 +276,7 @@ ps_56_start(){
     --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm://$LADDR1 \
+    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
     --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
@@ -279,11 +303,49 @@ ps_56_start(){
   fi
 
   sleep 10
+
+  ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults  --basedir=${MYSQL_BASEDIR1} --datadir=$node3 > $WORKDIR/logs/node3-pre.err 2>&1 || exit 1;
+
+  ${MYSQL_BASEDIR1}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
+    --basedir=${MYSQL_BASEDIR1} --datadir=$node3 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
+    --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider=${MYSQL_BASEDIR1}/lib/libgalera_smm.so \
+    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
+    --wsrep_node_incoming_address=$ADDR \
+    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \
+    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+    --query_cache_type=0 --query_cache_size=0 \
+    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
+    --innodb_log_file_size=500M \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$WORKDIR/logs/node3-pre.err \
+    --socket=/tmp/node3.socket --log-output=none \
+    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=8 > $WORKDIR/logs/node3-pre.err 2>&1 &
+
+  for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+    sleep 1
+    if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node3.socket ping > /dev/null 2>&1; then
+      break
+    fi
+  done
+  if $MYSQL_BASEDIR1/bin/mysqladmin -uroot -S/tmp/node3.socket ping > /dev/null 2>&1; then
+    echo "PXC node3 started ok.."
+  else
+    echo "PXC node3 startup failed.. Please check error log : $WORKDIR/logs/node3-pre.err"
+  fi
+
+  sleep 10
 }
 ps_56_start
-# Sysbench Runs
+
+#
+# Sysbench run on previous version on node1
+#
 ## Prepare/setup
-echo "Sysbench Run: Prepare stage"
+echo "#### Sysbench run on previous version on node1"
 
 sysbench --test=$SDIR/parallel_prepare.lua --report-interval=10  --oltp-auto-inc=$AUTOINC --mysql-engine-trx=yes --mysql-table-engine=innodb \
     --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root \
@@ -295,11 +357,11 @@ if [[ ${PIPESTATUS[0]} -ne 0 ]];then
    exit 1
 fi
 
-echo "Loading sakila test database"
+echo "Loading sakila test database on node1"
 $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
 check_script $?
 
-echo "Loading world test database"
+echo "Loading world test database on node1"
 $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/sample_db/world.sql
 check_script $?
 
@@ -314,6 +376,10 @@ check_script $?
 echo "Version of second node:"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
 
+#
+# Upgrading node2 to the new version
+#
+echo "#### Upgrade node2 to the new version"
 echo "Shutting down node2 after SST"
 ${MYSQL_BASEDIR1}/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown
 if [[ $? -ne 0 ]];then 
@@ -321,14 +387,12 @@ if [[ $? -ne 0 ]];then
    exit 1
 fi
 
-popd
-    
 sleep 10
 
 pushd ${MYSQL_BASEDIR2}/mysql-test/
 export MYSQLD_BOOTSTRAP_CMD=
 
-echo "Running for upgrade"
+echo "Running upgrade on node2"
 
 ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
@@ -378,14 +442,14 @@ fi
 sleep 10
 
 if [[ $THREEONLY -eq 0 ]];then 
-  echo "Starting again with compat options"
+  echo "Starting again node2 with compat options after upgrade"
 
 ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
   --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=$GALERA3 --binlog-format=ROW \
-  --wsrep_cluster_address=gcomm://$LADDR1 \
+  --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
   --wsrep_node_incoming_address=$ADDR \
   --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2; socket.checksum=1" \
   --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
@@ -415,12 +479,12 @@ ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
 else 
   echo "Starting node again without compat"
 
- ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
+  ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
   --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
   --loose-debug-sync-timeout=600 --skip-performance-schema \
   --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
   --wsrep-provider=$GALERA3 --binlog-format=ROW \
-  --wsrep_cluster_address=gcomm://$LADDR1 \
+  --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
   --wsrep_node_incoming_address=$ADDR \
   --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
   --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
@@ -451,25 +515,26 @@ fi
 
 popd
 
-echo "Version of second node:"
+echo "Version of second node after upgrade:"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
 
 echo "Sleeping for 10s"
 sleep 10
 
-
-STABLE="test.sbtest1" 
-
 echo "Before RW testing"
-echo "Rows on node1" 
+echo "Rows on node1"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "select count(*) from $STABLE;"
-echo "Rows on node2" 
+echo "Rows on node2"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "select count(*) from $STABLE;"
+echo "Rows on node3"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "select count(*) from $STABLE;"
 
 echo "Version of first node:"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "show global variables like 'version';"
 echo "Version of second node:"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
+echo "Version of third node:"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "show global variables like 'version';"
 
 if [[ ! -e $SDIR/${STEST}.lua ]];then 
   pushd /tmp
@@ -481,22 +546,15 @@ fi
 
 set -x
 
-
-if [[ $DIR -eq 1 ]];then 
-  sockets="/tmp/node1.socket,/tmp/node2.socket"
-elif [[ $DIR -eq 2 ]];then 
-  sockets="/tmp/node2.socket"
-elif [[ $DIR -eq 3 ]];then 
-  sockets="/tmp/node1.socket"
-fi
-
-## OLTP RW Run
-echo "Sysbench Run: OLTP RW testing"
+#
+# OLTP RW run after node2 upgrade
+#
+echo "#### Sysbench OLTP RW test after node2 upgrade"
 sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SDURATION --max-requests=1870000000 \
     --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
     --mysql-user=root --db-driver=mysql --mysql-socket=$sockets \
     run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run.txt 
-check_script $?
+#check_script $?
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then 
   echo "Sysbench run failed"
@@ -505,28 +563,38 @@ fi
 
 set +x
 
-
 echo "Version of first node:"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "show global variables like 'version';"
 echo "Version of second node:"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
+echo "Version of third node:"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "show global variables like 'version';"
   
-echo "Rows on node1" 
+echo "After sysbench oltp rw test rows on node1"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "select count(*) from $STABLE;"
-echo "Rows on node2" 
+echo "After sysbench oltp rw test rows on node2"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "select count(*) from $STABLE;"
+echo "After sysbench oltp rw test rows on node3"
+$MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "select count(*) from $STABLE;"
 
-#Taking backup for downgrade testing
+#
+# Taking backup for downgrade testing
+#
+echo "#### Backup before downgrade test"
 
 $MYSQL_BASEDIR2/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=/tmp/node1.socket -uroot --databases `$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
 check_script $?
 
 $MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
 $MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1
+$MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node3.socket -u root shutdown  > /dev/null 2>&1
 
-rm -Rf $node1/* $node2/*
+rm -Rf $node1/* $node2/* $node3/*
 
-#Downgrade testing
+#
+# Downgrade testing
+#
+echo "#### Downgrade test"
 
 ps_56_start
 
@@ -540,6 +608,7 @@ check_script $?
 
 $MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
 $MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1
+$MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node3.socket -u root shutdown  > /dev/null 2>&1
 
 exit $EXTSTATUS
 
