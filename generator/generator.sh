@@ -382,7 +382,7 @@ for i in `eval echo {1..${queries}}`; do
   echo "`query`;" >> out.sql
 done
 
-sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g" out.sql     # Replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma
+sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g;s| ;$|;|" out.sql     # Replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma
 
 echo "Done! Generated ${queries} quality queries and saved the results in out.sql"
 echo "Please note you may want to do:  \$ sed -i \"s|RocksDB|InnoDB|;s|TokuDB|InnoDB|\" out.sql  # depending on what distribution you are using. Or, edit engines.txt and run generator.sh again"
