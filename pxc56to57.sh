@@ -520,6 +520,12 @@ echo "Checking table status..."
 ${MYSQL_BASEDIR1}/bin/mysqlcheck -uroot --socket=/tmp/node1.socket --check-upgrade --databases $CHECK_DBS 2>&1
 check_script $?
 
+# Show nodes status after downgrade
+echo -e "\n\n#### Showing nodes status after cluster downgrade\n"
+show_node_status 1 $MYSQL_BASEDIR1 1
+show_node_status 2 $MYSQL_BASEDIR1 1
+show_node_status 3 $MYSQL_BASEDIR1 1
+
 $MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node1.socket -u root shutdown > /dev/null 2>&1
 $MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node2.socket -u root shutdown > /dev/null 2>&1
 $MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node3.socket -u root shutdown > /dev/null 2>&1
