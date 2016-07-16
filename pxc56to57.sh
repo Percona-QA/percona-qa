@@ -52,9 +52,6 @@ fi
 if [ -z $SDURATION ];then
   SDURATION=30
 fi
-if [ -z $THREEONLY ];then
-  THREEONLY=0
-fi
 if [ -z $AUTOINC ];then
   AUTOINC=off
 fi
@@ -150,14 +147,6 @@ mkdir -p $SRESULTS
 echo "Workdir: $WORKDIR"
 echo "Basedirs: $MYSQL_BASEDIR1 $MYSQL_BASEDIR2"
 
-#if [[ $THREEONLY -eq 1 ]];then 
-    GALERA2="${MYSQL_BASEDIR2}/lib/libgalera_smm.so"
-    GALERA3="${MYSQL_BASEDIR2}/lib/libgalera_smm.so"
-#else
-#    GALERA2="${MYSQL_BASEDIR1}/lib/galera2/libgalera_smm.so"
-#    GALERA3="${MYSQL_BASEDIR2}/lib/libgalera_smm.so"
-#fi
-
 ADDR="127.0.0.1"
 RPORT=$(( RANDOM%21 + 10 ))
 RBASE1="$(( RPORT*1000 ))"
@@ -223,15 +212,10 @@ show_node_status(){
   local FUN_MYSQL_BASEDIR=$2
 
   echo -e "\nShowing status of node${FUN_NODE_NR}:"
-  echo "Version of node${FUN_NODE_NR} after upgrade:"
   $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global variables like 'version';"
-  echo "wsrep_cluster_status:"
   $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_cluster_status';"
-  echo "wsrep_connected:"
   $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_connected';"
-  echo "wsrep_ready:"
   $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_ready';"
-  echo "wsrep_local_state_comment:"
   $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_local_state_comment';"
 }
 
@@ -275,7 +259,7 @@ pxc_start_node(){
   if $FUN_BASE_DIR/bin/mysqladmin -uroot -S/tmp/node${FUN_NODE_NR}.socket ping > /dev/null 2>&1; then
     echo "PXC node${FUN_NODE_NR} started ok.."
   else
-    echo "PXC node${FUN_NODE_NR} startup failed.. Please check error log : $WORKDIR/logs/node${FUN_NODE_NR}-pre.err"
+    echo "PXC node${FUN_NODE_NR} startup failed.. Please check error log: ${FUN_LOG_ERR}"
   fi
 
   sleep 10
@@ -400,7 +384,7 @@ show_node_status 2 $MYSQL_BASEDIR1
 echo "Running upgrade on node2"
 pxc_upgrade_node 2 "5.7" "$node2" "$RBASE2" "$WORKDIR/logs/node2-upgrade.err" "${MYSQL_BASEDIR2}"
 echo "Starting node2 after upgrade"
-pxc_start_node 2 "5.7" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR2; socket.checksum=1" "$RBASE2" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-after_upgrade.err" "${MYSQL_BASEDIR2}"
+pxc_start_node 2 "5.7" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR2;socket.checksum=1" "$RBASE2" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-after_upgrade.err" "${MYSQL_BASEDIR2}"
 
 # Show nodes status after node2 upgrade and before Sysbench run
 show_node_status 1 $MYSQL_BASEDIR1
