@@ -215,9 +215,9 @@ show_node_status(){
   ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_ready';"
   ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_local_state_comment';"
 
-  IF [ ${SHOW_SYSBENCH_COUNT} -eq 1 ]; then
+  if [ ${SHOW_SYSBENCH_COUNT} -eq 1 ]; then
     echo "Number of rows in table $STABLE on node${FUN_NODE_NR}"
-    ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket  -u root -e "select count(*) from $STABLE;"
+    ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "select count(*) from $STABLE;"
   fi
 }
 
