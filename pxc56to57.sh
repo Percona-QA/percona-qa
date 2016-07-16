@@ -216,9 +216,25 @@ check_script(){
 }
 
 #
-# Install cluster from previous version
+# Common functions
 #
-echo -e "\n\n#### Installing cluster from previous version\n"
+show_node_status(){
+  local FUN_NODE_NR=$1
+  local FUN_MYSQL_BASEDIR=$2
+
+  echo -e "\nShowing status of node${FUN_NODE_NR}:"
+  echo "Version of node${FUN_NODE_NR} after upgrade:"
+  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global variables like 'version';"
+  echo "wsrep_cluster_status:"
+  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_cluster_status';"
+  echo "wsrep_connected:"
+  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_connected';"
+  echo "wsrep_ready:"
+  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_ready';"
+  echo "wsrep_local_state_comment:"
+  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_local_state_comment';"
+}
+
 pxc_start_node(){
   local FUN_NODE_NR=$1
   local FUN_NODE_VER=$2
@@ -265,6 +281,76 @@ pxc_start_node(){
   sleep 10
 }
 
+pxc_upgrade_node(){
+  local FUN_NODE_NR=$1
+  local FUN_NODE_VER=$2
+  local FUN_NODE_PATH=$3
+  local FUN_RBASE=$4
+  local FUN_LOG_ERR=$5
+  local FUN_BASE_DIR=$6
+
+  echo -e "\n\n#### Upgrade node${FUN_NODE_NR} to the version ${FUN_NODE_VER}\n"
+  echo "Shutting down node${FUN_NODE_NR} after SST"
+  ${FUN_BASE_DIR}/bin/mysqladmin  --socket=/tmp/node${FUN_NODE_NR}.socket -u root shutdown
+  if [[ $? -ne 0 ]]; then
+    echo "Shutdown failed for node${FUN_NODE_NR}"
+    exit 1
+  fi
+
+  sleep 10
+
+  echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR}"
+  ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
+    --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
+    --loose-debug-sync-timeout=600 --skip-performance-schema \
+    --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --wsrep-provider='none' --innodb_flush_method=O_DIRECT \
+    --query_cache_type=0 --query_cache_size=0 \
+    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
+    --innodb_log_file_size=500M \
+    --core-file --loose-new --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=${FUN_LOG_ERR} \
+    --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
+    --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} --wsrep_slave_threads=8 > ${FUN_LOG_ERR} 2>&1 &
+
+  for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+    sleep 1
+    if ${FUN_BASE_DIR}/bin/mysqladmin -uroot -S/tmp/node${FUN_NODE_NR}.socket ping > /dev/null 2>&1; then
+      break
+    fi
+  done
+  if ${FUN_BASE_DIR}/bin/mysqladmin -uroot -S/tmp/node${FUN_NODE_NR}.socket ping > /dev/null 2>&1; then
+    echo "PXC node${FUN_NODE_NR} re-started for upgrade.."
+  else
+    echo "PXC node${FUN_NODE_NR} startup for upgrade failed... Please check error log: ${FUN_LOG_ERR}"
+  fi
+
+  sleep 10
+
+  # Run mysql_upgrade
+  ${FUN_BASE_DIR}/bin/mysql_upgrade -S /tmp/node${FUN_NODE_NR}.socket -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade_node${FUN_NODE_NR}.log
+  if [[ $? -ne 0 ]]; then
+    echo "mysql upgrade on node${FUN_NODE_NR} failed"
+    exit 1
+  fi
+
+  echo "Shutting down node${FUN_NODE_NR} after upgrade"
+  ${FUN_BASE_DIR}/bin/mysqladmin  --socket=/tmp/node${FUN_NODE_NR}.socket -u root shutdown > /dev/null 2>&1
+
+  if [[ $? -ne 0 ]]; then
+    echo "Shutdown after upgrade failed for node${FUN_NODE_NR}"
+    exit 1
+  fi
+
+  sleep 10
+}
+
+
+#
+# Install cluster from previous version
+#
+echo -e "\n\n#### Installing cluster from previous version\n"
 ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1-pre.err 2>&1 || exit 1;
 pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-pre.err" "${MYSQL_BASEDIR1}"
 
@@ -306,153 +392,20 @@ echo "Loading employees partitioned database with innodb engine.."
 create_emp_db employee_2 innodb employees_partitioned.sql
 check_script $?
 
-echo "Version of second node:"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
-
 #
 # Upgrading node2 to the new version
 #
-echo -e "\n\n#### Upgrade node2 to the new version\n"
-echo "Shutting down node2 after SST"
-${MYSQL_BASEDIR1}/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown
-if [[ $? -ne 0 ]];then 
-   echo "Shutdown failed for node2" 
-   exit 1
-fi
-
-sleep 10
-
-pushd ${MYSQL_BASEDIR2}/mysql-test/
-export MYSQLD_BOOTSTRAP_CMD=
-
+echo -e "\n\n#### Show node2 status before upgrade\n"
+show_node_status 2 $MYSQL_BASEDIR1
 echo "Running upgrade on node2"
+pxc_upgrade_node 2 "5.7" "$node2" "$RBASE2" "$WORKDIR/logs/node2-upgrade.err" "${MYSQL_BASEDIR2}"
+echo "Starting node2 after upgrade"
+pxc_start_node 2 "5.7" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR2; socket.checksum=1" "$RBASE2" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-after_upgrade.err" "${MYSQL_BASEDIR2}"
 
-${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-  --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
-  --loose-debug-sync-timeout=600 --skip-performance-schema \
-  --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-  --wsrep-provider='none' --innodb_flush_method=O_DIRECT \
-  --query_cache_type=0 --query_cache_size=0 \
-  --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M \
-  --core-file --loose-new --sql-mode=no_engine_substitution \
-  --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --log-error=$WORKDIR/logs/node2-upgrade.err \
-  --socket=/tmp/node2.socket --log-output=none \
-  --port=$RBASE2  > $WORKDIR/logs/node2-upgrade.err 2>&1 &
-
-for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
-  sleep 1
-  if $MYSQL_BASEDIR2/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-    break
-  fi
-done
-if $MYSQL_BASEDIR2/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-  echo "PXC node2 re-started for upgrade.."
-else
-  echo "PXC node2 startup failed.. Please check error log : $WORKDIR/logs/node2-upgrade.err"
-fi
-
-sleep 10
-$MYSQL_BASEDIR2/bin/mysql_upgrade -S /tmp/node2.socket -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade.log
-
-if [[ $? -ne 0 ]];then 
-  echo "mysql upgrade failed"
-  exit 1
-fi
-
-echo "Version of second node:"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
-
-echo "Shutting down node2 after upgrade"
-$MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown > /dev/null 2>&1
-
-if [[ $? -ne 0 ]];then 
-  echo "Shutdown failed for node2" 
-  exit 1
-fi
-
-sleep 10
-
-if [[ $THREEONLY -eq 0 ]];then 
-  echo "Starting again node2 with compat options after upgrade"
-
-${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-  --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
-  --loose-debug-sync-timeout=600 --skip-performance-schema \
-  --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-  --wsrep-provider=$GALERA3 --binlog-format=ROW \
-  --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
-  --wsrep_node_incoming_address=$ADDR \
-  --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2; socket.checksum=1" \
-  --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
-  --log_bin_use_v1_row_events=1 --gtid_mode=0 --binlog_checksum=NONE \
-  --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-  --query_cache_type=0 --query_cache_size=0 \
-  --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M \
-  --core-file --loose-new --sql-mode=no_engine_substitution \
-  --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --log-error=$WORKDIR/logs/node2-post.err \
-  --socket=/tmp/node2.socket --log-output=none \
-  --port=$RBASE2 --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-post.err 2>&1 &
-
-  for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
-    sleep 1
-    if $MYSQL_BASEDIR2/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-      break
-    fi
-  done
-  if $MYSQL_BASEDIR2/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-    echo "PXC node2 re-started for post upgrade check.."
-  else
-    echo "PXC node2 startup failed.. Please check error log : $WORKDIR/logs/node2-post.err"
-  fi
-  sleep 10
-else 
-  echo "Starting node again without compat"
-
-  ${MYSQL_BASEDIR2}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-  --basedir=${MYSQL_BASEDIR2} --datadir=$node2 \
-  --loose-debug-sync-timeout=600 --skip-performance-schema \
-  --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-  --wsrep-provider=$GALERA3 --binlog-format=ROW \
-  --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
-  --wsrep_node_incoming_address=$ADDR \
-  --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
-  --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
-  --log_bin_use_v1_row_events=1 --gtid_mode=0 --binlog_checksum=NONE \
-  --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-  --query_cache_type=0 --query_cache_size=0 \
-  --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
-  --innodb_log_file_size=500M \
-  --core-file --loose-new --sql-mode=no_engine_substitution \
-  --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-  --log-error=$WORKDIR/logs/node2-post.err \
-  --socket=/tmp/node2.socket --log-output=none \
-  --port=$RBASE2 --server-id=2 --wsrep_slave_threads=8 > $WORKDIR/logs/node2-post.err 2>&1 &
-
-  for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
-    sleep 1
-    if $MYSQL_BASEDIR2/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-      break
-    fi
-  done
-  if $MYSQL_BASEDIR2/bin/mysqladmin -uroot -S/tmp/node2.socket ping > /dev/null 2>&1; then
-    echo "PXC node2 re-started for post upgrade check.."
-  else
-    echo "PXC node2 startup failed.. Please check error log : $WORKDIR/logs/node2-post.err"
-  fi
-  sleep 10
-fi
-
-popd
-
-echo "Version of second node after upgrade:"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
-
-echo "Sleeping for 10s"
-sleep 10
+# Show nodes status after node2 upgrade and before Sysbench run
+show_node_status 1 $MYSQL_BASEDIR1
+show_node_status 2 $MYSQL_BASEDIR2
+show_node_status 3 $MYSQL_BASEDIR1
 
 echo "Before RW testing"
 echo "Rows on node1"
@@ -461,13 +414,6 @@ echo "Rows on node2"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "select count(*) from $STABLE;"
 echo "Rows on node3"
 $MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "select count(*) from $STABLE;"
-
-echo "Version of first node:"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "show global variables like 'version';"
-echo "Version of second node:"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
-echo "Version of third node:"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "show global variables like 'version';"
 
 if [[ ! -e $SDIR/${STEST}.lua ]];then 
   pushd /tmp
