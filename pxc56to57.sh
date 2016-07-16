@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # Created by Raghavendra Prabhu <raghavendra.prabhu@percona.com>
 # Updated by Ramesh Sivaraman, Percona LLC
 
@@ -48,11 +48,10 @@ function create_emp_db()
 if [ -z ${BUILD_NUMBER} ]; then
   BUILD_NUMBER=1001
 fi
-
-if [ -z $SDURATION ];then
+if [ -z $SDURATION ]; then
   SDURATION=30
 fi
-if [ -z $AUTOINC ];then
+if [ -z $AUTOINC ]; then
   AUTOINC=off
 fi
 if [ -z ${TSIZE} ]; then
@@ -70,8 +69,7 @@ fi
 if [ -z ${STEST} ]; then
   STEST=oltp
 fi
-
-if [ -z $SST_METHOD ];then
+if [ -z $SST_METHOD ]; then
   SST_METHOD="rsync"
 fi
 
@@ -88,10 +86,8 @@ fi
 
 cd $WORKDIR
 
-sst_method=$SST_METHOD
-
-if [[ $sst_method == xtrabackup ]];then
-  sst_method="xtrabackup-v2"
+if [[ $SST_METHOD == xtrabackup ]]; then
+  SST_METHOD="xtrabackup-v2"
   TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
   tar -xf $TAR
   BBASE="$(tar tf $TAR | head -1 | tr -d '/')"
@@ -99,18 +95,18 @@ if [[ $sst_method == xtrabackup ]];then
 fi
 
 count=$(ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | wc -l)
-if [[ $count -gt 1 ]];then 
-  for dirs in `ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | tail -n +2`;do 
+if [[ $count -gt 1 ]]; then
+  for dirs in `ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | tail -n +2`; do
      rm -rf $dirs
-  done 
+  done
 fi
 find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.7*' -exec rm -rf {} \+
 
 count=$(ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | wc -l)
-if [[ $count -gt 1 ]];then 
-  for dirs in `ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | tail -n +2`;do 
+if [[ $count -gt 1 ]]; then
+  for dirs in `ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | tail -n +2`; do
     rm -rf $dirs
-  done 
+  done
 fi
 find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.6*' -exec rm -rf {} \+
 
@@ -174,28 +170,28 @@ rm -rf $node3;mkdir -p $node3
 
 EXTSTATUS=0
 
-if [[ $MEM -eq 1 ]];then 
+if [[ $MEM -eq 1 ]]; then
   MEMOPT="--mem"
-else 
+else
   MEMOPT=""
 fi
 
 archives() {
-    tar czf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz ./${BUILD_NUMBER}/logs || true
-    rm -rf $WORKDIR
+  tar czf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz ./${BUILD_NUMBER}/logs || true
+  rm -rf $WORKDIR
 }
 
 trap archives EXIT KILL
 
-if [[ -n ${EXTERNALS:-} ]];then 
+if [[ -n ${EXTERNALS:-} ]]; then
   EXTOPTS="$EXTERNALS"
 else
   EXTOPTS=""
 fi
 
-if [[ $DEBUG -eq 1 ]];then 
+if [[ $DEBUG -eq 1 ]]; then
   DBG="--mysqld=--wsrep-debug=1"
-else 
+else
   DBG=""
 fi
 
@@ -210,13 +206,19 @@ check_script(){
 show_node_status(){
   local FUN_NODE_NR=$1
   local FUN_MYSQL_BASEDIR=$2
+  local SHOW_SYSBENCH_COUNT=$3
 
-  echo -e "\nShowing status of node${FUN_NODE_NR}:"
-  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global variables like 'version';"
-  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_cluster_status';"
-  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_connected';"
-  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_ready';"
-  $FUN_MYSQL_BASEDIR/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_local_state_comment';"
+  echo -e "Showing status of node${FUN_NODE_NR}:"
+  ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global variables like 'version';"
+  ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_cluster_status';"
+  ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_connected';"
+  ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_ready';"
+  ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket -u root -e "show global status like 'wsrep_local_state_comment';"
+
+  IF [ ${SHOW_SYSBENCH_COUNT} -eq 1 ]; then
+    echo "Number of rows in table $STABLE on node${FUN_NODE_NR}"
+    ${FUN_MYSQL_BASEDIR}/bin/mysql -S /tmp/node${FUN_NODE_NR}.socket  -u root -e "select count(*) from $STABLE;"
+  fi
 }
 
 pxc_start_node(){
@@ -239,7 +241,7 @@ pxc_start_node(){
     --wsrep_cluster_address=${FUN_CLUSTER_ADDRESS} \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options=${FUN_WSREP_PROVIDER_OPTIONS} \
-    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --query_cache_type=0 --query_cache_size=0 \
     --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
@@ -330,6 +332,30 @@ pxc_upgrade_node(){
   sleep 10
 }
 
+sysbench_run(){
+  local FUN_NODE_NR=$1
+
+  if [[ ! -e $SDIR/${STEST}.lua ]]; then
+    pushd /tmp
+    rm $STEST.lua || true
+    wget -O $STEST.lua https://github.com/Percona-QA/sysbench/tree/0.5/sysbench/tests/db/${STEST}.lua
+    SDIR=/tmp/
+    popd
+  fi
+
+  set -x
+  sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SDURATION --max-requests=1870000000 \
+      --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
+      --mysql-user=root --db-driver=mysql --mysql-socket=$sockets \
+      run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run_node${FUN_NODE_NR}.txt
+  #check_script $?
+
+  if [[ ${PIPESTATUS[0]} -ne 0 ]];then
+    echo "Sysbench run on node${FUN_NODE_NR} failed"
+    EXTSTATUS=1
+  fi
+  set +x
+}
 
 #
 # Install cluster from previous version
@@ -352,10 +378,10 @@ echo -e "\n\n#### Sysbench run on previous version on node1\n"
 
 sysbench --test=$SDIR/parallel_prepare.lua --report-interval=10  --oltp-auto-inc=$AUTOINC --mysql-engine-trx=yes --mysql-table-engine=innodb \
     --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root \
-    --db-driver=mysql --mysql-socket=/tmp/node1.socket prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt 
-check_script $?
+    --db-driver=mysql --mysql-socket=/tmp/node1.socket prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+#check_script $?
 
-if [[ ${PIPESTATUS[0]} -ne 0 ]];then 
+if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
    echo "Sysbench prepare failed"
    exit 1
 fi
@@ -387,58 +413,76 @@ echo "Starting node2 after upgrade"
 pxc_start_node 2 "5.7" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR2;socket.checksum=1" "$RBASE2" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-after_upgrade.err" "${MYSQL_BASEDIR2}"
 
 # Show nodes status after node2 upgrade and before Sysbench run
-show_node_status 1 $MYSQL_BASEDIR1
-show_node_status 2 $MYSQL_BASEDIR2
+echo -e "\n\n#### Showing nodes status after node2 upgrade\n"
+show_node_status 1 $MYSQL_BASEDIR1 0
+show_node_status 2 $MYSQL_BASEDIR2 0
+show_node_status 3 $MYSQL_BASEDIR1 0
+
+echo -e "\n\n#### Sysbench OLTP RW run after node2 upgrade\n"
+sysbench_run 2
+#
+# End node2 upgrade and check
+#
+
+sleep 10
+
+#
+# Upgrading node3 to the new version
+#
+echo -e "\n\n#### Show node3 status before upgrade\n"
 show_node_status 3 $MYSQL_BASEDIR1
+echo "Running upgrade on node3"
+pxc_upgrade_node 3 "5.7" "$node3" "$RBASE3" "$WORKDIR/logs/node3-upgrade.err" "${MYSQL_BASEDIR2}"
+echo "Starting node3 after upgrade"
+pxc_start_node 3 "5.7" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://$LADDR3;socket.checksum=1" "$RBASE3" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-after_upgrade.err" "${MYSQL_BASEDIR2}"
 
-echo "Before RW testing"
-echo "Rows on node1"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "select count(*) from $STABLE;"
-echo "Rows on node2"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "select count(*) from $STABLE;"
-echo "Rows on node3"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "select count(*) from $STABLE;"
+# Show nodes status after node3 upgrade and before Sysbench run
+echo -e "\n\n#### Showing nodes status before node3 upgrade\n"
+show_node_status 1 $MYSQL_BASEDIR1 1
+show_node_status 2 $MYSQL_BASEDIR2 1
+show_node_status 3 $MYSQL_BASEDIR2 1
 
-if [[ ! -e $SDIR/${STEST}.lua ]];then 
-  pushd /tmp
-  rm $STEST.lua || true
-  wget -O $STEST.lua  https://github.com/Percona-QA/sysbench/tree/0.5/sysbench/tests/db/${STEST}.lua
-  SDIR=/tmp/
-  popd
-fi
+echo -e "\n\n#### Sysbench OLTP RW run after node3 upgrade\n"
+sysbench_run 3
 
-set -x
+# Show nodes status after node3 upgrade and after Sysbench run
+echo -e "\n\n#### Showing nodes status after node3 upgrade\n"
+show_node_status 1 $MYSQL_BASEDIR1 1
+show_node_status 2 $MYSQL_BASEDIR2 1
+show_node_status 3 $MYSQL_BASEDIR2 1
+#
+# End node3 upgrade and check
+#
+
+sleep 10
 
 #
-# OLTP RW run after node2 upgrade
+# Upgrading node1 to the new version
 #
-echo -e "\n\n#### Sysbench OLTP RW test after node2 upgrade\n"
-sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SDURATION --max-requests=1870000000 \
-    --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
-    --mysql-user=root --db-driver=mysql --mysql-socket=$sockets \
-    run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run.txt 
-#check_script $?
+echo -e "\n\n#### Show node1 status before upgrade\n"
+show_node_status 1 $MYSQL_BASEDIR1
+echo "Running upgrade on node1"
+pxc_upgrade_node 1 "5.7" "$node1" "$RBASE1" "$WORKDIR/logs/node1-upgrade.err" "${MYSQL_BASEDIR2}"
+echo "Starting node1 after upgrade"
+pxc_start_node 1 "5.7" "$node1" "gcomm://$LADDR2,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR1;socket.checksum=1" "$RBASE1" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-after_upgrade.err" "${MYSQL_BASEDIR2}"
 
-if [[ ${PIPESTATUS[0]} -ne 0 ]];then 
-  echo "Sysbench run failed"
-  EXTSTATUS=1
-fi
+# Show nodes status after node1 upgrade and before Sysbench run
+echo -e "\n\n#### Showing nodes status before node1 upgrade\n"
+show_node_status 1 $MYSQL_BASEDIR2 1
+show_node_status 2 $MYSQL_BASEDIR2 1
+show_node_status 3 $MYSQL_BASEDIR2 1
 
-set +x
+echo -e "\n\n#### Sysbench OLTP RW run after node1 upgrade\n"
+sysbench_run 1
 
-echo "Version of first node:"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "show global variables like 'version';"
-echo "Version of second node:"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "show global variables like 'version';"
-echo "Version of third node:"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "show global variables like 'version';"
-  
-echo "After sysbench oltp rw test rows on node1"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node1.socket  -u root -e "select count(*) from $STABLE;"
-echo "After sysbench oltp rw test rows on node2"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node2.socket  -u root -e "select count(*) from $STABLE;"
-echo "After sysbench oltp rw test rows on node3"
-$MYSQL_BASEDIR1/bin/mysql -S /tmp/node3.socket  -u root -e "select count(*) from $STABLE;"
+# Show nodes status after node1 upgrade and after Sysbench run
+echo -e "\n\n#### Showing nodes status after node1 upgrade\n"
+show_node_status 1 $MYSQL_BASEDIR2 1
+show_node_status 2 $MYSQL_BASEDIR2 1
+show_node_status 3 $MYSQL_BASEDIR2 1
+#
+# End node1 upgrade and check
+#
 
 #
 # Taking backup for downgrade testing
@@ -458,14 +502,14 @@ $MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node3.socket -u root shutdown  > /
 
 rm -Rf $node1/* $node2/* $node3/*
 
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1-pre.err 2>&1 || exit 1;
-pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-pre.err" "${MYSQL_BASEDIR1}"
+${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1-downgrade.err 2>&1 || exit 1;
+pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-downgrade.err" "${MYSQL_BASEDIR1}"
 
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node2 > $WORKDIR/logs/node2-pre.err 2>&1 || exit 1;
-pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-pre.err" "${MYSQL_BASEDIR1}"
+${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node2 > $WORKDIR/logs/node2-downgrade.err 2>&1 || exit 1;
+pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-downgrade.err" "${MYSQL_BASEDIR1}"
 
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node3 > $WORKDIR/logs/node3-pre.err 2>&1 || exit 1;
-pxc_start_node 3 "5.6" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://${LADDR3}" "$RBASE3" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-pre.err" "${MYSQL_BASEDIR1}"
+${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node3 > $WORKDIR/logs/node3-downgrade.err 2>&1 || exit 1;
+pxc_start_node 3 "5.6" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://${LADDR3}" "$RBASE3" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-downgrade.err" "${MYSQL_BASEDIR1}"
 
 # Import database
 ${MYSQL_BASEDIR1}/bin/mysql --socket=/tmp/node1.socket -uroot < $WORKDIR/dbdump.sql 2>&1
@@ -476,9 +520,8 @@ echo "Checking table status..."
 ${MYSQL_BASEDIR1}/bin/mysqlcheck -uroot --socket=/tmp/node1.socket --check-upgrade --databases $CHECK_DBS 2>&1
 check_script $?
 
-$MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
-$MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1
-$MYSQL_BASEDIR1/bin/mysqladmin  --socket=/tmp/node3.socket -u root shutdown  > /dev/null 2>&1
+$MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node1.socket -u root shutdown > /dev/null 2>&1
+$MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node2.socket -u root shutdown > /dev/null 2>&1
+$MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node3.socket -u root shutdown > /dev/null 2>&1
 
 exit $EXTSTATUS
-
