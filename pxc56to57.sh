@@ -406,7 +406,7 @@ check_script $?
 # Upgrading node2 to the new version
 #
 echo -e "\n\n#### Show node2 status before upgrade\n"
-show_node_status 2 $MYSQL_BASEDIR1
+show_node_status 2 $MYSQL_BASEDIR1 0
 echo "Running upgrade on node2"
 pxc_upgrade_node 2 "5.7" "$node2" "$RBASE2" "$WORKDIR/logs/node2-upgrade.err" "${MYSQL_BASEDIR2}"
 echo "Starting node2 after upgrade"
@@ -430,7 +430,7 @@ sleep 10
 # Upgrading node3 to the new version
 #
 echo -e "\n\n#### Show node3 status before upgrade\n"
-show_node_status 3 $MYSQL_BASEDIR1
+show_node_status 3 $MYSQL_BASEDIR1 1
 echo "Running upgrade on node3"
 pxc_upgrade_node 3 "5.7" "$node3" "$RBASE3" "$WORKDIR/logs/node3-upgrade.err" "${MYSQL_BASEDIR2}"
 echo "Starting node3 after upgrade"
@@ -460,7 +460,7 @@ sleep 10
 # Upgrading node1 to the new version
 #
 echo -e "\n\n#### Show node1 status before upgrade\n"
-show_node_status 1 $MYSQL_BASEDIR1
+show_node_status 1 $MYSQL_BASEDIR1 1
 echo "Running upgrade on node1"
 pxc_upgrade_node 1 "5.7" "$node1" "$RBASE1" "$WORKDIR/logs/node1-upgrade.err" "${MYSQL_BASEDIR2}"
 echo "Starting node1 after upgrade"
