@@ -399,7 +399,9 @@ if [ ${QC} -eq 0 ]; then
           INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}.sql
           cp ${INPUTFILE} ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup
         else
-          if [ -f ./${TRIAL}/*thread-0.sql ] ; then
+          if [ $(ls -1 ./${TRIAL}/*thread-0.sql 2>/dev/null|wc -l) -gt 1 ]; then
+            INPUTFILE=$(ls ./${TRIAL}/node`expr ${SUBDIR} - 1`*thread-0.sql)
+          elif [ -f ./${TRIAL}/*thread-0.sql ] ; then
             INPUTFILE=`ls ./${TRIAL}/*thread-0.sql | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
           else
             echo "SELECT 1;"  > ${TRIAL}/test.sql
