@@ -270,6 +270,7 @@ fil0fil.cc line 5594                                                            
 fil0fil.cc line 5594                                                                    ## http://bugs.mysql.com/bug.php?id=74730
 fil0fil.cc line 5649                                                                    ## http://bugs.mysql.com/bug.php?id=74422, PS build (with oldPS)
 fil0fil.cc line 5663                                                                    ## http://bugs.mysql.com/bug.php?id=74422, PS build
+fil0fil.cc line 5779                                                                    ## http://bugs.mysql.com/bug.php?id=82263,
 fsp0fsp.cc line 1287                                                                    ## http://bugs.mysql.com/bug.php?id=77164, PS build
 fsp0fsp.cc line 1319                                                                    ## http://bugs.mysql.com/bug.php?id=77164, MS build
 fsp0fsp.cc line 1861                                                                    ## http://bugs.mysql.com/bug.php?id=74343, MS build
