@@ -1127,6 +1127,11 @@ if [ ${PXC} -eq 0 ];then
   echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR}"
 else
   echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: Active"
+  if [ ${PXC_CLUSTER_RUN} -eq 1 ];
+    echoit "PXC Cluster run: 'YES'"
+  else
+    echoit "PXC Cluster run: 'NO'"
+  fi
 fi
 if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then 
   echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Trials: ${TRIALS} | Statements per trial: ${QC_NR_OF_STATEMENTS_PER_TRIAL} | Primary Engine: ${QC_PRI_ENGINE} | Secondary Engine: ${QC_SEC_ENGINE}"
