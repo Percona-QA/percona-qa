@@ -918,7 +918,10 @@ multi_reducer(){
           rm -Rf $RESTART_WORKD/[^s]*  # Remove all files, except for subreducer script
           $($RESTART_WORKD/subreducer $1 >/dev/null 2>/dev/null) >/dev/null 2>/dev/null &
           export MULTI_PID$t=$!
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script (or it's working directory) while it was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+          INIT_FILE_USED=
+          if [[ "${MEXTRA}" == *"init[-_]file"* ]]; then INIT_FILE_USED="or any files called from the --init-file present in \$MYEXTRA, "; fi
+          # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, or it's working directory, ${INIT_FILE_USED}while this script was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
         fi
         sleep 1  # Hasten slowly, server already busy with subreducers
       done
