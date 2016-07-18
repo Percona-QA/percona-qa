@@ -31,12 +31,12 @@ if [ ! -r 1-3.txt ]; then echo "Assert: 1-3.txt not found!"; exit 1; fi
 if [ ! -r 1-10.txt ]; then echo "Assert: 1-10.txt not found!"; exit 1; fi
 if [ ! -r 1-100.txt ]; then echo "Assert: 1-100.txt not found!"; exit 1; fi
 if [ ! -r 1-1000.txt ]; then echo "Assert: 1-1000.txt not found!"; exit 1; fi
-if [ ! -r trx.txt ]; then echo "Assert: trx.txt not found!"; exit 1; fi
 if [ ! -r flush.txt ]; then echo "Assert: flush.txt not found!"; exit 1; fi
 if [ ! -r lock.txt ]; then echo "Assert: lock.txt not found!"; exit 1; fi
 if [ ! -r reset.txt ]; then echo "Assert: reset.txt not found!"; exit 1; fi
-if [ ! -r session_$MYSQL_VERSION.txt ]; then echo "Assert: session_$MYSQL_VERSION.txt not found!"; exit 1; fi
-if [ ! -r global_$MYSQL_VERSION.txt ]; then echo "Assert: global_$MYSQL_VERSION.txt not found!"; exit 1; fi
+if [ ! -r charsetcol_$MYSQL_VERSION.txt ]; then echo "Assert: charsetcol_$MYSQL_VERSION.txt not found! Please run getallsetoptions.sh after setting VERSION=$MYSQL_VERSION inside the same, and copy the resulting files here"; exit 1; fi
+if [ ! -r session_$MYSQL_VERSION.txt ]; then echo "Assert: session_$MYSQL_VERSION.txt not found! Please run getallsetoptions.sh after setting VERSION=$MYSQL_VERSION inside the same, and copy the resulting files here"; exit 1; fi
+if [ ! -r global_$MYSQL_VERSION.txt ]; then echo "Assert: global_$MYSQL_VERSION.txt not found! Please run getallsetoptions.sh after setting VERSION=$MYSQL_VERSION inside the same, and copy the resulting files here"; exit 1; fi
 if [ ! -r setvalues.txt ]; then echo "Assert: setvalues.txt not found!"; exit 1; fi
 if [ ! -r sqlmode.txt ]; then echo "Assert: sqlmode.txt not found!"; exit 1; fi
 if [ ! -r optimizersw.txt ]; then echo "Assert: optimizersw.txt not found!"; exit 1; fi
@@ -48,6 +48,7 @@ if [ ! -r trigger.txt ]; then echo "Assert: trigger.txt not found!"; exit 1; fi
 if [ ! -r users.txt ]; then echo "Assert: users.txt not found!"; exit 1; fi
 if [ ! -r profiletypes.txt ]; then echo "Assert: profiletypes.txt not found!"; exit 1; fi
 if [ ! -r interval.txt ]; then echo "Assert: interval.txt not found!"; exit 1; fi
+if [ ! -r lctimenames.txt ]; then echo "Assert: lctimenames.txt not found!"; exit 1; fi
 
 # Read data files into arrays
 mapfile -t tables    < tables.txt       ; TABLES=${#tables[*]}
@@ -62,12 +63,12 @@ mapfile -t n3        < 1-3.txt          ; N3=${#n3[*]}
 mapfile -t n10       < 1-10.txt         ; N10=${#n10[*]}
 mapfile -t n100      < 1-100.txt        ; N100=${#n100[*]}
 mapfile -t n1000     < 1-1000.txt       ; N1000=${#n1000[*]}
-mapfile -t trx       < trx.txt          ; TRX=${#trx[*]}
 mapfile -t flush     < flush.txt        ; FLUSH=${#flush[*]}
 mapfile -t lock      < lock.txt         ; LOCK=${#lock[*]}
 mapfile -t reset     < reset.txt        ; RESET=${#reset[*]}
-mapfile -t setvars   < session_$MYSQL_VERSION.txt; SETVARS=${#setvars[*]}
-mapfile -t setvarg   < global_$MYSQL_VERSION.txt ; SETVARG=${#setvarg[*]}
+mapfile -t charcol   < charsetcol_$MYSQL_VERSION.txt; CHARCOL=${#charcol[*]}
+mapfile -t setvars   < session_$MYSQL_VERSION.txt; SETVARS=${#setvars[*]}  # S(ession)
+mapfile -t setvarg   < global_$MYSQL_VERSION.txt ; SETVARG=${#setvarg[*]}  # G(lobal)
 mapfile -t setvals   < setvalues.txt    ; SETVALUES=${#setvals[*]}
 mapfile -t sqlmode   < sqlmode.txt      ; SQLMODE=${#sqlmode[*]}
 mapfile -t optsw     < optimizersw.txt  ; OPTSW=${#optsw[*]}
@@ -79,6 +80,7 @@ mapfile -t trigger   < trigger.txt      ; TRIGGER=${#trigger[*]}
 mapfile -t users     < users.txt        ; USERS=${#users[*]}
 mapfile -t proftypes < profiletypes.txt ; PROFTYPES=${#proftypes[*]}
 mapfile -t interval  < interval.txt     ; INTERVAL=${#interval[*]}
+mapfile -t lctimenms < lctimenames.txt  ; LCTIMENMS=${#lctimenms[*]}
 
 if [ ${TABLES} -lt 2 ]; then echo "Assert: number of table names is less then 2. A minimum of two tables is required for proper operation. Please ensure tables.txt has at least two table names"; exit 1; fi
    
@@ -95,10 +97,10 @@ n3()        { echo "${n3[$[$RANDOM % $N3]]}"; }
 n10()       { echo "${n10[$[$RANDOM % $N10]]}"; }
 n100()      { echo "${n100[$[$RANDOM % $N100]]}"; }
 n1000()     { echo "${n1000[$[$RANDOM % $N1000]]}"; }
-trx()       { echo "${trx[$[$RANDOM % $TRX]]}"; }
 flush()     { echo "${flush[$[$RANDOM % $FLUSH]]}"; }
 lock()      { echo "${lock[$[$RANDOM % $LOCK]]}"; }
 reset()     { echo "${reset[$[$RANDOM % $RESET]]}"; }
+charcol()   { echo "${charcol[$[$RANDOM % $CHARCOL]]}"; }
 setvars()   { echo "${setvars[$[$RANDOM % $SETVARS]]}"; }
 setvarg()   { echo "${setvarg[$[$RANDOM % $SETVARG]]}"; }
 setval()    { echo "${setvals[$[$RANDOM % $SETVALUES]]}"; }
@@ -112,13 +114,14 @@ trigger()   { echo "${trigger[$[$RANDOM % $TRIGGER]]}"; }
 user()      { echo "${users[$[$RANDOM % $USERS]]}"; }
 proftype()  { echo "${proftypes[$[$RANDOM % $PROFTYPES]]}"; }
 interval()  { echo "${interval[$[$RANDOM % $INTERVAL]]}"; }
+lctimename(){ echo "${lctimenms[$[$RANDOM % $LCTIMENMS]]}"; }
 # ========================================= Combinations
 azn9()      { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }       # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
 # ========================================= Single, random
 n2()        { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }             # 50% 1, 50% 2
 temp()      { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; fi }                   # 20% TEMPORARY
 ignore()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "IGNORE"; fi }                       # 20% IGNORE
-lowprio()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "LOW_PRIORITY"; fi }                 # 20% LOW_PRIORITY
+lowprio()   { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "LOW_PRIORITY"; fi }                 # 25% LOW_PRIORITY
 quick()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "QUICK"; fi }                        # 20% QUICK
 limit()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIMIT `n9`"; fi }                   # 50% LIMIT 0-9
 ofslimit()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIMIT `limoffset``n9`"; fi }        # 50% LIMIT 0-9, with potential offset
@@ -127,37 +130,52 @@ outer()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "OUTER"; fi }        
 partition() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "PARTITION p`n3`"; fi }              # 20% PARTITION p1-3
 full()      { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "FULL"; fi }                         # 20% FULL
 not()       { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "NOT"; fi }                          # 25% NOT
+no()        { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "NO"; fi }                           # 40% NO (for transactions)
 fromdb()    { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "FROM test"; fi }                    # 10% FROM test
 limoffset() { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "`n3`,"; fi }                        # 10% 0-3 offset (for LIMITs)
 offset()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "OFFSET `n9`"; fi }                  # 20% OFFSET 0-9
 forquery()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "FORQUERY `n9`"; fi }                # 20% QUERY 0-9
-onephase()  { if [ $[$RANDOM % 20 + 1] -le 3  ]; then echo "ONE PHASE"; fi }                    # 15% ONE PHASE
+onephase()  { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "ONE PHASE"; fi }                    # 80% ONE PHASE (needs to be high ref http://dev.mysql.com/doc/refman/5.7/en/xa-states.html)
 convertxid(){ if [ $[$RANDOM % 20 + 1] -le 3  ]; then echo "CONVERT XID"; fi }                  # 15% CONVERT XID
 ifnotexist(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF NOT EXISTS"; fi }                # 50% IF NOT EXISTS
 ifexist()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF EXISTS"; fi }                    # 50% IF EXISTS
 completion(){ if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "ON COMPLETION `not` PRESERVE"; fi } # 25% ON COMPLETION [NOT] PRESERVE
 comment()   { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "COMMENT '$(echo '`data`' | sed "s|'||g")'"; fi }  # 25% COMMENT
 intervalad(){ if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "+ INTERVAL `n9` `interval`"; fi }   # 20% + 0-9 INTERVAL
+work()      { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "WORK"; fi }                         # 25% WORK (for transactions and savepoints)
+savepoint() { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "SAVEPOINT"; fi }                    # 25% SAVEPOINT (for savepoints)
+chain()     { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "AND `no` CHAIN"; fi }               # 35% AND [NO] CHAIN (for transactions)
+release()   { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "`no` RELEASE"; fi }                 # 35% [NO] RELEASE (for transactions)
+nowbinlog() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; fi }           # 50% NO_WRITE_TO_BINLOG
+localonly() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LOCAL"; fi }                        # 50% LOCAL (note 'local' is system keyword, hence 'localonly')
+quick()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "QUICK"; fi }                        # 20% QUICK
+extended()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "EXTENDED"; fi }                     # 20% EXTENDED
+usefrm()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "USE_FRM"; fi }                      # 20% USE_FRM
 # ========================================= Single, fixed
 alias2()    { echo "a`n2`"; }
 alias3()    { echo "a`n3`"; }
 asalias2()  { echo "AS a`n2`"; }
 asalias3()  { echo "AS a`n3`"; }
-# ========================================= Dual (or more via subcall)
+# ========================================= Dual
 onoff()     { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }          # 75% ON, 25% OFF
+onoff01()   { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "1"; else echo "0"; fi }             # 75% 1 (on), 25% 0 (off)
 startsends(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "STARTS"; else echo "ENDS"; fi }     # 50% STARTS, 50% ENDS
 globses()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi }  # 50% GLOBAL, 50% SESSION
 andor()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "AND"; else echo "OR"; fi }          # 50% AND, 50% OR
 leftright() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LEFT"; else echo "RIGHT"; fi }      # 50% LEFT, 50% RIGHT (for JOINs)
 readwrite() { if [ $[$RANDOM % 20 + 1] -le 1  ]; then echo "READ ONLY,"; else echo "READ WRITE,"; fi }  # 5% R/O, 95% R/W
-startbegin(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "START"; else echo "BEGIN"; fi }     # 50% START, 50% BEGIN
 xid()       { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "'xid1'"; else echo "'xid2'"; fi }   # 75% xid1, 25% xid2
 disenable() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ENABLE"; else echo "DISABLE"; fi }  # 50% ENABLE, 50% DISABLE
 sdisenable(){ if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`disenable`"; else echo "DISABLE ON SLAVE"; fi }  # 40% ENABLE, 40% DISALBE, 20% DISABLE ON SLAVE
 schedule()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "AT `timestamp` `intervalad`"; else echo "EVERY `n9` `interval` `opstend`"; fi }  # 50% AT, 50% EVERY (for EVENTs)
+readwrite() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'READ'; else echo 'WRITE'; fi }      # 50% READ, 50% WRITE (for transactions)
+binmaster() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "BINARY"; else echo "MASTER"; fi }   # 50% BINARY, 50% MASTER
+nowblocal() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi }  # 50% NO_WRITE_TO_BINLOG, 50% LOCAL
+locktype()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ `localonly`"; else echo "`lowprio` WRITE"; fi }  # 50% READ [LOCAL], 50% [LOW_PRIORITY] WRITE
 # ========================================= Triple
+trxopt()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`readwrite`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "WITH CONSISTENT SNAPSHOT `readwrite`"; else echo "WITH CONSISTENT SNAPSHOT"; fi; fi }  # 50% R/W or R/O, 25% WITH C/S, 25% C/S + R/W or R/O
 definer()   { if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "DEFINER=`user`"; else echo "DEFINER=CURRENT_USER"; fi; fi }  # 15% DEFINER=random user, 15% DEFINER=CURRENT USER, 70% EMPTY/NOTHING
-suspendfm() { if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "SUSPEND"; else echo "SUSPEND FOR MIGRATE"; fi; fi }  # 15% SUSPEND, 15% SUSPEND FOR MIGRATE, 70% EMPTY/NOTHING
+suspendfm() { if [ $[$RANDOM % 20 + 1] -le 2  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "SUSPEND"; else echo "SUSPEND FOR MIGRATE"; fi; fi }  # 5% SUSPEND, 5% SUSPEND FOR MIGRATE, 90% EMPTY/NOTHING (needs to be low, ref url above)
 joinresume(){ if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "JOIN"; else echo "RESUME"; fi; fi }     # 15% JOIN, 15% RESUME, 70% EMPTY/NOTHING
 emglobses() { if [ $[$RANDOM % 20 + 1] -le 14 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi; fi }  # 35% GLOBAL, 35% SESSION, 30% EMPTY/NOTHING
 emascdesc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ASC"; else echo "DESC"; fi; fi }        # 25% ASC, 25% DESC, 50% EMPTY/NOTHING
@@ -207,8 +225,8 @@ join()      {
 query(){
   #FIXEDTABLE1=`table`  # A fixed table name: this can be used in queries where a unchanging table name is required to ensure the query works properly. For example, SELECT t1.c1 FROM t1;
   #FIXEDTABLE2=${FIXEDTABLE1}; while [ "${FIXEDTABLE1}" -eq "${FIXEDTABLE2}" ]; do FIXEDTABLE2=`table`; done  # A secondary fixed table, different from the first fixed table
-  case $[$RANDOM % 23 + 1] in
-    # Frequencies for CREATE, INSERT, and DROP statements are well tuned, please do not change the ranges: CREATE (1-3), INSERT (4-7), DROP (8)
+  case $[$RANDOM % 33 + 1] in
+    # Frequencies for CREATE (1-3), INSERT (4-7), and DROP (8) statements are well tuned, please do not change these case ranges
     # Most other statements have been frequency tuned also, but not to the same depth. If you find bugs (for example too many errors because of frequency), please fix them
     [1-3]) case $[$RANDOM % 4 + 1] in  # CREATE (needs further work)
         1) echo "CREATE `temp` TABLE `ifnotexist` `table` (c1 `pk`,c2 `ctype`,c3 `ctype`) ENGINE=`engine`";;
@@ -219,8 +237,8 @@ query(){
            else
              echo "CREATE `temp` TABLE `ifnotexist` `table` (c1 ${C1TYPE},c2 `ctype`,c3 `ctype`, PRIMARY KEY(c1)) ENGINE=`engine`"
            fi;;
-        #func,proc,trigger
         4) echo "CREATE `definer` EVENT `ifnotexist` `event` ON SCHEDULE `schedule` `completion` `sdisenable` `comment` DO `query`";;
+        #func,proc,trigger,views
 
 
  
@@ -237,14 +255,10 @@ query(){
     [6-8]) echo "DROP EVENT `ifexist` `event`";; 
         *) echo "Assert: invalid random case selection in DROP case"; exit 1;;
       esac;;
-    9)  case $[$RANDOM % 13 + 1] in  # XA
-    [1-8]) echo "XA COMMIT `xid` `onephase`";;
-        9) echo "XA `startbegin` `xid` `joinresume`";;
-       10) echo "XA END `xid` `suspendfm`";;
-       11) echo "XA PREPARE `xid`";;
-       12) echo "XA ROLLBACK `xid`";;
-       13) echo "XA RECOVER `convertxid`";;
-        *) echo "Assert: invalid random case selection in XA case"; exit 1;;
+    9) case $[$RANDOM % 2 + 1] in  # Load data infile/select into outfile (needs further work)
+        1) echo "LOAD DATA INFILE 'out`n9`' INTO TABLE `table`";;
+        2) echo "SELECT * FROM `table` INTO OUTFILE 'out`n9`'";;
+        *) echo "Assert: invalid random case selection in load data infile/select into outfile case"; exit 1;;
       esac;;
     10) case $[$RANDOM % 3 + 1] in  # Select (needs further work)
         1) echo "SELECT c1 FROM `table`";;
@@ -270,28 +284,37 @@ query(){
         2) echo "UPDATE `table` SET c1=`data` `where` `orderby` `limit`";;
         *) echo "Assert: invalid random case selection in UPDATE case"; exit 1;;
       esac;;
-    1[4-6]) case $[$RANDOM % 7 + 1] in  # Generic statements (needs further work)
+    1[4-6]) case $[$RANDOM % 7 + 1] in  # Generic statements (needs further work except flush and reset)
       [1-2]) echo "UNLOCK TABLES";;
       [3-4]) echo "SET AUTOCOMMIT=ON";;
-        5) echo "`flush`" | sed "s|DUMMY|`table`|;s|$|;|";;
-        6) echo "`trx`" | sed "s|DUMMY|`table`|;s|$|;|";;
-        7) echo "`reset`";;
+        5) echo "FLUSH `nowbinlog` `localonly` `flush`" | sed "s|DUMMY|`table`|";;
+        6) echo "`reset`";;
+        7) echo "PURGE `binmaster` LOGS";; # Add TO and BEFORE clauses (need a datetime generator)
         *) echo "Assert: invalid random case selection in generic statements case"; exit 1;;
       esac;;
     17) echo "SET `emglobses` TRANSACTION `readwrite` ISOLATION LEVEL `isolation`";;  # Isolation level | Excludes `COMMIT...RELEASE` SQL, as this drops CLI connection, though would be fine for pquery runs in principle
-    1[8-9]) case $[$RANDOM % 35 + 1] in  # SET statements (complete)
+    1[8-9]) case $[$RANDOM % 37 + 1] in  # SET statements (complete)
         # 1+2: Add or remove an SQL_MODE, with thanks http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
         [1-5]) echo "SET @@`globses`.SQL_MODE=(SELECT CONCAT(@@SQL_MODE,',`sqlmode`'))";;
         [6-9]) echo "SET @@`globses`.SQL_MODE=(SELECT REPLACE(@@SQL_MODE,',`sqlmode`',''))";;
-       1[0-4]) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|;s|$|;|";;  # The global/session vars also include sql_mode, which is like a 'reset' of sql_mode
-       1[5-9]) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|;s|$|;|";;  # Note the servarS vs setvarG difference
-       2[0-4]) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`n100`|;s|$|;|";;    # The global/session vars also include sql_mode, which is like a 'reset' of sql_mode
-       2[5-9]) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`n100`|;s|$|;|";;    # Note the servarS vs setvarG difference
+       1[0-4]) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`setval`|";;  # The global/session vars also include sql_mode, which is like a 'reset' of sql_mode
+       1[5-9]) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`setval`|";;  # Note the servarS vs setvarG difference
+       2[0-4]) echo "SET @@SESSION.`setvars`" | sed "s|DUMMY|`n100`|";;    # The global/session vars also include sql_mode, which is like a 'reset' of sql_mode
+       2[5-9]) echo "SET @@GLOBAL.`setvarg`"  | sed "s|DUMMY|`n100`|";;    # Note the servarS vs setvarG difference
        3[0-4]) echo "SET @@`globses`.OPTIMIZER_SWITCH=\"`optsw`=`onoff`\"";;
-       35) case $[$RANDOM % 1 + 1] in  # A few selected, more commonly needed, SET statements
-          1) echo "SET @@GLOBAL.server_id=`n9`";;  # To make replication related items work better, SET GLOBAL server_id=<nr>; is required
-          *) echo "Assert: invalid random case selection in generic statements case (commonly needed statements section)"; exit 1;;
-        esac;;
+       35) case $[$RANDOM % 1 + 1] in  # Charset/collation related SET statements 
+             1) echo "SET @@`globses`.`charcol`";;  # Charset/collation changes (all SET parameters are indentical for global and session atm)
+             2) echo "SET @@`globses`.lc_time_names=`lctimename`";;  # http://dev.mysql.com/doc/refman/5.7/en/locale-support.html
+             *) echo "Assert: invalid random case selection in generic statements case (charset/collation section)"; exit 1;;
+           esac;;
+       3[6-7]) case $[$RANDOM % 5 + 1] in  # A few selected (more commonly needed, except the first) SET statements that get a higher frequency then the ones above
+             1) echo "SET @@GLOBAL.default_storage_engine=`engine`";;
+             2) echo "SET @@GLOBAL.server_id=`n9`";;  # To make replication related items work better, SET GLOBAL server_id=<nr>; is required
+             3) echo "SET @@`globses`.tx_read_only=0";;  # Ensure tx_read_only regularly set back to off
+             4) echo "SET @@GLOBAL.read_only=0";;        # Idem, for read_only
+             5) echo "SET @@GLOBAL.super_read_only=0";;  # Idem, for super_read_only
+             *) echo "Assert: invalid random case selection in generic statements case (commonly needed statements section)"; exit 1;;
+           esac;;
         *) echo "Assert: invalid random case selection in generic statements case"; exit 1;;
       esac;;
     20) case $[$RANDOM % 9 + 1] in  # Alter (needs few other additions like table types etc)
@@ -358,19 +381,79 @@ query(){
        42) echo "SHOW WARNINGS `ofslimit`";;
         *) echo "Assert: invalid random case selection in SHOW case"; exit 1;;
        esac;;
-    22) case $[$RANDOM % 3 + 1] in  # InnoDB monitor (complete)
-         1) echo "SET GLOBAL innodb_monitor_enable='`inmetrics`'";;
-         2) echo "SET GLOBAL innodb_monitor_reset='`inmetrics`'";;
-         3) echo "SET GLOBAL innodb_monitor_reset_all='`inmetrics`'";;
-         4) echo "SET GLOBAL innodb_monitor_disable='`inmetrics`'";;
-         *) echo "Assert: invalid random case selection in InnoDB metrics case"; exit 1;;
-       esac;;
-    23) echo "EXPLAIN `query`";;  # Explain (needs further work)
-    #24) PURGE/FLUSH
-    #25) RESET
-    #26) TRX (start/stop//...)
+    22) case $[$RANDOM % 4 + 1] in  # InnoDB monitor (complete)
+        1) echo "SET GLOBAL innodb_monitor_enable='`inmetrics`'";;
+        2) echo "SET GLOBAL innodb_monitor_reset='`inmetrics`'";;
+        3) echo "SET GLOBAL innodb_monitor_reset_all='`inmetrics`'";;
+        4) echo "SET GLOBAL innodb_monitor_disable='`inmetrics`'";;
+        *) echo "Assert: invalid random case selection in InnoDB metrics case"; exit 1;;
+      esac;;
+    23) case $[$RANDOM % 7 + 1] in  # Nested `query` calls: items 1 and 2 need further work to not select all types of queries (needs sub-functions, for example select(){}
+        1) echo "EXPLAIN `query`";;                # Explain (needs further work: as above + more explain clauses)
+        2) echo "SELECT 1 FROM (`query`) AS a1";;  # Subquery (needs further work: as above + more subquery structures)
+    [3-7]) case $[$RANDOM % 8 + 1] in  # Prepared statements (needs further work)
+       [1-3]) echo "SET @cmd:='`query`'";;
+       [4-5]) echo "PREPARE stmt FROM @cmd";;
+       [6-7]) echo "EXECUTE stmt";;
+           8) echo "DEALLOCATE PREPARE stmt";;
+           *) echo "Assert: invalid random case selection in prepared statements case"; exit 1;;
+          esac;;
+        *) echo "Assert: invalid random case selection in nested query calls case"; exit 1;;
+      esac;;
+2[4-8]) case $[$RANDOM % 24 + 1] in  # XA (complete)
+        # Frequencies for XA: COMMIT (1-9), START/BEGIN (10), END (11-17), PREPARE (19), RECOVER (20), and ROLLBACK (21-24) statements are well tuned, please do not change these case ranges
+    [1-9]) echo "XA COMMIT `xid` `onephase`";;
+       10) case $[$RANDOM % 2 + 1] in
+           1) echo "XA START `xid`";;
+           2) echo "XA BEGIN `xid` `joinresume`";;
+         esac;;
+   1[1-8]) echo "XA END `xid` `suspendfm`";;
+       19) echo "XA PREPARE `xid`";;
+       20) echo "XA RECOVER `convertxid`";;
+   2[1-4]) echo "XA ROLLBACK `xid`";;
+        *) echo "Assert: invalid random case selection in XA case"; exit 1;;
+      esac;;
+ 29|30) case $[$RANDOM % 8 + 1] in  # Transactions (complete, except review/add in different section?; http://dev.mysql.com/doc/refman/5.7/en/begin-end.html) 
+        1) echo "START TRANSACTION `trxopt`";;
+        2) echo "BEGIN `work`";;
+      4|5) echo "COMMIT `work` `chain` `release`";;
+      6|7) echo "ROLLBACK `work` `chain` `release`";;
+        8) echo "SET autocommit=`onoff01`";;
+        *) echo "Assert: invalid random case selection in transactions case"; exit 1;;
+      esac;;
+    31) case $[$RANDOM % 5 + 1] in  # Repair/optimize/analyze/rename/truncate table (complete)
+        1) echo "REPAIR `nowblocal` TABLE `table` `quick` `extended` `usefrm`";;
+        2) echo "OPTIMIZE `nowblocal` TABLE `table`";;
+        3) echo "ANALYZE `nowblocal` TABLE `table`";;
+        4) case $[$RANDOM % 3 + 1] in
+           1) echo "RENAME TABLE `table` TO `table`";;
+           2) echo "RENAME TABLE `table` TO `table`,`table` TO `table`";;
+           3) echo "RENAME TABLE `table` TO `table`,`table` TO `table`,`table` TO `table`";;
+           *) echo "Assert: invalid random case selection in rename table case"; exit 1;;
+           esac;;
+        5) echo "TRUNCATE TABLE `table`";;
+        *) echo "Assert: invalid random case selection in repair/optimize/analyze/rename/truncate table case"; exit 1;;
+      esac;;
+    32) case $[$RANDOM % 2 + 1] in  # Lock tables (complete)
+        1) echo "LOCK TABLES `table` `asalias3` `locktype`";;
+        2) echo "UNLOCK TABLES";; 
+        *) echo "Assert: invalid random case selection in lock case"; exit 1;;
+      esac;;
+    33) case $[$RANDOM % 3 + 1] in  # Savepoints (complete)
+        1) echo "SAVEPOINT sp`n2`";;
+        2) echo "ROLLBACK `work` TO `savepoint` sp`n2`";;
+        3) echo "RELEASE SAVEPOINT sp`n2`";;
+        *) echo "Assert: invalid random case selection in savepoint case"; exit 1;;
+      esac;;
+
+# http://dev.mysql.com/doc/refman/5.7/en/numeric-functions.html
+# added already: numeric.txt, but the file needs (DUMMY) assignemnts etc. and add in here.
+# http://dev.mysql.com/doc/refman/5.7/en/get-diagnostics.html
+# http://dev.mysql.com/doc/refman/5.7/en/signal.html
+
+ 
     
-     # TIP: when adding new options, make sure to update the original case/esac to reflect the new number of options (the number behind the '%' in the case statement at the top of the list)
+     # TIP: when adding new options, make sure to update the original case/esac to reflect the new number of options (the number behind the '%' in the case statement at the top of the list matches the number of available 'nr)' options)
      *) echo "Assert: invalid random case selection in main case"; exit 1;;
   esac
 }
