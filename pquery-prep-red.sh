@@ -170,10 +170,9 @@ extract_queries_error_log(){
 
 add_select_ones_to_trace(){  # Improve issue reproducibility by adding 3x SELECT 1; to the sql trace
   echo "* Adding additional 'SELECT 1;' queries to improve issue reproducibility"
+  if [ ! -f ${INPUTFILE} ]; then touch ${INPUTFILE}; fi
   for i in {1..3}; do
-    BEFORESIZE=`cat ${INPUTFILE} | wc -l`
     echo "SELECT 1;" >> ${INPUTFILE}
-    AFTERSIZE=`cat ${INPUTFILE} | wc -l`
   done
   echo "  > 'SELECT 1;' query added 3x to the SQL trace"
 }
@@ -397,15 +396,12 @@ if [ ${QC} -eq 0 ]; then
         fi
         if [ "${MULTI}" == "1" ]; then
           INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}.sql
-          cp ${INPUTFILE} ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup
+          cp ${INPUTFILE} ${INPUTFILE}.backup
         else
           if [ $(ls -1 ./${TRIAL}/*thread-0.sql 2>/dev/null|wc -l) -gt 1 ]; then
             INPUTFILE=$(ls ./${TRIAL}/node`expr ${SUBDIR} - 1`*thread-0.sql)
           elif [ -f ./${TRIAL}/*thread-0.sql ] ; then
             INPUTFILE=`ls ./${TRIAL}/*thread-0.sql | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
-          else
-            echo "SELECT 1;"  > ${TRIAL}/test.sql
-            INPUTFILE="${WORKD_PWD}/${TRIAL}/test.sql"
           fi
         fi
         BIN=`ls -1 ${WORKD_PWD}/${TRIAL}/node${SUBDIR}/mysqld 2>&1 | head -n1 | grep -v "No such file"`
@@ -418,7 +414,6 @@ if [ ${QC} -eq 0 ]; then
         else
           BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//' | tr -d '[[:space:]]'`"
         fi
-        #BASE="/sda/Percona-Server-5.6.21-rel70.0-696.Linux.x86_64-debug"
         CORE=`ls -1 ./${TRIAL}/node${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
         if [ "$CORE" != "" ]; then
           extract_queries_core

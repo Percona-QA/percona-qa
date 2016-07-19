@@ -26,7 +26,7 @@ mkdir ${CURDIR}_dbg
 mkdir ${CURDIR}_val
 
 #GENERAL_BLD_OPT="-DENABLE_DOWNLOADS=1 -DBUILD_CONFIG=mysql_release -DWITH_EMBEDDED_SERVER=OFF -DFEATURE_SET=community -DENABLE_DTRACE=OFF"
-GENERAL_BLD_OPT="-DENABLE_DOWNLOADS=1 -DBUILD_CONFIG=mysql_release -DWITH_EMBEDDED_SERVER=OFF -DFEATURE_SET=community"
+GENERAL_BLD_OPT="-DENABLE_DOWNLOADS=1 -DBUILD_CONFIG=mysql_release -DWITH_EMBEDDED_SERVER=OFF -DFEATURE_SET=community -DWITH_ASAN=ON"
 #In time, we need to add -DWITH_DEBUG=ON here + in build script in PS source. See mail "Debuggy" 18 Oct 2013.
 #However, memcached is holding us back: https://bugs.launchpad.net/percona-server/+bug/1241455
 echo $(cd ${CURDIR}_opt; \
