@@ -418,7 +418,7 @@ if [ ${QC} -eq 0 ]; then
         fi
         CORE=`ls -1 ./${TRIAL}/node${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
         ERRLOG=./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err
-        if [ `cat ${INPUTFILE} | wc -l` -ne 0 ];
+        if [ `cat ${INPUTFILE} | wc -l` -ne 0 ]; then
           if [ "$CORE" != "" ]; then
             extract_queries_core
           fi
