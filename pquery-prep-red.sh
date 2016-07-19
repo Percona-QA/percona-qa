@@ -417,15 +417,17 @@ if [ ${QC} -eq 0 ]; then
           BASE="`grep 'Basedir:' ./pquery-run.log | sed 's|^.*Basedir[: \t]*||;;s/|.*$//' | tr -d '[[:space:]]'`"
         fi
         CORE=`ls -1 ./${TRIAL}/node${SUBDIR}/*core* 2>&1 | head -n1 | grep -v "No such file"`
-        if [ "$CORE" != "" ]; then
-          extract_queries_core
-        fi
         ERRLOG=./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err
-        if [ "$ERRLOG" != "" ]; then
-          extract_queries_error_log
-        else
-          echo "Assert! Error log at ./${TRIAL}/node${SUBDIR}/error.log could not be read?"
-          exit 1
+        if [ `cat ${INPUTFILE} | wc -l` -ne 0 ];
+          if [ "$CORE" != "" ]; then
+            extract_queries_core
+          fi
+          if [ "$ERRLOG" != "" ]; then
+            extract_queries_error_log
+          else
+            echo "Assert! Error log at ./${TRIAL}/node${SUBDIR}/error.log could not be read?"
+            exit 1
+          fi
         fi
         add_select_ones_to_trace
         TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
