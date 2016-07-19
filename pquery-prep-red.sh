@@ -402,6 +402,8 @@ if [ ${QC} -eq 0 ]; then
             INPUTFILE=$(ls ./${TRIAL}/node`expr ${SUBDIR} - 1`*thread-0.sql)
           elif [ -f ./${TRIAL}/*thread-0.sql ] ; then
             INPUTFILE=`ls ./${TRIAL}/*thread-0.sql | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
+          else
+            INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}-${SUBDIR}.sql
           fi
         fi
         BIN=`ls -1 ${WORKD_PWD}/${TRIAL}/node${SUBDIR}/mysqld 2>&1 | head -n1 | grep -v "No such file"`
