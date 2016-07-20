@@ -81,7 +81,7 @@ if [ -z $SST_METHOD ]; then
   SST_METHOD="rsync"
 fi
 if [ -z $USE_PROXYSQL ]; then
-  USE_PROXYSQL=1
+  USE_PROXYSQL=0
 fi
 if [ $USE_PROXYSQL -eq 1 ]; then
   PROXYSQL_BIN=`ls -1t proxysql | head -n1`
