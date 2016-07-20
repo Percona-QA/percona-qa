@@ -93,7 +93,7 @@ fi
 # This parameter selects on which nodes the sysbench run will take place
 if [ $USE_PROXYSQL -eq 1 ]; then
   SYSB_VAR_OPTIONS="--mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=3306"
-elif [$DIR -eq 0 ]; then
+elif [ $DIR -eq 0 ]; then
   SYSB_VAR_OPTIONS="--mysql-user=root --mysql-socket=/tmp/node1.socket,/tmp/node2.socket,/tmp/node3.socket"
 elif [ $DIR -eq 1 ]; then
   SYSB_VAR_OPTIONS="--mysql-user=root --mysql-socket=/tmp/node1.socket"
