@@ -2,6 +2,11 @@
 # Created by Raghavendra Prabhu <raghavendra.prabhu@percona.com>
 # Updated by Ramesh Sivaraman, Percona LLC
 
+if [ "$#" -ne 1 ]; then
+  echo "This script requires absolute workdir as a parameter!";
+  exit 1
+fi
+
 ulimit -c unlimited
 export MTR_MAX_SAVE_CORE=5
 
@@ -12,6 +17,9 @@ pgrep -f mysqld
 pkill -f mysqld
 sleep 10
 pgrep mysqld || pkill -9 -f mysqld
+
+#Kill proxysql process
+killall -9 proxysql > /dev/null 2>&1 || true
 
 sleep 5
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
@@ -72,16 +80,27 @@ fi
 if [ -z $SST_METHOD ]; then
   SST_METHOD="rsync"
 fi
-
+if [ -z $USE_PROXYSQL ]; then
+  USE_PROXYSQL=1
+fi
+if [ $USE_PROXYSQL -eq 1 ]; then
+  PROXYSQL_BIN=`ls -1t proxysql | head -n1`
+  if [ -z $PROXYSQL_BIN ]; then
+    echo "ProxySQL binary is missing!"
+    exit 1
+  fi
+fi
 # This parameter selects on which nodes the sysbench run will take place
-if [[ $DIR -eq 0 ]]; then
-  sockets="/tmp/node1.socket,/tmp/node2.socket,/tmp/node3.socket"
-elif [[ $DIR -eq 1 ]]; then
-  sockets="/tmp/node1.socket"
-elif [[ $DIR -eq 2 ]]; then
-  sockets="/tmp/node2.socket"
-elif [[ $DIR -eq 3 ]]; then
-  sockets="/tmp/node3.socket"
+if [ $USE_PROXYSQL -eq 1 ]; then
+  SYSB_VAR_OPTIONS="--mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=3306"
+elif [$DIR -eq 0 ]; then
+  SYSB_VAR_OPTIONS="--mysql-user=root --mysql-socket=/tmp/node1.socket,/tmp/node2.socket,/tmp/node3.socket"
+elif [ $DIR -eq 1 ]; then
+  SYSB_VAR_OPTIONS="--mysql-user=root --mysql-socket=/tmp/node1.socket"
+elif [ $DIR -eq 2 ]; then
+  SYSB_VAR_OPTIONS="--mysql-user=root --mysql-socket=/tmp/node2.socket"
+elif [ $DIR -eq 3 ]; then
+  SYSB_VAR_OPTIONS="--mysql-user=root --mysql-socket=/tmp/node3.socket"
 fi
 
 cd $WORKDIR
@@ -334,7 +353,7 @@ pxc_upgrade_node(){
 }
 
 sysbench_run(){
-  local FUN_NODE_NR=$1
+  local RUN_NAME=$1
 
   if [[ ! -e $SDIR/${STEST}.lua ]]; then
     pushd /tmp
@@ -347,15 +366,36 @@ sysbench_run(){
   set -x
   sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SDURATION --max-requests=1870000000 \
       --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
-      --mysql-user=root --db-driver=mysql --mysql-socket=$sockets \
-      run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run_node${FUN_NODE_NR}.txt
+      --db-driver=mysql $SYSB_VAR_OPTIONS run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run_${RUN_NAME}.txt
   #check_script $?
 
   if [[ ${PIPESTATUS[0]} -ne 0 ]];then
-    echo "Sysbench run on node${FUN_NODE_NR} failed"
+    echo "Sysbench run ${RUN_NAME} failed"
     EXTSTATUS=1
   fi
   set +x
+}
+
+proxysql_start(){
+  $ROOT_FS/$PROXYSQL_BIN --initial -f -c $SCRIPT_PWD/proxysql.cnf > /dev/null 2>&1 &
+  check_script $?
+  sleep 10
+  ${MYSQL_BASEDIR1}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'proxysql'@'localhost' IDENTIFIED BY 'proxysql'"
+  ${MYSQL_BASEDIR1}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'monitor'@'localhost' IDENTIFIED BY 'monitor'"
+  check_script $?
+  echo  "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '127.0.0.1', $RBASE1, 20),(1, '127.0.0.1', $RBASE2, 20),(0, '127.0.0.1', $RBASE3, 20)" | ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  check_script $?
+  echo  "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)" | ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  check_script $?
+  echo "INSERT INTO mysql_query_rules (active,match_pattern,destination_hostgroup,apply) VALUES(1,'^SELECT',0,1),(1,'^DELETE',0,1),(1,'^UPDATE',1,1),(1,'^INSERT',1,1)" | ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;" | ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  check_script $?
+  sleep 10
+}
+
+get_connection_pool(){
+  echo -e "ProxySQL connection pool status\n"
+  ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -t -e "select srv_host,srv_port,status,Queries,Bytes_data_sent,Bytes_data_recv from stats_mysql_connection_pool;"
 }
 
 #
@@ -371,15 +411,19 @@ pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen
 ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node3 > $WORKDIR/logs/node3-pre.err 2>&1 || exit 1;
 pxc_start_node 3 "5.6" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://${LADDR3}" "$RBASE3" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-pre.err" "${MYSQL_BASEDIR1}"
 
+# Start proxysql
+if [ $USE_PROXYSQL -eq 1 ]; then
+  proxysql_start
+fi
+
 #
 # Sysbench run on previous version on node1
 #
 ## Prepare/setup
-echo -e "\n\n#### Sysbench run on previous version on node1\n"
+echo -e "\n\n#### Sysbench prepare run on previous version\n"
 
 sysbench --test=$SDIR/parallel_prepare.lua --report-interval=10  --oltp-auto-inc=$AUTOINC --mysql-engine-trx=yes --mysql-table-engine=innodb \
-    --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root \
-    --db-driver=mysql --mysql-socket=/tmp/node1.socket prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+    --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --db-driver=mysql $SYSB_VAR_OPTIONS prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 #check_script $?
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
@@ -406,6 +450,7 @@ check_script $?
 #
 # Upgrading node2 to the new version
 #
+get_connection_pool
 echo -e "\n\n#### Show node2 status before upgrade\n"
 show_node_status 2 $MYSQL_BASEDIR1 0
 echo "Running upgrade on node2"
@@ -414,14 +459,20 @@ echo "Starting node2 after upgrade"
 pxc_start_node 2 "5.7" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR2" "$RBASE2" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-after_upgrade.err" "${MYSQL_BASEDIR2}"
 
 echo -e "\n\n#### Showing nodes status after node2 upgrade and before sysbench\n"
+if [ $USE_PROXYSQL -eq 1 ]; then
+  get_connection_pool
+fi
 show_node_status 1 $MYSQL_BASEDIR1 0
 show_node_status 2 $MYSQL_BASEDIR2 0
 show_node_status 3 $MYSQL_BASEDIR1 0
 
 echo -e "\n\n#### Sysbench OLTP RW run after node2 upgrade\n"
-sysbench_run 2
+sysbench_run node2upgrade
 
 echo -e "\n\n#### Showing nodes status after node2 upgrade and after sysbench\n"
+if [ $USE_PROXYSQL -eq 1 ]; then
+  get_connection_pool
+fi
 show_node_status 1 $MYSQL_BASEDIR1 0
 show_node_status 2 $MYSQL_BASEDIR2 0
 show_node_status 3 $MYSQL_BASEDIR1 0
@@ -440,14 +491,20 @@ echo "Starting node3 after upgrade"
 pxc_start_node 3 "5.7" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://$LADDR3" "$RBASE3" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-after_upgrade.err" "${MYSQL_BASEDIR2}"
 
 echo -e "\n\n#### Showing nodes status after node3 upgrade and before sysbench\n"
+if [ $USE_PROXYSQL -eq 1 ]; then
+  get_connection_pool
+fi
 show_node_status 1 $MYSQL_BASEDIR1 1
 show_node_status 2 $MYSQL_BASEDIR2 1
 show_node_status 3 $MYSQL_BASEDIR2 1
 
 echo -e "\n\n#### Sysbench OLTP RW run after node3 upgrade\n"
-sysbench_run 3
+sysbench_run node3upgrade
 
 echo -e "\n\n#### Showing nodes status after node3 upgrade and after sysbench run\n"
+if [ $USE_PROXYSQL -eq 1 ]; then
+  get_connection_pool
+fi
 show_node_status 1 $MYSQL_BASEDIR1 1
 show_node_status 2 $MYSQL_BASEDIR2 1
 show_node_status 3 $MYSQL_BASEDIR2 1
@@ -466,14 +523,20 @@ echo "Starting node1 after upgrade"
 pxc_start_node 1 "5.7" "$node1" "gcomm://$LADDR2,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR1" "$RBASE1" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-after_upgrade.err" "${MYSQL_BASEDIR2}"
 
 echo -e "\n\n#### Showing nodes status after node1 upgrade and before sysbench\n"
+if [ $USE_PROXYSQL -eq 1 ]; then
+  get_connection_pool
+fi
 show_node_status 1 $MYSQL_BASEDIR2 1
 show_node_status 2 $MYSQL_BASEDIR2 1
 show_node_status 3 $MYSQL_BASEDIR2 1
 
 echo -e "\n\n#### Sysbench OLTP RW run after node1 upgrade\n"
-sysbench_run 1
+sysbench_run node1upgrade
 
 echo -e "\n\n#### Showing nodes status after node1 upgrade and after sysbench\n"
+if [ $USE_PROXYSQL -eq 1 ]; then
+  get_connection_pool
+fi
 show_node_status 1 $MYSQL_BASEDIR2 1
 show_node_status 2 $MYSQL_BASEDIR2 1
 show_node_status 3 $MYSQL_BASEDIR2 1
@@ -527,5 +590,8 @@ show_node_status 3 $MYSQL_BASEDIR1 1
 $MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node1.socket -u root shutdown > /dev/null 2>&1
 $MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node2.socket -u root shutdown > /dev/null 2>&1
 $MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node3.socket -u root shutdown > /dev/null 2>&1
+if [ $USE_PROXYSQL -eq 1 ]; then
+  killall -9 proxysql > /dev/null 2>&1 || true
+fi
 
 exit $EXTSTATUS
