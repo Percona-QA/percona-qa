@@ -590,7 +590,7 @@
 --innodb-autoextend-increment=2047
 --innodb-autoextend-increment=-1125899906842624
 --innodb-autoextend-increment=1125899906842624
---innodb-autoinc-lock-mode=2
+--innodb-autoinc-lock-mode=1
 --innodb-autoinc-lock-mode=0
 --innodb-autoinc-lock-mode=1
 --innodb-autoinc-lock-mode=2
@@ -1198,6 +1198,8 @@
 --innodb-monitor-reset-all=module
 --innodb-monitor-reset-all=pattern
 --innodb-monitor-reset-all=all
+--innodb-numa-interleave=1
+--innodb-numa-interleave=0
 --innodb-old-blocks-pct=37
 --innodb-old-blocks-pct=0
 --innodb-old-blocks-pct=1
@@ -2344,6 +2346,17 @@
 --optimizer-trace-offset=2047
 --optimizer-trace-offset=-1125899906842624
 --optimizer-trace-offset=1125899906842624
+--parser-max-mem-size=18446744073709551615
+--parser-max-mem-size=0
+--parser-max-mem-size=1
+--parser-max-mem-size=2
+--parser-max-mem-size=12
+--parser-max-mem-size=24
+--parser-max-mem-size=254
+--parser-max-mem-size=1023
+--parser-max-mem-size=2047
+--parser-max-mem-size=-1125899906842624
+--parser-max-mem-size=1125899906842624
 --partition=1
 --partition=0
 --performance-schema=1
@@ -2925,7 +2938,7 @@
 --range-alloc-block-size=2047
 --range-alloc-block-size=-1125899906842624
 --range-alloc-block-size=1125899906842624
---range-optimizer-max-mem-size=1536000
+--range-optimizer-max-mem-size=8388608
 --range-optimizer-max-mem-size=0
 --range-optimizer-max-mem-size=1
 --range-optimizer-max-mem-size=2
@@ -3327,6 +3340,7 @@
 --thread-handling=no-threads
 --thread-handling=one-thread-per-connection
 --thread-handling=dynamically-loaded
+--thread-handling=pool-of-threads
 --thread-pool-high-prio-mode=transactions
 --thread-pool-high-prio-mode=statements
 --thread-pool-high-prio-mode=none
@@ -3469,9 +3483,3 @@
 --wait-timeout=2047
 --wait-timeout=-1125899906842624
 --wait-timeout=1125899906842624
---wsrep-auto-increment-control=1
---wsrep-auto-increment-control=0
---wsrep-causal-reads=1
---wsrep-causal-reads=0
---wsrep-certify-nonPK=1
---wsrep-certify-nonPK=0
