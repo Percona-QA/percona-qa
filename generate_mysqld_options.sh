@@ -338,6 +338,7 @@ while read line; do
     echo "${OPTION}=no-threads" >> ${OUTPUT_FILE}
     echo "${OPTION}=one-thread-per-connection" >> ${OUTPUT_FILE}
     echo "${OPTION}=dynamically-loaded" >> ${OUTPUT_FILE}
+    echo "${OPTION}=pool-of-threads" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--thread-pool-high-prio-mode" ]; then
     echoit "  > Adding possible values transactions, statements for option '${OPTION}' to the final list..."
     echo "${OPTION}=transactions" >> ${OUTPUT_FILE}
