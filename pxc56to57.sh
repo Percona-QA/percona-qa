@@ -83,13 +83,7 @@ fi
 if [ -z $USE_PROXYSQL ]; then
   USE_PROXYSQL=0
 fi
-if [ $USE_PROXYSQL -eq 1 ]; then
-  PROXYSQL_BIN=`ls -1t proxysql | head -n1`
-  if [ -z $PROXYSQL_BIN ]; then
-    echo "ProxySQL binary is missing!"
-    exit 1
-  fi
-fi
+
 # This parameter selects on which nodes the sysbench run will take place
 if [ $USE_PROXYSQL -eq 1 ]; then
   SYSB_VAR_OPTIONS="--mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=3306"
@@ -104,6 +98,14 @@ elif [ $DIR -eq 3 ]; then
 fi
 
 cd $WORKDIR
+
+if [ $USE_PROXYSQL -eq 1 ]; then
+  PROXYSQL_BIN=`ls -1t proxysql | head -n1`
+  if [ -z $PROXYSQL_BIN ]; then
+    echo "ProxySQL binary is missing!"
+    exit 1
+  fi
+fi
 
 if [[ $SST_METHOD == xtrabackup ]]; then
   SST_METHOD="xtrabackup-v2"
@@ -255,7 +257,7 @@ pxc_start_node(){
   echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR}"
   ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
     --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
+    --loose-debug-sync-timeout=600 \
     --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${FUN_WSREP_PROVIDER} \
     --wsrep_cluster_address=${FUN_CLUSTER_ADDRESS} \
@@ -266,8 +268,8 @@ pxc_start_node(){
     --query_cache_type=0 --query_cache_size=0 \
     --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
     --innodb_log_file_size=500M \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --core-file --sql-mode=no_engine_substitution \
+    --secure-file-priv= --loose-innodb-status-file=1 \
     --log-error=${FUN_LOG_ERR} \
     --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
     --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} --wsrep_slave_threads=8 > ${FUN_LOG_ERR} 2>&1 &
@@ -308,14 +310,14 @@ pxc_upgrade_node(){
   echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR}"
   ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
     --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
+    --loose-debug-sync-timeout=600 \
     --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider='none' --innodb_flush_method=O_DIRECT \
     --query_cache_type=0 --query_cache_size=0 \
     --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
     --innodb_log_file_size=500M \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --core-file --sql-mode=no_engine_substitution \
+    --secure-file-priv= --loose-innodb-status-file=1 \
     --log-error=${FUN_LOG_ERR} \
     --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
     --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} --wsrep_slave_threads=8 > ${FUN_LOG_ERR} 2>&1 &
@@ -380,8 +382,6 @@ proxysql_start(){
   $ROOT_FS/$PROXYSQL_BIN --initial -f -c $SCRIPT_PWD/proxysql.cnf > /dev/null 2>&1 &
   check_script $?
   sleep 10
-  ${MYSQL_BASEDIR1}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'proxysql'@'%' IDENTIFIED BY 'proxysql'"
-  ${MYSQL_BASEDIR1}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'monitor'@'%' IDENTIFIED BY 'monitor'"
   ${MYSQL_BASEDIR1}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'proxysql'@'localhost' IDENTIFIED BY 'proxysql'"
   ${MYSQL_BASEDIR1}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'monitor'@'localhost' IDENTIFIED BY 'monitor'"
   check_script $?
