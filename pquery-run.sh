@@ -1127,7 +1127,7 @@ if [ ${PXC} -eq 0 ];then
   echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR}"
 else
   echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: Active"
-  if [ ${PXC_CLUSTER_RUN} -eq 1 ];
+  if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
     echoit "PXC Cluster run: 'YES'"
   else
     echoit "PXC Cluster run: 'NO'"
