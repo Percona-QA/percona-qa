@@ -368,7 +368,7 @@ sysbench_run(){
   set -x
   sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SDURATION --max-requests=1870000000 \
       --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
-      --mysql-ignore-errors=1062 --db-driver=mysql $SYSB_VAR_OPTIONS run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run_${RUN_NAME}.txt
+      --mysql-ignore-errors=1062,1213 --db-driver=mysql $SYSB_VAR_OPTIONS run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run_${RUN_NAME}.txt
   #check_script $?
 
   if [[ ${PIPESTATUS[0]} -ne 0 ]];then
