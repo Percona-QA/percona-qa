@@ -1997,27 +1997,33 @@ run_sql_code(){
     # Some general information on MODE=2 replay using either the mysql CLI or pquery: When using the mysql cli, a single or double quote in and by itself
     # (without a terminating one on the same line) will cause the query to be seen as multi-line. With pquery this is not the case because it is an API/C
     # driven per-query executor. If a query fails (one per line), that query alone will fail, not subsequent ones - which would fail in the mysql CLI client
-    # because of such an "incorrect opening of a multi-line statement".
+    # because of such an "incorrect opening of a multi-line statement". Hence, the reproducibility of a testcase using another replay tool (pquery testcase
+    # being replayed with mysql CLI or vice versa) may differ. Another difference is that the pquery replay output looks significantly different from the
+    # client replay output. Thus, any TEXT="..." strings need to be matched to the specific output seen in the original trial's pquery or mysql CLI output.
     if [ $PQUERY_MOD -eq 1 ]; then
       export LD_LIBRARY_PATH=${MYBASE}/lib
       if [ -r $WORKD/pquery.out ]; then
         mv $WORKD/pquery.out $WORKD/pquery.prev
       fi
+      PQUERY_MODE2_CLIENT_LOGGING=
+      if [ $MODE -eq 2 ]; then
+        PQUERY_MODE2_CLIENT_LOGGING="--log-all-queries --log-failed-queries"
+      fi
       if [ $PXC_MOD -eq 1 ]; then
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=${node1}/node1_socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=${node1}/node1_socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         fi
       else
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=$WORKD/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=$WORKD/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         fi
       fi
     else

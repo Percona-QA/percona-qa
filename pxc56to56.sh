@@ -1,6 +1,6 @@
 #!/bin/bash -ue
 
-# Author: Raghavendra Prabhu <raghavendra.prabhu@percona.com>
+# Author: Raghavendra Prabhu
 # TEST
 
 ulimit -c unlimited

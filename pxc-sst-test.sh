@@ -1,6 +1,6 @@
 #!/bin/bash -ue
 
-# Author: Raghavendra Prabhu <raghavendra.prabhu@percona.com>
+# Author: Raghavendra Prabhu
 
 set +e
 echo "Killing existing mysqld"

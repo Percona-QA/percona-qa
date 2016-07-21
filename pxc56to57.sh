@@ -1,5 +1,5 @@
 #!/bin/bash
-# Created by Raghavendra Prabhu <raghavendra.prabhu@percona.com>
+# Created by Raghavendra Prabhu
 # Updated by Ramesh Sivaraman, Percona LLC
 
 if [ "$#" -ne 1 ]; then

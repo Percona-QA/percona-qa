@@ -1,6 +1,6 @@
 #!/bin/bash -ue
 
-# Author: Raghavendra Prabhu <raghavendra.prabhu@percona.com>
+# Author: Raghavendra Prabhu
 
 ulimit -c unlimited
 export MTR_MAX_SAVE_CORE=5

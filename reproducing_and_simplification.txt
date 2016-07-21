@@ -24,6 +24,8 @@ However, for issues that fail to reproduce, try these things (in this order):
 * Check the error log and search for the assertion, or first few crashing frames as shown by gdb. The issue may have already been logged. 
   Add it to percona-qa/known_bugs.strings[.notestcase] if you find it please.
 
+* Check the client output of the original pquery trial (/<trial>/*thread-x.sql) against the output of reducer's subreducer's directory /subreducer/nr/<TBD>
+
 * Set FORCE_SKIPV=1 in reducer, which auto-enables FORCE_SPORADIC=1 and skips verify, so immediately goes into MULTI stage 1 (and one can let it sit there 
   churning away for an hour to see if the issue reproduces at all). This is ideal for highly sporadic issues, where verify stage failed to reproduce the issue.
 

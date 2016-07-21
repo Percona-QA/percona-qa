@@ -145,7 +145,7 @@ intervalad(){ if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "+ INTERVAL `n9` `int
 work()      { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "WORK"; fi }                         # 25% WORK (for transactions and savepoints)
 savepoint() { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "SAVEPOINT"; fi }                    # 25% SAVEPOINT (for savepoints)
 chain()     { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "AND `no` CHAIN"; fi }               # 35% AND [NO] CHAIN (for transactions)
-release()   { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "`no` RELEASE"; fi }                 # 35% [NO] RELEASE (for transactions)
+release()   { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "NO RELEASE"; fi }                   # 35% NO RELEASE (for transactions). Plain 'RELEASE' is not possible, as this drops client connection
 nowbinlog() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; fi }           # 50% NO_WRITE_TO_BINLOG
 localonly() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LOCAL"; fi }                        # 50% LOCAL (note 'local' is system keyword, hence 'localonly')
 quick()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "QUICK"; fi }                        # 20% QUICK
@@ -292,7 +292,7 @@ query(){
         7) echo "PURGE `binmaster` LOGS";; # Add TO and BEFORE clauses (need a datetime generator)
         *) echo "Assert: invalid random case selection in generic statements case"; exit 1;;
       esac;;
-    17) echo "SET `emglobses` TRANSACTION `readwrite` ISOLATION LEVEL `isolation`";;  # Isolation level | Excludes `COMMIT...RELEASE` SQL, as this drops CLI connection, though would be fine for pquery runs in principle
+    17) echo "SET `emglobses` TRANSACTION `readwrite` ISOLATION LEVEL `isolation`";;  # Isolation level | Excludes `COMMIT...RELEASE` SQL, as this drops client connection
     1[8-9]) case $[$RANDOM % 37 + 1] in  # SET statements (complete)
         # 1+2: Add or remove an SQL_MODE, with thanks http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
         [1-5]) echo "SET @@`globses`.SQL_MODE=(SELECT CONCAT(@@SQL_MODE,',`sqlmode`'))";;
