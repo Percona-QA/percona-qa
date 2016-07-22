@@ -2,7 +2,8 @@
 # Created by Roel Van de Paar, Percona LLC
 
 # User Variables
-MYSQL_VERSION="57"  # Valid options: 56, 57. Do not use dot (.)
+MYSQL_VERSION="57"   # Valid options: 56, 57. Do not use dot (.)
+SHEDULING_ENABLED=0  # On/Off (1/0). When using this, please note that testcases need to be reduced using PQUERY_MULTI=1 in reducer.sh (as they are effectively multi-threaded due to sheduler threads), and that issue reproducibility may be lower (sheduling may not match original OS slicing, other running queries etc.). Still, using PQUERY_MULTI=1 a good number of issues are likely (TBD) to be reproducibile and thus reducable given reducer.sh's random replay functionality.
 
 # Note: the many backticks used in this script are not SQL/MySQL column-surrounding backticks, but rather subshells which call a function, for example `table` calls table()
 # To debug the SQL generated (it outputs the line numbers: "ERROR 1264 (22003) at line 47 in file" - so it easy to see which line (47 in example) failed in the SQL) use:
@@ -237,7 +238,12 @@ query(){
            else
              echo "CREATE `temp` TABLE `ifnotexist` `table` (c1 ${C1TYPE},c2 `ctype`,c3 `ctype`, PRIMARY KEY(c1)) ENGINE=`engine`"
            fi;;
-        4) echo "CREATE `definer` EVENT `ifnotexist` `event` ON SCHEDULE `schedule` `completion` `sdisenable` `comment` DO `query`";;
+        4) if [ $SHEDULING_ENABLED -eq 1 ]; then
+             echo "CREATE `definer` EVENT `ifnotexist` `event` ON SCHEDULE `schedule` `completion` `sdisenable` `comment` DO `query`"
+           else
+             echo "`query`"
+           fi;;
+      
         #func,proc,trigger,views
 
 
