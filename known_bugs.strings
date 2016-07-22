@@ -43,6 +43,7 @@ ZN7myrocks15RDBSE_TABLE_DEF8put_dictEPNS_12Dict_managerEPN7rocksdb10WriteBatchEP
 ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm  ## http://github.com/facebook/mysql-5.6/issues/220
 Z17build_equal_itemsP3THDP4ItemP10COND_EQUALbP4ListI10TABLE_LISTEPS4_  ## Another --query-alloc-block-size=-[small or large negative value], ignore for the moment
 options.use_os_buffer                                    ## http://github.com/facebook/mysql-5.6/issues/221
+prebuilt->trx->error_key_num < ha_alter_info->key_count  ## http://bugs.mysql.com/bug.php?id=82320
 
 ## =========== Early 5.7 Prepatory Work ===========
 ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
