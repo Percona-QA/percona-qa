@@ -42,10 +42,12 @@ SCRIPT_PWD=$(cd `dirname $0` && pwd)
 while(true); do 
   ~/percona-qa/pquery-prep-red.sh
   ~/percona-qa/pquery-clean-known.sh
-  sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" reducer*.sh
-  sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3|" reducer*.sh
-  sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" reducer*.sh
-  sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9|" reducer*.sh
+  if [ $(ls reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then
+    sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" reducer*.sh
+    sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3|" reducer*.sh
+    sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" reducer*.sh
+    sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9|" reducer*.sh
+  fi
   ~/percona-qa/pquery-results.sh
   sleep 600
 done
