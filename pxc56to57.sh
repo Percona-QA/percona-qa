@@ -268,7 +268,7 @@ pxc_start_node(){
     --query_cache_type=0 --query_cache_size=0 \
     --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
     --innodb_log_file_size=500M \
-    --core-file --sql-mode=no_engine_substitution \
+    --core-file \
     --secure-file-priv= --loose-innodb-status-file=1 \
     --log-error=${FUN_LOG_ERR} \
     --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
@@ -316,7 +316,7 @@ pxc_upgrade_node(){
     --query_cache_type=0 --query_cache_size=0 \
     --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
     --innodb_log_file_size=500M \
-    --core-file --sql-mode=no_engine_substitution \
+    --core-file \
     --secure-file-priv= --loose-innodb-status-file=1 \
     --log-error=${FUN_LOG_ERR} \
     --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
@@ -452,7 +452,9 @@ check_script $?
 #
 # Upgrading node2 to the new version
 #
-get_connection_pool
+if [ $USE_PROXYSQL -eq 1 ]; then
+  get_connection_pool
+fi
 echo -e "\n\n#### Show node2 status before upgrade\n"
 show_node_status 2 $MYSQL_BASEDIR1 0
 echo "Running upgrade on node2"
