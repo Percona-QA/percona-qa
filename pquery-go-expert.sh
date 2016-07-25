@@ -53,16 +53,30 @@ elif [ ! -r ./pquery-run.log ]; then
   fi
 fi
 
-while(true); do 
-  ${SCRIPT_PWD}/pquery-prep-red.sh
-  ${SCRIPT_PWD}/pquery-clean-known.sh
-  ${SCRIPT_PWD}/pquery-eliminate-dups.sh
-  if [ $(ls reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then
-    sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" reducer*.sh
-    sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3|" reducer*.sh
-    sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" reducer*.sh
-    sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9|" reducer*.sh
-  fi
-  ${SCRIPT_PWD}/pquery-results.sh
+background_sed_loop(){                           # Update reducer<nr>.sh scripts as they are being created (a background process avoids need to wait till all reducers are created)
+  IN_PROGRESS_MUTEX=1                            # Not necessary here, just for (future) safety
+  while(true); do
+    if [ $(ls reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then
+      sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" reducer*.sh
+      sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3|" reducer*.sh
+      sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" reducer*.sh
+      sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9|" reducer*.sh
+    fi
+    IN_PROGRESS_MUTEX=0
+    sleep 4  # 4 seconds
+    IN_PROGRESS_MUTEX=1
+    sleep 1
+  done
+}
+
+while(true); do
+  IN_PROGRESS_MUTEX=1; background_sed_loop &     # Start background_sed_loop in a background thread, it will patch reducer<nr>.sh scripts
+  PID=$!                                         # Capture the PID of the background_sed_loop so we can kill -9 it once pquery-prep-red.sh is complete
+  ${SCRIPT_PWD}/pquery-prep-red.sh               # Execute pquery-prep.red generating reducer<nr>.sh scripts, auto-updated by the background thread
+  while(IN_PROGRESS_MUTEX!=0); do sleep 1; done  # Ensure kill of background_sed_loop only happens when background process has just started sleeping
+  kill -9 ${PID}                                 # Kill the background_sed_loop
+  ${SCRIPT_PWD}/pquery-clean-known.sh            # Clean known issues
+  ${SCRIPT_PWD}/pquery-eliminate-dups.sh         # Eliminate dups, leaving at least 10 trials for issues where the number of trials >=10 and leaving all other (<10) trials
+  ${SCRIPT_PWD}/pquery-results.sh                # Report
   sleep 450  # 7.5 minutes
 done

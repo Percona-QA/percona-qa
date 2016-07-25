@@ -2,7 +2,7 @@
 # Created by Ramesh Sivaraman & Roel Van de Paar, Percona LLC
 # This script processes dynamic variables (global + session) and writes generator.sh compatible files for them into /tmp/getallsetopt
 
-WGET_SKIP=1  # Default: 0. Use 0 when you do not have the HTML files downloaded to /tmp yet (first run). Afterwards, you can set this to 1 to speed up things
+WGET_SKIP=0  # Default: 0. Use 0 when you do not have the HTML files downloaded to /tmp yet (first run). Afterwards, you can set this to 1 to speed up things
 
 FULL_SCRIPT_PWD=${PWD}
 if [ "$1" == "" ]; then
@@ -391,7 +391,7 @@ parse_set_vars(){
         # These variables (--datadir, --character-sets-dir, --basedir etc.) are skipped as they do not make sense to modify, and they are unlikely to be dynamic;
         # Note that this ifthen may not even be hit for all cases present in commandlines.txt. For example, --datadir is not dynamic and so it will not be in global/session txt
         HANDLED=1
-      elif [[ "${PRLINE}" == *"debug@=debug-options@"* ]] || [[ "${PRLINE}" == *"log-output=name"* ]] || [[ "${PRLINE}" == *"slow-query-log-file=file-name"* ]] || [[ "${PRLINE}" == *"innodb-buffer-pool-filename=file"* ]] || [[ "${PRLINE}" == *"general-log-file=file-name"* ]] || [[ "${PRLINE}" == *"keyring-file-data=file-name"* ]] || [[ "${PRLINE}" == *"init-connect=name"* ]]; then
+      elif [[ "${PRLINE}" == *"debug@=debug-options@"* ]] || [[ "${PRLINE}" == *"log-output=name"* ]] || [[ "${PRLINE}" == *"slow-query-log-file=file-name"* ]] || [[ "${PRLINE}" == *"innodb-buffer-pool-filename=file"* ]] || [[ "${PRLINE}" == *"general-log-file=file-name"* ]] || [[ "${PRLINE}" == *"keyring-file-data=file-name"* ]] || [[ "${PRLINE}" == *"init-connect=name"* ]] || [[ "${PRLINE}" == *"fil-make-page-dirty-debug"* ]]; then
         # The variables are not handled as they do not make much sense to modify/test
         HANDLED=1
       elif ! [[ "${PRLINE}" == *"="* ]]; then  # Variable without any options, for example --general-log. These need to get =0 and =1 because:

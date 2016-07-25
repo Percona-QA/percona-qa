@@ -43,7 +43,7 @@ ZN7myrocks15RDBSE_TABLE_DEF8put_dictEPNS_12Dict_managerEPN7rocksdb10WriteBatchEP
 ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm  ## http://github.com/facebook/mysql-5.6/issues/220
 Z17build_equal_itemsP3THDP4ItemP10COND_EQUALbP4ListI10TABLE_LISTEPS4_  ## Another --query-alloc-block-size=-[small or large negative value], ignore for the moment
 options.use_os_buffer                                    ## http://github.com/facebook/mysql-5.6/issues/221
-prebuilt->trx->error_key_num < ha_alter_info->key_count  ## http://bugs.mysql.com/bug.php?id=82320
+prebuilt->trx->error_key_num < ha_alter_info->key_count  ## 
 
 ## =========== Early 5.7 Prepatory Work ===========
 ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
@@ -52,6 +52,7 @@ ut0ut.cc line 916                                        ## Idem to 74481: set g
 ut0ut.cc line 918                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7B2
 ut0ut.cc line 923                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10
 ut0ut.cc line 924                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10R1
+fil0fil.cc line 6933                                     ## Idem to 74481: SET @@GLOBAL.innodb_fil_make_page_dirty_debug=22;
 buf0buf.cc line 2678                                     ## Not logged: SET GLOBAL innodb_fil_make_page_dirty_debug=38098908;
 #sync0debug.cc line 299                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
 #buf0lru.cc line 2245                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1415357                                 (# after next bzr pull)
@@ -62,6 +63,7 @@ inited == INDEX                                          ## http://bugs.mysql.co
 #btr0bulk.cc line 948                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75692 (Apparent dup of MS #74422)                     (# after MS 5.7.6 merged)
 #select_lex->having_cond                        ## Fixed ## http://bugs.mysql.com/bug.php?id=75693                                                 (# after MS 5.7.6 merged)
 ha_innodb.cc line 17780                                  ## http://bugs.mysql.com/bug.php?id=75736, PS Build
+ha_innodb.cc line 17770                                  ## http://bugs.mysql.com/bug.php?id=75736, MS Build
 ha_innodb.cc line 17770                                  ## http://bugs.mysql.com/bug.php?id=75736, MS Build
 #btr0cur.cc line 2208                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74747, MS Build                                       (# after MS 5.7.6 merged)
 #btr0cur.cc line 2204                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74747, PS Build                                       (# after MS 5.7.6 merged)
@@ -653,7 +655,6 @@ ZN15Event_scheduler5startEPi                                                    
 TEXT=.\. is_set.$                    ## 79303 Also shows like this ## Still present ftm ## http://bugs.mysql.com/bug.php?id=76515 (#74597 ^ not fixed yet) (fixed in 5.7.6)
 TEXT=...tables.$                                                                        ## http://bugs.mysql.com/bug.php?id=74740 (Also see above #74740)
 TEXT=.child_l.$                                                                         ## http://bugs.mysql.com/bug.php?id=76277 (with debug build)
-TEXT=.ds_control.$                                                                      ## Likely not a bug, asked Umesh to check (testcase: see above at top)
 TEXT=.false.$                                                                           ## http://bugs.mysql.com/bug.php?id=74877
 TEXT=.fd .= -1.$                                                                        ## http://bugs.mysql.com/bug.php?id=74641
 TEXT=.my_b_write.$                                                 ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74950 (fixed in 5.6.27, 5.7.9)
