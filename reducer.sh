@@ -2631,6 +2631,7 @@ verify(){
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #1: Maximum initial simplification & cleanup"
           egrep -v "^#|^$|DEBUG_SYNC|^\-\-| \[Note\] |====|  WARNING: |^Hope that|^Logging: |\++++| exit with exit status |Lost connection to | valgrind |Using [MSI]|Using dynamic|MySQL Version|\------|TIME \(ms\)$|Skipping ndb|Setting mysqld |Binaries are debug |Killing Possible Leftover|Removing Stale Files|Creating Directories|Installing Master Database|Servers started, |Try: yum|Missing separate debug|SOURCE|CURRENT_TEST|\[ERROR\]|with SSL|_root_|connect to MySQL|No such file|is deprecated at|just omit the defined" $WORKF \
+            | sed -e 's/;[\t ]*#.*/;/i' \
             | sed -e 's/[\t ]\+/ /g' \
             | sed -e 's/Query ([0-9a-fA-F]): \(.*\)/\1;/g' \
             | sed -e "s/[ ]*)[ ]*,[ ]*([ ]*/),\n(/g" \
@@ -2652,6 +2653,7 @@ verify(){
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #2: High initial simplification & cleanup (no RQG log text removal)"
           egrep -v "^#|^$|DEBUG_SYNC|^\-\-" $WORKF \
+            | sed -e 's/;[\t ]*#.*/;/i' \
             | sed -e 's/[\t ]\+/ /g' \
             | sed -e "s/[ ]*)[ ]*,[ ]*([ ]*/),\n(/g" \
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
@@ -2677,6 +2679,7 @@ verify(){
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #3: High initial simplification (no RQG text removal & less cleanup)"
           egrep -v "^#|^$|DEBUG_SYNC|^\-\-" $WORKF \
+            | sed -e 's/;[\t ]*#.*/;/i' \
             | sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" \
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
@@ -2693,8 +2696,9 @@ verify(){
               | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $TS_WORKT
           done
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #4: Medium initial simplification (CREATE+INSERT lines split)"
+          echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #4: Medium initial simplification (CREATE+INSERT lines split & remove # comments)"
           sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $WORKF \
+            | sed -e 's/;[\t ]*#.*/;/i' \
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
         fi
@@ -2707,8 +2711,9 @@ verify(){
             sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $TS_WORKF > $TS_WORKT
           done
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #5: Low initial simplification (only main data INSERT lines split)"
-          sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $WORKF > $WORKT
+          echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #5: Low initial simplification (only main data INSERT lines split & remove # comments)"
+          sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $WORKF \
+            | sed -e 's/;[\t ]*#.*/;/i' > $WORKT
         fi
       elif [ $TRIAL -eq 6 ]; then
         if [ $MODE -ge 6 ]; then
