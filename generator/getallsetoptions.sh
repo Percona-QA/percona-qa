@@ -27,10 +27,12 @@ if [ ${WGET_SKIP} -ne 1 ]; then
 else
   if [ ! -d /tmp/getallsetopt ]; then echo "Assert: /tmp/getallsetopt does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
   cd /tmp/getallsetopt
-  if [ ! -r server-system-variables.html ]; then echo "Assert: /tmp/server-system-variables.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
-  if [ ! -r innodb-parameters.html ]; then echo "Assert: /tmp/innodb-parameters.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
-  if [ ! -r replication-options-binary-log.html ]; then echo "Assert: /tmp/replication-options-binary-log.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
-  if [ ! -r replication-options-slave.html ]; then echo "Assert: /tmp/replication-options-slave.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+  if [ ! -r server-system-variables.html ]; then echo "Assert: /tmp/getallsetopt/server-system-variables.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+  if [ ! -r replication-options-binary-log.html ]; then echo "Assert: /tmp/getallsetopt/replication-options-binary-log.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+  if [ ! -r replication-options-slave.html ]; then echo "Assert: /tmp/getallsetopt/replication-options-slave.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+  if [ ! -r innodb-parameters.html ]; then echo "Assert: /tmp/getallsetopt/innodb-parameters.html does not exist (set WGET_SKIP to 0 please)!"; exit 1; fi
+  if [ "$(grep -om1 "MySQL 5.[6-7] Reference Manual" innodb-parameters.html)" != "MySQL ${VERSION} Reference Manual" ]; then echo "Assert: the downloaded files in /tmp/getallsetopt/ do not seem to match the version (${VERSION}) requested. You may want to set WGET_SKIP to 0, or correct the version issue."; exit 1; fi
+  rm -f /tmp/*.txt 2>/dev/null
 fi
 
 grep '<colgroup><col class="name">' server-system-variables.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Session" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' > session.txt
@@ -39,7 +41,7 @@ grep '<colgroup><col class="name">' server-system-variables.html | sed 's|<tr>|\
 grep '<colgroup><col class="name">' innodb-parameters.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Session" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' >> session.txt
 grep '<colgroup><col class="name">' innodb-parameters.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g;s|-   Variable  :||g' | grep -vE "^[ \t]*$|Name  Cmd-Line|Reference" | grep -E "Both|Global" | grep 'Yes[ \t]*$' | awk '{print $1}' | sed 's|_|-|g' >> global.txt
 
-grep -o "Command-Line Format.*\-\-[^<]\+" *.html | grep -o "\-\-.*" | sed 's|_|-|g' >> commandlines.txt
+grep -o "Command-Line Format.*\-\-[^<]\+" *.html | grep -o "\-\-.*" | sed 's|_|-|g' > commandlines.txt
 
 # varlist syntax:   Name (1) Cmd-Line (2)  Option File (3)  System Var (4)  Var Scope (5)  Dynamic (6)  (can use awk '{print $x}')
 VERSION=`echo ${VERSION} | sed 's|\.||g'`  # Only change this after retrieving the pages above
@@ -882,7 +884,7 @@ sed -i 'h;s|-|_|g;s|\([^=]\+\).*|\1|;x;s|[^=]\+||;x;G;s|\n||' global.txt.out
 sed -i "s|innodb_print_all_deadlocks=DUMMY|innodb_print_all_deadlocks=0\ninnodb_print_all_deadlocks=1|" global.txt.out  # innodb_print_all_deadlocks is global variable only
 
 # Final processing and rename to version files
-rm session.txt global.txt 2>/dev/null
+rm session.txt global.txt commandlines.txt 2>/dev/null
 # Currently, the character* and collation* SET options are indentical for session and global SETtings. The code below assumes the same, and makes a single file for charsets/collations
 grep -E "character|collation" session.txt.out > charsetcol.txt.out
 grep -E "character|collation" global.txt.out >> charsetcol.txt.out
