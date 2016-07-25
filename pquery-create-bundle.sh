@@ -57,7 +57,7 @@ fi
 cd ${TRIAL_DIR}/data
 CORE=`ls -1 *core* 2>&1 | head -n1 | grep -v "No such file"`
 if [ "" == "${CORE}" ]; then
-  echo "Something is wrong: there is no (script readable) [vg]core in ${TRIAL_DIR}/data/ ?"
+  echo "Assert: there is no (script readable) [vg]core in ${TRIAL_DIR}/data/ ?"
   exit 1
 fi
 

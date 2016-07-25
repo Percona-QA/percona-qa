@@ -4,7 +4,7 @@
 # This script quickly gathers all ldd dep files for mysqld in the current directory into the current directory
 
 if [ ! -r ./mysqld -a ! -r ./xtrabackup ]; then
-  echo "Something is wrong: ./mysqld nor ./xtrabackup exist?"
+  echo "Assert: ./mysqld nor ./xtrabackup exist?"
   exit 1 
 fi
 

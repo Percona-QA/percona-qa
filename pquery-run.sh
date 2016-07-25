@@ -118,11 +118,11 @@ else
     if [ -r ${BASEDIR}/bin/mysqld-debug ]; then
       BIN=${BASEDIR}/bin/mysqld-debug
     else
-      echoit "Something is wrong: there is no (script readable) mysqld binary at ${BASEDIR}/bin/mysqld[-debug] ?"
+      echoit "Assert: there is no (script readable) mysqld binary at ${BASEDIR}/bin/mysqld[-debug] ?"
       exit 1
     fi
   else
-    echoit "Something is wrong: there is no (script readable) mysqld binary at ${BASEDIR}/bin/mysqld ?"
+    echoit "Assert: there is no (script readable) mysqld binary at ${BASEDIR}/bin/mysqld ?"
     exit 1
   fi
 fi
@@ -291,7 +291,7 @@ savesql(){
   rm -Rf ${RUNDIR}/${TRIAL}
   sync; sleep 0.2
   if [ -d ${RUNDIR}/${TRIAL} ]; then
-    echoit "Something is wrong: tried to remove ${RUNDIR}/${TRIAL}, but it looks like removal failed. Check what is holding lock? (lsof tool may help)."
+    echoit "Assert: tried to remove ${RUNDIR}/${TRIAL}, but it looks like removal failed. Check what is holding lock? (lsof tool may help)."
     echoit "As this is not necessarily a fatal error (there is likely enough space on ${RUNDIR} to continue working), pquery-run.sh will NOT terminate."
     echoit "However, this looks like a shortcoming in pquery-run.sh (likely in the mysqld termination code) which needs debugging and fixing. Please do."
   fi

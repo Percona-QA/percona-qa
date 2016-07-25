@@ -22,24 +22,24 @@ SERVER_THREADS=(10 20 30)
 echoit(){ echo "[$(date +'%T')] $1"; }
 
 if [ ${TOKUDB_REQUIRED} -ne 0 -a ${TOKUDB_REQUIRED} -ne 1 ]; then
-  echoit "Something is wrong: TOKUDB_REQUIRED is set to ${TOKUDB_REQUIRED}, but that is not a valid option. Use 0 (TokuDB not required), or 1 (TokuDB required)"
+  echoit "Assert: TOKUDB_REQUIRED is set to ${TOKUDB_REQUIRED}, but that is not a valid option. Use 0 (TokuDB not required), or 1 (TokuDB required)"
   exit 1
 fi
 
 if [ ! -r ${SQL_FILE} ]; then
-  echoit "Something is wrong: this script tried to read ${SQL_FILE} (as specified in the  \"User configurable variables\" at the top of/inside the script), but it could not."
+  echoit "Assert: this script tried to read ${SQL_FILE} (as specified in the  \"User configurable variables\" at the top of/inside the script), but it could not."
   echoit "Please check if the file exists, if this script can read it, etc."
   exit 1
 fi
 
 if [ ! -d ${WORKDIR} ]; then
-  echoit "Something is wrong: {$WORKDIR} (as specified in the  \"User configurable variables\" at the top of/inside the script) does not exist!"
+  echoit "Assert: {$WORKDIR} (as specified in the  \"User configurable variables\" at the top of/inside the script) does not exist!"
   exit 1
 else  # Workdir setup
   WORKDIR="${WORKDIR}/$DATADIR"
   mkdir -p ${WORKDIR}
   if [ ! -d ${WORKDIR} ]; then
-    echoit "Something is wrong: we tried to create ${WORKDIR}, but it does not exist after the creation attempt! Has this script write privileges there?"
+    echoit "Assert: we tried to create ${WORKDIR}, but it does not exist after the creation attempt! Has this script write privileges there?"
     exit 1
   fi
 fi
@@ -52,11 +52,11 @@ else
     if [ -r ${MYBASE}/bin/mysqld-debug ]; then
       BIN=${MYBASE}/bin/mysqld-debug
     else
-      echoit "Something is wrong: there is no (script readable) mysqld binary at ${MYBASE}/bin/mysqld[-debug] ?"
+      echoit "Assert: there is no (script readable) mysqld binary at ${MYBASE}/bin/mysqld[-debug] ?"
       exit 1
     fi
   else
-    echoit "Something is wrong: there is no (script readable) mysqld binary at ${MYBASE}/bin/mysqld ?"
+    echoit "Assert: there is no (script readable) mysqld binary at ${MYBASE}/bin/mysqld ?"
     exit 1
   fi
 fi
@@ -90,7 +90,7 @@ elif [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.6" ]; then
     MID_AND_OPT="${MYBASE}/scripts/mysql_install_db --force --no-defaults"
     START_OPT="--core-file"
   else
-    echoit "Something is wrong: mysqld version was detected as 5.6, yet ${MYBASE}/scripts/mysql_install_db does not exist, or is not readable by this script!"
+    echoit "Assert: mysqld version was detected as 5.6, yet ${MYBASE}/scripts/mysql_install_db does not exist, or is not readable by this script!"
     exit 1
   fi
 elif [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.5" ]; then
@@ -98,7 +98,7 @@ elif [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.5" ]; then
     MID_AND_OPT="${MYBASE}/scripts/mysql_install_db --force --no-defaults"
     START_OPT="--core"
   else
-    echoit "Something is wrong: mysqld version was detected as 5.6, yet ${MYBASE}/scripts/mysql_install_db does not exist, or is not readable by this script!"
+    echoit "Assert: mysqld version was detected as 5.6, yet ${MYBASE}/scripts/mysql_install_db does not exist, or is not readable by this script!"
     exit 1
   fi
 else
@@ -107,7 +107,7 @@ else
     MID_AND_OPT="${MYBASE}/scripts/mysql_install_db"
     START_OPT="--core-file"
   else
-    echoit "Something is wrong: ${MYBASE}/scripts/mysql_install_db does not exist, or is not readable by this script! mysqld version detected failed also! This is likely caused by using this script with a non-supported (only MS and PS are supported currently for versions 5.5, 5.6 and 5.7) distribution or version of mysqld. Please expand this script to handle. This scipt will try and continue, but this may fail."
+    echoit "Assert: ${MYBASE}/scripts/mysql_install_db does not exist, or is not readable by this script! mysqld version detected failed also! This is likely caused by using this script with a non-supported (only MS and PS are supported currently for versions 5.5, 5.6 and 5.7) distribution or version of mysqld. Please expand this script to handle. This scipt will try and continue, but this may fail."
     exit 1
   fi
 fi

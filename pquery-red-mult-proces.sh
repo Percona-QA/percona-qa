@@ -17,12 +17,12 @@ if [ ${USE_ALTERNATIVE_DIRECTORY} -eq 1 ]; then
     if [ -d ${ALT_REDUCER_DIRECTORY} ]; then
       echo "Created ${ALT_REDUCER_DIRECTORY} which will be used as temporary storage for reducer scripts"
     else 
-      echo "Something is wrong: ${ALT_REDUCER_DIRECTORY} did not exist, this script tried to created it, but it failed"
+      echo "Assert: ${ALT_REDUCER_DIRECTORY} did not exist, this script tried to created it, but it failed"
       exit 1
     fi
   else
     if [ `ls ${ALT_REDUCER_DIRECTORY}/* 2>/dev/null | wc -l` -gt 0 ]; then
-      echo "Something is wrong: ${ALT_REDUCER_DIRECTORY} already exists (see \$ALT_REDUCER_DIRECTORY setting in script) and it contains files..."
+      echo "Assert: ${ALT_REDUCER_DIRECTORY} already exists (see \$ALT_REDUCER_DIRECTORY setting in script) and it contains files..."
       exit 1
     else
       echo "Using pre-existing and currently empty ${ALT_REDUCER_DIRECTORY} as temporary storage for reducer scripts"

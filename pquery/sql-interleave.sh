@@ -18,7 +18,7 @@ OUTPUT_FILE=./main-interleaved.sql
 SQL_TO_INTERLEAVE="SHOW GLOBAL STATUS LIKE 'Queries';\nSHOW GLOBAL STATUS LIKE 'Questions';"  # May contain \n seperators to seperate fully-independent SQL statements. The resulting output file will have each '\n' seperated line on a seperate line.
 
 if [ ! -r ${INPUT_FILE} ]; then
-  echo "Something is wrong: ${INPUT_FILE} was not found. Please check. Terminating."
+  echo "Assert: ${INPUT_FILE} was not found. Please check. Terminating."
   exit 1
 fi
 

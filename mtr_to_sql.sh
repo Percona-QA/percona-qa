@@ -36,7 +36,7 @@ echoit(){
 
 if [ ! -r ${TESTS_PATH}/t/1st.test ]; then
   if [ ! -r ${TESTS_PATH}/mysql-test/t/1st.test ]; then
-    echoit "Something is wrong; this script cannot locate/read ${TESTS_PATH}/t/1st.test"
+    echoit "Assert: this script cannot locate/read ${TESTS_PATH}/t/1st.test"
     echoit "You may want to check the TESTS_PATH setting at the top of this script (currently set to '${TESTS_PATH}')"
     exit 1
   else
@@ -48,10 +48,10 @@ else
 fi
 
 # Setup
-rm -f ${TEMP_SQL};  if [ -r ${TEMP_SQL} ]; then echoit "Something is wrong; this script tried to remove ${TEMP_SQL}, but the file is still there afterwards."; exit 1; fi
-rm -f ${FINAL_SQL}; if [ -r ${FINAL_SQL} ]; then echoit "Something is wrong; this script tried to remove ${FINAL_SQL}, but the file is still there afterwards."; exit 1; fi
-touch ${TEMP_SQL};  if [ ! -r ${TEMP_SQL} ]; then echoit "Something is wrong; this script tried to create ${TEMP_SQL}, but the file was not there afterwards."; exit 1; fi
-touch ${FINAL_SQL}; if [ ! -r ${FINAL_SQL} ]; then echoit "Something is wrong; this script tried to create ${FINAL_SQL}, but the file was not there afterwards."; exit 1; fi
+rm -f ${TEMP_SQL};  if [ -r ${TEMP_SQL} ]; then echoit "Assert: this script tried to remove ${TEMP_SQL}, but the file is still there afterwards."; exit 1; fi
+rm -f ${FINAL_SQL}; if [ -r ${FINAL_SQL} ]; then echoit "Assert: this script tried to remove ${FINAL_SQL}, but the file is still there afterwards."; exit 1; fi
+touch ${TEMP_SQL};  if [ ! -r ${TEMP_SQL} ]; then echoit "Assert: this script tried to create ${TEMP_SQL}, but the file was not there afterwards."; exit 1; fi
+touch ${FINAL_SQL}; if [ ! -r ${FINAL_SQL} ]; then echoit "Assert: this script tried to create ${FINAL_SQL}, but the file was not there afterwards."; exit 1; fi
 echoit "Generating SQL grammar for pquery..."
 echoit "* Note this takes ~11 minutes on a very high end (i7/SSD/16GB) machine..."
 
@@ -231,9 +231,9 @@ sed -i "s|CREATE.*VIEW.*t1.*|DROP VIEW v1;|gi" ${FINAL_SQL}  # Avoid views with 
 
 # Shuffle final grammar
 echoit "> Stage 4: Shuffling final grammar..."
-rm -f ${TEMP_SQL}; if [ -r ${TEMP_SQL} ]; then echoit "Something is wrong; this script tried to remove ${TEMP_SQL}, but the file is still there afterwards."; exit 1; fi
-mv ${FINAL_SQL} ${TEMP_SQL}; if [ ! -r ${TEMP_SQL} ]; then echoit "Something is wrong; this script tried to mv ${FINAL_SQL} ${TEMP_SQL}, but the ${TEMP_SQL} file was not there afterwards."; exit 1; fi; if [ -r ${FINAL_SQL} ]; then echoit "Something is wrong; this script tried to mv ${FINAL_SQL} ${TEMP_SQL}, but the ${FINAL_SQL} file is still there afterwards."; exit 1; fi
+rm -f ${TEMP_SQL}; if [ -r ${TEMP_SQL} ]; then echoit "Assert: this script tried to remove ${TEMP_SQL}, but the file is still there afterwards."; exit 1; fi
+mv ${FINAL_SQL} ${TEMP_SQL}; if [ ! -r ${TEMP_SQL} ]; then echoit "Assert: this script tried to mv ${FINAL_SQL} ${TEMP_SQL}, but the ${TEMP_SQL} file was not there afterwards."; exit 1; fi; if [ -r ${FINAL_SQL} ]; then echoit "Assert: this script tried to mv ${FINAL_SQL} ${TEMP_SQL}, but the ${FINAL_SQL} file is still there afterwards."; exit 1; fi
 shuf --random-source=/dev/urandom ${TEMP_SQL} >> ${FINAL_SQL}
-rm -f ${TEMP_SQL}; if [ -r ${TEMP_SQL} ]; then echoit "Something is wrong; this script tried to remove ${TEMP_SQL}, but the file is still there afterwards."; exit 1; fi
+rm -f ${TEMP_SQL}; if [ -r ${TEMP_SQL} ]; then echoit "Assert: this script tried to remove ${TEMP_SQL}, but the file is still there afterwards."; exit 1; fi
 
 echoit "Done! Generated ${FINAL_SQL} for use with pquery/pquery-run.sh"

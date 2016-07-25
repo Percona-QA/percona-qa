@@ -43,7 +43,7 @@ ctrl-c(){
 mkdir -p ${WORKDIR}
 touch ${WORKDIR}/test
 if [ ! -r ${WORKDIR}/test ]; then
-  echoit "Something is wrong: this script tried to create the following directory and file: ${WORKDIR}/test, yet the file did not exist after the creation attempt. Please check privileges of this script for the/in ${WORKDIR}. Also please check for out of disk space, and similar issues"
+  echoit "Assert: this script tried to create the following directory and file: ${WORKDIR}/test, yet the file did not exist after the creation attempt. Please check privileges of this script for the/in ${WORKDIR}. Also please check for out of disk space, and similar issues"
 else
   rm ${WORKDIR}/test
 fi
@@ -56,7 +56,7 @@ echoit "[Init] Source: ${INFILE} | Target: ${WORKDIR}/input.sql"
 echoit "[Init] Note that further filters may be necessary depending on runtime findings..."
 egrep -vi "root|user.*%|%.*user" ${INFILE} > ${WORKDIR}/input.sql
 if [ ! -r  ${WORKDIR}/input.sql ]; then
-  echoit "Something is wrong: this script tried to create a filtered input file (${WORKDIR}/input.sql) based on ${INPUT}, but afterwards the resulting file ${WORKDIR}/input.sql was not available. Please check for out of disk space, and similar issues"
+  echoit "Assert: this script tried to create a filtered input file (${WORKDIR}/input.sql) based on ${INPUT}, but afterwards the resulting file ${WORKDIR}/input.sql was not available. Please check for out of disk space, and similar issues"
 fi
 while true; do
   TRIAL=$[ ${TRIAL} + 1 ]
@@ -64,7 +64,7 @@ while true; do
   mkdir -p ${WORKDIR}/${TRIAL}
   touch ${WORKDIR}/${TRIAL}/test
   if [ ! -r ${WORKDIR}/${TRIAL}/test ]; then
-    echoit "[Trial ${TRIAL}] Something is wrong: this script tried to create the following directory and file: ${WORKDIR}/${TRIAL}/test, yet the file did not exist after the creation attempt. Please check privileges of this script for the/in ${WORKDIR}. Also please check out of disk space, and similar"
+    echoit "[Trial ${TRIAL}] Assert: this script tried to create the following directory and file: ${WORKDIR}/${TRIAL}/test, yet the file did not exist after the creation attempt. Please check privileges of this script for the/in ${WORKDIR}. Also please check out of disk space, and similar"
   else
     rm ${WORKDIR}/${TRIAL}/test
   fi

@@ -6,7 +6,7 @@ WORKDIR=/dev/shm/
 cd ${WORKDIR}
 mkdir PS56_TOKUDB_DBG
 if [ ! -d ${WORKDIR}/PS56_TOKUDB_DBG ]; then
-  echo "Something is wrong: tried creating \${WORKDIR}/PS56_TOKUDB_DBG (${WORKDIR}/PS56_TOKUDB_DBG), but the directory is not there. Please check WORKDIR setting in the script!"
+  echo "Assert: tried creating \${WORKDIR}/PS56_TOKUDB_DBG (${WORKDIR}/PS56_TOKUDB_DBG), but the directory is not there. Please check WORKDIR setting in the script!"
   exit 1
 fi
 cd ${WORKDIR}/PS56_TOKUDB_DBG

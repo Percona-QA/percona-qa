@@ -22,7 +22,7 @@ fi
 
 # Current location checks
 if [ `ls ./*/*.sql 2>/dev/null | wc -l` -eq 0 ]; then
-  echo "Something is wrong: no pquery trials (with logging - i.e. ./*/*.sql) were found in this directory"
+  echo "Assert: no pquery trials (with logging - i.e. ./*/*.sql) were found in this directory"
   exit 1
 fi
 

@@ -16,11 +16,11 @@ fi
 
 # Current location checks
 if [ `ls ./*/*.sql 2>/dev/null | wc -l` -eq 0 ]; then
-  echo "Something is wrong: no pquery trials (with logging - i.e. ./*/*.sql) were found in this directory (or they were all cleaned up already)"
+  echo "Assert: no pquery trials (with logging - i.e. ./*/*.sql) were found in this directory (or they were all cleaned up already)"
   echo "Please make sure to execute this script from within the pquery working directory!"
   exit 1
 elif [ `ls ./reducer* ./qcreducer* 2>/dev/null | wc -l` -eq 0 ]; then
-  echo "Something is wrong: no reducer scripts were found in this directory. Did you forgot to execute ${SCRIPT_PWD}/pquery-prep-red.sh ?"
+  echo "Assert: no reducer scripts were found in this directory. Did you forgot to execute ${SCRIPT_PWD}/pquery-prep-red.sh ?"
   exit 1
 fi
 

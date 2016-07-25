@@ -53,6 +53,10 @@ elif [ ! -r ./pquery-run.log ]; then
   fi
 fi
 
+# Note that the below is still not 100% threadsafe. If pquery-prep-red.sh is writing a reducer.sh file which is at the same time being sed'ed by the loop below, there is a
+# potential for a single corrupted reducer<nr>.sh script. To resolve this, it would seem that setting a MUTEX in pquery-prep-red.sh may help, but this is invalid, because
+# multiple pquery-go-expert.sh scripts may be running simultaneously. In any case, 1) it's unlikely to happen, 2) if a single reducer is corrupted, just delete it and re-run
+# this script which will recreate it correctly.
 background_sed_loop(){                           # Update reducer<nr>.sh scripts as they are being created (a background process avoids need to wait till all reducers are created)
   IN_PROGRESS_MUTEX=1                            # Not necessary here, just for (future) safety
   while(true); do
@@ -70,13 +74,13 @@ background_sed_loop(){                           # Update reducer<nr>.sh scripts
 }
 
 while(true); do
-  IN_PROGRESS_MUTEX=1; background_sed_loop &     # Start background_sed_loop in a background thread, it will patch reducer<nr>.sh scripts
-  PID=$!                                         # Capture the PID of the background_sed_loop so we can kill -9 it once pquery-prep-red.sh is complete
-  ${SCRIPT_PWD}/pquery-prep-red.sh               # Execute pquery-prep.red generating reducer<nr>.sh scripts, auto-updated by the background thread
-  while(IN_PROGRESS_MUTEX!=0); do sleep 1; done  # Ensure kill of background_sed_loop only happens when background process has just started sleeping
-  kill -9 ${PID}                                 # Kill the background_sed_loop
-  ${SCRIPT_PWD}/pquery-clean-known.sh            # Clean known issues
-  ${SCRIPT_PWD}/pquery-eliminate-dups.sh         # Eliminate dups, leaving at least 10 trials for issues where the number of trials >=10 and leaving all other (<10) trials
-  ${SCRIPT_PWD}/pquery-results.sh                # Report
+  IN_PROGRESS_MUTEX=1; background_sed_loop &        # Start background_sed_loop in a background thread, it will patch reducer<nr>.sh scripts
+  PID=$!                                            # Capture the PID of the background_sed_loop so we can kill -9 it once pquery-prep-red.sh is complete
+  ${SCRIPT_PWD}/pquery-prep-red.sh                  # Execute pquery-prep.red generating reducer<nr>.sh scripts, auto-updated by the background thread
+  while(${IN_PROGRESS_MUTEX}!=0); do sleep 1; done  # Ensure kill of background_sed_loop only happens when background process has just started sleeping
+  kill -9 ${PID} 2>/dev/null                        # Kill the background_sed_loop
+  ${SCRIPT_PWD}/pquery-clean-known.sh               # Clean known issues
+  ${SCRIPT_PWD}/pquery-eliminate-dups.sh            # Eliminate dups, leaving at least 10 trials for issues where the number of trials >=10 and leaving all other (<10) trials
+  ${SCRIPT_PWD}/pquery-results.sh                   # Report
   sleep 450  # 7.5 minutes
 done

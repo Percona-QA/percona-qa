@@ -7,7 +7,7 @@ if [ "" == "$1" ]; then
 else
   TRIAL=$1
   if [ ! -r ./cmdtrace${TRIAL} ]; then
-    echo "Something is wrong: ./cmdtrace${TRIAL} does not exist or cannot be read?"
+    echo "Assert: ./cmdtrace${TRIAL} does not exist or cannot be read?"
     echo "Try running ${SCRIPT_PWD}/startup.sh ${TRIAL} to generate ./cmdtrace${TRIAL}"
     exit 1
   fi

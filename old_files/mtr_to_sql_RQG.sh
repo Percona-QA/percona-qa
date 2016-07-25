@@ -14,7 +14,7 @@ BZR_PATH="/bzr/mysql-5.7.7-rc-linux-glibc2.5-x86_64/mysql-test"
 # - Also parse opt files for options to use (randomly)
 
 if [ ! -r ${BZR_PATH}/t/1st.test ]; then
-  echo "Something is wrong; this script cannot locate/read ${BZR_PATH}/t/1st.test"
+  echo "Assert: this script cannot locate/read ${BZR_PATH}/t/1st.test"
   echo "You may want to check the BZR_PATH setting at the top of this script (currently set to '${BZR_PATH}')"
   exit 1
 fi

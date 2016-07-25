@@ -55,11 +55,11 @@ else
       if [ -r ${BASEDIR}/bin/mysqld-debug ]; then
         BIN=${BASEDIR}/bin/mysqld-debug
       else
-        echoit "Something is wrong: there is no (script readable) mysqld binary at ${BASEDIR}/bin/mysqld[-debug] ?"
+        echoit "Assert: there is no (script readable) mysqld binary at ${BASEDIR}/bin/mysqld[-debug] ?"
         exit 1
       fi
     else
-      echoit "Something is wrong: there is no (script readable) mysqld binary at ${BASEDIR}/bin/mysqld ?"
+      echoit "Assert: there is no (script readable) mysqld binary at ${BASEDIR}/bin/mysqld ?"
       exit 1
     fi
   fi

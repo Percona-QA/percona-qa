@@ -41,18 +41,18 @@ SQL_OPTION_8=""
 SQL_OPTION_9=""
 
 if [ ! -r ${INPUT_FILE} ]; then
-  echo "Something is wrong: ${INPUT_FILE} was not found. Please check. Terminating."
+  echo "Assert: ${INPUT_FILE} was not found. Please check. Terminating."
   exit 1
 fi
 if [ ${CHUNK_SIZE} -lt 1 ]; then
-  echo "Assert; CHUNK_SIZE is set to ${CHUNK_SIZE} which is less then the required minimum 1. Terminating."
+  echo "Assert: CHUNK_SIZE is set to ${CHUNK_SIZE} which is less then the required minimum 1. Terminating."
   exit 1
 fi
 
 rm -f ${OUTPUT_FILE}
 touch ${OUTPUT_FILE}
 if [ ! -r ${OUTPUT_FILE} ]; then
-  echo "Something is wrong: we tried creating ${OUTPUT_FILE}, but did not succeed. Please check privileges etc. Terminating."
+  echo "Assert: we tried creating ${OUTPUT_FILE}, but did not succeed. Please check privileges etc. Terminating."
   exit 1
 fi
 
@@ -74,7 +74,7 @@ while [ ${COUNT} -lt `wc -l <${INPUT_FILE}` ]; do
     7) echo -e "${SQL_OPTION_7}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
     8) echo -e "${SQL_OPTION_8}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
     9) echo -e "${SQL_OPTION_9}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
-    *) echo 'Assert; Something went wrong. Did you set RANDOM_NUMBER_OF_OPTIONS to correct number of random options etc.?'; exit 1 ;;
+    *) echo 'Assert: Something went wrong. Did you set RANDOM_NUMBER_OF_OPTIONS to correct number of random options etc.?'; exit 1 ;;
   esac
   COUNT=$[ ${COUNT} + ${CHUNK_SIZE} ]
 done

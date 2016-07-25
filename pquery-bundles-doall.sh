@@ -10,12 +10,12 @@
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 if [ `ls reducer* 2>/dev/null | wc -l` -eq 0 ]; then
-  echo "Something is wrong, we did not find any reducer scripts in this directory - did you already execute pquery-prep-red.sh ?"
+  echo "Assert, we did not find any reducer scripts in this directory - did you already execute pquery-prep-red.sh ?"
   exit 1
 fi
 
 if [ `ls | grep "^[0-9]\+$" | wc -l` -eq 0 ]; then
-  echo "Something is wrong, we did not find any pquery trial scripts in this directory. Execute this script from within the pqeury workdir."
+  echo "Assert, we did not find any pquery trial scripts in this directory. Execute this script from within the pqeury workdir."
   exit 1
 fi
 
@@ -23,7 +23,7 @@ fi
 if [ ! -d ./bundles ]; then
   mkdir bundles
   if [ ! -d ./bundles ]; then
-    echo "Something is wrong; we tried to create an ./bundles directory, but it failed?"
+    echo "Assert: we tried to create an ./bundles directory, but it failed?"
     exit 1
   fi
 else

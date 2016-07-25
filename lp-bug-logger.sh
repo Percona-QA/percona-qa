@@ -75,7 +75,7 @@ info
 
 cd ${BUNDLE_DIR}
 if [ "" == "$(pwd | grep 'BUNDLE_')" ]; then
-  echo "(!) Something is wrong: tried to create '${BUNDLE_DIR}' and changedir (cd) to it, but that failed"
+  echo "(!) Assert: tried to create '${BUNDLE_DIR}' and changedir (cd) to it, but that failed"
   exit 1
 fi
 

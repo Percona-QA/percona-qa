@@ -21,7 +21,7 @@ build_check(){
     echo "Only retrieving val build, as 3 was specified as option to this script (3=retrieve valgrind build only)"
     BUILDS=3
   else
-    echo "Something is wrong: an invalid option ('$build_option') was passed to this script. Terminating."
+    echo "Assert: an invalid option ('$build_option') was passed to this script. Terminating."
     echo "Syntax: to retrieve all builds, opt/dbg/val, specify no option. To retrieve only one of these use option as follows: 1 (opt), 2 (dbg), 3 (val)";
     exit 1
   fi
@@ -31,10 +31,10 @@ if [ -d ./archive ]; then
   echo "A directory ./archive exists here. Please delete it, rename it or move it out of this directory so that this script can continue."
   exit 1
 elif [ "" != "$3" ]; then
-  echo "Something is wrong. Three options were specified to the script, it only accepts and handles two. Terminating."
+  echo "Assert: Three options were specified to the script, it only accepts and handles two. Terminating."
   exit 1
 elif [ "" == "$1" ]; then
-  echo "Something is wrong. This script expects two parameters:"
+  echo "Assert: This script expects two parameters:"
   echo "./get_percona.sh {55 or 56} {no_option or 1 or 2 or 3}"
   echo "Example: "./get_percona.sh 56" will retrieve all builds (opt,dbg,val) for Percona Server 5.6"
   echo "To retrieve only a specific build, set the second option as follows: 1 (opt), 2 (dbg), 3 (val)"
@@ -46,7 +46,7 @@ elif [ 56 -eq $1 ]; then
   VERSION=56;
   build_check
 else
-  echo "Something is wrong: an invalid option ('$1') was passed to this script. Terminating."
+  echo "Assert: an invalid option ('$1') was passed to this script. Terminating."
   echo "Syntax: to retrieve PS version as follows. 55 (for PS-5.5..) 56 (for PS-5.6)";
   exit 1
 fi

@@ -24,7 +24,7 @@ fi
 cd $WORK_PWD/data
 CORE=`ls -1 *core* 2>&1 | head -n1 | grep -v "No such file"`
 if [ "" == "${CORE}" ]; then
-  echo "Something is wrong: there is no (script readable) [vg]core in ${WORK_PWD}/data/ ?"
+  echo "Assert: there is no (script readable) [vg]core in ${WORK_PWD}/data/ ?"
   exit 1
 fi
 cd $WORK_PWD
@@ -37,11 +37,11 @@ else
     if [ -r ${WORK_PWD}/bin/mysqld-debug ]; then
       BIN=${WORK_PWD}/bin/mysqld-debug
     else
-      echo "Something is wrong: there is no (script readable) mysqld binary at ${WORK_PWD}/bin/mysqld[-debug] ?"
+      echo "Assert: there is no (script readable) mysqld binary at ${WORK_PWD}/bin/mysqld[-debug] ?"
       exit 1
     fi
   else
-    echo "Something is wrong: there is no (script readable) mysqld binary at ${WORK_PWD}/bin/mysqld ?"
+    echo "Assert: there is no (script readable) mysqld binary at ${WORK_PWD}/bin/mysqld ?"
     exit 1
   fi
 fi
