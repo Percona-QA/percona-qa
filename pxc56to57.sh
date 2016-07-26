@@ -286,7 +286,7 @@ pxc_start_node(){
     echo "PXC node${FUN_NODE_NR} startup failed.. Please check error log: ${FUN_LOG_ERR}"
   fi
 
-  sleep 10
+  sleep 20
 }
 
 pxc_upgrade_node(){
@@ -305,7 +305,7 @@ pxc_upgrade_node(){
     exit 1
   fi
 
-  sleep 10
+  sleep 20
 
   echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR}"
   ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
@@ -334,7 +334,7 @@ pxc_upgrade_node(){
     echo "PXC node${FUN_NODE_NR} startup for upgrade failed... Please check error log: ${FUN_LOG_ERR}"
   fi
 
-  sleep 10
+  sleep 20
 
   # Run mysql_upgrade
   ${FUN_BASE_DIR}/bin/mysql_upgrade -S /tmp/node${FUN_NODE_NR}.socket -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade_node${FUN_NODE_NR}.log
@@ -351,7 +351,7 @@ pxc_upgrade_node(){
     exit 1
   fi
 
-  sleep 10
+  sleep 20
 }
 
 sysbench_run(){
