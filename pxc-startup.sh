@@ -109,7 +109,7 @@ echo "    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \\" >> ./sta
 echo "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
 echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo "    --core-file  --sql-mode=no_engine_substitution \\" >> ./start_pxc
-echo "    --secure-file-priv= -status-file=1 \\" >> ./start_pxc
+echo "    --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node1/node1.err $KEY_RING_OPTIONS \\" >> ./start_pxc
 echo "    --socket=$node1/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/node1.err 2>&1 &" >> ./start_pxc
@@ -144,7 +144,7 @@ echo "    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \\" >> ./sta
 echo "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
 echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo "    --core-file  --sql-mode=no_engine_substitution \\" >> ./start_pxc
-echo "    --secure-file-priv= -status-file=1 \\" >> ./start_pxc
+echo "    --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node2/node2.err $KEY_RING_OPTIONS \\" >> ./start_pxc
 echo "    --socket=$node2/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &" >> ./start_pxc
@@ -180,7 +180,7 @@ echo "    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \\" >> ./sta
 echo "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
 echo "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo "    --core-file  --sql-mode=no_engine_substitution \\" >> ./start_pxc
-echo "    --secure-file-priv= -status-file=1 \\" >> ./start_pxc
+echo "    --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
 echo "    --log-error=$node3/node3.err $KEY_RING_OPTIONS \\" >> ./start_pxc
 echo "    --socket=$node3/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &" >> ./start_pxc
