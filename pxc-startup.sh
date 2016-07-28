@@ -115,9 +115,9 @@ echo "    --socket=$node1/socket.sock --log-output=none \\" >> ./start_pxc
 echo "    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/node1.err 2>&1 &" >> ./start_pxc
 
 echo -e "\n" >> ./start_pxc
-echo "for X in $(seq 0 ${PXC_START_TIMEOUT}); do" >> ./start_pxc
+echo "for X in \$(seq 0 \${PXC_START_TIMEOUT}); do" >> ./start_pxc
 echo "  sleep 1" >> ./start_pxc
-echo "  if ${BASEDIR}/bin/mysqladmin -uroot -S$node1/socket.sock ping > /dev/null 2>&1; then" >> ./start_pxc
+echo "  if ${BUILD}/bin/mysqladmin -uroot -S$node1/socket.sock ping > /dev/null 2>&1; then" >> ./start_pxc
 echo "    break" >> ./start_pxc
 echo "  fi" >> ./start_pxc
 echo "done" >> ./start_pxc
@@ -151,7 +151,7 @@ echo "    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.er
 
 echo -e "\n" >> ./start_pxc
 
-echo "for X in $(seq 0 ${PXC_START_TIMEOUT}); do" >> ./start_pxc
+echo "for X in \$(seq 0 \${PXC_START_TIMEOUT}); do" >> ./start_pxc
 echo "  sleep 1" >> ./start_pxc
 echo "  if ${BUILD}/bin/mysqladmin -uroot -S$node2/socket.sock ping > /dev/null 2>&1; then" >> ./start_pxc
 echo "    break" >> ./start_pxc
@@ -187,7 +187,7 @@ echo "    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.er
 
 echo -e "\n" >> ./start_pxc
 
-echo "for X in $(seq 0 ${PXC_START_TIMEOUT}); do" >> ./start_pxc
+echo "for X in \$(seq 0 \${PXC_START_TIMEOUT}); do" >> ./start_pxc
 echo "  sleep 1" >> ./start_pxc
 echo "  if ${BUILD}/bin/mysqladmin -uroot -S$node3/socket.sock ping > /dev/null 2>&1; then" >> ./start_pxc
 echo "    ${BUILD}/bin/mysql -uroot -S$node1/socket.sock -e\"drop database if exists test;create database test;\"" >> ./start_pxc
