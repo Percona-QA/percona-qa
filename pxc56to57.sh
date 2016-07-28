@@ -258,7 +258,7 @@ pxc_start_node(){
   ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
     --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
     --loose-debug-sync-timeout=600 \
-    --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --innodb_file_per_table --innodb_autoinc_lock_mode=2 \
     --wsrep-provider=${FUN_WSREP_PROVIDER} \
     --wsrep_cluster_address=${FUN_CLUSTER_ADDRESS} \
     --wsrep_node_incoming_address=$ADDR \
@@ -268,7 +268,7 @@ pxc_start_node(){
     --query_cache_type=0 --query_cache_size=0 \
     --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
     --innodb_log_file_size=500M \
-    --core-file \
+    --core-file --log_bin --binlog_format=ROW \
     --secure-file-priv= --loose-innodb-status-file=1 \
     --log-error=${FUN_LOG_ERR} \
     --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
@@ -286,7 +286,7 @@ pxc_start_node(){
     echo "PXC node${FUN_NODE_NR} startup failed.. Please check error log: ${FUN_LOG_ERR}"
   fi
 
-  sleep 20
+  sleep 10
 }
 
 pxc_upgrade_node(){
@@ -298,29 +298,29 @@ pxc_upgrade_node(){
   local FUN_BASE_DIR=$6
 
   echo -e "\n\n#### Upgrade node${FUN_NODE_NR} to the version ${FUN_NODE_VER}\n"
-  echo "Shutting down node${FUN_NODE_NR} after SST"
+  echo "Shutting down node${FUN_NODE_NR} for upgrade"
   ${FUN_BASE_DIR}/bin/mysqladmin  --socket=/tmp/node${FUN_NODE_NR}.socket -u root shutdown
   if [[ $? -ne 0 ]]; then
     echo "Shutdown failed for node${FUN_NODE_NR}"
     exit 1
   fi
 
-  sleep 20
+  sleep 10
 
-  echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR}"
+  echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR} for upgrade"
   ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
     --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
     --loose-debug-sync-timeout=600 \
-    --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --innodb_file_per_table --innodb_autoinc_lock_mode=2 \
     --wsrep-provider='none' --innodb_flush_method=O_DIRECT \
     --query_cache_type=0 --query_cache_size=0 \
     --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
     --innodb_log_file_size=500M \
-    --core-file \
+    --core-file --log_bin --binlog_format=ROW \
     --secure-file-priv= --loose-innodb-status-file=1 \
     --log-error=${FUN_LOG_ERR} \
     --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
-    --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} --wsrep_slave_threads=8 > ${FUN_LOG_ERR} 2>&1 &
+    --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} > ${FUN_LOG_ERR} 2>&1 &
 
   for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
     sleep 1
@@ -334,7 +334,7 @@ pxc_upgrade_node(){
     echo "PXC node${FUN_NODE_NR} startup for upgrade failed... Please check error log: ${FUN_LOG_ERR}"
   fi
 
-  sleep 20
+  sleep 10
 
   # Run mysql_upgrade
   ${FUN_BASE_DIR}/bin/mysql_upgrade -S /tmp/node${FUN_NODE_NR}.socket -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade_node${FUN_NODE_NR}.log
@@ -351,7 +351,7 @@ pxc_upgrade_node(){
     exit 1
   fi
 
-  sleep 20
+  sleep 10
 }
 
 sysbench_run(){
