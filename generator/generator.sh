@@ -191,6 +191,7 @@ timestamp() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -
 # ========================================= Quintuple
 operator()  { if [ $[$RANDOM % 20 + 1] -le 8 ]; then echo "="; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ">"; else echo ">="; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "<"; else echo "<="; fi; fi; fi; }                                                                        # 40% =, 15% >, 15% >=, 15% <, 15% <=
 pstimer()   { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "idle"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "wait"; else echo "stage"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "statement"; else echo "transaction"; fi; fi; fi; }                                              # 20% idle, 20% wait, 20% stage, 20% statement, 20% transaction
+pstimernm() { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "CYCLE"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NANOSECOND"; else echo "MICROSECOND"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "MILLISECOND"; else echo "TICK"; fi; fi; fi; }                                      # 20% CYCLE, 20% NANOSECOND, 20% MICROSECOND, 20% MILLISECOND, 20% TICK
 # ========================================= Subcalls
 subwhact()  { if [ ${SUBWHEREACTIVE} -eq 0 ]; then echo "WHERE "; fi }                                   # Only use 'WHERE' if this is not a sub-WHERE, i.e. a call from subwhere()
 subwhere()  { SUBWHEREACTIVE=1; if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "`andor` `whereal`"; fi; }  # 20% sub-WHERE (additional and/or WHERE clause)
@@ -204,7 +205,7 @@ whereal()   {                                                                   
 [1-2]) ;;  # 50% No WHERE clause
     3) echo "`subwhact``alias3`.c`n3``operator``data` `subwhere`";; # `subwhact`: sub-WHERE active or not, ref subwhact(). Ensures 'WHERE' is not repeated in sub-WHERE's (WHERE x=y AND a=b should not repeat WHERE for a=b)
     4) echo "`subwhact``alias3`.c`n3``operator``alias3`.c`n3` `subwhere`";;
-    *) echo "Assert: invalid random case selection in where() case"; exit 1;;
+    *) echo "Assert: invalid random case selection in where() case";;
   esac
   SUBWHEREACTIVE=0
 }
@@ -212,7 +213,7 @@ orderby()   {
   case $[$RANDOM % 2 + 1] in 
     1) ;;  # 50% No ORDER BY clause
     2) echo "ORDER BY c`n3` `emascdesc` `subordby`";;
-    *) echo "Assert: invalid random case selection in orderby() case"; exit 1;;
+    *) echo "Assert: invalid random case selection in orderby() case";;
   esac
 }
 join()      { 
@@ -223,7 +224,7 @@ join()      {
     7) echo "INNER JOIN";;
     8) echo "CROSS JOIN";;
     9) echo "STRAIGHT_JOIN";;
-    *) echo "Assert: invalid random case selection in orderby() case"; exit 1;;
+    *) echo "Assert: invalid random case selection in orderby() case";;
   esac
 }
 
@@ -250,29 +251,29 @@ query(){
       
         #todo: func,proc,trigger,views
  
-        *) echo "Assert: invalid random case selection in CREATE TABLE case"; exit 1;;
+        *) echo "Assert: invalid random case selection in CREATE TABLE case";;
 
       esac;;
     [4-7]) case $[$RANDOM % 2 + 1] in  # Insert (needs further work to insert per-column etc.)
         1) echo "INSERT INTO `table` VALUES (`data`,`data`,`data`)";;
         2) echo "INSERT INTO `table` SELECT * FROM `table`";;
-        *) echo "Assert: invalid random case selection in INSERT case"; exit 1;;
+        *) echo "Assert: invalid random case selection in INSERT case";;
       esac;;
     8)  case $[$RANDOM % 8 + 1] in  # Drop
     [1-5]) echo "DROP TABLE `ifexist` `table`";;
     [6-8]) echo "DROP EVENT `ifexist` `event`";; 
-        *) echo "Assert: invalid random case selection in DROP case"; exit 1;;
+        *) echo "Assert: invalid random case selection in DROP case";;
       esac;;
     9) case $[$RANDOM % 2 + 1] in  # Load data infile/select into outfile (needs further work)
         1) echo "LOAD DATA INFILE 'out`n9`' INTO TABLE `table`";;
         2) echo "SELECT * FROM `table` INTO OUTFILE 'out`n9`'";;
-        *) echo "Assert: invalid random case selection in load data infile/select into outfile case"; exit 1;;
+        *) echo "Assert: invalid random case selection in load data infile/select into outfile case";;
       esac;;
     10) case $[$RANDOM % 3 + 1] in  # Select (needs further work)
         1) echo "SELECT c1 FROM `table`";;
         2) echo "SELECT c1,c2 FROM `table`";;
         3) echo "SELECT c1,c2 FROM `table` AS a1 `join` `table` AS a2 `whereal`";;
-        *) echo "Assert: invalid random case selection in SELECT case"; exit 1;;
+        *) echo "Assert: invalid random case selection in SELECT case";;
       esac;;
     11) case $[$RANDOM % 9 + 1] in  # Delete (complete)
         1) echo "DELETE `lowprio` `quick` `ignore` FROM `table` `partition` `where` `orderby` `limit`";;
@@ -284,13 +285,13 @@ query(){
         7) echo "DELETE `lowprio` `quick` `ignore` FROM `alias3`,`alias3`,`alias3` USING `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
         8) echo "DELETE `alias3`,`alias3` FROM `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
         9) echo "DELETE FROM `alias3`,`alias3` USING `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
-        *) echo "Assert: invalid random case selection in DELETE case"; exit 1;;
+        *) echo "Assert: invalid random case selection in DELETE case";;
       esac;;
     12) echo "TRUNCATE `table`";;  # Truncate
     13) case $[$RANDOM % 2 + 1] in  # UPDATE (needs further work)
         1) echo "UPDATE `table` SET c1=`data`";;
         2) echo "UPDATE `table` SET c1=`data` `where` `orderby` `limit`";;
-        *) echo "Assert: invalid random case selection in UPDATE case"; exit 1;;
+        *) echo "Assert: invalid random case selection in UPDATE case";;
       esac;;
     1[4-6]) case $[$RANDOM % 7 + 1] in  # Generic statements (needs further work except flush and reset)
       [1-2]) echo "UNLOCK TABLES";;
@@ -298,7 +299,7 @@ query(){
         5) echo "FLUSH `nowbinlog` `localonly` `flush`" | sed "s|DUMMY|`table`|";;
         6) echo "`reset`";;
         7) echo "PURGE `binmaster` LOGS";; # Add TO and BEFORE clauses (need a datetime generator)
-        *) echo "Assert: invalid random case selection in generic statements case"; exit 1;;
+        *) echo "Assert: invalid random case selection in generic statements case";;
       esac;;
     17) echo "SET `emglobses` TRANSACTION `readwrite` ISOLATION LEVEL `isolation`";;  # Isolation level | Excludes `COMMIT...RELEASE` SQL, as this drops client connection
     1[8-9]) case $[$RANDOM % 37 + 1] in  # SET statements (complete)
@@ -313,7 +314,7 @@ query(){
        35) case $[$RANDOM % 1 + 1] in  # Charset/collation related SET statements 
              1) echo "SET @@`globses`.`charcol`";;  # Charset/collation changes (all SET parameters are indentical for global and session atm)
              2) echo "SET @@`globses`.lc_time_names=`lctimename`";;  # http://dev.mysql.com/doc/refman/5.7/en/locale-support.html
-             *) echo "Assert: invalid random case selection in generic statements case (charset/collation section)"; exit 1;;
+             *) echo "Assert: invalid random case selection in generic statements case (charset/collation section)";;
            esac;;
        3[6-7]) case $[$RANDOM % 5 + 1] in  # A few selected (more commonly needed, except the first) SET statements that get a higher frequency then the ones above
              1) echo "SET @@GLOBAL.default_storage_engine=`engine`";;
@@ -321,9 +322,9 @@ query(){
              3) echo "SET @@`globses`.tx_read_only=0";;  # Ensure tx_read_only regularly set back to off
              4) echo "SET @@GLOBAL.read_only=0";;        # Idem, for read_only
              5) echo "SET @@GLOBAL.super_read_only=0";;  # Idem, for super_read_only
-             *) echo "Assert: invalid random case selection in generic statements case (commonly needed statements section)"; exit 1;;
+             *) echo "Assert: invalid random case selection in generic statements case (commonly needed statements section)";;
            esac;;
-        *) echo "Assert: invalid random case selection in generic statements case"; exit 1;;
+        *) echo "Assert: invalid random case selection in generic statements case";;
       esac;;
     20) case $[$RANDOM % 9 + 1] in  # Alter (needs few other additions like table types etc)
         1) echo "ALTER TABLE `table` ADD COLUMN c4 `ctype`";;
@@ -340,7 +341,7 @@ query(){
              echo "ALTER TABLE `table` MODIFY c`n3` ${C1TYPE}"
            fi;;
         9) echo "ALTER TABLE `table` MODIFY c`n3` `ctype`";;
-        *) echo "Assert: invalid random case selection in ALTER case"; exit 1;;
+        *) echo "Assert: invalid random case selection in ALTER case";;
        esac;;
     21) case $[$RANDOM % 42 + 1] in  # SHOW (complete, though a WHERE clause is possible here in all statements where LIKE is possible, but this would be complex to code)
         1) echo "SHOW BINARY LOGS";;
@@ -387,14 +388,14 @@ query(){
        40) echo "SHOW TRIGGERS `fromdb` `like`";;
        41) echo "SHOW `globses` VARIABLES `like`";;
        42) echo "SHOW WARNINGS `ofslimit`";;
-        *) echo "Assert: invalid random case selection in SHOW case"; exit 1;;
+        *) echo "Assert: invalid random case selection in SHOW case";;
        esac;;
     22) case $[$RANDOM % 4 + 1] in  # InnoDB monitor (complete)
         1) echo "SET GLOBAL innodb_monitor_enable='`inmetrics`'";;
         2) echo "SET GLOBAL innodb_monitor_reset='`inmetrics`'";;
         3) echo "SET GLOBAL innodb_monitor_reset_all='`inmetrics`'";;
         4) echo "SET GLOBAL innodb_monitor_disable='`inmetrics`'";;
-        *) echo "Assert: invalid random case selection in InnoDB metrics case"; exit 1;;
+        *) echo "Assert: invalid random case selection in InnoDB metrics case";;
       esac;;
     23) case $[$RANDOM % 7 + 1] in  # Nested `query` calls: items 1 and 2 need further work to not select all types of queries (needs sub-functions, for example select(){}
         1) echo "EXPLAIN `query`";;                # Explain (needs further work: as above + more explain clauses)
@@ -404,9 +405,9 @@ query(){
        [4-5]) echo "PREPARE stmt FROM @cmd";;
        [6-7]) echo "EXECUTE stmt";;
            8) echo "DEALLOCATE PREPARE stmt";;
-           *) echo "Assert: invalid random case selection in prepared statements case"; exit 1;;
+           *) echo "Assert: invalid random case selection in prepared statements case";;
           esac;;
-        *) echo "Assert: invalid random case selection in nested query calls case"; exit 1;;
+        *) echo "Assert: invalid random case selection in nested query calls case";;
       esac;;
 2[4-8]) case $[$RANDOM % 24 + 1] in  # XA (complete)
         # Frequencies for XA: COMMIT (1-9), START/BEGIN (10), END (11-17), PREPARE (19), RECOVER (20), and ROLLBACK (21-24) statements are well tuned, please do not change these case ranges
@@ -419,17 +420,9 @@ query(){
        19) echo "XA PREPARE `xid`";;
        20) echo "XA RECOVER `convertxid`";;
    2[1-4]) echo "XA ROLLBACK `xid`";;
-        *) echo "Assert: invalid random case selection in XA case"; exit 1;;
+        *) echo "Assert: invalid random case selection in XA case";;
       esac;;
- 29|30) case $[$RANDOM % 8 + 1] in  # Transactions (complete, except review/add in different section?; http://dev.mysql.com/doc/refman/5.7/en/begin-end.html) 
-        1) echo "START TRANSACTION `trxopt`";;
-        2) echo "BEGIN `work`";;
-      4|5) echo "COMMIT `work` `chain` `release`";;
-      6|7) echo "ROLLBACK `work` `chain` `release`";;
-        8) echo "SET autocommit=`onoff01`";;
-        *) echo "Assert: invalid random case selection in transactions case"; exit 1;;
-      esac;;
-    31) case $[$RANDOM % 5 + 1] in  # Repair/optimize/analyze/rename/truncate table (complete)
+    29) case $[$RANDOM % 5 + 1] in  # Repair/optimize/analyze/rename/truncate table (complete)
         1) echo "REPAIR `nowblocal` TABLE `table` `quick` `extended` `usefrm`";;
         2) echo "OPTIMIZE `nowblocal` TABLE `table`";;
         3) echo "ANALYZE `nowblocal` TABLE `table`";;
@@ -437,32 +430,41 @@ query(){
            1) echo "RENAME TABLE `table` TO `table`";;
            2) echo "RENAME TABLE `table` TO `table`,`table` TO `table`";;
            3) echo "RENAME TABLE `table` TO `table`,`table` TO `table`,`table` TO `table`";;
-           *) echo "Assert: invalid random case selection in rename table case"; exit 1;;
+           *) echo "Assert: invalid random case selection in rename table case";;
            esac;;
         5) echo "TRUNCATE TABLE `table`";;
-        *) echo "Assert: invalid random case selection in repair/optimize/analyze/rename/truncate table case"; exit 1;;
+        *) echo "Assert: invalid random case selection in repair/optimize/analyze/rename/truncate table case";;
+      esac;;
+3[0-1]) case $[$RANDOM % 7 + 1] in  # Transactions (complete, except review/add in different section?; http://dev.mysql.com/doc/refman/5.7/en/begin-end.html) 
+        1) echo "START TRANSACTION `trxopt`";;
+        2) echo "BEGIN `work`";;
+    [3-4]) echo "COMMIT `work` `chain` `release`";;
+    [5-6]) echo "ROLLBACK `work` `chain` `release`";;
+        7) echo "SET autocommit=`onoff01`";;
+        *) echo "Assert: invalid random case selection in transactions case";;
       esac;;
     32) case $[$RANDOM % 2 + 1] in  # Lock tables (complete)
         1) echo "LOCK TABLES `table` `asalias3` `locktype`";;
         2) echo "UNLOCK TABLES";; 
-        *) echo "Assert: invalid random case selection in lock case"; exit 1;;
+        *) echo "Assert: invalid random case selection in lock case";;
       esac;;
     33) case $[$RANDOM % 3 + 1] in  # Savepoints (complete)
         1) echo "SAVEPOINT sp`n2`";;
         2) echo "ROLLBACK `work` TO `savepoint` sp`n2`";;
         3) echo "RELEASE SAVEPOINT sp`n2`";;
-        *) echo "Assert: invalid random case selection in savepoint case"; exit 1;;
+        *) echo "Assert: invalid random case selection in savepoint case";;
       esac;;
-3[4-5]) case $[$RANDOM % 9 + 1] in  # P_S (in progress)
-      1-2) case $[$RANDOM % 3 + 1] in  # Enabling
+3[4-5]) case $[$RANDOM % 9 + 1] in  # P_S (in progress)  # To check: TRUNCATE of tables does not seem to work: bug? https://dev.mysql.com/doc/refman/5.7/en/setup-timers-table.html
+    [1-2]) case $[$RANDOM % 5 + 1] in  # Enabling and truncating
           1) echo "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES'";;
           2) echo "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES'";;
           3) echo "UPDATE performance_schema.setup_objects SET ENABLED = 'YES', TIMED = 'YES'";;
           4) echo "UPDATE performance_schema.setup_timers SET TIMER_NAME='`pstimernm`' WHERE NAME='`pstimer`'";;
-          *) echo "Assert: invalid random case selection in P_S enabling subcase"; exit 1;;
+          5) PSTBL=`pstable`; if ! [[ "${PSTBL}" == *"setup"* ]]; then echo "TRUNCATE TABLE performance_schema.${PSTBL}"; fi;;
+          *) echo "Assert: invalid random case selection in P_S enabling subcase";;
           esac;;
-      3-9) echo "SELECT * FROM `pstable`";;
-        *) echo "Assert: invalid random case selection in P_S subcase"; exit 1;;
+    [3-9]) echo "SELECT * FROM performance_schema.`pstable`";;
+        *) echo "Assert: invalid random case selection in P_S subcase";;
       esac;;
 
 # http://dev.mysql.com/doc/refman/5.7/en/numeric-functions.html
@@ -473,7 +475,7 @@ query(){
  
     
      # TIP: when adding new options, make sure to update the original case/esac to reflect the new number of options (the number behind the '%' in the case statement at the top of the list matches the number of available 'nr)' options)
-     *) echo "Assert: invalid random case selection in main case"; exit 1;;
+     *) echo "Assert: invalid random case selection in main case";;
   esac
 }
 
@@ -483,8 +485,12 @@ touch out.sql; if [ ! -r out.sql ]; then echo "Assert: out.sql not present after
 for i in `eval echo {1..${queries}}`; do
   echo "`query`;" >> out.sql
 done
-
-sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g;s| ;$|;|" out.sql     # Replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma
-
-echo "Done! Generated ${queries} quality queries and saved the results in out.sql"
-echo "Please note you may want to do:  \$ sed -i \"s|RocksDB|InnoDB|;s|TokuDB|InnoDB|\" out.sql  # depending on what distribution you are using. Or, edit engines.txt and run generator.sh again"
+if grep -qi "Assert" out.sql; then
+  echo "Errors found, please fix generator.sh code:"
+  grep "Assert" out.sql | sort -u | sed 's|[ ]*;$||'
+  rm out.sql 2>/dev/null
+else
+  sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g;s|[ ]*;$|;|" out.sql  # Replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma
+  echo "Done! Generated ${queries} quality queries and saved the results in out.sql"
+  echo "Please note you may want to do:  \$ sed -i \"s|RocksDB|InnoDB|;s|TokuDB|InnoDB|\" out.sql  # depending on what distribution you are using. Or, edit engines.txt and run generator.sh again"
+fi
