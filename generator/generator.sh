@@ -468,14 +468,14 @@ query(){
    1[0-3]) case $[$RANDOM % 10 + 1] in  # Special setup for stress testing PXC 5.7, remove later
           1) echo "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE '%wsrep%'";;
           2) echo "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE '%galera%'";;
-          3) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME like '%galera%'";;
-          4) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME like '%wsrep%'";;
-          5) echo "SELECT EVENT_NAME, COUNT_STAR FROM performance_schema.events_waits_summary_global_by_event_name WHERE EVENT_NAME like '%wsrep%'";;
-          6) echo "SELECT EVENT_NAME, COUNT_STAR FROM performance_schema.events_waits_summary_global_by_event_name WHERE EVENT_NAME like '%galera%'";;
-          7) echo "SELECT * FROM performance_schema.file_instances WHERE file_name like '%galera%'";;
-          8) echo "SELECT * FROM performance_schema.events_stages_history WHERE event_name like '%wsrep%'";;
-          9) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME like '%galera%'";;
-         10) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME like '%wsrep%'";;
+          3) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME LIKE '%galera%'";;
+          4) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME LIKE '%wsrep%'";;
+          5) echo "SELECT EVENT_NAME, COUNT_STAR FROM performance_schema.events_waits_summary_global_by_event_name WHERE EVENT_NAME LIKE '%wsrep%'";;
+          6) echo "SELECT EVENT_NAME, COUNT_STAR FROM performance_schema.events_waits_summary_global_by_event_name WHERE EVENT_NAME LIKE '%galera%'";;
+          7) echo "SELECT * FROM performance_schema.file_instances WHERE FILE_NAME LIKE '%galera%'";;
+          8) echo "SELECT * FROM performance_schema.events_stages_history WHERE EVENT_NAME LIKE '%wsrep%'";;
+          9) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME LIKE '%galera%'";;
+         10) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME LIKE '%wsrep%'";;
           *) echo "Assert: invalid random case selection in P_S PXC specific subcase";;
           esac;;
         *) echo "Assert: invalid random case selection in P_S subcase";;
