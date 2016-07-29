@@ -38,6 +38,7 @@ if [ ! -r reset.txt ]; then echo "Assert: reset.txt not found!"; exit 1; fi
 if [ ! -r charsetcol_$MYSQL_VERSION.txt ]; then echo "Assert: charsetcol_$MYSQL_VERSION.txt not found! Please run getallsetoptions.sh after setting VERSION=$MYSQL_VERSION inside the same, and copy the resulting files here"; exit 1; fi
 if [ ! -r session_$MYSQL_VERSION.txt ]; then echo "Assert: session_$MYSQL_VERSION.txt not found! Please run getallsetoptions.sh after setting VERSION=$MYSQL_VERSION inside the same, and copy the resulting files here"; exit 1; fi
 if [ ! -r global_$MYSQL_VERSION.txt ]; then echo "Assert: global_$MYSQL_VERSION.txt not found! Please run getallsetoptions.sh after setting VERSION=$MYSQL_VERSION inside the same, and copy the resulting files here"; exit 1; fi
+if [ ! -r pstables_$MYSQL_VERSION.txt ]; then echo "Assert: pstables_$MYSQL_VERSION.txt not found!"; exit 1; fi
 if [ ! -r setvalues.txt ]; then echo "Assert: setvalues.txt not found!"; exit 1; fi
 if [ ! -r sqlmode.txt ]; then echo "Assert: sqlmode.txt not found!"; exit 1; fi
 if [ ! -r optimizersw.txt ]; then echo "Assert: optimizersw.txt not found!"; exit 1; fi
@@ -70,6 +71,7 @@ mapfile -t reset     < reset.txt        ; RESET=${#reset[*]}
 mapfile -t charcol   < charsetcol_$MYSQL_VERSION.txt; CHARCOL=${#charcol[*]}
 mapfile -t setvars   < session_$MYSQL_VERSION.txt; SETVARS=${#setvars[*]}  # S(ession)
 mapfile -t setvarg   < global_$MYSQL_VERSION.txt ; SETVARG=${#setvarg[*]}  # G(lobal)
+mapfile -t pstables  < pstables_$MYSQL_VERSION.txt; PSTABLES=${#pstables[*]}
 mapfile -t setvals   < setvalues.txt    ; SETVALUES=${#setvals[*]}
 mapfile -t sqlmode   < sqlmode.txt      ; SQLMODE=${#sqlmode[*]}
 mapfile -t optsw     < optimizersw.txt  ; OPTSW=${#optsw[*]}
@@ -104,6 +106,7 @@ reset()     { echo "${reset[$[$RANDOM % $RESET]]}"; }
 charcol()   { echo "${charcol[$[$RANDOM % $CHARCOL]]}"; }
 setvars()   { echo "${setvars[$[$RANDOM % $SETVARS]]}"; }
 setvarg()   { echo "${setvarg[$[$RANDOM % $SETVARG]]}"; }
+pstable()   { echo "${pstables[$[$RANDOM % $PSTABLES]]}"; }
 setval()    { echo "${setvals[$[$RANDOM % $SETVALUES]]}"; }
 sqlmode()   { echo "${sqlmode[$[$RANDOM % $SQLMODE]]}"; }
 optsw()     { echo "${optsw[$[$RANDOM % $OPTSW]]}"; }
@@ -187,6 +190,7 @@ isolation() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -
 timestamp() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "CURRENT_TIMESTAMP"; else echo "CURRENT_TIMESTAMP()"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NOW()"; else echo "`data`"; fi; fi; }                                                                                         # 25% CURRENT_TIMESTAMP, 25% CURRENT_TIMESTAMP(), 25% NOW(), 25% random data
 # ========================================= Quintuple
 operator()  { if [ $[$RANDOM % 20 + 1] -le 8 ]; then echo "="; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ">"; else echo ">="; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "<"; else echo "<="; fi; fi; fi; }                                                                        # 40% =, 15% >, 15% >=, 15% <, 15% <=
+pstimer()   { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "idle"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "wait"; else echo "stage"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "statement"; else echo "transaction"; fi; fi; fi; }                                              # 20% idle, 20% wait, 20% stage, 20% statement, 20% transaction
 # ========================================= Subcalls
 subwhact()  { if [ ${SUBWHEREACTIVE} -eq 0 ]; then echo "WHERE "; fi }                                   # Only use 'WHERE' if this is not a sub-WHERE, i.e. a call from subwhere()
 subwhere()  { SUBWHEREACTIVE=1; if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "`andor` `whereal`"; fi; }  # 20% sub-WHERE (additional and/or WHERE clause)
@@ -226,7 +230,7 @@ join()      {
 query(){
   #FIXEDTABLE1=`table`  # A fixed table name: this can be used in queries where a unchanging table name is required to ensure the query works properly. For example, SELECT t1.c1 FROM t1;
   #FIXEDTABLE2=${FIXEDTABLE1}; while [ "${FIXEDTABLE1}" -eq "${FIXEDTABLE2}" ]; do FIXEDTABLE2=`table`; done  # A secondary fixed table, different from the first fixed table
-  case $[$RANDOM % 33 + 1] in
+  case $[$RANDOM % 35 + 1] in
     # Frequencies for CREATE (1-3), INSERT (4-7), and DROP (8) statements are well tuned, please do not change these case ranges
     # Most other statements have been frequency tuned also, but not to the same depth. If you find bugs (for example too many errors because of frequency), please fix them
     [1-3]) case $[$RANDOM % 4 + 1] in  # CREATE (needs further work)
@@ -244,9 +248,7 @@ query(){
              echo "`query`"
            fi;;
       
-        #func,proc,trigger,views
-
-
+        #todo: func,proc,trigger,views
  
         *) echo "Assert: invalid random case selection in CREATE TABLE case"; exit 1;;
 
@@ -450,6 +452,17 @@ query(){
         2) echo "ROLLBACK `work` TO `savepoint` sp`n2`";;
         3) echo "RELEASE SAVEPOINT sp`n2`";;
         *) echo "Assert: invalid random case selection in savepoint case"; exit 1;;
+      esac;;
+3[4-5]) case $[$RANDOM % 9 + 1] in  # P_S (in progress)
+      1-2) case $[$RANDOM % 3 + 1] in  # Enabling
+          1) echo "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES'";;
+          2) echo "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES'";;
+          3) echo "UPDATE performance_schema.setup_objects SET ENABLED = 'YES', TIMED = 'YES'";;
+          4) echo "UPDATE performance_schema.setup_timers SET TIMER_NAME='`pstimernm`' WHERE NAME='`pstimer`'";;
+          *) echo "Assert: invalid random case selection in P_S enabling subcase"; exit 1;;
+          esac;;
+      3-9) echo "SELECT * FROM `pstable`";;
+        *) echo "Assert: invalid random case selection in P_S subcase"; exit 1;;
       esac;;
 
 # http://dev.mysql.com/doc/refman/5.7/en/numeric-functions.html

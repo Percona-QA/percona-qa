@@ -215,7 +215,22 @@ Z17mysql_lock_tablesP3THDPP5TABLEmj                                    ## http:/
 #TEXT=.r == 0.$                                                        ## PS Bug #1511969 (verified), also see http://tokutek.atlassian.net/browse/DB-933 / DB-737
 join == __null                                                         ## http://tokutek.atlassian.net/browse/DB-985
 part_id < m_tot_part s                                                 ## http://tokutek.atlassian.net/browse/DB-983
-# ^^^ debugging
+
+## =========== PREP
+dict0dict.cc line 1421                                                 ## 1, MS
+ZN12ut_allocatorIhE10deallocateEPhm                                    ## 1, PS
+mi_write_blob_record                                                   ## 2, MS/PS
+row0trunc.cc line 1983                                                 ## 3, MS/PS
+ut0lst.h line 412                                                      ## 4, PS1
+Z16dispatch_commandP3THDPK8COM_DATA19enum_server_command               ## 4, PS2
+ZN11ha_innobase9write_rowEPh                                           ## 4, PS3
+ZN7handler11ha_rnd_nextEPh                                             ## 4, MS
+ZN7ha_heap8rnd_nextEPh                                                 ## 5, MS1
+ZN12ut_allocatorIhE10deallocateEPhm                                    ## 5, MS2
+Z14free_tmp_tableP3THDP5TABLE                                          ## 5, PS1
+mh->m_magic == 1234                                                    ## 5, PS2
+ZN12ut_allocatorIhE8allocateEmPKhPKcbb                                 ## 6, MS,PS
+ZN11Query_arena10mem_callocEm                                          ## 6, PS2
   
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
