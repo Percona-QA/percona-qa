@@ -122,7 +122,6 @@ lctimename(){ echo "${lctimenms[$[$RANDOM % $LCTIMENMS]]}"; }
 # ========================================= Combinations
 azn9()      { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }       # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
 # ========================================= Single, random
-n2()        { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }             # 50% 1, 50% 2
 temp()      { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; fi }                   # 20% TEMPORARY
 ignore()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "IGNORE"; fi }                       # 20% IGNORE
 lowprio()   { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "LOW_PRIORITY"; fi }                 # 25% LOW_PRIORITY
@@ -161,8 +160,10 @@ alias3()    { echo "a`n3`"; }
 asalias2()  { echo "AS a`n2`"; }
 asalias3()  { echo "AS a`n3`"; }
 # ========================================= Dual
+n2()        { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }             # 50% 1, 50% 2
 onoff()     { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }          # 75% ON, 25% OFF
 onoff01()   { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "1"; else echo "0"; fi }             # 75% 1 (on), 25% 0 (off)
+allor1()    { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "*"; else echo "1"; fi }             # 80% *, 20% 1
 startsends(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "STARTS"; else echo "ENDS"; fi }     # 50% STARTS, 50% ENDS
 globses()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi }  # 50% GLOBAL, 50% SESSION
 andor()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "AND"; else echo "OR"; fi }          # 50% AND, 50% OR
@@ -399,7 +400,7 @@ query(){
       esac;;
     23) case $[$RANDOM % 7 + 1] in  # Nested `query` calls: items 1 and 2 need further work to not select all types of queries (needs sub-functions, for example select(){}
         1) echo "EXPLAIN `query`";;                # Explain (needs further work: as above + more explain clauses)
-        2) echo "SELECT 1 FROM (`query`) AS a1";;  # Subquery (needs further work: as above + more subquery structures)
+        2) echo "SELECT `allor1` FROM (`query`) AS a1";;  # Subquery (needs further work: as above + more subquery structures)
     [3-7]) case $[$RANDOM % 8 + 1] in  # Prepared statements (needs further work)
        [1-3]) echo "SET @cmd:='`query`'";;
        [4-5]) echo "PREPARE stmt FROM @cmd";;
@@ -454,16 +455,29 @@ query(){
         3) echo "RELEASE SAVEPOINT sp`n2`";;
         *) echo "Assert: invalid random case selection in savepoint case";;
       esac;;
-3[4-5]) case $[$RANDOM % 9 + 1] in  # P_S (in progress)  # To check: TRUNCATE of tables does not seem to work: bug? https://dev.mysql.com/doc/refman/5.7/en/setup-timers-table.html
+3[4-5]) case $[$RANDOM % 13 + 1] in  # P_S (in progress) | To check: TRUNCATE of tables does not seem to work: bug? https://dev.mysql.com/doc/refman/5.7/en/setup-timers-table.html
     [1-2]) case $[$RANDOM % 5 + 1] in  # Enabling and truncating
           1) echo "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES'";;
           2) echo "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES'";;
           3) echo "UPDATE performance_schema.setup_objects SET ENABLED = 'YES', TIMED = 'YES'";;
           4) echo "UPDATE performance_schema.setup_timers SET TIMER_NAME='`pstimernm`' WHERE NAME='`pstimer`'";;
-          5) PSTBL=`pstable`; if ! [[ "${PSTBL}" == *"setup"* ]]; then echo "TRUNCATE TABLE performance_schema.${PSTBL}"; fi;;
+          5) PSTBL=`pstable`; if ! [[ "${PSTBL}" == *"setup"* ]]; then echo "TRUNCATE TABLE performance_schema.${PSTBL}"; else echo "`query`"; fi;;
           *) echo "Assert: invalid random case selection in P_S enabling subcase";;
           esac;;
     [3-9]) echo "SELECT * FROM performance_schema.`pstable`";;
+   1[0-3]) case $[$RANDOM % 10 + 1] in  # Special setup for stress testing PXC 5.7, remove later
+          1) echo "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE '%wsrep%'";;
+          2) echo "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE '%galera%'";;
+          3) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME like '%galera%'";;
+          4) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME like '%wsrep%'";;
+          5) echo "SELECT EVENT_NAME, COUNT_STAR FROM performance_schema.events_waits_summary_global_by_event_name WHERE EVENT_NAME like '%wsrep%'";;
+          6) echo "SELECT EVENT_NAME, COUNT_STAR FROM performance_schema.events_waits_summary_global_by_event_name WHERE EVENT_NAME like '%galera%'";;
+          7) echo "SELECT * FROM performance_schema.file_instances WHERE file_name like '%galera%'";;
+          8) echo "SELECT * FROM performance_schema.events_stages_history WHERE event_name like '%wsrep%'";;
+          9) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME like '%galera%'";;
+         10) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME like '%wsrep%'";;
+          *) echo "Assert: invalid random case selection in P_S PXC specific subcase";;
+          esac;;
         *) echo "Assert: invalid random case selection in P_S subcase";;
       esac;;
 
