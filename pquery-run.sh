@@ -369,7 +369,7 @@ pxc_startup(){
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
     --basedir=${BASEDIR} --datadir=$node1 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema --wsrep-debug=ON \
+    --loose-debug-sync-timeout=600  --wsrep-debug=ON \
     --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm:// \
@@ -397,7 +397,7 @@ pxc_startup(){
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
     --basedir=${BASEDIR} --datadir=$node2 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema --wsrep-debug=ON \
+    --loose-debug-sync-timeout=600  --wsrep-debug=ON \
     --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
@@ -425,7 +425,7 @@ pxc_startup(){
 
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
     --basedir=${BASEDIR} --datadir=$node3 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema --wsrep-debug=ON \
+    --loose-debug-sync-timeout=600  --wsrep-debug=ON \
     --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
     --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
