@@ -72,6 +72,7 @@ ha_innodb.cc line 17770                                  ## http://bugs.mysql.co
 btr0cur.cc line 1240                                     ## http://bugs.mysql.com/bug.php?id=74747 (Apparently not present in 5.7.6)
 #TEXT=.strlen.m_ptr.$                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75870 (Also ref bug 79905)                            (# after MS 5.7.8 merged)
 fil0fil.cc line 5133                                     ## http://bugs.mysql.com/bug.php?id=74481
+fil0fil.cc line 6973                                     ## https://bugs.mysql.com/bug.php?id=82386
 fsp0fsp.cc line 2025                                     ## http://bugs.mysql.com/bug.php?id=74876 (MS 5.7.15-m15) (InnoDB: Failing assertion: inode)
 fsp0fsp.cc line 2023                                     ## http://bugs.mysql.com/bug.php?id=74343 (testcase from bug #74876 triggers this assertion also)
 btr0cur.cc line 1239                                     ## http://bugs.mysql.com/bug.php?id=75913, MS Build
