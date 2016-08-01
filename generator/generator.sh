@@ -31,7 +31,7 @@ if [ ! -r 0-9.txt ]; then echo "Assert: 0-9.txt not found!"; exit 1; fi
 if [ ! -r 1-3.txt ]; then echo "Assert: 1-3.txt not found!"; exit 1; fi
 if [ ! -r 1-10.txt ]; then echo "Assert: 1-10.txt not found!"; exit 1; fi
 if [ ! -r 1-100.txt ]; then echo "Assert: 1-100.txt not found!"; exit 1; fi
-if [ ! -r 1-1000.txt ]; then echo "Assert: 1-1000.txt not found!"; exit 1; fi
+if [ ! -r n1000-1000.txt ]; then echo "Assert: n1000-1000.txt not found!"; exit 1; fi
 if [ ! -r flush.txt ]; then echo "Assert: flush.txt not found!"; exit 1; fi
 if [ ! -r lock.txt ]; then echo "Assert: lock.txt not found!"; exit 1; fi
 if [ ! -r reset.txt ]; then echo "Assert: reset.txt not found!"; exit 1; fi
@@ -51,6 +51,9 @@ if [ ! -r users.txt ]; then echo "Assert: users.txt not found!"; exit 1; fi
 if [ ! -r profiletypes.txt ]; then echo "Assert: profiletypes.txt not found!"; exit 1; fi
 if [ ! -r interval.txt ]; then echo "Assert: interval.txt not found!"; exit 1; fi
 if [ ! -r lctimenames.txt ]; then echo "Assert: lctimenames.txt not found!"; exit 1; fi
+if [ ! -r character.txt ]; then echo "Assert: character.txt not found!"; exit 1; fi
+if [ ! -r numsimple.txt ]; then echo "Assert: numsimple.txt not found!"; exit 1; fi
+if [ ! -r numeric.txt ]; then echo "Assert: numeric.txt not found!"; exit 1; fi
 
 # Read data files into arrays
 mapfile -t tables    < tables.txt       ; TABLES=${#tables[*]}
@@ -64,7 +67,7 @@ mapfile -t n9        < 0-9.txt          ; N9=${#n9[*]}
 mapfile -t n3        < 1-3.txt          ; N3=${#n3[*]}
 mapfile -t n10       < 1-10.txt         ; N10=${#n10[*]}
 mapfile -t n100      < 1-100.txt        ; N100=${#n100[*]}
-mapfile -t n1000     < 1-1000.txt       ; N1000=${#n1000[*]}
+mapfile -t nn1000    < n1000-1000.txt   ; NN1000=${#nn1000[*]}
 mapfile -t flush     < flush.txt        ; FLUSH=${#flush[*]}
 mapfile -t lock      < lock.txt         ; LOCK=${#lock[*]}
 mapfile -t reset     < reset.txt        ; RESET=${#reset[*]}
@@ -84,6 +87,9 @@ mapfile -t users     < users.txt        ; USERS=${#users[*]}
 mapfile -t proftypes < profiletypes.txt ; PROFTYPES=${#proftypes[*]}
 mapfile -t interval  < interval.txt     ; INTERVAL=${#interval[*]}
 mapfile -t lctimenms < lctimenames.txt  ; LCTIMENMS=${#lctimenms[*]}
+mapfile -t character < character.txt    ; CHARACTER=${#character[*]}
+mapfile -t numsimple < numsimple.txt    ; NUMSIMPLE=${#numsimple[*]}
+mapfile -t numeric   < numeric.txt      ; NUMERIC=${#numeric[*]}
 
 if [ ${TABLES} -lt 2 ]; then echo "Assert: number of table names is less then 2. A minimum of two tables is required for proper operation. Please ensure tables.txt has at least two table names"; exit 1; fi
    
@@ -99,7 +105,7 @@ n9()        { echo "${n9[$[$RANDOM % $N9]]}"; }
 n3()        { echo "${n3[$[$RANDOM % $N3]]}"; }
 n10()       { echo "${n10[$[$RANDOM % $N10]]}"; }
 n100()      { echo "${n100[$[$RANDOM % $N100]]}"; }
-n1000()     { echo "${n1000[$[$RANDOM % $N1000]]}"; }
+nn1000()    { echo "${nn1000[$[$RANDOM % $NN1000]]}"; }
 flush()     { echo "${flush[$[$RANDOM % $FLUSH]]}"; }
 lock()      { echo "${lock[$[$RANDOM % $LOCK]]}"; }
 reset()     { echo "${reset[$[$RANDOM % $RESET]]}"; }
@@ -119,6 +125,9 @@ user()      { echo "${users[$[$RANDOM % $USERS]]}"; }
 proftype()  { echo "${proftypes[$[$RANDOM % $PROFTYPES]]}"; }
 interval()  { echo "${interval[$[$RANDOM % $INTERVAL]]}"; }
 lctimename(){ echo "${lctimenms[$[$RANDOM % $LCTIMENMS]]}"; }
+character() { echo "${character[$[$RANDOM % $CHARACTER]]}"; }
+numsimple() { echo "${numsimple[$[$RANDOM % $NUMSIMPLE]]}"; }
+numeric() { echo "${numericop[$[$RANDOM % $NUMERIC]]}"; }
 # ========================================= Combinations
 azn9()      { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }       # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
 # ========================================= Single, random
@@ -159,32 +168,41 @@ alias2()    { echo "a`n2`"; }
 alias3()    { echo "a`n3`"; }
 asalias2()  { echo "AS a`n2`"; }
 asalias3()  { echo "AS a`n3`"; }
+numericop() { echo "`numeric`" | sed "s|DUMMY|`danrorfull`|;s|DUMMY2|`danrorfull`|;s|DUMMY3|`danrorfull`|"; }                                # NUMERIC FUNCTION with data (includes numbers) or -1000 to 1000 as options, for example ABS(nr)
 # ========================================= Dual
-n2()        { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }             # 50% 1, 50% 2
-onoff()     { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }          # 75% ON, 25% OFF
-onoff01()   { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "1"; else echo "0"; fi }             # 75% 1 (on), 25% 0 (off)
-allor1()    { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "*"; else echo "1"; fi }             # 80% *, 20% 1
-startsends(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "STARTS"; else echo "ENDS"; fi }     # 50% STARTS, 50% ENDS
-globses()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi }  # 50% GLOBAL, 50% SESSION
-andor()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "AND"; else echo "OR"; fi }          # 50% AND, 50% OR
-leftright() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LEFT"; else echo "RIGHT"; fi }      # 50% LEFT, 50% RIGHT (for JOINs)
-readwrite() { if [ $[$RANDOM % 20 + 1] -le 1  ]; then echo "READ ONLY,"; else echo "READ WRITE,"; fi }  # 5% R/O, 95% R/W
-xid()       { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "'xid1'"; else echo "'xid2'"; fi }   # 75% xid1, 25% xid2
-disenable() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ENABLE"; else echo "DISABLE"; fi }  # 50% ENABLE, 50% DISABLE
-sdisenable(){ if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`disenable`"; else echo "DISABLE ON SLAVE"; fi }  # 40% ENABLE, 40% DISALBE, 20% DISABLE ON SLAVE
+n2()        { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }                                                          # 50% 1, 50% 2
+onoff()     { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }                                                       # 75% ON, 25% OFF
+onoff01()   { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "1"; else echo "0"; fi }                                                          # 75% 1 (on), 25% 0 (off)
+allor1()    { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "*"; else echo "1"; fi }                                                          # 80% *, 20% 1
+startsends(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "STARTS"; else echo "ENDS"; fi }                                                  # 50% STARTS, 50% ENDS
+globses()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi }                                               # 50% GLOBAL, 50% SESSION
+andor()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "AND"; else echo "OR"; fi }                                                       # 50% AND, 50% OR
+leftright() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LEFT"; else echo "RIGHT"; fi }                                                   # 50% LEFT, 50% RIGHT (for JOINs)
+readwrite() { if [ $[$RANDOM % 20 + 1] -le 1  ]; then echo "READ ONLY,"; else echo "READ WRITE,"; fi }                                       # 5% R/O, 95% R/W
+xid()       { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "'xid1'"; else echo "'xid2'"; fi }                                                # 75% xid1, 25% xid2
+disenable() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ENABLE"; else echo "DISABLE"; fi }                                               # 50% ENABLE, 50% DISABLE
+sdisenable(){ if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`disenable`"; else echo "DISABLE ON SLAVE"; fi }                                 # 40% ENABLE, 40% DISALBE, 20% DISABLE ON SLAVE
 schedule()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "AT `timestamp` `intervalad`"; else echo "EVERY `n9` `interval` `opstend`"; fi }  # 50% AT, 50% EVERY (for EVENTs)
-readwrite() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'READ'; else echo 'WRITE'; fi }      # 50% READ, 50% WRITE (for transactions)
-binmaster() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "BINARY"; else echo "MASTER"; fi }   # 50% BINARY, 50% MASTER
-nowblocal() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi }  # 50% NO_WRITE_TO_BINLOG, 50% LOCAL
-locktype()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ `localonly`"; else echo "`lowprio` WRITE"; fi }  # 50% READ [LOCAL], 50% [LOW_PRIORITY] WRITE
+readwrite() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'READ'; else echo 'WRITE'; fi }                                                   # 50% READ, 50% WRITE (for transactions)
+binmaster() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "BINARY"; else echo "MASTER"; fi }                                                # 50% BINARY, 50% MASTER
+nowblocal() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi }                                     # 50% NO_WRITE_TO_BINLOG, 50% LOCAL
+locktype()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ `localonly`"; else echo "`lowprio` WRITE"; fi }                             # 50% READ [LOCAL], 50% [LOW_PRIORITY] WRITE
+charactert(){ if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`character` `charactert`"; else echo "`character`"; fi }                         # 40% NESTED CHARACTERISTIC, 60% SINGLE (OR FINAL) CHARACTERISTIC (increasing final possibility)
+danrorfull(){ if [ $[$RANDOM % 20 + 1] -le 12 ]; then echo "`dataornum`"; else echo "`fullnrfunc`"; fi }                                     # 60% data (includes numbers) or -1000 to 1000, 40% full numeric function 
+numericadd(){ if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`nusimple` `eitherornn` `numericadd`"; else echo "`nusimple` `eitherornn`" ; fi }  # 40% NESTED +/-/etc. NR FUNCTION() OR SIMPLE, 60% SINGLE (OR FINAL) +/-/etc. as above
+dataornum() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`data`"; else echo "`nn1000`"; fi }                                              # 20% data (includes numbers), 80% -1000 to 1000
+eitherornn(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`dataornum`"; else echo "`numericop`"; fi }                                      # 50% data/number (ref above), 50% NUMERIC FUNCTION() like ABS(nr) etc.
+fullnrfunc(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`eitherornn` `nusimple` `eitherornn`"; else echo "`eitherornn` `nusimple` `eitherornn` `numericadd`"; fi }  # 50% full numeric function, 50% idem with nesting
 # ========================================= Triple
+ac()        { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "a"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "b"; else echo "c"; fi; fi }  # 40% a, 30% b, 30% c
 trxopt()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`readwrite`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "WITH CONSISTENT SNAPSHOT `readwrite`"; else echo "WITH CONSISTENT SNAPSHOT"; fi; fi }  # 50% R/W or R/O, 25% WITH C/S, 25% C/S + R/W or R/O
 definer()   { if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "DEFINER=`user`"; else echo "DEFINER=CURRENT_USER"; fi; fi }  # 15% DEFINER=random user, 15% DEFINER=CURRENT USER, 70% EMPTY/NOTHING
 suspendfm() { if [ $[$RANDOM % 20 + 1] -le 2  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "SUSPEND"; else echo "SUSPEND FOR MIGRATE"; fi; fi }  # 5% SUSPEND, 5% SUSPEND FOR MIGRATE, 90% EMPTY/NOTHING (needs to be low, ref url above)
-joinresume(){ if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "JOIN"; else echo "RESUME"; fi; fi }     # 15% JOIN, 15% RESUME, 70% EMPTY/NOTHING
-emglobses() { if [ $[$RANDOM % 20 + 1] -le 14 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi; fi }  # 35% GLOBAL, 35% SESSION, 30% EMPTY/NOTHING
-emascdesc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ASC"; else echo "DESC"; fi; fi }        # 25% ASC, 25% DESC, 50% EMPTY/NOTHING
-bincharco() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'CHARACTER SET "Binary" COLLATE "Binary"'; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo 'CHARACTER SET "utf8" COLLATE "utf8_bin"'; else echo 'CHARACTER SET "latin1" COLLATE "latin1_bin"'; fi; fi }                                                                                                                      # 33% Binary/Binary, 33% utf8/utf8_bin, 33% latin1/latin1_bin
+joinresume(){ if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "JOIN"; else echo "RESUME"; fi; fi }      # 15% JOIN, 15% RESUME, 70% EMPTY/NOTHING
+emglobses() { if [ $[$RANDOM % 20 + 1] -le 14 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi; fi }   # 35% GLOBAL, 35% SESSION, 30% EMPTY/NOTHING
+emascdesc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ASC"; else echo "DESC"; fi; fi }         # 25% ASC, 25% DESC, 50% EMPTY/NOTHING
+bincharco() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'CHARACTER SET "Binary" COLLATE "Binary"'; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo 'CHARACTER SET "utf8" COLLATE "utf8_bin"'; else echo 'CHARACTER SET "latin1" COLLATE "latin1_bin"'; fi; fi }                                                                                                                       # 33% Binary/Binary, 33% utf8/utf8_bin, 33% latin1/latin1_bin
+inout()     { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "INOUT"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IN"; else echo "OUT"; fi; fi }  # 40% INOUT, 30% IN, 30% OUT
 # ========================================= Quadruple
 like()      { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 5 ]; then echo "LIKE '`azn9`'"; else echo "LIKE '`azn9`%'"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIKE '%`azn9`'"; else echo "LIKE '%`azn9`%'"; fi; fi; }                                                                                 # 10% LIKE '<char>', 30% LIKE '<char>%', 30% LIKE '%<char>', 30% LIKE '%<char>%'
 isolation() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ COMMITTED"; else echo "REPEATABLE READ"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ UNCOMMITTED"; else echo "SERIALIZABLE"; fi; fi; }                                                                               # 25% READ COMMITTED, 25% REPEATABLE READ, 25% READ UNCOMMITTED, 25% SERIALIZABLE
@@ -232,10 +250,10 @@ join()      {
 query(){
   #FIXEDTABLE1=`table`  # A fixed table name: this can be used in queries where a unchanging table name is required to ensure the query works properly. For example, SELECT t1.c1 FROM t1;
   #FIXEDTABLE2=${FIXEDTABLE1}; while [ "${FIXEDTABLE1}" -eq "${FIXEDTABLE2}" ]; do FIXEDTABLE2=`table`; done  # A secondary fixed table, different from the first fixed table
-  case $[$RANDOM % 35 + 1] in
+  case $[$RANDOM % 39 + 1] in
     # Frequencies for CREATE (1-3), INSERT (4-7), and DROP (8) statements are well tuned, please do not change these case ranges
     # Most other statements have been frequency tuned also, but not to the same depth. If you find bugs (for example too many errors because of frequency), please fix them
-    [1-3]) case $[$RANDOM % 4 + 1] in  # CREATE (needs further work)
+    [1-3]) case $[$RANDOM % 6 + 1] in  # CREATE (needs further work)
         1) echo "CREATE `temp` TABLE `ifnotexist` `table` (c1 `pk`,c2 `ctype`,c3 `ctype`) ENGINE=`engine`";;
         2) echo "CREATE `temp` TABLE `ifnotexist` `table` (c1 `ctype`,c2 `ctype`,c3 `ctype`) ENGINE=`engine`";;
         3) C1TYPE=`ctype`
@@ -244,25 +262,44 @@ query(){
            else
              echo "CREATE `temp` TABLE `ifnotexist` `table` (c1 ${C1TYPE},c2 `ctype`,c3 `ctype`, PRIMARY KEY(c1)) ENGINE=`engine`"
            fi;;
-        4) if [ $SHEDULING_ENABLED -eq 1 ]; then
+        4) if [ $SHEDULING_ENABLED -eq 1 ]; then  # Events (complete)
              echo "CREATE `definer` EVENT `ifnotexist` `event` ON SCHEDULE `schedule` `completion` `sdisenable` `comment` DO `query`"
            else
              echo "`query`"
            fi;;
-      
-        #todo: func,proc,trigger,views
- 
-        *) echo "Assert: invalid random case selection in CREATE TABLE case";;
+        5) case $[$RANDOM % 19 + 1] in  # Stored Functions (nearing completion, but some different functions can be added)
+         [1-9]) echo "CREATE `definer` FUNCTION `func` (i1 `ctype`) RETURNS `ctype` `charactert` RETURN CONCAT('function output:',i1)";;
+        1[0-8]) echo "CREATE `definer` FUNCTION `func` (i1 `ctype`,i2 `ctype`) RETURNS `ctype` `charactert` RETURN CONCAT('function output:',i1)";;
+            19) echo "CREATE `definer` FUNCTION `func` (i1 `ctype`) RETURNS `ctype` `charactert` RETURN `query`";;  # Will highly likely fail, but good to test (e.g. 'FLUSH is not allowed in stored function or trigger' etc.)
+             *) echo "Assert: invalid random case selection in functions case";;
+           esac;;
+        6) case $[$RANDOM % 2 + 1] in  # Stored Procedures
+             1) echo "CREATE `definer` PROCEDURE `proc` (`inout` i1 `ctype`) `charactert` `query`";;
+             2) echo "CREATE `definer` PROCEDURE `proc` (`inout` i1 `ctype`, `inout` i2 `ctype`) `charactert` `query`";;
+             *) echo "Assert: invalid random case selection in procedures case";;
+           esac;;
+        7) 
 
+
+      
+        #todo: trigger,views
+ 
+        *) echo "Assert: invalid random case selection in CREATE case";;
       esac;;
     [4-7]) case $[$RANDOM % 2 + 1] in  # Insert (needs further work to insert per-column etc.)
         1) echo "INSERT INTO `table` VALUES (`data`,`data`,`data`)";;
         2) echo "INSERT INTO `table` SELECT * FROM `table`";;
         *) echo "Assert: invalid random case selection in INSERT case";;
       esac;;
-    8)  case $[$RANDOM % 8 + 1] in  # Drop
+    8)  case $[$RANDOM % 11 + 1] in  # Drop
     [1-5]) echo "DROP TABLE `ifexist` `table`";;
-    [6-8]) echo "DROP EVENT `ifexist` `event`";; 
+    [6-7]) if [ $SHEDULING_ENABLED -eq 1 ]; then
+             echo "DROP EVENT `ifexist` `event`"
+           else
+             echo "`query`"
+           fi;; 
+    [8-9]) echo "DROP FUNCTION `ifexist` `func`";;
+   1[0-1]) echo "DROP PROCEDURE `ifexist` `proc`";;
         *) echo "Assert: invalid random case selection in DROP case";;
       esac;;
     9) case $[$RANDOM % 2 + 1] in  # Load data infile/select into outfile (needs further work)
@@ -480,9 +517,23 @@ query(){
           esac;;
         *) echo "Assert: invalid random case selection in P_S subcase";;
       esac;;
+3[6-7]) case $[$RANDOM % 4 + 1] in  # Calling/setup of functions, procedures (complete)
+          1) echo "SET @`ac`=`data`";;
+          2) echo "CALL `proc`(@`ac`)";;
+          3) echo "SELECT @`ac`";;
+          4) echo "SELECT `func`(`data`)";;
+          *) echo "Assert: invalid random case selection in func,proc call subcase";;
+        esac;;
+3[8-9]) case $[$RANDOM % 4 + 1] in  # Numeric functions
+         1) echo "`fullnrfunc`";;
+         2) echo "(`fullnrfunc`) `nusimple` (`fullnrfunc`)";;
+         3) echo "(`fullnrfunc`) `nusimple` (`fullnrfunc`) `nusimple` (`fullnrfunc`)";;
+         4) echo "(`fullnrfunc`) `nusimple` (`fullnrfunc`) `nusimple` (`fullnrfunc`) `nusimple` (`fullnrfunc`)";;
+         *) echo "Assert: invalid random case selection in func,proc call subcase";;
+       esac;;
+       
+   
 
-# http://dev.mysql.com/doc/refman/5.7/en/numeric-functions.html
-# added already: numeric.txt, but the file needs (DUMMY) assignemnts etc. and add in here.
 # http://dev.mysql.com/doc/refman/5.7/en/get-diagnostics.html
 # http://dev.mysql.com/doc/refman/5.7/en/signal.html
 
