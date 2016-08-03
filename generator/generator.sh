@@ -2,12 +2,18 @@
 # Created by Roel Van de Paar, Percona LLC
 
 # User Variables
-MYSQL_VERSION="57"   # Valid options: 56, 57. Do not use dot (.)
+MYSQL_VERSION=57     # Valid options: 56, 57
+THREADS=10           # Number of threads that generate SQL (default:10)
 SHEDULING_ENABLED=0  # On/Off (1/0). When using this, please note that testcases need to be reduced using PQUERY_MULTI=1 in reducer.sh (as they are effectively multi-threaded due to sheduler threads), and that issue reproducibility may be lower (sheduling may not match original OS slicing, other running queries etc.). Still, using PQUERY_MULTI=1 a good number of issues are likely (TBD) to be reproducibile and thus reducable given reducer.sh's random replay functionality.
 
 # Note: the many backticks used in this script are not SQL/MySQL column-surrounding backticks, but rather subshells which call a function, for example `table` calls table()
-# To debug the SQL generated (it outputs the line numbers: "ERROR 1264 (22003) at line 47 in file" - so it easy to see which line (47 in example) failed in the SQL) use:
+# To debug the SQL generated simply source out.sql from the MySQL CLI, or use something like; (it outputs the line numbers: "ERROR 1264 (22003) at line 47 in file" - so it easy to see which line (47 in example) failed in the SQL)
 # echo '';echo '';./bin/mysql -A -uroot -S./socket.sock --force --binary-mode test < ~/percona-qa/pquery/generator/out.sql 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB|Out of range value|Incorrect prefix key|Incorrect.*value|Data too long|Truncated incorrect.*value|Column.*cannot be null|Cannot get geometry object from data you send|doesn't support GEOMETRY|Cannot execute statement in a READ ONLY transaction"
+
+# Internal variables; do not modify
+RANDOM=`date +%s%N | cut -b13-19`  # Random entropy pool init
+MYSQL_VERSION="$(echo "${MYSQL_VERSION}" | sed "s|\.||")"
+SUBWHEREACTIVE=0
 
 if [ "" == "$1" -o "$2" != "" ]; then
   echo "Please specify the number of queries to generate as the first (and only) option to this script"
@@ -15,9 +21,6 @@ if [ "" == "$1" -o "$2" != "" ]; then
 else
   queries=$1
 fi
-
-RANDOM=`date +%s%N | cut -b13-19`
-SUBWHEREACTIVE=0
 
 # Check all needed data files are present
 if [ ! -r tables.txt ]; then echo "Assert: tables.txt not found!"; exit 1; fi
@@ -60,7 +63,7 @@ mapfile -t tables    < tables.txt       ; TABLES=${#tables[*]}
 mapfile -t views     < views.txt        ; VIEWS=${#views[*]}
 mapfile -t pk        < pk.txt           ; PK=${#pk[*]}
 mapfile -t types     < types.txt        ; TYPES=${#types[*]}
-mapfile -t data      < data.txt         ; DATA=${#data[*]}
+mapfile -t datafile  < data.txt         ; DATAFILE=${#datafile[*]}
 mapfile -t engines   < engines.txt      ; ENGINES=${#engines[*]}
 mapfile -t az        < a-z.txt          ; AZ=${#az[*]}
 mapfile -t n9        < 0-9.txt          ; N9=${#n9[*]}
@@ -98,7 +101,7 @@ table()     { echo "${tables[$[$RANDOM % $TABLES]]}"; }
 view()      { echo "${views[$[$RANDOM % $VIEWS]]}"; }
 pk()        { echo "${pk[$[$RANDOM % $PK]]}"; }
 ctype()     { echo "${types[$[$RANDOM % $TYPES]]}"; }
-data()      { echo "${data[$[$RANDOM % $DATA]]}"; }
+datafile()  { echo "${datafile[$[$RANDOM % $DATAFILE]]}"; }
 engine()    { echo "${engines[$[$RANDOM % $ENGINES]]}"; }
 az()        { echo "${az[$[$RANDOM % $AZ]]}"; }
 n9()        { echo "${n9[$[$RANDOM % $N9]]}"; }
@@ -127,7 +130,7 @@ interval()  { echo "${interval[$[$RANDOM % $INTERVAL]]}"; }
 lctimename(){ echo "${lctimenms[$[$RANDOM % $LCTIMENMS]]}"; }
 character() { echo "${character[$[$RANDOM % $CHARACTER]]}"; }
 numsimple() { echo "${numsimple[$[$RANDOM % $NUMSIMPLE]]}"; }
-numeric() { echo "${numericop[$[$RANDOM % $NUMERIC]]}"; }
+numeric()   { echo "${numeric[$[$RANDOM % $NUMERIC]]}"; }
 # ========================================= Combinations
 azn9()      { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }       # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
 # ========================================= Single, random
@@ -170,6 +173,7 @@ asalias2()  { echo "AS a`n2`"; }
 asalias3()  { echo "AS a`n3`"; }
 numericop() { echo "`numeric`" | sed "s|DUMMY|`danrorfull`|;s|DUMMY2|`danrorfull`|;s|DUMMY3|`danrorfull`|"; }                                # NUMERIC FUNCTION with data (includes numbers) or -1000 to 1000 as options, for example ABS(nr)
 # ========================================= Dual
+data()      { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`datafile`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi }         # 80% data from data.txt file, 20% generated full numerical function
 n2()        { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }                                                          # 50% 1, 50% 2
 onoff()     { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }                                                       # 75% ON, 25% OFF
 onoff01()   { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "1"; else echo "0"; fi }                                                          # 75% 1 (on), 25% 0 (off)
@@ -188,11 +192,11 @@ binmaster() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "BINARY"; else echo "
 nowblocal() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi }                                     # 50% NO_WRITE_TO_BINLOG, 50% LOCAL
 locktype()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ `localonly`"; else echo "`lowprio` WRITE"; fi }                             # 50% READ [LOCAL], 50% [LOW_PRIORITY] WRITE
 charactert(){ if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`character` `charactert`"; else echo "`character`"; fi }                         # 40% NESTED CHARACTERISTIC, 60% SINGLE (OR FINAL) CHARACTERISTIC (increasing final possibility)
-danrorfull(){ if [ $[$RANDOM % 20 + 1] -le 12 ]; then echo "`dataornum`"; else echo "`fullnrfunc`"; fi }                                     # 60% data (includes numbers) or -1000 to 1000, 40% full numeric function 
-numericadd(){ if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`nusimple` `eitherornn` `numericadd`"; else echo "`nusimple` `eitherornn`" ; fi }  # 40% NESTED +/-/etc. NR FUNCTION() OR SIMPLE, 60% SINGLE (OR FINAL) +/-/etc. as above
-dataornum() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`data`"; else echo "`nn1000`"; fi }                                              # 20% data (includes numbers), 80% -1000 to 1000
-eitherornn(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`dataornum`"; else echo "`numericop`"; fi }                                      # 50% data/number (ref above), 50% NUMERIC FUNCTION() like ABS(nr) etc.
-fullnrfunc(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`eitherornn` `nusimple` `eitherornn`"; else echo "`eitherornn` `nusimple` `eitherornn` `numericadd`"; fi }  # 50% full numeric function, 50% idem with nesting
+danrorfull(){ if [ $[$RANDOM % 20 + 1] -le 19 ]; then echo "`dataornum`"; else echo "`fullnrfunc`"; fi }                                     # 95% data (inc numbers) or -1000 to 1000, 5% nested full nr function (MAX 10% to avoid inf loop)
+numericadd(){ if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`numsimple` `eitherornn` `numericadd`"; else echo "`numsimple` `eitherornn`" ; fi }  # 40% NESTED +/-/etc. NR FUNCTION() OR SIMPLE, 60% SINGLE (OR FINAL) +/-/etc. as above
+dataornum() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`data`"; else echo "`nn1000`"; fi }                                              # 20% data (inc numbers), 80% -1000 to 1000
+eitherornn(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`dataornum`"; else echo "`numericop`"; fi }                                      # 50% data (inc numbers), 50% NUMERIC FUNCTION() like ABS(nr) etc.
+fullnrfunc(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`eitherornn` `numsimple` `eitherornn`"; else echo "`eitherornn` `numsimple` `eitherornn` `numericadd`"; fi }  # 50% full numeric function, 50% idem with nesting
 # ========================================= Triple
 ac()        { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "a"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "b"; else echo "c"; fi; fi }  # 40% a, 30% b, 30% c
 trxopt()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`readwrite`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "WITH CONSISTENT SNAPSHOT `readwrite`"; else echo "WITH CONSISTENT SNAPSHOT"; fi; fi }  # 50% R/W or R/O, 25% WITH C/S, 25% C/S + R/W or R/O
@@ -278,7 +282,6 @@ query(){
              2) echo "CREATE `definer` PROCEDURE `proc` (`inout` i1 `ctype`, `inout` i2 `ctype`) `charactert` `query`";;
              *) echo "Assert: invalid random case selection in procedures case";;
            esac;;
-        7) 
 
 
       
@@ -524,19 +527,20 @@ query(){
           4) echo "SELECT `func`(`data`)";;
           *) echo "Assert: invalid random case selection in func,proc call subcase";;
         esac;;
-3[8-9]) case $[$RANDOM % 4 + 1] in  # Numeric functions
-         1) echo "`fullnrfunc`";;
-         2) echo "(`fullnrfunc`) `nusimple` (`fullnrfunc`)";;
-         3) echo "(`fullnrfunc`) `nusimple` (`fullnrfunc`) `nusimple` (`fullnrfunc`)";;
-         4) echo "(`fullnrfunc`) `nusimple` (`fullnrfunc`) `nusimple` (`fullnrfunc`) `nusimple` (`fullnrfunc`)";;
+3[8-9]) case $[$RANDOM % 4 + 1] in  # Numeric functions: this should really become a callable function so that it can be used instead of `data` for example, etc.
+         1) echo "SELECT `fullnrfunc`";;
+         2) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
+         3) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
+         4) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
          *) echo "Assert: invalid random case selection in func,proc call subcase";;
        esac;;
        
    
 
+
 # http://dev.mysql.com/doc/refman/5.7/en/get-diagnostics.html
 # http://dev.mysql.com/doc/refman/5.7/en/signal.html
-
+# cast functions
  
     
      # TIP: when adding new options, make sure to update the original case/esac to reflect the new number of options (the number behind the '%' in the case statement at the top of the list matches the number of available 'nr)' options)
@@ -544,12 +548,23 @@ query(){
   esac
 }
 
+thread(){
+  for i in `eval echo {1..${queries}}`; do
+    while [ ${MUTEX_THREAD_BUSY} -eq 1 ]; do sleep 0.00001; done
+    MUTEX_THREAD_BUSY=1; echo "`query`;" >> out.sql; MUTEX_THREAD_BUSY=0
+  done
+}
+
 # Main code
 if [ -r out.sql ]; then rm out.sql; fi
 touch out.sql; if [ ! -r out.sql ]; then echo "Assert: out.sql not present after 'touch out.sql' command!"; exit 1; fi
-for i in `eval echo {1..${queries}}`; do
-  echo "`query`;" >> out.sql
+MUTEX_THREAD_BUSY=0
+PIDS=
+for i in `eval echo {1..${THREADS}}`; do
+  thread &
+  PIDS="${PIDS} $!"
 done
+wait ${PIDS}
 if grep -qi "Assert" out.sql; then
   echo "Errors found, please fix generator.sh code:"
   grep "Assert" out.sql | sort -u | sed 's|[ ]*;$||'
