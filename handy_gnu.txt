@@ -177,6 +177,8 @@
   sudo tcpdump -i lo -X -s 0 src host 127.0.0.1
 # After running cmake/make, you can use make install in the following way to install the package to a non-default location (handy for testing):
   make install DESTDIR=/tmp/somedir  # With thanks to AlexeyB
+# List packages on Ubuntu/Debian
+  dpkg-query -l | egrep -i "percona|mysql|maria" | awk '{print $2}'  # With thanks to Evgeniy Patlan
 
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax
