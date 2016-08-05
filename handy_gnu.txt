@@ -160,6 +160,14 @@
 # Except for searching files (if grep -qi "search string" file.txt...), it's best not to use: echo "text" | grep -q "text" to search strings for substrings. It is very slow, and 
   has a gotcha: Test this:  LINE='test'; DONE=0; echo ${LINE} | if grep -q 'test'; then DONE=1; echo "DONE"; fi; echo $DONE  # DONE is 0 because (as per Bash team); 'All elements
   of a pipeline are executed in subshells.  A subshell cannot affect its parent's environment. The 'lastpipe' shell option can change this when job control is not active.'
+# In Bash, a calling function needs to be declared ABOVE the line it is called from. An example script (place the following 3 lines in a script) will show this (output on right):
+  echo "does not work (error will be shown before this line): `works`"         # ./test.sh: line 1: works: command not found
+  works(){ echo "works"; }                                                     # does not work (error will be shown before this line): 
+  echo "does work (will show 'works' output after semicolon): `works`"         # does work (will show 'works' output after semicolon): works
+# However, the following does work, as all the functions are "read" before one of them is called (even though works1 calls a function defined LOWER then the calling line itself):
+  works1(){ echo "`works2`"; }
+  works2(){ echo "works"; }
+  echo "does work: `works1`"                                                   # does work: works
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
@@ -190,8 +198,9 @@
   export LD_LIBRARY_PATH=${PWD}/lib;~/percona-qa/pquery/pquery --infile=./testc.sql --database=test --threads=1 --no-shuffle --user=root --socket=./socket.sock
 
 # ------ Git ------
-# Store git credentials
+# Store git credentials, and turn off warnings for whitespace errors (with thanks, http://stackoverflow.com/a/12396793/1580826)
   git config credential.helper store
+  git config apply.whitespace nowarn
 # Diff ALL changes, including newly added (i.e. staged) files (with thanks, http://stackoverflow.com/a/27299842)
   git diff HEAD
 # Apply a diff and then patch (with thanks, http://www.thegeekstuff.com/2014/03/git-patch-create-and-apply/)

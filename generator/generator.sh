@@ -75,9 +75,9 @@ mapfile -t flush     < flush.txt        ; FLUSH=${#flush[*]}
 mapfile -t lock      < lock.txt         ; LOCK=${#lock[*]}
 mapfile -t reset     < reset.txt        ; RESET=${#reset[*]}
 mapfile -t charcol   < charsetcol_$MYSQL_VERSION.txt; CHARCOL=${#charcol[*]}
-mapfile -t setvars   < session_$MYSQL_VERSION.txt; SETVARS=${#setvars[*]}  # S(ession)
-mapfile -t setvarg   < global_$MYSQL_VERSION.txt ; SETVARG=${#setvarg[*]}  # G(lobal)
-mapfile -t pstables  < pstables_$MYSQL_VERSION.txt; PSTABLES=${#pstables[*]}
+mapfile -t setvars   < session_$MYSQL_VERSION.txt   ; SETVARS=${#setvars[*]}   # S(ession)
+mapfile -t setvarg   < global_$MYSQL_VERSION.txt    ; SETVARG=${#setvarg[*]}   # G(lobal)
+mapfile -t pstables  < pstables_$MYSQL_VERSION.txt  ; PSTABLES=${#pstables[*]}
 mapfile -t setvals   < setvalues.txt    ; SETVALUES=${#setvals[*]}
 mapfile -t sqlmode   < sqlmode.txt      ; SQLMODE=${#sqlmode[*]}
 mapfile -t optsw     < optimizersw.txt  ; OPTSW=${#optsw[*]}
@@ -131,6 +131,9 @@ lctimename(){ echo "${lctimenms[$[$RANDOM % $LCTIMENMS]]}"; }
 character() { echo "${character[$[$RANDOM % $CHARACTER]]}"; }
 numsimple() { echo "${numsimple[$[$RANDOM % $NUMSIMPLE]]}"; }
 numeric()   { echo "${numeric[$[$RANDOM % $NUMERIC]]}"; }
+# Bash requires functions to be defined ABOVE the line from which they are called. This would normally mean that we have to watch the order in which we define and call functions, which would be complex. For example, `data`
+# calls other functions and those functions in turn may loop back to `data` (i.e. normally impossible to code). However, here we declare all functions first, and only then start calling them towards the end of the script 
+# which is fine/works, even if functions are looping or are declared BELOW the line from which they are callled (remember the main call is at the end of the script and all functions are allready "read". Ref handy_gnu.txt
 # ========================================= Combinations
 azn9()      { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }       # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
 # ========================================= Single, random
@@ -139,6 +142,7 @@ ignore()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "IGNORE"; fi }       
 lowprio()   { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "LOW_PRIORITY"; fi }                 # 25% LOW_PRIORITY
 quick()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "QUICK"; fi }                        # 20% QUICK
 limit()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIMIT `n9`"; fi }                   # 50% LIMIT 0-9
+limoffset() { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "`n3`,"; fi }                        # 10% 0-3 offset (for LIMITs)
 ofslimit()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIMIT `limoffset``n9`"; fi }        # 50% LIMIT 0-9, with potential offset
 natural()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "NATURAL"; fi }                      # 20% NATURAL (for JOINs)
 outer()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "OUTER"; fi }                        # 50% OUTER (for JOINs)
@@ -147,7 +151,6 @@ full()      { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "FULL"; fi }         
 not()       { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "NOT"; fi }                          # 25% NOT
 no()        { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "NO"; fi }                           # 40% NO (for transactions)
 fromdb()    { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "FROM test"; fi }                    # 10% FROM test
-limoffset() { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "`n3`,"; fi }                        # 10% 0-3 offset (for LIMITs)
 offset()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "OFFSET `n9`"; fi }                  # 20% OFFSET 0-9
 forquery()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "FORQUERY `n9`"; fi }                # 20% QUERY 0-9
 onephase()  { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "ONE PHASE"; fi }                    # 80% ONE PHASE (needs to be high ref http://dev.mysql.com/doc/refman/5.7/en/xa-states.html)
@@ -155,7 +158,7 @@ convertxid(){ if [ $[$RANDOM % 20 + 1] -le 3  ]; then echo "CONVERT XID"; fi }  
 ifnotexist(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF NOT EXISTS"; fi }                # 50% IF NOT EXISTS
 ifexist()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF EXISTS"; fi }                    # 50% IF EXISTS
 completion(){ if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "ON COMPLETION `not` PRESERVE"; fi } # 25% ON COMPLETION [NOT] PRESERVE
-comment()   { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "COMMENT '$(echo '`data`' | sed "s|'||g")'"; fi }  # 25% COMMENT
+comment()   { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "COMMENT '$(echo "`data`" | sed "s|'||g")'"; fi }  # 25% COMMENT
 intervalad(){ if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "+ INTERVAL `n9` `interval`"; fi }   # 20% + 0-9 INTERVAL
 work()      { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "WORK"; fi }                         # 25% WORK (for transactions and savepoints)
 savepoint() { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "SAVEPOINT"; fi }                    # 25% SAVEPOINT (for savepoints)
@@ -173,7 +176,6 @@ asalias2()  { echo "AS a`n2`"; }
 asalias3()  { echo "AS a`n3`"; }
 numericop() { echo "`numeric`" | sed "s|DUMMY|`danrorfull`|;s|DUMMY2|`danrorfull`|;s|DUMMY3|`danrorfull`|"; }                                # NUMERIC FUNCTION with data (includes numbers) or -1000 to 1000 as options, for example ABS(nr)
 # ========================================= Dual
-data()      { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`datafile`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi }         # 80% data from data.txt file, 20% generated full numerical function
 n2()        { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }                                                          # 50% 1, 50% 2
 onoff()     { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }                                                       # 75% ON, 25% OFF
 onoff01()   { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "1"; else echo "0"; fi }                                                          # 75% 1 (on), 25% 0 (off)
@@ -182,12 +184,11 @@ startsends(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "STARTS"; else echo "
 globses()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi }                                               # 50% GLOBAL, 50% SESSION
 andor()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "AND"; else echo "OR"; fi }                                                       # 50% AND, 50% OR
 leftright() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LEFT"; else echo "RIGHT"; fi }                                                   # 50% LEFT, 50% RIGHT (for JOINs)
-readwrite() { if [ $[$RANDOM % 20 + 1] -le 1  ]; then echo "READ ONLY,"; else echo "READ WRITE,"; fi }                                       # 5% R/O, 95% R/W
 xid()       { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "'xid1'"; else echo "'xid2'"; fi }                                                # 75% xid1, 25% xid2
 disenable() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ENABLE"; else echo "DISABLE"; fi }                                               # 50% ENABLE, 50% DISABLE
 sdisenable(){ if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`disenable`"; else echo "DISABLE ON SLAVE"; fi }                                 # 40% ENABLE, 40% DISALBE, 20% DISABLE ON SLAVE
 schedule()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "AT `timestamp` `intervalad`"; else echo "EVERY `n9` `interval` `opstend`"; fi }  # 50% AT, 50% EVERY (for EVENTs)
-readwrite() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'READ'; else echo 'WRITE'; fi }                                                   # 50% READ, 50% WRITE (for transactions)
+readwrite() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'READ'; else echo 'WRITE'; fi }                                                   # 50% READ, 50% WRITE (for START TRANSACTION addition)
 binmaster() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "BINARY"; else echo "MASTER"; fi }                                                # 50% BINARY, 50% MASTER
 nowblocal() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi }                                     # 50% NO_WRITE_TO_BINLOG, 50% LOCAL
 locktype()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ `localonly`"; else echo "`lowprio` WRITE"; fi }                             # 50% READ [LOCAL], 50% [LOW_PRIORITY] WRITE
@@ -197,6 +198,7 @@ numericadd(){ if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`numsimple` `eithero
 dataornum() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`data`"; else echo "`nn1000`"; fi }                                              # 20% data (inc numbers), 80% -1000 to 1000
 eitherornn(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`dataornum`"; else echo "`numericop`"; fi }                                      # 50% data (inc numbers), 50% NUMERIC FUNCTION() like ABS(nr) etc.
 fullnrfunc(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`eitherornn` `numsimple` `eitherornn`"; else echo "`eitherornn` `numsimple` `eitherornn` `numericadd`"; fi }  # 50% full numeric function, 50% idem with nesting
+data()      { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`datafile`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi }         # 80% data from data.txt file, 20% generated full numerical function
 # ========================================= Triple
 ac()        { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "a"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "b"; else echo "c"; fi; fi }  # 40% a, 30% b, 30% c
 trxopt()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`readwrite`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "WITH CONSISTENT SNAPSHOT `readwrite`"; else echo "WITH CONSISTENT SNAPSHOT"; fi; fi }  # 50% R/W or R/O, 25% WITH C/S, 25% C/S + R/W or R/O
@@ -207,6 +209,7 @@ emglobses() { if [ $[$RANDOM % 20 + 1] -le 14 ]; then if [ $[$RANDOM % 20 + 1] -
 emascdesc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ASC"; else echo "DESC"; fi; fi }         # 25% ASC, 25% DESC, 50% EMPTY/NOTHING
 bincharco() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'CHARACTER SET "Binary" COLLATE "Binary"'; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo 'CHARACTER SET "utf8" COLLATE "utf8_bin"'; else echo 'CHARACTER SET "latin1" COLLATE "latin1_bin"'; fi; fi }                                                                                                                       # 33% Binary/Binary, 33% utf8/utf8_bin, 33% latin1/latin1_bin
 inout()     { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "INOUT"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IN"; else echo "OUT"; fi; fi }  # 40% INOUT, 30% IN, 30% OUT
+trxcharact(){ if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo "ISOLATION LEVEL `isolation`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ ONLY"; else echo "READ WRITE"; fi; fi } # 33% ISOLATION LEVEL, 33% READ ONLY, 33% READ WRITE
 # ========================================= Quadruple
 like()      { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 5 ]; then echo "LIKE '`azn9`'"; else echo "LIKE '`azn9`%'"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIKE '%`azn9`'"; else echo "LIKE '%`azn9`%'"; fi; fi; }                                                                                 # 10% LIKE '<char>', 30% LIKE '<char>%', 30% LIKE '%<char>', 30% LIKE '%<char>%'
 isolation() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ COMMITTED"; else echo "REPEATABLE READ"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ UNCOMMITTED"; else echo "SERIALIZABLE"; fi; fi; }                                                                               # 25% READ COMMITTED, 25% REPEATABLE READ, 25% READ UNCOMMITTED, 25% SERIALIZABLE
@@ -342,7 +345,12 @@ query(){
         7) echo "PURGE `binmaster` LOGS";; # Add TO and BEFORE clauses (need a datetime generator)
         *) echo "Assert: invalid random case selection in generic statements case";;
       esac;;
-    17) echo "SET `emglobses` TRANSACTION `readwrite` ISOLATION LEVEL `isolation`";;  # Isolation level | Excludes `COMMIT...RELEASE` SQL, as this drops client connection
+    17) case $[$RANDOM % 8 + 1] in  # Transaction isolation level | Excludes `COMMIT...RELEASE` SQL, as this drops client connection
+      [1-5]) echo "SET `emglobses` TRANSACTION `transaction`";;
+      [6-7]) echo "SET `emglobses` TRANSACTION `transaction`, `transaction`";;
+        8) echo "SET `emglobses` TRANSACTION `transaction`, `transaction`, `transaction`";;
+        *) echo "Assert: invalid random case selection in transaction isolation level case";;
+      esac;;
     1[8-9]) case $[$RANDOM % 37 + 1] in  # SET statements (complete)
         # 1+2: Add or remove an SQL_MODE, with thanks http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
         [1-5]) echo "SET @@`globses`.SQL_MODE=(SELECT CONCAT(@@SQL_MODE,',`sqlmode`'))";;
