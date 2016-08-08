@@ -537,7 +537,7 @@ function async_rpl_test(){
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       let COUNTER=COUNTER+1
       if [ $COUNTER -eq 10 ];then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
+        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
         exit 1
       fi
       sleep 1;
