@@ -378,11 +378,17 @@ function async_rpl_test(){
     check_script $?
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
 
-    if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
-      exit 1
-    fi
-    sleep 5
+    COUNTER=0
+    while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      let COUNTER=COUNTER+1
+      if [ $COUNTER -eq 10 ];then
+        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
+        exit 1
+      fi 
+      sleep 1;
+    done
+
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
@@ -421,12 +427,17 @@ function async_rpl_test(){
     check_script $?
 
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    COUNTER=0
+    while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      let COUNTER=COUNTER+1
+      if [ $COUNTER -eq 10 ];then
+        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode.err"
+        exit 1
+      fi
+      sleep 1;
+    done
 
-    if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode.err"
-      exit 1
-    fi
-    sleep 5
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
@@ -465,12 +476,17 @@ function async_rpl_test(){
     check_script $?
 
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    COUNTER=0
+    while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      let COUNTER=COUNTER+1
+      if [ $COUNTER -eq 10 ];then
+        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
+        exit 1
+      fi
+      sleep 1;
+    done
 
-    if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
-      exit 1
-    fi
-  
     # OLTP RW run
     $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
       --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
@@ -516,11 +532,16 @@ function async_rpl_test(){
     check_script $?
 
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
-
-    if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
-      exit 1
-    fi
+    COUNTER=0
+    while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      let COUNTER=COUNTER+1
+      if [ $COUNTER -eq 10 ];then
+        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
+        exit 1
+      fi
+      sleep 1;
+    done
 
     # OLTP RW run
     $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
@@ -577,12 +598,17 @@ function async_rpl_test(){
     check_script $?
 
     SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/ps3.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    COUNTER=0
+    while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      let COUNTER=COUNTER+1
+      if [ $COUNTER -eq 10 ];then
+        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
+        exit 1
+      fi
+      sleep 1;
+    done
 
-    if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
-      exit 1
-    fi
-    sleep 5
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/ps3.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
@@ -649,12 +675,17 @@ function async_rpl_test(){
     check_script $?
 
     SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    COUNTER=0
+    while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      let COUNTER=COUNTER+1
+      if [ $COUNTER -eq 10 ];then
+        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
+        exit 1
+      fi
+      sleep 1;
+    done
 
-    if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
-      exit 1
-    fi
-    sleep 5  
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
@@ -756,6 +787,7 @@ function async_rpl_test(){
      --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master3 --mysql-user=root --db-driver=mysql \
      --mysql-socket=/tmp/ps3.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel3_rw.log
     check_script $?
+    sleep 10
     SB_CHANNEL1=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status for channel 'master1'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     SB_CHANNEL2=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status for channel 'master2'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     SB_CHANNEL3=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status for channel 'master3'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -772,7 +804,7 @@ function async_rpl_test(){
       echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
       exit 1
     fi
-    sleep 5
+    
     while [ $SB_CHANNEL3 -gt 0 ]; do
       SB_CHANNEL3=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status for channel 'master3'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_CHANNEL3" =~ ^[0-9]+$ ]]; then
@@ -938,8 +970,7 @@ function async_rpl_test(){
      --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps5 --mysql-user=root --db-driver=mysql \
      --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps5_rw.log 2>&1 &
     check_script $?
-
- 
+    sleep 10
     SB_PS=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     SB_PXC=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
 
@@ -951,7 +982,6 @@ function async_rpl_test(){
       echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
       exit 1
     fi
-    sleep 5
     while [ $SB_PXC -gt 0 ]; do
       SB_PXC=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_PXC" =~ ^[0-9]+$ ]]; then
