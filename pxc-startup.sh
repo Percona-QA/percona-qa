@@ -66,10 +66,13 @@ echo -e "BUILD=\$(pwd)\n"  >> ./start_pxc
 echo -e "echo 'Starting PXC nodes..'\n" >> ./start_pxc
 
 echo -e "if [ -z \$NODES ]; then"  >> ./start_pxc
-echo -e "  echo \"*** Triggered default startup. Starting single node cluster ***\""  >> ./start_pxc
-echo -e "  echo \"To start multiple nodes please execute script as;\""  >> ./start_pxc
-echo -e "  echo \"$./start_pxc.sh 2\""  >> ./start_pxc
-echo -e "  echo \"This would lead to start 2 node cluster\""  >> ./start_pxc
+echo -e "  echo \"+----------------------------------------------------------------+\""  >> ./start_pxc
+echo -e "  echo \"| ** Triggered default startup. Starting single node cluster  ** |\""  >> ./start_pxc
+echo -e "  echo \"+----------------------------------------------------------------+\""  >> ./start_pxc
+echo -e "  echo \"|  To start multiple nodes please execute script as;             |\""  >> ./start_pxc
+echo -e "  echo \"|  $./start_pxc.sh 2                                             |\""  >> ./start_pxc
+echo -e "  echo \"|  This would lead to start 2 node cluster                       |\""  >> ./start_pxc
+echo -e "  echo \"+----------------------------------------------------------------+\""  >> ./start_pxc
 echo -e "  NODES=0"  >> ./start_pxc
 echo -e "else"  >> ./start_pxc
 echo -e "  let NODES=NODES-1" >> ./start_pxc
@@ -175,6 +178,4 @@ echo -e "  done\n" >> ./start_pxc
 echo -e "}\n" >> ./start_pxc
 
 echo -e "start_multi_node" >> ./start_pxc
-
-
-chmod +x ./start_pxc ./stop_pxc ./*node_cli ./wipe
+echo -e "chmod +x ./start_pxc ./stop_pxc ./*node_cli ./wipe" >> ./start_pxc
