@@ -40,13 +40,6 @@ if [ ! -r $BUILD/mysql-test/mysql-test-run.pl ]; then
   echo -e "mysql test suite is not available, please check.."
 fi
 
-KEY_RING_CHECK=0
-if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
-  mkdir -p $node0 $keyring_node0
-elif [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-  KEY_RING_CHECK=1
-fi
-
 ADDR="127.0.0.1"
 RPORT=$(( RANDOM%21 + 10 ))
 RBASE="$(( RPORT*1000 ))"
@@ -54,8 +47,14 @@ LADDR="$ADDR:$(( RBASE + 8 ))"
 SUSER=root
 SPASS=
 node0="${BUILD}/node0"
-
 keyring_node0="${BUILD}/keyring_node0"
+
+KEY_RING_CHECK=0
+if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+  mkdir -p $node0 $keyring_node0
+elif [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+  KEY_RING_CHECK=1
+fi
 
 echo -e "#!/bin/bash" > ./start_pxc
 echo -e "NODES=\$1"  >> ./start_pxc
