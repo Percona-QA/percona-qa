@@ -3173,6 +3173,7 @@
 --thread-handling=no-threads
 --thread-handling=one-thread-per-connection
 --thread-handling=dynamically-loaded
+--thread-handling=pool-of-threads
 --thread-pool-high-prio-mode=transactions
 --thread-pool-high-prio-mode=statements
 --thread-pool-high-prio-mode=none
