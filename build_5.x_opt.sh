@@ -19,7 +19,7 @@ cd ${CURPATH}_opt
 ### TEMPORARY HACK TO AVOID COMPILING TB (WHICH IS NOT READY YET)
 rm -Rf ./plugin/tokudb-backup-plugin
 
-cmake . -DWITH_ZLIB=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON | tee /tmp/5.7_opt_build 
+cmake . -DWITH_ZLIB=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON | tee /tmp/5.7_opt_build 
 make | tee -a /tmp/5.7_opt_build
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_opt_build
 TAR_opt=`ls -1 *.tar.gz | head -n1`

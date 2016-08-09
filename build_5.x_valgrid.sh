@@ -19,7 +19,7 @@ cd ${CURPATH}_val
 ### TEMPORARY HACK TO AVOID COMPILING TB (WHICH IS NOT READY YET)
 rm -Rf ./plugin/tokudb-backup-plugin
 
-cmake . -DWITH_ZLIB=system -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON -DWITH_VALGRIND=ON | tee /tmp/5.7_valgrind_build
+cmake . -DWITH_ZLIB=system -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON -DWITH_VALGRIND=ON | tee /tmp/5.7_valgrind_build
 make | tee -a /tmp/5.7_valgrind_build
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_valgrind_build
 TAR_val=`ls -1 *.tar.gz | head -n1`
