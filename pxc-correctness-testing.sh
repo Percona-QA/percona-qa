@@ -206,7 +206,7 @@ pxc_startup(){
      break
     fi
     if [ "${MPID}" == "" ]; then
-      echoit "Error! server not started.. Terminating!"
+      echo "Error! server not started.. Terminating!"
       egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node2.err
       exit 1
     fi
@@ -241,7 +241,7 @@ pxc_startup(){
      break
     fi
     if [ "${MPID}" == "" ]; then
-      echoit "Error! server not started.. Terminating!"
+      echo "Error! server not started.. Terminating!"
       egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node3.err
       exit 1
     fi
