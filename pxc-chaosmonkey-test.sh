@@ -6,7 +6,7 @@ BUILD=$(pwd)
 SKIP_RQG_AND_BUILD_EXTRACT=0
 sst_method="rsync"
 NODES=5
-PXC_START_TIMEOUT=100
+PXC_START_TIMEOUT=300
 
 ADDR="127.0.0.1"
 RPORT=$(( RANDOM%21 + 10 ))
@@ -115,7 +115,7 @@ function start_multi_node(){
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
       if ${BUILD}/bin/mysqladmin -uroot -S$node/socket.sock ping > /dev/null 2>&1; then
-        echoit "Started PXC node$i. Socket : {BUILD}/node$i/socket.sock"
+        echoit "Started PXC node$i. Socket : ${BUILD}/node$i/socket.sock"
         break
       fi
     done
@@ -138,8 +138,8 @@ if [ $NUM -eq 1 ]; then
 fi
 
 # Forcefully killing PXC node for recovery testing 
-echoit "Forcefully killing PXC node for recovery testing "
 kill -9 ${MPID_ARRAY[$NUM - 1]}
+echoit "Forcefully killed PXC node$NUM for recovery testing "
 sleep 30
 
 # Restarting forcefully killed PXC node.
@@ -169,6 +169,6 @@ ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status li
 echoit "Shutting down PXC nodes"
 for i in `seq 1 $NODES`;do
   ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$i/socket.sock shutdown
-  echoit "Server on socket {BUILD}/node$i/socket.sock with datadir {BUILD}/node$i halted"
+  echoit "Server on socket {BUILD}/node$i/socket.sock with datadir ${BUILD}/node$i halted"
 done
 
