@@ -80,7 +80,7 @@ elif [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5
 fi
 
 # Creating logs dir to save sysbench run log.
-mkdir ${BUILD}/logs
+mkdir -p ${BUILD}/logs
 
 MPID_ARRAY=()
 function start_multi_node(){
@@ -124,7 +124,7 @@ function start_multi_node(){
 
 start_multi_node
 
-${BUILD}/bin/mysql  -uroot --socket=${BUILD}/node1/socket.sock -e"create database if not exists test"
+${BUILD}/bin/mysql  -uroot --socket=${BUILD}/node1/socket.sock -e"drop database if exists test;create database test"
 #sysbench data load
 echoit "Running sysbench load data..."
 sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --num-threads=30 --oltp_tables_count=30 --oltp_table_size=1000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_load.log 2>&1
