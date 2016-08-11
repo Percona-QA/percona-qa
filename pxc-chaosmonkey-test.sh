@@ -1,11 +1,12 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 # This script is for PXC ChaosMonkey Style testing
+# Need to execute this script from PXC basedir
 
 BUILD=$(pwd)
 SKIP_RQG_AND_BUILD_EXTRACT=0
 sst_method="rsync"
-NODES=5
+NODES=7
 PXC_START_TIMEOUT=300
 
 ADDR="127.0.0.1"
@@ -14,10 +15,16 @@ RBASE="$(( RPORT*1000 ))"
 SUSER=root
 SPASS=
 
+rm -rf ${BUILD}/pxc_chaosmonkey_testing.log &> /dev/null
 echoit(){
   echo "[$(date +'%T')] $1"
   if [ "${BUILD}" != "" ]; then echo "[$(date +'%T')] $1" >> ${BUILD}/pxc_chaosmonkey_testing.log; fi
 }
+
+if [ ! -r ${BUILD}/bin/mysqld ]; then  
+  echoit "Please execute the script from PXC basedir"
+  exit 1
+fi
 
 echoit "Starting $NODES node cluster for ChaosMonkey testiing"
 # Creating default my.cnf file
@@ -115,7 +122,7 @@ function start_multi_node(){
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
       if ${BUILD}/bin/mysqladmin -uroot -S$node/socket.sock ping > /dev/null 2>&1; then
-        echoit "Started PXC node$i. Socket : ${BUILD}/node$i/socket.sock"
+        echoit "Started PXC node$i. Socket : $node/socket.sock"
         break
       fi
     done
@@ -130,45 +137,117 @@ echoit "Running sysbench load data..."
 sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --num-threads=30 --oltp_tables_count=30 --oltp_table_size=1000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_load.log 2>&1
 #sysbench OLTP run
 echoit "Initiated sysbench read write run ..."
-sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua --report-interval=1 --num-threads=30 --max-time=600 --max-requests=1870000000 --oltp-tables-count=30 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
+sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua --report-interval=1 --num-threads=30 --max-time=1800 --max-requests=1870000000 --oltp-tables-count=30 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
 
-NUM="$(( ( RANDOM % $NODES )  + 1 ))"
-if [ $NUM -eq 1 ]; then
-  WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm:// "
-fi
+function recovery_test(){
+  NUM="$(( ( RANDOM % $NODES )  + 1 ))"
+  while [[ "$NUM" == "1" ]]
+  do
+    NUM="$(( ( RANDOM % $NODES )  + 1 ))"
+  done  
+  # Forcefully killing PXC node for recovery testing 
+  kill -9 ${MPID_ARRAY[$NUM - 1]}
+  wait $! 2>/dev/nul
+  echoit "Forcefully killed PXC node$NUM for recovery testing "
+  sleep 30
 
-# Forcefully killing PXC node for recovery testing 
-kill -9 ${MPID_ARRAY[$NUM - 1]}
-echoit "Forcefully killed PXC node$NUM for recovery testing "
-sleep 30
+  # Restarting forcefully killed PXC node.
+  echoit "Restarting forcefully killed PXC node."
+  RBASE1="$(( RBASE + ( 100 * $NUM ) ))"
+  LADDR1="$ADDR:$(( RBASE1 + 8 ))"
+  ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
+     --datadir=${BUILD}/node$NUM $WSREP_CLUSTER_ADD \
+     --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+     --log-error=${BUILD}/node$NUM/node$NUM.err --early-plugin-load=keyring_file.so \
+     --keyring_file_data=${BUILD}/keyring_node$NUM/keyring \
+     --socket=${BUILD}/node$NUM/socket.sock --port=$RBASE1 2>&1 &
 
-# Restarting forcefully killed PXC node.
-echoit "Restarting forcefully killed PXC node."
-RBASE1="$(( RBASE + ( 100 * $NUM ) ))"
-LADDR1="$ADDR:$(( RBASE1 + 8 ))"
-${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
-   --datadir=${BUILD}/node$NUM $WSREP_CLUSTER_ADD \
-   --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-   --log-error=${BUILD}/node$NUM/node$NUM.err --early-plugin-load=keyring_file.so \
-   --keyring_file_data=${BUILD}/keyring_node$NUM/keyring \
-   --socket=${BUILD}/node$NUM/socket.sock --port=$RBASE1 2>&1 &
+  for X in $(seq 0 ${PXC_START_TIMEOUT}); do
+    sleep 1
+    if ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$NUM/socket.sock ping > /dev/null 2>&1; then
+      echoit "Started forcefully killed node"
+      break
+    fi
+  done
 
-for X in $(seq 0 ${PXC_START_TIMEOUT}); do
-  sleep 1
-  if ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$NUM/socket.sock ping > /dev/null 2>&1; then
-    echoit "Started forcefully killed node"
-    break
+  # PXC cluster size info
+  echoit "Checking wsrep cluster size status.."
+  ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+}
+
+function node_joining(){
+  let i=$i+1
+  RBASE1="$(( RBASE + ( 100 * $i ) ))"
+  LADDR1="$ADDR:$(( RBASE1 + 8 ))"
+  WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
+  node="${BUILD}/node$i"
+  keyring_node="${BUILD}/keyring_node$i"
+
+  if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
+    mkdir -p $node $keyring_node
   fi
-done
+  if [ ! -d $node ]; then
+    ${MID} --datadir=$node  > ${BUILD}/startup_node$i.err 2>&1 || exit 1;
+  fi
+  if [ $KEY_RING_CHECK -eq 1 ]; then
+    KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node/keyring"
+  fi
+  if [ $i -eq 1 ]; then
+    WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm:// "
+  else
+    WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
+  fi
 
-# PXC cluster size info
-echoit "Checking wsrep cluster size status.."
-${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+  # Adding PXC node.
+  echoit "Adding PXC node."
+  ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
+     --datadir=${BUILD}/node$NUM $WSREP_CLUSTER_ADD \
+     --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+     --log-error=$node/node$i.err --early-plugin-load=keyring_file.so \
+     --keyring_file_data=$keyring_node/keyring \
+     --socket=$node/socket.sock --port=$RBASE1 2>&1 &
+
+  for X in $(seq 0 ${PXC_START_TIMEOUT}); do
+    sleep 1
+    if ${BUILD}/bin/mysqladmin -uroot -S$node/socket.sock ping > /dev/null 2>&1; then
+      echoit "Started PXC node$i. Socket : $node/socket.sock"
+      break
+    fi
+  done
+
+  # PXC cluster size info
+  echoit "Checking wsrep cluster size status.."
+  ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+}
+
+function node_leaving(){
+  NUM="$(( ( RANDOM % $NODES )  + 1 ))"
+  while [[ "$NUM" == "1" ]]
+  do
+    NUM="$(( ( RANDOM % $NODES )  + 1 ))"
+  done
+  # Shutting down random PXC node 
+  echoit "Shutting PXC node$NUM"
+  ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$NUM/socket.sock shutdown
+  echoit "Server on socket ${BUILD}/node$NUM/socket.sock with datadir ${BUILD}/node$NUM halted"
+
+  let NUM=$NUM-1
+  MPID_ARRAY=(${MPID_ARRAY[@]:0:$NUM} ${MPID_ARRAY[@]:$(($NUM + 1))})
+
+  # PXC cluster size info
+  echoit "Checking wsrep cluster size status.."
+  ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+}
+
+recovery_test
+node_leaving
+node_joining
+node_leaving
+node_leaving
 
 # Shutting down PXC nodes.
 echoit "Shutting down PXC nodes"
 for i in `seq 1 $NODES`;do
-  ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$i/socket.sock shutdown
-  echoit "Server on socket {BUILD}/node$i/socket.sock with datadir ${BUILD}/node$i halted"
+  ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$i/socket.sock shutdown &> /dev/null
+  echoit "Server on socket ${BUILD}/node$i/socket.sock with datadir ${BUILD}/node$i halted"
 done
-
