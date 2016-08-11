@@ -147,7 +147,7 @@ function recovery_test(){
   done  
   # Forcefully killing PXC node for recovery testing 
   kill -9 ${MPID_ARRAY[$NUM - 1]}
-  wait $! 2>/dev/nul
+  wait $! 2>/dev/null
   echoit "Forcefully killed PXC node$NUM for recovery testing "
   sleep 30
 
