@@ -26,11 +26,10 @@ if [ ! -r ${BUILD}/bin/mysqld ]; then
   exit 1
 fi
 
-echoit "Starting $NODES node cluster for ChaosMonkey testiing"
+echoit "Starting $NODES node cluster for ChaosMonkey testing"
 # Creating default my.cnf file
 echo "[mysqld]" > my.cnf
 echo "basedir=${BUILD}" >> my.cnf
-echo "loose-debug-sync-timeout=600" >> my.cnf
 echo "innodb_file_per_table" >> my.cnf
 echo "innodb_autoinc_lock_mode=2" >> my.cnf
 echo "innodb_locks_unsafe_for_binlog=1" >> my.cnf
@@ -38,11 +37,8 @@ echo "wsrep-provider=${BUILD}/lib/libgalera_smm.so" >> my.cnf
 echo "wsrep_node_incoming_address=$ADDR" >> my.cnf
 echo "wsrep_sst_method=rsync" >> my.cnf
 echo "wsrep_sst_auth=$SUSER:$SPASS" >> my.cnf
-echo "wsrep_node_address=$ADDR" >> my.cnf 
-echo "innodb_flush_method=O_DIRECT" >> my.cnf
+echo "wsrep_node_address=$ADDR" >> my.cnf
 echo "core-file" >> my.cnf
-echo "sql-mode=no_engine_substitution" >> my.cnf
-echo "loose-innodb-status-file=1" >> my.cnf
 echo "log-output=none" >> my.cnf
 echo "server-id=1" >> my.cnf
 echo "wsrep_slave_threads=2" >> my.cnf
@@ -100,9 +96,12 @@ function start_multi_node(){
 
     if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
       mkdir -p $node $keyring_node
+      if  [ ! "$(ls -A $node)" ]; then 
+        ${MID} --datadir=$node  > ${BUILD}/logs/startup_node$i.err 2>&1 || exit 1;
+      fi
     fi
     if [ ! -d $node ]; then
-      ${MID} --datadir=$node  > ${BUILD}/startup_node$i.err 2>&1 || exit 1;
+      ${MID} --datadir=$node  > ${BUILD}/logs/startup_node$i.err 2>&1 || exit 1;
     fi
     if [ $KEY_RING_CHECK -eq 1 ]; then
       KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node/keyring"
@@ -117,7 +116,7 @@ function start_multi_node(){
       --datadir=$node $WSREP_CLUSTER_ADD \
       --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
       --log-error=$node/node$i.err $KEY_RING_OPTIONS \
-      --socket=$node/socket.sock --port=$RBASE1 2>&1 &
+      --socket=$node/socket.sock --port=$RBASE1 > $node/node$i.err 2>&1 &
     MPID_ARRAY+=("$!")
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
@@ -130,6 +129,9 @@ function start_multi_node(){
 }
 
 start_multi_node
+# PXC cluster size info
+echoit "Checking wsrep cluster size status.."
+${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
 
 ${BUILD}/bin/mysql  -uroot --socket=${BUILD}/node1/socket.sock -e"drop database if exists test;create database test"
 #sysbench data load
@@ -138,6 +140,7 @@ sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --num-thre
 #sysbench OLTP run
 echoit "Initiated sysbench read write run ..."
 sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua --report-interval=1 --num-threads=30 --max-time=1800 --max-requests=1870000000 --oltp-tables-count=30 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
+SYSBENCH_PID="$!"
 
 function recovery_test(){
   NUM="$(( ( RANDOM % $NODES )  + 1 ))"
@@ -147,10 +150,15 @@ function recovery_test(){
   done  
   # Forcefully killing PXC node for recovery testing 
   kill -9 ${MPID_ARRAY[$NUM - 1]}
-  wait $! 2>/dev/null
+  wait ${MPID_ARRAY[$NUM - 1]} 2>/dev/null
   echoit "Forcefully killed PXC node$NUM for recovery testing "
+  let PID=$NUM-1
+  MPID_ARRAY=(${MPID_ARRAY[@]:0:$PID} ${MPID_ARRAY[@]:$(($PID + 1))})
   sleep 30
 
+  if [ $KEY_RING_CHECK -eq 1 ]; then
+    KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${BUILD}/keyring_node$NUM/keyring"
+  fi
   # Restarting forcefully killed PXC node.
   echoit "Restarting forcefully killed PXC node."
   RBASE1="$(( RBASE + ( 100 * $NUM ) ))"
@@ -158,9 +166,9 @@ function recovery_test(){
   ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
      --datadir=${BUILD}/node$NUM $WSREP_CLUSTER_ADD \
      --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-     --log-error=${BUILD}/node$NUM/node$NUM.err --early-plugin-load=keyring_file.so \
-     --keyring_file_data=${BUILD}/keyring_node$NUM/keyring \
-     --socket=${BUILD}/node$NUM/socket.sock --port=$RBASE1 2>&1 &
+     --log-error=${BUILD}/node$NUM/node$NUM.err $KEY_RING_OPTIONS \
+     --socket=${BUILD}/node$NUM/socket.sock --port=$RBASE1 > ${BUILD}/node$NUM/node$NUM.err 2>&1 &
+  MPID_ARRAY+=("$!")
 
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
@@ -175,6 +183,47 @@ function recovery_test(){
   ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
 }
 
+function multi_recovery_test(){
+  # Picking random nodes from cluster 
+  rand_nodes=(`shuf -i 1-6 -n 3 |  tr '\n' ' '`)
+  kill -9 ${MPID_ARRAY[${rand_nodes[0]}]} ${MPID_ARRAY[${rand_nodes[1]}]} ${MPID_ARRAY[${rand_nodes[2]}]}
+  wait ${MPID_ARRAY[${rand_nodes[0]}]} ${MPID_ARRAY[${rand_nodes[1]}]} ${MPID_ARRAY[${rand_nodes[2]}]} 2>/dev/null
+  echoit "Forcefully killed PXC 3 nodes for recovery testing "
+  sleep 30
+  for j in `seq 0 2`;do
+    let PID=${rand_nodes[$j]}+1
+    MPID_ARRAY=(${MPID_ARRAY[@]:0:$PID} ${MPID_ARRAY[@]:$(($PID + 1))})
+  done
+  for j in `seq 0 2`;do  
+    let NUM=${rand_nodes[$j]}+1
+    if [ $KEY_RING_CHECK -eq 1 ]; then
+      KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${BUILD}/keyring_node$NUM/keyring"
+    fi
+    # Restarting forcefully killed PXC node.
+    echoit "Restarting forcefully killed PXC node."
+    RBASE1="$(( RBASE + ( 100 * $NUM ) ))"
+    LADDR1="$ADDR:$(( RBASE1 + 8 ))"
+    ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
+     --datadir=${BUILD}/node$NUM $WSREP_CLUSTER_ADD \
+     --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+     --log-error=${BUILD}/node$NUM/node$NUM.err $KEY_RING_OPTIONS \
+     --socket=${BUILD}/node$NUM/socket.sock --port=$RBASE1 > ${BUILD}/node$NUM/node$NUM.err 2>&1 &
+    MPID_ARRAY+=("$!")
+
+    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
+      sleep 1
+      if ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$NUM/socket.sock ping > /dev/null 2>&1; then
+        echoit "Started forcefully killed node"
+        break
+      fi
+    done
+
+    # PXC cluster size info
+    echoit "Checking wsrep cluster size status.."
+    ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+  done
+}
+
 function node_joining(){
   let i=$i+1
   RBASE1="$(( RBASE + ( 100 * $i ) ))"
@@ -187,7 +236,7 @@ function node_joining(){
     mkdir -p $node $keyring_node
   fi
   if [ ! -d $node ]; then
-    ${MID} --datadir=$node  > ${BUILD}/startup_node$i.err 2>&1 || exit 1;
+    ${MID} --datadir=$node  > ${BUILD}/logs/startup_node$i.err 2>&1 || exit 1;
   fi
   if [ $KEY_RING_CHECK -eq 1 ]; then
     KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node/keyring"
@@ -203,9 +252,8 @@ function node_joining(){
   ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
      --datadir=${BUILD}/node$NUM $WSREP_CLUSTER_ADD \
      --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-     --log-error=$node/node$i.err --early-plugin-load=keyring_file.so \
-     --keyring_file_data=$keyring_node/keyring \
-     --socket=$node/socket.sock --port=$RBASE1 2>&1 &
+     --log-error=$node/node$i.err $KEY_RING_OPTIONS \
+     --socket=$node/socket.sock --port=$RBASE1 > $node/node$i.err 2>&1 &
 
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
@@ -239,11 +287,18 @@ function node_leaving(){
   ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
 }
 
-recovery_test
-node_leaving
+echoit "** Starting multi node recovery test"
+multi_recovery_test
+echoit "** Starting single node joining test"
 node_joining
+echoit "** Starting single node recovery test"
+recovery_test
+echoit "** Starting single node leaving test"
 node_leaving
 node_leaving
+
+kill -9 ${SYSBENCH_PID}
+wait ${SYSBENCH_PID} 2>/dev/null
 
 # Shutting down PXC nodes.
 echoit "Shutting down PXC nodes"
@@ -251,3 +306,4 @@ for i in `seq 1 $NODES`;do
   ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$i/socket.sock shutdown &> /dev/null
   echoit "Server on socket ${BUILD}/node$i/socket.sock with datadir ${BUILD}/node$i halted"
 done
+
