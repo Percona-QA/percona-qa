@@ -302,6 +302,7 @@ wait ${SYSBENCH_PID} 2>/dev/null
 
 # Shutting down PXC nodes.
 echoit "Shutting down PXC nodes"
+let NODES=$NODES+1
 for i in `seq 1 $NODES`;do
   ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$i/socket.sock shutdown &> /dev/null
   echoit "Server on socket ${BUILD}/node$i/socket.sock with datadir ${BUILD}/node$i halted"
