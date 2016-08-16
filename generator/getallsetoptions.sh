@@ -578,18 +578,18 @@ parse_set_vars(){
         echo "${PRLINE}" | sed 's|=value|=1|' >> ${VARFILE}.out
         HANDLED=1
       elif [[ "${PRLINE}" == *"slave-rows-search-algorithms=list"* ]]; then
-        echo "${PRLINE}" | sed 's|=list|=TABLE_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=TABLE_SCAN,INDEX_SCAN,HASH_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=INDEX_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=INDEX_SCAN,TABLE_SCAN,HASH_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=TABLE_SCAN,HASH_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=TABLE_SCAN,HASH_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=HASH_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=HASH_SCAN,TABLE_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=INDEX_SCAN,HASH_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=INDEX_SCAN,HASH_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=HASH_SCAN,INDEX_SCAN|' >> ${VARFILE}.out
-        echo "${PRLINE}" | sed 's|=list|=HASH_SCAN,INDEX_SCAN,TABLE_SCAN|' >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='TABLE_SCAN,INDEX_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='TABLE_SCAN,INDEX_SCAN,HASH_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='INDEX_SCAN,TABLE_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='INDEX_SCAN,TABLE_SCAN,HASH_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='TABLE_SCAN,HASH_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='TABLE_SCAN,HASH_SCAN,INDEX_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='HASH_SCAN,TABLE_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='HASH_SCAN,TABLE_SCAN,INDEX_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='INDEX_SCAN,HASH_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='INDEX_SCAN,HASH_SCAN,TABLE_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='HASH_SCAN,INDEX_SCAN'|" >> ${VARFILE}.out
+        echo "${PRLINE}" | sed "s|=list|='HASH_SCAN,INDEX_SCAN,TABLE_SCAN'|" >> ${VARFILE}.out
         HANDLED=1
       elif [[ "${PRLINE}" == *"slave-sql-verify-checksum=value"* ]]; then
         echo "${PRLINE}" | sed 's|=value|=0|' >> ${VARFILE}.out
