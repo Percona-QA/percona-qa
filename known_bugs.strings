@@ -158,6 +158,10 @@ thd->owned_gtid.is_empty                                 ## http://bugs.mysql.co
 thd->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS      ## http://bugs.mysql.com/bug.php?id=80665
 thd->variables.gtid_next.type == AUTOMATIC_GROUP         ## http://bugs.mysql.com/bug.php?id=80670
 
+## =========== MS 5.7 Group Replication ===========
+con->fd >= 0                                             ##http://bugs.mysql.com/bug.php?id=82584
+
+
 ## =========== PS 5.7 Beta & GA ===========
 buf0lru.cc line 2259                                     ## http://bugs.launchpad.net/percona-server/+bug/1553166
 #ZN8Item_row7val_strEP6String                   ## Fixed ## alpha # http://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
