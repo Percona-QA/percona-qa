@@ -164,6 +164,7 @@ function async_rpl_test(){
   if [ "$MYEXTRA_CHECK" == "GTID" ]; then
     MYEXTRA="--gtid-mode=ON --log-slave-updates --enforce-gtid-consistency"
   fi
+  MYEXTRA="$MYEXTRA --binlog-stmt-cache-size=1M"
   function pxc_start(){
     STARTUP_OPTION="$1"
     echo "Starting PXC node1"
