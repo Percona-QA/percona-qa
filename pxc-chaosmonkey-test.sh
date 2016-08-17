@@ -250,7 +250,7 @@ function node_joining(){
   # Adding PXC node.
   echoit "Adding PXC node."
   ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
-     --datadir=${BUILD}/node$NUM $WSREP_CLUSTER_ADD \
+     --datadir=${BUILD}/node$i $WSREP_CLUSTER_ADD \
      --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
      --log-error=$node/node$i.err $KEY_RING_OPTIONS \
      --socket=$node/socket.sock --port=$RBASE1 > $node/node$i.err 2>&1 &
