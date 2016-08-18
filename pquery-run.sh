@@ -367,7 +367,7 @@ pxc_startup(){
     ${MID} --datadir=$node1  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
   fi
   if [ ${VALGRIND_RUN} -eq 1 ]; then
-    VALGRIND_CMD="${VALGRIND_RUN}"
+    VALGRIND_CMD="${VALGRIND_CMD}"
   else
     VALGRIND_CMD=""
   fi
