@@ -366,8 +366,12 @@ pxc_startup(){
   if [ "$1" == "startup" ]; then
     ${MID} --datadir=$node1  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
   fi
-
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
+  if [ ${VALGRIND_RUN} -eq 1 ]; then
+    VALGRIND_CMD="${VALGRIND_RUN}"
+  else
+    VALGRIND_CMD=""
+  fi
+  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
     --basedir=${BASEDIR} --datadir=$node1 \
     --loose-debug-sync-timeout=600  --wsrep-debug=ON \
     --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
@@ -395,7 +399,7 @@ pxc_startup(){
     ${MID} --datadir=$node2  > ${WORKDIR}/startup_node2.err 2>&1 || exit 1;
   fi
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
+  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
     --basedir=${BASEDIR} --datadir=$node2 \
     --loose-debug-sync-timeout=600  --wsrep-debug=ON \
     --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
@@ -423,7 +427,7 @@ pxc_startup(){
     ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
   fi
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
+  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
     --basedir=${BASEDIR} --datadir=$node3 \
     --loose-debug-sync-timeout=600  --wsrep-debug=ON \
     --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
@@ -1009,6 +1013,14 @@ pquery_test(){
     fi
     sleep 2  # <^ Make sure mysqld is gone
   else
+    if [ ${VALGRIND_RUN} -eq 1 ]; then # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
+      # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
+      # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
+      # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log
+      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1 
+    fi
     (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
     sleep 2; sync
