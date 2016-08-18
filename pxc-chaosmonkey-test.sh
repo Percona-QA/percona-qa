@@ -153,6 +153,7 @@ function recovery_test(){
   wait ${MPID_ARRAY[$NUM - 1]} 2>/dev/null
   echoit "Forcefully killed PXC node$NUM for recovery testing "
   let PID=$NUM-1
+  # With thanks, http://www.thegeekstuff.com/2010/06/bash-array-tutorial/
   MPID_ARRAY=(${MPID_ARRAY[@]:0:$PID} ${MPID_ARRAY[@]:$(($PID + 1))})
   sleep 30
 
@@ -192,6 +193,7 @@ function multi_recovery_test(){
   sleep 30
   for j in `seq 0 2`;do
     let PID=${rand_nodes[$j]}+1
+    # With thanks, http://www.thegeekstuff.com/2010/06/bash-array-tutorial/
     MPID_ARRAY=(${MPID_ARRAY[@]:0:$PID} ${MPID_ARRAY[@]:$(($PID + 1))})
   done
   for j in `seq 0 2`;do  
