@@ -211,10 +211,6 @@
 # Apply a diff and then patch (with thanks, http://www.thegeekstuff.com/2014/03/git-patch-create-and-apply/)
   git diff HEAD > patch.diff; # swap to another location #; git apply < patch.diff
 
-# ------ Other handy's (non-gnu) ------
-# Get mysqld stack on Windows, alike to gdb's thread apply all bt (with thanks to Shane Bester, https://bugs.mysql.com/bug.php?id=82663)
-  windbg.exe -c "~*kn 50 ;  .detach ; q" -Q -logo stacks.txt -pn mysqld-debug.exe
-
 # ------ Must read's ------
 # http://tldp.org/LDP/abs/html/globbingref.html on globbing (and not regex) and filename expansion
   echo *  # expands "*" to all filenames     ls -l [^ab]*  # Lists all files not starting with a or b, but [^ab]* is not a regex, it's globbing
