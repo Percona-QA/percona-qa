@@ -5,6 +5,7 @@ ha_innodb.cc line 15656                                                         
 .provider_resumed                                                                        ## https://jira.percona.com/browse/PXC-461
 .strcmp.table_list->get_db_name                                                          ## https://jira.percona.com/browse/PXC-453
 cache_el.i.->used_tables.is_empty                                                        ## https://jira.percona.com/browse/PXC-459
+cache_el.i.->used_tables.is_empty                                                        ## https://github.com/codership/mysql-wsrep/issues/275 Similar #135 #198
 cache_mngr->is_binlog_empty                                                              ## https://jira.percona.com/browse/PXC-462
 key_count > 0                                                                            ## https://jira.percona.com/browse/PXC-450
 mdl_ticket->m_duration == MDL_TRANSACTION .. duration .= MDL_TRANSACTION                 ## https://jira.percona.com/browse/PXC-463
@@ -24,6 +25,12 @@ obj_seqno > last_left_                                                          
 process_.idx..state_ == Process..S_IDLE                                                  ## https://jira.percona.com/browse/PXC-567
 .memb_num > 0 .. my_idx >= 0                                                             ## https://jira.percona.com/browse/PXC-570
 lock_get_wait(other_lock)                                                                ## https://jira.percona.com/browse/PXC-561
+trx0sys.cc line 354                                                                      ## https://github.com/codership/galera/issues/382
+trx0sys.cc line 356                                                                      ## https://github.com/codership/galera/issues/382
+trx0trx.cc line 1290                                                                     ## https://bugs.mysql.com/bug.php?id=82024
+trx0trx.cc line 1296                                                                     ## https://bugs.mysql.com/bug.php?id=82024
+lock0lock.cc line 2015                                                                   ## https://jira.percona.com/browse/PXC-561
+row0mysql.cc line 1012                                                                   ## https://jira.percona.com/browse/PXC-669
 
 ## =========== First frame from error log based ===========
 Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                           ## https://jira.percona.com/browse/PXC-437
@@ -35,6 +42,11 @@ Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           
 #Z26wsrep_slave_threads_updateP7sys_varP3THD13enum_var_type                      # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z26wsrep_start_position_checkP7sys_varP3THDP7set_var                            # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z27wsrep_cluster_address_checkP7sys_varP3THDP7set_var                           # Fixed ## https://jira.percona.com/browse/PXC-440
-Z#31wsrep_sst_receive_address_checkP7sys_varP3THDP7set_var                       # Fixed ## https://jira.percona.com/browse/PXC-440
+Z31wsrep_sst_receive_address_checkP7sys_varP3THDP7set_var                       # Fixed ## https://jira.percona.com/browse/PXC-440
 ZN19Table_cache_manager10free_tableEP3THD26enum_tdc_remove_table_typeP11TABLE_SHARE      ## https://jira.percona.com/browse/PXC-458
 Z17wsrep_show_statusP3THDP17st_mysql_show_varPc                                          ## https://jira.percona.com/browse/PXC-668
+ZN2gu11from_stringIiEET_RKSsPFRSt8ios_baseS5_E                                           ## https://github.com/codership/galera/issues/416 PXC-619
+ZN25PFS_status_variable_cache8manifestEP3THDPK17st_mysql_show_varP17system_status_varPKcbb ## https://jira.percona.com/browse/PXC-629
+Z4sendPN5gcomm6SocketERNS_8DatagramE                                                     ## https://jira.percona.com/browse/PXC-620
+
+
