@@ -696,7 +696,7 @@ pquery_test(){
     echo "$WSREP_PROVIDER_OPT" > ${RUNDIR}/${TRIAL}/WSREP_PROVIDER_OPT
     if [ ${VALGRIND_RUN} -eq 1 ]; then
       touch  ${RUNDIR}/${TRIAL}/VALGRIND
-      echoit "Waiting for all PXC nodes to fully start (note this is slow for Valgrind runs, and can easily take 90-1800 seconds even on an high end server)..."
+      echoit "Waiting for all PXC nodes to fully start (note this is slow for Valgrind runs, and can easily take 90-180 seconds even on an high end server)..."
     fi
     pxc_startup 
     echoit "Checking 3 node PXC Cluster startup..."
