@@ -696,6 +696,7 @@ pquery_test(){
     echo "$WSREP_PROVIDER_OPT" > ${RUNDIR}/${TRIAL}/WSREP_PROVIDER_OPT
     if [ ${VALGRIND_RUN} -eq 1 ]; then
       touch  ${RUNDIR}/${TRIAL}/VALGRIND
+      echoit "Waiting for all PXC nodes to fully start (note this is slow for Valgrind runs, and can easily take 90-1800 seconds even on an high end server)..."
     fi
     pxc_startup 
     echoit "Checking 3 node PXC Cluster startup..."
@@ -1023,6 +1024,27 @@ pquery_test(){
       timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
       timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
       timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1 
+      for X in $(seq 0 600); do  # Wait for full Valgrind output in error log
+        sleep 1
+        if [[ ! -r ${RUNDIR}/${TRIAL}/node1/node1.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err ]]; then
+          echoit "Assert: PXC error logs (${RUNDIR}/${TRIAL}/node[13]/node[13].err) not found during a Valgrind run. Please check. Trying to continue, but something is wrong already..."
+          break
+        elif [ `egrep  "==[0-9]+== ERROR SUMMARY: [0-9]+ error"  ${RUNDIR}/${TRIAL}/node*/node*.err | wc -l` -eq 3 ]; then # Summary found, Valgrind is done
+          VALGRIND_SUMMARY_FOUND=1
+          sleep 2
+          break
+        fi
+      done
+      if [ ${VALGRIND_SUMMARY_FOUND} -eq 0 ]; then
+        kill -9 ${PQPID} >/dev/null 2>&1;
+        (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+        sleep 2  # <^ Make sure mysqld is gone
+        echoit "Odd mysqld hang detected (mysqld did not terminate even after 600 seconds), saving this trial... "
+        if [ ${TRIAL_SAVED} -eq 0 ]; then
+          savetrial
+          TRIAL_SAVED=1
+        fi
+      fi
     fi
     (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
