@@ -694,6 +694,9 @@ pquery_test(){
     fi
     echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     echo "$WSREP_PROVIDER_OPT" > ${RUNDIR}/${TRIAL}/WSREP_PROVIDER_OPT
+    if [ ${VALGRIND_RUN} -eq 1 ]; then
+      touch  ${RUNDIR}/${TRIAL}/VALGRIND
+    fi
     pxc_startup 
     echoit "Checking 3 node PXC Cluster startup..."
     for X in $(seq 0 10); do
