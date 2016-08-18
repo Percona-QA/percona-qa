@@ -29,7 +29,7 @@ GENERAL_BLD_OPT="-DENABLE_DOWNLOADS=1 -DBUILD_CONFIG=mysql_release -DWITH_EMBEDD
 #However, memcached is holding us back: https://bugs.launchpad.net/percona-server/+bug/1241455
 echo $(cd ${CURDIR}_dbg; \
   cmake ${GENERAL_BLD_OPT} -DCMAKE_BUILD_TYPE=Debug -DDEBUG_EXTNAME=OFF ${CURDIR} > /tmp/mysql_dbg 2>&1; \
-  make >> /tmp/mysql_dbg 2>&1 ; \
+  make -j5 >> /tmp/mysql_dbg 2>&1 ; \
   ./scripts/make_binary_distribution) >> /tmp/mysql_dbg 2>&1 &
  PID_dbg=$!
 wait $PID_dbg
