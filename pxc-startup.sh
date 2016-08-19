@@ -34,7 +34,8 @@ if [[ $sst_method == "xtrabackup" ]];then
   fi
 fi
 
-echo -e "Adding scripts: ./start_pxc | ./stop_pxc | ./node_cl | ./wipe"
+echo -e "Adding script: ./start_pxc "
+echo -e "./start_pxc will create ./stop_pxc | ./*node_cl | ./wipe scripts"
 
 if [ ! -r $BUILD/mysql-test/mysql-test-run.pl ]; then
   echo -e "mysql test suite is not available, please check.."
@@ -177,4 +178,5 @@ echo -e "  done\n" >> ./start_pxc
 echo -e "}\n" >> ./start_pxc
 
 echo -e "start_multi_node" >> ./start_pxc
-echo -e "chmod +x ./start_pxc ./stop_pxc ./*node_cli ./wipe" >> ./start_pxc
+echo -e "chmod +x ./stop_pxc ./*node_cli ./wipe" >> ./start_pxc
+chmod +x ./start_pxc

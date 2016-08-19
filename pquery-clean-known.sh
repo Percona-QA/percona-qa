@@ -14,7 +14,7 @@ else
 fi
 
 # Check if this is a pxc run
-if [ "$1" == "pxc" ]; then
+if [ "$(grep 'PXC Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Mode[: \t]*||' )" == "Active" ]; then
   PXC=1
 else
   PXC=0
