@@ -1161,9 +1161,9 @@ WORKDIRACTIVE=1
 # User for recovery testing
 echo "create user recovery@'%';grant all on *.* to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
 if [ ${PXC} -eq 0 ];then
-  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR}"
+  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: FALSE"
 else
-  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: Active"
+  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: TRUE"
   if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
     echoit "PXC Cluster run: 'YES'"
   else
@@ -1207,13 +1207,13 @@ if [ "${MID_OPT}" == "--no-defaults --initialize-insecure" ]; then
   fi
 
 if [ ${PXC} -eq 0 ]; then
-  echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."  # Fig setup also does this for PXC elsewhere
+  echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
   mkdir ${WORKDIR}/mysqld
   cp ${BIN} ${WORKDIR}/mysqld
   echoit "Making a copy of the ldd files required for mysqld core analysis to ${WORKDIR}/mysqld..."
   PWDTMPSAVE=$PWD
   cd ${WORKDIR}/mysqld
-  ${SCRIPT_PWD}/ldd_files.sh  # TODO for PXC, not sure yet how
+  ${SCRIPT_PWD}/ldd_files.sh
   cd ${PWDTMPSAVE}
   echoit "Generating datadir template (using mysql_install_db or mysqld --init)..."
   if [ -r ${BASEDIR}/bin/mysql_install_db ]; then 
@@ -1256,6 +1256,14 @@ if [ ${PXC} -eq 0 ]; then
     rm ${WORKDIR}/data.template/ib_log*
   fi
 else
+  echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
+  mkdir ${WORKDIR}/mysqld
+  cp ${BIN} ${WORKDIR}/mysqld
+  echoit "Making a copy of the ldd files required for mysqld core analysis to ${WORKDIR}/mysqld..."
+  PWDTMPSAVE=$PWD
+  cd ${WORKDIR}/mysqld
+  ${SCRIPT_PWD}/ldd_files.sh
+  cd ${PWDTMPSAVE}
   echoit "Ensuring that PXC nodes startup initiated for pquery run.."
   pxc_startup startup
   sleep 5
