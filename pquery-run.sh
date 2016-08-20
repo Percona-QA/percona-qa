@@ -1161,7 +1161,7 @@ WORKDIRACTIVE=1
 # User for recovery testing
 echo "create user recovery@'%';grant all on *.* to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
 if [ ${PXC} -eq 0 ];then
-  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: FALSE"
+  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} "
 else
   echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: TRUE"
   if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
