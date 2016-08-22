@@ -1,40 +1,40 @@
 # ===== Known bugs  (https://jira.percona.com/browse/{MSE-nr}
 ## =========== Line number based ===========
-ha_innodb.cc line 15656                                                                  ## https://jira.percona.com/browse/PXC-452
+#ha_innodb.cc line 15656                                                         # Fixed ## https://jira.percona.com/browse/PXC-452
 ## =========== Assertion based ===========
-.provider_resumed                                                                        ## https://jira.percona.com/browse/PXC-461
-.strcmp.table_list->get_db_name                                                          ## https://jira.percona.com/browse/PXC-453
-cache_el.i.->used_tables.is_empty                                                        ## https://jira.percona.com/browse/PXC-459
+#.provider_resumed                                                               # Fixed ## https://jira.percona.com/browse/PXC-461
+#.strcmp.table_list->get_db_name                                                 # Fixed ## https://jira.percona.com/browse/PXC-453
+#cache_el.i.->used_tables.is_empty                                               # Fixed ## https://jira.percona.com/browse/PXC-459
 cache_el.i.->used_tables.is_empty                                                        ## https://github.com/codership/mysql-wsrep/issues/275 Similar #135 #198
-cache_mngr->is_binlog_empty                                                              ## https://jira.percona.com/browse/PXC-462
-key_count > 0                                                                            ## https://jira.percona.com/browse/PXC-450
-mdl_ticket->m_duration == MDL_TRANSACTION .. duration .= MDL_TRANSACTION                 ## https://jira.percona.com/browse/PXC-463
-pool_.size                                                                               ## https://jira.percona.com/browse/PXC-454
-thd->wsrep_exec_mode == LOCAL_STATE                                                      ## https://jira.percona.com/browse/PXC-451
-trx->state                                                                               ## https://jira.percona.com/browse/PXC-457
-hton == innodb_hton_pt                                                                   ## https://jira.percona.com/browse/PXC-581
-err_key < ha_alter_info->key_count                                                       ## https://jira.percona.com/browse/PXC-586
+#cache_mngr->is_binlog_empty                                                     # Fixed ## https://jira.percona.com/browse/PXC-462
+#key_count > 0                                                                   # Fixed ## https://jira.percona.com/browse/PXC-450
+#mdl_ticket->m_duration == MDL_TRANSACTION .. duration .= MDL_TRANSACTION        # Fixed ## https://jira.percona.com/browse/PXC-463
+#pool_.size                                                                      # Fixed ## https://jira.percona.com/browse/PXC-454
+#thd->wsrep_exec_mode == LOCAL_STATE                                             # Fixed ## https://jira.percona.com/browse/PXC-451
+#trx->state                                                                      # Fixed ## https://jira.percona.com/browse/PXC-457
+#hton == innodb_hton_pt                                                          # Non-reproducible  ## https://jira.percona.com/browse/PXC-581
+err_key < ha_alter_info->key_count                                                       ## http://bugs.mysql.com/bug.php?id=82321
 ticket->m_duration == MDL_EXPLICIT                                                       ## https://jira.percona.com/browse/PXC-587
-wsrep_desync_count > 0                                                                   ## https://jira.percona.com/browse/PXC-588
+#wsrep_desync_count > 0                                                          # Fixed ## https://jira.percona.com/browse/PXC-588
 ZN24subselect_hash_sj_engine7cleanupEv                                                   ## https://jira.percona.com/browse/PXC-589
-wsrep_pause_count > 0                                                                    ## https://jira.percona.com/browse/PXC-577
-.m_hash.is_empty                                                                         ## https://jira.percona.com/browse/PXC-579
-row0log.cc line 2059                                                                     ## https://jira.percona.com/browse/PXC-576
-length < = share->normalized_path.length                                                 ## https://jira.percona.com/browse/PXC-578
-obj_seqno > last_left_                                                                   ## https://jira.percona.com/browse/PXC-569
-process_.idx..state_ == Process..S_IDLE                                                  ## https://jira.percona.com/browse/PXC-567
-.memb_num > 0 .. my_idx >= 0                                                             ## https://jira.percona.com/browse/PXC-570
-lock_get_wait(other_lock)                                                                ## https://jira.percona.com/browse/PXC-561
+#wsrep_pause_count > 0                                                           # Fixed ## https://jira.percona.com/browse/PXC-577
+#.m_hash.is_empty                                                                # Non-reproducible  ## https://jira.percona.com/browse/PXC-579
+#row0log.cc line 2059                                                            # Non-reproducible  ## https://jira.percona.com/browse/PXC-576
+#length < = share->normalized_path.length                                        # Fixed ## https://jira.percona.com/browse/PXC-578
+#obj_seqno > last_left_                                                          # Non-reproducible  ## https://jira.percona.com/browse/PXC-569
+#process_.idx..state_ == Process..S_IDLE                                         # Non-reproducible  ## https://jira.percona.com/browse/PXC-567
+#.memb_num > 0 .. my_idx >= 0                                                    # Fixed ## https://jira.percona.com/browse/PXC-570
+#lock_get_wait(other_lock)                                                       # Fixed ## https://jira.percona.com/browse/PXC-561
 trx0sys.cc line 354                                                                      ## https://github.com/codership/galera/issues/382
 trx0sys.cc line 356                                                                      ## https://github.com/codership/galera/issues/382
 trx0trx.cc line 1290                                                                     ## https://bugs.mysql.com/bug.php?id=82024
 trx0trx.cc line 1296                                                                     ## https://bugs.mysql.com/bug.php?id=82024
-lock0lock.cc line 2015                                                                   ## https://jira.percona.com/browse/PXC-561
-row0mysql.cc line 1012                                                                   ## https://jira.percona.com/browse/PXC-669
+#lock0lock.cc line 2015                                                          # Fixed ## https://jira.percona.com/browse/PXC-561
+row0mysql.cc line 1012                                                                   ## http://bugs.mysql.com/bug.php?id=82652 (PXC-669)
 
 ## =========== First frame from error log based ===========
-Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                           ## https://jira.percona.com/browse/PXC-437
-Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                                    ## https://jira.percona.com/browse/PXC-438
+#Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
+#Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
 #Z22wsrep_sst_method_checkP7sys_varP3THDP7set_var                                # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z24wsrep_cluster_name_checkP7sys_varP3THDP7set_var                              # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z24wsrep_node_address_checkP7sys_varP3THDP7set_var                              # Fixed ## https://jira.percona.com/browse/PXC-440
@@ -42,11 +42,11 @@ Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           
 #Z26wsrep_slave_threads_updateP7sys_varP3THD13enum_var_type                      # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z26wsrep_start_position_checkP7sys_varP3THDP7set_var                            # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z27wsrep_cluster_address_checkP7sys_varP3THDP7set_var                           # Fixed ## https://jira.percona.com/browse/PXC-440
-Z31wsrep_sst_receive_address_checkP7sys_varP3THDP7set_var                       # Fixed ## https://jira.percona.com/browse/PXC-440
-ZN19Table_cache_manager10free_tableEP3THD26enum_tdc_remove_table_typeP11TABLE_SHARE      ## https://jira.percona.com/browse/PXC-458
-Z17wsrep_show_statusP3THDP17st_mysql_show_varPc                                          ## https://jira.percona.com/browse/PXC-668
-ZN2gu11from_stringIiEET_RKSsPFRSt8ios_baseS5_E                                           ## https://github.com/codership/galera/issues/416 PXC-619
-ZN25PFS_status_variable_cache8manifestEP3THDPK17st_mysql_show_varP17system_status_varPKcbb ## https://jira.percona.com/browse/PXC-629
-Z4sendPN5gcomm6SocketERNS_8DatagramE                                                     ## https://jira.percona.com/browse/PXC-620
+#Z31wsrep_sst_receive_address_checkP7sys_varP3THDP7set_var                       # Fixed ## https://jira.percona.com/browse/PXC-440
+#ZN19Table_cache_manager10free_tableEP3THD26enum_tdc_remove_table_typeP11TABLE_SHARE # Fixed ## https://jira.percona.com/browse/PXC-458
+#Z17wsrep_show_statusP3THDP17st_mysql_show_varPc                                 # Fixed  ## https://jira.percona.com/browse/PXC-668
+ZN2gu11from_stringIiEET_RKSsPFRSt8ios_baseS5_E                                            ## https://github.com/codership/galera/issues/416 PXC-619
+#ZN25PFS_status_variable_cache8manifestEP3THDPK17st_mysql_show_varP17system_status_varPKcbb # Non-reproducible  ## https://jira.percona.com/browse/PXC-629
+Z4sendPN5gcomm6SocketERNS_8DatagramE                                                     ## https://jira.percona.com/browse/PXC-620 (https://github.com/codership/galera/issues/301 https://github.com/codership/galera/issues/414)
 
 
