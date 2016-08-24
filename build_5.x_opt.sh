@@ -28,12 +28,16 @@ cd ${CURPATH}_opt
 rm -Rf ./plugin/tokudb-backup-plugin
 
 cmake . -DWITH_ZLIB=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON -DWITH_ASAN=ON | tee /tmp/5.7_opt_build
+if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 if [ $MS -eq 1 ]; then
   ASAN_OPTIONS="detect_leaks=0" make -j5 | tee -a /tmp/5.7_opt_build  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)
+  if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 else
   make -j5 | tee -a /tmp/5.7_opt_build
+  if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 fi
-./scripts/make_binary_distribution | tee -a /tmp/5.7_opt_build
+./scripts/make_binary_distribution | tee -a /tmp/5.7_opt_build  # Note that make_binary_distribution is created on-the-fly during the make compile
+if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_opt=`ls -1 *.tar.gz | head -n1`
 if [ "${TAR_opt}" != "" ]; then
   DIR_opt=$(echo "${TAR_opt}" | sed 's|.tar.gz||')
@@ -43,9 +47,12 @@ if [ "${TAR_opt}" != "" ]; then
   if [ "${DIR_opt_new}" != "" ]; then rm -Rf ../${DIR_opt_new}; fi
   if [ "${TAR_opt_new}" != "" ]; then rm -Rf ../${TAR_opt_new}; fi
   mv ${TAR_opt} ../${TAR_opt_new}
+  if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
   cd ..
   tar -xf ${TAR_opt_new}
+  if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
   mv ${DIR_opt} ${DIR_opt_new}
+  if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
   echo "Done! Now run;"
   echo "mv ../${DIR_opt_new} /sda"  # The script will end still in $PWD, hence we will need ../ (output only)
   #rm -Rf ${CURPATH}_opt  # Best not to delete it; this way gdb debugging is better quality as source will be available!
