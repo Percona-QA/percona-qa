@@ -1,11 +1,19 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-# Simple script to compile earliest versions of PS5.7
+if [ ! -r VERSION ]; then
+  echo "Assert: 'VERSION' file not found!"
+fi
 
-if [ "${1}" == "" ]; then
-  echo "This script requires one option: a directory name prefix (used in the resulting target directory). For example 'PS' or 'MS'"
-  exit 1
+DATE=$(date +'%d%m%y')
+PREFIX=
+MS=0
+
+if [ "$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')" == "" ]; then  # MS has no extra version number
+  MS=1
+  PREFIX="MS${DATE}"
+else
+  PREFIX="PS${DATE}"
 fi
 
 CURPATH=$(echo $PWD | sed 's|.*/||')
@@ -20,7 +28,7 @@ cd ${CURPATH}_opt
 rm -Rf ./plugin/tokudb-backup-plugin
 
 cmake . -DWITH_ZLIB=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON -DWITH_ASAN=ON | tee /tmp/5.7_opt_build
-if [ "$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')" == "" ]; then
+if [ $MS -eq 1 ]; then
   ASAN_OPTIONS="detect_leaks=0" make -j5 | tee -a /tmp/5.7_opt_build  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)
 else
   make -j5 | tee -a /tmp/5.7_opt_build
