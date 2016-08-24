@@ -41,7 +41,7 @@ if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_opt=`ls -1 *.tar.gz | head -n1`
 if [ "${TAR_opt}" != "" ]; then
   DIR_opt=$(echo "${TAR_opt}" | sed 's|.tar.gz||')
-  TAR_opt_new=$(echo "${1}-${TAR_opt}" | sed 's|.tar.gz|-opt.tar.gz|')
+  TAR_opt_new=$(echo "${PREFIX}-${TAR_opt}" | sed 's|.tar.gz|-opt.tar.gz|')
   DIR_opt_new=$(echo "${TAR_opt_new}" | sed 's|.tar.gz||')
   if [ "${DIR_opt}" != "" ]; then rm -Rf ../${DIR_opt}; fi
   if [ "${DIR_opt_new}" != "" ]; then rm -Rf ../${DIR_opt_new}; fi

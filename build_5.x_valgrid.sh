@@ -36,7 +36,7 @@ if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_val=`ls -1 *.tar.gz | head -n1`
 if [ "$TAR_val}" != "" ]; then
   DIR_val=$(echo "${TAR_val}" | sed 's|.tar.gz||')
-  TAR_val_new=$(echo "${1}-${TAR_val}" | sed 's|.tar.gz|-val.tar.gz|')
+  TAR_val_new=$(echo "${PREFIX}-${TAR_val}" | sed 's|.tar.gz|-val.tar.gz|')
   DIR_val_new=$(echo "${TAR_val_new}" | sed 's|.tar.gz||')
   if [ "${DIR_val}" != "" ]; then rm -Rf ../${DIR_val}; fi
   if [ "${DIR_val_new}" != "" ]; then rm -Rf ../${DIR_val_new}; fi

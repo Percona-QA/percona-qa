@@ -42,7 +42,7 @@ if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_dbg=`ls -1 *.tar.gz | head -n1`
 if [ "$TAR_dbg}" != "" ]; then
   DIR_dbg=$(echo "${TAR_dbg}" | sed 's|.tar.gz||')
-  TAR_dbg_new=$(echo "${1}-${TAR_dbg}" | sed 's|.tar.gz|-debug.tar.gz|')
+  TAR_dbg_new=$(echo "${PREFIX}-${TAR_dbg}" | sed 's|.tar.gz|-debug.tar.gz|')
   DIR_dbg_new=$(echo "${TAR_dbg_new}" | sed 's|.tar.gz||')
   if [ "${DIR_dbg}" != "" ]; then rm -Rf ../${DIR_dbg}; fi
   if [ "${DIR_dbg_new}" != "" ]; then rm -Rf ../${DIR_dbg_new}; fi
