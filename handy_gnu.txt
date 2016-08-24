@@ -168,6 +168,11 @@
   works1(){ echo "`works2`"; }
   works2(){ echo "works"; }
   echo "does work: `works1`"                                                   # does work: works
+# When wanting to execute multiple commands as one, the syntax is () not $(). For example, to time two commands executed sequentially;
+  time $(echo "a";echo "a")  # WRONG: this will try and execute "a" and report: bash: a: command not found... (the total time will still be approx. correct, though bit higher)
+  time OUTPUT=$(echo "a" ; echo "a"); echo $OUTPUT  # WRONG: while it works, just like the above, the time is slightly higher (due to the added variable assignment)
+  time echo "a";echo "a"     # WRONG: this does not achieve the objective, it only times the first command
+  time (echo "a";echo "a")   # CORRECT: this times both commands (without anything affecting time and without any sub-execution or variable assignment)
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)

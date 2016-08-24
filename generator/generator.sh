@@ -1,16 +1,20 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-# User Variables
+# ====== User Variables
 MYSQL_VERSION=57     # Valid options: 56, 57
 THREADS=10           # Number of threads that generate SQL (default:10)
-SHEDULING_ENABLED=0  # On/Off (1/0). When using this, please note that testcases need to be reduced using PQUERY_MULTI=1 in reducer.sh (as they are effectively multi-threaded due to sheduler threads), and that issue reproducibility may be lower (sheduling may not match original OS slicing, other running queries etc.). Still, using PQUERY_MULTI=1 a good number of issues are likely (TBD) to be reproducibile and thus reducable given reducer.sh's random replay functionality.
+SHEDULING_ENABLED=0  # On/Off (1/0). Enables/disables using mysql EVENTs .When using this, please note that testcases need to be reduced using PQUERY_MULTI=1 in reducer.sh (as they are effectively multi-threaded due to sheduler threads), and that issue reproducibility may be significantly lower (sheduling may not match original OS slicing, other running queries etc.). Still, using PQUERY_MULTI=1 a good number of issues are likely reproducibile and thus reducable given reducer.sh's random replay functionality.
 
-# Note: the many backticks used in this script are not SQL/MySQL column-surrounding backticks, but rather subshells which call a function, for example `table` calls table()
-# To debug the SQL generated simply source out.sql from the MySQL CLI, or use something like; (it outputs the line numbers: "ERROR 1264 (22003) at line 47 in file" - so it easy to see which line (47 in example) failed in the SQL)
-# echo '';echo '';./bin/mysql -A -uroot -S./socket.sock --force --binary-mode test < ~/percona-qa/pquery/generator/out.sql 2>&1 | grep "ERROR" | grep -vE "Unknown storage engine 'RocksDB'|Unknown storage engine 'TokuDB'|Table .* already exists|Table .* doesn't exist|Unknown table.*|Data truncated|doesn't support BLOB|Out of range value|Incorrect prefix key|Incorrect.*value|Data too long|Truncated incorrect.*value|Column.*cannot be null|Cannot get geometry object from data you send|doesn't support GEOMETRY|Cannot execute statement in a READ ONLY transaction"
+# ====== Notes
+# * The many backticks used in this script are not SQL/MySQL column-surrounding backticks, but rather subshells which call a function, for example `table` calls table()
+# * To debug the syntax of generated SQL, use a set of commands like these: 
+#   $ ./bin/mysql -A -uroot -S${PWD}/socket.sock --force --binary-mode test < ~/percona-qa/generator/out.sql > ${PWD}/mysql.out 2>&1; grep "You have an error in your SQL syntax" mysql.out
+#   There may be other errors then the ones shown here (see full mysql.out output), but this will highlight the main SQL syntax errors
+#   The syntax failure raite should be well below 1 in 50 statements, and most of those should be due to semi-unfixable logic issues
 
-# Internal variables; do not modify
+# ====== Internal variables; do not modify
+START=`date +%s`
 RANDOM=`date +%s%N | cut -b13-19`  # Random entropy pool init
 MYSQL_VERSION="$(echo "${MYSQL_VERSION}" | sed "s|\.||")"
 SUBWHEREACTIVE=0
@@ -19,10 +23,10 @@ if [ "" == "$1" -o "$2" != "" ]; then
   echo "Please specify the number of queries to generate as the first (and only) option to this script"
   exit 1
 else
-  queries=$1
+  QUERIES=$1
 fi
-
-# Check all needed data files are present
+ 
+# ====== Check all needed data files are present
 if [ ! -r tables.txt ]; then echo "Assert: tables.txt not found!"; exit 1; fi
 if [ ! -r views.txt ]; then echo "Assert: views.txt not found!"; exit 1; fi
 if [ ! -r pk.txt ]; then echo "Assert: pk.txt not found!"; exit 1; fi
@@ -58,7 +62,7 @@ if [ ! -r character.txt ]; then echo "Assert: character.txt not found!"; exit 1;
 if [ ! -r numsimple.txt ]; then echo "Assert: numsimple.txt not found!"; exit 1; fi
 if [ ! -r numeric.txt ]; then echo "Assert: numeric.txt not found!"; exit 1; fi
 
-# Read data files into arrays
+# ====== Read data files into arrays
 mapfile -t tables    < tables.txt       ; TABLES=${#tables[*]}
 mapfile -t views     < views.txt        ; VIEWS=${#views[*]}
 mapfile -t pk        < pk.txt           ; PK=${#pk[*]}
@@ -144,8 +148,8 @@ quick()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "QUICK"; fi }        
 limit()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIMIT `n9`"; fi }                   # 50% LIMIT 0-9
 limoffset() { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "`n3`,"; fi }                        # 10% 0-3 offset (for LIMITs)
 ofslimit()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIMIT `limoffset``n9`"; fi }        # 50% LIMIT 0-9, with potential offset
-natural()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "NATURAL"; fi }                      # 20% NATURAL (for JOINs)
-outer()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "OUTER"; fi }                        # 50% OUTER (for JOINs)
+natural()   { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "NATURAL"; fi }                      # 10% NATURAL (for JOINs) (NATURAL may cause queries with >2 tables to fail ref http://dev.mysql.com/doc/refman/5.7/en/join.html)
+outer()     { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "OUTER"; fi }                        # 40% OUTER (for JOINs)
 partition() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "PARTITION p`n3`"; fi }              # 20% PARTITION p1-3
 full()      { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "FULL"; fi }                         # 20% FULL
 not()       { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "NOT"; fi }                          # 25% NOT
@@ -164,17 +168,18 @@ work()      { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "WORK"; fi }         
 savepoint() { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "SAVEPOINT"; fi }                    # 25% SAVEPOINT (for savepoints)
 chain()     { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "AND `no` CHAIN"; fi }               # 35% AND [NO] CHAIN (for transactions)
 release()   { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "NO RELEASE"; fi }                   # 35% NO RELEASE (for transactions). Plain 'RELEASE' is not possible, as this drops client connection
-nowbinlog() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; fi }           # 50% NO_WRITE_TO_BINLOG
-localonly() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LOCAL"; fi }                        # 50% LOCAL (note 'local' is system keyword, hence 'localonly')
 quick()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "QUICK"; fi }                        # 20% QUICK
 extended()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "EXTENDED"; fi }                     # 20% EXTENDED
 usefrm()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "USE_FRM"; fi }                      # 20% USE_FRM
+localonly() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LOCAL"; fi }                        # 50% LOCAL (note 'local' is system keyword, hence 'localonly')
 # ========================================= Single, fixed
 alias2()    { echo "a`n2`"; }
 alias3()    { echo "a`n3`"; }
 asalias2()  { echo "AS a`n2`"; }
 asalias3()  { echo "AS a`n3`"; }
 numericop() { echo "`numeric`" | sed "s|DUMMY|`danrorfull`|;s|DUMMY2|`danrorfull`|;s|DUMMY3|`danrorfull`|"; }                                # NUMERIC FUNCTION with data (includes numbers) or -1000 to 1000 as options, for example ABS(nr)
+joinlron()  { echo "`leftright` `outer` JOIN"; }
+joinlronla(){ echo "`natural` `leftright` `outer` JOIN"; }
 # ========================================= Dual
 n2()        { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }                                                          # 50% 1, 50% 2
 onoff()     { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }                                                       # 75% ON, 25% OFF
@@ -188,7 +193,7 @@ xid()       { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "'xid1'"; else echo "
 disenable() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ENABLE"; else echo "DISABLE"; fi }                                               # 50% ENABLE, 50% DISABLE
 sdisenable(){ if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`disenable`"; else echo "DISABLE ON SLAVE"; fi }                                 # 40% ENABLE, 40% DISALBE, 20% DISABLE ON SLAVE
 schedule()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "AT `timestamp` `intervalad`"; else echo "EVERY `n9` `interval` `opstend`"; fi }  # 50% AT, 50% EVERY (for EVENTs)
-readwrite() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'READ'; else echo 'WRITE'; fi }                                                   # 50% READ, 50% WRITE (for START TRANSACTION addition)
+readwrite() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'READ ONLY'; else echo 'READ WRITE'; fi }                                         # 50% READ ONLY, 50% WRITE ONLY (for START TRANSACTION)
 binmaster() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "BINARY"; else echo "MASTER"; fi }                                                # 50% BINARY, 50% MASTER
 nowblocal() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi }                                     # 50% NO_WRITE_TO_BINLOG, 50% LOCAL
 locktype()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ `localonly`"; else echo "`lowprio` WRITE"; fi }                             # 50% READ [LOCAL], 50% [LOW_PRIORITY] WRITE
@@ -198,10 +203,10 @@ numericadd(){ if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`numsimple` `eithero
 dataornum() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`data`"; else echo "`nn1000`"; fi }                                              # 20% data (inc numbers), 80% -1000 to 1000
 eitherornn(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`dataornum`"; else echo "`numericop`"; fi }                                      # 50% data (inc numbers), 50% NUMERIC FUNCTION() like ABS(nr) etc.
 fullnrfunc(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`eitherornn` `numsimple` `eitherornn`"; else echo "`eitherornn` `numsimple` `eitherornn` `numericadd`"; fi }  # 50% full numeric function, 50% idem with nesting
-data()      { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`datafile`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi }         # 80% data from data.txt file, 20% generated full numerical function
+data()      { if [ $[$RANDOM % 20 + 1] -le 17 ]; then echo "`datafile`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi }         # 85% data from data.txt file, 15% generated full numerical function
 # ========================================= Triple
 ac()        { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "a"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "b"; else echo "c"; fi; fi }  # 40% a, 30% b, 30% c
-trxopt()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`readwrite`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "WITH CONSISTENT SNAPSHOT `readwrite`"; else echo "WITH CONSISTENT SNAPSHOT"; fi; fi }  # 50% R/W or R/O, 25% WITH C/S, 25% C/S + R/W or R/O
+trxopt()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`readwrite`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "WITH CONSISTENT SNAPSHOT, `readwrite`"; else echo "WITH CONSISTENT SNAPSHOT"; fi; fi }  # 50% R/W or R/O, 25% WITH C/S + R/W or R/O, 25% C/S
 definer()   { if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "DEFINER=`user`"; else echo "DEFINER=CURRENT_USER"; fi; fi }  # 15% DEFINER=random user, 15% DEFINER=CURRENT USER, 70% EMPTY/NOTHING
 suspendfm() { if [ $[$RANDOM % 20 + 1] -le 2  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "SUSPEND"; else echo "SUSPEND FOR MIGRATE"; fi; fi }  # 5% SUSPEND, 5% SUSPEND FOR MIGRATE, 90% EMPTY/NOTHING (needs to be low, ref url above)
 joinresume(){ if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "JOIN"; else echo "RESUME"; fi; fi }      # 15% JOIN, 15% RESUME, 70% EMPTY/NOTHING
@@ -209,28 +214,29 @@ emglobses() { if [ $[$RANDOM % 20 + 1] -le 14 ]; then if [ $[$RANDOM % 20 + 1] -
 emascdesc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ASC"; else echo "DESC"; fi; fi }         # 25% ASC, 25% DESC, 50% EMPTY/NOTHING
 bincharco() { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'CHARACTER SET "Binary" COLLATE "Binary"'; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo 'CHARACTER SET "utf8" COLLATE "utf8_bin"'; else echo 'CHARACTER SET "latin1" COLLATE "latin1_bin"'; fi; fi }                                                                                                                       # 33% Binary/Binary, 33% utf8/utf8_bin, 33% latin1/latin1_bin
 inout()     { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "INOUT"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IN"; else echo "OUT"; fi; fi }  # 40% INOUT, 30% IN, 30% OUT
-trxcharact(){ if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo "ISOLATION LEVEL `isolation`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ ONLY"; else echo "READ WRITE"; fi; fi } # 33% ISOLATION LEVEL, 33% READ ONLY, 33% READ WRITE
+nowriteloc(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi; fi }   # 25% NO_WRITE_TO_BINLOG, 25% LOCAL, 50% EMPTY/NOTHING
 # ========================================= Quadruple
 like()      { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 5 ]; then echo "LIKE '`azn9`'"; else echo "LIKE '`azn9`%'"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIKE '%`azn9`'"; else echo "LIKE '%`azn9`%'"; fi; fi; }                                                                                 # 10% LIKE '<char>', 30% LIKE '<char>%', 30% LIKE '%<char>', 30% LIKE '%<char>%'
 isolation() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ COMMITTED"; else echo "REPEATABLE READ"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ UNCOMMITTED"; else echo "SERIALIZABLE"; fi; fi; }                                                                               # 25% READ COMMITTED, 25% REPEATABLE READ, 25% READ UNCOMMITTED, 25% SERIALIZABLE
 timestamp() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "CURRENT_TIMESTAMP"; else echo "CURRENT_TIMESTAMP()"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NOW()"; else echo "`data`"; fi; fi; }                                                                                         # 25% CURRENT_TIMESTAMP, 25% CURRENT_TIMESTAMP(), 25% NOW(), 25% random data
 # ========================================= Quintuple
 operator()  { if [ $[$RANDOM % 20 + 1] -le 8 ]; then echo "="; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ">"; else echo ">="; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "<"; else echo "<="; fi; fi; fi; }                                                                        # 40% =, 15% >, 15% >=, 15% <, 15% <=
-pstimer()   { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "idle"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "wait"; else echo "stage"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "statement"; else echo "transaction"; fi; fi; fi; }                                              # 20% idle, 20% wait, 20% stage, 20% statement, 20% transaction
+pstimer()   { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "idle"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "wait"; else echo "stage"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "statement"; else echo "statement"; fi; fi; fi; }                                                # 20% idle, 20% wait, 20% stage, 20% statement, 20% statement
 pstimernm() { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "CYCLE"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NANOSECOND"; else echo "MICROSECOND"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "MILLISECOND"; else echo "TICK"; fi; fi; fi; }                                      # 20% CYCLE, 20% NANOSECOND, 20% MICROSECOND, 20% MILLISECOND, 20% TICK
 # ========================================= Subcalls
 subwhact()  { if [ ${SUBWHEREACTIVE} -eq 0 ]; then echo "WHERE "; fi }                                   # Only use 'WHERE' if this is not a sub-WHERE, i.e. a call from subwhere()
-subwhere()  { SUBWHEREACTIVE=1; if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "`andor` `whereal`"; fi; }  # 20% sub-WHERE (additional and/or WHERE clause)
-subordby()  { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo ",c`n3` `emascdesc`"; fi }                    # 20% sub-ORDER BY (additional ORDER BY column)
+subwhere()  { SUBWHEREACTIVE=1; if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`andor` `whereal`"; fi; }  # 20% sub-WHERE (additional and/or WHERE clause)
+subordby()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ",c`n3` `emascdesc`"; fi }                    # 20% sub-ORDER BY (additional ORDER BY column)
 # ========================================= Special/Complex
 opstend()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`startsends` `timestamp` `intervalad`"; fi } # 20% optional START/STOP (for EVENTs)
-where()     { echo "`whereal`" | sed 's|a[0-9]\+\.||g'; }                                       # where():    e.g. WHERE    c1==c2    etc. (not suitable for multi-table WHERE's with similar column names)
-wheretbl()  { echo "`where`" | sed "s|\(c[0-9]\+\)|`table`.\1|g"; }                             # wheretbl(): e.g. WHERE t1.c1==t2.c2 etc. (may mismatch on table names if many or few tables are used)
-whereal()   {                                                                                   # whereal():  e.g. WHERE a1.c1==a2.c2 etc. (requires table aliases to be in place)
-  case $[$RANDOM % 4 + 1] in 
-[1-2]) ;;  # 50% No WHERE clause
-    3) echo "`subwhact``alias3`.c`n3``operator``data` `subwhere`";; # `subwhact`: sub-WHERE active or not, ref subwhact(). Ensures 'WHERE' is not repeated in sub-WHERE's (WHERE x=y AND a=b should not repeat WHERE for a=b)
-    4) echo "`subwhact``alias3`.c`n3``operator``alias3`.c`n3` `subwhere`";;
+where()     { echo "`whereal`" | sed 's|a[0-9]\+\.||g'; }             # where():    e.g. WHERE    c1==c2    etc. (not suitable for multi-table WHERE's with similar column names)
+wheretbl()  { echo "`where`" | sed "s|\(c[0-9]\+\)|`table`.\1|g"; }   # wheretbl(): e.g. WHERE t1.c1==t2.c2 etc. (may mismatch on table names if many or few tables are used)
+whereal()   {                                                         # whereal():  e.g. WHERE a1.c1==a2.c2 etc. (requires table aliases to be in place)
+  WHERE_RND=4; if [ ${SUBWHEREACTIVE} -eq 1 ]; then WHERE_RND=2; fi   # When generating a sub-WHERE, we need to generate a new clause, not an empty "No WHERE clause", as this would lead to an invalid syntax like "WHERE ... AND <nothing>"
+  case $[$RANDOM % $WHERE_RND + 1] in 
+    1) echo "`subwhact``alias3`.c`n3``operator``data` `subwhere`";;   # `subwhact`: sub-WHERE active or not, ref subwhact(). Ensures 'WHERE' is not repeated in sub-WHERE's (WHERE x=y AND a=b should not repeat WHERE for a=b)
+    2) echo "`subwhact``alias3`.c`n3``operator``alias3`.c`n3` `subwhere`";;
+[3-4]) ;;  # 50% No WHERE clause
     *) echo "Assert: invalid random case selection in where() case";;
   esac
   SUBWHEREACTIVE=0
@@ -242,16 +248,49 @@ orderby()   {
     *) echo "Assert: invalid random case selection in orderby() case";;
   esac
 }
-join()      { 
-  case $[$RANDOM % 9 + 1] in 
+join()      {
+  case $[$RANDOM % 5 + 1] in 
     1) echo ",";;
     2) echo "JOIN";;
-[3-6]) echo "`natural` `leftright` `outer` JOIN";;
-    7) echo "INNER JOIN";;
-    8) echo "CROSS JOIN";;
-    9) echo "STRAIGHT_JOIN";;
-    *) echo "Assert: invalid random case selection in orderby() case";;
+    3) echo "INNER JOIN";;
+    4) echo "CROSS JOIN";;
+    5) echo "STRAIGHT_JOIN";;
+    *) echo "Assert: invalid random case selection in join() case";;
   esac
+}
+lastjoin()  {
+  LASTJOIN=`join`
+  if [ "${LASTJOIN}" == "JOIN" ]; then echo "`natural` JOIN"; else echo "${LASTJOIN}"; fi
+}
+select()    {
+  case $[$RANDOM % 6 + 1] in  # Select (needs further work: JOIN syntax + SELECT options)
+    1) echo "SELECT c`n3` FROM `table`";;
+    2) echo "SELECT c`n3`,c`n3` FROM `table`";;
+    3) echo "SELECT c`n3`,c`n3` FROM `table` AS a1 `lastjoin` `table` AS a2 `whereal`";;
+    4) echo "SELECT c`n3` FROM `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
+    5) case $[$RANDOM % 2 + 1] in  
+        1) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM ${FIXEDTABLE} `joinlronla` `table` ON ${FIXEDTABLE}.c`n3`";;
+        2) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM `table` `joinlronla` ${FIXEDTABLE} ON ${FIXEDTABLE}.c`n3`";;
+        *) echo "Assert: invalid random case selection in FIXEDTABLE1 join case";;
+       esac;;
+    6) case $[$RANDOM % 2 + 1] in  
+        1) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM ${FIXEDTABLE} `joinlronla` `table` ON ${FIXEDTABLE}.c`n3`=`data`";;
+        2) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM `table` `joinlronla` ${FIXEDTABLE} ON ${FIXEDTABLE}.c`n3`=`data`";;
+        *) echo "Assert: invalid random case selection in FIXEDTABLE2 join case";;
+       esac;;
+    #7) case $[$RANDOM % 3 + 1] in  # Needs fixing
+    #    1) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3` FROM ${FIXEDTABLE} `joinlron` `table` `joinlronla` `table` USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
+    #    2) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3` FROM `table` `joinlron` ${FIXEDTABLE} `joinlronla` `table` USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
+    #    3) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3` FROM `table` `joinlron` `table` `joinlronla` ${FIXEDTABLE} USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
+    #    *) echo "Assert: invalid random case selection in FIXEDTABLE4 join case";;
+    #   esac;;
+    #8) case $[$RANDOM % 2 + 1] in  # Needs fixing
+    #    1) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM ${FIXEDTABLE} `joinlronla` `table` USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
+    #    2) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM `table` `joinlronla` ${FIXEDTABLE} USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
+    #    *) echo "Assert: invalid random case selection in FIXEDTABLE3 join case";;
+    #   esac;;
+    *) echo "Assert: invalid random case selection in SELECT case";;
+  esac;;
 }
 
 query(){
@@ -285,11 +324,7 @@ query(){
              2) echo "CREATE `definer` PROCEDURE `proc` (`inout` i1 `ctype`, `inout` i2 `ctype`) `charactert` `query`";;
              *) echo "Assert: invalid random case selection in procedures case";;
            esac;;
-
-
-      
         #todo: trigger,views
- 
         *) echo "Assert: invalid random case selection in CREATE case";;
       esac;;
     [4-7]) case $[$RANDOM % 2 + 1] in  # Insert (needs further work to insert per-column etc.)
@@ -313,22 +348,29 @@ query(){
         2) echo "SELECT * FROM `table` INTO OUTFILE 'out`n9`'";;
         *) echo "Assert: invalid random case selection in load data infile/select into outfile case";;
       esac;;
-    10) case $[$RANDOM % 3 + 1] in  # Select (needs further work)
-        1) echo "SELECT c1 FROM `table`";;
-        2) echo "SELECT c1,c2 FROM `table`";;
-        3) echo "SELECT c1,c2 FROM `table` AS a1 `join` `table` AS a2 `whereal`";;
-        *) echo "Assert: invalid random case selection in SELECT case";;
+    10) case $[$RANDOM % 7 + 1] in  # Select (needs further work)
+        1) echo "`select`";;
+        2) echo "`select` UNION `select`";;
+        3) echo "`select` UNION `select` UNION `select`";;
+        4) echo "SELECT c1 FROM `table` WHERE (c1) IN (`select`)";;
+        5) echo "SELECT c1 FROM `table` WHERE (c1) IN (SELECT c1 FROM `table` WHERE c1 `operator` `data`)";;
+        6) echo "SELECT (`select`)";;
+        7) echo "SELECT (SELECT (`select`) OR (`select`)) AND (SELECT (SELECT (`select`) AND (`select`))) OR ((`select`) AND (`select`)) OR (`select`)";;
+
+
+
+        *) echo "Assert: invalid random case selection in main select case";;
       esac;;
-    11) case $[$RANDOM % 9 + 1] in  # Delete (complete)
+    11) case $[$RANDOM % 9 + 1] in  # Delete (complete, except join clauses could be extended with `joinlron` and `joinlronla` as above)
         1) echo "DELETE `lowprio` `quick` `ignore` FROM `table` `partition` `where` `orderby` `limit`";;
-        2) echo "DELETE `lowprio` `quick` `ignore` `alias3` FROM `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
-        3) echo "DELETE `lowprio` `quick` `ignore` FROM `alias3` USING `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
-        4) echo "DELETE `lowprio` `quick` `ignore` `alias3`,`alias3` FROM `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
-        5) echo "DELETE `lowprio` `quick` `ignore` FROM `alias3`,`alias3` USING `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
-        6) echo "DELETE `lowprio` `quick` `ignore` `alias3`,`alias3`,`alias3` FROM `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
-        7) echo "DELETE `lowprio` `quick` `ignore` FROM `alias3`,`alias3`,`alias3` USING `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
-        8) echo "DELETE `alias3`,`alias3` FROM `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
-        9) echo "DELETE FROM `alias3`,`alias3` USING `table` AS a1 `join` `table` AS a2 `join` `table` AS a3 `whereal`";;
+        2) echo "DELETE `lowprio` `quick` `ignore` `alias3` FROM `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
+        3) echo "DELETE `lowprio` `quick` `ignore` FROM `alias3` USING `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
+        4) echo "DELETE `lowprio` `quick` `ignore` `alias3`,`alias3` FROM `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
+        5) echo "DELETE `lowprio` `quick` `ignore` FROM `alias3`,`alias3` USING `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
+        6) echo "DELETE `lowprio` `quick` `ignore` `alias3`,`alias3`,`alias3` FROM `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
+        7) echo "DELETE `lowprio` `quick` `ignore` FROM `alias3`,`alias3`,`alias3` USING `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
+        8) echo "DELETE `alias3`,`alias3` FROM `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
+        9) echo "DELETE FROM `alias3`,`alias3` USING `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
         *) echo "Assert: invalid random case selection in DELETE case";;
       esac;;
     12) echo "TRUNCATE `table`";;  # Truncate
@@ -337,20 +379,18 @@ query(){
         2) echo "UPDATE `table` SET c1=`data` `where` `orderby` `limit`";;
         *) echo "Assert: invalid random case selection in UPDATE case";;
       esac;;
-    1[4-6]) case $[$RANDOM % 7 + 1] in  # Generic statements (needs further work except flush and reset)
-      [1-2]) echo "UNLOCK TABLES";;
-      [3-4]) echo "SET AUTOCOMMIT=ON";;
-        5) echo "FLUSH `nowbinlog` `localonly` `flush`" | sed "s|DUMMY|`table`|";;
-        6) echo "`reset`";;
-        7) echo "PURGE `binmaster` LOGS";; # Add TO and BEFORE clauses (need a datetime generator)
+    1[4-6]) case $[$RANDOM % 12 + 1] in  # Generic statements (needs further work except flush and reset)
+      [1-4]) echo "UNLOCK TABLES";;  # Do not lower frequency
+      [5-6]) echo "SET AUTOCOMMIT=ON";;
+        7) echo "FLUSH `nowriteloc` `flush`" | sed "s|DUMMY|`table`|";;
+        8) echo "`reset`";;
+        9) echo "PURGE `binmaster` LOGS TO '`data`'" | sed "s|''|'|g";;  # Not ideal, should be a real binary log filename 
+       10) echo "PURGE `binmaster` LOGS BEFORE CURRENT_TIMESTAMP()";;  # A datetime generator would perhaps a good addition
+       11) echo "SET SQL_BIG_SELECTS=1";;
+       12) echo "SET MAX_JOIN_SIZE=1000000";;
         *) echo "Assert: invalid random case selection in generic statements case";;
       esac;;
-    17) case $[$RANDOM % 8 + 1] in  # Transaction isolation level | Excludes `COMMIT...RELEASE` SQL, as this drops client connection
-      [1-5]) echo "SET `emglobses` TRANSACTION `transaction`";;
-      [6-7]) echo "SET `emglobses` TRANSACTION `transaction`, `transaction`";;
-        8) echo "SET `emglobses` TRANSACTION `transaction`, `transaction`, `transaction`";;
-        *) echo "Assert: invalid random case selection in transaction isolation level case";;
-      esac;;
+    17) echo "SET `emglobses` TRANSACTION ISOLATION LEVEL `isolation`";;  # Transaction isolation level (complete)
     1[8-9]) case $[$RANDOM % 37 + 1] in  # SET statements (complete)
         # 1+2: Add or remove an SQL_MODE, with thanks http://johnemb.blogspot.com.au/2014/09/adding-or-removing-individual-sql-modes.html
         [1-5]) echo "SET @@`globses`.SQL_MODE=(SELECT CONCAT(@@SQL_MODE,',`sqlmode`'))";;
@@ -429,7 +469,7 @@ query(){
        ##) echo "SHOW RELAYLOG EVENTS [IN 'log_name'] [FROM pos] `ofslimit`";;
        33) echo "SHOW SLAVE HOSTS";;
        34) echo "SHOW SLAVE STATUS";;
-       35) echo "SHOW SLAVE STATUS NONBLOCKING";;
+       35) echo "SHOW SLAVE STATUS FOR CHANNEL '`data`'" | sed "s|''|'|g";;  # Not ideal, should be a real replication channel
        36) echo "SHOW `globses` STATUS `like`";;
        37) echo "SHOW TABLE STATUS `fromdb` `like`";;
        38) echo "SHOW TABLES";;
@@ -450,7 +490,7 @@ query(){
         1) echo "EXPLAIN `query`";;                # Explain (needs further work: as above + more explain clauses)
         2) echo "SELECT `allor1` FROM (`query`) AS a1";;  # Subquery (needs further work: as above + more subquery structures)
     [3-7]) case $[$RANDOM % 8 + 1] in  # Prepared statements (needs further work)
-       [1-3]) echo "SET @cmd:='`query`'";;
+       [1-3]) echo "SET @cmd:=\"`query`\"";;
        [4-5]) echo "PREPARE stmt FROM @cmd";;
        [6-7]) echo "EXECUTE stmt";;
            8) echo "DEALLOCATE PREPARE stmt";;
@@ -463,9 +503,9 @@ query(){
     [1-9]) echo "XA COMMIT `xid` `onephase`";;
        10) case $[$RANDOM % 2 + 1] in
            1) echo "XA START `xid`";;
-           2) echo "XA BEGIN `xid` `joinresume`";;
+           2) echo "XA BEGIN `xid`";;  # `joinresume` can be added after `xid` later (it is not supported yet, ref http://dev.mysql.com/doc/refman/5.7/en/xa-statements.html)
          esac;;
-   1[1-8]) echo "XA END `xid` `suspendfm`";;
+   1[1-8]) echo "XA END `xid`";;       # `suspendfm`  can be added after `xid` later (it is not supported yet, ref http://dev.mysql.com/doc/refman/5.7/en/xa-statements.html)
        19) echo "XA PREPARE `xid`";;
        20) echo "XA RECOVER `convertxid`";;
    2[1-4]) echo "XA ROLLBACK `xid`";;
@@ -487,14 +527,16 @@ query(){
 3[0-1]) case $[$RANDOM % 7 + 1] in  # Transactions (complete, except review/add in different section?; http://dev.mysql.com/doc/refman/5.7/en/begin-end.html) 
         1) echo "START TRANSACTION `trxopt`";;
         2) echo "BEGIN `work`";;
-    [3-4]) echo "COMMIT `work` `chain` `release`";;
+    [3-4]) echo "COMMIT `work` `chain` `release`";;  # Excludes `COMMIT...RELEASE` SQL, as this drops client connection (`release` only produces 'NO RELEASE' in a percentage of queries)
     [5-6]) echo "ROLLBACK `work` `chain` `release`";;
         7) echo "SET autocommit=`onoff01`";;
         *) echo "Assert: invalid random case selection in transactions case";;
       esac;;
-    32) case $[$RANDOM % 2 + 1] in  # Lock tables (complete)
-        1) echo "LOCK TABLES `table` `asalias3` `locktype`";;
-        2) echo "UNLOCK TABLES";; 
+    32) case $[$RANDOM % 19 + 1] in  # Lock tables (complete)
+    [1-9]) echo "UNLOCK TABLES";;  # UNLOCK is present in higher ratio below also, which helps with having more queries succeed
+       10) echo "LOCK TABLES `table` `asalias3` `locktype`";;
+   1[1-4]) echo "LOCK TABLES `table` `asalias3` `locktype`, `table` AS a`n9` `locktype`";; 
+   1[5-9]) echo "LOCK TABLES `table` `asalias3` `locktype`, `table` AS a`n9` `locktype`, `table` AS a`n9` `locktype`";;  # Locking more tables leads to a higher overall number of queries that succeed
         *) echo "Assert: invalid random case selection in lock case";;
       esac;;
     33) case $[$RANDOM % 3 + 1] in  # Savepoints (complete)
@@ -542,14 +584,11 @@ query(){
          4) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
          *) echo "Assert: invalid random case selection in func,proc call subcase";;
        esac;;
-       
    
-
-
-# http://dev.mysql.com/doc/refman/5.7/en/get-diagnostics.html
-# http://dev.mysql.com/doc/refman/5.7/en/signal.html
-# cast functions
- 
+     # To add:    
+     # http://dev.mysql.com/doc/refman/5.7/en/get-diagnostics.html
+     # http://dev.mysql.com/doc/refman/5.7/en/signal.html
+     # cast functions
     
      # TIP: when adding new options, make sure to update the original case/esac to reflect the new number of options (the number behind the '%' in the case statement at the top of the list matches the number of available 'nr)' options)
      *) echo "Assert: invalid random case selection in main case";;
@@ -557,28 +596,38 @@ query(){
 }
 
 thread(){
-  for i in `eval echo {1..${queries}}`; do
-    while [ ${MUTEX_THREAD_BUSY} -eq 1 ]; do sleep 0.00001; done
+  for i in `eval echo {1..${QUERIES_PER_THREAD}}`; do
+    while [ ${MUTEX_THREAD_BUSY} -eq 1 ]; do sleep 0.0$RANDOM; done
     MUTEX_THREAD_BUSY=1; echo "`query`;" >> out.sql; MUTEX_THREAD_BUSY=0
   done
 }
 
-# Main code
+# ====== Main runtime 
+# == Setup
 if [ -r out.sql ]; then rm out.sql; fi
 touch out.sql; if [ ! -r out.sql ]; then echo "Assert: out.sql not present after 'touch out.sql' command!"; exit 1; fi
+# == Main run
 MUTEX_THREAD_BUSY=0
 PIDS=
-for i in `eval echo {1..${THREADS}}`; do
-  thread &
-  PIDS="${PIDS} $!"
-done
-wait ${PIDS}
+QUERIES_PER_THREAD=$[ ${QUERIES} / ${THREADS} ]
+if [ ${QUERIES_PER_THREAD} -gt 0 ]; then
+  for i in `eval echo {1..${THREADS}}`; do
+    thread &
+    PIDS="${PIDS} $!"
+  done
+  wait ${PIDS}
+fi
+# == Process the leftover queries (result of rounding (queries/threads) into an integer result)
+QUERIES_PER_THREAD=$[ ${QUERIES} - ( ${THREADS} * ${QUERIES_PER_THREAD} ) ];
+if [ ${QUERIES_PER_THREAD} -gt 0 ]; then thread; fi
+# == Check for failures or report outcome
 if grep -qi "Assert" out.sql; then
   echo "Errors found, please fix generator.sh code:"
   grep "Assert" out.sql | sort -u | sed 's|[ ]*;$||'
   rm out.sql 2>/dev/null
 else
   sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g;s|[ ]*;$|;|" out.sql  # Replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma
-  echo "Done! Generated ${queries} quality queries and saved the results in out.sql"
-  echo "Please note you may want to do:  \$ sed -i \"s|RocksDB|InnoDB|;s|TokuDB|InnoDB|\" out.sql  # depending on what distribution you are using. Or, edit engines.txt and run generator.sh again"
+  END=`date +%s`; RUNTIME=$[ ${END} - ${START} ]; MINUTES=$[ ${RUNTIME} / 60 ]; SECONDS=$[ ${RUNTIME} % 60 ]
+  echo "Done! Generated ${QUERIES} quality queries in ${MINUTES}m${SECONDS}s, and saved the results in out.sql"
+  echo "Please note you may want to do:  \$ sed -i \"s|RocksDB|InnoDB|;s|TokuDB|InnoDB|\" out.sql  # depending on what MySQL distribution you are using. Or, edit engines.txt and run generator.sh again"
 fi

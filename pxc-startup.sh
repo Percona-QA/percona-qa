@@ -34,17 +34,11 @@ if [[ $sst_method == "xtrabackup" ]];then
   fi
 fi
 
-echo -e "Adding scripts: ./start_pxc | ./stop_pxc | ./node_cl | ./wipe"
+echo -e "Adding script: ./start_pxc "
+echo -e "./start_pxc will create ./stop_pxc | ./*node_cli | ./wipe scripts"
 
 if [ ! -r $BUILD/mysql-test/mysql-test-run.pl ]; then
   echo -e "mysql test suite is not available, please check.."
-fi
-
-KEY_RING_CHECK=0
-if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
-  mkdir -p $node0 $keyring_node0
-elif [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-  KEY_RING_CHECK=1
 fi
 
 ADDR="127.0.0.1"
@@ -54,8 +48,14 @@ LADDR="$ADDR:$(( RBASE + 8 ))"
 SUSER=root
 SPASS=
 node0="${BUILD}/node0"
-
 keyring_node0="${BUILD}/keyring_node0"
+
+KEY_RING_CHECK=0
+if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+  mkdir -p $node0 $keyring_node0
+elif [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+  KEY_RING_CHECK=1
+fi
 
 echo -e "#!/bin/bash" > ./start_pxc
 echo -e "NODES=\$1"  >> ./start_pxc
@@ -66,10 +66,13 @@ echo -e "BUILD=\$(pwd)\n"  >> ./start_pxc
 echo -e "echo 'Starting PXC nodes..'\n" >> ./start_pxc
 
 echo -e "if [ -z \$NODES ]; then"  >> ./start_pxc
-echo -e "  echo \"*** Triggered default startup. Starting single node cluster ***\""  >> ./start_pxc
-echo -e "  echo \"To start multiple nodes please execute script as;\""  >> ./start_pxc
-echo -e "  echo \"$./start_pxc.sh 2\""  >> ./start_pxc
-echo -e "  echo \"This would lead to start 2 node cluster\""  >> ./start_pxc
+echo -e "  echo \"+----------------------------------------------------------------+\""  >> ./start_pxc
+echo -e "  echo \"| ** Triggered default startup. Starting single node cluster  ** |\""  >> ./start_pxc
+echo -e "  echo \"+----------------------------------------------------------------+\""  >> ./start_pxc
+echo -e "  echo \"|  To start multiple nodes please execute script as;             |\""  >> ./start_pxc
+echo -e "  echo \"|  $./start_pxc.sh 2                                             |\""  >> ./start_pxc
+echo -e "  echo \"|  This would lead to start 2 node cluster                       |\""  >> ./start_pxc
+echo -e "  echo \"+----------------------------------------------------------------+\""  >> ./start_pxc
 echo -e "  NODES=0"  >> ./start_pxc
 echo -e "else"  >> ./start_pxc
 echo -e "  let NODES=NODES-1" >> ./start_pxc
@@ -175,6 +178,5 @@ echo -e "  done\n" >> ./start_pxc
 echo -e "}\n" >> ./start_pxc
 
 echo -e "start_multi_node" >> ./start_pxc
-
-
-chmod +x ./start_pxc ./stop_pxc ./*node_cli ./wipe
+echo -e "chmod +x ./stop_pxc ./*node_cli ./wipe" >> ./start_pxc
+chmod +x ./start_pxc

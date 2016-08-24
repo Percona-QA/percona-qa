@@ -8,7 +8,7 @@
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 # Check if this is a pxc run
-if [ "`echo $1 | sed 's|PXC|pxc|i'`" == "pxc" ]; then
+if [ "$(grep 'PXC Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Mode[: \t]*||' )" == "TRUE" ]; then
   PXC=1
 else
   PXC=0

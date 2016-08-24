@@ -150,8 +150,8 @@ TS_VARIABILITY_SLEEP=1
 # - STAGE1_LINES: When the testcase becomes smaller than this number of lines, proceed to STAGE2 (default=90)
 #   Only change if reducer keeps trying to reduce by 1 line in STAGE1 for a long time (seen very rarely)
 # - MYEXTRA: Extra options to pass to myqsld (for instance "--core" is handy in some cases, for instance with highly sporadic issues to capture a core)
-#   Generally should be left disabled to obtain cleaner output (using this option gives "core dumped" messages, use less space, and have faster reducer runs)
-#   - Also, --no-defaults as set in the default is removed automatically later on. It is just present here to highlight it's set.
+#   (Btw, --core should generally be left disabled to obtain cleaner output ("core dumped" stdout messages, less space used, faster reducer runs)
+#   - Also, --no-defaults as set in the default is removed automatically later on. It is just present here to highlight it's effectively (seperately) set.
 # - MYBASE: Full path to MySQL basedir (example: "/mysql/mysql-5.6"). 
 #   If the directory name starts with '/mysql/' then this may be ommited (example: MYBASE="mysql-5.6-trunk")
 # - MULTI_THREADS: This option was an internal one only before. Set it to change the number of threads Reducer uses for the verify stage intially, and for 
@@ -358,6 +358,9 @@ if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
     exec $SCRIPT_LOC -q -f /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log -c "REDUCER_TYPESCRIPT=1 TYPESCRIPT_UNIQUE_FILESUFFIX=${TYPESCRIPT_UNIQUE_FILESUFFIX} $0 $@"
   fi
 fi
+
+# Sanitize input filenames which do not have a path specified by pointing to the current path. This ensures [Finish] output looks correct (ref $BUGTARDIR) 
+if [[ "${INPUTFILE}" != *"/"* ]]; then INPUTFILE="./${INPUTFILE}"; fi;
 
 echo_out(){
   echo "$(date +'%F %T') $1"
@@ -711,7 +714,7 @@ options_check(){
     export -n SPORADIC=1
     export -n SLOW_DOWN_CHUNK_SCALING=1
   fi   
-  export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|--no-defaults||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
+  export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|[ \t]*--no-defaults[ \t]*||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
 
 set_internal_options(){  # Internal options: do not modify!
@@ -2464,7 +2467,7 @@ finish(){
   BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
   rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
   $(cd $BUGTARDIR; tar -zhcf ${EPOCH}_bug_bundle.tar.gz ${EPOCH}*)
-  echo_out "[Finish] Final testcase bundle + scripts in: $BUGTARDIR/${EPOCH}"
+  echo_out "[Finish] Final testcase bundle + scripts in: $BUGTARDIR"
   echo_out "[Finish] Final testcase for script use     : $WORK_OUT (handy to use in combination with the scripts below)"
   echo_out "[Finish] File containing datadir           : $WORK_MYBASE (All scripts below use this. Update this when basedir changes)"
   echo_out "[Finish] Matching data dir init script     : $WORK_INIT (This script will use /dev/shm/${EPOCH} as working directory)"

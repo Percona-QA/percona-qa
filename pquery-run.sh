@@ -366,8 +366,12 @@ pxc_startup(){
   if [ "$1" == "startup" ]; then
     ${MID} --datadir=$node1  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
   fi
-
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
+  if [ ${VALGRIND_RUN} -eq 1 ]; then
+    VALGRIND_CMD="${VALGRIND_CMD}"
+  else
+    VALGRIND_CMD=""
+  fi
+  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
     --basedir=${BASEDIR} --datadir=$node1 \
     --loose-debug-sync-timeout=600  --wsrep-debug=ON \
     --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
@@ -395,7 +399,7 @@ pxc_startup(){
     ${MID} --datadir=$node2  > ${WORKDIR}/startup_node2.err 2>&1 || exit 1;
   fi
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
+  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
     --basedir=${BASEDIR} --datadir=$node2 \
     --loose-debug-sync-timeout=600  --wsrep-debug=ON \
     --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
@@ -423,7 +427,7 @@ pxc_startup(){
     ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
   fi
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
+  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
     --basedir=${BASEDIR} --datadir=$node3 \
     --loose-debug-sync-timeout=600  --wsrep-debug=ON \
     --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
@@ -690,6 +694,10 @@ pquery_test(){
     fi
     echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     echo "$WSREP_PROVIDER_OPT" > ${RUNDIR}/${TRIAL}/WSREP_PROVIDER_OPT
+    if [ ${VALGRIND_RUN} -eq 1 ]; then
+      touch  ${RUNDIR}/${TRIAL}/VALGRIND
+      echoit "Waiting for all PXC nodes to fully start (note this is slow for Valgrind runs, and can easily take 90-180 seconds even on an high end server)..."
+    fi
     pxc_startup 
     echoit "Checking 3 node PXC Cluster startup..."
     for X in $(seq 0 10); do
@@ -1009,6 +1017,35 @@ pquery_test(){
     fi
     sleep 2  # <^ Make sure mysqld is gone
   else
+    if [ ${VALGRIND_RUN} -eq 1 ]; then # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
+      # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
+      # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
+      # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log
+      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1 
+      for X in $(seq 0 600); do  # Wait for full Valgrind output in error log
+        sleep 1
+        if [[ ! -r ${RUNDIR}/${TRIAL}/node1/node1.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err ]]; then
+          echoit "Assert: PXC error logs (${RUNDIR}/${TRIAL}/node[13]/node[13].err) not found during a Valgrind run. Please check. Trying to continue, but something is wrong already..."
+          break
+        elif [ `egrep  "==[0-9]+== ERROR SUMMARY: [0-9]+ error"  ${RUNDIR}/${TRIAL}/node*/node*.err | wc -l` -eq 3 ]; then # Summary found, Valgrind is done
+          VALGRIND_SUMMARY_FOUND=1
+          sleep 2
+          break
+        fi
+      done
+      if [ ${VALGRIND_SUMMARY_FOUND} -eq 0 ]; then
+        kill -9 ${PQPID} >/dev/null 2>&1;
+        (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+        sleep 2  # <^ Make sure mysqld is gone
+        echoit "Odd mysqld hang detected (mysqld did not terminate even after 600 seconds), saving this trial... "
+        if [ ${TRIAL_SAVED} -eq 0 ]; then
+          savetrial
+          TRIAL_SAVED=1
+        fi
+      fi
+    fi
     (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
     sleep 2; sync
@@ -1124,9 +1161,9 @@ WORKDIRACTIVE=1
 # User for recovery testing
 echo "create user recovery@'%';grant all on *.* to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
 if [ ${PXC} -eq 0 ];then
-  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR}"
+  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} "
 else
-  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: Active"
+  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: TRUE"
   if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
     echoit "PXC Cluster run: 'YES'"
   else
@@ -1170,13 +1207,13 @@ if [ "${MID_OPT}" == "--no-defaults --initialize-insecure" ]; then
   fi
 
 if [ ${PXC} -eq 0 ]; then
-  echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."  # Fig setup also does this for PXC elsewhere
+  echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
   mkdir ${WORKDIR}/mysqld
   cp ${BIN} ${WORKDIR}/mysqld
   echoit "Making a copy of the ldd files required for mysqld core analysis to ${WORKDIR}/mysqld..."
   PWDTMPSAVE=$PWD
   cd ${WORKDIR}/mysqld
-  ${SCRIPT_PWD}/ldd_files.sh  # TODO for PXC, not sure yet how
+  ${SCRIPT_PWD}/ldd_files.sh
   cd ${PWDTMPSAVE}
   echoit "Generating datadir template (using mysql_install_db or mysqld --init)..."
   if [ -r ${BASEDIR}/bin/mysql_install_db ]; then 
@@ -1219,6 +1256,14 @@ if [ ${PXC} -eq 0 ]; then
     rm ${WORKDIR}/data.template/ib_log*
   fi
 else
+  echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
+  mkdir ${WORKDIR}/mysqld
+  cp ${BIN} ${WORKDIR}/mysqld
+  echoit "Making a copy of the ldd files required for mysqld core analysis to ${WORKDIR}/mysqld..."
+  PWDTMPSAVE=$PWD
+  cd ${WORKDIR}/mysqld
+  ${SCRIPT_PWD}/ldd_files.sh
+  cd ${PWDTMPSAVE}
   echoit "Ensuring that PXC nodes startup initiated for pquery run.."
   pxc_startup startup
   sleep 5
