@@ -77,9 +77,6 @@
   echo "INPUT" | xargs | sed "s/INPUT/PROCESSOR/"
   echo ls | xargs | sh -x  # Conceptually similar to echo ls | xargs bash -c
   echo -n "echo\necho" | xargs | sed 's|DUMMY|NO ACTION|'  # When used like this, a \n is added to the output. This is not the case if 'xargs |' is dropped
-# Check a string variable for the occurence of a particular search term. With thanks, http://timmurphy.org/2013/05/13/string-contains-substring-in-bash/
-  if [[ "$string" == *"$searchstring"* ]]; then echo "found"; else echo "not found"; fi  # This method is much faster then grep -q
-  if [[ "$string" =~ $searchstring ]]; then echo "found"; else echo "not found"; fi
 # For all lines in a file, action something. Note that the for loop has limitations (spaces) which require IFS to be set. This is not so with the while loop 
   ORIG_IFS=${IFS}; IFS=$'\n'; for LINE in $(cat ./file.txt); do echo ${LINE}; done; IFS=${ORIG_IFS}   #OR#  while read line; do echo ${line}; done < ./file.txt
 # Obtain a fully qualified directory and script name 
@@ -101,12 +98,17 @@
   sed -ie '1i\your_text_here' file.txt
 # Rename files, in subdirectories, from .log to .sql
   ls */pquery_thread*.log | xargs -I{} echo "mv {} {}DUMMY" | sed 's|logDUMMY|sql|' | xargs -0 | sh
-# Check a string for presence of a substring / conditionally execute commands based on presence of a string within a file
-  if echo "test123test" | egrep -qi "123"; then echo "yes"; else echo "no"; fi;   #OR#   if cat testfile.txt | egrep -qi "123"; then echo "yes"; else echo "no"; fi;
+# Conditionally execute commands based on presence of a string within a file
+  if cat testfile.txt | egrep -qi "123"; then echo "yes"; else echo "no"; fi;   #OR#
+# Uppercase/lowercase a string. With thanks, http://stackoverflow.com/a/19411918/1580826
+  V="Aa"; echo ${V^^}; echo ${V,,}  # Will output AA and aa respectively
+# Check a string for presence of a search/substring. With thanks, http://timmurphy.org/2013/05/13/string-contains-substring-in-bash/
+  if [[ "$string" == *"$searchstring"* ]]; then echo "found"; else echo "not found"; fi  # This is much faster then grep -q (which is not recommended for strings) and always works
+  if [[ "$string" =~ $searchstring ]]; then echo "found"; else echo "not found"; fi
+  if [[ "$string" == *"={$searchstring1|$searchstring2}"* ]]; then echo "yes"; else echo "no"; fi;
+  if [[ "${string^^}" == *"${searchstring^^}"* ]]; then echo "yes"; else echo "no"; fi;  # Case insensitive compare
 # Check if sudo is installed and available
   if [ "$(sudo -A echo 'test' 2>/dev/null)" == "test" ]; then echo "SUDO installed & available"; else echo "SUDO not available, or password based access only"; fi
-# Check if a substring (: here) is present in a string, (With thanks http://timmurphy.org/2013/05/13/string-contains-substring-in-bash/)
-  if [[ "test::test" = *":"* ]]; then echo "y"; else echo "n"; fi
 # Sent all stdout/stderr output to a file while still on screen (With thanks http://stackoverflow.com/questions/692000/how-do-i-write-stderr-to-a-file-while-using-tee-with-a-pipe)
   exec 1>> >(tee /tmp/stdout.log >&1); exec 2>> >(tee /tmp/stderr.log >&2)
 # Start console selflogging from inside a script (With thanks http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session)
@@ -127,6 +129,9 @@
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
   bash -x ./your_script.sh
+# In some complex redirection cases, using bash -x is not sufficient for finding the source a problem, for example a faulty sed command. In such cases use
+  script out.txt
+  bash -x ./your_script.sh; vi out.txt  # Then search for the error seen previously on normal execution. Verify surrounding output
 # View all OS-level function/system calls/IO etc.
   strace ./your_script.sh  # You may need to add additional strace options, see 'man strace'
 # View what mysqld (or any other process) is doing. Ideal for hangs/odd long query durations etc. (First install utility perf: $ sudo yum install perf)
@@ -160,6 +165,7 @@
 # Except for searching files (if grep -qi "search string" file.txt...), it's best not to use: echo "text" | grep -q "text" to search strings for substrings. It is very slow, and 
   has a gotcha: Test this:  LINE='test'; DONE=0; echo ${LINE} | if grep -q 'test'; then DONE=1; echo "DONE"; fi; echo $DONE  # DONE is 0 because (as per Bash team); 'All elements
   of a pipeline are executed in subshells.  A subshell cannot affect its parent's environment. The 'lastpipe' shell option can change this when job control is not active.'
+  Instead, see 'Check a string for presence of a search/substring' above for substring searches
 # In Bash, a calling function needs to be declared ABOVE the line it is called from. An example script (place the following 3 lines in a script) will show this (output on right):
   echo "does not work (error will be shown before this line): `works`"         # ./test.sh: line 1: works: command not found
   works(){ echo "works"; }                                                     # does not work (error will be shown before this line): 

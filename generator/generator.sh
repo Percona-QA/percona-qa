@@ -3,7 +3,7 @@
 
 # ====== User Variables
 MYSQL_VERSION=57     # Valid options: 56, 57
-THREADS=10           # Number of threads that generate SQL (default:10)
+THREADS=4            # Number of SQL generation threads (default:4). Do not set the default >4 as pquery-run.sh also uses this script (avoids server overload with multiple runs)
 SHEDULING_ENABLED=0  # On/Off (1/0). Enables/disables using mysql EVENTs .When using this, please note that testcases need to be reduced using PQUERY_MULTI=1 in reducer.sh (as they are effectively multi-threaded due to sheduler threads), and that issue reproducibility may be significantly lower (sheduling may not match original OS slicing, other running queries etc.). Still, using PQUERY_MULTI=1 a good number of issues are likely reproducibile and thus reducable given reducer.sh's random replay functionality.
 
 # ====== Notes
@@ -229,7 +229,7 @@ subwhere()  { SUBWHEREACTIVE=1; if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`a
 subordby()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ",c`n3` `emascdesc`"; fi }                    # 20% sub-ORDER BY (additional ORDER BY column)
 # ========================================= Special/Complex
 opstend()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`startsends` `timestamp` `intervalad`"; fi } # 20% optional START/STOP (for EVENTs)
-where()     { echo "`whereal`" | sed 's|a[0-9]\+\.||g'; }             # where():    e.g. WHERE    c1==c2    etc. (not suitable for multi-table WHERE's with similar column names)
+where()     { echo "`whereal`" | sed "s|a[0-9]\+\.||g"; }             # where():    e.g. WHERE    c1==c2    etc. (not suitable for multi-table WHERE's with similar column names)
 wheretbl()  { echo "`where`" | sed "s|\(c[0-9]\+\)|`table`.\1|g"; }   # wheretbl(): e.g. WHERE t1.c1==t2.c2 etc. (may mismatch on table names if many or few tables are used)
 whereal()   {                                                         # whereal():  e.g. WHERE a1.c1==a2.c2 etc. (requires table aliases to be in place)
   WHERE_RND=4; if [ ${SUBWHEREACTIVE} -eq 1 ]; then WHERE_RND=2; fi   # When generating a sub-WHERE, we need to generate a new clause, not an empty "No WHERE clause", as this would lead to an invalid syntax like "WHERE ... AND <nothing>"
@@ -262,7 +262,7 @@ lastjoin()  {
   LASTJOIN=`join`
   if [ "${LASTJOIN}" == "JOIN" ]; then echo "`natural` JOIN"; else echo "${LASTJOIN}"; fi
 }
-select()    {
+selectq()   {  # Select Query. Do not use 'select()' as select is a system keyword
   case $[$RANDOM % 6 + 1] in  # Select (needs further work: JOIN syntax + SELECT options)
     1) echo "SELECT c`n3` FROM `table`";;
     2) echo "SELECT c`n3`,c`n3` FROM `table`";;
@@ -290,7 +290,7 @@ select()    {
     #    *) echo "Assert: invalid random case selection in FIXEDTABLE3 join case";;
     #   esac;;
     *) echo "Assert: invalid random case selection in SELECT case";;
-  esac;;
+  esac
 }
 
 query(){
@@ -349,16 +349,13 @@ query(){
         *) echo "Assert: invalid random case selection in load data infile/select into outfile case";;
       esac;;
     10) case $[$RANDOM % 7 + 1] in  # Select (needs further work)
-        1) echo "`select`";;
-        2) echo "`select` UNION `select`";;
-        3) echo "`select` UNION `select` UNION `select`";;
-        4) echo "SELECT c1 FROM `table` WHERE (c1) IN (`select`)";;
+        1) echo "`selectq`";;
+        2) echo "`selectq` UNION `selectq`";;
+        3) echo "`selectq` UNION `selectq` UNION `selectq`";;
+        4) echo "SELECT c1 FROM `table` WHERE (c1) IN (`selectq`)";;
         5) echo "SELECT c1 FROM `table` WHERE (c1) IN (SELECT c1 FROM `table` WHERE c1 `operator` `data`)";;
-        6) echo "SELECT (`select`)";;
-        7) echo "SELECT (SELECT (`select`) OR (`select`)) AND (SELECT (SELECT (`select`) AND (`select`))) OR ((`select`) AND (`select`)) OR (`select`)";;
-
-
-
+        6) echo "SELECT (`selectq`)";;
+        7) echo "SELECT (SELECT (`selectq`) OR (`selectq`)) AND (SELECT (SELECT (`selectq`) AND (`selectq`))) OR ((`selectq`) AND (`selectq`)) OR (`selectq`)";;
         *) echo "Assert: invalid random case selection in main select case";;
       esac;;
     11) case $[$RANDOM % 9 + 1] in  # Delete (complete, except join clauses could be extended with `joinlron` and `joinlronla` as above)
@@ -623,7 +620,7 @@ if [ ${QUERIES_PER_THREAD} -gt 0 ]; then thread; fi
 # == Check for failures or report outcome
 if grep -qi "Assert" out.sql; then
   echo "Errors found, please fix generator.sh code:"
-  grep "Assert" out.sql | sort -u | sed 's|[ ]*;$||'
+  grep "Assert" out.sql | sort -u | sed "s|[ ]*;$||"
   rm out.sql 2>/dev/null
 else
   sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g;s|[ ]*;$|;|" out.sql  # Replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma
