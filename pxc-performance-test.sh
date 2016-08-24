@@ -183,12 +183,12 @@ function start_pxc(){
 function sysbench_rw_run(){
   MEM_PID=()
   if [ ${WARMUP} == "Y" ]; then
-    # warmup the cache, 64 threads for 10 minutes, don't bother logging
+    #warmup the cache, 64 threads for 10 minutes, don't bother logging
     # *** REMEMBER *** warmmup is READ ONLY!
     num_threads=64
-    #WARMUP_TIME_SECONDS=600
-    #sysbench --test=${SYSBENCH_DIR}/tests/db/oltp.lua --oltp_tables_count=$NUM_TABLES --oltp-table-size=$NUM_ROWS --rand-init=on --num-threads=$num_threads --oltp-read-only=on --report-interval=$REPORT_INTERVAL --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --mysql-table-engine=${MYSQL_STORAGE_ENGINE} --max-time=$WARMUP_TIME_SECONDS --mysql-user=$SUSER --mysql-password=$SPASS --mysql-db=${MYSQL_DATABASE} --max-requests=0 --percentile=99 run > $LOGS/sysbench_warmup.log 2>&1
-    #sleep 60
+    WARMUP_TIME_SECONDS=600
+    sysbench --test=${SYSBENCH_DIR}/tests/db/oltp.lua --oltp_tables_count=$NUM_TABLES --oltp-table-size=$NUM_ROWS --rand-init=on --num-threads=$num_threads --oltp-read-only=on --report-interval=$REPORT_INTERVAL --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --mysql-table-engine=InnoDB --max-time=$WARMUP_TIME_SECONDS --mysql-user=$SUSER --mysql-password=$SPASS --mysql-db=${MYSQL_DATABASE} --max-requests=0 --percentile=99 run > $LOGS/sysbench_warmup.log 2>&1
+    sleep 60
   fi
 
   for num_threads in ${threadCountList}; do
@@ -272,7 +272,7 @@ sysbench_rw_run
 
 # CPU bound performance run
 export DATASIZE=1M
-export INNODB_CACHE=25G
+export INNODB_CACHE=5G
 export NUM_ROWS=1000000
 export RAND_TYPE=uniform
 export BENCH_ID=innodb-1mm.${RAND_TYPE}.cpubound
@@ -283,7 +283,7 @@ sysbench_rw_run
 
 # IO bound performance run
 export DATASIZE=1M
-export INNODB_CACHE=15G
+export INNODB_CACHE=1G
 export NUM_ROWS=1000000
 export RAND_TYPE=uniform
 export BENCH_ID=innodb-1mm.${RAND_TYPE}.iobound
