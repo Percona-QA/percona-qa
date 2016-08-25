@@ -1159,9 +1159,15 @@ pquery_test(){
         savetrial
         TRIAL_SAVED=1
       fi
+    elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 ]; then
+      echoit "'MySQL server has gone away' detected >=200 times for this trial, saving it for further analysis"
+      if [ ${TRIAL_SAVED} -eq 0 ]; then
+        savetrial
+        TRIAL_SAVED=1
+      fi
     elif [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
       if [ ${TRIAL_SAVED} -eq 0 ]; then
-        echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whetter an issue was detected or not)"
+        echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
         savetrial
         TRIAL_SAVED=1
       fi
