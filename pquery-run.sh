@@ -908,6 +908,7 @@ pquery_test(){
         if [ ${QUERY_DURATION_TESTING} -eq 0 ]; then  # Query duration testing run
           if [ ${PXC} -eq 0 ]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            PQPID="$!"
           else
             if [ ${PXC_CLUSTER_RUN} -eq 1 ];then
               cat ${PXC_CLUSTER_CONFIG} \
@@ -915,13 +916,16 @@ pquery_test(){
                 | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquer-cluster.cfg
               ${SCRIPT_PWD}/pquery/pquery2-ps --config-file=${RUNDIR}/${TRIAL}/pquer-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+              PQPID="$!"
             else
               ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+              PQPID="$!"
             fi
           fi
         else  # Standard pquery run
           if [ ${PXC} -eq 0 ]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            PQPID="$!"
           else
             if [ ${PXC_CLUSTER_RUN} -eq 1 ];then
               cat ${PXC_CLUSTER_CONFIG} \
@@ -929,8 +933,10 @@ pquery_test(){
                 | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquer-cluster.cfg
               ${SCRIPT_PWD}/pquery/pquery2-ps --config-file=${RUNDIR}/${TRIAL}/pquer-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+              PQPID="$!"
             else
               ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+              PQPID="$!"
             fi
           fi
         fi
@@ -947,12 +953,13 @@ pquery_test(){
       # Debug echo "-------"; cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql; echo "-------"
       if [ ${PXC} -eq 0 ]; then
         ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        PQPID="$!"
       else
         ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &  
+        PQPID="$!"
       fi
     fi
     if [ ${QUERY_CORRECTNESS_TESTING} -ne 1 ]; then
-      PQPID="$!"
       echoit "pquery running (Max duration: ${PQUERY_RUN_TIMEOUT}s)..."
       for X in $(seq 0 ${PQUERY_RUN_TIMEOUT}); do
         if grep -qi "error while loading shared libraries" ${RUNDIR}/${TRIAL}/pquery.log; then
