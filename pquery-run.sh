@@ -1175,19 +1175,19 @@ pquery_test(){
       if [ ${SAVE_SQL} -eq 1 ]; then 
         if [ ${VALGRIND_RUN} -eq 1 ]; then
           if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
-            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump or Valgrind issue was generated), except the SQL trace (as SAVE_SQL=1)"
+            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump, server gone away, or Valgrind issue was generated), except the SQL trace (as SAVE_SQL=1)"
           fi
         else
-          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump was generated), except the SQL trace (as SAVE_SQL=1)"
+          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump or server gone away issue was generated), except the SQL trace (as SAVE_SQL=1)"
         fi
         savesql
       else
         if [ ${VALGRIND_RUN} -eq 1 ]; then
           if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
-            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump or Valgrind issue was generated)" 
+            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump, server gone away, or Valgrind issue was generated)" 
           fi
         else
-          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump was generated)" 
+          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump or server gone away issue was generated)" 
         fi
       fi
     fi  
