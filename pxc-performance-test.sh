@@ -209,7 +209,7 @@ function sysbench_rw_run(){
 
     sysbench --test=${SYSBENCH_DIR}/tests/db/oltp.lua --oltp-non-index-updates=1 --oltp_tables_count=$NUM_TABLES --oltp-table-size=$NUM_ROWS --rand-init=on --num-threads=$num_threads  --report-interval=$REPORT_INTERVAL --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --mysql-table-engine=InnoDB --max-time=$RUN_TIME_SECONDS --mysql-user=$SUSER --mysql-password=$SPASS --mysql-db=${MYSQL_DATABASE} --max-requests=0 --percentile=99 run | tee $LOG_NAME
     sleep 6
-    AVG_TRANS=`grep "read/write requests:" PXC-5.7.14-7-26.16-debug-innodb.5mm.uniform.cpubound--500-$num_threads.txt | awk '{print $4}' | sed 's/(//'`
+    AVG_TRANS=`grep "read/write requests:" $LOG_NAME | awk '{print $4}' | sed 's/(//'`
     echo "$num_threads : $AVG_TRANS" >> ${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$LOG_BENCHMARK_NAME-$NUM_ROWS.summary
   done
 
