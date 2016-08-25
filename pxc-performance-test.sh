@@ -86,8 +86,10 @@ fi
 # Setting seeddb creation configuration
 if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
   MID="${DB_DIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${DB_DIR}"
+  WS_DATADIR="${BIG_DIR}/57_sysbench_data_template"
 elif [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
   MID="${DB_DIR}/scripts/mysql_install_db --no-defaults --basedir=${DB_DIR}"
+  WS_DATADIR="${BIG_DIR}/56_sysbench_data_template"
 fi
 
 function start_multi_node(){
@@ -106,7 +108,7 @@ function start_multi_node(){
     LADDR1="$ADDR:$(( RBASE1 + 8 ))"
     WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
     if [ $run_mid -eq 1 ]; then
-      node="${BIG_DIR}/sysbench_data_template/node${DATASIZE}_$i"
+      node="${WS_DATADIR}/node${DATASIZE}_$i"
       if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
         mkdir -p $node
       fi
@@ -137,11 +139,11 @@ function start_multi_node(){
     done
   done
   if [ $run_mid -eq 1 ]; then
-    ${DB_DIR}/bin/mysql -uroot -S${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1/socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
-    /usr/bin/sysbench --test=${SYSBENCH_DIR}/tests/db/parallel_prepare.lua --num-threads=${NUM_TABLES} --oltp-tables-count=${NUM_TABLES}  --oltp-table-size=${NUM_ROWS} --mysql-db=test --mysql-user=root    --db-driver=mysql --mysql-socket=${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1/socket.sock run > $LOGS/sysbench_prepare.log 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1/socket.sock shutdown > /dev/null 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${BIG_DIR}/sysbench_data_template/node${DATASIZE}_2/socket.sock shutdown > /dev/null 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${BIG_DIR}/sysbench_data_template/node${DATASIZE}_3/socket.sock shutdown > /dev/null 2>&1
+    ${DB_DIR}/bin/mysql -uroot -S${WS_DATADIR}/node${DATASIZE}_1/socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
+    /usr/bin/sysbench --test=${SYSBENCH_DIR}/tests/db/parallel_prepare.lua --num-threads=${NUM_TABLES} --oltp-tables-count=${NUM_TABLES}  --oltp-table-size=${NUM_ROWS} --mysql-db=test --mysql-user=root    --db-driver=mysql --mysql-socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock run > $LOGS/sysbench_prepare.log 2>&1
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock shutdown > /dev/null 2>&1
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_2/socket.sock shutdown > /dev/null 2>&1
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_3/socket.sock shutdown > /dev/null 2>&1
   fi
 }
 
@@ -165,17 +167,17 @@ function start_pxc(){
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
   
-  if [ -d ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1 ]; then
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1 ${DB_DIR}/node1
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_2 ${DB_DIR}/node2
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_3 ${DB_DIR}/node3
+  if [ -d ${WS_DATADIR}/node${DATASIZE}_1 ]; then
+    cp -r ${WS_DATADIR}/node${DATASIZE}_1 ${DB_DIR}/node1
+    cp -r ${WS_DATADIR}/node${DATASIZE}_2 ${DB_DIR}/node2
+    cp -r ${WS_DATADIR}/node${DATASIZE}_3 ${DB_DIR}/node3
     start_multi_node
   else
-    mkdir ${BIG_DIR}/sysbench_data_template > /dev/null 2>&1
+    mkdir ${WS_DATADIR} > /dev/null 2>&1
     start_multi_node startup
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1 ${DB_DIR}/node1
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_2 ${DB_DIR}/node2
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_3 ${DB_DIR}/node3
+    cp -r ${WS_DATADIR}/node${DATASIZE}_1 ${DB_DIR}/node1
+    cp -r ${WS_DATADIR}/node${DATASIZE}_2 ${DB_DIR}/node2
+    cp -r ${WS_DATADIR}/node${DATASIZE}_3 ${DB_DIR}/node3
     start_multi_node
   fi
 }
