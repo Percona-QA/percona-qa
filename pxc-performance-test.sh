@@ -221,7 +221,7 @@ function sysbench_rw_run(){
   timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node3/socket.sock shutdown > /dev/null 2>&1
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   tarFileName="sysbench_${BENCH_ID}_perf_result_set_${DATE}.tar.gz"
-  tar czvf ${tarFileName} ${MYSQL_NAME}* ${DB_DIR}/node1/*.err
+  tar czvf ${tarFileName} ${MYSQL_NAME}* ${DB_DIR}/node*/*.err
   mkdir -p ${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}
   BACKUP_FILES="${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}"
   cp ${tarFileName} ${BACKUP_FILES}
