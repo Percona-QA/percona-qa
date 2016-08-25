@@ -209,13 +209,16 @@
   export LD_LIBRARY_PATH=${PWD}/lib;~/percona-qa/pquery/pquery --infile=./testc.sql --database=test --threads=1 --no-shuffle --user=root --socket=./socket.sock
 
 # ------ Git ------
-# Store git credentials, and turn off warnings for whitespace errors (with thanks, http://stackoverflow.com/a/12396793/1580826)
+# Register author details
+  git config --global user.name "your name"
+  git config --global user.email email@domain.com
+# Store git credentials, and turn off warnings for whitespace errors (with thanks, http://stackoverflow.com/a/12396793/1580826) - run from within clone directory
   git config credential.helper store
   git config apply.whitespace nowarn
 # Diff ALL changes, including newly added (i.e. staged) files (with thanks, http://stackoverflow.com/a/27299842)
   git diff HEAD
 # Apply a diff and then patch (with thanks, http://www.thegeekstuff.com/2014/03/git-patch-create-and-apply/)
-  git diff HEAD > patch.diff; # swap to another location #; git apply < patch.diff
+  git diff HEAD > patch.diff; # Change to another place #; git apply < patch.diff
 
 # ------ Must read's ------
 # http://tldp.org/LDP/abs/html/globbingref.html on globbing (and not regex) and filename expansion

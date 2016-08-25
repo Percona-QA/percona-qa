@@ -470,26 +470,26 @@ pquery_test(){
                                     # from being displayed in the output. Thank you to user 'Foonly' @ forums.whirlpool.net.au
   echoit "Clearing rundir..."
   rm -Rf ${RUNDIR}/*
-  echoit "Generating new trial workdir ${RUNDIR}/${TRIAL}..."
   if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -eq 1 ]; then
     echoit "Generating new SQL inputfile using the SQL Generator..."
     SAVEDIR=${PWD}
     cd ${SCRIPT_PWD}/generator/
     rm -f out.sql
-    ./generator ${QUERIES_PER_GENERATOR_RUN} >/dev/null
+    ./generator.sh ${QUERIES_PER_GENERATOR_RUN} >/dev/null
     if [ ! -r out.sql ]; then 
       echoit "Assert: out.sql not present in ${PWD} after ./generator.sh ${QUERIES_PER_GENERATOR_RUN} execution!"
       exit 1
     fi
-    if [[ "${MYEXTRA^^}" != *"ROCKSDB"* ]]; then
+    if [[ "${MYEXTRA^^}" != *"ROCKSDB"* ]]; then  # If this is not a RocksDB run, exclude RocksDB SE
       sed -i "s|RocksDB|InnoDB|" out.sql
     fi
-    if [[ "${MYEXTRA^^}" != *"HA_TOKUDB"* ]]; then
+    if [[ "${MYEXTRA^^}" != *"HA_TOKUDB"* ]]; then  # If this is not a TokuDB enabled run, exclude TokuDB SE
       sed -i "s|TokuDB|InnoDB|" out.sql
     fi
     INFILE=${PWD}/out.sql
     cd ${SAVEDIR}
   fi
+  echoit "Generating new trial workdir ${RUNDIR}/${TRIAL}..."
   ISSTARTED=0
   if [ ${PXC} -eq 0 ]; then
     mkdir -p ${RUNDIR}/${TRIAL}/data/test ${RUNDIR}/${TRIAL}/data/mysql ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log
@@ -582,10 +582,19 @@ pquery_test(){
     echo "${BIN} --no-defaults --initialize-insecure --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${RUNDIR}/${TRIAL}/socket.sock --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Starting mysqld...'" >> ${RUNDIR}/${TRIAL}/start
     echo "${CMD} > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" >> ${RUNDIR}/${TRIAL}/start
-    echo "# Same startup command, but without MYEXTRA included:" >> ${RUNDIR}/${TRIAL}/start 
-    echo "#$(echo ${CMD} | sed "s|${MYEXTRA}||")" >> ${RUNDIR}/${TRIAL}/start
-    echo "# Same startup command, but without MYEXTRA and MYSAFE included:" >> ${RUNDIR}/${TRIAL}/start 
-    echo "#$(echo ${CMD} | sed "s|${MYEXTRA}||" | sed "s|${MYSAFE}||")" >> ${RUNDIR}/${TRIAL}/start
+    if [ "${MYEXTRA}" != "" ]; then
+      echo "# Same startup command, but without MYEXTRA included:" >> ${RUNDIR}/${TRIAL}/start
+      echo "#$(echo ${CMD} | sed "s|${MYEXTRA}||") > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" >> ${RUNDIR}/${TRIAL}/start
+    fi
+    if [ "${MYSAFE}" != "" ]; then
+      if [ "${MYEXTRA}" != "" ]; then
+        echo "# Same startup command, but without MYEXTRA and MYSAFE included:" >> ${RUNDIR}/${TRIAL}/start
+        echo "#$(echo ${CMD} | sed "s|${MYEXTRA}||;s|${MYSAFE}||") > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" >> ${RUNDIR}/${TRIAL}/start
+      else
+        echo "# Same startup command, but without MYSAFE included (and MYEXTRA was already empty):" >> ${RUNDIR}/${TRIAL}/start
+        echo "#$(echo ${CMD} | sed "s|${MYSAFE}||") > ${RUNDIR}/${TRIAL}/log/master.err 2>&1" >> ${RUNDIR}/${TRIAL}/start
+      fi
+    fi
     chmod +x ${RUNDIR}/${TRIAL}/start
     echo "BASEDIR=$BASEDIR" > ${RUNDIR}/${TRIAL}/start_recovery
     echo "if [ -r /usr/lib64/libjemalloc.so.1 ]; then" >> ${RUNDIR}/${TRIAL}/start_recovery

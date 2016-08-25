@@ -2606,13 +2606,12 @@ verify(){
       fi
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] As (possibly sporadic) issue did not reproduce with $MULTI_THREADS threads, now increasing number of threads to $[$MULTI_THREADS+MULTI_THREADS_INCREASE] (maximum is 50)"
       MULTI_THREADS=$[$MULTI_THREADS+MULTI_THREADS_INCREASE]
-      if [ $MULTI_THREADS -ge 35 ]; then
+      if [ $MULTI_THREADS -gt $MULTI_THREADS_MAX ]; then  # Verify failed. Terminate.
+        verify_not_found
+      elif [ $MULTI_THREADS -ge 35 ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: High load active. You may start seeing messages releated to server overload like:"
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: 'command not found', 'No such file or directory' or 'fork: retry: Resource temporarily unavailable'"
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: These can safely be ignored, reducer is trying to see if the issue can be reproduced at all"
-      fi
-      if [ $MULTI_THREADS -gt $MULTI_THREADS_MAX ]; then  # Verify failed. Terminate next.
-        verify_not_found
       fi
     done
   else  # This is a subreducer: go through normal verification stages
