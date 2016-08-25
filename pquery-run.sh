@@ -959,30 +959,31 @@ pquery_test(){
         PQPID="$!"
       fi
     fi
+    TIMEOUT_REACHED=0
     if [ ${QUERY_CORRECTNESS_TESTING} -ne 1 ]; then
       echoit "pquery running (Max duration: ${PQUERY_RUN_TIMEOUT}s)..."
-      for X in $(seq 0 ${PQUERY_RUN_TIMEOUT}); do
+      for X in $(seq 1 ${PQUERY_RUN_TIMEOUT}); do
+        sleep 1
         if grep -qi "error while loading shared libraries" ${RUNDIR}/${TRIAL}/pquery.log; then
           echoit "Assert: There was an error loading the shared/dynamic mysql client library linked to from within pquery. Ref. ${RUNDIR}/${TRIAL}/pquery.log to see the error. The solution is to ensure that LD_LIBRARY_PATH is set correctly (for example: execute '$ export LD_LIBRARY_PATH=<your_mysql_base_directory>/lib' in your shell. This will happen only if you use pquery without statically linked client libraries, and this in turn would happen only if you compiled pquery yourself instead of using the pre-built binaries available in https://github.com/Percona-QA/percona-qa (ref subdirectory/files ./pquery/pquery*) - which are normally used by this script (hence this situation is odd to start with). The pquery binaries in percona-qa all include a statically linked mysql client library matching the mysql flavor (PS,MS,MD,WS) it was built for. Another reason for this error may be that (having used pquery without statically linked client binaries as mentioned earlier) the client libraries are not available at the location set in LD_LIBRARY_PATH (which is currently set to '${LD_LIBRARY_PATH}'."
           exit 1
         fi
-        Y=$X
-        sleep 1
         if [ "`ps -ef | grep ${PQPID} | grep -v grep`" == "" ]; then  # pquery ended
           break
         fi
         if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
-          if [ $X -eq $CRASH_RECOVERY_KILL_BEFORE_END_SEC ]; then
+          if [ $X -ge $CRASH_RECOVERY_KILL_BEFORE_END_SEC ]; then
              kill -9 ${MPID} >/dev/null 2>&1;
              sleep 2
              echoit "killed for crash testing"
              break
           fi
         fi
-      done
-      if [ $Y -eq ${PQUERY_RUN_TIMEOUT} ]; then 
-        echoit "${PQUERY_RUN_TIMEOUT}s timeout reached. Terminating this trial..."
-      fi
+        if [ $X -ge ${PQUERY_RUN_TIMEOUT} ]; then 
+          echoit "${PQUERY_RUN_TIMEOUT}s timeout reached. Terminating this trial..."
+          TIMEOUT_REACHED=1
+        fi
+      done 
     fi
   else
     if [ ${PXC} -eq 0 ]; then
@@ -1009,11 +1010,15 @@ pquery_test(){
   fi
   TRIAL_SAVED=0;
   sleep 2  # Delay to ensure core was written completely (if any)
+  # NOTE**: Do not kill PQPID here/before shutdown. The reason is that pquery may still be writing queries it's executing to the log. The only way to halt pquery properly is by
+  # actually shutting down the server which will auto-terminate pquery due to 250 consecutive queries failing. If 250 queries failed and ${PQUERY_RUN_TIMEOUT}s timeout was
+  # reached, and if there is no core/Valgrind issue, then we do not need to save this trial (it is a standard occurence). If however we saw 250 queries failed before the timeout
+  # was complete, then there may be another problem and the trial should be saved.
   if [ ${PXC} -eq 0 ]; then
-    if [ ${VALGRIND_RUN} -eq 1 ]; then # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
+    if [ ${VALGRIND_RUN} -eq 1 ]; then  # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log
+      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
       VALGRIND_SUMMARY_FOUND=0
       for X in $(seq 0 600); do  # Wait for full Valgrind output in error log
         sleep 1
@@ -1027,7 +1032,6 @@ pquery_test(){
         fi
       done
       if [ ${VALGRIND_SUMMARY_FOUND} -eq 0 ]; then
-        kill -9 ${PQPID} >/dev/null 2>&1;
         kill -9 ${MPID} >/dev/null 2>&1;
         if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
           kill -9 ${MPID2} >/dev/null 2>&1;
@@ -1041,17 +1045,17 @@ pquery_test(){
       fi
     else     
       if [ ${QUERY_CORRECTNESS_TESTING} -ne 1 ]; then
-        timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), may catch shutdown bugs
+        timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), may catch shutdown bugs + see NOTE** above
         sleep 2
       fi
     fi
     (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; wait ${MPID} >/dev/null 2>&1) &  # Terminate mysqld
-    (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
+    (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time, also see NOTE** above)
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
       (sleep 0.2; kill -9 ${MPID2} >/dev/null 2>&1; wait ${MPID2} >/dev/null 2>&1) &  # Terminate mysqld
-      (sleep 0.2; kill -9 ${PQPID2} >/dev/null 2>&1; wait ${PQPID2} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
+      (sleep 0.2; kill -9 ${PQPID2} >/dev/null 2>&1; wait ${PQPID2} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time, also see NOTE** above)
     fi
-    sleep 2  # <^ Make sure mysqld is gone
+    sleep 1  # <^ Make sure all is gone
   else
     if [ ${VALGRIND_RUN} -eq 1 ]; then # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
@@ -1074,7 +1078,7 @@ pquery_test(){
       if [ ${VALGRIND_SUMMARY_FOUND} -eq 0 ]; then
         kill -9 ${PQPID} >/dev/null 2>&1;
         (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
-        sleep 2  # <^ Make sure mysqld is gone
+        sleep 1  # <^ Make sure mysqld is gone
         echoit "Odd mysqld hang detected (mysqld did not terminate even after 600 seconds), saving this trial... "
         if [ ${TRIAL_SAVED} -eq 0 ]; then
           savetrial
@@ -1161,8 +1165,8 @@ pquery_test(){
         savetrial
         TRIAL_SAVED=1
       fi
-    elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 ]; then
-      echoit "'MySQL server has gone away' detected >=200 times for this trial, saving it for further analysis"
+    elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 -a ${TIMEOUT_REACHED} -eq 0 ]; then
+      echoit "'MySQL server has gone away' detected >=200 times for this trial, and the pquery timeout was not reached; saving this trial for further analysis"
       if [ ${TRIAL_SAVED} -eq 0 ]; then
         STOREANYWAY=1
         savetrial
