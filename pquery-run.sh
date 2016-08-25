@@ -1162,6 +1162,7 @@ pquery_test(){
     elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 ]; then
       echoit "'MySQL server has gone away' detected >=200 times for this trial, saving it for further analysis"
       if [ ${TRIAL_SAVED} -eq 0 ]; then
+        STOREANYWAY=1
         savetrial
         TRIAL_SAVED=1
       fi
