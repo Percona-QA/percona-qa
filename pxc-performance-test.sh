@@ -68,18 +68,18 @@ export WORKSPACE_LOC=$BIG_DIR/backups
 if [ ! -f $BIG_DIR/my.cnf ]; then
   echo "[mysqld]" > my.cnf
   echo "basedir=${DB_DIR}" >> my.cnf
-  echo "innodb_file_per_table" >> my.cnf
-  echo "innodb_autoinc_lock_mode=2" >> my.cnf
-  echo "innodb_locks_unsafe_for_binlog=1" >> my.cnf
+  #echo "innodb_file_per_table" >> my.cnf
+  #echo "innodb_autoinc_lock_mode=2" >> my.cnf
+  #echo "innodb_locks_unsafe_for_binlog=1" >> my.cnf
   echo "wsrep-provider=${DB_DIR}/lib/libgalera_smm.so" >> my.cnf
   echo "wsrep_node_incoming_address=$ADDR" >> my.cnf
-  echo "wsrep_sst_method=rsync" >> my.cnf
+  #echo "wsrep_sst_method=rsync" >> my.cnf
   echo "wsrep_sst_auth=$SUSER:$SPASS" >> my.cnf
   echo "wsrep_node_address=$ADDR" >> my.cnf
   echo "core-file" >> my.cnf
-  echo "log-output=none" >> my.cnf
-  echo "server-id=1" >> my.cnf
-  echo "wsrep_slave_threads=2" >> my.cnf
+  #echo "log-output=none" >> my.cnf
+  #echo "server-id=1" >> my.cnf
+  #echo "wsrep_slave_threads=2" >> my.cnf
   echo "max-connections=1048" >> my.cnf
 fi
 
@@ -123,9 +123,9 @@ function start_multi_node(){
     fi
 
     ${DB_DIR}/bin/mysqld --defaults-file=${BIG_DIR}/my.cnf \
-      --datadir=$node $WSREP_CLUSTER_ADD $MYEXTR \
+      --datadir=$node $WSREP_CLUSTER_ADD $MYEXTRA \
       --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-      --log-error=$node/node$i.err $KEY_RING_OPTIONS \
+      --log-error=$node/node$i.err  \
       --socket=$node/socket.sock --port=$RBASE1 > $node/node$i.err 2>&1 &
 
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
