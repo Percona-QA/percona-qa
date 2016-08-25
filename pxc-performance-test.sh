@@ -111,12 +111,14 @@ function start_multi_node(){
       node="${WS_DATADIR}/node${DATASIZE}_$i"
       if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
         mkdir -p $node
+        ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1
+      else
+        if [ ! -d $node ]; then
+          ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1
+        fi
       fi
     else
       node="${DB_DIR}/node$i"
-    fi
-    if [ ! -d $node ]; then
-      ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1 
     fi
     if [ $i -eq 1 ]; then
       WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm:// "
@@ -229,6 +231,7 @@ function sysbench_rw_run(){
   cp ${tarFileName} ${BACKUP_FILES}
   rm -rf ${MYSQL_NAME}* 
   rm -rf ${DB_DIR}/node*
+  rm -rf ${BIG_DIR}/my.cnf
   
 }
 
