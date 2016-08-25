@@ -19,8 +19,8 @@ DIRLIST=$(grep -i "create table.* Specified key was too long" */pquery_thread-0.
 move
 
 # https://github.com/facebook/mysql-5.6/issues/260
-DIRLIST=$(grep -i "Internal error: Attempt to open a table that is not present in RocksDB-SE data dictionary" */pquery_thread-0.*.sql|awk -F '/' '{print $1}'|uniq)
-move
+#DIRLIST=$(grep -i "Internal error: Attempt to open a table that is not present in RocksDB-SE data dictionary" */pquery_thread-0.*.sql|awk -F '/' '{print $1}'|uniq)
+#move
 
 # MyRocks and InnoDB have different maximum row sizes
 DIRLIST=$(grep -i "ERROR.*1118.*Row size too large" */pquery_thread-0.*.sql|awk -F '/' '{print $1}'|uniq)
