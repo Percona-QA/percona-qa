@@ -268,24 +268,19 @@ ctrl-c(){
 }
 
 savetrial(){
+  TOSAVE=0
   if [ ${PXC} -eq 0 ]; then
-    if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then
-      SAVED=$[ $SAVED + 1 ]
-      echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
-      mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
-    else
-      echoit "Could not find core dump or Valgrind issue: Deleting rundir ${RUNDIR}/${TRIAL}"
-      rm -Rf ${RUNDIR}/${TRIAL}
-    fi
+    if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
   else
-    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
-      SAVED=$[ $SAVED + 1 ]
-      echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
-      mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
-    else
-      echoit "Could not find core dump : Deleting rundir ${RUNDIR}/${TRIAL}"
-      rm -Rf ${RUNDIR}/${TRIAL}
-    fi
+    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
+  fi
+  if [ ${TOSAVE} -eq 1 ]; then
+    SAVED=$[ $SAVED + 1 ]
+    echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
+    mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
+  else
+    echoit "Could not find core dump or Valgrind issue: Deleting rundir ${RUNDIR}/${TRIAL}"
+    rm -Rf ${RUNDIR}/${TRIAL}
   fi
   STOREANYWAY=0
 }
