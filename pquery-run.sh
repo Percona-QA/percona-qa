@@ -102,6 +102,10 @@ if [ "$(echo ${WORKDIR} | grep -oi "$RANDOMD" | head -n1)" != "${RANDOMD}" ]; th
 if [ "$(echo ${RUNDIR}  | grep -oi "$RANDOMD" | head -n1)" != "${RANDOMD}" ]; then echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
 if [ "$(echo ${PQUERY_BIN} | sed 's|\(^/pquery\)|\1|')" == "/pquery" ]; then echo "Assert! \$PQUERY_BIN == '${PQUERY_BIN}' - is it missing the \$SCRIPT_PWD prefix?"; exit 1; fi
 
+# Set ASAN coredump options
+#export ASAN_OPTIONS=disable_core=0:abort_on_error=1:unmap_shadow_on_exit=1
+export ASAN_OPTIONS=disable_core=0:abort_on_error=1
+
 # Check input file
 if [ ! -r ${INFILE} ]; then echo "Assert! \$INFILE (${INFILE}) cannot be read? Check file existence and privileges!"; exit 1; fi
 
@@ -172,15 +176,15 @@ if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then echoit "MODE: Query Duration Testin
 if [ ${QUERY_DURATION_TESTING} -ne 1 -a ${QUERY_CORRECTNESS_TESTING} -ne 1 -a ${CRASH_RECOVERY_TESTING} -ne 1 ]; then 
   if [ ${VALGRIND_RUN} -eq 1 ]; then
     if [ ${THREADS} -eq 1 ]; then
-      echoit "MODE: Single threaded Valgrind pquery Testing"
+      echoit "MODE: Single threaded Valgrind pquery testing"
     else
-      echoit "MODE: Multi threaded Valgrind pquery Testing"
+      echoit "MODE: Multi threaded Valgrind pquery testing"
     fi
   else
     if [ ${THREADS} -eq 1 ]; then
-      echoit "MODE: Single threaded pquery Testing"
+      echoit "MODE: Single threaded pquery testing"
     else
-      echoit "MODE: Multi threaded pquery Testing"
+      echoit "MODE: Multi threaded pquery testing"
     fi
   fi
 fi
@@ -982,6 +986,7 @@ pquery_test(){
         if [ $X -ge ${PQUERY_RUN_TIMEOUT} ]; then 
           echoit "${PQUERY_RUN_TIMEOUT}s timeout reached. Terminating this trial..."
           TIMEOUT_REACHED=1
+          break
         fi
       done 
     fi
@@ -1092,10 +1097,10 @@ pquery_test(){
   fi
   if [ ${ISSTARTED} -eq 1 ]; then  # Do not try and print pquery log for a failed mysqld start
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
-      echoit "Pri engine pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery1.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
-      echoit "Sec engine pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery2.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+      echoit "Pri engine pquery run details: $(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|^.*:|pquery summary:|')"
+      echoit "Sec engine pquery run details: $(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|^.*:|pquery summary:|')"
     else
-      echoit "pquery run details: $(cat ${RUNDIR}/${TRIAL}/pquery.log | grep -i 'SUMMARY' | sed 's|^.*:|pquery summary:|')"
+      echoit "pquery run details: $(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|^.*:|pquery summary:|')"
     fi
   fi
   if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -eq 0 ]; then  # If a core is found when query correctness testing is in progress, it will process it as a normal crash (without considering query correctness)
