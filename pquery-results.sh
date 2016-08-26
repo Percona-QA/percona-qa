@@ -71,16 +71,22 @@ else
     echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS[@]})"
   fi
 fi
+# 'MySQL server has gone away' seen >= 200 times + timeout was not reached
+if [ $(ls */GONEAWAY 2>/dev/null | wc -l) -gt 0 ]; then
+  echo "--------------"
+  echo "'MySQL server has gone away' trials that did not hit the pquery timeout (i.e. the trial ended before pquery timeout was reached, hence something must have gone wrong) were found: $(ls */GONEAWAY | sed 's|/.*||' | tr '\n' ' ')"
+  echo "(> 'MySQL server has gone away' trials which did not hit the pquery timeout are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. As they did not hit the pquery timeout, something must have gone wrong (in mysqld or in the pquery framework). Please check for existence of a core file (unlikely) and check the mysqld error log, the pquery logs and the SQL log, especially the last query before 'MySQL server has gone away' started happening. If it is a SELECT query on P_S, it's likely http://bugs.mysql.com/bug.php?id=82663 - a mysqld hang)"
+fi
 # 'SIGKILL myself' TRIALS
 if [ $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then 
   echo "--------------"
-  echo "'SIGKILL myself' TRIALS found: $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | sed 's|/.*||' | tr '\n' ' ')"
+  echo "'SIGKILL myself' trials found: $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | sed 's|/.*||' | tr '\n' ' ')"
   echo "(> 'SIGKILL myself' trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='SIGKILL myself' in their reducer<trialnr>.sh files. Then, simply reduce as normal.)"
 fi
 # ASAN errors
 if [ $(grep -l "ERROR:" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then 
   echo "--------------"
-  echo "ASAN TRIALS found and the issues seen:"
+  echo "ASAN trials found and the issues seen:"
   grep "ERROR:" */log/master.err 2>/dev/null | sed 's|/log/master.err||'
   echo "(> ASAN trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='ERROR: <copy some limited detail from log>' in their reducer<trialnr>.sh files. Then, simply reduce as normal.)"
 fi
