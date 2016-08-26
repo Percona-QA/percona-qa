@@ -1342,7 +1342,7 @@ else
   if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  ping > /dev/null 2>&1; then
     echoit "PXC node2.template started" ; fi
   if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  ping > /dev/null 2>&1; then
-    echoit "PXC node3.template started" ;fi
+    echoit "PXC node3.template started" ;
   else
     echoit "Assert: PXC data template creation failed.."
     exit 1
