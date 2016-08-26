@@ -1323,20 +1323,20 @@ else
   cd ${WORKDIR}/mysqld
   ${SCRIPT_PWD}/ldd_files.sh
   cd ${PWDTMPSAVE}
-  echoit "Ensuring that PXC nodes startup initiated for pquery run.."
+  echoit "Ensuring PXC templates created for pquery run.."
   pxc_startup startup
   sleep 5
   if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  ping > /dev/null 2>&1; then
-    echoit "PXC node1 started"
-  elif ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  ping > /dev/null 2>&1; then
-    echoit "PXC node2 started"
-  elif ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  ping > /dev/null 2>&1; then
-    echoit "PXC node3 started"
+    echoit "PXC node1.template started" ; fi
+  if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  ping > /dev/null 2>&1; then
+    echoit "PXC node2.template started" ; fi
+  if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  ping > /dev/null 2>&1; then
+    echoit "PXC node3.template started" ;fi
   else
-    echoit "Assert: PXC nodes startup failed.."
+    echoit "Assert: PXC data template creation failed.."
     exit 1
   fi
-  echoit "Found 3 PXC nodes ..."
+  echoit "Created PXC data templates for pquery run.."
   ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  shutdown > /dev/null 2>&1
   ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  shutdown > /dev/null 2>&1
   ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  shutdown > /dev/null 2>&1

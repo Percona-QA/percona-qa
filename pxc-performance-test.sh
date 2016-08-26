@@ -65,6 +65,7 @@ export WORKSPACE_LOC=$BIG_DIR/backups
 
 # Default my.cnf creation
 # Creating default my.cnf file
+rm -rf $BIG_DIR/my.cnf
 if [ ! -f $BIG_DIR/my.cnf ]; then
   echo "[mysqld]" > my.cnf
   echo "basedir=${DB_DIR}" >> my.cnf
@@ -231,7 +232,6 @@ function sysbench_rw_run(){
   cp ${tarFileName} ${BACKUP_FILES}
   rm -rf ${MYSQL_NAME}* 
   rm -rf ${DB_DIR}/node*
-  rm -rf ${BIG_DIR}/my.cnf
   
 }
 
