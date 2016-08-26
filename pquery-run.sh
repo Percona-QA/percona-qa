@@ -29,7 +29,8 @@ SAVE_SQL=0                                                     # Saves per-trial
 STORE_COPY_OF_INFILE=0                                         # Store a copy of the INFILE SQL input file in the work directory (not related to per-trial SQL)
 PQUERY_RUN_TIMEOUT=15                                          # x sec max trial runtime within which pquery tries to process QUERIES_PER_THREAD x THREADS queries against 1 mysqld
 QUERIES_PER_THREAD=100000                                      # Maximum number of queries executed per thread (THREADS) per trial (small = faster reduction, large = more crashes)
-QUERIES_PER_GENERATOR_RUN=20000                                # Used when USE_GENERATOR_INSTEAD_OF_INFILE=1. Default: 20000. Generating 10000 queries takes about 
+QUERIES_PER_GENERATOR_RUN=25000                                # Used when USE_GENERATOR_INSTEAD_OF_INFILE=1. Default: 20000. Generating 10K queries takes about 15 seconds on SSD
+GENERATE_NEW_QUERIES_WITH_GENERATOR_EVERY_X_TRIALS=10          # Run the SQL Generator every x trials. Default is 10. This aids runs as less time is spent generating queries
 MYEXTRA=""                                                     # Extra options to pass to mysqld. Examples below
 #MYEXTRA="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"                               # Use for generic RocksDB testing
 #MYEXTRA="--thread_handling=pool-of-threads --plugin-load-add=tokudb=ha_tokudb.so --init-file=${SCRIPT_PWD}/TokuDB.sql --tokudb-check-jemalloc=0"     # PS 5.x: TokuDB & audit-log
@@ -473,17 +474,19 @@ pquery_test(){
     echoit "Generating new SQL inputfile using the SQL Generator..."
     SAVEDIR=${PWD}
     cd ${SCRIPT_PWD}/generator/
-    rm -f out.sql
-    ./generator.sh ${QUERIES_PER_GENERATOR_RUN} >/dev/null
-    if [ ! -r out.sql ]; then 
-      echoit "Assert: out.sql not present in ${PWD} after ./generator.sh ${QUERIES_PER_GENERATOR_RUN} execution!"
-      exit 1
-    fi
-    if [[ "${MYEXTRA^^}" != *"ROCKSDB"* ]]; then  # If this is not a RocksDB run, exclude RocksDB SE
-      sed -i "s|RocksDB|InnoDB|" out.sql
-    fi
-    if [[ "${MYEXTRA^^}" != *"HA_TOKUDB"* ]]; then  # If this is not a TokuDB enabled run, exclude TokuDB SE
-      sed -i "s|TokuDB|InnoDB|" out.sql
+    if [ ${TRIAL} -eq 1 -o $[ ${TRIAL} % ${GENERATE_NEW_QUERIES_WITH_GENERATOR_EVERY_X_TRIALS} ] -eq 0 ]; then
+      rm -f out.sql
+      ./generator.sh ${QUERIES_PER_GENERATOR_RUN} >/dev/null
+      if [ ! -r out.sql ]; then 
+        echoit "Assert: out.sql not present in ${PWD} after ./generator.sh ${QUERIES_PER_GENERATOR_RUN} execution!"
+        exit 1
+      fi
+      if [[ "${MYEXTRA^^}" != *"ROCKSDB"* ]]; then  # If this is not a RocksDB run, exclude RocksDB SE
+        sed -i "s|RocksDB|InnoDB|" out.sql
+      fi
+      if [[ "${MYEXTRA^^}" != *"HA_TOKUDB"* ]]; then  # If this is not a TokuDB enabled run, exclude TokuDB SE
+        sed -i "s|TokuDB|InnoDB|" out.sql
+      fi
     fi
     INFILE=${PWD}/out.sql
     cd ${SAVEDIR}
