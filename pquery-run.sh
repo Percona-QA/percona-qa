@@ -1177,8 +1177,15 @@ pquery_test(){
         savetrial
         TRIAL_SAVED=1
       fi
-    elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 200 -a ${TIMEOUT_REACHED} -eq 0 ]; then
+    elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
       echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
+      if [ ${TRIAL_SAVED} -eq 0 ]; then
+        STOREANYWAY=1
+        savetrial
+        TRIAL_SAVED=1
+      fi
+    elif [ $(grep "ERROR:" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
+      echoit "ASAN issue detected in the mysqld error log for this trial; saving this trial"
       if [ ${TRIAL_SAVED} -eq 0 ]; then
         STOREANYWAY=1
         savetrial
