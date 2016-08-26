@@ -68,26 +68,28 @@ export WORKSPACE_LOC=$BIG_DIR/backups
 if [ ! -f $BIG_DIR/my.cnf ]; then
   echo "[mysqld]" > my.cnf
   echo "basedir=${DB_DIR}" >> my.cnf
-  echo "innodb_file_per_table" >> my.cnf
-  echo "innodb_autoinc_lock_mode=2" >> my.cnf
-  echo "innodb_locks_unsafe_for_binlog=1" >> my.cnf
+  #echo "innodb_file_per_table" >> my.cnf
+  #echo "innodb_autoinc_lock_mode=2" >> my.cnf
+  #echo "innodb_locks_unsafe_for_binlog=1" >> my.cnf
   echo "wsrep-provider=${DB_DIR}/lib/libgalera_smm.so" >> my.cnf
   echo "wsrep_node_incoming_address=$ADDR" >> my.cnf
-  echo "wsrep_sst_method=rsync" >> my.cnf
+  #echo "wsrep_sst_method=rsync" >> my.cnf
   echo "wsrep_sst_auth=$SUSER:$SPASS" >> my.cnf
   echo "wsrep_node_address=$ADDR" >> my.cnf
   echo "core-file" >> my.cnf
-  echo "log-output=none" >> my.cnf
-  echo "server-id=1" >> my.cnf
-  echo "wsrep_slave_threads=2" >> my.cnf
+  #echo "log-output=none" >> my.cnf
+  #echo "server-id=1" >> my.cnf
+  #echo "wsrep_slave_threads=2" >> my.cnf
   echo "max-connections=1048" >> my.cnf
 fi
 
 # Setting seeddb creation configuration
 if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
   MID="${DB_DIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${DB_DIR}"
+  WS_DATADIR="${BIG_DIR}/57_sysbench_data_template"
 elif [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
   MID="${DB_DIR}/scripts/mysql_install_db --no-defaults --basedir=${DB_DIR}"
+  WS_DATADIR="${BIG_DIR}/56_sysbench_data_template"
 fi
 
 function start_multi_node(){
@@ -106,15 +108,17 @@ function start_multi_node(){
     LADDR1="$ADDR:$(( RBASE1 + 8 ))"
     WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
     if [ $run_mid -eq 1 ]; then
-      node="${BIG_DIR}/sysbench_data_template/node${DATASIZE}_$i"
+      node="${WS_DATADIR}/node${DATASIZE}_$i"
       if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
         mkdir -p $node
+        ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1
+      else
+        if [ ! -d $node ]; then
+          ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1
+        fi
       fi
     else
       node="${DB_DIR}/node$i"
-    fi
-    if [ ! -d $node ]; then
-      ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1 
     fi
     if [ $i -eq 1 ]; then
       WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm:// "
@@ -123,9 +127,9 @@ function start_multi_node(){
     fi
 
     ${DB_DIR}/bin/mysqld --defaults-file=${BIG_DIR}/my.cnf \
-      --datadir=$node $WSREP_CLUSTER_ADD $MYEXTR \
+      --datadir=$node $WSREP_CLUSTER_ADD $MYEXTRA \
       --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-      --log-error=$node/node$i.err $KEY_RING_OPTIONS \
+      --log-error=$node/node$i.err  \
       --socket=$node/socket.sock --port=$RBASE1 > $node/node$i.err 2>&1 &
 
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
@@ -137,11 +141,11 @@ function start_multi_node(){
     done
   done
   if [ $run_mid -eq 1 ]; then
-    ${DB_DIR}/bin/mysql -uroot -S${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1/socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
-    /usr/bin/sysbench --test=${SYSBENCH_DIR}/tests/db/parallel_prepare.lua --num-threads=${NUM_TABLES} --oltp-tables-count=${NUM_TABLES}  --oltp-table-size=${NUM_ROWS} --mysql-db=test --mysql-user=root    --db-driver=mysql --mysql-socket=${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1/socket.sock run > $LOGS/sysbench_prepare.log 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1/socket.sock shutdown > /dev/null 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${BIG_DIR}/sysbench_data_template/node${DATASIZE}_2/socket.sock shutdown > /dev/null 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${BIG_DIR}/sysbench_data_template/node${DATASIZE}_3/socket.sock shutdown > /dev/null 2>&1
+    ${DB_DIR}/bin/mysql -uroot -S${WS_DATADIR}/node${DATASIZE}_1/socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
+    /usr/bin/sysbench --test=${SYSBENCH_DIR}/tests/db/parallel_prepare.lua --num-threads=${NUM_TABLES} --oltp-tables-count=${NUM_TABLES}  --oltp-table-size=${NUM_ROWS} --mysql-db=test --mysql-user=root    --db-driver=mysql --mysql-socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock run > $LOGS/sysbench_prepare.log 2>&1
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock shutdown > /dev/null 2>&1
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_2/socket.sock shutdown > /dev/null 2>&1
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_3/socket.sock shutdown > /dev/null 2>&1
   fi
 }
 
@@ -165,17 +169,17 @@ function start_pxc(){
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
   
-  if [ -d ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1 ]; then
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1 ${DB_DIR}/node1
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_2 ${DB_DIR}/node2
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_3 ${DB_DIR}/node3
+  if [ -d ${WS_DATADIR}/node${DATASIZE}_1 ]; then
+    cp -r ${WS_DATADIR}/node${DATASIZE}_1 ${DB_DIR}/node1
+    cp -r ${WS_DATADIR}/node${DATASIZE}_2 ${DB_DIR}/node2
+    cp -r ${WS_DATADIR}/node${DATASIZE}_3 ${DB_DIR}/node3
     start_multi_node
   else
-    mkdir ${BIG_DIR}/sysbench_data_template > /dev/null 2>&1
+    mkdir ${WS_DATADIR} > /dev/null 2>&1
     start_multi_node startup
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_1 ${DB_DIR}/node1
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_2 ${DB_DIR}/node2
-    cp -r ${BIG_DIR}/sysbench_data_template/node${DATASIZE}_3 ${DB_DIR}/node3
+    cp -r ${WS_DATADIR}/node${DATASIZE}_1 ${DB_DIR}/node1
+    cp -r ${WS_DATADIR}/node${DATASIZE}_2 ${DB_DIR}/node2
+    cp -r ${WS_DATADIR}/node${DATASIZE}_3 ${DB_DIR}/node3
     start_multi_node
   fi
 }
@@ -209,7 +213,7 @@ function sysbench_rw_run(){
 
     sysbench --test=${SYSBENCH_DIR}/tests/db/oltp.lua --oltp-non-index-updates=1 --oltp_tables_count=$NUM_TABLES --oltp-table-size=$NUM_ROWS --rand-init=on --num-threads=$num_threads  --report-interval=$REPORT_INTERVAL --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --mysql-table-engine=InnoDB --max-time=$RUN_TIME_SECONDS --mysql-user=$SUSER --mysql-password=$SPASS --mysql-db=${MYSQL_DATABASE} --max-requests=0 --percentile=99 run | tee $LOG_NAME
     sleep 6
-    AVG_TRANS=`grep "read/write requests:" PXC-5.7.14-7-26.16-debug-innodb.5mm.uniform.cpubound--500-$num_threads.txt | awk '{print $4}' | sed 's/(//'`
+    AVG_TRANS=`grep "read/write requests:" $LOG_NAME | awk '{print $4}' | sed 's/(//'`
     echo "$num_threads : $AVG_TRANS" >> ${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$LOG_BENCHMARK_NAME-$NUM_ROWS.summary
   done
 
@@ -221,12 +225,13 @@ function sysbench_rw_run(){
   timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node3/socket.sock shutdown > /dev/null 2>&1
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   tarFileName="sysbench_${BENCH_ID}_perf_result_set_${DATE}.tar.gz"
-  tar czvf ${tarFileName} ${MYSQL_NAME}* ${DB_DIR}/node1/*.err
+  tar czvf ${tarFileName} ${MYSQL_NAME}* ${DB_DIR}/node*/*.err
   mkdir -p ${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}
   BACKUP_FILES="${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}"
   cp ${tarFileName} ${BACKUP_FILES}
   rm -rf ${MYSQL_NAME}* 
   rm -rf ${DB_DIR}/node*
+  rm -rf ${BIG_DIR}/my.cnf
   
 }
 
@@ -237,7 +242,7 @@ function sysbench_rw_run(){
 export threadCountList="0001 0004 0016 0064 0128 0256 0512 1024"
 export WARMUP=Y
 export BENCHMARK_LOGGING=Y
-export RUN_TIME_SECONDS=30
+export RUN_TIME_SECONDS=300
 export REPORT_INTERVAL=10
 export IOSTAT_INTERVAL=10
 export IOSTAT_ROUNDS=$[RUN_TIME_SECONDS/IOSTAT_INTERVAL+1]
