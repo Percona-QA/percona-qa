@@ -1177,6 +1177,13 @@ pquery_test(){
         savetrial
         TRIAL_SAVED=1
       fi
+    elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 200 -a ${TIMEOUT_REACHED} -eq 0 ]; then
+      echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
+      if [ ${TRIAL_SAVED} -eq 0 ]; then
+        STOREANYWAY=1
+        savetrial
+        TRIAL_SAVED=1
+      fi
     elif [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
       if [ ${TRIAL_SAVED} -eq 0 ]; then
         echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
