@@ -11,7 +11,7 @@ cache_el.i.->used_tables.is_empty                                               
 #mdl_ticket->m_duration == MDL_TRANSACTION .. duration .= MDL_TRANSACTION        # Fixed ## https://jira.percona.com/browse/PXC-463
 #pool_.size                                                                      # Fixed ## https://jira.percona.com/browse/PXC-454
 #thd->wsrep_exec_mode == LOCAL_STATE                                             # Fixed ## https://jira.percona.com/browse/PXC-451
-#trx->state                                                                      # Fixed ## https://jira.percona.com/browse/PXC-457
+trx->state                                                                               ## https://jira.percona.com/browse/PXC-678
 #hton == innodb_hton_pt                                                          # Non-reproducible  ## https://jira.percona.com/browse/PXC-581
 err_key < ha_alter_info->key_count                                                       ## http://bugs.mysql.com/bug.php?id=82321
 ticket->m_duration == MDL_EXPLICIT                                                       ## https://jira.percona.com/browse/PXC-587
@@ -32,7 +32,10 @@ trx0trx.cc line 1296                                                            
 #lock0lock.cc line 2015                                                          # Fixed ## https://jira.percona.com/browse/PXC-561
 row0mysql.cc line 1012                                                                   ## http://bugs.mysql.com/bug.php?id=82652 (PXC-669)
 rem0rec.cc line 870                                                                      ## https://bugs.mysql.com/bug.php?id=79794
-thd->mdl_context.owns_equal_or_stronger_lock.MDL_key..TABLE, table->s->db.str, table->s->table_name.str, MDL_SHARED ## https://bugs.mysql.com/bug.php?id=79820 
+thd->mdl_context.owns_equal_or_stronger_lock.MDL_key..TABLE, table->s->db.str, table->s->table_name.str, MDL_SHARED ## https://bugs.mysql.com/bug.php?id=79820
+Z26wsrep_thd_binlog_trx_resetP3THD                                                       ## https://github.com/codership/mysql-wsrep/issues/279
+
+
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
