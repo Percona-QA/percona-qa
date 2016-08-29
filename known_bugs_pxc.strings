@@ -31,7 +31,8 @@ trx0trx.cc line 1290                                                            
 trx0trx.cc line 1296                                                                     ## https://bugs.mysql.com/bug.php?id=82024
 #lock0lock.cc line 2015                                                          # Fixed ## https://jira.percona.com/browse/PXC-561
 row0mysql.cc line 1012                                                                   ## http://bugs.mysql.com/bug.php?id=82652 (PXC-669)
-
+rem0rec.cc line 870                                                                      ## https://bugs.mysql.com/bug.php?id=79794
+thd->mdl_context.owns_equal_or_stronger_lock.MDL_key..TABLE, table->s->db.str, table->s->table_name.str, MDL_SHARED ## https://bugs.mysql.com/bug.php?id=79820 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
