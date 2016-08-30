@@ -34,8 +34,18 @@ row0mysql.cc line 1012                                                          
 rem0rec.cc line 870                                                                      ## https://bugs.mysql.com/bug.php?id=79794
 thd->mdl_context.owns_equal_or_stronger_lock.MDL_key..TABLE, table->s->db.str, table->s->table_name.str, MDL_SHARED ## https://bugs.mysql.com/bug.php?id=79820
 Z26wsrep_thd_binlog_trx_resetP3THD                                                       ## https://github.com/codership/mysql-wsrep/issues/279
-
-
+errors == 0                                                                              ## https://bugs.launchpad.net/percona-server/+bug/1614439
+length > 0                                                                               ## https://jira.percona.com/browse/PXC-618
+pars0pars.cc line 822                                                                    ## http://bugs.mysql.com/bug.php?id=68987
+ut0ut.cc line 932                                                                        ## http://bugs.mysql.com/bug.php?id=77564
+ZN13MYSQL_BIN_LOG8rollbackEP3THDb                                                        ## https://github.com/codership/mysql-wsrep/issues/279
+ZN18st_select_lex_unit7cleanupEb                                                         ## https://jira.percona.com/browse/PXC-680
+ZN19Table_cache_manager10free_tableEP3THD26enum_tdc_remove_table_typeP11TABLE_SHARE      ## https://github.com/codership/mysql-wsrep/issues/275
+ZN8MDL_lock28has_pending_conflicting_lockE13enum_mdl_type                                ## https://bugs.launchpad.net/percona-server/+bug/1384558
+dict0dict.cc line 1425                                                                   ## http://bugs.mysql.com/bug.php?id=74900
+node->desync_count > 0                                                                   ## https://github.com/codership/mysql-wsrep/issues/276
+Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxP5TABLEPKS3_P5trx_tPKc ## https://bugs.mysql.com/bug.php?id=74363
+ 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
