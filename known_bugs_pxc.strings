@@ -45,6 +45,7 @@ ZN8MDL_lock28has_pending_conflicting_lockE13enum_mdl_type                       
 dict0dict.cc line 1425                                                                   ## http://bugs.mysql.com/bug.php?id=74900
 node->desync_count > 0                                                                   ## https://github.com/codership/mysql-wsrep/issues/276
 Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxP5TABLEPKS3_P5trx_tPKc ## https://bugs.mysql.com/bug.php?id=74363
+thd == _current_thd                                                                      ## https://jira.percona.com/browse/PXC-681
  
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
