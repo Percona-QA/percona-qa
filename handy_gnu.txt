@@ -138,6 +138,8 @@
   perf record -g --pid=`pidof mysqld`; perf report | c++filt; rm perf.data   # CTRL+C to interrupt the perf record once you think you have enough data
 # Find out which compiler was used to compile an un-stripped binary
   objdump -s --section .comment /path/binary
+# Attach gdb to a certain PID then write a coredump. In the example below, $! is used which is the PID for the last started process (sleep in this example)
+  sleep 1000 &  gdb /usr/bin/sleep --pid=$! --ex 'generate-core-file'
 
 # ------ Common Issues ------
 # Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;

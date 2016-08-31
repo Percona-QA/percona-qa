@@ -774,7 +774,8 @@ pquery_test(){
         else
           echo 'CREATE DATABASE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         fi
-        echo 'USE test; SET SESSION DEBUG="+d,myrocks_enable_blob_fix";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql # Fix for https://github.com/facebook/mysql-5.6/issues/251
+        echo 'USE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
+        echo 'SET SESSION DEBUG="+d,myrocks_enable_blob_fix";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql  # Fix for https://github.com/facebook/mysql-5.6/issues/251
         shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
