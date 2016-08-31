@@ -384,7 +384,8 @@ function async_rpl_test(){
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       let COUNTER=COUNTER+1
       if [ $COUNTER -eq 10 ];then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_psnode1.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/psnode1.err,  $WORKDIR/logs/slave_status_psnode1.log"
         exit 1
       fi 
       sleep 1;
@@ -393,7 +394,8 @@ function async_rpl_test(){
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_psnode1.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/psnode1.err,  $WORKDIR/logs/slave_status_psnode1.log"
         exit 1
       fi
       sleep 5
@@ -433,7 +435,8 @@ function async_rpl_test(){
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       let COUNTER=COUNTER+1
       if [ $COUNTER -eq 10 ];then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_psnode.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/psnode.err,  $WORKDIR/logs/slave_status_psnode.log"
         exit 1
       fi
       sleep 1;
@@ -442,7 +445,8 @@ function async_rpl_test(){
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_psnode.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/psnode.err,  $WORKDIR/logs/slave_status_psnode.log"
         exit 1
       fi
       sleep 5
@@ -479,10 +483,11 @@ function async_rpl_test(){
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     COUNTER=0
     while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
-      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       let COUNTER=COUNTER+1
       if [ $COUNTER -eq 10 ];then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node1.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node1.err,  $WORKDIR/logs/slave_status_node1.log"
         exit 1
       fi
       sleep 1;
@@ -498,7 +503,8 @@ function async_rpl_test(){
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node1.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node1.err,  $WORKDIR/logs/slave_status_node1.log"
         exit 1
       fi
       sleep 5
@@ -535,10 +541,11 @@ function async_rpl_test(){
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     COUNTER=0
     while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
-      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       let COUNTER=COUNTER+1
       if [ $COUNTER -eq 10 ];then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node2.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node2.err,  $WORKDIR/logs/slave_status_node2.log"
         exit 1
       fi
       sleep 1;
@@ -553,7 +560,8 @@ function async_rpl_test(){
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node2.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node2.err,  $WORKDIR/logs/slave_status_node2.log"
         exit 1
       fi
       sleep 5
@@ -601,10 +609,11 @@ function async_rpl_test(){
     SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/ps3.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     COUNTER=0
     while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
-      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       let COUNTER=COUNTER+1
       if [ $COUNTER -eq 10 ];then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node1.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node1.err,  $WORKDIR/logs/slave_status_node1.log"
         exit 1
       fi
       sleep 1;
@@ -613,7 +622,8 @@ function async_rpl_test(){
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/ps3.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node1.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node1.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node1.err,  $WORKDIR/logs/slave_status_node1.log"
         exit 1
       fi
       sleep 5
@@ -678,10 +688,11 @@ function async_rpl_test(){
     SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     COUNTER=0
     while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
-      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+      SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       let COUNTER=COUNTER+1
       if [ $COUNTER -eq 10 ];then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node2.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node2.err,  $WORKDIR/logs/slave_status_node2.log"
         exit 1
       fi
       sleep 1;
@@ -690,7 +701,8 @@ function async_rpl_test(){
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node2.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node2.err,  $WORKDIR/logs/slave_status_node2.log"
         exit 1
       fi
       sleep 5
@@ -976,17 +988,20 @@ function async_rpl_test(){
     SB_PXC=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
 
     if ! [[ "$SB_PXC" =~ ^[0-9]+$ ]]; then
-      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
+      ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node2.log
+      echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node2.err,  $WORKDIR/logs/slave_status_node2.log"
       exit 1
     fi
     if ! [[ "$SB_PS" =~ ^[0-9]+$ ]]; then
-      echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
+      ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_psnode1.log
+      echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/psnode1.err,  $WORKDIR/logs/slave_status_psnode1.log"
       exit 1
     fi
     while [ $SB_PXC -gt 0 ]; do
       SB_PXC=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_PXC" =~ ^[0-9]+$ ]]; then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/node2.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_node2.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/node2.err,  $WORKDIR/logs/slave_status_node2.log"
         exit 1
       fi
       sleep 5
@@ -995,7 +1010,8 @@ function async_rpl_test(){
     while [ $SB_PS -gt 0 ]; do
       SB_PS=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_PS" =~ ^[0-9]+$ ]]; then
-        echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
+        ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" > $WORKDIR/logs/slave_status_psnode1.log
+        echo "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/psnode1.err,  $WORKDIR/logs/slave_status_psnode1.log"
         exit 1
       fi
       sleep 5
