@@ -15,6 +15,7 @@ export PXC_START_TIMEOUT=300
 export MYSQL_DATABASE=test
 export MYSQL_NAME=PXC
 export SYSBENCH_DIR=/usr/share/doc/sysbench
+export NODES=1
 
 # make sure we have passed basedir parameter for this benchmark run
 if [ -z $2 ]; then
@@ -69,18 +70,14 @@ rm -rf $BIG_DIR/my.cnf
 if [ ! -f $BIG_DIR/my.cnf ]; then
   echo "[mysqld]" > my.cnf
   echo "basedir=${DB_DIR}" >> my.cnf
-  #echo "innodb_file_per_table" >> my.cnf
-  #echo "innodb_autoinc_lock_mode=2" >> my.cnf
-  #echo "innodb_locks_unsafe_for_binlog=1" >> my.cnf
+  echo "binlog_format=ROW" >> my.cnf
+  echo "innodb_autoinc_lock_mode=2" >> my.cnf
+  echo "sync_binlog=0" >> my.cnf
   echo "wsrep-provider=${DB_DIR}/lib/libgalera_smm.so" >> my.cnf
   echo "wsrep_node_incoming_address=$ADDR" >> my.cnf
-  #echo "wsrep_sst_method=rsync" >> my.cnf
   echo "wsrep_sst_auth=$SUSER:$SPASS" >> my.cnf
   echo "wsrep_node_address=$ADDR" >> my.cnf
   echo "core-file" >> my.cnf
-  #echo "log-output=none" >> my.cnf
-  #echo "server-id=1" >> my.cnf
-  #echo "wsrep_slave_threads=2" >> my.cnf
   echo "max-connections=1048" >> my.cnf
 fi
 
@@ -94,9 +91,6 @@ elif [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "
 fi
 
 function start_multi_node(){
-  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node1/socket.sock shutdown > /dev/null 2>&1
-  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node2/socket.sock shutdown > /dev/null 2>&1
-  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node3/socket.sock shutdown > /dev/null 2>&1
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
   MYEXTRA="--innodb-buffer-pool-size=$INNODB_CACHE"
@@ -104,7 +98,7 @@ function start_multi_node(){
   if [ "$1" == "startup" ];then
     run_mid=1
   fi
-  for i in `seq 1 3`;do
+  for i in `seq 1 $NODES`;do
     RBASE1="$(( RBASE + ( 100 * $i ) ))"
     LADDR1="$ADDR:$(( RBASE1 + 8 ))"
     WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
@@ -144,9 +138,9 @@ function start_multi_node(){
   if [ $run_mid -eq 1 ]; then
     ${DB_DIR}/bin/mysql -uroot -S${WS_DATADIR}/node${DATASIZE}_1/socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
     /usr/bin/sysbench --test=${SYSBENCH_DIR}/tests/db/parallel_prepare.lua --num-threads=${NUM_TABLES} --oltp-tables-count=${NUM_TABLES}  --oltp-table-size=${NUM_ROWS} --mysql-db=test --mysql-user=root    --db-driver=mysql --mysql-socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock run > $LOGS/sysbench_prepare.log 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock shutdown > /dev/null 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_2/socket.sock shutdown > /dev/null 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_3/socket.sock shutdown > /dev/null 2>&1
+    for i in `seq 1 $NODES`;do
+      timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_${i}/socket.sock shutdown > /dev/null 2>&1
+    done
   fi
 }
 
@@ -164,23 +158,23 @@ function check_memory(){
 
 
 function start_pxc(){
-  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node1/socket.sock shutdown > /dev/null 2>&1
-  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node2/socket.sock shutdown > /dev/null 2>&1
-  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node3/socket.sock shutdown > /dev/null 2>&1
+  for i in `seq 1 $NODES`;do
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${i}/socket.sock shutdown > /dev/null 2>&1
+  done
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
   
   if [ -d ${WS_DATADIR}/node${DATASIZE}_1 ]; then
-    cp -r ${WS_DATADIR}/node${DATASIZE}_1 ${DB_DIR}/node1
-    cp -r ${WS_DATADIR}/node${DATASIZE}_2 ${DB_DIR}/node2
-    cp -r ${WS_DATADIR}/node${DATASIZE}_3 ${DB_DIR}/node3
+    for i in `seq 1 $NODES`;do
+     cp -r ${WS_DATADIR}/node${DATASIZE}_${i} ${DB_DIR}/node${i}
+    done
     start_multi_node
   else
     mkdir ${WS_DATADIR} > /dev/null 2>&1
     start_multi_node startup
-    cp -r ${WS_DATADIR}/node${DATASIZE}_1 ${DB_DIR}/node1
-    cp -r ${WS_DATADIR}/node${DATASIZE}_2 ${DB_DIR}/node2
-    cp -r ${WS_DATADIR}/node${DATASIZE}_3 ${DB_DIR}/node3
+    for i in `seq 1 $NODES`;do
+     cp -r ${WS_DATADIR}/node${DATASIZE}_${i} ${DB_DIR}/node${i}
+    done
     start_multi_node
   fi
 }
@@ -221,9 +215,9 @@ function sysbench_rw_run(){
   pkill -f dstat
   pkill -f iostat
   kill -9 ${MEM_PID[@]}
-  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node1/socket.sock shutdown > /dev/null 2>&1
-  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node2/socket.sock shutdown > /dev/null 2>&1
-  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${DB_DIR}/node3/socket.sock shutdown > /dev/null 2>&1
+  for i in `seq 1 $NODES`;do
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${i}/socket.sock shutdown > /dev/null 2>&1
+  done
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   tarFileName="sysbench_${BENCH_ID}_perf_result_set_${DATE}.tar.gz"
   tar czvf ${tarFileName} ${MYSQL_NAME}* ${DB_DIR}/node*/*.err
