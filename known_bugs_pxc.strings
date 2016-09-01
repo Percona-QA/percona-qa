@@ -33,6 +33,7 @@ trx0trx.cc line 1296                                                            
 row0mysql.cc line 1012                                                                   ## http://bugs.mysql.com/bug.php?id=82652 (PXC-669)
 rem0rec.cc line 870                                                                      ## https://bugs.mysql.com/bug.php?id=79794
 thd->mdl_context.owns_equal_or_stronger_lock.MDL_key..TABLE, table->s->db.str, table->s->table_name.str, MDL_SHARED ## https://bugs.mysql.com/bug.php?id=79820
+m_lock .= __null .* thd->mdl_context.is_lock_owner.m_namespace, .*, MDL_SHARED           ## https://bugs.mysql.com/bug.php?id=79820
 Z26wsrep_thd_binlog_trx_resetP3THD                                                       ## https://github.com/codership/mysql-wsrep/issues/279
 errors == 0                                                                              ## https://bugs.launchpad.net/percona-server/+bug/1614439
 length > 0                                                                               ## https://jira.percona.com/browse/PXC-618
@@ -46,7 +47,9 @@ dict0dict.cc line 1425                                                          
 node->desync_count > 0                                                                   ## https://github.com/codership/mysql-wsrep/issues/276
 Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxP5TABLEPKS3_P5trx_tPKc ## https://bugs.mysql.com/bug.php?id=74363
 thd == _current_thd                                                                      ## https://jira.percona.com/browse/PXC-681
- 
+Z29trans_has_updated_trans_tablePK3THD                                                   ## https://github.com/codership/mysql-wsrep/issues/279
+ZN19Event_queue_element27compute_next_execution_timeEv                                   ## https://github.com/codership/mysql-wsrep/issues/279
+transactional_table .. .changed .. thd->get_transaction                                  ## https://github.com/codership/mysql-wsrep/issues/280 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
