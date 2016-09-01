@@ -1174,17 +1174,17 @@ pquery_test(){
         savetrial
         TRIAL_SAVED=1
       fi
-   elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 -a ${TIMEOUT_REACHED} -eq 0 ]; then
-      echoit "'MySQL server has gone away' detected >=200 times for this trial, and the pquery timeout was not reached; saving this trial for further analysis"
+    elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
+      echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
       if [ ${TRIAL_SAVED} -eq 0 ]; then
-        echo "This trial had not reached timeout yet 'MySQL server has gone away' was seen >=200 times in the SQL log. Further research for this trial is needed. Check if a coredump is present, and check the mysqld error log, the pquery logs and the SQL log, especially the last command before 'MySQL server has gone away' started happening. If it is a SELECT query on P_S, it's likely http://bugs.mysql.com/bug.php?id=82663 - a mysqld hang" > ${RUNDIR}/${TRIAL}/GONEAWAY
         STOREANYWAY=1
         savetrial
         TRIAL_SAVED=1
       fi
-    elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
-      echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
+    elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 -a ${TIMEOUT_REACHED} -eq 0 ]; then
+      echoit "'MySQL server has gone away' detected >=200 times for this trial, and the pquery timeout was not reached; saving this trial for further analysis"
       if [ ${TRIAL_SAVED} -eq 0 ]; then
+        echo "This trial had not reached timeout yet 'MySQL server has gone away' was seen >=200 times in the SQL log. Further research for this trial is needed. Check if a coredump is present, and check the mysqld error log, the pquery logs and the SQL log, especially the last command before 'MySQL server has gone away' started happening. If it is a SELECT query on P_S, it's likely http://bugs.mysql.com/bug.php?id=82663 - a mysqld hang" > ${RUNDIR}/${TRIAL}/GONEAWAY
         STOREANYWAY=1
         savetrial
         TRIAL_SAVED=1
