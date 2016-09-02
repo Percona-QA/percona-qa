@@ -334,10 +334,12 @@ generate_reducer_script(){
     REDUCER_FILENAME=reducer${OUTFILE}.sh
     QC_STRING1="s|ZERO0|ZERO0|"
     QC_STRING2="s|ZERO0|ZERO0|"
+    QC_STRING3="s|ZERO0|ZERO0|"
   else
     REDUCER_FILENAME=qcreducer${OUTFILE}.sh
     QC_STRING1="s|CURRENTLINE=2|CURRENTLINE=5|g"
     QC_STRING2="s|REALLINE=2|REALLINE=5|g"
+    QC_STRING3="0,/#VARMOD#/s:#VARMOD#:QCTEXT=\"${QCTEXT}\"\n#VARMOD#:"
   fi
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
@@ -370,6 +372,7 @@ generate_reducer_script(){
    | sed -e "${PXC_STRING1}" \
    | sed -e "${QC_STRING1}" \
    | sed -e "${QC_STRING2}" \
+   | sed -e "${QC_STRING3}" \
    | sed -e "${PQUERY_EXTRA_OPTIONS}" \
    > ${REDUCER_FILENAME}
   chmod +x ${REDUCER_FILENAME}
@@ -585,13 +588,19 @@ else
       # Possible reasons for this can be: interrupted or crashed trial, ... ???
       echo "Warning! \$LEFTRIGHT != '<' or '>' but '${LEFTRIGHT}' for trial ${TRIAL}! NOTE: qcreducer${TRIAL}.sh will not be complete: renaming to qcreducer${TRIAL}_notcomplete.sh!"
       FAULT=1
-    fi 
+    fi
+    if [ ${FAULT} -ne 1 ]; then
+      QCTEXTLN=$(echo "${TEXT}" | grep -o "[0-9]*$")
+      TEXT=$(echo ${TEXT} | sed "s/#[0-9]*$//")
+      QCTEXT=$(sed -n "${QCTEXTLN},${QCTEXTLN}p" ${WORKD_PWD}/${TRIAL}/*_thread-0.${ENGINE}.sql | grep -o "#@[0-9]*#")
+    fi
     # Output of the following is too verbose
     #if [ "${MYEXTRA}" != "" ]; then
     #  echo "* MYEXTRA variable set to: ${MYEXTRA}"
     #fi
     INPUTFILE=$(echo ${TRIAL} | sed "s|^|${WORKD_PWD}/|" | sed "s|$|/*_thread-0.${ENGINE}.sql|")
     echo "* Query Correctness: Data Correctness (QC DC) TEXT variable for trial ${TRIAL} set to: \"${TEXT}\""
+    echo "* Query Correctness: Line Identifier (QC LI) QCTEXT variable for trial ${TRIAL} set to: \"${QCTEXT}\""
     OUTFILE=$TRIAL
     generate_reducer_script
     if [ ${FAULT} -eq 1 ]; then

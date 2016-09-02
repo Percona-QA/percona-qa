@@ -1517,7 +1517,8 @@ start_mysqld_or_valgrind_or_pxc(){
     if [ -f $WORKD/error.log.out ]; then mv -f $WORKD/error.log.out $WORKD/error.log.prev; fi                    # mysqld error log
     if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi                             # mysqld stdout & stderr output, as well as some mysqladmin output
     if [ -f $WORKD/mysql.out ]; then mv -f $WORKD/mysql.out $WORKD/mysql.prev; fi                                # mysql client output
-    if [ -f $WORKD/pquery_thread-0.out ]; then mv -f $WORKD/pquery_thread-0.out $WORKD/pquery_thread-0.prev; fi  # pquery client output
+    if [ -f $WORKD/default.node.tld_thread-0.out ]; then mv -f $WORKD/default.node.tld_thread-0.out $WORKD/default.node.tld_thread-0.prev; fi  # pquery client output
+    if [ -f $WORKD/default.node.tld_thread-0.sql ]; then mv -f $WORKD/default.node.tld_thread-0.sql $WORKD/default.node.tld_thread-0.prevsql; fi
     if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
     if [ ${REDUCE_STARTUP_ISSUES} -le 0 ]; then
       if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
@@ -2170,11 +2171,12 @@ process_outcome(){
     FILETOCHECK=
     # Check if this is a pquery client output testing run
     if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run
-      FILETOCHECK=$WORKD/pquery_thread-0.out  # Could use improvement for multi-threaded runs
+      FILETOCHECK=$WORKD/default.node.tld_thread-0.out  # Could use improvement for multi-threaded runs
+      FILETOCHECK2=$WORKD/default.node.tld_thread-0.sql
     else  # mysql CLI output testing run
       FILETOCHECK=$WORKD/mysql.out
     fi
-    if egrep -iq "$TEXT" $FILETOCHECK; then
+    if [ $(grep -c "$TEXT" $FILETOCHECK) -gt 0 -a $(grep -c "$QCTEXT" $FILETOCHECK2) -gt 0 ]; then
       if [ ! "$STAGE" = "V" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ClientOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good client output issue in $WORKO"
         control_backtrack_flow
