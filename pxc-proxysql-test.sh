@@ -126,7 +126,7 @@ function pxc_startup(){
     PORT_ARRAY+=("$RBASE1")
     WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
     node="${WORKDIR}/node$i"
-    if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
       mkdir -p $node
       ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1
     else
