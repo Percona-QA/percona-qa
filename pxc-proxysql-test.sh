@@ -128,10 +128,10 @@ function pxc_startup(){
     node="${WORKDIR}/node$i"
     if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
       mkdir -p $node
-      ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1
+      ${MID} --datadir=$node  > $WORKDIR/logs/startup_node$i.err 2>&1
     else
       if [ ! -d $node ]; then
-        ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1
+        ${MID} --datadir=$node  > $WORKDIR/logs/startup_node$i.err 2>&1
       fi
     fi
     if [ $i -eq 1 ]; then
