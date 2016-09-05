@@ -142,7 +142,7 @@ function pxc_startup(){
 
     ${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
       --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-      --wsrep_node_incoming_address=$ADDR --wsrep_sst_auth=$SUSER:$SPASS \
+      --wsrep_node_incoming_address=$ADDR --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
       --wsrep_node_address=$ADDR --datadir=$node \
       --innodb_autoinc_lock_mode=2 $WSREP_CLUSTER_ADD $PXC_MYEXTRA \
       --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
