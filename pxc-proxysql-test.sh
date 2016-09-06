@@ -172,7 +172,7 @@ proxysql_startup(){
   check_script $?
   echo  "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin 
   check_script $?
-  echo "INSERT INTO mysql_query_rules(active,match_pattern,destination_hostgroup,apply) VALUES(1,'^SELECT',0,1),(1,'^DELETE',0,1),(1,'^UPDATE',1,1),(1,'^INSERT',1,1)'" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo "INSERT INTO mysql_query_rules(active,match_pattern,destination_hostgroup,apply) VALUES(1,'^SELECT',0,1),(1,'^DELETE',0,1),(1,'^UPDATE',1,1),(1,'^INSERT',1,1)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
   echo "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin 
   check_script $?
   sleep 10
