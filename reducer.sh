@@ -79,7 +79,8 @@ ENABLE_QUERYTIMEOUT=1           # On/Off (1/0) Enable the Query Timeout function
 QUERYTIMEOUT=90                 # Query timeout in sec. Note: queries terminated by the query timeout did not fully replay, and thus overall issue reproducibility may be affected
 LOAD_TIMEZONE_DATA=0            # On/Off (1/0) Enable loading Timezone data into the database (mainly applicable for RQG runs) (turned off by default=0 since 26.05.2016)
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
-SKIPSTAGE=0                     # Usually not changed (default=0), skips one or more stages in the program
+SKIPSTAGEBELOW=0                # Usually not changed (default=0), skips stages below and including requested stage
+SKIPSTAGEABOVE=9                # Usually not changed (default=9), skips stages above and including requested stage
 FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully terminate mysqld instead of using proper mysqladmin shutdown etc.
 
 # === Percona XtraDB Cluster
@@ -115,7 +116,8 @@ TS_VARIABILITY_SLEEP=1
 #   - MODE=7 [ALPHA]: Multi threaded (ThreadSync) mysql CLI/pquery client output testing (set TEXT)
 #   - MODE=8 [ALPHA]: Multi threaded (ThreadSync) mysqld error output log testing (set TEXT)
 #   - MODE=9 [ALPHA]: Multi threaded (ThreadSync) crash testing
-# - SKIPSTAGE: Stages up to and including this one are skipped (default=0). 
+# - SKIPSTAGEBELOW: Stages up to and including this one are skipped (default=0).
+# - SKIPSTAGEABOVE: Stages above and including this one are skipped (default=9).
 # - TEXT: Text to look for in MODEs 1,2,3,5,6,7,8. Ignored in MODEs 4 and 9. 
 #   Can contain egrep+regex syntax like "^ERROR|some_other_string". Remember this is regex: specify | as \| etc. 
 #   For MODE5, you would use a mysql CLI to get the desired output "string" (see example given above) and then set MODE5_COUNTTEXT
@@ -1178,7 +1180,8 @@ init_workdir_and_files(){
       echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
     fi
   fi
-  if [ $SKIPSTAGE -gt 0 ]; then echo_out "[Init] SKIPSTAGE active. Stages up to and including $SKIPSTAGE are skipped"; fi
+  if [ $SKIPSTAGEBELOW -gt 0 ]; then echo_out "[Init] SKIPSTAGEBELOW active. Stages up to and including $SKIPSTAGEBELOW are skipped"; fi
+  if [ $SKIPSTAGEABOVE -lt 9 ]; then echo_out "[Init] SKIPSTAGEABOVE active. Stages above and including $SKIPSTAGEABOVE are skipped"; fi
   if [ $PQUERY_MULTI -gt 0 ]; then
     if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -gt 0 ]; then
       echo_out "[Init] PQUERY_MULTI mode active, PQUERY_REVERSE_NOSHUFFLE_OPT on: Semi-true multi-threaded testcase reduction using pquery sequential replay commencing";
@@ -2905,7 +2908,7 @@ fi
 
 #STAGE1: Reduce large size files fast
 LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-if [ $SKIPSTAGE -lt 1 ]; then
+if [ $SKIPSTAGEBELOW -lt 1 -a $SKIPSTAGEABOVE -gt 1 ]; then
   NEXTACTION="& try removing next random line(set)"
   STAGE=1
   TRIAL=1
@@ -2931,7 +2934,7 @@ if [ $SKIPSTAGE -lt 1 ]; then
 fi
 
 #STAGE2: Loop through each line of the remaining file (now max $STAGE1_LINES lines) once 
-if [ $SKIPSTAGE -lt 2 ]; then
+if [ $SKIPSTAGEBELOW -lt 2 -a $SKIPSTAGEABOVE -gt 2 ]; then
   NEXTACTION="& try removing next line in the file"
   STAGE=2
   TRIAL=1
@@ -2954,7 +2957,7 @@ if [ $SKIPSTAGE -lt 2 ]; then
 fi
 
 #STAGE3: Execute various cleanup sed's to reduce testcase complexity further. Perform a check if the issue is still present for each replacement (set)
-if [ $SKIPSTAGE -lt 3 ]; then
+if [ $SKIPSTAGEBELOW -lt 3 -a $SKIPSTAGEABOVE -gt 3 ]; then
   STAGE=3
   TRIAL=1
   SIZEF=`stat -c %s $WORKF`
@@ -3023,7 +3026,7 @@ if [ $SKIPSTAGE -lt 3 ]; then
 fi
 
 #STAGE4: Execute various query syntax complexity reducing sed's to reduce testcase complexity further. Perform a check if the issue is still present for each replacement (set)
-if [ $SKIPSTAGE -lt 4 ]; then
+if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
   STAGE=4
   TRIAL=1
   SIZEF=`stat -c %s $WORKF`
@@ -3187,7 +3190,7 @@ if [ $SKIPSTAGE -lt 4 ]; then
 fi
 
 #STAGE5: Rename tables and views to generic tx/vx names. This stage is not size bound (i.e. testcase size is not checked pre-run to see if the run can be skipped like in some other stages). Perform a check if the issue is still present for each replacement (set). 
-if [ $SKIPSTAGE -lt 5 ]; then
+if [ $SKIPSTAGEBELOW -lt 5 -a $SKIPSTAGEABOVE -gt 5 ]; then
   STAGE=5
   TRIAL=1
   echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE"
@@ -3231,7 +3234,7 @@ if [ $SKIPSTAGE -lt 5 ]; then
 fi
 
 #STAGE6: Eliminate columns to reduce testcase complexity further. Perform a check if the issue is still present for each replacement (set).
-if [ $SKIPSTAGE -lt 6 ]; then
+if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
   STAGE=6
   TRIAL=1
   SIZEF=`stat -c %s $WORKF`
@@ -3435,7 +3438,7 @@ if [ $SKIPSTAGE -lt 6 ]; then
 fi
 
 #STAGE7: Execute various final testcase cleanup sed's. Perform a check if the issue is still present for each replacement (set)
-if [ $SKIPSTAGE -lt 7 ]; then
+if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
   STAGE=7
   TRIAL=1
   SIZEF=`stat -c %s $WORKF`
@@ -3609,7 +3612,7 @@ if [ $SKIPSTAGE -lt 7 ]; then
 fi
 
 #STAGE8 : Execute mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
-if [ $SKIPSTAGE -lt 8 ]; then
+if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   STAGE=8
   TRIAL=1
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
