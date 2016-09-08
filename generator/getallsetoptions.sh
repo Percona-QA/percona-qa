@@ -416,6 +416,12 @@ parse_set_vars(){
         echo "${PRLINE}=0" >> ${VARFILE}.out
         echo "${PRLINE}=1" >> ${VARFILE}.out
         HANDLED=1
+      elif [[ "${PRLINE}" == *"completion-type"* ]]; then
+        echo 'completion-type=0' >> ${VARFILE}.out
+        echo 'completion-type=1' >> ${VARFILE}.out
+        echo 'completion-type="NO_CHAIN"' >> ${VARFILE}.out
+        echo 'completion-type="CHAIN"' >> ${VARFILE}.out
+        HANDLED=1
       elif [[ "${PRLINE}" == *"@=#@"* ]]; then
         echo "${PRLINE}" | sed 's|@=#@|=DUMMY|' >> ${VARFILE}.out
         HANDLED=1
