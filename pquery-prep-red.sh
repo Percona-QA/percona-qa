@@ -6,6 +6,9 @@
 # This handles crashes/asserts/Valgrind issues for the moment only. Could be expanded later for other cases, and to handle more unforseen situations.
 # Query correctness: data (output) correctness (QC DC) trial handling was also added 11 May 2016
 
+# Improvement ideas
+# - It would be better if failing queries were added like this; 3x{query_from_err_log,query_from_core},3{SELECT 1} instead of 3{query_from_core},3{query_from_err_log},3{SELECT 1}
+
 # User configurable variables
 VALGRIND_OVERRIDE=0    # If set to 1, Valgrind issues are handled as if they were a crash (core dump required)
 

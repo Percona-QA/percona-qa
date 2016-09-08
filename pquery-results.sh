@@ -25,7 +25,7 @@ elif [ `ls ./reducer* ./qcreducer* 2>/dev/null | wc -l` -eq 0 ]; then
 fi
 
 TRIALS_EXECUTED=$(cat pquery-run.log 2>/dev/null | grep -o "==.*TRIAL.*==" | tail -n1 | sed 's|[^0-9]*||;s|[ \t=]||g')
-echo "================ Sorted unique issue strings (${TRIALS_EXECUTED} trials executed, `ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l` remaining reducer scripts)"
+echo "================ [Run: $(echo ${PWD} | sed 's|.*/||')] Sorted unique issue strings (${TRIALS_EXECUTED} trials executed, `ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l` remaining reducer scripts)"
 ORIG_IFS=$IFS; IFS=$'\n'  # Use newline seperator instead of space seperator in the for loop
 if [ $PXC == 0 ]; then
   for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT="||;s|"$||' | sort -u`; do
