@@ -68,9 +68,8 @@ if [ `ls */WSREP_PROVIDER_OPT* 2>/dev/null | wc -l` -gt 0 ];then
 fi
 
 NEW_MYEXTRA_METHOD=0
-if [ `ls ./*/MYEXTRA* 2>/dev/null | wc -l` -gt 0 ]; then  # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
-  echo "Using the new (2015-07-28) method for MYEXTRA/MYSAFE variables pass-by-file & VALGRIND run check method. All settings will be set automatically for each trial (and can be checked below)!"
-  NEW_MYEXTRA_METHOD=1
+if [ `ls ./*/MYEXTRA* 2>/dev/null | wc -l` -gt 0 ]; then  # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used). All settings will be set automatically for each trial (and can be checked in the output of this script)
+  NEW_MYEXTRA_METHOD=1  
   MYEXTRA=
   VALGRIND_CHECK=0
 elif [ `ls ./pquery-run.log 2>/dev/null | wc -l` -eq 0 ]; then  # Older (backward compatible) methods for retrieving MYEXTRA/MYSAFE
