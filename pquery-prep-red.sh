@@ -216,7 +216,7 @@ generate_reducer_script(){
   if [ ${QC} -eq 0 ]; then
     PQUERY_EXTRA_OPTIONS="s|ZERO0|ZERO0|"
   else
-    PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output\"\n#VARMOD#|"
+    PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output --log-query-number\"\n#VARMOD#|"
   fi
   if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" ]; then  # Too general strings, or no TEXT found, use MODE=4
     MODE=4
@@ -277,7 +277,7 @@ generate_reducer_script(){
         TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"${TEXT}\"\n#VARMOD#:"
       else
         TEXT=$(echo "$TEXT"|sed -e "s:|:\\\\\\\|:g")
-        TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"^${TEXT}\$\"\n#VARMOD#:"
+        TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"^${TEXT}\"\n#VARMOD#:"
       fi
     fi
   fi
@@ -334,11 +334,13 @@ generate_reducer_script(){
     QC_STRING1="s|ZERO0|ZERO0|"
     QC_STRING2="s|ZERO0|ZERO0|"
     QC_STRING3="s|ZERO0|ZERO0|"
+    QC_STRING4="s|ZERO0|ZERO0|"
   else
     REDUCER_FILENAME=qcreducer${OUTFILE}.sh
     QC_STRING1="s|CURRENTLINE=2|CURRENTLINE=5|g"
     QC_STRING2="s|REALLINE=2|REALLINE=5|g"
     QC_STRING3="0,/#VARMOD#/s:#VARMOD#:QCTEXT=\"${QCTEXT}\"\n#VARMOD#:"
+    QC_STRING4="s|SKIPSTAGEABOVE=9|SKIPSTAGEABOVE=3|"
   fi
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
@@ -372,6 +374,7 @@ generate_reducer_script(){
    | sed -e "${QC_STRING1}" \
    | sed -e "${QC_STRING2}" \
    | sed -e "${QC_STRING3}" \
+   | sed -e "${QC_STRING4}" \
    | sed -e "${PQUERY_EXTRA_OPTIONS}" \
    > ${REDUCER_FILENAME}
   chmod +x ${REDUCER_FILENAME}

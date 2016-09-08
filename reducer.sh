@@ -2179,7 +2179,10 @@ process_outcome(){
     else  # mysql CLI output testing run
       FILETOCHECK=$WORKD/mysql.out
     fi
-    if [ $(grep -c "$TEXT" $FILETOCHECK) -gt 0 -a $(grep -c "$QCTEXT" $FILETOCHECK2) -gt 0 ]; then
+    NEWLINENUMBER=""
+    NEWLINENUMBER=$(grep "$QCTEXT" $FILETOCHECK2|grep -o "#[0-9]\+#$"|sed 's/#//g')
+    # TODO: Add check if same query has same output multiple times (add variable for number of occurences)
+    if [ $(grep -c "$TEXT#$NEWLINENUMBER$" $FILETOCHECK) -gt 0 ]; then
       if [ ! "$STAGE" = "V" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ClientOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good client output issue in $WORKO"
         control_backtrack_flow
