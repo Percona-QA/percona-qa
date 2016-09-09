@@ -16,6 +16,9 @@
 ## [ERROR] Got error 155 when reading table                 ## Read from table after ALTER TABLE x DISCARD TABLESPACE  | MS 75911
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
+## =========== Column compression
+ZNK5Field37has_associated_compression_dictionaryEv       ## https://bugs.launchpad.net/percona-server/+bug/1621684
+
 ## =========== fb-mysql ===========
 v->cfd_->internal_comparator                             ## http://github.com/facebook/mysql-5.6/issues/131
 Z18table_stats_deletePKc                                 ## http://github.com/facebook/mysql-5.6/issues/132

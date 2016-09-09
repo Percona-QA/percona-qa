@@ -1103,10 +1103,10 @@ pquery_test(){
   fi
   if [ ${ISSTARTED} -eq 1 ]; then  # Do not try and print pquery log for a failed mysqld start
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
-      echoit "Pri engine pquery run details: $(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|^.*:|pquery summary:|')"
-      echoit "Sec engine pquery run details: $(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|^.*:|pquery summary:|')"
+      echoit "Pri engine pquery run details: $(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log)"
+      echoit "Sec engine pquery run details: $(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log)"
     else
-      echoit "pquery run details: $(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|^.*:|pquery summary:|')"
+      echoit "pquery run details: $(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log)"
     fi
   fi
   if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -eq 0 ]; then  # If a core is found when query correctness testing is in progress, it will process it as a normal crash (without considering query correctness)
