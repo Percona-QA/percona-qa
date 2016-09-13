@@ -128,6 +128,8 @@
 # Examples
   # Run a container, based on Centos7 image, start bash interactively, allow host volume mapping (--privileged=true), map current home dir to /root homedir
     docker run --privileged -ti -v ~:/root centos:centos7 bash  
+  # Connect to a running docker container and execute bash (you can simply use the short name as seen in docker ps -a)
+    docker exec -it centos:centos7 bash
   # Commit/promote a container (with ID 668d9f86ef49) to an image, with details (name/email/message) to a namespace (roelvdp) with repo (pqa) and tag (L1)
     docker commit  -a "Roel Van de Paar <roel.vandepaar@percona.com>" -m "Percona QA Base Image L1" 668d9f86ef49 roelvdp/pqa:L1
   # Push the above generated image to a registry (registry.hub.docker.com by default)
