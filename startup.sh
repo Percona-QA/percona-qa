@@ -27,11 +27,15 @@ if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   fi
 fi
 
-if [ -r $PWD/bin/mysqld ]; then
-  BIN="$PWD/bin/mysqld"
+if [ -r ${PWD}/bin/mysqld ]; then
+  BIN="${PWD}/bin/mysqld"
 else
-  BIN="$PWD/bin/mysqld-debug"
+  BIN="${PWD}/bin/mysqld-debug"
 fi
+
+MID=
+if [ -r ${PWD}/scripts/mysql_install_db ]; then MID="${PWD}/scripts/mysql_install_db"; fi
+if [ -r ${PWD}/bin/mysql_install_db ]; then MID="${PWD}/bin/mysql_install_db"; fi
 
 # Get version specific options
 START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
@@ -39,7 +43,11 @@ INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
 INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init)
 VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
 if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
-  INIT_TOOL="$PWD/bin/mysql_install_db"
+  if [ "${MID}" == "" ]; then 
+    echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
+    exit 1
+  fi
+  INIT_TOOL="${MID}"
   INIT_OPT="--force --no-defaults"
   START_OPT="--core"
 elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
@@ -48,8 +56,8 @@ fi
 
 # Setup scritps 
 echo "Adding scripts: start | start_valgrind | start_gypsy | stop | setup | cl | test | init | wipe | all | prepare | run"
-mkdir -p data data/mysql data/test log
-if [ -r $PWD/lib/mysql/plugin/ha_tokudb.so ]; then
+#mkdir -p data data/mysql data/test log
+if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
   TOKUDB="--plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
 else
   TOKUDB=""
@@ -61,47 +69,39 @@ echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer
 echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start
 cp start start_valgrind  # Idem for Valgrind
 cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
-echo "$BIN \${MYEXTRA} ${START_OPT} --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> start
-echo " valgrind --suppressions=$PWD/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err >>$PWD/log/master.err 2>&1 &" >> start_valgrind
-echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=$PWD/general.log --basedir=$PWD --tmpdir=$PWD/data --datadir=$PWD/data ${TOKUDB} --socket=$PWD/socket.sock --port=$PORT --log-error=$PWD/log/master.err 2>&1 &" >> start_gypsy
-echo "echo 'Server socket: $PWD/socket.sock with datadir: $PWD/data'" >> start
+echo "$BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start
+echo " valgrind --suppressions=${PWD}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err >>${PWD}/log/master.err 2>&1 &" >> start_valgrind
+echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_gypsy
+echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
 tail -n1 start >> start_valgrind
 tail -n1 start >> start_gypsy
-echo "$PWD/bin/mysqladmin -uroot -S$PWD/socket.sock shutdown" > stop
-echo "echo 'Server on socket $PWD/socket.sock with datadir $PWD/data halted'" >> stop
+echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop
+echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
 echo "./init;./start;sleep 5;./cl;./stop;tail log/master.err" > setup
-echo "./start; sleep 10; $PWD/bin/mysql -A -uroot -S$PWD/socket.sock -e \"INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';\"; stop" > tokutek_init
-echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test" > cl
-echo "$PWD/bin/mysql -A -uroot -S$PWD/socket.sock --force --binary-mode test < $PWD/in.sql > $PWD/mysql.out 2>&1" > test
+echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock -e \"INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';\"; stop" > tokutek_init
+BINMODE=
+if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" ]; then
+  BINMODE="--binary-mode "  # Leave trailing space
+fi
+echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test" > cl
+echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < ${PWD}/in.sql > ${PWD}/mysql.out 2>&1" > test
 echo "if [ -r stop ]; then stop 2>/dev/null 1>&2; fi" > wipe
-echo "if [ -d $PWD/data.PREV ]; then rm -Rf $PWD/data.PREV.older; mv $PWD/data.PREV $PWD/data.PREV.older; fi; mv $PWD/data $PWD/data.PREV" >> wipe
-if [ "${VERSION_INFO}" == "5.7" ]; then
-   echo "mkdir $PWD/data $PWD/data/test $PWD/data/mysql" >> wipe
-fi
-echo "sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-auto-inc=off --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp_table_size=1000000 --oltp_tables_count=1 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=$PWD/socket.sock prepare" > prepare
-echo "sysbench --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=1 --num-threads=4 --oltp_table_size=1000000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=$PWD/socket.sock run" > run
+echo "if [ -d ${PWD}/data.PREV ]; then rm -Rf ${PWD}/data.PREV.older; mv ${PWD}/data.PREV ${PWD}/data.PREV.older; fi; mv ${PWD}/data ${PWD}/data.PREV" >> wipe
+echo "sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-auto-inc=off --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp_table_size=1000000 --oltp_tables_count=1 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${PWD}/socket.sock prepare" > prepare
+echo "sysbench --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=1 --num-threads=4 --oltp_table_size=1000000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${PWD}/socket.sock run" > run
 echo "./stop;chmod +x wipe;./wipe;./start;sleep 3;./prepare;./run;./stop" > measure
-echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=$PWD --datadir=$PWD/data" >> wipe
-if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.7" ]; then
-   echo "mkdir -p $PWD/data/test " >> wipe
-fi
+echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> wipe
 echo "if [ -r log/master.err.PREV ]; then rm -f log/master.err.PREV; fi" >> wipe
 echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" >> wipe
 echo "if [ -r stop ]; then stop 2>/dev/null 1>&2; fi" > init
-echo "rm -Rf $PWD/data" >> init
-if [ "${VERSION_INFO}" == "5.7" ]; then
-  echo "mkdir $PWD/data $PWD/data/test $PWD/data/mysql" >> init
-fi
-echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=$PWD --datadir=$PWD/data" >> init
-if [ "${VERSION_INFO}" == "5.7" ]; then
-  echo "mkdir $PWD/data/test" >> init
-fi
+echo "rm -Rf ${PWD}/data" >> init
+echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> init
 echo "rm -f log/master.*" >> init
 echo "./stop;./wipe;./start;sleep 5;./cl" >> all
 chmod +x start start_valgrind start_gypsy stop setup cl test init wipe prepare run measure all tokutek_init
 echo "Setting up server with default directories"
 ./init
-if [ -r $PWD/lib/mysql/plugin/ha_tokudb.so ]; then
+if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
   echo "Enabling additional TokuDB engine plugin items"
   tokutek_init
 fi
