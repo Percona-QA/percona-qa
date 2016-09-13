@@ -56,7 +56,7 @@ fi
 
 # Setup scritps 
 echo "Adding scripts: start | start_valgrind | start_gypsy | stop | setup | cl | test | init | wipe | all | prepare | run"
-#mkdir -p data data/mysql data/test log
+mkdir -p data data/mysql data/test log
 if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
   TOKUDB="--plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
 else
@@ -93,13 +93,20 @@ echo "./stop;chmod +x wipe;./wipe;./start;sleep 3;./prepare;./run;./stop" > meas
 echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> wipe
 echo "if [ -r log/master.err.PREV ]; then rm -f log/master.err.PREV; fi" >> wipe
 echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" >> wipe
+if [ "${VERSION_INFO}" == "5.7" ]; then
+  echo "mkdir data/test" >> wipe
+fi
 echo "if [ -r stop ]; then stop 2>/dev/null 1>&2; fi" > init
 echo "rm -Rf ${PWD}/data" >> init
 echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> init
 echo "rm -f log/master.*" >> init
-echo "./stop;./wipe;./start;sleep 5;./cl" >> all
+if [ "${VERSION_INFO}" == "5.7" ]; then
+  echo "mkdir data/test" >> init
+fi
+echo "./stop;./wipe;./start;sleep 5;./cl" > all
 chmod +x start start_valgrind start_gypsy stop setup cl test init wipe prepare run measure all tokutek_init
 echo "Setting up server with default directories"
+./stop
 ./init
 if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
   echo "Enabling additional TokuDB engine plugin items"
