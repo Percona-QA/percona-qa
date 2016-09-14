@@ -358,7 +358,7 @@ generate_reducer_script(){
    | sed -e "${MULTI_CLEANUP1}" \
    | sed -e "${MULTI_CLEANUP2}" \
    | sed -e "${MULTI_CLEANUP3}" \
-   | sed -e "0,/^[ \t]*MYBASE[ \t]*=.*$/s|^[ \t]*MYBASE[ \t]*=.*$|#MYBASE=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*BASEDIR[ \t]*=.*$/s|^[ \t]*BASEDIR[ \t]*=.*$|#BASEDIR=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*PQUERY_MOD[ \t]*=.*$/s|^[ \t]*PQUERY_MOD[ \t]*=.*$|#PQUERY_MOD=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "${PXC_CLEANUP1}" \
@@ -366,7 +366,7 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:DISABLE_TOKUDB_AUTOLOAD=${DISABLE_TOKUDB_AUTOLOAD}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
    | sed -e "${TEXT_STRING2}" \
-   | sed -e "0,/#VARMOD#/s:#VARMOD#:MYBASE=\"${BASE}\"\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:BASEDIR=\"${BASE}\"\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:INPUTFILE=\"${INPUTFILE}\"\n#VARMOD#:" \
    | sed -e "${MYEXTRA_STRING1}" \
    | sed -e "${WSREP_OPT_STRING}" \
