@@ -18,6 +18,7 @@
 
 ## =========== Column compression
 ZNK5Field37has_associated_compression_dictionaryEv       ## https://bugs.launchpad.net/percona-server/+bug/1621684
+ZN24subselect_hash_sj_engine7cleanupEv                   ## https://bugs.launchpad.net/percona-server/+bug/1622992
 
 ## =========== fb-mysql ===========
 v->cfd_->internal_comparator                             ## http://github.com/facebook/mysql-5.6/issues/131

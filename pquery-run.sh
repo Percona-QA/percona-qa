@@ -1267,22 +1267,25 @@ if [ ${STORE_COPY_OF_INFILE} -eq 1 ]; then
   cp ${INFILE} ${WORKDIR}
 fi
 
-if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.7" ]; then
-  VERSION_CHK=`${BIN}  --version | grep -oe '5\.[1567]\.[0-9]*' | cut -f3 -d'.' | head -n1`
-  if [[ $VERSION_CHK -ge 5 ]]; then
-    MID_OPT="--no-defaults --initialize-insecure"
-  else
-    MID_OPT="--insecure"
+# Get version specific options
+MID=
+if [ -r ${BASEDIR}/scripts/mysql_install_db ]; then MID="${BASEDIR}/scripts/mysql_install_db"; fi
+if [ -r ${BASEDIR}/bin/mysql_install_db ]; then MID="${BASEDIR}/bin/mysql_install_db"; fi
+START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
+INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
+INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
+VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
+if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
+  if [ "${MID}" == "" ]; then
+    echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
+    exit 1
   fi
-else
-  MID_OPT="--force --no-defaults"
+  INIT_TOOL="${MID}"
+  INIT_OPT="--force --no-defaults"
+  START_OPT="--core"
+elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
+  echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
 fi
-
-if [ "${MID_OPT}" == "--no-defaults --initialize-insecure" ]; then
-    MID_57="${BASEDIR}/bin/mysqld"
-  else
-    MID_57="${BASEDIR}/bin/mysql_install_db"
-  fi
 
 if [ ${PXC} -eq 0 ]; then
   echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
@@ -1294,14 +1297,7 @@ if [ ${PXC} -eq 0 ]; then
   ${SCRIPT_PWD}/ldd_files.sh
   cd ${PWDTMPSAVE}
   echoit "Generating datadir template (using mysql_install_db or mysqld --init)..."
-  if [ -r ${BASEDIR}/bin/mysql_install_db ]; then 
-    $MID_57 $MID_OPT --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template > ${WORKDIR}/log/mysql_install_db.txt 2>&1
-  elif [ -r ${BASEDIR}/scripts/mysql_install_db ]; then 
-    ${BASEDIR}/scripts/mysql_install_db $MID_OPT --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template > ${WORKDIR}/log/mysql_install_db.txt 2>&1
-  else 
-    echoit "Error: mysql_install_db not found in $PWD/scripts nor in $PWD/bin"
-    exit 1
-  fi
+  ${INIT_TOOL} ${INIT_OPT} --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template > ${WORKDIR}/log/mysql_install_db.txt 2>&1
   # Sysbench dataload
   if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
     echoit "Starting mysqld for sysbench data load. Error log is stored at ${WORKDIR}/data.template/master.err"
