@@ -32,7 +32,7 @@ TEXT="somebug"                  # The text string you want reducer to search for
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
-MYBASE="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"              # Path to the MySQL BASE directory to be used
+BASEDIR="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"              # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
 
 # === Sporadic testcases        # Used when testcases prove to be sporadic *and* fail to reduce using basic methods
@@ -154,8 +154,8 @@ TS_VARIABILITY_SLEEP=1
 # - MYEXTRA: Extra options to pass to myqsld (for instance "--core" is handy in some cases, for instance with highly sporadic issues to capture a core)
 #   (Btw, --core should generally be left disabled to obtain cleaner output ("core dumped" stdout messages, less space used, faster reducer runs)
 #   - Also, --no-defaults as set in the default is removed automatically later on. It is just present here to highlight it's effectively (seperately) set.
-# - MYBASE: Full path to MySQL basedir (example: "/mysql/mysql-5.6"). 
-#   If the directory name starts with '/mysql/' then this may be ommited (example: MYBASE="mysql-5.6-trunk")
+# - BASEDIR: Full path to MySQL basedir (example: "/mysql/mysql-5.6"). 
+#   If the directory name starts with '/mysql/' then this may be ommited (example: BASEDIR="mysql-5.6-trunk")
 # - MULTI_THREADS: This option was an internal one only before. Set it to change the number of threads Reducer uses for the verify stage intially, and for 
 #   reduction of sproradic issues if the verify stage found it is a sporadic issue. Recommended: 10, based on experience/testing/time-proven correctness.
 #   Do not change unless you need to. Where this may come in handy, for a single occassion, is when an issue is hard to reproduce and very sporadic. In this
@@ -594,24 +594,14 @@ options_check(){
       fi
     fi
   fi
-  BIN="/bin/mysqld"
-  if [ ! -s "${MYBASE}${BIN}" ]; then
-    if [ ! -s "/mysql/${MYBASE}${BIN}" ]; then 
-      BIN="/bin/mysqld-debug"
-      if [ ! -s "${MYBASE}${BIN}" ]; then 
-        if [ ! -s "/mysql/${MYBASE}${BIN}" ]; then 
-          echo "Error: mysqld binary not located at any of the following auto-scanned locaations:"
-          echo -e "${MYBASE}/bin/mysqld\n${MYBASE}/bin/mysqld-debug"
-          echo -e "/mysql/${MYBASE}/bin/mysqld\n/mysql/${MYBASE}/bin/mysqld-debug"
-          echo 'Please check script contents/options (set $MYBASE variable correctly)'
-          echo "Terminating now."
-          exit 1
-        else
-          export -n MYBASE="/mysql/$MYBASE"
-        fi
-      fi
-    else
-      export -n MYBASE="/mysql/$MYBASE"
+  BIN="${BASEDIR}/bin/mysqld"
+  if [ ! -s "${BIN}" ]; then
+    BIN="${BASEDIR}/bin/mysqld-debug"
+    if [ ! -s "${BIN}" ]; then 
+      echo "Assert: No mysqld or mysqld-debug binary was found in ${BASEDIR}/bin"
+      echo 'Please check script contents/options and set the $BASEDIR variable correctly'
+      echo "Terminating now."
+      exit 1
     fi
   fi
   if [ $MODE -ne 0 -a $MODE -ne 1 -a $MODE -ne 2 -a $MODE -ne 3 -a $MODE -ne 4 -a $MODE -ne 5 -a $MODE -ne 6 -a $MODE -ne 7 -a $MODE -ne 8 -a $MODE -ne 9 ]; then
@@ -834,7 +824,7 @@ multi_reducer(){
       | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_MULTI_QUERIES=$PQUERY_MULTI_QUERIES\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:TS_TRXS_SETS=$TS_TRXS_SETS\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:TS_DBG_CLI_OUTPUT=$TS_DBG_CLI_OUTPUT\n#VARMOD#:" \
-      | sed -e "0,/#VARMOD#/s:#VARMOD#:MYBASE=\"$MYBASE\"\n#VARMOD#:" \
+      | sed -e "0,/#VARMOD#/s:#VARMOD#:BASEDIR=\"$BASEDIR\"\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MYPORT=\"$MULTI_MYPORT\"\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MYUSER=\"$MYUSER\"\n#VARMOD#:" > $MULTI_WORKD/subreducer
 
@@ -1134,12 +1124,12 @@ init_workdir_and_files(){
   #JE2=" elif [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
   #JE3=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
   JE2=" elif [ -r \`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1\` ]; then export LD_PRELOAD=\`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1\`"
-  JE3=" elif [ -r \${MYBASE}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=\${MYBASE}/lib/mysql/libjemalloc.so.1"
+  JE3=" elif [ -r \${BASEDIR}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=\${BASEDIR}/lib/mysql/libjemalloc.so.1"
   JE4=" else echo 'Warning: jemalloc was not loaded as it was not found (this is fine for MS, but do check ./${EPOCH}_mybase to set correct jemalloc location for PS)'; fi" 
 
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
-  WORK_MYBASE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_mybase|")
+  WORK_BASEDIR=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_mybase|")
   WORK_INIT=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_init|")
   WORK_START=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_start|")
   WORK_START_VALGRIND=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_start_valgrind|")
@@ -1169,15 +1159,15 @@ init_workdir_and_files(){
     (echo "$DROPC"; (cat $INPUTFILE | grep -v "$DROPC")) > $WORKF
   fi
   if [ $PXC_MOD -eq 1 ]; then
-    echo_out "[Init] PXC Node #1 Client: $MYBASE/bin/mysql -uroot -S${node1}/node1_socket.sock"
-    echo_out "[Init] PXC Node #2 Client: $MYBASE/bin/mysql -uroot -S${node2}/node2_socket.sock"
-    echo_out "[Init] PXC Node #3 Client: $MYBASE/bin/mysql -uroot -S${node3}/node3_socket.sock"
+    echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
+    echo_out "[Init] PXC Node #2 Client: $BASEDIR/bin/mysql -uroot -S${node2}/node2_socket.sock"
+    echo_out "[Init] PXC Node #3 Client: $BASEDIR/bin/mysql -uroot -S${node3}/node3_socket.sock"
   else
-    echo_out "[Init] Server: ${MYBASE}${BIN} (as $MYUSER)"
+    echo_out "[Init] Server: ${BIN} (as $MYUSER)"
     if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-      echo_out "[Init] Client: $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
+      echo_out "[Init] Client: $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock"
     else
-      echo_out "[Init] Client (When MULTI mode is not active): $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock"
+      echo_out "[Init] Client (When MULTI mode is not active): $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock"
     fi
   fi
   if [ $SKIPSTAGEBELOW -gt 0 ]; then echo_out "[Init] SKIPSTAGEBELOW active. Stages up to and including $SKIPSTAGEBELOW are skipped"; fi
@@ -1284,36 +1274,31 @@ init_workdir_and_files(){
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
     if [ $PXC_MOD -ne 1 ]; then 
       echo_out "[Init] Setting up standard working template (without using MYEXTRA options)"
-      if [ "`${MYBASE}${BIN} --version | grep -oe '[^0]5\.[1567]' | sed 's/^.//' | head -n1`" == "5.7" ]; then
-        MID_OPTIONS="--initialize-insecure"  # --initialize-insecure prevents random root password in 5.7. --force is no longer supported in new mysql_install_db binary in 5.7
-      elif [ "`${MYBASE}${BIN} --version | grep -oe '[^0]5\.[1567]' | sed 's/^.//' | head -n1`" == "5.6" ]; then
-        MID_OPTIONS="--force"
-      elif [ "`${MYBASE}${BIN} --version | grep -oe '[^0]5\.[1567]' | sed 's/^.//' | head -n1`" == "5.5" ]; then
-        MID_OPTIONS="--force"
-      else
-        MID_OPTIONS="" 
-        echo_out "[Warning] Could not automatically determine the mysqld version. If this is 5.7, mysql_install_db will now fail due to a missing '--insecure' option, which is normally set by this script if a 5.7 mysqld is detected. If this happens, please rename the BASE directory (${BASE}) to contain the string '5.7' in it's directory name. Alternatively, you can hack reducer.sh and set the variable \$MID_OPTIONS manually. Search for any part of this warning message to find the right area, and add MID_OPTIONS='--insecure' directly under the closing fi statement of this warning"
-      fi
-      # MID_OPTIONS='--initialize-insecure'  # 5.7 Hack described in [Warning above], normally not needed if path name contains 5.7 (usually the case)
-      generate_run_scripts      
-      if [ -r $MYBASE/scripts/mysql_install_db ]; then
-        $MYBASE/scripts/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
-      elif [ -r $MYBASE/bin/mysql_install_db ]; then
-        if [ "`${MYBASE}${BIN} --version | grep -oe '5\.[1567]' | head -n1`" == "5.7" ]; then
-          $MYBASE/bin/mysqld --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
-        else
-          $MYBASE/bin/mysql_install_db --no-defaults --basedir=$MYBASE --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
+      # Get version specific options
+      BIN=
+      if [ "${BIN}" == "" ]; then echo "Assert: no mysqld or mysqld-debug binary was found!"; fi
+      MID=
+      if [ -r ${BASEDIR}/scripts/mysql_install_db ]; then MID="${BASEDIR}/scripts/mysql_install_db"; fi
+      if [ -r ${BASEDIR}/bin/mysql_install_db ]; then MID="${BASEDIR}/bin/mysql_install_db"; fi
+      START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
+      INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
+      INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
+      VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
+      if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
+        if [ "${MID}" == "" ]; then
+          echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
+          exit 1
         fi
-      else
-        echo_out "[Assert] Script could not locate mysql_install_db. Checked in $MYBASE/scripts/ and in $MYBASE/bin/"
-        rm -f $WORK_INIT
-        echo "Terminating now."
-        exit 1
+        INIT_TOOL="${MID}"
+        INIT_OPT="--force --no-defaults"
+        START_OPT="--core"
+      elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
+        echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
       fi
+      generate_run_scripts
+      ${INIT_TOOL} ${INIT_OPT} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/mysql_install_db.init 2>&1
       # test db provisioning if not there already (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
       mkdir $WORKD/data/test 2>/dev/null  
-      echo "mkdir -p /dev/shm/${EPOCH}/data/test" >> $WORK_INIT
-      chmod +x $WORK_INIT
       if [ ! -d $WORKD/data ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] data directory at $WORKD/data does not exist... check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
         echo "Terminating now."
@@ -1326,7 +1311,7 @@ init_workdir_and_files(){
       #start_mysqld_main
       echo_out "[Init] Attempting first mysqld startup with all MYEXTRA options passed to mysqld"
       if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
-      if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
+      if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
         if [ ${REDUCE_STARTUP_ISSUES} -eq 1 ]; then 
           echo_out "[Init] [NOTE] Failed to cleanly start mysqld server (This was the 1st startup attempt with all MYEXTRA options passed to mysqld). Normally this would cause reducer.sh to halt here (and advice you to check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/mysql_install_db.init, and maybe $WORKD/data/error.log + check that there is plenty of space on the device being used). However, because REDUCE_STARTUP_ISSUES is set to 1, we continue this reducer run. See above for more info on the REDUCE_STARTUP_ISSUES setting"
         else
@@ -1340,26 +1325,26 @@ init_workdir_and_files(){
         echo_out "[Init] Loading timezone data into mysql database"
         # echo_out "[Info] You may safely ignore any 'Warning: Unable to load...' messages, unless there are very many (Ref. BUG#13563952)"
         # The ones listed in BUG#13563952 are now filterered out to make output nicer
-        $MYBASE/bin/mysql_tzinfo_to_sql /usr/share/zoneinfo > $WORKD/timezone.init 2> $WORKD/timezone.err
+        $BASEDIR/bin/mysql_tzinfo_to_sql /usr/share/zoneinfo > $WORKD/timezone.init 2> $WORKD/timezone.err
         egrep -v "Riyadh8[789]'|zoneinfo/iso3166.tab|zoneinfo/zone.tab" $WORKD/timezone.err > $WORKD/timezone.err.tmp 
         for A in $(cat $WORKD/timezone.err.tmp|sed 's/ /=DUMMY=/g'); do 
           echo_out "$(echo "[Warning from mysql_tzinfo_to_sql] $A" | sed 's/=DUMMY=/ /g')"
         done
         echo_out "[Info] If you see a [GLIBC] crash above, change reducer to use a non-Valgrind-instrumented build of mysql_tzinfo_to_sql (Ref. BUG#13498842)"
-        $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
+        $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
       fi
       stop_mysqld_or_pxc
     else
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
-      if [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-        MID="${MYBASE}/bin/mysqld --no-defaults --initialize-insecure --basedir=${MYBASE}"
-      elif [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
-        MID="${MYBASE}/scripts/mysql_install_db --no-defaults --basedir=${MYBASE}"
+      if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+      elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+        MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
       fi
       node1="${WORKD}/node1"
       node2="${WORKD}/node2"
       node3="${WORKD}/node3"
-      if [ "$(${MYBASE}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
         mkdir -p $node1 $node2 $node3
       fi
       ${MID} --datadir=$node1  > ${WORKD}/startup_node1_error.log 2>&1 || exit 1;
@@ -1378,30 +1363,31 @@ init_workdir_and_files(){
 generate_run_scripts(){
   # Add various scripts (with {epoch} prefix): _mybase (setup variables), _init (setup), _run (runs the sql), _cl (starts a mysql cli), _stop (stop mysqld). _start (starts mysqld)
   # (start_mysqld_main and start_valgrind_mysqld_main). Togheter these scripts can be used for executing the final testcase ($WORKO_start > $WORKO_run)
-  echo "MYBASE=$MYBASE" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_MYBASE
-  echo "SOURCE_DIR=\$MYBASE  # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_MYBASE
-  echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked" >> $WORK_MYBASE
+  echo "BASEDIR=$BASEDIR" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' > $WORK_BASEDIR
+  echo "SOURCE_DIR=\$BASEDIR  # Only required to be set if make_binary_distrubtion script was NOT used to build MySQL" | sed 's|^[ \t]*||;s|[ \t]*$||;s|/$||' >> $WORK_BASEDIR
+  echo "JEMALLOC=~/libjemalloc.so.1  # Only required for Percona Server with TokuDB. Can be completely ignored otherwise. This can be changed to a custom path to use a custom jemalloc. If this file is not present, the standard OS locations for jemalloc will be checked" >> $WORK_BASEDIR
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_INIT
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_INIT
   echo "echo \"Attempting to prepare mysqld environment at /dev/shm/${EPOCH}...\"" >> $WORK_INIT
   echo "rm -Rf /dev/shm/${EPOCH}" >> $WORK_INIT
   echo "mkdir -p /dev/shm/${EPOCH}/tmp" >> $WORK_INIT
-  echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`" >> $WORK_INIT
+  echo "BIN=\`find \${BASEDIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`" >> $WORK_INIT
   echo "if [ -n \"\$BIN\"  ]; then" >> $WORK_INIT
-  echo "  if [ \"\$BIN\" != \"\${MYBASE}/bin/mysqld\" -a \"\$BIN\" != \"\${MYBASE}/bin/mysqld-debug\" ];then" >> $WORK_INIT
-  echo "    if [ ! -h \${MYBASE}/bin/mysqld -o ! -f \${MYBASE}/bin/mysqld ]; then mkdir -p \${MYBASE}/bin; ln -s \$BIN \${MYBASE}/bin/mysqld; fi" >> $WORK_INIT
-  echo "    if [ ! -h \${MYBASE}/bin/mysql -o ! -f \${MYBASE}/bin/mysql ]; then ln -s \${MYBASE}/client/mysql \${MYBASE}/bin/mysql ; fi" >> $WORK_INIT
-  echo "    if [ ! -h \${MYBASE}/share -o ! -f \${MYBASE}/share ]; then ln -s \${SOURCE_DIR}/scripts \${MYBASE}/share ; fi" >> $WORK_INIT
-  echo -e "    if [ ! -h \${MYBASE}/share/errmsg.sys -o ! -f \${MYBASE}/share/errmsg.sys ]; then ln -s \${MYBASE}/sql/share/english/errmsg.sys \${MYBASE}/share/errmsg.sys ; fi;\n  fi\nelse" >> $WORK_INIT
+  echo "  if [ \"\$BIN\" != \"\${BASEDIR}/bin/mysqld\" -a \"\$BIN\" != \"\${BASEDIR}/bin/mysqld-debug\" ];then" >> $WORK_INIT
+  echo "    if [ ! -h \${BASEDIR}/bin/mysqld -o ! -f \${BASEDIR}/bin/mysqld ]; then mkdir -p \${BASEDIR}/bin; ln -s \$BIN \${BASEDIR}/bin/mysqld; fi" >> $WORK_INIT
+  echo "    if [ ! -h \${BASEDIR}/bin/mysql -o ! -f \${BASEDIR}/bin/mysql ]; then ln -s \${BASEDIR}/client/mysql \${BASEDIR}/bin/mysql ; fi" >> $WORK_INIT
+  echo "    if [ ! -h \${BASEDIR}/share -o ! -f \${BASEDIR}/share ]; then ln -s \${SOURCE_DIR}/scripts \${BASEDIR}/share ; fi" >> $WORK_INIT
+  echo -e "    if [ ! -h \${BASEDIR}/share/errmsg.sys -o ! -f \${BASEDIR}/share/errmsg.sys ]; then ln -s \${BASEDIR}/sql/share/english/errmsg.sys \${BASEDIR}/share/errmsg.sys ; fi;\n  fi\nelse" >> $WORK_INIT
   echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
-  echo "MID=\`find \${MYBASE} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
+  echo "MID=\`find \${BASEDIR} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
   echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
-  echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${MYBASE} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
+  echo "if [ \"\`\$BIN --version | grep -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
+  echo "mkdir -p /dev/shm/${EPOCH}/data/test" >> $WORK_INIT
   if [ $MODE -ge 6 ]; then
     # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
     echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet"
     echo "Not implemented yet: MODE6 or higher does not auto-generate a $WORK_RUN file yet" > $WORK_RUN
-    echo "#${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
+    echo "#${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock < INPUT_FILE_GOES_HERE (like $WORKO)" >> $WORK_RUN
     chmod +x $WORK_RUN
   else
     echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_RUN
@@ -1409,9 +1395,9 @@ generate_run_scripts(){
     echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld with socket /dev/shm/${EPOCH}/socket.sock using the mysql CLI client...\"" >> $WORK_RUN
     if [ "$CLI_MODE" == "" ]; then CLI_MODE=99; fi  # Leads to assert below
     case $CLI_MODE in
-      0) echo "cat ./${EPOCH}.sql | \${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test" >> $WORK_RUN ;;
-      1) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --execute=\"SOURCE ./${EPOCH}.sql;\" --force test" >> $WORK_RUN ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
-      2) echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test < ./${EPOCH}.sql" >> $WORK_RUN ;;
+      0) echo "cat ./${EPOCH}.sql | \${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test" >> $WORK_RUN ;;
+      1) echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --execute=\"SOURCE ./${EPOCH}.sql;\" --force test" >> $WORK_RUN ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
+      2) echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test < ./${EPOCH}.sql" >> $WORK_RUN ;;
       *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in generate_run_scripts). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
     esac
     chmod +x $WORK_RUN
@@ -1421,7 +1407,7 @@ generate_run_scripts(){
         echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
         echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
         echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_RUN_PQUERY
-        echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
+        echo "export LD_LIBRARY_PATH=\${BASEDIR}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -ge 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
           echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH}/node1/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
@@ -1433,7 +1419,7 @@ generate_run_scripts(){
         echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld with socket /dev/shm/${EPOCH}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
         echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
         echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_RUN_PQUERY
-        echo "export LD_LIBRARY_PATH=\${MYBASE}/lib" >> $WORK_RUN_PQUERY
+        echo "export LD_LIBRARY_PATH=\${BASEDIR}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -ge 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
           echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH}/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
@@ -1447,20 +1433,20 @@ generate_run_scripts(){
   fi 
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_GDB
-  echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*)" >> $WORK_GDB
+  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*)" >> $WORK_GDB
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_PARSE_CORE
-  echo "gdb \${MYBASE}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
+  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
   echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_STOP
   echo "echo \"Attempting to shutdown mysqld with socket /dev/shm/${EPOCH}/socket.sock...\"" >> $WORK_STOP
-  echo "MYADMIN=\`find \${MYBASE} -maxdepth 2 -type f -name mysqladmin\`" >> $WORK_STOP
+  echo "MYADMIN=\`find \${BASEDIR} -maxdepth 2 -type f -name mysqladmin\`" >> $WORK_STOP
   echo "\$MYADMIN -uroot -S/dev/shm/${EPOCH}/socket.sock shutdown" >> $WORK_STOP
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_CL
   echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
-  echo "\${MYBASE}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock test" >> $WORK_CL
+  echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock test" >> $WORK_CL
   echo -e "The attached tarball (${EPOCH}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
   echo "$ vi ${EPOCH}_mybase         # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
   echo "$ ./${EPOCH}_init            # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
@@ -1489,7 +1475,7 @@ generate_run_scripts(){
   fi
   echo "$ ./${EPOCH}_gdb             # OPTIONAL: Brings you to a gdb prompt with gdb attached to the used mysqld and attached to the generated core" >> $WORK_HOW_TO_USE
   echo "$ ./${EPOCH}_parse_core      # OPTIONAL: Creates ${EPOCH}_STD.gdb and ${EPOCH}_FULL.gdb; standard and full variables gdb stack traces" >> $WORK_HOW_TO_USE
-  chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE
+  chmod +x $WORK_CL $WORK_STOP $WORK_GDB $WORK_PARSE_CORE $WORK_INIT
 }
 
 init_mysql_dir(){
@@ -1524,7 +1510,7 @@ start_mysqld_or_valgrind_or_pxc(){
     if [ -f $WORKD/default.node.tld_thread-0.sql ]; then mv -f $WORKD/default.node.tld_thread-0.sql $WORKD/default.node.tld_thread-0.prevsql; fi
     if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
     if [ ${REDUCE_STARTUP_ISSUES} -le 0 ]; then
-      if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
+      if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
         echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/mysql_install_db.init"
         echo "Terminating now."
         exit 1
@@ -1552,11 +1538,11 @@ start_pxc_main(){
   SUSER=root
   SPASS=
 
-  ${MYBASE}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
-    --basedir=${MYBASE} --datadir=$node1 \
+  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
+    --basedir=${BASEDIR} --datadir=$node1 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
+    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm:// \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPTIONS" \
@@ -1584,11 +1570,11 @@ start_pxc_main(){
   done
   sleep 10 
 
-  ${MYBASE}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-    --basedir=${MYBASE} --datadir=$node2 \
+  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
+    --basedir=${BASEDIR} --datadir=$node2 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
+    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2;$WSREP_PROVIDER_OPTIONS" \
@@ -1616,11 +1602,11 @@ start_pxc_main(){
   done
   sleep 10
 
-  ${MYBASE}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
-    --basedir=${MYBASE} --datadir=$node3 \
+  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
+    --basedir=${BASEDIR} --datadir=$node3 \
     --loose-debug-sync-timeout=600 --skip-performance-schema \
     --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${MYBASE}/lib/libgalera_smm.so \
+    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR3;$WSREP_PROVIDER_OPTIONS" \
@@ -1638,7 +1624,7 @@ start_pxc_main(){
   while true ; do
     sleep 10
     if egrep -qi  "Synchronized with group, ready for connections" $node3/error.log ; then
-     ${MYBASE}/bin/mysql -uroot -S$node1/node1_socket.sock -e "create database if not exists test" > /dev/null 2>&1
+     ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -e "create database if not exists test" > /dev/null 2>&1
      break
     fi
     if [ "${MPID}" == "" ]; then
@@ -1650,13 +1636,13 @@ start_pxc_main(){
   done
 
   CLUSTER_UP=0
-  if $MYBASE/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then
-    if [ `$MYBASE/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ `$MYBASE/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ `$MYBASE/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$MYBASE/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$MYBASE/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$MYBASE/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+  if $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then
+    if [ `$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ `$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ `$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
   fi
 }
 
@@ -1667,16 +1653,16 @@ start_mysqld_main(){
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH}/socket.sock)...\"" >> $WORK_START
   #echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START;echo $JE5 >> $WORK_START
   echo $JE1 >> $WORK_START; echo $JE2 >> $WORK_START; echo $JE3 >> $WORK_START; echo $JE4 >> $WORK_START
-  echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
+  echo "BIN=\`find \${BASEDIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
   SCHEDULER_OR_NOT=
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
-    echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
-    CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then
@@ -1687,10 +1673,10 @@ start_mysqld_main(){
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
   else
-    echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${MYBASE} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
-    CMD="${TIMEOUT_COMMAND} ${MYBASE}${BIN} --no-defaults --basedir=$MYBASE --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
+    CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then  
@@ -1702,12 +1688,12 @@ start_mysqld_main(){
     PIDV="$!"
   fi
   sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START
-#  sed -i "s#$MYBASE#\$(cat $(echo $WORK_MYBASE | sed 's|.*/|\${SCRIPT_DIR}/|'))#g" $WORK_START
+#  sed -i "s#$BASEDIR#\$(cat $(echo $WORK_BASEDIR | sed 's|.*/|\${SCRIPT_DIR}/|'))#g" $WORK_START
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START
   chmod +x $WORK_START
   for X in $(seq 1 120); do
-    sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
+    sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
     # Check if the server crashed or shutdown, then there is no need to wait any longer (new beta feature as of 1 July 16)
     if grep -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
     if grep -qi "Writing a core file" $WORKD/error.log.out; then break; fi
@@ -1721,8 +1707,8 @@ start_valgrind_mysqld_main(){
   if [ -f $WORKD/valgrind.out ]; then mv -f $WORKD/valgrind.out $WORKD/valgrind.prev; fi
   SCHEDULER_OR_NOT=
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
-  CMD="${TIMEOUT_COMMAND} valgrind --suppressions=$MYBASE/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
-              ${MYBASE}${BIN} --basedir=${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
+  CMD="${TIMEOUT_COMMAND} valgrind --suppressions=$BASEDIR/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
+              ${BIN} --basedir=${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
                               --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
                               --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none 
@@ -1739,9 +1725,9 @@ start_valgrind_mysqld_main(){
   echo $JE1 >> $WORK_START_VALGRIND; echo $JE2 >> $WORK_START_VALGRIND; echo $JE3 >> $WORK_START_VALGRIND
   #echo $JE4 >> $WORK_START_VALGRIND; echo $JE5 >> $WORK_START_VALGRIND
   echo $JE4 >> $WORK_START_VALGRIND
-  echo "BIN=\`find \${MYBASE} -maxdepth 2 -name mysqld -type f -o  -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_VALGRIND
-  echo "valgrind --suppressions=\${MYBASE}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
-       \$BIN --basedir=\${MYBASE} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
+  echo "BIN=\`find \${BASEDIR} -maxdepth 2 -name mysqld -type f -o  -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_VALGRIND
+  echo "valgrind --suppressions=\${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
+       \$BIN --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
        --socket=$WORKD/socket.sock $MYEXTRA ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   if [ "${CHK_ROCKSDB}" == "1" ];then
@@ -1752,9 +1738,9 @@ start_valgrind_mysqld_main(){
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START_VALGRIND
   chmod +x $WORK_START_VALGRIND
   for X in $(seq 1 360); do 
-    sleep 1; if $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
+    sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
-  if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
+  if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
     echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server under Valgrind, check $WORKD/error.log.out, $WORKD/valgrind.out and $WORKD/mysql_install_db.init"
     echo "Terminating now."
     exit 1
@@ -1948,7 +1934,7 @@ run_sql_code(){
     else
       SOCKET_TO_BE_USED=$WORKD/socket.sock
     fi
-    $MYBASE/bin/mysql -uroot -S${SOCKET_TO_BE_USED} --force mysql -e"
+    $BASEDIR/bin/mysql -uroot -S${SOCKET_TO_BE_USED} --force mysql -e"
       DELIMITER ||
       CREATE EVENT querytimeout ON SCHEDULE EVERY 20 SECOND DO BEGIN
       SET @id:='';
@@ -1963,18 +1949,18 @@ run_sql_code(){
   if   [ $MODE -ge 6 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [DATA] Loading datafile before SQL threads replay"
     if [ $TS_DBG_CLI_OUTPUT -eq 0 ]; then
-      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -v "$DROPC")) | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null
+      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null
     else
-      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -v "$DROPC")) | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql_data.out 2>&1
+      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql_data.out 2>&1
     fi
     TXT_OUT="$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] Forking SQL threads [PIDs]:"
     for t in $(eval echo {1..$TS_THREADS}); do 
       # Forking background threads by using bash fork implementation $() &
       export TS_WORKT=$(eval echo $(echo '$WORKT'"$t"))
       if [ $TS_DBG_CLI_OUTPUT -eq 0 ]; then
-        $(cat $TS_WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null  ) & 
+        $(cat $TS_WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null  ) & 
       else
-        $(cat $TS_WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql$t.out 2>&1 ) & 
+        $(cat $TS_WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql$t.out 2>&1 ) & 
       fi
       PID=$!
       export TS_THREAD_PID$t=$PID
@@ -1997,9 +1983,9 @@ run_sql_code(){
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] All SQL threads have finished/terminated"
   elif [ $MODE -eq 5 ]; then
     if [ $PXC_MOD -eq 1 ]; then
-      cat $WORKT | $MYBASE/bin/mysql -uroot -S${node1}/node1_socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
+      cat $WORKT | $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
     else
-      cat $WORKT | $MYBASE/bin/mysql -uroot -S$WORKD/socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
+      cat $WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
     fi
   else
     # Some general information on MODE=2 replay using either the mysql CLI or pquery: When using the mysql cli, a single or double quote in and by itself
@@ -2009,7 +1995,7 @@ run_sql_code(){
     # being replayed with mysql CLI or vice versa) may differ. Another difference is that the pquery replay output looks significantly different from the
     # client replay output. Thus, any TEXT="..." strings need to be matched to the specific output seen in the original trial's pquery or mysql CLI output.
     if [ $PQUERY_MOD -eq 1 ]; then
-      export LD_LIBRARY_PATH=${MYBASE}/lib
+      export LD_LIBRARY_PATH=${BASEDIR}/lib
       if [ -r $WORKD/pquery.out ]; then
         mv $WORKD/pquery.out $WORKD/pquery.prev
       fi
@@ -2043,9 +2029,9 @@ run_sql_code(){
         CLIENT_SOCKET=$WORKD/socket.sock 
       fi
       case $CLI_MODE in
-        0) cat $WORKT | $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test > $WORKD/mysql.out 2>&1 ;;
-        1) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --execute="SOURCE ${WORKT};" --force test > $WORKD/mysql.out 2>&1 ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
-        2) $MYBASE/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test < ${WORKT} > $WORKD/mysql.out 2>&1 ;;
+        0) cat $WORKT | $BASEDIR/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test > $WORKD/mysql.out 2>&1 ;;
+        1) $BASEDIR/bin/mysql -uroot -S${CLIENT_SOCKET} --execute="SOURCE ${WORKT};" --force test > $WORKD/mysql.out 2>&1 ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
+        2) $BASEDIR/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test < ${WORKT} > $WORKD/mysql.out 2>&1 ;;
         *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in run_sql_code). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
       esac
     fi
@@ -2243,13 +2229,13 @@ process_outcome(){
     M4_ISSUE_FOUND=0
     if [ $PXC_MOD -eq 1 ]; then
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 1 ]; then
-        if ! $MYBASE/bin/mysqladmin -uroot --socket=${node1}/node1_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
+        if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node1}/node1_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 2 ]; then
-        if ! $MYBASE/bin/mysqladmin -uroot --socket=${node2}/node2_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
+        if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node2}/node2_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 3 ]; then
-        if ! $MYBASE/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
+        if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
     else
       if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
@@ -2258,7 +2244,7 @@ process_outcome(){
           M4_ISSUE_FOUND=1
         fi
       else
-        if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
+        if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
     fi
     if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
@@ -2385,7 +2371,7 @@ process_outcome(){
   
   # MODE9: ThreadSync Crash testing
   if [ $MODE -eq 9 ]; then
-    if ! $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then
+    if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then
       if [ "$STAGE" = "T" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TSCrash*] [$NOISSUEFLOW] Swapping files & saving last known good crash thread file(s) in $WORKD/log/"
       elif [ ! "$STAGE" = "V" ]; then
@@ -2421,14 +2407,14 @@ stop_mysqld_or_pxc(){
     else
       # RV-15/09/14 Added timeout due to bug http://bugs.mysql.com/bug.php?id=73914
       # RV-02/12/14 We do not want too fast a shutdown either; quite a few bugs happen when mysqld is being shutdown
-      timeout -k40 -s9 40s $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
+      timeout -k40 -s9 40s $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
       if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
   
       while :; do
         sleep 1
         if kill -0 $PIDV > /dev/null 2>&1; then 
           if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
-          if kill -0 $PIDV > /dev/null 2>&1; then $MYBASE/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi
+          if kill -0 $PIDV > /dev/null 2>&1; then $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi
           if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 8; else sleep 4; fi
           if kill -0 $PIDV > /dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
           sleep 5
@@ -2477,7 +2463,7 @@ finish(){
   $(cd $BUGTARDIR; tar -zhcf ${EPOCH}_bug_bundle.tar.gz ${EPOCH}*)
   echo_out "[Finish] Final testcase bundle + scripts in: $BUGTARDIR"
   echo_out "[Finish] Final testcase for script use     : $WORK_OUT (handy to use in combination with the scripts below)"
-  echo_out "[Finish] File containing datadir           : $WORK_MYBASE (All scripts below use this. Update this when basedir changes)"
+  echo_out "[Finish] File containing datadir           : $WORK_BASEDIR (All scripts below use this. Update this when basedir changes)"
   echo_out "[Finish] Matching data dir init script     : $WORK_INIT (This script will use /dev/shm/${EPOCH} as working directory)"
   echo_out "[Finish] Matching startup script           : $WORK_START (Starts mysqld with same options as used in reducer)"
   if [ $MODE -ge 6 ]; then
