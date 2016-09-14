@@ -1275,8 +1275,6 @@ init_workdir_and_files(){
     if [ $PXC_MOD -ne 1 ]; then 
       echo_out "[Init] Setting up standard working template (without using MYEXTRA options)"
       # Get version specific options
-      BIN=
-      if [ "${BIN}" == "" ]; then echo "Assert: no mysqld or mysqld-debug binary was found!"; fi
       MID=
       if [ -r ${BASEDIR}/scripts/mysql_install_db ]; then MID="${BASEDIR}/scripts/mysql_install_db"; fi
       if [ -r ${BASEDIR}/bin/mysql_install_db ]; then MID="${BASEDIR}/bin/mysql_install_db"; fi
