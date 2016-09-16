@@ -2164,7 +2164,7 @@ process_outcome(){
       FILETOCHECK=$WORKD/mysql.out
     fi
     NEWLINENUMBER=""
-    NEWLINENUMBER=$(grep "$QCTEXT" $FILETOCHECK2|grep -o "#[0-9]\+#$"|sed 's/#//g')
+    NEWLINENUMBER=$(grep "$QCTEXT" $FILETOCHECK2|grep -o "#[0-9]\+$"|sed 's/#//g')
     # TODO: Add check if same query has same output multiple times (add variable for number of occurences)
     if [ $(grep -c "$TEXT#$NEWLINENUMBER$" $FILETOCHECK) -gt 0 ]; then
       if [ ! "$STAGE" = "V" ]; then
