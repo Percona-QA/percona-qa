@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-# This script analyzes core files in subdirectories and writes output to gdb_<core file name>_STD/_FULL.txt
+# This script analyzes core files in subdirectories (at any depth) and writes output to gdb_<core file name>_STD/_FULL.txt
 
 if [ "$1" == "" ]; then
   echo "This script analyzes core files in subdirectories and writes output to gdb_<core file name>_STD/_FULL.txt."
@@ -45,11 +45,17 @@ EOF
 done;
 
 echo "Done!"
-echo "P.S. To quickly check what the cores are for, use:"
+echo "P.S. To quickly check what the cores are for, use (note: this provides a highly condensed list which may miss some similar issues):"
+echo 'grep -A 20 "Thread 1 (" *_STD.txt | sed "s|(.*)|(...)|g" | grep "#[4-6]" | egrep -v "assert|abort" | grep " in " | sed "s|.* in|in|" | sort -u'
+echo 'or:'
 echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]" | egrep -v "assert|abort" | grep " in " | sed "s|.* in|in|" | sort -u'
-echo "or:"
+echo 'or:'
 echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]" | egrep -v "assert|abort"'
-echo "for tokudb issues, use:"
+echo 'for tokudb issues, use:'
 echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]" | grep " in " | sed "s|.* in|in|" | sort -u'
-echo "or:"
+echo 'or:'
 echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]"'
+echo '-----'
+echo 'Then, once you have the desired string to look for, search for it to see what trials had the issue. E.g. (For example: "Sql_condition::message_text");'
+echo 'find . | grep $(grep "Sql_condition::message_text" *_STD.txt | sed "s|:.*||;s|_STD.txt||;s|.*_||" | head -n1)'
+
