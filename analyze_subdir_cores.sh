@@ -56,6 +56,7 @@ echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]" | grep " in " | sed "s|.
 echo 'or:'
 echo 'grep -A 20 "Thread 1 (" *_STD.txt | grep "#[4-6]"'
 echo '-----'
-echo 'Then, once you have the desired string to look for, search for it to see what trials had the issue. E.g. (For example: "Sql_condition::message_text");'
-echo 'find . | grep $(grep "Sql_condition::message_text" *_STD.txt | sed "s|:.*||;s|_STD.txt||;s|.*_||" | head -n1)'
-
+echo 'More advanced version (note this may not work if your core file pattern is not set to core.%p.%u.%g.%s.%t.%e (search setup_server.sh for the same for how to do this):'
+echo 'for FILE in $(ls *_STD.txt); do grep -HA11 "Thread 1 (" ${FILE} | grep -E "#4 |#5 |#6 " | tr -d "\n" | sed "s|0x[a-f0-9]\+ in ||g;s|.*\.14\([0-9]\+\)\..*#4[ ]\+\([\?:_a-zA-Z0-9]\+\) .*#5[ ]\+\([\?:_a-zA-Z0-9]\+\) \(.*\)|\2::\3::DUMMY\4DUMMY  14\1\n|;s|DUMMY.*#6[ ]\+\([\?:_a-zA-Z0-9]\+\) .*DUMMY|\1|;s|DUMMY||g"; done | sort -ut" " -k1,1'
+echo 'This will print unique frame #4/5/6 issues with their 14<x> core name. Then search for the trial;'
+echo 'find . | grep "1473897687"  # Trial number is subdir before the core file'
