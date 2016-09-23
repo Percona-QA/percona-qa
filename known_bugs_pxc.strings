@@ -51,13 +51,14 @@ Z29trans_has_updated_trans_tablePK3THD                                          
 ZN19Event_queue_element27compute_next_execution_timeEv                                   ## https://github.com/codership/mysql-wsrep/issues/279
 transactional_table .. .changed .. thd->get_transaction                                  ## https://github.com/codership/mysql-wsrep/issues/280 
 pause_seqno_ .= .-1                                                                      ## https://github.com/codership/mysql-wsrep/issues/282
+thd->enable_slow_log .. opt_slow_log                                                     ## http://bugs.mysql.com/bug.php?id=82899
+
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
 #Z22wsrep_sst_method_checkP7sys_varP3THDP7set_var                                # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z24wsrep_cluster_name_checkP7sys_varP3THDP7set_var                              # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z24wsrep_node_address_checkP7sys_varP3THDP7set_var                              # Fixed ## https://jira.percona.com/browse/PXC-440
-#Z25wsrep_slave_threads_checkP7sys_varP3THDP7set_var                             # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z26wsrep_slave_threads_updateP7sys_varP3THD13enum_var_type                      # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z26wsrep_start_position_checkP7sys_varP3THDP7set_var                            # Fixed ## https://jira.percona.com/browse/PXC-440
 #Z27wsrep_cluster_address_checkP7sys_varP3THDP7set_var                           # Fixed ## https://jira.percona.com/browse/PXC-440

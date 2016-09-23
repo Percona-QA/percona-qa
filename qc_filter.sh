@@ -15,7 +15,7 @@ done
 }
 
 # MyRocks and InnoDB have different maximum key sizes
-DIRLIST=$(grep -i "create table.* Specified key was too long" */pquery_thread-0.*.sql|awk -F '/' '{print $1}'|uniq)
+DIRLIST=$(grep -i "create.* table.* Specified key was too long" */pquery_thread-0.*.sql|awk -F '/' '{print $1}'|uniq)
 move
 
 # https://github.com/facebook/mysql-5.6/issues/260
