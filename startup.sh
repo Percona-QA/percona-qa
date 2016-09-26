@@ -91,14 +91,14 @@ echo "./stop;./wipe;./start;sleep 3;./prepare;./run;./stop" > measure
 echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> wipe
 echo "if [ -r log/master.err.PREV ]; then rm -f log/master.err.PREV; fi" >> wipe
 echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" >> wipe
-if [ "${VERSION_INFO}" == "5.7" ]; then
+if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
   echo "mkdir data/test" >> wipe
 fi
 echo "./stop >/dev/null 2>&1" > init
 echo "rm -Rf ${PWD}/data" >> init
 echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> init
 echo "rm -f log/master.*" >> init
-if [ "${VERSION_INFO}" == "5.7" ]; then
+if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
   echo "mkdir data/test" >> init
 fi
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5;./cl" > all
