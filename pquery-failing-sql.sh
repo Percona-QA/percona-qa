@@ -45,11 +45,9 @@ else  # Script is being manually executed, not via pquery-prep-red.sh
     echo "Assert! mysqld binary '$BIN' could not be read"
     exit 1
   fi
-  CORE=`ls -1 ${WORKD_PWD}/${TRIAL}/data/*core* 2>&1 | head -n1 | grep -v "No such file"`
-  if [ ! -r $CORE ]; then
-    echo "Assert! coredump '$CORE' could not be read"
-    exit 1
-  fi
+  CORE=`ls -1 ${WORKD_PWD}/${TRIAL}/data/*core* 2>&1 | head -n1 | grep -vE "No such file|Not a directory"`
+  if [ "${CORE}" == "" ]; then echo "Assert! coredump '$CORE' could not be read"; exit 1; fi
+  if [ ! -r $CORE ]; then echo "Assert! coredump '$CORE' could not be read"; exit 1; fi
   failing_queries_core
   failing_queries_error_log
   echo "Saved failing queries in ${WORKD_PWD}/$TRIAL/${TRIAL}.sql.failing"

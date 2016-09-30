@@ -158,7 +158,8 @@ extract_queries_error_log(){
   . ${SCRIPT_PWD}/pquery-failing-sql.sh ${TRIAL} 2
   if [ "${MULTI}" == "1" ]; then
     FAILING_SQL_COUNT=`cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing | wc -l`
-    echo "  > $[ $FAILING_SQL_COUNT - ${CORE_FAILURE_COUNT} ] quer(y)(ies) will be added with interleave sql function to the SQL trace"
+    if [ "${CORE_FAILURE_COUNT}" == "" ]; then CORE_FAILURE_COUNT=0; fi
+    echo "  > $[ ${FAILING_SQL_COUNT} - ${CORE_FAILURE_COUNT} ] quer(y)(ies) will be added with interleave sql function to the SQL trace"
   else
     for i in {1..3}; do
       BEFORESIZE=`cat ${INPUTFILE} | wc -l`
