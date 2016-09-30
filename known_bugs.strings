@@ -245,6 +245,9 @@ Z14free_tmp_tableP3THDP5TABLE                                          ## 5, PS1
 mh->m_magic == 1234                                                    ## 5, PS2
 ZN12ut_allocatorIhE8allocateEmPKhPKcbb                                 ## 6, MS,PS
 ZN11Query_arena10mem_callocEm                                          ## 6, PS2
+
+## =========== Special ===========
+ha_innodb.cc line 19339                                               ## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
   
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
@@ -375,6 +378,7 @@ rem0rec.cc line 845                                                             
 #row0ins.cc line 276                                                            ## Fixed ## http://bugs.launchpad.net/percona-server/5.6/+bug/1395706
 #row0ins.cc line 277                                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1195614 (fixed in 1395706)
 #row0ins.cc line 365                                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1224272 (dup of 1395579)
+row0ins.c line 2333                                                                     ## https://bugs.launchpad.net/percona-server/+bug/1628751
 row0merge.cc line 2692                                                                  ## http://bugs.mysql.com/bug.php?id=74887, MS build
 row0merge.cc line 2698                                                                  ## http://bugs.mysql.com/bug.php?id=74887, PS build
 row0mysql.cc line 2644                                            ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74634, MS build (Fixed in 5.6.25)
@@ -596,6 +600,7 @@ ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                             
 ZN10Item_fieldC2EP5Field                                                                ## http://bugs.mysql.com/bug.php?id=74628
 ZN10Item_param22safe_charset_converterEPK15charset_info_st                              ## http://bugs.mysql.com/bug.php?id=76039
 ZN10my_decimalaSERKS_                                                                   ## http://bugs.mysql.com/bug.php?id=80438
+ZN11Query_cache13end_of_resultEP3THD                                                    ## http://bugs.mysql.com/bug.php?id=83188
 ZN11MDL_context11find_ticketEP11MDL_requestP17enum_mdl_duration                         ## http://bugs.launchpad.net/percona-server/+bug/1403446
 ZN11MDL_request4initEN7MDL_key18enum_mdl_namespaceEPKcS3_13enum_mdl_type17enum_mdl_duration  ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74499 (fixed in 5.5.43)
 ZN11Table_cache12remove_tableEP5TABLE                                                   ## http://bugs.launchpad.net/percona-server/+bug/1444642   

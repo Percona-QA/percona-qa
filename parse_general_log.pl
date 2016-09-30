@@ -72,3 +72,5 @@ print OFILE ";\n";
 close IFILE;
 close OFILE;
 
+print "Done! Remember to do something like:\n";
+print "cat outfile | tr -d '\\n' | sed 's|;|;\\n|g' > outfile.new \n";
