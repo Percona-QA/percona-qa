@@ -61,9 +61,6 @@ if [ -z $WORKSPACE ]; then
   export WORKSPACE=$BIG_DIR/backups
 fi
 
-export WORKSPACE_LOC=$BIG_DIR/backups
-
-
 # Default my.cnf creation
 # Creating default my.cnf file
 rm -rf $BIG_DIR/my.cnf
@@ -189,9 +186,10 @@ function sysbench_rw_run(){
     sysbench --test=${SYSBENCH_DIR}/tests/db/oltp.lua --oltp_tables_count=$NUM_TABLES --oltp-table-size=$NUM_ROWS --rand-init=on --num-threads=$num_threads --oltp-read-only=on --report-interval=$REPORT_INTERVAL --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --mysql-table-engine=InnoDB --max-time=$WARMUP_TIME_SECONDS --mysql-user=$SUSER --mysql-password=$SPASS --mysql-db=${MYSQL_DATABASE} --max-requests=0 --percentile=99 run > $LOGS/sysbench_warmup.log 2>&1
     sleep 60
   fi
-
+  echo "Storing Sysbench results in ${WORKSPACE}"
+  echo '<?xml version="1.0" encoding="UTF-8"?>' > ${WORKSPACE}/${BENCH_ID}.xml
   for num_threads in ${threadCountList}; do
-    LOG_NAME=${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$LOG_BENCHMARK_NAME-$NUM_ROWS-$num_threads.txt
+    LOG_NAME=${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$NUM_ROWS-$num_threads.txt
     LOG_NAME_MEMORY=${LOG_NAME}.memory
     LOG_NAME_IOSTAT=${LOG_NAME}.iostat
     LOG_NAME_DSTAT=${LOG_NAME}.dstat
@@ -209,8 +207,10 @@ function sysbench_rw_run(){
     sysbench --test=${SYSBENCH_DIR}/tests/db/oltp.lua --oltp-non-index-updates=1 --oltp_tables_count=$NUM_TABLES --oltp-table-size=$NUM_ROWS --rand-init=on --num-threads=$num_threads  --report-interval=$REPORT_INTERVAL --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --mysql-table-engine=InnoDB --max-time=$RUN_TIME_SECONDS --mysql-user=$SUSER --mysql-password=$SPASS --mysql-db=${MYSQL_DATABASE} --max-requests=0 --percentile=99 run | tee $LOG_NAME
     sleep 6
     AVG_TRANS=`grep "transactions:" $LOG_NAME | awk '{print $3}' | sed 's/(//'`
-    echo "$num_threads : $AVG_TRANS" >> ${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$LOG_BENCHMARK_NAME-$NUM_ROWS.summary
+    echo "$num_threads : $AVG_TRANS" >> ${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$NUM_ROWS.summary
+    echo "  <THREAD_${num_threads} type=\"result\">${AVG_TRANS}</THREAD_${num_threads}>" >> ${WORKSPACE}/${BENCH_ID}.xml
   done
+  echo '</performance>' >> ${WORKSPACE}/${BENCH_ID}.xml
 
   pkill -f dstat
   pkill -f iostat
@@ -249,7 +249,7 @@ export BENCH_SUITE=sysbench
 export INNODB_CACHE=25G
 export NUM_TABLES=16
 export RAND_TYPE=uniform
-export BENCH_ID=innodb.5mm.${RAND_TYPE}.cpubound
+export BENCH_ID=innodb-5mm-${RAND_TYPE}-cpubound
 export NUM_ROWS=5000000
 export BENCHMARK_NUMBER=001
 
@@ -261,7 +261,7 @@ export DATASIZE=5M
 export INNODB_CACHE=15G
 export NUM_TABLES=16
 export RAND_TYPE=uniform
-export BENCH_ID=innodb.5mm.${RAND_TYPE}.iobound
+export BENCH_ID=innodb-5mm-${RAND_TYPE}-iobound
 export NUM_ROWS=5000000
 export BENCHMARK_NUMBER=002
 
@@ -274,7 +274,7 @@ export DATASIZE=1M
 export INNODB_CACHE=5G
 export NUM_ROWS=1000000
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-1mm.${RAND_TYPE}.cpubound
+export BENCH_ID=innodb-1mm-${RAND_TYPE}-cpubound
 export BENCHMARK_NUMBER=003
 
 start_pxc
@@ -285,7 +285,7 @@ export DATASIZE=1M
 export INNODB_CACHE=1G
 export NUM_ROWS=1000000
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-1mm.${RAND_TYPE}.iobound
+export BENCH_ID=innodb-1mm-${RAND_TYPE}-iobound
 export BENCHMARK_NUMBER=004
 
 start_pxc
