@@ -188,6 +188,7 @@ function sysbench_rw_run(){
   fi
   echo "Storing Sysbench results in ${WORKSPACE}"
   echo '<?xml version="1.0" encoding="UTF-8"?>' > ${WORKSPACE}/${BENCH_ID}.xml
+  echo '<performance>' >> ${WORKSPACE}/${BENCH_ID}.xml
   for num_threads in ${threadCountList}; do
     LOG_NAME=${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$NUM_ROWS-$num_threads.txt
     LOG_NAME_MEMORY=${LOG_NAME}.memory

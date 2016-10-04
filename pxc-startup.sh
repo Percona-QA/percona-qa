@@ -105,7 +105,7 @@ echo -e "    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./st
 echo -e "    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo -e "    --core-file  --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo -e "    --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
-echo -e "    --log-error=\${BUILD}/node0/node1.err $KEY_RING_OPTIONS \\" >> ./start_pxc
+echo -e "    --log-error=\${BUILD}/node0/node0.err $KEY_RING_OPTIONS \\" >> ./start_pxc
 echo -e "    --socket=\${BUILD}/node0/socket.sock --log-output=none \\" >> ./start_pxc
 echo -e "    --port=$RBASE --server-id=1 --wsrep_slave_threads=2 > \${BUILD}/node0/node0.err 2>&1 &\n" >> ./start_pxc
 
