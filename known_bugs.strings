@@ -319,8 +319,8 @@ fsp0fsp.cc line 2188                                                            
 fsp0fsp.cc line 3208                                                                    ## http://bugs.launchpad.net/percona-server/+bug/1384567 (won't be fixed)
 fsp0fsp.cc line 3246                                                                    ## http://bugs.launchpad.net/percona-server/+bug/1384567 (with older PS build) (idem)
 fts0fts.cc line 2209                                                                    ## http://bugs.mysql.com/bug.php?id=80579
-fts0fts.cc line 2224                                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1384588 (with older PS build)
-fts0fts.cc line 2228                                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1384588
+#fts0fts.cc line 2224                                                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1384588 (with older PS build)
+#fts0fts.cc line 2228                                                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1384588
 fts0vlc.ic line 96                                                                      ## http://bugs.mysql.com/bug.php?id=78643
 gis0sea.cc line 1329                                                                    ## http://bugs.mysql.com/bug.php?id=81497  # Sakila import bug (sql line 880)
 ha_innodb.cc line 1588                                                                  ## http://bugs.mysql.com/bug.php?id=74585, PS build (old LP #1384616)
@@ -355,8 +355,8 @@ lock0lock.cc line 5618                                                          
 #lock0lock.cc line 6004                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
 #lock0lock.cc line 6005                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
 #lock0lock.cc line 6007                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525
-#lock0lock.cc line 6452                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/5.6/+bug/1395579
-mem0dbg.cc line 680                                                                     ## http://bugs.launchpad.net/percona-server/5.6/+bug/1233128 (TokuDB)
+#lock0lock.cc line 6452                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1395579
+mem0dbg.cc line 680                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1233128 (TokuDB)
 mtr0mtr.cc line 323                                                                     ## http://bugs.mysql.com/bug.php?id=77972, MS build
 mtr0mtr.cc line 325                                                                     ## http://bugs.mysql.com/bug.php?id=77972, PS build
 mtr0mtr.cc line 513                                                                     ## http://bugs.mysql.com/bug.php?id=78333, PS build (MS:line 323) (similar to #77972)
@@ -442,7 +442,7 @@ hash_not_ok == 0                                                                
 host_length <= 60                                                                       ## http://bugs.mysql.com/bug.php?id=74678
 inited == NONE                                                                          ## http://bugs.mysql.com/bug.php?id=74650
 item_in->left_expr->cols                                                                ## http://bugs.mysql.com/bug.php?id=80440
-InnoDB. log block checksum mismatch. expected                                           ## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
+InnoDB. log block checksum mismatch. expected                                           ## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)  #DONOTREMOVE#
 . is_set() .. m_can_overwrite_status                                                    ## http://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## http://bugs.mysql.com/bug.php?id=74646
 .length % 4                                                                             ## http://bugs.mysql.com/bug.php?id=74220
