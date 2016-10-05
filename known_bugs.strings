@@ -27,6 +27,8 @@ TEXT=.false.$                                            ## http://bugs.mysql.co
 #ZN24subselect_hash_sj_engine7cleanupEv                  ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1622992
 #row0merge.cc line 526                                   ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1630485
 row0log.ic line 40                                                ## https://bugs.launchpad.net/percona-server/+bug/1630500
+#ha_innodb.cc line 4167                            ## Old line nr ## https://bugs.launchpad.net/percona-server/+bug/1629257
+ha_innodb.cc line 4203                                            ## https://bugs.launchpad.net/percona-server/+bug/1629257
 
 ## =========== fb-mysql ===========
 v->cfd_->internal_comparator                             ## http://github.com/facebook/mysql-5.6/issues/131
@@ -249,7 +251,8 @@ ZN12ut_allocatorIhE8allocateEmPKhPKcbb                                 ## 6, MS,
 ZN11Query_arena10mem_callocEm                                          ## 6, PS2
 
 ## =========== Special ===========
-ha_innodb.cc line 19339                                               ## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
+ha_innodb.cc line 19339                                               ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
+InnoDB. log block checksum mismatch. expected                         ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
   
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
@@ -326,7 +329,8 @@ fts0fts.cc line 2209                                                            
 fts0vlc.ic line 96                                                                      ## http://bugs.mysql.com/bug.php?id=78643
 gis0sea.cc line 1329                                                                    ## http://bugs.mysql.com/bug.php?id=81497  # Sakila import bug (sql line 880)
 ha_innodb.cc line 1588                                                                  ## http://bugs.mysql.com/bug.php?id=74585, PS build (old LP #1384616)
-ha_innodb.cc line 3455                                                                  ## http://bugs.launchpad.net/percona-server/+bug/1584556
+ha_innodb.cc line 3455                                                                  ## http://bugs.launchpad.net/percona-server/+bug/1584556 (old line nr)
+ha_innodb.cc line 3492                                                                  ## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
 ha_innodb.cc line 16152                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1381913 (dup of PS #1368552)
 #ha_innodb.cc line 16159                                                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1368552 (with oldPS) 
 #ha_innodb.cc line 16169                                                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1368552
@@ -444,7 +448,6 @@ hash_not_ok == 0                                                                
 host_length <= 60                                                                       ## http://bugs.mysql.com/bug.php?id=74678
 inited == NONE                                                                          ## http://bugs.mysql.com/bug.php?id=74650
 item_in->left_expr->cols                                                                ## http://bugs.mysql.com/bug.php?id=80440
-InnoDB. log block checksum mismatch. expected                                           ## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)  #DONOTREMOVE#
 . is_set() .. m_can_overwrite_status                                                    ## http://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## http://bugs.mysql.com/bug.php?id=74646
 .length % 4                                                                             ## http://bugs.mysql.com/bug.php?id=74220
