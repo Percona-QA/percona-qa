@@ -920,9 +920,9 @@ pquery_test(){
         fi
       else  # Not a query correctness testing run
         echoit "Starting pquery (log stored in ${RUNDIR}/${TRIAL}/pquery.log)..."
-        if [ ${QUERY_DURATION_TESTING} -eq 0 ]; then  # Query duration testing run
+        if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then  # Query duration testing run
           if [ ${PXC} -eq 0 ]; then
-            ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             PQPID="$!"
           else
             if [ ${PXC_CLUSTER_RUN} -eq 1 ];then
@@ -933,13 +933,13 @@ pquery_test(){
               ${PQUERY_BIN} --config-file=${RUNDIR}/${TRIAL}/pquery-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
               PQPID="$!"
             else
-              ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+              ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
               PQPID="$!"
             fi
           fi
-        else  # Standard pquery run
+        else  # Standard pquery run / Not a query duration testing run
           if [ ${PXC} -eq 0 ]; then
-            ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+            ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             PQPID="$!"
           else
             if [ ${PXC_CLUSTER_RUN} -eq 1 ];then
