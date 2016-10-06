@@ -41,6 +41,8 @@
 
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
+RANDOMMUTEX=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
+MUTEX=/tmp/pge_${RANDOMMUTEX}_IN_PROGRESS_MUTEX
 
 # Check that this is not being executed from the SCRIPT_PWD (which would mess up the real reducer.sh
 if [ "${PWD}" == "${SCRIPT_PWD}" ]; then 
@@ -53,34 +55,35 @@ elif [ ! -r ./pquery-run.log ]; then
   fi
 fi
 
-# Note that the below is still not 100% threadsafe. If pquery-prep-red.sh is writing a reducer.sh file which is at the same time being sed'ed by the loop below, there is a
-# potential for a single corrupted reducer<nr>.sh script. To resolve this, it would seem that setting a MUTEX in pquery-prep-red.sh may help, but this is invalid, because
-# multiple pquery-go-expert.sh scripts may be running simultaneously. In any case, 1) it's unlikely to happen, 2) if a single reducer is corrupted, just delete it and re-run
-# this script which will recreate it correctly.
-background_sed_loop(){                           # Update reducer<nr>.sh scripts as they are being created (a background process avoids need to wait till all reducers are created)
-  IN_PROGRESS_MUTEX=1                            # Not necessary here, just for (future) safety
+background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being created (a background process avoids the need to wait untill all reducers are created)
   while [ true ]; do
-    if [ $(ls reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then
-      sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" reducer*.sh
-      sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3|" reducer*.sh
-      sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" reducer*.sh
-      sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9|" reducer*.sh
-    fi
-    IN_PROGRESS_MUTEX=0
-    sleep 4  # 4 seconds
-    IN_PROGRESS_MUTEX=1
-    sleep 1
+    touch ${MUTEX}                                  # Create mutex (indicating that background_sed_loop is live)
+    sleep 2                                         # Ensure that we have a clean mutex/lock which will not be terminated by the main code anymore (ref: do sleep 1)
+    for REDUCER in $(ls reducer*.sh 2>/dev/null); do
+      if egrep -q '^finish .INPUTFILE' ${REDUCER}; then  # Ensure that pquery-prep-red.sh has fully finished writing this file (grep is for a string present on the last line only)
+        if ! egrep -q '#DONEDONE' ${REDUCER}; then       # Ensure that we're only updating files that were not updated previously (and possibly subsequently edited manually)
+          sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" ${REDUCER}
+          sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3|" ${REDUCER}
+          sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${REDUCER}
+          sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9|" ${REDUCER}
+          echo '#DONEDONE' >> ${REDUCER}
+        fi
+      fi
+    done
+    rm ${MUTEX}                                     # Remove mutex (allowing this function to be terminated by the main code)
+    sleep 4                                         # Sleep 4 seconds (allowing this function to be terminated by the main code)
   done
 }
 
 while(true); do
-  IN_PROGRESS_MUTEX=1; background_sed_loop &        # Start background_sed_loop in a background thread, it will patch reducer<nr>.sh scripts
+  touch ${MUTEX}                                    # Create mutex (indicating that background_sed_loop is live)
+  background_sed_loop &                             # Start background_sed_loop in a background thread, it will patch reducer<nr>.sh scripts
   PID=$!                                            # Capture the PID of the background_sed_loop so we can kill -9 it once pquery-prep-red.sh is complete
   ${SCRIPT_PWD}/pquery-prep-red.sh                  # Execute pquery-prep.red generating reducer<nr>.sh scripts, auto-updated by the background thread
-  while [ ${IN_PROGRESS_MUTEX} -ne 0 ]; do sleep 1; done  # Ensure kill of background_sed_loop only happens when background process has just started sleeping
+  while [ -r ${MUTEX} ]; do sleep 1; done           # Ensure kill of background_sed_loop only happens when background process has just started sleeping
   kill -9 ${PID} 2>/dev/null                        # Kill the background_sed_loop
   ${SCRIPT_PWD}/pquery-clean-known.sh               # Clean known issues
   ${SCRIPT_PWD}/pquery-eliminate-dups.sh            # Eliminate dups, leaving at least 10 trials for issues where the number of trials >=10 and leaving all other (<10) trials
   ${SCRIPT_PWD}/pquery-results.sh                   # Report
-  sleep 450  # 7.5 minutes
+  sleep 300                                         # Sleep 5 minutes
 done
