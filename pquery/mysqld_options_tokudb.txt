@@ -76,6 +76,8 @@
 --tokudb-fsync-log-period=0
 --tokudb-cache-size=52428800
 --tokudb-cache-size=1125899906842624
+--tokudb-dir-per-db=1
+--tokudb-dir-per-db=0
 --tokudb-directio=1
 --tokudb-directio=0
 --tokudb-lock-timeout=28800

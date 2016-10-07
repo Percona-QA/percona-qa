@@ -77,13 +77,17 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
 
 while(true); do
   touch ${MUTEX}                                    # Create mutex (indicating that background_sed_loop is live)
-  background_sed_loop &                             # Start background_sed_loop in a background thread, it will patch reducer<nr>.sh scripts
-  PID=$!                                            # Capture the PID of the background_sed_loop so we can kill -9 it once pquery-prep-red.sh is complete
-  ${SCRIPT_PWD}/pquery-prep-red.sh                  # Execute pquery-prep.red generating reducer<nr>.sh scripts, auto-updated by the background thread
-  while [ -r ${MUTEX} ]; do sleep 1; done           # Ensure kill of background_sed_loop only happens when background process has just started sleeping
-  kill -9 ${PID} 2>/dev/null                        # Kill the background_sed_loop
-  ${SCRIPT_PWD}/pquery-clean-known.sh               # Clean known issues
-  ${SCRIPT_PWD}/pquery-eliminate-dups.sh            # Eliminate dups, leaving at least 10 trials for issues where the number of trials >=10 and leaving all other (<10) trials
-  ${SCRIPT_PWD}/pquery-results.sh                   # Report
+  if [ `ls */*.sql 2>/dev/null | wc -l` -gt 0 ]; then  # If trials are available
+    background_sed_loop &                           # Start background_sed_loop in a background thread, it will patch reducer<nr>.sh scripts
+    PID=$!                                          # Capture the PID of the background_sed_loop so we can kill -9 it once pquery-prep-red.sh is complete
+    ${SCRIPT_PWD}/pquery-prep-red.sh                # Execute pquery-prep.red generating reducer<nr>.sh scripts, auto-updated by the background thread
+    while [ -r ${MUTEX} ]; do sleep 1; done         # Ensure kill of background_sed_loop only happens when background process has just started sleeping
+    kill -9 ${PID} >/dev/null 2>&1                  # Kill the background_sed_loop
+    ${SCRIPT_PWD}/pquery-clean-known.sh             # Clean known issues
+    ${SCRIPT_PWD}/pquery-eliminate-dups.sh          # Eliminate dups, leaving at least 10 trials for issues where the number of trials >=10 and leaving all other (<10) trials
+  fi
+  if [ $(ls reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then  # If reducers are available after cleanup
+    ${SCRIPT_PWD}/pquery-results.sh                 # Report
+  fi
   sleep 300                                         # Sleep 5 minutes
 done
