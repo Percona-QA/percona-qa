@@ -456,6 +456,7 @@ length <= max_data_length                                                       
 lex.sphead == __null                                                                    ## http://bugs.mysql.com/bug.php?id=74537
 lock_type >= TL_READ                                              ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74740 (fixed in 5.8.0)
 .mysql_bin_log.is_open                                                                  ## http://bugs.mysql.com/bug.php?id=76614
+m_owner .= __null                                                                       ## https://tokutek.atlassian.net/browse/DB-1017
 map->bitmap .* map2->bitmap .* map->n_bits==map2->n_bits                                ## http://bugs.mysql.com/bug.php?id=74504
 maxcount.=0                                                                             ## http://bugs.mysql.com/bug.php?id=74898
 multi_range_length > 0                                                                  ## http://bugs.mysql.com/bug.php?id=81410
