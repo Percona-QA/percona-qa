@@ -628,6 +628,7 @@ ZN14Arg_comparator24cache_converted_constantEP3THDPP4ItemS4_11Item_result       
 ZN14Item_func_plus10decimal_opEP10my_decimal                                            ## http://bugs.mysql.com/bug.php?id=74619 (Same gdb trace of Z14my_decimal_addjP10my_decimalPKS_S2_ assertion)
 ZN14partition_info20check_partition_infoEP3THDPP10handlertonP7handlerP24st_ha_create_information  ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74451 (fixed in 5.6.24)
 ZN14partition_info9get_cloneEv                                     ## Still present ftm ## http://bugs.mysql.com/bug.php?id=74478 (fixed in 5.6.24)
+ZNK14user_var_entry13assert_lockedEv                                                    ## https://tokutek.atlassian.net/browse/DB-1018
 #ZN15Query_log_eventC1EP3THDPKcmbbbib                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1397173 (dup of 1412423)
 ZN16Rpl_info_handlerD1Ev                                                                ## http://bugs.launchpad.net/percona-server/+bug/1452125
 ZN17I_P_List_iteratorI10MDL_ticket8I_P_ListIS0_16I_P_List_adapterIS0_XadL_ZNS0_15next_in_contextEEEXadL_ZNS0_15prev_in_contextEEEE21I_P_List_null_counter21I_P_List_no_push_backIS0_EEEppEi                                                         ## http://bugs.launchpad.net/percona-server/+bug/1441001
