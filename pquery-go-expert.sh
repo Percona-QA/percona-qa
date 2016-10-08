@@ -39,6 +39,14 @@
 #   like this as the reproducer scrips are a neat/tidy way of reproducing the issue for the developers by only change the base directory in <epoch>_mybase) 
 # Hope that all of the above makes sense :), ping me if it does not :)
 
+PID=
+ctrl_c(){
+  if [ "${PID}" != "" ]; then
+    kill -9 ${PID} >/dev/null 2>&1
+  fi
+}
+trap ctrl_c SIGINT
+
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 RANDOMMUTEX=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
