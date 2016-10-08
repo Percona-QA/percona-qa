@@ -41,9 +41,14 @@
 
 PID=
 ctrl_c(){
-  if [ "${PID}" != "" ]; then
+  if [ "${PID}" != "" ]; then      # Ensure background process of background_sed_loop() is terminated
     kill -9 ${PID} >/dev/null 2>&1
   fi
+  if [ "${REDUCER}" != "" ]; then  # Cleanup last reducer being worked on as it may have been incomplete
+    rm -f ${REDUCER}
+  fi
+  echo "CTRL+c was pressed. Terminating."
+  exit 1
 }
 trap ctrl_c SIGINT
 
@@ -79,9 +84,11 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
         fi
       fi
     done
+    REDUCER=                                        # Clear reducer variable to avoid last reducer being deleted in ctrl_c() if it WAS complete (which at this point it would be)
     rm ${MUTEX}                                     # Remove mutex (allowing this function to be terminated by the main code)
     sleep 4                                         # Sleep 4 seconds (allowing this function to be terminated by the main code)
   done
+  PID=
 }
 
 while(true); do
@@ -98,5 +105,6 @@ while(true); do
   if [ $(ls reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then  # If reducers are available after cleanup
     ${SCRIPT_PWD}/pquery-results.sh                 # Report
   fi
+  echo "Waiting for next round... Sleeping 300 seconds..."
   sleep 300                                         # Sleep 5 minutes
 done
