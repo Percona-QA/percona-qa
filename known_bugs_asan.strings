@@ -1,0 +1,5 @@
+Crashing query                                                                                                                Bug link
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+SELECT f1(1.e+1);                                                                                                             http://bugs.mysql.com/bug.php?id=82739
+SELECT * FROM t2 INTO OUTFILE 'out2';                                                                                         http://bugs.mysql.com/bug.php?id=82742
+INSERT INTO t3 VALUES((104 + 759 / -559 * TRUNCATE(1500,6934)) DIV (CRC32(-751) + LOG(1) DIV -371),1.e+20,-1.e+30);           http://bugs.mysql.com/bug.php?id=82743
