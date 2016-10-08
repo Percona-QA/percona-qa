@@ -557,6 +557,7 @@ Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                 
 Z17wild_case_compareP15charset_info_stPKcS2_                                            ## http://bugs.mysql.com/bug.php?id=78230
 Z18close_thread_tableP3THDPP5TABLE                                                      ## http://bugs.mysql.com/bug.php?id=75854
 Z18create_ref_for_keyP4JOINP13st_join_tableP7Key_usey                                   ## http://bugs.mysql.com/bug.php?id=74559 (5.7 bug above, #75944)
+Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm                         ## https://bugs.launchpad.net/percona-server/+bug/1631555
 Z18mysql_ha_rm_tables                                             ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74583, 74584, and LP #1384656 (Fixed in 5.7.6)
 #Z19close_thread_tablesP3THD                                                   ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1392924 (dup of 1387951)
 Z19mysql_unlock_tablesP3THDP13st_mysql_lock                                             ## http://bugs.mysql.com/bug.php?id=75234

@@ -726,6 +726,8 @@ set_internal_options(){  # Internal options: do not modify!
     if [ "${MYUSER}" == "" ];   then echo "Assert: \$MYUSER is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"; exit 1; fi
   fi
   trap ctrl_c SIGINT  # Requires ${EPOCH} to be set already
+  # Even if RQG is no longer used, the next line (i.e. including 'transforms') should NOT be modified. It provides backwards compatibility with RQG and it provides a long unique 
+  # string which is unlikely to be present in testcases (it's used in grep -v a few times below). "DROP DATABASE test;CREATE DATABASE test;USE test;" would be more/too? generic.
   DROPC="DROP DATABASE transforms;CREATE DATABASE transforms;DROP DATABASE test;CREATE DATABASE test;USE test;"
   STARTUPCOUNT=0
   ATLEASTONCE="[]"
@@ -915,9 +917,9 @@ multi_reducer(){
           $($RESTART_WORKD/subreducer $1 >/dev/null 2>/dev/null) >/dev/null 2>/dev/null &
           export MULTI_PID$t=$!
           INIT_FILE_USED=
-          if [[ "${MEXTRA}" == *"init[-_]file"* ]]; then INIT_FILE_USED="or any files called from the --init-file present in \$MYEXTRA, "; fi
+          if [[ "${MEXTRA}" == *"init[-_]file"* ]]; then INIT_FILE_USED="or any file(s) called using --init-file which is present in \$MYEXTRA, "; fi
           # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, or it's working directory, ${INIT_FILE_USED}while this script was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
         fi
         sleep 1  # Hasten slowly, server already busy with subreducers
       done
@@ -953,7 +955,7 @@ multi_reducer(){
       if [ $MODE -lt 6 ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Ensuring any rogue subreducer processes are terminated"
         kill_multi_reducer
-        rm -Rf $WORKD/subreducer/  # Cleanup subreducer directory: if this issue was non-sporadic, and stage 1 is next (with no MULTI threaded reducing because the issue is found non-sporadic), then this ensures that the space currently used by ./subreducer is saved. This is handy for /dev/shm usage which tends to quickly run out os space. Normally the subreducer dir is removed at the start of a new MULTI threaded run, but this is the one case where the directory still exists and is no longer needed. This will also remove the subreducer directory when the issues IS sporadic, and that is fine - it would have been deleted at the starrt of MULTI threaded reducing anyways. MULTI threaded reducing is done in multi_reducer()
+        rm -Rf $WORKD/subreducer/  # Cleanup subreducer directory: if this issue was non-sporadic, and stage 1 is next (with no MULTI threaded reducing because the issue is found non-sporadic), then this ensures that the space currently used by ./subreducer is saved. This is handy for /dev/shm usage which tends to quickly run out os space. Normally the subreducer dir is removed at the start of a new MULTI threaded run, but this is the one case where the directory still exists and is no longer needed. This will also remove the subreducer directory when the issues IS sporadic, and that is fine - it would have been deleted at the start of MULTI threaded reducing anyways. MULTI threaded reducing is done in multi_reducer()
       fi
     elif [ $MULTI_FOUND -lt $MULTI_THREADS ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
@@ -2581,6 +2583,14 @@ verify(){
   STAGE='V'
   TRIAL=1
   echo_out "$ATLEASTONCE [Stage $STAGE] Verifying the bug/issue exists and is reproducible by reducer (duration depends on initial input file size)"
+  # --init-file: Instead of using an init file, add the init file contents to the top of the testcase, if that still reproduces the issue, below
+  ORIGINALMYEXTRA=$MYEXTRA
+  INITFILE=
+  MYEXTRAWITHOUTINIT=
+  if [[ "$MYEXTRA" == *"init[-_]file"* ]]; then
+    INITFILE=$(cat $MYEXTRA | grep -oE "\-\-init[-_]file=.* |\-\-init[-_]file=[^ ]+$" | sed 's|\-\-init[-_]file=||')
+    MYEXTRAWITHOUTINIT=$(cat $MYEXTRA | sed 's|\-\-init[-_]file=.* ||;s|\-\-init[-_]file=[^ ]\+$||')
+  fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer 
     while :; do
       multi_reducer $1
@@ -2633,6 +2643,11 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' \
                   -e "s/', '/','/g" > $WORKT
+          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+          fi
         fi
       elif [ $TRIAL -eq 2 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2654,6 +2669,11 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' \
                   -e "s/', '/','/g" > $WORKT
+          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+          fi
         fi
       elif [ $TRIAL -eq 3 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2678,6 +2698,11 @@ verify(){
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' > $WORKT
+          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+          fi
         fi
       elif [ $TRIAL -eq 4 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2695,6 +2720,11 @@ verify(){
             | sed -e 's/;[\t ]*#.*/;/i' \
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
+          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+          fi
         fi
       elif [ $TRIAL -eq 5 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2710,6 +2740,11 @@ verify(){
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #5: Low initial simplification (only main data INSERT lines split & remove # comments)"
           sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $WORKF \
             | sed -e 's/;[\t ]*#.*/;/i' > $WORKT
+          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+          fi
         fi
       elif [ $TRIAL -eq 6 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2721,6 +2756,8 @@ verify(){
           done
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #6: No initial simplification"
+          echo_out "$ATLEASTONCE [Stage $STAGE] Restoring original MYEXTRA and using --init-file exactly as given there originally"
+          MYEXTRA=$ORIGINALMYEXTRA
           cp -f $WORKF $WORKT
         fi
       else
@@ -3602,7 +3639,7 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
   done
 fi
 
-#STAGE8 : Execute mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
+#STAGE8: Execute mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
 if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   STAGE=8
   TRIAL=1
@@ -3667,7 +3704,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
           echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
         fi
         if echo "${MYEXTRA}" | grep 'tokudb'; then
-          if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
+          if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so'; then
             MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
             echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variables"
           fi

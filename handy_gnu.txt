@@ -1,6 +1,9 @@
 # ------ GNU/Bash ------
-# In-file replace a with b in file in.txt and save a backup copy of original as in.txt.bak. If '' or nothing is specified for i, then no backup is saved.
+# In-file replace a with b in file in.txt and save a backup copy of original as in.txt.bak. If '' or nothing is specified for i, then no backup is saved
   sed -i'.bak' 's/a/b/' in.txt
+# To cat two files and immediately redirect the output back so that it becomes the content of the first file, one cannot use 'cat a b > a', instead use:
+  echo '1' > a; echo '2' > b; echo "$(cat a b)" > a; cat a  # i.e. echo "$(cat a b)" > a
+  echo '1' > a; echo '2' >> a; echo '3' > b; echo "$(echo 'inserted 1'; cat a | grep -v '1'; cat b)" > a; cat a  # More complex example with extra insert/remove
 # Start output of a file after a certain string is seen (i.e. delete all output upto a certain string)    Second example uses 'delete (d)' line numbers instead 
   sed '0,/3/d' test  # If test had 6 lines with numbers 1->6, then output would be 4,5,6 (3 lines)        sed '1,3d' test  # Note functionality is quite different
 # Get all directories that consist of numbers (any lenght) and the for each of those do something (dir name will be in $i inside loop)
