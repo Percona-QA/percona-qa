@@ -500,7 +500,7 @@ pquery_test(){
   ISSTARTED=0
   if [ ${PXC} -eq 0 ]; then
     mkdir -p ${RUNDIR}/${TRIAL}/data/test ${RUNDIR}/${TRIAL}/data/mysql ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log
-    echo 'SELECT 1;' > ${RUNDIR}/${TRIAL}/pquery_thread-0.sql  # Add fake pquery_thread-0.sql file enabling pquery-prep-red.sh/reducer.sh to be used with/for mysqld startup issues
+    echo 'SELECT 1;' > ${RUNDIR}/${TRIAL}/startup_failure_thread-0.sql  # Add fake file enabling pquery-prep-red.sh/reducer.sh to be used with/for mysqld startup issues
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
       echoit "Copying datadir from template for Primary mysqld..."
     else
@@ -764,7 +764,7 @@ pquery_test(){
     done
   fi
   if [ ${ISSTARTED} -eq 1 ]; then
-    rm -f ${RUNDIR}/${TRIAL}/pquery_thread-0.sql  # Remove the earlier created fake (SELECT 1; only) pquery_thread-0.sql file present for startup issues (server is started OK now)
+    rm -f ${RUNDIR}/${TRIAL}/startup_failure_thread-0.sql  # Remove the earlier created fake (SELECT 1; only) file present for startup issues (server is started OK now)
     if [ ${THREADS} -eq 1 ]; then  # Single-threaded run (1 client only)
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then # Single-threaded query correctness run using a chunk from INFILE against two servers to then compare outcomes
         echoit "Taking ${QC_NR_OF_STATEMENTS_PER_TRIAL} lines randomly from ${INFILE} as testcase for this query correctness trial..."

@@ -251,7 +251,9 @@ ZN12ut_allocatorIhE8allocateEmPKhPKcbb                                 ## 6, MS,
 ZN11Query_arena10mem_callocEm                                          ## 6, PS2
 
 ## =========== Special ===========
+ha_innodb.cc line 3469                                                ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
 ha_innodb.cc line 19339                                               ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
+ha_innodb.cc line 19050                                               ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.2)
 InnoDB. log block checksum mismatch. expected                         ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
   
 ## =========== Line number based ===========
@@ -437,6 +439,7 @@ exec_method .= EXEC_MATERIALIZATION .* .exec_method == EXEC_MATERIALIZATION .* e
 .flags.finalized                                                                        ## http://bugs.mysql.com/bug.php?id=76040
 #Failing assertion: (mode . .16384) == BTR_MODIFY_LEAF                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1224272 (dup of 1395579)
 #Failing assertion: purge_sys->state == PURGE_STATE_RUN                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1368552
+field_types == 0.*MYSQL_TYPE_GEOMETRY                                                   ## https://tokutek.atlassian.net/browse/DB-1019
 fixed == 1                                                                              ## http://bugs.launchpad.net/percona-server/+bug/1381853
 ftnode->blocknum.b == blocknum.b                                                        ## http://tokutek.atlassian.net/browse/DB-852
 from->len == to->len                                                                    ## http://bugs.mysql.com/bug.php?id=76477
