@@ -86,7 +86,7 @@ fi
 # ASAN errors
 if [ $(grep -l "ERROR:" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then 
   echo "--------------"
-  echo "ASAN trials found and the issues seen:"
+  echo "ASAN trials (or other 'ERROR:' issues) found and the issues seen:"
   grep "ERROR:" */log/master.err 2>/dev/null | sed 's|/log/master.err||'
   echo "(> ASAN trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='ERROR: <copy some limited detail from line above but NOT the addresses>' in their reducer<trialnr>.sh files. Then, simply reduce as normal.)"
 fi
