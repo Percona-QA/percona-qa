@@ -27,7 +27,7 @@ while (<IFILE>) {
   # Is this a header (at top of file or anywhere inside the file - for when multiple files are combined)
   if ((!($_=~/,.*version:.*started with:/i))&&(!($_=~/^tcp port:/i))&&(!($_=~/unix socket:/i))&&(!($_=~/^time.*id.*command.*argument/i))){
     # Write multi-line statements: if line does not starts with a tab, nor a date, then this is a multi-line: write result directly to the output file
-    if ((!($_=~/^\t/))&&(!($_=~/^[0-9][0-9][0-9][0-9][0-9][0-9][ \t]/))){  
+    if ((!($_=~/^\t/))&&(!($_=~/^[0-9][0-9][-0-9][0-9][-0-9][-0-9]/))){  
         $out = substr $_,0,9999999;
         if ((!($out=~/^kill [0-9]/i))&&(!($out=~/commit[^n.]*release/i))){
           print OFILE " $out";
@@ -44,23 +44,20 @@ while (<IFILE>) {
       $out = substr $_,35,9999999;
       # Drop KILL and COMMIT RELEASE statements (KILL QUERY and COMMIT NO RELEASE are not affected)
       if ((!($out=~/^kill [0-9]/i))&&(!($out=~/commit[^n.]*release/i))){
-        print OFILE ";$out";
+        print OFILE ";\n$out";
       }
     }elsif ($_=~/[0-9] Init DB\t/){
       $out = substr $_,16,999;
-      print OFILE ";USE $out";
+      print OFILE ";\nUSE $out";
     }
   }
 }
 # Fixup last line
-print OFILE ";";
+print OFILE ";\n";
 
 # Close files
 close IFILE;
 close OFILE;
-
-# Re-assemble multi-line statements (move into Perl later)
-`cat $opt_o | sed 's|;|;\\n|g' > tmp; mv tmp $opt_o`;
 
 # Finish
 print "Done! Output is ready in: $opt_o\n";

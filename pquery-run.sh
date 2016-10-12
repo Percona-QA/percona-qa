@@ -1106,7 +1106,7 @@ pquery_test(){
     (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
     sleep 2; sync
   fi
-  if [ ${ISSTARTED} -eq 1 ]; then  # Do not try and print pquery log for a failed mysqld start
+  if [ ${ISSTARTED} -eq 1 -a ${TRIAL_SAVED} -ne 1 ]; then  # Do not try and print pquery log for a failed mysqld start
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
       echoit "Pri engine pquery run details:$(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|.*:||')"
       echoit "Sec engine pquery run details:$(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|.*:||')"
@@ -1165,67 +1165,50 @@ pquery_test(){
         echoit "No Valgrind errors detected. $(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ${RUNDIR}/${TRIAL}/log/master.err | sed 's|.*ERROR S|ERROR S|')"
       fi
     fi
-    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
-      echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null)"
-      if [ ${PXC} -eq 0 ]; then
-        echoit "Bug found (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err`"
-      else
-        CORE1=`ls ${RUNDIR}/${TRIAL}/node1/*core.* 2>/dev/null || true`
-        CORE2=`ls ${RUNDIR}/${TRIAL}/node2/*core.* 2>/dev/null || true`
-        CORE3=`ls ${RUNDIR}/${TRIAL}/node3/*core.* 2>/dev/null || true`
-        if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err`"; fi
-        if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err`"; fi
-        if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err`"; fi
-      fi
-      if [ ${TRIAL_SAVED} -eq 0 ]; then
-        savetrial
-        TRIAL_SAVED=1
-      fi
-    elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
-      echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
-      if [ ${TRIAL_SAVED} -eq 0 ]; then
-        STOREANYWAY=1
-        savetrial
-        TRIAL_SAVED=1
-      fi
-    elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 -a ${TIMEOUT_REACHED} -eq 0 ]; then
-      echoit "'MySQL server has gone away' detected >=200 times for this trial, and the pquery timeout was not reached; saving this trial for further analysis"
-      if [ ${TRIAL_SAVED} -eq 0 ]; then
-        echo "This trial had not reached timeout yet 'MySQL server has gone away' was seen >=200 times in the SQL log. Further research for this trial is needed. Check if a coredump is present, and check the mysqld error log, the pquery logs and the SQL log, especially the last command before 'MySQL server has gone away' started happening. If it is a SELECT query on P_S, it's likely http://bugs.mysql.com/bug.php?id=82663 - a mysqld hang" > ${RUNDIR}/${TRIAL}/GONEAWAY
-        STOREANYWAY=1
-        savetrial
-        TRIAL_SAVED=1
-      fi
-    elif [ $(grep "ERROR:" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
-      echoit "ASAN issue detected in the mysqld error log for this trial; saving this trial"
-      if [ ${TRIAL_SAVED} -eq 0 ]; then
-        STOREANYWAY=1
-        savetrial
-        TRIAL_SAVED=1
-      fi
-    elif [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
-      if [ ${TRIAL_SAVED} -eq 0 ]; then
-        echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
-        savetrial
-        TRIAL_SAVED=1
-      fi
-    else
-      if [ ${SAVE_SQL} -eq 1 ]; then 
-        if [ ${VALGRIND_RUN} -eq 1 ]; then
-          if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
-            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump, server gone away, or Valgrind issue was generated), except the SQL trace (as SAVE_SQL=1)"
-          fi
+    if [ ${TRIAL_SAVED} -eq 0 ]; then
+      if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
+        echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null)"
+        if [ ${PXC} -eq 0 ]; then
+          echoit "Bug found (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err`"
         else
-          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no coredump or server gone away issue was generated), except the SQL trace (as SAVE_SQL=1)"
+          CORE1=`ls ${RUNDIR}/${TRIAL}/node1/*core.* 2>/dev/null || true`
+          CORE2=`ls ${RUNDIR}/${TRIAL}/node2/*core.* 2>/dev/null || true`
+          CORE3=`ls ${RUNDIR}/${TRIAL}/node3/*core.* 2>/dev/null || true`
+          if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err`"; fi
+          if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err`"; fi
+          if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err`"; fi
         fi
-        savesql
+        savetrial;TRIAL_SAVED=1
+      elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
+        echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
+        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+      elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 -a ${TIMEOUT_REACHED} -eq 0 ]; then
+        echoit "'MySQL server has gone away' detected >=200 times for this trial, and the pquery timeout was not reached; saving this trial for further analysis"
+        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+      elif [ $(grep "ERROR:" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
+        echoit "ASAN issue detected in the mysqld error log for this trial; saving this trial"
+        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+      elif [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
+        echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
+        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
       else
-        if [ ${VALGRIND_RUN} -eq 1 ]; then
-          if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
-            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump, server gone away, or Valgrind issue was generated)" 
+        if [ ${SAVE_SQL} -eq 1 ]; then 
+          if [ ${VALGRIND_RUN} -eq 1 ]; then
+            if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
+              echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no issue was seen), except the SQL trace (as SAVE_SQL=1)"
+            fi
+          else
+            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no issue was seen), except the SQL trace (as SAVE_SQL=1)"
           fi
+          savesql
         else
-          echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 as well as SAVE_SQL=0, and no coredump or server gone away issue was generated)" 
+          if [ ${VALGRIND_RUN} -eq 1 ]; then
+            if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
+              echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 and SAVE_SQL=0, and no issue was seen)" 
+            fi
+          else
+            echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 and SAVE_SQL=0, and no issue was seen)"
+          fi
         fi
       fi
     fi  
