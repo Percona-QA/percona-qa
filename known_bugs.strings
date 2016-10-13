@@ -235,10 +235,7 @@ join == __null                                                         ## http:/
 part_id < m_tot_part s                                                 ## http://tokutek.atlassian.net/browse/DB-983
 
 ## =========== PREP
-dict0dict.cc line 1421                                                 ## 1, MS
-ZN12ut_allocatorIhE10deallocateEPhm                                    ## 1, PS
-mi_write_blob_record                                                   ## 2, MS/PS
-row0trunc.cc line 1983                                                 ## 3, MS/PS
+row0trunc.cc line 1983                                                 ## http://bugs.mysql.com/bug.php?id=83361
 ut0lst.h line 412                                                      ## 4, PS1
 Z16dispatch_commandP3THDPK8COM_DATA19enum_server_command               ## 4, PS2
 ZN11ha_innobase9write_rowEPh                                           ## 4, PS3
@@ -254,8 +251,7 @@ ZN11Query_arena10mem_callocEm                                          ## 6, PS2
 ha_innodb.cc line 3469                                                ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
 ha_innodb.cc line 3495                                                ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
 ha_innodb.cc line 19339                                               ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
-ha_innodb.cc line 19050                                               ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.2)
-ha_innodb.cc line 19407                                               ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
+ha_innodb.cc line 19411                                               ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
 InnoDB. log block checksum mismatch. expected                         ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
   
 ## =========== Line number based ===========

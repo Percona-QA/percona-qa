@@ -5,7 +5,7 @@
 # ========================================= Internal variables: !DO NOT CHANGE! ==================================================
 RANDOM=`date +%s%N | cut -b14-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||'); SCRIPT_PWD=$(cd `dirname $0` && pwd)
-WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; STOREANYWAY=0
+WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0; STOREANYWAY=0
 
 # ========================================= User configurable variables: generics 1 ===============================================
 PQUERY_BIN=${SCRIPT_PWD}/pquery/pquery2-ps                           # pquery2-ps: Percona Server, pquery2-ms: MySQL, pquery2-ws: WS/FB: WSS/fb-mysql, pquery-md: MariaDB
