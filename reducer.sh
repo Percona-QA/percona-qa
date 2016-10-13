@@ -1460,12 +1460,12 @@ generate_run_scripts(){
     echo "$ ./${EPOCH}_run_pquery      # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
     echo "$ ./${EPOCH}_run             # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
+      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)" >> $WORK_HOW_TO_USE
     fi
   else
     echo "$ ./${EPOCH}_run             # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
+      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)" >> $WORK_HOW_TO_USE
     fi
   fi
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
