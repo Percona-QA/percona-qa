@@ -61,6 +61,7 @@ if [ ! -r lctimenames.txt ]; then echo "Assert: lctimenames.txt not found!"; exi
 if [ ! -r character.txt ]; then echo "Assert: character.txt not found!"; exit 1; fi
 if [ ! -r numsimple.txt ]; then echo "Assert: numsimple.txt not found!"; exit 1; fi
 if [ ! -r numeric.txt ]; then echo "Assert: numeric.txt not found!"; exit 1; fi
+if [ ! -r aggregate.txt ]; then echo "Assert: aggregate.txt not found!"; exit 1; fi
 
 # ====== Read data files into arrays
 mapfile -t tables    < tables.txt       ; TABLES=${#tables[*]}
@@ -97,6 +98,7 @@ mapfile -t lctimenms < lctimenames.txt  ; LCTIMENMS=${#lctimenms[*]}
 mapfile -t character < character.txt    ; CHARACTER=${#character[*]}
 mapfile -t numsimple < numsimple.txt    ; NUMSIMPLE=${#numsimple[*]}
 mapfile -t numeric   < numeric.txt      ; NUMERIC=${#numeric[*]}
+mapfile -t aggregate < aggregate.txt    ; AGGREGATE=${#aggregate[*]}
 
 if [ ${TABLES} -lt 2 ]; then echo "Assert: number of table names is less then 2. A minimum of two tables is required for proper operation. Please ensure tables.txt has at least two table names"; exit 1; fi
    
@@ -135,6 +137,7 @@ lctimename(){ echo "${lctimenms[$[$RANDOM % $LCTIMENMS]]}"; }
 character() { echo "${character[$[$RANDOM % $CHARACTER]]}"; }
 numsimple() { echo "${numsimple[$[$RANDOM % $NUMSIMPLE]]}"; }
 numeric()   { echo "${numeric[$[$RANDOM % $NUMERIC]]}"; }
+aggregate() { echo "${aggregate[$[$RANDOM % $AGGREGATE]]}"; }
 # Bash requires functions to be defined ABOVE the line from which they are called. This would normally mean that we have to watch the order in which we define and call functions, which would be complex. For example, `data`
 # calls other functions and those functions in turn may loop back to `data` (i.e. normally impossible to code). However, here we declare all functions first, and only then start calling them towards the end of the script 
 # which is fine/works, even if functions are looping or are declared BELOW the line from which they are callled (remember the main call is at the end of the script and all functions are allready "read". Ref handy_gnu.txt
@@ -204,6 +207,8 @@ dataornum() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`data`"; else echo "
 eitherornn(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`dataornum`"; else echo "`numericop`"; fi }                                      # 50% data (inc numbers), 50% NUMERIC FUNCTION() like ABS(nr) etc.
 fullnrfunc(){ if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`eitherornn` `numsimple` `eitherornn`"; else echo "`eitherornn` `numsimple` `eitherornn` `numericadd`"; fi }  # 50% full numeric function, 50% idem with nesting
 data()      { if [ $[$RANDOM % 20 + 1] -le 17 ]; then echo "`datafile`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi }         # 85% data from data.txt file, 15% generated full numerical function
+aggregated(){ if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed "s|DUMMY|`data`|"; else echo "`aggregate`" | sed "s|DUMMY|`danrorfull`|"; fi }  # 80% AGGREGATE FUNCTION with data, 20% with numbers or full function (for use inside a SELECT ... query)
+aggregatec(){ if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed "s|DUMMY|c`n3`|"; else echo "`aggregate`" | sed "s|DUMMY|`aggregated`|"; fi }  # 80% AGGREGATE FUNCTION using a column, 20% with data, numbers or full function (for use inside a SELECT ... FROM ... query)
 # ========================================= Triple
 ac()        { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "a"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "b"; else echo "c"; fi; fi }  # 40% a, 30% b, 30% c
 trxopt()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`readwrite`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "WITH CONSISTENT SNAPSHOT, `readwrite`"; else echo "WITH CONSISTENT SNAPSHOT"; fi; fi }  # 50% R/W or R/O, 25% WITH C/S + R/W or R/O, 25% C/S
@@ -262,29 +267,37 @@ lastjoin()  {
   LASTJOIN=`join`
   if [ "${LASTJOIN}" == "JOIN" ]; then echo "`natural` JOIN"; else echo "${LASTJOIN}"; fi
 }
-selectq()   {  # Select Query. Do not use 'select()' as select is a system keyword
-  case $[$RANDOM % 6 + 1] in  # Select (needs further work: JOIN syntax + SELECT options)
-    1) echo "SELECT c`n3` FROM `table`";;
-    2) echo "SELECT c`n3`,c`n3` FROM `table`";;
-    3) echo "SELECT c`n3`,c`n3` FROM `table` AS a1 `lastjoin` `table` AS a2 `whereal`";;
-    4) echo "SELECT c`n3` FROM `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
-    5) case $[$RANDOM % 2 + 1] in  
+selectq()   {  # Select Query. Do not use 'select' as select is a reserved system command, use 'selectq' instead
+  case $[$RANDOM % 10 + 1] in  # Select (needs further work: JOIN syntax + SELECT options)
+    1) echo "SELECT * FROM `table`";;
+    2) echo "SELECT `aggregatec` FROM `table`";;  # Aggregate function with a column, data, or numerical function for example SELECT COUNT(c1) FROM t1 or the same with BIT_OR(4+3)
+    3) echo "SELECT `aggregated`";;               # Aggregate function with data or a numerical function, for example BIT_OR(1) or SUM(5+1)
+    4) case $[$RANDOM % 2 + 1] in                 # Subqueries
+        1) echo "SELECT * FROM (`selectq`) AS a1";;
+        2) echo "SELECT * FROM (`query`) AS a1";;
+        *) echo "Assert: invalid random case selection in SELECT FROM (subquery) case";;
+       esac;;
+    5) echo "SELECT c`n3` FROM `table`";;
+    6) echo "SELECT c`n3`,c`n3` FROM `table`";;
+    7) echo "SELECT c`n3`,c`n3` FROM `table` AS a1 `lastjoin` `table` AS a2 `whereal`";;
+    8) echo "SELECT c`n3` FROM `table` AS a1 `join` `table` AS a2 `lastjoin` `table` AS a3 `whereal`";;
+    9) case $[$RANDOM % 2 + 1] in  
         1) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM ${FIXEDTABLE} `joinlronla` `table` ON ${FIXEDTABLE}.c`n3`";;
         2) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM `table` `joinlronla` ${FIXEDTABLE} ON ${FIXEDTABLE}.c`n3`";;
         *) echo "Assert: invalid random case selection in FIXEDTABLE1 join case";;
        esac;;
-    6) case $[$RANDOM % 2 + 1] in  
+   10) case $[$RANDOM % 2 + 1] in  
         1) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM ${FIXEDTABLE} `joinlronla` `table` ON ${FIXEDTABLE}.c`n3`=`data`";;
         2) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM `table` `joinlronla` ${FIXEDTABLE} ON ${FIXEDTABLE}.c`n3`=`data`";;
         *) echo "Assert: invalid random case selection in FIXEDTABLE2 join case";;
        esac;;
-    #7) case $[$RANDOM % 3 + 1] in  # Needs fixing
+    #10) case $[$RANDOM % 3 + 1] in  # Needs fixing
     #    1) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3` FROM ${FIXEDTABLE} `joinlron` `table` `joinlronla` `table` USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
     #    2) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3` FROM `table` `joinlron` ${FIXEDTABLE} `joinlronla` `table` USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
     #    3) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3` FROM `table` `joinlron` `table` `joinlronla` ${FIXEDTABLE} USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
     #    *) echo "Assert: invalid random case selection in FIXEDTABLE4 join case";;
     #   esac;;
-    #8) case $[$RANDOM % 2 + 1] in  # Needs fixing
+    #11) case $[$RANDOM % 2 + 1] in  # Needs fixing
     #    1) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM ${FIXEDTABLE} `joinlronla` `table` USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
     #    2) FIXEDTABLE="`table`"; echo "SELECT ${FIXEDTABLE}.c`n3` FROM `table` `joinlronla` ${FIXEDTABLE} USING (${FIXEDTABLE}.c`n3`,${FIXEDTABLE}.c`n3`)";;
     #    *) echo "Assert: invalid random case selection in FIXEDTABLE3 join case";;
@@ -371,9 +384,10 @@ query(){
         *) echo "Assert: invalid random case selection in DELETE case";;
       esac;;
     12) echo "TRUNCATE `table`";;  # Truncate
-    13) case $[$RANDOM % 2 + 1] in  # UPDATE (needs further work)
+    13) case $[$RANDOM % 3 + 1] in  # UPDATE (needs further work)
         1) echo "UPDATE `table` SET c1=`data`";;
-        2) echo "UPDATE `table` SET c1=`data` `where` `orderby` `limit`";;
+        2) echo "UPDATE `table` SET c1=`data` `where`";;
+        3) echo "UPDATE `table` SET c1=`data` `where` `orderby` `limit`";;
         *) echo "Assert: invalid random case selection in UPDATE case";;
       esac;;
     1[4-6]) case $[$RANDOM % 12 + 1] in  # Generic statements (needs further work except flush and reset)
@@ -565,21 +579,37 @@ query(){
          10) echo "SELECT EVENT_ID, EVENT_NAME, TIMER_WAIT FROM performance_schema.events_waits_history WHERE EVENT_NAME LIKE '%wsrep%'";;
           *) echo "Assert: invalid random case selection in P_S PXC specific subcase";;
           esac;;
-        *) echo "Assert: invalid random case selection in P_S subcase";;
+        *) echo "Assert: invalid random case selection in P_S case";;
       esac;;
-3[6-7]) case $[$RANDOM % 4 + 1] in  # Calling/setup of functions, procedures (complete)
-          1) echo "SET @`ac`=`data`";;
-          2) echo "CALL `proc`(@`ac`)";;
-          3) echo "SELECT @`ac`";;
-          4) echo "SELECT `func`(`data`)";;
-          *) echo "Assert: invalid random case selection in func,proc call subcase";;
+3[6-7]) case $[$RANDOM % 7 + 1] in  # Calling & setup of functions and procedures (complete)
+      [1-2]) echo "SET @`ac`=`data`";;
+          3) echo "CALL `proc`(@`ac`)";;
+          4) echo "CALL `proc`(@`ac`,@`ac`)";;
+          5) case $[$RANDOM % 2 + 1] in
+              1) echo "SELECT @`ac`";;
+              2) echo "SELECT ROW_COUNT();";;
+              *) echo "Assert: invalid random case selection in func,proc SELECT subcase";;
+          esac;;
+          6) case $[$RANDOM % 2 + 1] in
+              1) echo "SELECT `func`(@`ac`)";;
+              2) echo "SELECT `func`(`data`)";;
+              *) echo "Assert: invalid random case selection in function-with-var subcase";;
+          esac;;
+          7) case $[$RANDOM % 4 + 1] in
+              1) echo "SELECT `func`(@`ac`,`data`)";;
+              2) echo "SELECT `func`(`data`,`data`)";;
+              3) echo "SELECT `func`(`data`,@`ac`)";;
+              4) echo "SELECT `func`(@`ac`,@`ac`)";;
+              *) echo "Assert: invalid random case selection in function-with-var subcase";;
+          esac;;
+          *) echo "Assert: invalid random case selection in func,proc case";;
         esac;;
 3[8-9]) case $[$RANDOM % 4 + 1] in  # Numeric functions: this should really become a callable function so that it can be used instead of `data` for example, etc.
          1) echo "SELECT `fullnrfunc`";;
          2) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
          3) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
          4) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
-         *) echo "Assert: invalid random case selection in func,proc call subcase";;
+         *) echo "Assert: invalid random case selection in numeric functions case";;
        esac;;
    
      # To add:    
