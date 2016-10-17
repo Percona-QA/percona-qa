@@ -30,8 +30,8 @@ if [ ${PXC} -eq 1 ]; then
   while read line; do
     STRING="`echo "$line" | sed 's|[ \t]*##.*$||'`"
     if [ "`echo "$STRING" | sed 's|^[ \t]*$||' | grep -v '^[ \t]*#'`" != "" ]; then
-      if [ `ls reducer* 2>/dev/null | wc -l` -gt 0 ]; then
-        grep -li "${STRING}" reducer* | sed 's/[^0-9.]*\([0-9.]*\).*/\1/' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
+      if [ `ls reducer[0-9]* 2>/dev/null | wc -l` -gt 0 ]; then
+        grep -li "${STRING}" reducer[0-9]* | sed 's/[^0-9.]*\([0-9.]*\).*/\1/' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
       fi
     fi
     #sync; sleep 0.02  # Making sure that next line in file does not trigger same deletions
@@ -41,11 +41,11 @@ fi
 while read line; do
   STRING="`echo "$line" | sed 's|[ \t]*##.*$||'`"
   if [ "`echo "$STRING" | sed 's|^[ \t]*$||' | grep -v '^[ \t]*#'`" != "" ]; then
-    if [ `ls reducer* 2>/dev/null | wc -l` -gt 0 ]; then
+    if [ `ls reducer[0-9]* 2>/dev/null | wc -l` -gt 0 ]; then
       if [ ${PXC} -eq 1 ]; then
-        grep -li "${STRING}" reducer* | sed 's/[^0-9.]*\([0-9.]*\).*/\1/' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
+        grep -li "${STRING}" reducer[0-9]* | sed 's/[^0-9.]*\([0-9.]*\).*/\1/' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
       else
-        grep -li "${STRING}" reducer* | sed 's/[^0-9]//g' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
+        grep -li "${STRING}" reducer[0-9]* | sed 's/[^0-9]//g' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
       fi
     fi
   fi
@@ -57,7 +57,7 @@ grep "CT NAME_CONST('a', -(1 [ANDOR]\+ 2)) [ANDOR]\+ 1" */log/master.err | sed '
 
 if [ ${REACH} -eq 0 ]; then  # Avoid normal output if this is an automated run (REACH=1)
   if [ -d ./bundles ]; then
-    echo "Done! Any trials in ./bundles were not touched."
+    echo "Done! Any trials in ./bundles were not touched. Any Valgrind trials were not touched."
   else
     echo "Done!"
   fi
