@@ -31,9 +31,27 @@ else
                 if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
               fi
             else
-              echo "Deleting directory ${DIR} (directory age: ${AGEDIR}s)"
-              COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
-              if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+              DIRNAME=$(echo ${DIR} | sed 's|.*/||')
+              if [ "$(echo ${DIRNAME} | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9]||')" == "" ]; then  # 6 Numbers subdir; this is likely a pquery-run.sh generated directory
+                SUBDIRCOUNT=$(ls ${DIR} 2>/dev/null | wc -l)  # Number of trial subdirectories
+                if [ ${SUBDIRCOUNT} -le 1 ]; then  # pquery-run.sh directories generally have 1 (or 0 when in between trials) subdirectories. Both 0 and 1 need to be covered
+                  SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
+                  if [ "${SUBDIR}" == "" ]; then  # Script may have caught a snapshot in-between pquery-run.sh trials
+                    sleep 3  # Delay (to provide pquery-run.sh (if running) time to generate new trial directory), then recheck
+                    SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
+                  fi
+                  AGESUBDIR=$[ $(date +%s) - $(stat -c %Z ${SUBDIR}) ]  # Current trial directory age in seconds
+                  if [ ${AGESUBDIR} -ge 10800 ]; then  # Don't delete pquery-run.sh directories if they have recent trials in them (i.e. they are likely still running): >=3hr
+                    echo "Deleting directory ${DIR} (trial subdirectory age: ${AGESUBDIR}s)"
+                    COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+                    if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+                  fi
+                fi
+              else 
+                echo "Deleting directory ${DIR} (directory age: ${AGEDIR}s)"
+                COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+                if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+              fi
             fi
           fi
         fi
