@@ -1660,11 +1660,11 @@ start_mysqld_main(){
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
@@ -1674,11 +1674,11 @@ start_mysqld_main(){
     PIDV="$!"
   else
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
-                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
+                         --user=$MYUSER $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then  
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
@@ -1709,7 +1709,7 @@ start_valgrind_mysqld_main(){
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
   CMD="${TIMEOUT_COMMAND} valgrind --suppressions=$BASEDIR/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
               ${BIN} --basedir=${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
-                              --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
+                              --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA $TOKUDB_LOAD \
                               --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none 
   if [ "${CHK_ROCKSDB}" == "1" ];then
@@ -1729,7 +1729,7 @@ start_valgrind_mysqld_main(){
   echo "valgrind --suppressions=\${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
        \$BIN --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-       --socket=$WORKD/socket.sock $MYEXTRA ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
+       --socket=$WORKD/socket.sock $MYEXTRA $TOKUDB_LOAD ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   if [ "${CHK_ROCKSDB}" == "1" ];then
     sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START_VALGRIND
   fi
@@ -3680,8 +3680,9 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
       if echo "${MYEXTRA}" | grep 'tokudb'; then
         if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
-          MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variable"
+          TOKUDB_LOAD=" --plugin-load-add=tokudb=ha_tokudb.so"
+        else
+          TOKUDB_LOAD=""
         fi
       fi
       run_and_check
@@ -3705,8 +3706,9 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
         fi
         if echo "${MYEXTRA}" | grep 'tokudb'; then
           if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so'; then
-            MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variables"
+            TOKUDB_LOAD=" --plugin-load-add=tokudb=ha_tokudb.so"
+          else
+            TOKUDB_LOAD=""
           fi
         fi
         run_and_check
@@ -3725,8 +3727,9 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
           fi
           if echo "${MYEXTRA}" | grep 'tokudb'; then
             if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
-              MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
-              echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variables"
+              TOKUDB_LOAD=" --plugin-load-add=tokudb=ha_tokudb.so"
+            else
+              TOKUDB_LOAD=""
             fi
           fi
           run_and_check

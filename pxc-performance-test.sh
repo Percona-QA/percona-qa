@@ -230,6 +230,24 @@ function sysbench_rw_run(){
   
 }
 
+iibench_insert_run(){
+  LOG_NAME=${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}.txt
+  LOG_NAME_MEMORY=${LOG_NAME}.memory
+  LOG_NAME_IOSTAT=${LOG_NAME}.iostat
+  LOG_NAME_DSTAT=${LOG_NAME}.dstat
+  LOG_NAME_DSTAT_CSV=${LOG_NAME}.dstat.csv
+  if [ ${BENCHMARK_LOGGING} == "Y" ]; then
+    # verbose logging
+    echo "*** verbose benchmark logging enabled ***"
+    check_memory &
+    MEM_PID+=("$!")
+    iostat -dxm $IOSTAT_INTERVAL $IOSTAT_ROUNDS  > $LOG_NAME_IOSTAT &
+    dstat -t -v --nocolor --output $LOG_NAME_DSTAT_CSV $DSTAT_INTERVAL $DSTAT_ROUNDS > $LOG_NAME_DSTAT &
+  fi
+  python iibench.py ${CREATE_TABLE_STRING} --db_user=$SUSER --db_password=$SPASS --db_socket=${DB_DIR}/node1/socket.sock  --db_name=${MYSQL_DATABASE} --max_rows=${MAX_ROWS} --max_table_rows=${MAX_TABLE_ROWS} --rows_per_report=${ROWS_PER_REPORT} --engine=INNODB ${IIBENCH_QUERY_PARM} --unique_checks=${UNIQUE_CHECKS} --run_minutes=${RUN_MINUTES} --tokudb_commit_sync=${COMMIT_SYNC} --max_ips=${MAX_IPS} --num_secondary_indexes=${NUM_SECONDARY_INDEXES} | tee $LOG_NAME
+
+}
+
 
 # **********************************************************************************************
 # sysbench
@@ -291,4 +309,23 @@ export BENCHMARK_NUMBER=004
 
 start_pxc
 sysbench_rw_run
+
+export CREATE_TABLE_STRING="--setup"
+export BENCH_SUITE=iibench
+export BENCH_ID=innodb-10m-$BENCH_SUITE
+export INNODB_CACHE=25G
+export MYSQL_DATABASE=test
+export MAX_ROWS=10000000
+export MAX_TABLE_ROWS=10000000
+export ROWS_PER_REPORT=100000
+export IIBENCH_QUERY_PARM="--insert_only"
+export UNIQUE_CHECKS=1
+export RUN_MINUTES=60
+export COMMIT_SYNC=0
+export MAX_IPS=-1
+export NUM_SECONDARY_INDEXES=3
+
+#start_pxc
+#iibench_insert_run
+
 
