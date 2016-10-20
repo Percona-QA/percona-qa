@@ -254,7 +254,8 @@ ha_innodb.cc line 3495                                                ##DONOTREM
 ha_innodb.cc line 19339                                               ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
 ha_innodb.cc line 19411                                               ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
 InnoDB. log block checksum mismatch. expected                         ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
-  
+ut0ut.cc line 932                                                     ##DONOTREMOVE## InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
+ 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
 #btr0btr.cc line 1081                                                 ## Fixed upstream ## http://bugs.mysql.com/bug.php?id=74605, MS build (old LP #1384561)
@@ -431,6 +432,7 @@ bit < map->n_bits                                                 ## Still prese
 comma_length > 0                                                                        ## http://bugs.mysql.com/bug.php?id=74603 (old LP #1384625)
 data_offset == ..null_count                                                             ## http://bugs.mysql.com/bug.php?id=74677
 db_length == copy->db_length                                                            ## http://bugs.mysql.com/bug.php?id=74604 (old LP #1384621)
+decimals_arg <= 30                                                                      ## http://bugs.mysql.com/bug.php?id=83437
 #db_txn_struct_i.txn->parent                                       ## Still present ftm  ## http://tokutek.atlassian.net/browse/DB-761 (fixed in 5.6.23/Tk7.5.6)
 do_checksum.*remains                                                                    ## http://bugs.mysql.com/bug.php?id=75079
 #duration .= MDL_EXPLICIT .* .thd->mdl_context.is_lock_owner.m_namespace        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1432494
@@ -478,6 +480,7 @@ part_func_value > part_end_val ? .loc_part_id == max_partition .* .part_info->de
 part_share->partitions_share_refs->num_parts >= m_tot_parts       ## Still present ftm  ## http://bugs.mysql.com/bug.php?id=74288 (fixed in 5.6.24)
 pending.*.ttp->thd                                                                      ## http://bugs.launchpad.net/percona-server/+bug/1427526
 pfs->m_processlist_id .= 0                                                              ## http://bugs.mysql.com/bug.php?id=78292
+precision > 0                                                                           ## http://bugs.mysql.com/bug.php?id=83433
 reginfo.lock_type >= TL_READ                                                            ## http://bugs.mysql.com/bug.php?id=74740 (old PS #1384679)
 scale.*=.*precision                                                                     ## http://bugs.mysql.com/bug.php?id=74859
 share->rows_recorded                                                                    ## http://bugs.mysql.com/bug.php?id=76307
@@ -635,6 +638,7 @@ ZN14partition_info9get_cloneEv                                     ## Still pres
 ZNK14user_var_entry13assert_lockedEv                                                    ## http://tokutek.atlassian.net/browse/DB-1018
 #ZN15Query_log_eventC1EP3THDPKcmbbbib                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1397173 (dup of 1412423)
 ZN16Rpl_info_handlerD1Ev                                                                ## http://bugs.launchpad.net/percona-server/+bug/1452125
+ZN16Partition_helper19handle_ordered_prevEPh                                            ## https://tokutek.atlassian.net/browse/DB-1025 (also see LP 1634708 and MS 83435)
 ZN17I_P_List_iteratorI10MDL_ticket8I_P_ListIS0_16I_P_List_adapterIS0_XadL_ZNS0_15next_in_contextEEEXadL_ZNS0_15prev_in_contextEEEE21I_P_List_null_counter21I_P_List_no_push_backIS0_EEEppEi                                                         ## http://bugs.launchpad.net/percona-server/+bug/1441001
 ZN17sys_var_pluginvar14session_updateEP3THDP7set_var                                    ## http://bugs.launchpad.net/percona-server/+bug/1384560
 ZN17Opt_trace_context5startEbbbbllmy                                                    ## Likely not a bug, asked Umesh to check (testcase: see above at top)
