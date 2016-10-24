@@ -137,8 +137,8 @@ start_pxc_node(){
   startup_check(){
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
-      if ${BUILD}/bin/mysqladmin -uroot -S$node/socket.sock ping > /dev/null 2>&1; then
-        echoit "Started PXC node${i}. Socket : $node/socket.sock"
+      if ${BUILD}/bin/mysqladmin -uroot -S/tmp/n${i}.sock ping > /dev/null 2>&1; then
+        echoit "Started PXC node${i}. Socket : /tmp/n${i}.sock"
         break
       fi
     done
@@ -169,30 +169,32 @@ start_pxc_node(){
        --datadir=$node $IS_NEW --wsrep_cluster_address=$WSREP_CLUSTER \
        --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
        --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
-       --socket=$node/socket.sock --port=$RBASE1 --wsrep_provider=none --wsrep_sst_method=mysqldump --wsrep_sst_auth=sslsst: > $node/node${i}.err 2>&1 &
+       --socket=/tmp/n${i}.sock --port=$RBASE1 --wsrep_provider=none --wsrep_sst_method=mysqldump --wsrep_sst_auth=sslsst: > $node/node${i}.err 2>&1 &
 
       startup_check
-      ${BUILD}/bin/mysql -uroot --socket=$node/socket.sock -e"CREATE USER 'sslsst'@'%' REQUIRE SSL;GRANT ALL ON *.* TO 'sslsst'@'%';"
 
-      ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$i/socket.sock shutdown &> /dev/null
+      ${BUILD}/bin/mysql -uroot --socket=/tmp/n${i}.sock -e"CREATE USER 'sslsst'@'%' REQUIRE SSL;GRANT ALL ON *.* TO 'sslsst'@'%';"
+
+      ${BUILD}/bin/mysqladmin -uroot -S/tmp/n${i}.sock shutdown &> /dev/null
 
       echoit "Starting PXC node${i} for mysqldump sst test..."
       ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
        --datadir=$node $IS_NEW --wsrep_cluster_address=$WSREP_CLUSTER \
        --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
        --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
-       --socket=$node/socket.sock --port=$RBASE1 --wsrep_sst_method=mysqldump --wsrep_sst_auth=sslsst: > $node/node${i}.err 2>&1 &
-
+       --socket=/tmp/n${i}.sock --port=$RBASE1 --wsrep_sst_method=mysqldump --wsrep_sst_auth=sslsst: > $node/node${i}.err 2>&1 &
+      
+      startup_check
     else
       echoit "Starting PXC node${i}..."
       ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
        --datadir=$node $IS_NEW --wsrep_cluster_address=$WSREP_CLUSTER \
        --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
        --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
-       --socket=$node/socket.sock --port=$RBASE1 --wsrep_sst_method=mysqldump --wsrep_sst_auth=sslsst: > $node/node${i}.err 2>&1 &
+       --socket=/tmp/n${i}.sock --port=$RBASE1 --wsrep_sst_method=mysqldump --wsrep_sst_auth=sslsst: > $node/node${i}.err 2>&1 &
       
       startup_check
-      ${BUILD}/bin/mysql -uroot --socket=$node/socket.sock -e"CREATE USER 'sslsst'@'%' REQUIRE SSL;GRANT ALL ON *.* TO 'sslsst'@'%';"
+      ${BUILD}/bin/mysql -uroot --socket=/tmp/n${i}.sock -e"CREATE USER 'sslsst'@'%' REQUIRE SSL;GRANT ALL ON *.* TO 'sslsst'@'%';"
        
     fi
   else
@@ -201,7 +203,7 @@ start_pxc_node(){
      --datadir=$node $IS_NEW --wsrep_cluster_address=$WSREP_CLUSTER \
      --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
      --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
-     --socket=$node/socket.sock --port=$RBASE1 > $node/node${i}.err 2>&1 &
+     --socket=/tmp/n${i}.sock --port=$RBASE1 > $node/node${i}.err 2>&1 &
      startup_check
   fi
 
@@ -231,32 +233,32 @@ sst_encryption_run(){
   rm -rf ${BUILD}/node* ${BUILD}/keyring_node*
   start_pxc_node 1
 
-  ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e"drop database if exists test;create database test;"
+  ${BUILD}/bin/mysql -uroot --socket=/tmp/n1.sock -e"drop database if exists test;create database test;"
 
   #sysbench data load
   echoit "Running sysbench load data..."
-  sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --num-threads=30 --oltp_tables_count=30 --oltp_table_size=1000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_load.log 2>&1
+  sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --num-threads=30 --oltp_tables_count=30 --oltp_table_size=1000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/n1.sock run > ${BUILD}/logs/sysbench_load.log 2>&1
 
   start_pxc_node 2
 
   echoit "Initiated sysbench read write run ..."
-  sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua --report-interval=1 --num-threads=30 --max-time=200 --max-requests=1870000000 --oltp-tables-count=30 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
+  sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua --report-interval=1 --num-threads=30 --max-time=200 --max-requests=1870000000 --oltp-tables-count=30 --oltp_table_size=1000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/n1.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
   SYSBENCH_PID="$!"
   sleep 100
   kill -9 $SYSBENCH_PID
   wait ${SYSBENCH_PID} 2>/dev/null
   TEST_TIME=$((`date '+%s'` - TEST_START_TIME))
 
-  TABLE_ROW_COUNT_NODE1=`${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e"select count(1) from test.sbtest11"`
-  TABLE_ROW_COUNT_NODE2=`${BUILD}/bin/mysql -uroot --socket=${BUILD}/node2/socket.sock -e"select count(1) from test.sbtest11"`
+  TABLE_ROW_COUNT_NODE1=`${BUILD}/bin/mysql -uroot --socket=/tmp/n1.sock -e"select count(1) from test.sbtest11"`
+  TABLE_ROW_COUNT_NODE2=`${BUILD}/bin/mysql -uroot --socket=/tmp/n2.sock -e"select count(1) from test.sbtest11"`
 
   if  [[ ( -z $TABLE_ROW_COUNT_NODE1 ) &&  (  -z $TABLE_ROW_COUNT_NODE2 ) ]] ;then 
     TABLE_ROW_COUNT_NODE1=1;
     TABLE_ROW_COUNT_NODE2=2; 
   fi
   for i in `seq 1 2`;do
-    ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$i/socket.sock shutdown &> /dev/null
-    echoit "Server on socket ${BUILD}/node$i/socket.sock with datadir ${BUILD}/node$i halted"
+    ${BUILD}/bin/mysqladmin -uroot -S/tmp/n${i}.sock shutdown &> /dev/null
+    echoit "Server on socket /tmp/n${i}.sock with datadir ${BUILD}/node$i halted"
   done
 }
 
