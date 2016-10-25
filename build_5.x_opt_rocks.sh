@@ -35,7 +35,7 @@ cd ${CURPATH}_opt
 ### TEMPORARY HACK TO AVOID COMPILING TB (WHICH IS NOT READY YET)
 rm -Rf ./plugin/tokudb-backup-plugin
 
-cmake . -DWITH_ZLIB=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON ${ASAN} | tee /tmp/5.7_opt_build
+cmake . -DWITH_ZLIB=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON -DWITH_ROCKSDB=1 ${ASAN} | tee /tmp/5.7_opt_build
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
   ASAN_OPTIONS="detect_leaks=0" make -j${MAKE_THREADS} | tee -a /tmp/5.7_opt_build  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)

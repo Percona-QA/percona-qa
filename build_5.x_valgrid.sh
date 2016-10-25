@@ -1,6 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
+MAKE_THREADS=1
+
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
 fi
@@ -29,7 +31,7 @@ rm -Rf ./plugin/tokudb-backup-plugin
 
 cmake . -DWITH_ZLIB=system -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON -DWITH_VALGRIND=ON | tee /tmp/5.7_valgrind_build  # Do NOT include ASAN! (ASAN crash==wrong/missed Valgrind output)
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
-make -j5 | tee -a /tmp/5.7_valgrind_build
+make -j${MAKE_THREADS} | tee -a /tmp/5.7_valgrind_build
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_valgrind_build  # Note that make_binary_distribution is created on-the-fly during the make compile
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
