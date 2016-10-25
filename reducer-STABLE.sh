@@ -726,6 +726,8 @@ set_internal_options(){  # Internal options: do not modify!
     if [ "${MYUSER}" == "" ];   then echo "Assert: \$MYUSER is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"; exit 1; fi
   fi
   trap ctrl_c SIGINT  # Requires ${EPOCH} to be set already
+  # Even if RQG is no longer used, the next line (i.e. including 'transforms') should NOT be modified. It provides backwards compatibility with RQG and it provides a long unique 
+  # string which is unlikely to be present in testcases (it's used in grep -v a few times below). "DROP DATABASE test;CREATE DATABASE test;USE test;" would be more/too? generic.
   DROPC="DROP DATABASE transforms;CREATE DATABASE transforms;DROP DATABASE test;CREATE DATABASE test;USE test;"
   STARTUPCOUNT=0
   ATLEASTONCE="[]"
@@ -915,9 +917,9 @@ multi_reducer(){
           $($RESTART_WORKD/subreducer $1 >/dev/null 2>/dev/null) >/dev/null 2>/dev/null &
           export MULTI_PID$t=$!
           INIT_FILE_USED=
-          if [[ "${MEXTRA}" == *"init[-_]file"* ]]; then INIT_FILE_USED="or any files called from the --init-file present in \$MYEXTRA, "; fi
+          if [[ "${MEXTRA}" == *"init[-_]file"* ]]; then INIT_FILE_USED="or any file(s) called using --init-file which is present in \$MYEXTRA, "; fi
           # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, or it's working directory, ${INIT_FILE_USED}while this script was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
         fi
         sleep 1  # Hasten slowly, server already busy with subreducers
       done
@@ -953,7 +955,6 @@ multi_reducer(){
       if [ $MODE -lt 6 ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Ensuring any rogue subreducer processes are terminated"
         kill_multi_reducer
-        rm -Rf $WORKD/subreducer/  # Cleanup subreducer directory: if this issue was non-sporadic, and stage 1 is next (with no MULTI threaded reducing because the issue is found non-sporadic), then this ensures that the space currently used by ./subreducer is saved. This is handy for /dev/shm usage which tends to quickly run out os space. Normally the subreducer dir is removed at the start of a new MULTI threaded run, but this is the one case where the directory still exists and is no longer needed. This will also remove the subreducer directory when the issues IS sporadic, and that is fine - it would have been deleted at the starrt of MULTI threaded reducing anyways. MULTI threaded reducing is done in multi_reducer()
       fi
     elif [ $MULTI_FOUND -lt $MULTI_THREADS ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
@@ -978,14 +979,22 @@ multi_reducer_decide_input(){
         # Highest optimization possible, use file and exit
         cp -f $(cat $MULTI_WORKD/VERIFIED | grep "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Found verified, maximum initial simplification file, at thread #$t: Using it as new input file"
+        if [ -r $MULTI_WORKD/MYEXTRA ]; then
+          MYEXTRA=$(cat $MULTI_WORKD/MYEXTRA)
+        fi
         break
       elif [ $TRIAL_LEVEL -lt $LOWEST_TRIAL_LEVEL_SEEN ]; then
         LOWEST_TRIAL_LEVEL_SEEN=$TRIAL_LEVEL
         cp -f $(cat $MULTI_WORKD/VERIFIED | grep "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Found verified, level $TRIAL_LEVEL simplification file, at thread #$t: Using it as new input file, unless better is found"
+        if [ -r $MULTI_WORKD/MYEXTRA ]; then
+          MYEXTRA=$(cat $MULTI_WORKD/MYEXTRA)
+        fi
       fi
     fi 
   done
+  echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Removing verify stage subreducer directory"
+  rm -Rf $WORKD/subreducer/  # It should be fine to remove this verify stage subreducer directory here, and save space, but this needs over-time confirmation. Added RV 25-10-2016
 }
 
 TS_init_all_sql_files(){
@@ -1458,12 +1467,12 @@ generate_run_scripts(){
     echo "$ ./${EPOCH}_run_pquery      # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
     echo "$ ./${EPOCH}_run             # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
+      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)" >> $WORK_HOW_TO_USE
     fi
   else
     echo "$ ./${EPOCH}_run             # STEP5: Run the testcase with the mysql CLI" >> $WORK_HOW_TO_USE
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)"
+      echo "$ ./${EPOCH}_stop            # STEP6: Stop mysqld (and wait for Valgrind to write end-of-Valgrind-run details to the mysqld error log)" >> $WORK_HOW_TO_USE
     fi
   fi
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
@@ -1658,11 +1667,11 @@ start_mysqld_main(){
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
@@ -1672,11 +1681,11 @@ start_mysqld_main(){
     PIDV="$!"
   else
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
-                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
+                         --user=$MYUSER $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then  
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
@@ -1707,7 +1716,7 @@ start_valgrind_mysqld_main(){
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
   CMD="${TIMEOUT_COMMAND} valgrind --suppressions=$BASEDIR/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
               ${BIN} --basedir=${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
-                              --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA \
+                              --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA $TOKUDB_LOAD \
                               --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none 
   if [ "${CHK_ROCKSDB}" == "1" ];then
@@ -1727,7 +1736,7 @@ start_valgrind_mysqld_main(){
   echo "valgrind --suppressions=\${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
        \$BIN --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-       --socket=$WORKD/socket.sock $MYEXTRA ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
+       --socket=$WORKD/socket.sock $MYEXTRA $TOKUDB_LOAD ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   if [ "${CHK_ROCKSDB}" == "1" ];then
     sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START_VALGRIND
   fi
@@ -2581,6 +2590,14 @@ verify(){
   STAGE='V'
   TRIAL=1
   echo_out "$ATLEASTONCE [Stage $STAGE] Verifying the bug/issue exists and is reproducible by reducer (duration depends on initial input file size)"
+  # --init-file: Instead of using an init file, add the init file contents to the top of the testcase, if that still reproduces the issue, below
+  ORIGINALMYEXTRA=$MYEXTRA
+  INITFILE=
+  MYEXTRAWITHOUTINIT=
+  if [[ "$MYEXTRA" == *"init_file"* || "$MYEXTRA" == *"init-file"* ]]; then
+    INITFILE=$(echo $MYEXTRA | grep -oE "\-\-init[-_]file=[^ ]+" | sed 's|\-\-init[-_]file=||')
+    MYEXTRAWITHOUTINIT=$(echo $MYEXTRA | sed 's|\-\-init[-_]file=[^ ]\+||')
+  fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer 
     while :; do
       multi_reducer $1
@@ -2633,6 +2650,12 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' \
                   -e "s/', '/','/g" > $WORKT
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
+          fi
         fi
       elif [ $TRIAL -eq 2 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2654,6 +2677,12 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' \
                   -e "s/', '/','/g" > $WORKT
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
+          fi
         fi
       elif [ $TRIAL -eq 3 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2678,6 +2707,12 @@ verify(){
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' > $WORKT
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
+          fi
         fi
       elif [ $TRIAL -eq 4 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2695,6 +2730,12 @@ verify(){
             | sed -e 's/;[\t ]*#.*/;/i' \
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
+          fi
         fi
       elif [ $TRIAL -eq 5 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2705,9 +2746,17 @@ verify(){
             sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $TS_WORKF > $TS_WORKT
           done
         else
+          # The benefit of splitting INSERT lines: example: INSERT (a),(b),(c); becomes INSERT (a),\n(b)\n(c); and thus the seperate line with "b" could be eliminated/simplified. 
+          # If the testcase then works fine withouth the 'b' elemeneted inserted, it has become simpler. Consider large inserts (100's of rows) and how complexity can be reduced.
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #5: Low initial simplification (only main data INSERT lines split & remove # comments)"
           sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $WORKF \
             | sed -e 's/;[\t ]*#.*/;/i' > $WORKT
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+            echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
+          fi
         fi
       elif [ $TRIAL -eq 6 ]; then
         if [ $MODE -ge 6 ]; then
@@ -2719,6 +2768,9 @@ verify(){
           done
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #6: No initial simplification"
+          echo_out "$ATLEASTONCE [Stage $STAGE] Restoring original MYEXTRA and using --init-file exactly as given there originally"
+          MYEXTRA=$ORIGINALMYEXTRA
+          echo $MYEXTRA > $WORKD/MYEXTRA
           cp -f $WORKF $WORKT
         fi
       else
@@ -2951,9 +3003,9 @@ if [ $SKIPSTAGEBELOW -lt 3 -a $SKIPSTAGEABOVE -gt 3 ]; then
   echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE"
   while :; do
     NEXTACTION="& try next testcase complexity reducing sed"
+    NOSKIP=0
   
     # The @##@ sed's remove comments like /*! NULL */. Each sed removes one /* */ block per line, so 3 sed's removes 3x /* */ for each line
-    # In sed, '*' means zero or more, '+' means one or more. Note you have to escape + as '\+'
     if   [ $TRIAL -eq 1  ]; then sed -e "s/[\t ]*,[ \t]*/,/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 2  ]; then sed -e "s/\\\'//g" $WORKF > $WORKT
     elif [ $TRIAL -eq 3  ]; then sed -e "s/'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'/'0000-00-00'/g" $WORKF > $WORKT
@@ -3000,7 +3052,7 @@ if [ $SKIPSTAGEBELOW -lt 3 -a $SKIPSTAGEABOVE -gt 3 ]; then
     else break
     fi
     SIZET=`stat -c %s $WORKT`
-    if [ $SIZEF -eq $SIZET ]; then 
+    if [ ${NOSKIP} -eq 0 -a $SIZEF -eq $SIZET ]; then 
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Skipping this trial as it does not reduce filesize"
     else
       if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining size of input file: $SIZEF bytes ($LINECOUNTF lines)"; fi 
@@ -3020,6 +3072,7 @@ if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
   echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE"
   while :; do
     NEXTACTION="& try next query syntax complexity reducing sed"
+    NOSKIP=0
   
     # The @##@ sed's remove comments like /*! NULL */. Each sed removes one /* */ block per line, so 3 sed's removes 3x /* */ for each line
     if   [ $TRIAL -eq 1  ]; then sed -e 's/IN[ \t]*(.*)/IN (SELECT 1)/i' $WORKF > $WORKT
@@ -3164,7 +3217,7 @@ if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
     else break
     fi
     SIZET=`stat -c %s $WORKT`
-    if [ $SIZEF -eq $SIZET ]; then 
+    if [ ${NOSKIP} -eq 0 -a $SIZEF -eq $SIZET ]; then 
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Skipping this trial as it does not reduce filesize"
     else
       if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining size of input file: $SIZEF bytes ($LINECOUNTF lines)"; fi 
@@ -3432,8 +3485,8 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
   echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE"
   while :; do
     NEXTACTION="& try next testcase complexity reducing sed"
-  
-    # In sed, '*' means zero or more, '+' means one or more. Note you have to escape + as '\+'
+    NOSKIP=0
+    
     if   [ $TRIAL -eq 1   ]; then sed -e "s/[\t]\+/ /g" $WORKF > $WORKT
     elif [ $TRIAL -eq 2   ]; then sed -e "s/[ ]\+/ /g" $WORKF > $WORKT
     elif [ $TRIAL -eq 3   ]; then sed -e "s/[ ]*,/,/g" $WORKF > $WORKT
@@ -3578,15 +3631,16 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 141 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
     elif [ $TRIAL -eq 142 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
     elif [ $TRIAL -eq 143 ]; then sed -e "s/;.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 144 ]; then sed "s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 145 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 146 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 147 ]; then egrep -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 148 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 144 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 145 ]; then sed "s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 146 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 147 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 148 ]; then egrep -v "^#|^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 149 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
-    if [ $SIZEF -eq $SIZET ]; then 
+    if [ ${NOSKIP} -eq 0 -a $SIZEF -eq $SIZET ]; then 
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Skipping this trial as it does not reduce filesize"
     else
       if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining size of input file: $SIZEF bytes ($LINECOUNTF lines)"; fi 
@@ -3598,7 +3652,7 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
   done
 fi
 
-#STAGE8 : Execute mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
+#STAGE8: Execute mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
 if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   STAGE=8
   TRIAL=1
@@ -3639,8 +3693,9 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
       if echo "${MYEXTRA}" | grep 'tokudb'; then
         if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
-          MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variable"
+          TOKUDB_LOAD=" --plugin-load-add=tokudb=ha_tokudb.so"
+        else
+          TOKUDB_LOAD=""
         fi
       fi
       run_and_check
@@ -3663,9 +3718,10 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
           echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
         fi
         if echo "${MYEXTRA}" | grep 'tokudb'; then
-          if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
-            MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variables"
+          if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so'; then
+            TOKUDB_LOAD=" --plugin-load-add=tokudb=ha_tokudb.so"
+          else
+            TOKUDB_LOAD=""
           fi
         fi
         run_and_check
@@ -3684,8 +3740,9 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
           fi
           if echo "${MYEXTRA}" | grep 'tokudb'; then
             if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
-              MYEXTRA="${MYEXTRA} --plugin-load-add=tokudb=ha_tokudb.so"
-              echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Adding TokuDB plugin as MYEXTRA contains tokudb variables"
+              TOKUDB_LOAD=" --plugin-load-add=tokudb=ha_tokudb.so"
+            else
+              TOKUDB_LOAD=""
             fi
           fi
           run_and_check
