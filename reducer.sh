@@ -955,7 +955,6 @@ multi_reducer(){
       if [ $MODE -lt 6 ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Ensuring any rogue subreducer processes are terminated"
         kill_multi_reducer
-        rm -Rf $WORKD/subreducer/  # Cleanup subreducer directory: if this issue was non-sporadic, and stage 1 is next (with no MULTI threaded reducing because the issue is found non-sporadic), then this ensures that the space currently used by ./subreducer is saved. This is handy for /dev/shm usage which tends to quickly run out os space. Normally the subreducer dir is removed at the start of a new MULTI threaded run, but this is the one case where the directory still exists and is no longer needed. This will also remove the subreducer directory when the issues IS sporadic, and that is fine - it would have been deleted at the start of MULTI threaded reducing anyways. MULTI threaded reducing is done in multi_reducer()
       fi
     elif [ $MULTI_FOUND -lt $MULTI_THREADS ]; then
       echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Threads which reproduced the issue:$TXT_OUT"
@@ -988,6 +987,8 @@ multi_reducer_decide_input(){
       fi
     fi 
   done
+  echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Removing verify stage subreducer directory"
+  rm -Rf $WORKD/subreducer/  # It should be fine to remove this verify stage subreducer directory here, and save space, but this needs over-time confirmation. Added RV 25-10-2016
 }
 
 TS_init_all_sql_files(){
@@ -2587,9 +2588,9 @@ verify(){
   ORIGINALMYEXTRA=$MYEXTRA
   INITFILE=
   MYEXTRAWITHOUTINIT=
-  if [[ "$MYEXTRA" == *"init[-_]file"* ]]; then
-    INITFILE=$(cat $MYEXTRA | grep -oE "\-\-init[-_]file=[^ ]+" | sed 's|\-\-init[-_]file=||')
-    MYEXTRAWITHOUTINIT=$(cat $MYEXTRA | sed 's|\-\-init[-_]file=[^ ]\+||')
+  if [[ "$MYEXTRA" == *"init_file"* || "$MYEXTRA" == *"init-file"* ]]; then
+    INITFILE=$(echo $MYEXTRA | grep -oE "\-\-init[-_]file=[^ ]+" | sed 's|\-\-init[-_]file=||')
+    MYEXTRAWITHOUTINIT=$(echo $MYEXTRA | sed 's|\-\-init[-_]file=[^ ]\+||')
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer 
     while :; do
@@ -2643,7 +2644,7 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' \
                   -e "s/', '/','/g" > $WORKT
-          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
@@ -2669,7 +2670,7 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' \
                   -e "s/', '/','/g" > $WORKT
-          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
@@ -2698,7 +2699,7 @@ verify(){
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' > $WORKT
-          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
@@ -2720,7 +2721,7 @@ verify(){
             | sed -e 's/;[\t ]*#.*/;/i' \
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
-          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
@@ -2740,7 +2741,7 @@ verify(){
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #5: Low initial simplification (only main data INSERT lines split & remove # comments)"
           sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $WORKF \
             | sed -e 's/;[\t ]*#.*/;/i' > $WORKT
-          if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
+          if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
