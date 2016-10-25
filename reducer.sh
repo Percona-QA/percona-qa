@@ -2588,8 +2588,8 @@ verify(){
   INITFILE=
   MYEXTRAWITHOUTINIT=
   if [[ "$MYEXTRA" == *"init[-_]file"* ]]; then
-    INITFILE=$(cat $MYEXTRA | grep -oE "\-\-init[-_]file=.* |\-\-init[-_]file=[^ ]+$" | sed 's|\-\-init[-_]file=||')
-    MYEXTRAWITHOUTINIT=$(cat $MYEXTRA | sed 's|\-\-init[-_]file=.* ||;s|\-\-init[-_]file=[^ ]\+$||')
+    INITFILE=$(cat $MYEXTRA | grep -oE "\-\-init[-_]file=[^ ]+" | sed 's|\-\-init[-_]file=||')
+    MYEXTRAWITHOUTINIT=$(cat $MYEXTRA | sed 's|\-\-init[-_]file=[^ ]\+||')
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer 
     while :; do
@@ -2645,7 +2645,7 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
           fi
         fi
@@ -2671,7 +2671,7 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
           fi
         fi
@@ -2700,7 +2700,7 @@ verify(){
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' > $WORKT
           if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
           fi
         fi
@@ -2722,7 +2722,7 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
           if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
           fi
         fi
@@ -2742,7 +2742,7 @@ verify(){
             | sed -e 's/;[\t ]*#.*/;/i' > $WORKT
           if [ "${INFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT;
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
           fi
         fi
