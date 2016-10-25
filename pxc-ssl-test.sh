@@ -31,6 +31,12 @@ fi
 mkdir -p ${BUILD}/logs 
 rm -rf ${BUILD}/certs && mkdir -p ${BUILD}/certs && cd ${BUILD}/certs
 
+archives() {
+  tar czf ${BUILD}/results-${BUILD_NUMBER}.tar.gz ${BUILD}/logs ${BUILD}/pxc_ssl_testing.log || true
+}
+
+trap archives EXIT KILL
+
 create_certs(){
   # Creating CA certificate
   echoit "Creating CA certificate"
@@ -287,4 +293,6 @@ test_result "xtrabackup SST (certificate authority and certificate files)"
 echoit "Starting SST test using xtrabackup with key and certificate files"
 sst_encryption_run xtrabackup_tkey
 test_result "xtrabackup SST (key and certificate files)"
+
+exit 0
 
