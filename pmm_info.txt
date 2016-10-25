@@ -3,4 +3,4 @@ docker run -d -p 80:80 --volumes-from pmm-data --name pmm-server --restart alway
 docker exec -it pmm-server bash
 ps aux | grep '^root' | grep -Evw "$$|([RS]\+)"
 wget https://www.percona.com/redir/downloads/TESTING/pmm/pmm-client-1.0.5-x86_64.tar.gz
-tar -xf pmm-client-1.0.5-x86_64.tar.gz && cd pmm-client-1.0.5-x86_64 && sudo ./install PMM-SERVER-IP PMM-CLIENT-IP
+tar -xf pmm-client-1.0.5-x86_64.tar.gz && cd pmm-client-1.0.5-x86_64 && sudo ./install
