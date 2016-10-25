@@ -979,11 +979,17 @@ multi_reducer_decide_input(){
         # Highest optimization possible, use file and exit
         cp -f $(cat $MULTI_WORKD/VERIFIED | grep "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Found verified, maximum initial simplification file, at thread #$t: Using it as new input file"
+        if [ -r $MULTI_WORKD/MYEXTRA ]; then
+          MYEXTRA=$(cat $MULTI_WORKD/MYEXTRA)
+        fi
         break
       elif [ $TRIAL_LEVEL -lt $LOWEST_TRIAL_LEVEL_SEEN ]; then
         LOWEST_TRIAL_LEVEL_SEEN=$TRIAL_LEVEL
         cp -f $(cat $MULTI_WORKD/VERIFIED | grep "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Found verified, level $TRIAL_LEVEL simplification file, at thread #$t: Using it as new input file, unless better is found"
+        if [ -r $MULTI_WORKD/MYEXTRA ]; then
+          MYEXTRA=$(cat $MULTI_WORKD/MYEXTRA)
+        fi
       fi
     fi 
   done
@@ -2648,6 +2654,7 @@ verify(){
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
           fi
         fi
       elif [ $TRIAL -eq 2 ]; then
@@ -2674,6 +2681,7 @@ verify(){
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
           fi
         fi
       elif [ $TRIAL -eq 3 ]; then
@@ -2703,6 +2711,7 @@ verify(){
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
           fi
         fi
       elif [ $TRIAL -eq 4 ]; then
@@ -2725,6 +2734,7 @@ verify(){
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
           fi
         fi
       elif [ $TRIAL -eq 5 ]; then
@@ -2745,6 +2755,7 @@ verify(){
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
+            echo $MYEXTRA > $WORKD/MYEXTRA
           fi
         fi
       elif [ $TRIAL -eq 6 ]; then
@@ -2759,6 +2770,7 @@ verify(){
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #6: No initial simplification"
           echo_out "$ATLEASTONCE [Stage $STAGE] Restoring original MYEXTRA and using --init-file exactly as given there originally"
           MYEXTRA=$ORIGINALMYEXTRA
+          echo $MYEXTRA > $WORKD/MYEXTRA
           cp -f $WORKF $WORKT
         fi
       else
