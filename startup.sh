@@ -56,11 +56,12 @@ echo "Adding scripts: start | start_valgrind | start_gypsy | stop | setup | cl |
 rm -f start start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure tokutek_init pmm_os_agent pmm_mysql_agent
 mkdir -p data data/mysql data/test log
 if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
-  TOKUDB="--plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
+  TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
 else
   TOKUDB=""
 fi
 echo 'MYEXTRA=" --no-defaults"' > start
+echo '#MYEXTRA=" --no-defaults --plugin-load-add=rocksdb="' >> start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
 echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"' >> start

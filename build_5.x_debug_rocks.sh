@@ -19,9 +19,9 @@ MS=0
 
 if [ "$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')" == "" ]; then  # MS has no extra version number
   MS=1
-  PREFIX="MS${DATE}"
+  PREFIX="ROCKS-MS${DATE}"
 else
-  PREFIX="PS${DATE}"
+  PREFIX="ROCKS-PS${DATE}"
 fi
 
 CURPATH=$(echo $PWD | sed 's|.*/||')
