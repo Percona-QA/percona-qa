@@ -61,7 +61,7 @@ else
   TOKUDB=""
 fi
 echo 'MYEXTRA=" --no-defaults"' > start
-echo '#MYEXTRA=" --no-defaults --plugin-load-add=rocksdb="' >> start
+echo '#MYEXTRA=" --no-defaults --plugin-load-add=rocksdb=ha_rocksdb.so"' >> start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
 echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"' >> start
