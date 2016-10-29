@@ -34,6 +34,7 @@ QUERIES_PER_THREAD=100000                                      # Maximum number 
 QUERIES_PER_GENERATOR_RUN=25000                                # Used when USE_GENERATOR_INSTEAD_OF_INFILE=1. Default: 20000. Generating 10K queries takes about 15 seconds on SSD
 GENERATE_NEW_QUERIES_WITH_GENERATOR_EVERY_X_TRIALS=10          # Run the SQL Generator every x trials. Default is 10. This aids runs as less time is spent generating queries
 MYEXTRA=""                                                     # Extra options to pass to mysqld. Examples below
+#MYEXTRA="--max-connections=2048 --performance-schema --performance-schema-instrument='%=on'"                                         # Use for PMM testing   
 #MYEXTRA="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"                               # Use for generic RocksDB testing
 #MYEXTRA="--thread_handling=pool-of-threads --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/TokuDB.sql"     # PS 5.x: TokuDB & audit-log
 #MYEXTRA="--thread_handling=pool-of-threads --init-file=${SCRIPT_PWD}/plugins_55.sql"                                                                 # PS 5.5: All plugins
@@ -89,6 +90,10 @@ PXC_WSREP_PROVIDER_OPTIONS_INFILE=${SCRIPT_PWD}/pquery/wsrep_provider_options_px
 PXC_IGNORE_ALL_OPTION_ISSUES=1                                 # Never end a run if wsrep mysqld or wsrep configuration option issues were detected. This is a powerful option, 
                                                                # which does come with responsibility: you should check that your runs are running fine without them all ending
                                                                # immediately on mysqld startup, due to some faulty base MYEXTRA setting for example!
+
+# ========================================= User configurable variables to enable pmm testing only ===========================
+PMM=1                                                          # Set to 1 to make this a PMM testing run
+PMM_CLEAN_TRIAL=1                                              # Set to 1 to clean pmm-client service after every trial
 
 # ========================================= Improvement ideas ====================================================================
 # * SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 (These likely include some of the 'SIGKILL' issues - no core but terminated)
@@ -261,6 +266,10 @@ ctrl-c(){
     echoit "Done. Moving the trial $0 was currently working on to workdir as ${WORKDIR}/${TRIAL}/..."
     mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
   fi
+  if [ $PMM -eq 1 ]; then
+    echoit "Attempting to cleanup PMM client services..."
+    sudo pmm-admin remove --all > /dev/null
+  fi
   echoit "Attempting to cleanup the pquery rundir ${RUNDIR}..."
   rm -Rf ${RUNDIR}
   if [ $SAVED -eq 0 -a ${SAVE_SQL} -eq 0 ]; then
@@ -290,6 +299,10 @@ savetrial(){
     rm -Rf ${RUNDIR}/${TRIAL}
   fi
   STOREANYWAY=0
+  if [ $PMM_CLEAN_TRIAL -eq 1 ];then
+    echoit "Removing mysql instance (pq${RANDOMD}-${TRIAL}) from pmm-admin"
+    sudo pmm-admin remove mysql pq${RANDOMD}-${TRIAL} > /dev/null
+  fi
 }
 
 savesql(){
@@ -303,6 +316,12 @@ savesql(){
     echoit "As this is not necessarily a fatal error (there is likely enough space on ${RUNDIR} to continue working), pquery-run.sh will NOT terminate."
     echoit "However, this looks like a shortcoming in pquery-run.sh (likely in the mysqld termination code) which needs debugging and fixing. Please do."
   fi
+}
+
+check_cmd(){
+  CMD_PID=$1
+  ERROR_MSG=$2
+  if [ ${CMD_PID} -ne 0 ]; then echo -e "\nERROR: $ERROR_MSG. Terminating!"; exit 1; fi
 }
 
 pxc_startup(){
@@ -687,6 +706,10 @@ pquery_test(){
       else
         echoit "Server started ok. Client:   `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
       fi
+      if [ $PMM -eq 1 ];then
+        echoit "Starting pmm client for this server..."
+        sudo pmm-admin add mysql pq${RANDOMD}-${TRIAL} --socket=${RUNDIR}/${TRIAL}/socket.sock --user=root --query-source=perfschema
+      fi
     fi
   else
     mkdir -p ${RUNDIR}/${TRIAL}/
@@ -999,7 +1022,13 @@ pquery_test(){
           TIMEOUT_REACHED=1
           break
         fi
-      done 
+      done
+      if [ $PMM -eq 1 ]; then
+        if ps -p  ${MPID} > /dev/null ; then 
+          echoit "PMM trial info : Sleeping 5 mints to check the data collection status"
+          sleep 300
+        fi
+      fi 
     fi
   else
     if [ ${PXC} -eq 0 ]; then
@@ -1311,6 +1340,33 @@ if [ ${PXC} -eq 0 ]; then
   echo "${MYEXTRA}${MYSAFE}" | if grep -qi "innodb[_-]log[_-]checksum[_-]algorithm"; then
     # Ensure that if MID created log files with the standard checksum algo, whilst we start the server with another one, that log files are re-created by mysqld
     rm ${WORKDIR}/data.template/ib_log*
+  fi
+  if [ $PMM -eq 1 ];then
+    echoit "Initiating PMM configuration"
+    if ! docker ps -a | grep 'pmm-data' > /dev/null ; then
+      docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql --name pmm-data percona/pmm-server:1.0.5 /bin/true > /dev/null
+      check_cmd $? "pmm-server docker creation failed"
+    fi
+    if ! docker ps -a | grep 'pmm-server' | grep '1.0.5' | grep -v pmm-data > /dev/null ; then
+      docker run -d -p 80:80 --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:1.0.5 > /dev/null
+      check_cmd $? "pmm-server container creation failed"
+    elif ! docker ps | grep 'pmm-server' | grep '1.0.5' > /dev/null ; then
+      docker start pmm-server > /dev/null
+      check_cmd $? "pmm-server container not started"
+    fi
+    if [[ ! -e `which pmm-admin 2> /dev/null` ]] ;then
+      echoit "Assert! The pmm-admin client binary was not found, please install the pmm-admin client package"  
+      exit 1
+    else
+      PMM_ADMIN_VERSION=`sudo pmm-admin --version`
+      if [ "$PMM_ADMIN_VERSION" != "1.0.5" ]; then
+        echoit "Assert! The pmm-admin client version is $PMM_ADMIN_VERSION. Required version is 1.0.5"  
+        exit 1
+      else
+        IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`
+        sudo pmm-admin config --server $IP_ADDRESS
+      fi
+    fi
   fi
 else
   echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
