@@ -721,3 +721,4 @@ TEXT=.\.create_info->options \. 1.$                                             
 TEXT=.fd >= 0.$                                                                         ## http://bugs.mysql.com/bug.php?id=81453
 TEXT=.is_started.$                                                                      ## http://bugs.mysql.com/bug.php?id=76425
 TEXT=.\.shutdown_in_progress.$                                                          ## http://bugs.launchpad.net/percona-server/+bug/1633960 (w/o testcase)
+TEXT=.tab->ref.$                                                                        ## http://bugs.mysql.com/bug.php?id=83541
