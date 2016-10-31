@@ -92,8 +92,9 @@ PXC_IGNORE_ALL_OPTION_ISSUES=1                                 # Never end a run
                                                                # immediately on mysqld startup, due to some faulty base MYEXTRA setting for example!
 
 # ========================================= User configurable variables to enable pmm testing only ===========================
-PMM=1                                                          # Set to 1 to make this a PMM testing run
-PMM_CLEAN_TRIAL=1                                              # Set to 1 to clean pmm-client service after every trial
+PMM=0                                                          # Set to 1 to make this a PMM testing run
+PMM_CLEAN_TRIAL=0                                              # Set to 1 to clean pmm-client service after every trial
+PMM_VERSION_CHECK="1.0.5"                                      # Set PMM admin version to use PMM testing
 
 # ========================================= Improvement ideas ====================================================================
 # * SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 (These likely include some of the 'SIGKILL' issues - no core but terminated)
@@ -1344,13 +1345,13 @@ if [ ${PXC} -eq 0 ]; then
   if [ $PMM -eq 1 ];then
     echoit "Initiating PMM configuration"
     if ! docker ps -a | grep 'pmm-data' > /dev/null ; then
-      docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql --name pmm-data percona/pmm-server:1.0.5 /bin/true > /dev/null
+      docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql --name pmm-data percona/pmm-server:${PMM_VERSION_CHECK} /bin/true > /dev/null
       check_cmd $? "pmm-server docker creation failed"
     fi
-    if ! docker ps -a | grep 'pmm-server' | grep '1.0.5' | grep -v pmm-data > /dev/null ; then
-      docker run -d -p 80:80 --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:1.0.5 > /dev/null
+    if ! docker ps -a | grep 'pmm-server' | grep ${PMM_VERSION_CHECK} | grep -v pmm-data > /dev/null ; then
+      docker run -d -p 80:80 --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:${PMM_VERSION_CHECK} > /dev/null
       check_cmd $? "pmm-server container creation failed"
-    elif ! docker ps | grep 'pmm-server' | grep '1.0.5' > /dev/null ; then
+    elif ! docker ps | grep 'pmm-server' | grep ${PMM_VERSION_CHECK} > /dev/null ; then
       docker start pmm-server > /dev/null
       check_cmd $? "pmm-server container not started"
     fi
@@ -1359,8 +1360,8 @@ if [ ${PXC} -eq 0 ]; then
       exit 1
     else
       PMM_ADMIN_VERSION=`sudo pmm-admin --version`
-      if [ "$PMM_ADMIN_VERSION" != "1.0.5" ]; then
-        echoit "Assert! The pmm-admin client version is $PMM_ADMIN_VERSION. Required version is 1.0.5"  
+      if [ "$PMM_ADMIN_VERSION" != "${PMM_VERSION_CHECK}" ]; then
+        echoit "Assert! The pmm-admin client version is $PMM_ADMIN_VERSION. Required version is ${PMM_VERSION_CHECK}"  
         exit 1
       else
         IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`
