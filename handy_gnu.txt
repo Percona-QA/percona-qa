@@ -186,6 +186,8 @@
   time OUTPUT=$(echo "a" ; echo "a"); echo $OUTPUT  # WRONG: while it works, just like the above, the time is slightly higher (due to the added variable assignment)
   time echo "a";echo "a"     # WRONG: this does not achieve the objective, it only times the first command
   time (echo "a";echo "a")   # CORRECT: this times both commands (without anything affecting time and without any sub-execution or variable assignment)
+# Obtain the primary IP address of this machine
+  IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`; echo ${IP_ADDRESS}
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
@@ -232,6 +234,7 @@
   git diff HEAD > patch.diff; # Change to another place #; git apply < patch.diff
 # Retrieve a single file in full from Github using wget. With thanks, http://stackoverflow.com/a/4605068
   wget https://raw.githubusercontent.com/Percona-QA/percona-qa/master/ldd_files.sh  # The filename, repository etc. in the url can be changed to get the needed file
+  wget https://raw.githubusercontent.com/Percona-QA/percona-qa/master/pmm-info.sh && chmod +x pmm-info.sh && ./pmm-info.sh
 
 # ------ Must read's ------
 # http://tldp.org/LDP/abs/html/globbingref.html on globbing (and not regex) and filename expansion
