@@ -6,7 +6,7 @@
 BUILD=$(pwd)
 SKIP_RQG_AND_BUILD_EXTRACT=0
 sst_method="rsync"
-NODES=7
+NODES=2
 PXC_START_TIMEOUT=300
 
 ADDR="127.0.0.1"
@@ -27,9 +27,9 @@ if [ ! -r ${BUILD}/bin/mysqld ]; then
   exit 1
 fi
 
-# Creating sysbench log and SSL certificate directories
+# Creating sysbench log directory
 mkdir -p ${BUILD}/logs 
-rm -rf ${BUILD}/certs && mkdir -p ${BUILD}/certs && cd ${BUILD}/certs
+#rm -rf ${BUILD}/certs && mkdir -p ${BUILD}/certs && cd ${BUILD}/certs
 
 archives() {
   tar czf ${BUILD}/results-${BUILD_NUMBER}.tar.gz ${BUILD}/logs ${BUILD}/pxc_ssl_testing.log || true
@@ -38,6 +38,8 @@ archives() {
 trap archives EXIT KILL
 
 create_certs(){
+  # Creating SSL certificate directories
+  rm -rf ${BUILD}/certs* && mkdir -p ${BUILD}/certs ${BUILD}/certs_two && cd ${BUILD}/certs
   # Creating CA certificate
   echoit "Creating CA certificate"
   openssl genrsa 2048 > ca-key.pem 
@@ -61,6 +63,16 @@ create_certs(){
   cat sst_server.key sst_server.crt > sst_server.pem
   openssl dhparam -out sst_dhparams.pem 2048
   cat sst_dhparams.pem >> sst_server.pem
+
+  cd ${BUILD}/certs_two
+
+  # Creating SST encryption certificates
+  openssl genrsa -out sst_server.key 1024
+  openssl req -new -key sst_server.key -x509 -days 3653 -out sst_server.crt -subj '/CN=www.percona.com/O=Database Performance blog./C=PS'
+  cat sst_server.key sst_server.crt > sst_server.pem
+  openssl dhparam -out sst_dhparams.pem 2048
+  cat sst_dhparams.pem >> sst_server.pem
+
 }
 
 ## SSL certificate generation
@@ -76,7 +88,6 @@ echo "innodb_file_per_table" >> my-template.cnf
 echo "innodb_autoinc_lock_mode=2" >> my-template.cnf
 echo "innodb_locks_unsafe_for_binlog=1" >> my-template.cnf
 echo "wsrep-provider=${BUILD}/lib/libgalera_smm.so" >> my-template.cnf
-#echo "wsrep_provider_options='socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem'" >> my-template.cnf
 echo "wsrep_node_incoming_address=$ADDR" >> my-template.cnf
 echo "wsrep_sst_method=xtrabackup-v2" >> my-template.cnf
 echo "wsrep_sst_auth=$SUSER:$SPASS" >> my-template.cnf
@@ -171,7 +182,7 @@ start_pxc_node(){
   if [ "$SST_ENCRYPTION_OPTION" == "mysqldump_sst" ]; then
     if [ $i -eq 2 ] ;then
       echoit "Preparing PXC node${i} for mysqldump sst test..."
-      ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
+      ${BUILD}/bin/mysqld $DEFAULT_FILE \
        --datadir=$node $IS_NEW --wsrep_cluster_address=$WSREP_CLUSTER \
        --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
        --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
@@ -184,7 +195,7 @@ start_pxc_node(){
       ${BUILD}/bin/mysqladmin -uroot -S/tmp/n${i}.sock shutdown &> /dev/null
 
       echoit "Starting PXC node${i} for mysqldump sst test..."
-      ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
+      ${BUILD}/bin/mysqld $DEFAULT_FILE \
        --datadir=$node $IS_NEW --wsrep_cluster_address=$WSREP_CLUSTER \
        --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
        --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
@@ -193,7 +204,7 @@ start_pxc_node(){
       startup_check
     else
       echoit "Starting PXC node${i}..."
-      ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
+      ${BUILD}/bin/mysqld $DEFAULT_FILE \
        --datadir=$node $IS_NEW --wsrep_cluster_address=$WSREP_CLUSTER \
        --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
        --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
@@ -205,7 +216,7 @@ start_pxc_node(){
     fi
   else
     echoit "Starting PXC node${i}..."
-    ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
+    ${BUILD}/bin/mysqld $DEFAULT_FILE \
      --datadir=$node $IS_NEW --wsrep_cluster_address=$WSREP_CLUSTER \
      --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
      --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
@@ -217,6 +228,7 @@ start_pxc_node(){
 
 sst_encryption_run(){
   SST_ENCRYPTION_OPTION=$1
+  SST_SHUFFLE_CERT=$2
   TEST_START_TIME=`date '+%s'`
   cp ${BUILD}/my-template.cnf ${BUILD}/my.cnf
   if [ "$SST_ENCRYPTION_OPTION" == "xtrabackup_encrypt" ]; then
@@ -224,16 +236,19 @@ sst_encryption_run(){
     echo "encrypt = 1" >> my.cnf
     echo "encrypt-algo=AES256" >> my.cnf
     echo "encrypt-key=A1EDC73815467C083B0869508406637E" >> my.cnf
+    DEFAULT_FILE="--defaults-file=${BUILD}/my.cnf"
   elif [ "$SST_ENCRYPTION_OPTION" == "xtrabackup_tca" ]; then
     echo "[sst]" >> my.cnf
     echo "encrypt = 2" >> my.cnf
     echo "tcert=${BUILD}/certs/sst_server.pem" >> my.cnf
     echo "tca=${BUILD}/certs/sst_server.crt" >> my.cnf
+    DEFAULT_FILE="--defaults-file=${BUILD}/my.cnf"
   elif [ "$SST_ENCRYPTION_OPTION" == "xtrabackup_tkey" ]; then
     echo "[sst]" >> my.cnf
     echo "encrypt = 3" >> my.cnf
     echo "tkey=${BUILD}/certs/sst_server.key" >> my.cnf
     echo "tcert=${BUILD}/certs/sst_server.pem" >> my.cnf
+    DEFAULT_FILE="--defaults-file=${BUILD}/my.cnf"
   fi
 
   rm -rf ${BUILD}/node* ${BUILD}/keyring_node*
@@ -262,7 +277,19 @@ sst_encryption_run(){
     TABLE_ROW_COUNT_NODE1=1;
     TABLE_ROW_COUNT_NODE2=2; 
   fi
-  for i in `seq 1 2`;do
+
+  echo $SST_SHUFFLE_CERT
+  if [ ! -z $SST_SHUFFLE_CERT ];then
+    cp ${BUILD}/my-template.cnf ${BUILD}/my_shuffle.cnf
+    echo "[sst]" >> my_shuffle.cnf
+    echo "encrypt = 3" >> my_shuffle.cnf
+    echo "tkey=${BUILD}/certs_two/sst_server.key" >> my_shuffle.cnf
+    echo "tcert=${BUILD}/certs_two/sst_server.pem" >> my_shuffle.cnf
+    DEFAULT_FILE="--defaults-file=${BUILD}/my_shuffle.cnf"
+    start_pxc_node 3
+    NODES=3
+  fi
+  for i in `seq 1 $NODES`;do
     ${BUILD}/bin/mysqladmin -uroot -S/tmp/n${i}.sock shutdown &> /dev/null
     echoit "Server on socket /tmp/n${i}.sock with datadir ${BUILD}/node$i halted"
   done
@@ -293,6 +320,8 @@ test_result "xtrabackup SST (certificate authority and certificate files)"
 echoit "Starting SST test using xtrabackup with key and certificate files"
 sst_encryption_run xtrabackup_tkey
 test_result "xtrabackup SST (key and certificate files)"
+sst_encryption_run xtrabackup_tkey shuffle_test
+test_result "xtrabackup SST with different key and certificate files"
 
 exit 0
 
