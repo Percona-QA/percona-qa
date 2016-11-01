@@ -708,6 +708,9 @@ pquery_test(){
         echoit "Server started ok. Client:   `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
       fi
       if [ $PMM -eq 1 ];then
+        echoit "Adding Orchestratori user for MySQL replication topology management.."
+        printf "[client]\nuser=root\nsocket=${RUNDIR}/${TRIAL}/socket.sock\n" | \
+        ${BASEDIR}/bin/mysql --defaults-file=/dev/stdin  -e "GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO 'orc_client_user'@'%' IDENTIFIED BY 'orc_client_password’" 2>/dev/null
         echoit "Starting pmm client for this server..."
         sudo pmm-admin add mysql pq${RANDOMD}-${TRIAL} --socket=${RUNDIR}/${TRIAL}/socket.sock --user=root --query-source=perfschema
       fi
