@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-echo 'QA PMM Info Script v0.05'
+echo 'QA PMM Info Script v0.07'
 echo '==================== uname -a'
 uname -a 2>&1 | sed 's|^|  |'
 echo '==================== /proc/version'
@@ -17,7 +17,7 @@ sudo docker images 2>&1 | grep pmm | sed 's|^|  |'
 echo '==================== PMM server state (sudo docker ps -a | grep pmm):'
 sudo docker ps -a 2>&1 | grep pmm | sed 's|^|  |'
 echo '==================== Exporter status (ps -ef | grep exporter):'
-ps -ef | grep exporter | sed 's|^|  |'
+ps -ef | grep -v grep | grep exporter | sed 's|^|  |'
 echo '==================== PMM agent (sudo pmm-admin --version):'
 sudo pmm-admin --version 2>&1 | sed 's|^|  |'
 echo '==================== PMM info (sudo pmm-admin info):'
