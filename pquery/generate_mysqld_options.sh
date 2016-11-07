@@ -60,6 +60,18 @@ while read line; do
     echoit "  > Adding possible values IGNORE_ERROR, ABORT_SERVER for option '${OPTION}' to the final list..."
     echo "${OPTION}=IGNORE_ERROR" >> ${OUTPUT_FILE}
     echo "${OPTION}=ABORT_SERVER" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--enforce-gtid-consistency" ]; then
+    echoit "  > Adding possible values OFF, ON, WARN for option '${OPTION}' to the final list..."
+    echo "${OPTION}=OFF" >> ${OUTPUT_FILE}
+    echo "${OPTION}=ON" >> ${OUTPUT_FILE}
+    echo "${OPTION}=WARN" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--gtid-mode" ]; then
+    echoit "  > Adding possible values OFF, OFF_PERMISSIVE, ON_PERMISSIVE, ON, ON enforce for option '${OPTION}' to the final list..."
+    echo "${OPTION}=OFF" >> ${OUTPUT_FILE}
+    echo "${OPTION}=OFF_PERMISSIVE" >> ${OUTPUT_FILE}
+    echo "${OPTION}=ON" >> ${OUTPUT_FILE}
+    echo "${OPTION}=ON --enforce-gtid-consistency=ON" >> ${OUTPUT_FILE}
+    echo "${OPTION}=ON_PERMISSIVE" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--binlog-format" ]; then
     echoit "  > Adding possible values ROW, STATEMENT, MIXED for option '${OPTION}' to the final list..."
     echo "${OPTION}=ROW" >> ${OUTPUT_FILE}
