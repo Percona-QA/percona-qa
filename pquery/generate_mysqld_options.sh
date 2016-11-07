@@ -31,7 +31,7 @@ echoit(){
  > ${TEMP_FILE}
 
 # mysqld options excluded from list.
-EXCLUDED_LIST=( --basedir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password --socket --socket-umask --innodb-trx-rseg-n-slots-debug --innodb-fil-make-page-dirty-debug --initialize --initialize-insecure --port ) 
+EXCLUDED_LIST=( --basedir --datadir --plugin-dir --lc-messages-dir --tmpdir --slave-load-tmpdir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password --socket --socket-umask --innodb-trx-rseg-n-slots-debug --innodb-fil-make-page-dirty-debug --initialize --initialize-insecure --port ) 
 # Create a file (${OUTPUT_FILE}) with all options/values intelligently handled and included
 rm -Rf ${OUTPUT_FILE}
 touch ${OUTPUT_FILE}
@@ -514,7 +514,7 @@ while read line; do
     echoit "  > Assert: Option '${OPTION}' is blank by default and not programmed into the script yet, please cover this in the script..."
     exit 1
   else
-    echoit "  > NOT COVERED YET, PLEASE ADD!!!"
+    echoit "  > ${OPTION} IS NOT COVERED YET, PLEASE ADD!!!"
     #exit 1
   fi
 done < ${TEMP_FILE}
