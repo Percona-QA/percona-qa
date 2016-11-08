@@ -36,7 +36,6 @@ GENERATE_NEW_QUERIES_WITH_GENERATOR_EVERY_X_TRIALS=10          # Run the SQL Gen
 MYEXTRA=""                                                     # Extra options to pass to mysqld. Examples below
 #MYEXTRA="--max-connections=2048 --performance-schema --performance-schema-instrument='%=on'"                                         # Use for PMM testing   
 #MYEXTRA="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"                               # Use for generic RocksDB testing
-#MYEXTRA="--log-bin --thread_handling=pool-of-threads --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/TokuDB.sql"      # PS 5.x: TokuDB
 #MYEXTRA="--log-bin --thread_handling=pool-of-threads --init-file=${SCRIPT_PWD}/plugins_55.sql"                                                                  # PS 5.5: All Pl.
 #MYEXTRA="--log-bin --thread_handling=pool-of-threads --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/plugins_56.sql"  # PS 5.6: All Pl.
 #MYEXTRA="--log-bin --thread_handling=pool-of-threads --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/plugins_57.sql"  # PS 5.7: All Pl.
