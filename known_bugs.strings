@@ -61,13 +61,13 @@ options.use_os_buffer                                    ## http://github.com/fa
 prebuilt->trx->error_key_num < ha_alter_info->key_count  ## 
 
 ## =========== Early 5.7 Prepatory Work ===========
-ut0ut.cc line 981                                        ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
-ut0ut.cc line 906                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
-ut0ut.cc line 916                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
-ut0ut.cc line 918                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7B2
-ut0ut.cc line 923                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10
-ut0ut.cc line 924                                        ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10R1
-fil0fil.cc line 6933                                     ## Idem to 74481: SET @@GLOBAL.innodb_fil_make_page_dirty_debug=22;
+#ut0ut.cc line 981                              ## Fixed ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug) ( Fixed in 5.7.7, 5.8.0)
+#ut0ut.cc line 906                              ## Fixed  ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; ( Fixed in 5.7.7, 5.8.0)
+#ut0ut.cc line 916                              ## Fixed  ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; ( Fixed in 5.7.7, 5.8.0)
+#ut0ut.cc line 918                              ## Fixed  ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7B2 ( Fixed in 5.7.7, 5.8.0)
+#ut0ut.cc line 923                              ## Fixed  ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10 ( Fixed in 5.7.7, 5.8.0)
+#ut0ut.cc line 924                              ## Fixed  ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10R1 ( Fixed in 5.7.7, 5.8.0)
+#fil0fil.cc line 6933                           ## Fixed  ## Idem to 74481: SET @@GLOBAL.innodb_fil_make_page_dirty_debug=22;
 buf0buf.cc line 2678                                     ## Not logged: SET GLOBAL innodb_fil_make_page_dirty_debug=38098908;
 #sync0debug.cc line 299                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
 #buf0lru.cc line 2245                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1415357                                 (# after next bzr pull)
@@ -86,7 +86,7 @@ ha_innodb.cc line 17770                                  ## http://bugs.mysql.co
 #btr0btr.ic line 126                            ## Fixed ## http://bugs.mysql.com/bug.php?id=75784 (Apparent dup of MS #74577)                     (# after MS 5.7.6 merged)
 btr0cur.cc line 1240                                     ## http://bugs.mysql.com/bug.php?id=74747 (Apparently does not exist in 5.7.6)
 #TEXT=.strlen.m_ptr.$                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75870 (Also ref bug 79905)                            (# after MS 5.7.8 merged)
-fil0fil.cc line 5133                                     ## http://bugs.mysql.com/bug.php?id=74481
+#fil0fil.cc line 5133                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74481 (Fixed in 5.7.7, 5.8.0)
 fil0fil.cc line 6973                                     ## http://bugs.mysql.com/bug.php?id=82386
 fsp0fsp.cc line 2025                                     ## http://bugs.mysql.com/bug.php?id=74876 (MS 5.7.15-m15) (InnoDB: Failing assertion: inode)
 fsp0fsp.cc line 2023                                     ## http://bugs.mysql.com/bug.php?id=74343 (testcase from bug #74876 triggers this assertion also)
@@ -161,7 +161,7 @@ ha_innodb.cc line 1803                                   ## http://bugs.mysql.co
 
 ## =========== MS 5.7 GA ===========
 .xid->is_null                                            ## http://bugs.mysql.com/bug.php?id=80694
-row0quiesce.cc line 724                                  ## http://bugs.mysql.com/bug.php?id=80669
+#row0quiesce.cc line 724                        ## Fixed ## http://bugs.mysql.com/bug.php?id=80669 (Fixed in 5.7.13)
 ut0ut.cc line 921                                        ## http://bugs.mysql.com/bug.php?id=80695 PS
 ut0ut.cc line 936                                        ## http://bugs.mysql.com/bug.php?id=80668
 pfs_file .= __null                                       ## http://bugs.mysql.com/bug.php?id=79016
@@ -214,7 +214,7 @@ type...!                                                 ## MS5.7 # http://bugs.
 #Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm ## Fixed ## PS5.7 # http://bugs.launchpad.net/percona-server/+bug/1544398 (Valgrind builds only)
 ZN17sys_var_pluginvar13global_updateEP3THDP7set_var              ## MS5.7 # http://bugs.mysql.com/bug.php?id=80152
 Z15error_log_print8loglevelPKcP13__va_list_tag                   ## MS5.7 # http://bugs.mysql.com/bug.php?id=80153
-ZN6UniqueD1Ev                                                    ## MS5.7 # http://bugs.mysql.com/bug.php?id=80134
+#ZN6UniqueD1Ev                                          ## Fixed ## MS5.7 # http://bugs.mysql.com/bug.php?id=80134 (Fixed in 5.5.50, 5.6.31, 5.7.13, 5.8.0 )
 #log0log.cc line 1251                                   ## Fixed ## PS5.7 # http://bugs.launchpad.net/percona-server/+bug/1597143
 #log0log.cc line 1256                                   ## Fixed ## PS5.7 # http://bugs.launchpad.net/percona-server/+bug/1597143
 Handlerton. share->file == NULL                                  ## PS5.7 # http://tokutek.atlassian.net/browse/FT-725
@@ -284,14 +284,14 @@ btr0sea.cc line 1161                                                            
 btr0sea.cc line 1210                                                                    ## http://bugs.mysql.com/bug.php?id=76472, PS build
 btr0sea.cc line 1782                                                                    ## http://bugs.mysql.com/bug.php?id=77108
 btr0sea.ic line 111                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1469041
-buf0buf.cc line 2536                                                                    ## http://bugs.mysql.com/bug.php?id=74481, MS build
-buf0buf.cc line 2631                                                                    ## http://bugs.mysql.com/bug.php?id=74481, MS build
-buf0buf.cc line 2630                                                                    ## http://bugs.mysql.com/bug.php?id=74481, PS build (with oldPS)
-buf0buf.cc line 2633                                                                    ## http://bugs.mysql.com/bug.php?id=74481, PS build
+#buf0buf.cc line 2536                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74481, MS build ( Fixed in 5.7.7, 5.8.0)
+#buf0buf.cc line 2631                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74481, MS build ( Fixed in 5.7.7, 5.8.0)
+#buf0buf.cc line 2630                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74481, PS build (with oldPS) ( Fixed in 5.7.7, 5.8.0)
+#buf0buf.cc line 2633                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74481, PS build ( Fixed in 5.7.7, 5.8.0)
 buf0buf.cc line 2641                                                                    ## http://bugs.mysql.com/bug.php?id=74001, MS build
 buf0buf.cc line 2641                                                                    ## http://bugs.mysql.com/bug.php?id=74855 (PS #1392617) (also see above)
 buf0buf.cc line 2738                                                                    ## http://bugs.mysql.com/bug.php?id=74001, PS build
-buf0buf.cc line 2741                                                                    ## http://bugs.mysql.com/bug.php?id=74481, MS build
+#buf0buf.cc line 2741                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74481, MS build ( Fixed in 5.7.7, 5.8.0)
 buf0buf.cc line 2743                                                                    ## http://bugs.launchpad.net/percona-server/+bug/1392617 (with oldPS)
 buf0buf.cc line 2749                                                                    ## http://bugs.launchpad.net/percona-server/+bug/1392617 
 buf0buf.cc line 2969                                                                    ## http://bugs.mysql.com/bug.php?id=74729, MS build
@@ -451,7 +451,7 @@ from->len == to->len                                                            
 hash_not_ok == 0                                                                        ## http://bugs.mysql.com/bug.php?id=74852
 host_length <= 60                                                                       ## http://bugs.mysql.com/bug.php?id=74678
 inited == NONE                                                                          ## http://bugs.mysql.com/bug.php?id=74650
-item_in->left_expr->cols                                                                ## http://bugs.mysql.com/bug.php?id=80440
+#item_in->left_expr->cols                                                      ## Fixed ## http://bugs.mysql.com/bug.php?id=80440 (Fixed in 5.7.6)
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## http://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## http://bugs.mysql.com/bug.php?id=74646
 .length % 4                                                                             ## http://bugs.mysql.com/bug.php?id=74220
@@ -560,7 +560,7 @@ Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb 
 #Z17table_hash_searchPKcS0_S0_S0_S0_b                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74850 (fixed in 5.6.24, 5.7.8)
 #Z17toku_loader_closeP13__toku_loader                                          ## Fixed ## http://tokutek.atlassian.net/browse/DB-806 (fixed tokudb-7.5.6)
 Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                         ## http://tokutek.atlassian.net/browse/DB-845
-Z17wild_case_compareP15charset_info_stPKcS2_                                            ## http://bugs.mysql.com/bug.php?id=78230
+#Z17wild_case_compareP15charset_info_stPKcS2_                                  ## Fixed ## http://bugs.mysql.com/bug.php?id=78230 (Fixed in 5.5.49, 5.6.30, 5.7.12, 5.8.0)
 Z18close_thread_tableP3THDPP5TABLE                                                      ## http://bugs.mysql.com/bug.php?id=75854
 Z18create_ref_for_keyP4JOINP13st_join_tableP7Key_usey                                   ## http://bugs.mysql.com/bug.php?id=74559 (5.7 bug above, #75944)
 Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm                         ## http://bugs.launchpad.net/percona-server/+bug/1631555
@@ -610,8 +610,8 @@ ZN9ha_myisam5extraE17ha_extra_function                                          
 ZN9ha_myisam9write_rowEPh                                                               ## http://bugs.mysql.com/bug.php?id=75083
 ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                                     ## http://bugs.mysql.com/bug.php?id=74953
 ZN10Item_fieldC2EP5Field                                                                ## http://bugs.mysql.com/bug.php?id=74628
-ZN10Item_param22safe_charset_converterEPK15charset_info_st                              ## http://bugs.mysql.com/bug.php?id=76039
-ZN10my_decimalaSERKS_                                                                   ## http://bugs.mysql.com/bug.php?id=80438
+#ZN10Item_param22safe_charset_converterEPK15charset_info_st                    ## Fixed ## http://bugs.mysql.com/bug.php?id=76039 (Fixed in 5.5.49, 5.6.30, 5.7.12, 5.8.0)
+#ZN10my_decimalaSERKS_                                                         ## Fixed ## http://bugs.mysql.com/bug.php?id=80438 (Fixed in 5.6.32, 5.7.14)
 ZN11Query_cache13end_of_resultEP3THD                                                    ## http://bugs.mysql.com/bug.php?id=83188
 ZN11MDL_context11find_ticketEP11MDL_requestP17enum_mdl_duration                         ## http://bugs.launchpad.net/percona-server/+bug/1403446
 #ZN11MDL_request4initEN7MDL_key18enum_mdl_namespaceEPKcS3_13enum_mdl_type17enum_mdl_duration ## Fixed ## http://bugs.mysql.com/bug.php?id=74499 (fixed in 5.5.43)
@@ -665,7 +665,7 @@ ZN7handler22ha_inplace_alter_tableEP5TABLEP18Alter_inplace_info ## Still present
 #ZN7handler9ha_createEPKcP5TABLEP24st_ha_create_information                    ## Fixed ## http://bugs.mysql.com/bug.php?id=74292 (fixed in 5.6.23) Duplicate MS#75284
 #ZN7ha_heap11index_firstEPh                                                    ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1488055 (dup of 1518183 in 5.7 above)
 #ZN7MDL_key12mdl_key_initENS_18enum_mdl_namespaceEPKcS2_                       ## Fixed ## http://bugs.mysql.com/bug.php?id=74499 (fixed in 5.5.43)
-ZN7sys_var5checkEP3THDP7set_var                                                         ## http://bugs.mysql.com/bug.php?id=78064 (also seen in 5.7.8 RC2)
+#ZN7sys_var5checkEP3THDP7set_var                                               ## Fixed ## http://bugs.mysql.com/bug.php?id=78064 (fixed in 5.6.29, 5.7.11, 5.8.0)
 ZN8Item_row19illegal_method_callEPKc                                                    ## http://bugs.mysql.com/bug.php?id=76468
 ZN8Protocol13end_statementEv                                                            ## http://bugs.mysql.com/bug.php?id=74411, pquery
 ZN9READ_INFO10read_fieldEv                                                              ## http://bugs.mysql.com/bug.php?id=77993 
