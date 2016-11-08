@@ -532,6 +532,8 @@ Z10open_tableP3THDP10TABLE_LISTP18Open_table_context                            
 #Z11alloc_queryP3THDPKcj                                                       ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1387951
 #Z11lock_tablesP3THDP10TABLE_LISTjj                                            ## Fixed ## http://tokutek.atlassian.net/browse/DB-767 (Fixed tokudb-7.5.4)
 #Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384566) (fixed in 5.6.24)
+#Z17mysql_create_userP3THDR4ListI11st_lex_userE                                ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384651) (fixed in 5.6.24)
+#Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (fixed in 5.6.24)
 #Z11open_tablesP3THDPP10TABLE_LISTPjjP19Prelocking_strategy                    ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1416956 (dup of 1387951)
 Z12find_filenumRKP2ftS2_                                                                ## http://tokutek.atlassian.net/browse/DB-837
 #Z12find_sys_varP3THDPKcj                                                               ## http://bugs.launchpad.net/percona-server/+bug/1415828 # Need new testcase
@@ -554,10 +556,8 @@ ZN12ha_myisammrg15attach_childrenEv                                             
 ZN14cachefile_list9remove_cfEP9cachefile                                                ## http://tokutek.atlassian.net/browse/DB-858
 ZN14JOIN_CACHE_BNL21join_matching_recordsEb                                             ## http://bugs.mysql.com/bug.php?id=76925
 #Z17mysql_alter_tableP3THDPcS1_P24st_ha_create_informationP10TABLE_LISTP10Alter_infojP8st_orderb ## TokuDB DB-805 (ref above) (fixed in tokudb-7.5.6)
-#Z17mysql_create_userP3THDR4ListI11st_lex_userE                                ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384651) (fixed in 5.6.24)
 Z17mysql_lock_tablesP3THDPP5TABLEjj                                                     ## http://bugs.mysql.com/bug.php?id=74895
 Z17mysql_show_grantsP3THDP11st_lex_user                                                 ## http://bugs.mysql.com/bug.php?id=74778
-Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (fixed in 5.6.24)
 #Z17table_hash_searchPKcS0_S0_S0_S0_b                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74850 (fixed in 5.6.24, 5.7.8)
 #Z17toku_loader_closeP13__toku_loader                                          ## Fixed ## http://tokutek.atlassian.net/browse/DB-806 (fixed tokudb-7.5.6)
 Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                         ## http://tokutek.atlassian.net/browse/DB-845
