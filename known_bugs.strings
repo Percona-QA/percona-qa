@@ -255,6 +255,7 @@ ha_innodb.cc line 19339                                               ##DONOTREM
 ha_innodb.cc line 19411                                               ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
 InnoDB. log block checksum mismatch. expected                         ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
 ut0ut.cc line 932                                                     ##DONOTREMOVE## InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
+btr0cur.c line 3918                                                   ##DONOTREMOVE## set session debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
  
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
