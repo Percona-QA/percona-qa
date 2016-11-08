@@ -99,6 +99,9 @@ TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
 
+# ======== Machine configurable variables section: DO NOT REMOVE THIS
+#VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
+
 # ==== MySQL command line (CLI) output TEXT search examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for MySQL CLI output (for MODE=2 or 5)
 #TEXT=                       "\| i      \|"            # Idem, text instead of number (text is left-aligned, numbers are right-aligned in the MySQL CLI output)
@@ -239,9 +242,6 @@ TS_VARIABILITY_SLEEP=1
 #   - The subreducer directories $WORKD/subreducer/<nr>/ (ref above), provided reducer.sh is working in MULTI mode (even the standard VERIFY stage is [MULTI]) 
 #   - Or, they will be in the same aforementioned directory $WORKD (and the output files from the initial template creation will now have been overwritten, 
 #     though not the actual template), provided reducer.sh is working in single-threaded reduction mode (i.e. [MULTI] mode is not active).
-
-# ======== Machine configurable variables section
-#VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
 
 # ======== Ideas for improvement
 # - The write of the file should be atomic - i.e. if reducer is interrupted during a testcase_out write, the file may be faulty. Check if this is so & fix
@@ -1703,10 +1703,10 @@ start_mysqld_main(){
   for X in $(seq 1 120); do
     sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
     # Check if the server crashed or shutdown, then there is no need to wait any longer (new beta feature as of 1 July 16)
-    if grep -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
-    if grep -qi "Writing a core file" $WORKD/error.log.out; then break; fi
-    if grep -qi "terribly wrong" $WORKD/error.log.out; then break; fi
-    if grep -qi "Shutdown complete" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "Writing a core file" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "terribly wrong" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "Shutdown complete" $WORKD/error.log.out; then break; fi
   done
 }
 
@@ -2147,7 +2147,7 @@ process_outcome(){
       sleep 1; sync
       if egrep -q "ERROR SUMMARY" $WORKD/valgrind.out; then break; fi
     done
-    if egrep -iq "$TEXT" $WORKD/valgrind.out $WORKD/error.log.out; then
+    if egrep --binary-files=text -iq "$TEXT" $WORKD/valgrind.out $WORKD/error.log.out; then
       if [ ! "$STAGE" = "V" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ValgrindBug*] [$NOISSUEFLOW] Swapping files & saving last known good Valgrind issue in $WORKO" 
         control_backtrack_flow
@@ -2359,7 +2359,7 @@ process_outcome(){
 
   # MODE8: ThreadSync mysqld error output log testing (set TEXT)
   if [ $MODE -eq 8 ]; then
-    if egrep -iq "$TEXT" $WORKD/error.log.out; then
+    if egrep --binary-files=text -iq "$TEXT" $WORKD/error.log.out; then
       if [ "$STAGE" = "T" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TSErrorLogOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good error log output issue thread file(s) in $WORKD/log/"
       elif [ ! "$STAGE" = "V" ]; then

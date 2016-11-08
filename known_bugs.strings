@@ -96,6 +96,7 @@ ZN16QEP_shared_owner4keysEv                              ## http://bugs.mysql.co
 Z14fill_variablesP3THDP10TABLE_LISTP4Item                ## http://bugs.mysql.com/bug.php?id=75940 
 #Z18create_ref_for_keyP4JOINP8JOIN_TABP7Key_usey ## Fixed ## http://bugs.mysql.com/bug.php?id=75944 (Marked dup of 74559)                          (# after MS 5.7.7 merged)
 #t1->result_range                               ## Fixed ## http://bugs.mysql.com/bug.php?id=75946                                                 (# after MS 5.7.7 merged)
+t1->result_range                                         ## http://bugs.mysql.com/bug.php?id=83737 (but seen again in 5.6.34, on only 1 specific statement, tested many times)
 #old_value >= 1                                 ## Fixed ## http://bugs.mysql.com/bug.php?id=76406                                                 (# after MS 5.7.8 merged)
 #Z18replace_user_tableP3THDP5TABLEP11st_lex_usermbbb ## Fixed ## http://bugs.mysql.com/bug.php?id=75947                                            (# after MS 5.7.6 merged)
 # ZN28Item_func_latlongfromgeohash14decode_geohashEP6StringddddPdS2_  ## Fixed ## Fixed in 5.7.6-m16 (no bug report logged, seen afterwards)
@@ -409,6 +410,8 @@ sync0sync.ic line 307                                                           
 sync0sync.cc line 1318                                                                  ## http://bugs.mysql.com/bug.php?id=75640, MS build
 sync0sync.cc line 1432                                                                  ## http://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
 sync0sync.cc line 1443                                                                  ## http://bugs.mysql.com/bug.php?id=75640, PS build
+sync0rw.cc line 923                                                                     ## http://bugs.mysql.com/bug.php?id=83741, PS build
+sync0rw.cc line 929                                                                     ## http://bugs.mysql.com/bug.php?id=83741, MS build
 #trx0rec.ic line 110                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75230 (fixed 5.6.24/5.7.6)
 #trx0roll.cc line 264                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74671, PS build(#1385036) (fixed in 5.6.23)
 #trx0roll.cc line 275                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74671, MS build (fixed in 5.6.23)
@@ -431,6 +434,7 @@ bitmap_is_subset.*m_part_info->lock_partitions, .*m_locked_partitions           
 #bit < map->n_bits                                                             ## Fixed ## http://bugs.mysql.com/bug.php?id=74491 (Fixed in 5.6.24)
 .check_datetime_range.ltime                                                             ## (Originally PS Bug #1385043)
 comma_length > 0                                                                        ## http://bugs.mysql.com/bug.php?id=74603 (old LP #1384625)
+cur_shape .= Gcalc_function..shape_point                                                ## http://bugs.mysql.com/bug.php?id=83739
 data_offset == ..null_count                                                             ## http://bugs.mysql.com/bug.php?id=74677
 db_length == copy->db_length                                                            ## http://bugs.mysql.com/bug.php?id=74604 (old LP #1384621)
 decimals_arg <= 30                                                                      ## http://bugs.mysql.com/bug.php?id=83437
