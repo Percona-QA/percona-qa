@@ -172,7 +172,7 @@
 # Except for searching files (if grep -qi "search string" file.txt...), it's best not to use: echo "text" | grep -q "text" to search strings for substrings. It is very slow, and 
   has a gotcha: Test this:  LINE='test'; DONE=0; echo ${LINE} | if grep -q 'test'; then DONE=1; echo "DONE"; fi; echo $DONE  # DONE is 0 because (as per Bash team); 'All elements
   of a pipeline are executed in subshells.  A subshell cannot affect its parent's environment. The 'lastpipe' shell option can change this when job control is not active.'
-  Instead, see 'Check a string for presence of a search/substring' above for substring searches
+  Instead, see 'Check a string for presence of a search/substring' above for substring searches. Another gotcha can be seen in this one; echo "abc123xyz457" | grep -o '[^0-9]'
 # In Bash, a calling function needs to be declared ABOVE the line it is called from. An example script (place the following 3 lines in a script) will show this (output on right):
   echo "does not work (error will be shown before this line): `works`"         # ./test.sh: line 1: works: command not found
   works(){ echo "works"; }                                                     # does not work (error will be shown before this line): 
