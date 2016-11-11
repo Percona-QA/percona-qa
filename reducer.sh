@@ -99,6 +99,9 @@ TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
 
+# ======== Machine configurable variables section: DO NOT REMOVE THIS
+#VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
+
 # ==== MySQL command line (CLI) output TEXT search examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for MySQL CLI output (for MODE=2 or 5)
 #TEXT=                       "\| i      \|"            # Idem, text instead of number (text is left-aligned, numbers are right-aligned in the MySQL CLI output)
@@ -240,10 +243,8 @@ TS_VARIABILITY_SLEEP=1
 #   - Or, they will be in the same aforementioned directory $WORKD (and the output files from the initial template creation will now have been overwritten, 
 #     though not the actual template), provided reducer.sh is working in single-threaded reduction mode (i.e. [MULTI] mode is not active).
 
-# ======== Machine configurable variables section
-#VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
-
 # ======== Ideas for improvement
+# - The write of the file should be atomic - i.e. if reducer is interrupted during a testcase_out write, the file may be faulty. Check if this is so & fix
 # - STAGE8 does currently know/consider whetter an issue is sporadic (alike to other STAGES, except STAGE 1). We could have an additional option like
 #   STAGE8_FORCE_SPORADIC=0/1 Which would - specifically for STAGE 8 - try each option x times (STAGE8_SPORADIC_ATTEMPTS) when an issue is found to be (by the
 #   auto-sporadic issue detection) or is forced to be (by STAGE8_FORCE_SPORADIC=1) sporadic. This allows easier reduction of mysqld options for sporadic issues)
@@ -1165,7 +1166,7 @@ init_workdir_and_files(){
     fi
     echo_out "[Init] Input file: $INPUTFILE"
     # Initial INPUTFILE to WORKF copy
-    (echo "$DROPC"; (cat $INPUTFILE | grep -v "$DROPC")) > $WORKF
+    (echo "$DROPC"; (cat $INPUTFILE | grep --binary-files=text -v "$DROPC")) > $WORKF
   fi
   if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
@@ -1702,10 +1703,10 @@ start_mysqld_main(){
   for X in $(seq 1 120); do
     sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
     # Check if the server crashed or shutdown, then there is no need to wait any longer (new beta feature as of 1 July 16)
-    if grep -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
-    if grep -qi "Writing a core file" $WORKD/error.log.out; then break; fi
-    if grep -qi "terribly wrong" $WORKD/error.log.out; then break; fi
-    if grep -qi "Shutdown complete" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "Writing a core file" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "terribly wrong" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "Shutdown complete" $WORKD/error.log.out; then break; fi
   done
 }
 
@@ -1885,7 +1886,7 @@ cut_threadsync_chunk(){
           tail -n$LAST_LINE $TS_WORKF | grep -v "^[\t ]*;[\t ]*$" | \
             sed -e "s/SET DEBUG_SYNC\(.*\)now SIGNAL GO_T2/SELECT SLEEP($TS_VARIABILITY_SLEEP);SET DEBUG_SYNC\1now SIGNAL GO_T2/" > $TS_WORKT
         else
-          tail -n$LAST_LINE $TS_WORKF | grep -v "^[\t ]*;[\t ]*$" > $TS_WORKT
+          tail -n$LAST_LINE $TS_WORKF | grep --binary-files=text -v "^[\t ]*;[\t ]*$" > $TS_WORKT
         fi
       else
         # Sub threads
@@ -1900,7 +1901,7 @@ cut_threadsync_chunk(){
           tail -n$LAST_LINE $TS_WORKF | grep -v "^[\t ]*;[\t ]*$" | \
             sed -e "s/SET DEBUG_SYNC/SELECT SLEEP($TS_VARIABILITY_SLEEP_TENTH);SET DEBUG_SYNC/" > $TS_WORKT
         else
-          tail -n$LAST_LINE $TS_WORKF | grep -v "^[\t ]*;[\t ]*$" > $TS_WORKT
+          tail -n$LAST_LINE $TS_WORKF | grep --binary-files=text -v "^[\t ]*;[\t ]*$" > $TS_WORKT
         fi
       fi
     else
@@ -1956,9 +1957,9 @@ run_sql_code(){
   if   [ $MODE -ge 6 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [DATA] Loading datafile before SQL threads replay"
     if [ $TS_DBG_CLI_OUTPUT -eq 0 ]; then
-      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null
+      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep --binary-files=text -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null
     else
-      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql_data.out 2>&1
+      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep --binary-files=text -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql_data.out 2>&1
     fi
     TXT_OUT="$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] Forking SQL threads [PIDs]:"
     for t in $(eval echo {1..$TS_THREADS}); do 
@@ -2146,7 +2147,7 @@ process_outcome(){
       sleep 1; sync
       if egrep -q "ERROR SUMMARY" $WORKD/valgrind.out; then break; fi
     done
-    if egrep -iq "$TEXT" $WORKD/valgrind.out $WORKD/error.log.out; then
+    if egrep --binary-files=text -iq "$TEXT" $WORKD/valgrind.out $WORKD/error.log.out; then
       if [ ! "$STAGE" = "V" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ValgrindBug*] [$NOISSUEFLOW] Swapping files & saving last known good Valgrind issue in $WORKO" 
         control_backtrack_flow
@@ -2358,7 +2359,7 @@ process_outcome(){
 
   # MODE8: ThreadSync mysqld error output log testing (set TEXT)
   if [ $MODE -eq 8 ]; then
-    if egrep -iq "$TEXT" $WORKD/error.log.out; then
+    if egrep --binary-files=text -iq "$TEXT" $WORKD/error.log.out; then
       if [ "$STAGE" = "T" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TSErrorLogOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good error log output issue thread file(s) in $WORKD/log/"
       elif [ ! "$STAGE" = "V" ]; then
@@ -2652,7 +2653,7 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2679,7 +2680,7 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2709,7 +2710,7 @@ verify(){
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2732,7 +2733,7 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2753,7 +2754,7 @@ verify(){
             | sed -e 's/;[\t ]*#.*/;/i' > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2888,7 +2889,7 @@ if [ $MODE -ge 6 ]; then
             export TS_WORKF=$(eval echo $(echo '$WORKF'"$t"))
             export TS_WORKT=$(eval echo $(echo '$WORKT'"$t"))
             if egrep -qi "SIGNAL GO_T2" $TS_WORKF; then  # Control thread
-              egrep -v "DEBUG_SYNC.*$TS_T_THREAD " $TS_WORKF > $TS_WORKT  # do not remove critical end space (T2 == T20 delete otherwise!)
+              egrep --binary-files=text -v "DEBUG_SYNC.*$TS_T_THREAD " $TS_WORKF > $TS_WORKT  # do not remove critical end space (T2 == T20 delete otherwise!)
             fi
           done
         fi
@@ -3350,7 +3351,7 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
         # Eliminate the column from the correct CREATE TABLE table (this will match the first occurence of that column name in the correct CREATE TABLE)
         # This sed presumes that each column is on one line, by itself, terminated by a comma (can be improved upon as per the above remark note)
         WORKT2=`echo $WORKT | sed 's/$/.2/'`
-        sed -e "/CREATE.*TABLE.*$TABLENAME/,/^[ ]*$COL.*,/s/^[ ]*$COL.*,//1" $WORKF | grep -v "^$" > $WORKT2  # Remove the column from table defintion
+        sed -e "/CREATE.*TABLE.*$TABLENAME/,/^[ ]*$COL.*,/s/^[ ]*$COL.*,//1" $WORKF | grep --binary-files=text -v "^$" > $WORKT2  # Remove the column from table defintion
         # Write the testcase with removed column table definition to WORKT as well in case there are no INSERT removals
         # (and hence $WORKT will not be replaced with $WORKT2 anymore below, so reducer does it here as a harmless, but potentially needed, precaution)
         cp -f $WORKT2 $WORKT  
@@ -3635,7 +3636,7 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 145 ]; then sed "s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 146 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 147 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 148 ]; then egrep -v "^#|^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 148 ]; then egrep --binary-files=text -v "^#|^$" $WORKF > $WORKT
     elif [ $TRIAL -eq 149 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
@@ -3660,12 +3661,12 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
   COUNT_MYEXTRA=`echo ${MYEXTRA} | wc -w`
   if [ $COUNT_MYEXTRA -gt 3 ]; then
-    if grep '\--plugin-load.*=ha_tokudb.so' $WORKD/mysqld_opt.out > /dev/null ; then 
+    if grep --binary-files=text '\--plugin-load.*=ha_tokudb.so' $WORKD/mysqld_opt.out > /dev/null ; then 
       sed -i '/--plugin-load.*=ha_tokudb.so/d' $WORKD/mysqld_opt.out ; 
       PGA=1
     fi
   else
-    if echo $MYEXTRA |  grep '\--plugin-load.*=ha_tokudb.so' > /dev/null ; then  
+    if echo $MYEXTRA |  grep --binary-files=text '\--plugin-load.*=ha_tokudb.so' > /dev/null ; then  
       MYEXTRA=$(echo $MYEXTRA | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g;s|--plugin-load=tokudb=ha_tokudb.so||g');
       echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
       echo " --plugin-load-add=tokudb=ha_tokudb.so" >> $WORKD/mysqld_opt.out

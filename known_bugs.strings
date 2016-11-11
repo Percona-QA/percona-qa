@@ -96,6 +96,7 @@ ZN16QEP_shared_owner4keysEv                              ## http://bugs.mysql.co
 Z14fill_variablesP3THDP10TABLE_LISTP4Item                ## http://bugs.mysql.com/bug.php?id=75940 
 #Z18create_ref_for_keyP4JOINP8JOIN_TABP7Key_usey ## Fixed ## http://bugs.mysql.com/bug.php?id=75944 (Marked dup of 74559)                          (# after MS 5.7.7 merged)
 #t1->result_range                               ## Fixed ## http://bugs.mysql.com/bug.php?id=75946                                                 (# after MS 5.7.7 merged)
+t1->result_range                                         ## http://bugs.mysql.com/bug.php?id=83737 (but seen again in 5.6.34, on only 1 specific statement, tested many times)
 #old_value >= 1                                 ## Fixed ## http://bugs.mysql.com/bug.php?id=76406                                                 (# after MS 5.7.8 merged)
 #Z18replace_user_tableP3THDP5TABLEP11st_lex_usermbbb ## Fixed ## http://bugs.mysql.com/bug.php?id=75947                                            (# after MS 5.7.6 merged)
 # ZN28Item_func_latlongfromgeohash14decode_geohashEP6StringddddPdS2_  ## Fixed ## Fixed in 5.7.6-m16 (no bug report logged, seen afterwards)
@@ -255,6 +256,7 @@ ha_innodb.cc line 19339                                               ##DONOTREM
 ha_innodb.cc line 19411                                               ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
 InnoDB. log block checksum mismatch. expected                         ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
 ut0ut.cc line 932                                                     ##DONOTREMOVE## InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
+btr0cur.c line 3918                                                   ##DONOTREMOVE## set session debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
  
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
@@ -408,6 +410,8 @@ sync0sync.ic line 307                                                           
 sync0sync.cc line 1318                                                                  ## http://bugs.mysql.com/bug.php?id=75640, MS build
 sync0sync.cc line 1432                                                                  ## http://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
 sync0sync.cc line 1443                                                                  ## http://bugs.mysql.com/bug.php?id=75640, PS build
+sync0rw.cc line 923                                                                     ## http://bugs.mysql.com/bug.php?id=83741, PS build
+sync0rw.cc line 929                                                                     ## http://bugs.mysql.com/bug.php?id=83741, MS build
 #trx0rec.ic line 110                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75230 (fixed 5.6.24/5.7.6)
 #trx0roll.cc line 264                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74671, PS build(#1385036) (fixed in 5.6.23)
 #trx0roll.cc line 275                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74671, MS build (fixed in 5.6.23)
@@ -430,6 +434,7 @@ bitmap_is_subset.*m_part_info->lock_partitions, .*m_locked_partitions           
 #bit < map->n_bits                                                             ## Fixed ## http://bugs.mysql.com/bug.php?id=74491 (Fixed in 5.6.24)
 .check_datetime_range.ltime                                                             ## (Originally PS Bug #1385043)
 comma_length > 0                                                                        ## http://bugs.mysql.com/bug.php?id=74603 (old LP #1384625)
+cur_shape .= Gcalc_function..shape_point                                                ## http://bugs.mysql.com/bug.php?id=83739
 data_offset == ..null_count                                                             ## http://bugs.mysql.com/bug.php?id=74677
 db_length == copy->db_length                                                            ## http://bugs.mysql.com/bug.php?id=74604 (old LP #1384621)
 decimals_arg <= 30                                                                      ## http://bugs.mysql.com/bug.php?id=83437
@@ -531,6 +536,8 @@ Z10open_tableP3THDP10TABLE_LISTP18Open_table_context                            
 #Z11alloc_queryP3THDPKcj                                                       ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1387951
 #Z11lock_tablesP3THDP10TABLE_LISTjj                                            ## Fixed ## http://tokutek.atlassian.net/browse/DB-767 (Fixed tokudb-7.5.4)
 #Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384566) (fixed in 5.6.24)
+#Z17mysql_create_userP3THDR4ListI11st_lex_userE                                ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384651) (fixed in 5.6.24)
+#Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (fixed in 5.6.24)
 #Z11open_tablesP3THDPP10TABLE_LISTPjjP19Prelocking_strategy                    ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1416956 (dup of 1387951)
 Z12find_filenumRKP2ftS2_                                                                ## http://tokutek.atlassian.net/browse/DB-837
 #Z12find_sys_varP3THDPKcj                                                               ## http://bugs.launchpad.net/percona-server/+bug/1415828 # Need new testcase
@@ -553,10 +560,8 @@ ZN12ha_myisammrg15attach_childrenEv                                             
 ZN14cachefile_list9remove_cfEP9cachefile                                                ## http://tokutek.atlassian.net/browse/DB-858
 ZN14JOIN_CACHE_BNL21join_matching_recordsEb                                             ## http://bugs.mysql.com/bug.php?id=76925
 #Z17mysql_alter_tableP3THDPcS1_P24st_ha_create_informationP10TABLE_LISTP10Alter_infojP8st_orderb ## TokuDB DB-805 (ref above) (fixed in tokudb-7.5.6)
-#Z17mysql_create_userP3THDR4ListI11st_lex_userE                                ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384651) (fixed in 5.6.24)
 Z17mysql_lock_tablesP3THDPP5TABLEjj                                                     ## http://bugs.mysql.com/bug.php?id=74895
 Z17mysql_show_grantsP3THDP11st_lex_user                                                 ## http://bugs.mysql.com/bug.php?id=74778
-Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (fixed in 5.6.24)
 #Z17table_hash_searchPKcS0_S0_S0_S0_b                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74850 (fixed in 5.6.24, 5.7.8)
 #Z17toku_loader_closeP13__toku_loader                                          ## Fixed ## http://tokutek.atlassian.net/browse/DB-806 (fixed tokudb-7.5.6)
 Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                         ## http://tokutek.atlassian.net/browse/DB-845
