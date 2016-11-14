@@ -58,6 +58,7 @@ TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seco
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
 USE_TEXT_STRING=0               # On/off (1/0) If enabled, when using MODE=3, this uses text_string.sh (percona-qa) instead of searching the entire error log. No effect otherwise
+TEXT_STRING_LOC=~/percona-qa/text_string.sh  # text_string.sh binary in percona-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/percona-qa.git
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -72,7 +73,7 @@ PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (default=0), unless you fully un
 
 # === pquery options            # Note: only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI
 PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
-PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary
+PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary in percona-qa. To get this binary use:  cd ~; git clone https://github.com/Percona-QA/percona-qa.git
 
 # === Other options             # The options are not often changed
 CLI_MODE=0                      # When using the CLI; 0: sent SQL using a pipe, 1: sent SQL using --execute="SOURCE ..." command, 2: sent SQL using redirection (mysql < input.sql)
@@ -589,9 +590,9 @@ options_check(){
     exit 1
   fi
   if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
-    TEXT_STRING_BIN="$(cd `dirname $0` && pwd)/text_string.sh"
-    if [ ! -s "${TEXT_STRING_BIN}"; then
-      echo "Assert: MODE=3 and USE_TEXT_STRING=1, so reducer.sh looked for ${TEXT_STRING_BIN}, but this file was either not found, or is not script readable"
+    if [ ! -s "$TEXT_STRING_LOC" ] ; then
+      echo "Assert: MODE=3 and USE_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this file was either not found, or is not script readable"
+      exit
     fi
   fi 
   if [ $MODE -eq 2 ]; then
@@ -2221,7 +2222,7 @@ process_outcome(){
       if [ $USE_TEXT_STRING -eq 1 ]; then
         rm -f ${ERRORLOG}.text_string
         touch ${ERRORLOG}.text_string
-        ${TEXT_STRING_BIN} $ERRORLOG >> ${ERRORLOG}.text_string
+        $TEXT_STRING_LOC $ERRORLOG >> ${ERRORLOG}.text_string
         if egrep -iq "$TEXT" $ERRORLOG.text_string; then M3_ISSUE_FOUND=1; fi
         M3_OUTPUT_TEXT="TextString"
       else
