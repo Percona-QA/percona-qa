@@ -1,10 +1,15 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 # Additions by Roel Van de Paar, Percona LLC
-# This script is for creating PMM testing framework
 
-# User Configurable Variables
+# PMM Framework
+# This script enables one to quickly setup a Percona Monitoring and Management environment. One can setup a PMM server and qucikyl add multiple clients
+# The intention of this script is to be robust from a quality assurance POV; it should handle many different server configurations accurately
+
+# User configurable variables
 PMM_VERSION="1.0.5"
+
+# Internatl variables
 WORKDIR=${PWD}
 RPORT=$(( RANDOM%21 + 10 ))
 RBASE="$(( RPORT*1000 ))"
@@ -14,9 +19,9 @@ SERVER_START_TIMEOUT=100
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-    echo " --setup                   Setup will configure PMM server and client"
-    echo " --addclient=ps,2          Add mysql/mongodb instances to PMM client"
-    echo "                           You can add multiple server instances together. eg : --addclient=ps,2  --addclient=ms,2 --addclient=psmdb,2" 
+    echo " --setup                   This will setup and configure a PMM server"
+    echo " --addclient=ps,2          Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
+    echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2" 
 }
 
 # Check if we have a functional getopt(1)
@@ -137,7 +142,7 @@ add_ps_client(){
       else
         BASEDIR="$WORKDIR/$BASEDIR"
       fi
-    elif [[ "${CLIENT_NAME}" == "psmdb" ]]; then
+    elif [[ "${CLIENT_NAME}" == "mo" ]]; then
       if [[ ! -e `which mlaunch 2> /dev/null` ]] ;then
         echo "WARNING! The mlaunch mongodb spin up local test environments tool is not installed. Configuring MondoDB server manually"
       else
@@ -159,20 +164,20 @@ add_ps_client(){
         BASEDIR="$WORKDIR/$BASEDIR"
       fi
     fi
-    if [[ "${CLIENT_NAME}" != "md"  && "${CLIENT_NAME}" != "psmdb" ]]; then
+    if [[ "${CLIENT_NAME}" != "md"  && "${CLIENT_NAME}" != "mo" ]]; then
       if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
         MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
       else
         MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
       fi
     else
-      if [[ "${CLIENT_NAME}" != "psmdb" ]]; then
+      if [[ "${CLIENT_NAME}" != "mo" ]]; then
         MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
       fi
     fi
 
     ADDCLIENTS_COUNT=$(echo "${i}" | sed 's|[^0-9]||g')
-    if  [[ "${CLIENT_NAME}" == "psmdb" ]]; then
+    if  [[ "${CLIENT_NAME}" == "mo" ]]; then
       PSMDB_PORT=27017
       if [ ! -z $MTOOLS_MLAUNCH ];then
         sudo $MTOOLS_MLAUNCH --replicaset --nodes $ADDCLIENTS_COUNT --binarypath=$BASEDIR/bin --dir=${BASEDIR}/data
