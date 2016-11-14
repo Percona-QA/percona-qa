@@ -1,0 +1,14 @@
+cd ~
+git clone https://github.com/Percona-QA/percona-qa.git
+cd /tmp
+git clone --recursive https://github.com/percona/percona-server.git --depth=1 -b release-5.7.16-10 PS-5.7.16
+cd PS-5.7.16
+~/percona-qa/build_5.x_valgrid.sh
+mv from_location to_location
+cd to_location
+~/percona-qa/startup.sh
+./start_valgrind
+./cl # try few times till you get into client (Valgrind is slow)
+./stop
+# wait for Valgrind to finish (ps -ef | grep valgrind)
+vi log/master.err
