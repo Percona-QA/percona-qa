@@ -3143,52 +3143,51 @@ if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
     elif [ $TRIAL -eq 44 ]; then sed -e 's/HAVING.*LIMIT/LIMIT/gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 45 ]; then sed -e 's/HAVING.*GROUP BY/GROUP BY/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 46 ]; then sed -e 's/HAVING.*GROUP BY/GROUP BY/gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 46 ]; then sed -e 's/LIMIT[[:digit:][:space:][:cntrl:]]*;$/;/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 47 ]; then sed -e 's/ORDER BY.*;$/;/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 48 ]; then sed -e 's/GROUP BY.*;$/;/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 49 ]; then sed -e 's/HAVING.*;$/;/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 50 ]; then sed -e 's/WHERE.*;$/;/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 51 ]; then sed -e 's/LIMIT.*;$/;/gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 52 ]; then sed -e 's/GROUP BY.*;$/;/gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 53 ]; then sed -e 's/ORDER BY.*;$/;/gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 54 ]; then sed -e 's/HAVING.*;$/;/gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 55 ]; then sed -e 's/WHERE.*;$/;/gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 56 ]; then sed -e 's/(SELECT 1)/(1)/gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 57 ]; then sed -e 's/ORDER BY \(.*\),\(.*\)/ORDER BY \1/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 47 ]; then sed -e 's/LIMIT[[:digit:][:space:][:cntrl:]]*;$/;/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 48 ]; then sed -e 's/ORDER BY.*;$/;/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 49 ]; then sed -e 's/GROUP BY.*;$/;/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 50 ]; then sed -e 's/HAVING.*;$/;/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 51 ]; then sed -e 's/WHERE.*;$/;/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 52 ]; then sed -e 's/LIMIT.*;$/;/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 53 ]; then sed -e 's/GROUP BY.*;$/;/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 54 ]; then sed -e 's/ORDER BY.*;$/;/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 55 ]; then sed -e 's/HAVING.*;$/;/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 56 ]; then sed -e 's/WHERE.*;$/;/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 57 ]; then sed -e 's/(SELECT 1)/(1)/gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 58 ]; then sed -e 's/ORDER BY \(.*\),\(.*\)/ORDER BY \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 59 ]; then sed -e 's/ORDER BY \(.*\),\(.*\)/ORDER BY \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 60 ]; then sed -e 's/ORDER BY \(.*\),\(.*\)/ORDER BY \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 61 ]; then sed -e 's/ORDER BY \(.*\),\(.*\)/ORDER BY \1/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 62 ]; then sed -e 's/GROUP BY \(.*\),\(.*\)/GROUP BY \1/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 62 ]; then sed -e 's/ORDER BY \(.*\),\(.*\)/ORDER BY \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 63 ]; then sed -e 's/GROUP BY \(.*\),\(.*\)/GROUP BY \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 64 ]; then sed -e 's/GROUP BY \(.*\),\(.*\)/GROUP BY \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 65 ]; then sed -e 's/GROUP BY \(.*\),\(.*\)/GROUP BY \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 66 ]; then sed -e 's/GROUP BY \(.*\),\(.*\)/GROUP BY \1/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 67 ]; then sed -e 's/SELECT \(.*\),\(.*\)/SELECT \1/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 67 ]; then sed -e 's/GROUP BY \(.*\),\(.*\)/GROUP BY \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 68 ]; then sed -e 's/SELECT \(.*\),\(.*\)/SELECT \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 69 ]; then sed -e 's/SELECT \(.*\),\(.*\)/SELECT \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 70 ]; then sed -e 's/SELECT \(.*\),\(.*\)/SELECT \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 71 ]; then sed -e 's/SELECT \(.*\),\(.*\)/SELECT \1/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 72 ]; then sed -e 's/ SET \(.*\),\(.*\)/ SET \1/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 72 ]; then sed -e 's/SELECT \(.*\),\(.*\)/SELECT \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 73 ]; then sed -e 's/ SET \(.*\),\(.*\)/ SET \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 74 ]; then sed -e 's/ SET \(.*\),\(.*\)/ SET \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 75 ]; then sed -e 's/ SET \(.*\),\(.*\)/ SET \1/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 76 ]; then sed -e 's/ SET \(.*\),\(.*\)/ SET \1/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 77 ]; then sed -e 's/AND.*IN/IN/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 78 ]; then sed -e 's/AND.*ON/ON/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 79 ]; then sed -e 's/AND.*WHERE/WHERE/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 80 ]; then sed -e 's/AND.*ORDER BY/ORDER BY/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 81 ]; then sed -e 's/AND.*GROUP BY/GROUP BY/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 82 ]; then sed -e 's/AND.*LIMIT/LIMIT/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 83 ]; then sed -e 's/AND.*HAVING/HAVING/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 84 ]; then sed -e 's/OR.*IN/IN/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 85 ]; then sed -e 's/OR.*ON/ON/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 86 ]; then sed -e 's/OR.*WHERE/WHERE/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 87 ]; then sed -e 's/OR.*ORDER BY/ORDER BY/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 88 ]; then sed -e 's/OR.*GROUP BY/GROUP BY/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 89 ]; then sed -e 's/OR.*LIMIT/LIMIT/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 90 ]; then sed -e 's/OR.*HAVING/HAVING/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 91 ]; then sed -e 's/INTEGER/INT/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 77 ]; then sed -e 's/ SET \(.*\),\(.*\)/ SET \1/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 78 ]; then sed -e 's/AND.*IN/IN/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 79 ]; then sed -e 's/AND.*ON/ON/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 80 ]; then sed -e 's/AND.*WHERE/WHERE/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 81 ]; then sed -e 's/AND.*ORDER BY/ORDER BY/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 82 ]; then sed -e 's/AND.*GROUP BY/GROUP BY/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 83 ]; then sed -e 's/AND.*LIMIT/LIMIT/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 84 ]; then sed -e 's/AND.*HAVING/HAVING/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 85 ]; then sed -e 's/OR.*IN/IN/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 86 ]; then sed -e 's/OR.*ON/ON/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 87 ]; then sed -e 's/OR.*WHERE/WHERE/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 88 ]; then sed -e 's/OR.*ORDER BY/ORDER BY/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 89 ]; then sed -e 's/OR.*GROUP BY/GROUP BY/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 90 ]; then sed -e 's/OR.*LIMIT/LIMIT/i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 91 ]; then sed -e 's/OR.*HAVING/HAVING/i' $WORKF > $WORKT
     elif [ $TRIAL -eq 92 ]; then sed -e 's/ NOT NULL/ /i' $WORKF > $WORKT
     elif [ $TRIAL -eq 93 ]; then sed -e 's/ NOT NULL/ /gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 94 ]; then sed -e 's/ NULL/ /i' $WORKF > $WORKT
@@ -3234,8 +3233,10 @@ if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
     elif [ $TRIAL -eq 134 ]; then sed -e 's/[\t ]\+/ /g' -e 's/ *\([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
     elif [ $TRIAL -eq 135 ]; then sed -e 's/CHARACTER[ ]*SET[ ]*latin1/ /i' $WORKF > $WORKT
     elif [ $TRIAL -eq 136 ]; then sed -e 's/CHARACTER[ ]*SET[ ]*utf8/ /i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 137 ]; then sed -e 's/;[\t ]*#.*/;/i' $WORKF > $WORKT
-    elif [ $TRIAL -eq 138 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/DROP DATABASE transforms;CREATE DATABASE transforms;//' $WORKF > $WORKT
+    elif [ $TRIAL -eq 137 ]; then sed -e 's/SELECT .* /SELECT 1 /gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 138 ]; then sed -e 's/COLUMN_FORMAT COMPRESSED/ /i' $WORKF > $WORKT
+    elif [ $TRIAL -eq 139 ]; then sed -e 's/INTEGER/INT/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 140 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/DROP DATABASE transforms;CREATE DATABASE transforms;//' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`

@@ -311,8 +311,11 @@ buf0buf.cc line 4361                                                            
 #buf0buf.cc line 4377                                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1385030 
 dict0dict.ic line 220                                                                   ## http://bugs.mysql.com/bug.php?id=81495
 dict0dict.ic line 786                                                                   ## http://bugs.mysql.com/bug.php?id=73926
+dict0dict.ic line 787                                                                   ## http://bugs.mysql.com/bug.php?id=73926
 #dict0dict.cc line 1202                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74900 (Fixed in 5.6.24, 5.7.6)
-fil0fil.cc line 3412                                                                    ## http://bugs.mysql.com/bug.php?id=74873
+fil0fil.cc line 3412                                                                    ## http://bugs.mysql.com/bug.php?id=74873, older build
+fil0fil.cc line 3485                                                                    ## http://bugs.mysql.com/bug.php?id=74873, PS build (5.6 only)
+fil0fil.cc line 3438                                                                    ## http://bugs.mysql.com/bug.php?id=74873, MS build (5.6 only)
 fil0fil.cc line 5594                                                                    ## http://bugs.mysql.com/bug.php?id=74422, MS build
 fil0fil.cc line 5594                                                                    ## http://bugs.mysql.com/bug.php?id=74730
 fil0fil.cc line 5649                                                                    ## http://bugs.mysql.com/bug.php?id=74422, PS build (with oldPS)
@@ -357,6 +360,8 @@ handler0alter.cc line 4966                                                      
 handler0alter.cc line 5680                                                              ## http://bugs.mysql.com/bug.php?id=74363, MS build
 handler0alter.cc line 5694                                                              ## http://bugs.mysql.com/bug.php?id=74363, PS build (with oldPS)
 handler0alter.cc line 5708                                                              ## http://bugs.mysql.com/bug.php?id=74363, PS build
+handler0alter.cc line 5033                                                              ## http://bugs.mysql.com/bug.php?id=73919, MS build
+handler0alter.cc line 5083                                                              ## http://bugs.mysql.com/bug.php?id=73919, PS build
 #ibuf0ibuf.cc line 3539                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1193138 (dup of 1410410)
 lock0lock.cc line 2715                                                                  ## http://bugs.mysql.com/bug.php?id=74759, MS build
 lock0lock.cc line 2738                                                                  ## http://bugs.mysql.com/bug.php?id=74759, PS build
