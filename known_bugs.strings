@@ -67,6 +67,7 @@ ut0ut.cc line 916                ## Still present in 5.6 ## Idem to 74481: set g
 ut0ut.cc line 918                ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7B2 ( Fixed in 5.7.7, 5.8.0)
 ut0ut.cc line 923                ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10 ( Fixed in 5.7.7, 5.8.0)
 ut0ut.cc line 924                ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10R1 ( Fixed in 5.7.7, 5.8.0)
+buf0buf.cc line 2852             ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; ( Fixed in 5.7.7, 5.8.0)
 fil0fil.cc line 6933             ## Still present in 5.6 ## Idem to 74481: SET @@GLOBAL.innodb_fil_make_page_dirty_debug=22;
 buf0buf.cc line 2678                                     ## Not logged: SET GLOBAL innodb_fil_make_page_dirty_debug=38098908;
 #sync0debug.cc line 299                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
@@ -123,6 +124,8 @@ btr0cur.cc line 2573                                     ## http://bugs.mysql.co
 .enum_set_typelib .. get_real_type.item                  ## http://bugs.mysql.com/bug.php?id=76438
 buf0buf.cc line 1106                                     ## http://bugs.mysql.com/bug.php?id=76439
 handler0alter.cc line 6647                               ## http://bugs.mysql.com/bug.php?id=76445
+handler0alter.cc line 5869                               ## http://bugs.mysql.com/bug.php?id=83799, PS build
+handler0alter.cc line 5817                               ## http://bugs.mysql.com/bug.php?id=83799, MS build
 explain_other .. unit->is_optimized                      ## http://bugs.mysql.com/bug.php?id=76446
 
 ## =========== MS 5.7.7 RC ===========
@@ -251,14 +254,16 @@ ZN12ut_allocatorIhE8allocateEmPKhPKcbb                                 ## 6, MS,
 ZN11Query_arena10mem_callocEm                                          ## 6, PS2
 
 ## =========== Special ===========
-ha_innodb.cc line 3469                                                ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
-ha_innodb.cc line 3495                                                ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
-ha_innodb.cc line 19339                                               ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
-ha_innodb.cc line 19411                                               ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
-InnoDB. log block checksum mismatch. expected                         ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
-ut0ut.cc line 932                                                     ##DONOTREMOVE## InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
-btr0cur.c line 3918                                                   ##DONOTREMOVE## set session debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
- 
+ha_innodb.cc line 3469                                              ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
+ha_innodb.cc line 3495                                              ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
+ha_innodb.cc line 19339                                             ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
+ha_innodb.cc line 19411                                             ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
+InnoDB. log block checksum mismatch. expected                       ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
+ut0ut.cc line 932                                                   ##DONOTREMOVE## InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
+btr0cur.c line 3918                                                 ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
+handler0alter.cc line 5083                                          ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread 
+handler0alter.cc line 4966                                          ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
+
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
 #btr0btr.cc line 1081                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74605, MS build (old LP #1384561)
@@ -354,10 +359,10 @@ ha_innodb.cc line 1869                                                          
 ha_innodb.cc line 1870                                                                  ## http://bugs.mysql.com/bug.php?id=74585, MS build (old LP #1384616)
 ha_innodb.cc line 1878                                                                  ## http://bugs.mysql.com/bug.php?id=74585, MS build (old LP #1384616)
 ha_innodb.cc line 19335                                                                 ## PS 5.6.31     --innodb-log-buffer-size=1125899906842624 (or similar)
+ha_innodb.cc line 19383                                                                 ## PS 5.6.34     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 18962                                                                 ## MS/PS 5.6.31  SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc line 935                                                                       ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc line 936                                                                       ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
-handler0alter.cc line 4966                                                              ## Reduced to SET DEBUG... case, likely non-important (see comment)
 handler0alter.cc line 5680                                                              ## http://bugs.mysql.com/bug.php?id=74363, MS build
 handler0alter.cc line 5694                                                              ## http://bugs.mysql.com/bug.php?id=74363, PS build (with oldPS)
 handler0alter.cc line 5708                                                              ## http://bugs.mysql.com/bug.php?id=74363, PS build
@@ -598,6 +603,7 @@ Z21prep_alter_part_tableP3THDP5TABLEP10Alter_infoP24st_ha_create_informationP15A
 #Z21toku_txn_is_read_onlyP7tokutxn                                             ## Fixed ## http://tokutek.atlassian.net/browse/DB-822 (fixed in tokudb-7.5.6)
 Z22reinit_stmt_before_useP3THDP3LEX                                                     ## http://bugs.mysql.com/bug.php?id=74670
 #Z23well_formed_copy_ncharsPK15charset_info_stPcjS1_PKcjjPS4_S5_S5_            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1417372 (dup of 1412423)
+Z23well_formed_copy_ncharsPK15charset_info_stPcjS1_PKcjjPS4_S5_S5_                      ## http://bugs.mysql.com/bug.php?id=83798 (new bug, seems unrelated to 1417372)
 Z24get_schema_tables_resultP4JOIN23enum_                                                ## Another i-s-temp-tables bug (based on crashing query) (see comment)
 #Z24make_used_partitions_strP14partition_infoP4ListIKcE                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74746 (fixed in 5.6.24)
 #Z24mark_tmp_table_for_reuseP5TABLE                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1417533 (dup of 1387951)
@@ -719,6 +725,7 @@ ZN15Event_scheduler5startEPi                                                    
 ## =========== pquery reducer scripts TEXT based (for short strings that may be part of other assertion messages. End with $ EOL char and add . before and after text) ===========
 #TEXT=.\. is_set.$                                                             ## Fixed ## http://bugs.mysql.com/bug.php?id=74597 (old PS Bug #1206050)
 #TEXT=.\. is_set.$           ## 79303 Also shows like this ## 5.6 needs better testcase ## http://bugs.mysql.com/bug.php?id=76515 (#74597 ^ not fixed yet) (fixed in 5.7.9)
+TEXT=.\. is_set.$                                                                       ## http://bugs.mysql.com/bug.php?id=83796 and http://bugs.mysql.com/bug.php?id=83797
 TEXT=...tables.$                                                                        ## http://bugs.mysql.com/bug.php?id=74740 (Also see above #74740)
 TEXT=.child_l.$                                                                         ## http://bugs.mysql.com/bug.php?id=76277 (with debug build)
 TEXT=.false.$                                                                           ## http://bugs.mysql.com/bug.php?id=74877

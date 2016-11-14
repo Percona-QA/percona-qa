@@ -1,5 +1,6 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
+# Additions by Roel Van de Paar, Percona LLC
 # This script is for creating PMM testing framework
 
 # User Configurable Variables
