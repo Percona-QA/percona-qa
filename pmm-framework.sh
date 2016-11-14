@@ -6,10 +6,7 @@
 # This script enables one to quickly setup a Percona Monitoring and Management environment. One can setup a PMM server and qucikyl add multiple clients
 # The intention of this script is to be robust from a quality assurance POV; it should handle many different server configurations accurately
 
-# User configurable variables
-PMM_VERSION="1.0.5"
-
-# Internatl variables
+# Internal variables
 WORKDIR=${PWD}
 RPORT=$(( RANDOM%21 + 10 ))
 RBASE="$(( RPORT*1000 ))"
@@ -24,12 +21,13 @@ usage () {
     echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
     echo " --list                    List all the client information from pmm-admin"
     echo " --clean                   It will stop all client instances and remove from pmm-admin"
+    echo " --dev                     It wil configure PMM beta version"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options= --longoptions=addclient:,setup,help \
+  go_out="$(getopt --options= --longoptions=addclient:,setup,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -55,12 +53,28 @@ do
     shift
     clean=1
     ;;
+    --dev )
+    shift
+    dev=1
+    ;;
     --help )
     usage
     exit 0
     ;;
   esac
 done
+
+mkdir -p $WORKDIR/pmm
+rm -rf $WORKDIR/pmm/index.html
+pushd $WORKDIR/pmm
+wget https://hub.docker.com/r/percona/pmm-server/tags/
+if [ ! -z $dev ]; then
+  PMM_VERSION=`lynx --dump index.html | grep 1.0 | sed 's|   ||' | head -n1`
+else
+  PMM_VERSION=`lynx --dump index.html | grep 1.0 | sed 's|   ||' | grep -v dev | head -n1`
+fi
+
+popd
 
 if [ ! -z $setup ]; then
   #PMM configuration setup
@@ -79,21 +93,34 @@ if [ ! -z $setup ]; then
 
   echo "Initiating PMM configuration"
   sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null 
-  docker run -d -p 80:80 --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  sudo docker run -d -p 80:80 --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
 
+  mkdir -p $WORKDIR/pmm_client
+  rm -rf $WORKDIR/pmm_client/index.html
+
+  pushd $WORKDIR/pmm_client
+  wget https://www.percona.com/downloads/TESTING/pmm/
+  if [ ! -z $dev ]; then
+    PMM_CLIENT_TAR=$(grep pmm-client $WORKDIR/pmm_client/index.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g'  | grep -E 'dev.*tar.gz' | head -n1 | awk '{ print $1}')
+  else
+    PMM_CLIENT_TAR=$(grep pmm-client $WORKDIR/pmm_client/index.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g'  | grep -E 'tar.gz' | grep -v dev | head -n1 | awk '{ print $1}')
+  fi
+  if ! ls -1 $PMM_CLIENT_TAR 2> /dev/null >/dev/null; then 
+    wget https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
+  fi
+  tar -xzf $PMM_CLIENT_TAR
+  PMM_CLIENT_BASEDIR=`ls -1td pmm-client-* | grep -v ".tar" | head -n1`
+  cd $PMM_CLIENT_BASEDIR
+  sudo ./install
+  popd
+  
   if [[ ! -e `which pmm-admin 2> /dev/null` ]] ;then
     echo "ERROR! The pmm-admin client binary was not found, please install the pmm-admin client package"  
     exit 1
   else
-    PMM_ADMIN_VERSION=`sudo pmm-admin --version`
-    if [ "$PMM_ADMIN_VERSION" != "$PMM_VERSION" ]; then
-      echo "ERROR! The pmm-admin client version is $PMM_ADMIN_VERSION. Required version is $PMM_VERSION"  
-      exit 1
-    else
-      sleep 10
-      IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`
-      sudo pmm-admin config --server $IP_ADDRESS
-    fi
+    sleep 10
+    IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`
+    sudo pmm-admin config --server $IP_ADDRESS
   fi
 fi
 
