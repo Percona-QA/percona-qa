@@ -299,6 +299,8 @@ buf0buf.cc line 2749                                                            
 buf0buf.cc line 2969                                                                    ## http://bugs.mysql.com/bug.php?id=74729, MS build
 buf0buf.cc line 3078                                                                    ## http://bugs.mysql.com/bug.php?id=74729, PS build (with oldPS)
 buf0buf.cc line 3087                                                                    ## http://bugs.mysql.com/bug.php?id=74729, PS build (with oldPS)
+buf0buf.cc line 2742                                                                    ## http://bugs.mysql.com/bug.php?id=83794, PS build
+buf0buf.cc line 2635                                                                    ## http://bugs.mysql.com/bug.php?id=83794, MS build
 buf0buf.cc line 3085                                                                    ## http://bugs.mysql.com/bug.php?id=74729, PS build
 buf0buf.cc line 3093                                                                    ## http://bugs.mysql.com/bug.php?id=74729, PS build
 #buf0buf.cc line 3824                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=75833 (Fixed in 5.7.7/5.8.0)
@@ -425,6 +427,7 @@ ut0lst.h line 131                                                               
 
 ## =========== Assertion based ===========
 #1 == num_erased                                                                        ## http://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
+.tables .. thd->lex->is_query_tables_locked                                             ## https://tokutek.atlassian.net/browse/DB-1027
 .auto_increment_lock.*.auto_increment_safe_stmt_log_lock                                ## http://bugs.mysql.com/bug.php?id=76542
 args.0.->fixed                                                  ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74695 (Fixed in 5.7.8)
 auto_increment_value                                                                    ## http://bugs.mysql.com/bug.php?id=75057 (old LP #1384684)

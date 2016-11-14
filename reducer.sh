@@ -57,6 +57,7 @@ TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seco
 # === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
+USE_TEXT_STRING=0               # On/off (1/0) If enabled, when using MODE=3, this uses text_string.sh (percona-qa) instead of searching the entire error log. No effect otherwise
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -587,6 +588,12 @@ options_check(){
     echo "Terminating now."
     exit 1
   fi
+  if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
+    TEXT_STRING_BIN="$(cd `dirname $0` && pwd)/text_string.sh"
+    if [ ! -s "${TEXT_STRING_BIN}"; then
+      echo "Assert: MODE=3 and USE_TEXT_STRING=1, so reducer.sh looked for ${TEXT_STRING_BIN}, but this file was either not found, or is not script readable"
+    fi
+  fi 
   if [ $MODE -eq 2 ]; then
     if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run in MODE=2 - we need to make sure we have pquery client logging activated
       if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -io "log-client-output")" != "log-client-output" ]; then
@@ -2138,10 +2145,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE1: Valgrind output testing (set TEXT) 
-  if [ $MODE -eq 1 ]; then
+  elif [ $MODE -eq 1 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Waiting for Valgrind to terminate analysis" 
     while :; do
       sleep 1; sync
@@ -2161,10 +2167,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE2: mysql CLI/pquery client output testing (set TEXT)
-  if [ $MODE -eq 2 ]; then
+  elif [ $MODE -eq 2 ]; then
     FILETOCHECK=
     # Check if this is a pquery client output testing run
     if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run
@@ -2190,10 +2195,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE3: mysqld error output log testing (set TEXT)
-  if [ $MODE -eq 3 ]; then
+  elif [ $MODE -eq 3 ]; then
     M3_ISSUE_FOUND=0
     ERRORLOG=
     if [ $PXC_MOD -eq 1 ]; then
@@ -2211,8 +2215,16 @@ process_outcome(){
       fi
       M3_OUTPUT_TEXT="ConsoleTypescript"
     else
-      if egrep -iq "$TEXT" $ERRORLOG; then M3_ISSUE_FOUND=1; fi
-      M3_OUTPUT_TEXT="ErrorLog"
+      if [ $USE_TEXT_STRING -eq 1 ]; then
+        rm -f ${ERRORLOG}.text_string
+        touch ${ERRORLOG}.text_string
+        ${TEXT_STRING_BIN} $ERRORLOG >> ${ERRORLOG}.text_string
+        if egrep -iq "$TEXT" $ERRORLOG.text_string; then M3_ISSUE_FOUND=1; fi
+        M3_OUTPUT_TEXT="TextString"
+      else
+        if egrep -iq "$TEXT" $ERRORLOG; then M3_ISSUE_FOUND=1; fi
+        M3_OUTPUT_TEXT="ErrorLog"
+      fi
     fi
     if [ $M3_ISSUE_FOUND -eq 1 ]; then
       if [ ! "$STAGE" = "V" ]; then
@@ -2230,10 +2242,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
   
   # MODE4: Crash testing
-  if [ $MODE -eq 4 ]; then
+  elif [ $MODE -eq 4 ]; then
     M4_ISSUE_FOUND=0
     if [ $PXC_MOD -eq 1 ]; then
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 1 ]; then
@@ -2282,10 +2293,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
   
   # MODE5: MTR testcase reduction testing (set TEXT)
-  if [ $MODE -eq 5 ]; then
+  elif [ $MODE -eq 5 ]; then
     COUNT_TEXT_OCCURENCES=$(egrep -ic "$TEXT" $WORKD/mysql.out)
     if [ $COUNT_TEXT_OCCURENCES -ge $MODE5_COUNTTEXT ]; then
       COUNT_TEXT_OCCURENCES=$(egrep -ic "$MODE5_ADDITIONAL_TEXT" $WORKD/mysql.out)
@@ -2310,10 +2320,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE6: ThreadSync Valgrind output testing (set TEXT) 
-  if [ $MODE -eq 6 ]; then
+  elif [ $MODE -eq 6 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Waiting for Valgrind to terminate analysis" 
     while :; do
       sleep 1; sync
@@ -2335,10 +2344,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE7: ThreadSync mysql CLI output testing (set TEXT)
-  if [ $MODE -eq 7 ]; then
+  elif [ $MODE -eq 7 ]; then
     if egrep -iq "$TEXT" $WORKD/mysql.out; then
       if [ "$STAGE" = "T" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TSCLIOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good CLI output issue thread file(s) in $WORKD/log/"
@@ -2355,10 +2363,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE8: ThreadSync mysqld error output log testing (set TEXT)
-  if [ $MODE -eq 8 ]; then
+  elif [ $MODE -eq 8 ]; then
     if egrep --binary-files=text -iq "$TEXT" $WORKD/error.log.out; then
       if [ "$STAGE" = "T" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TSErrorLogOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good error log output issue thread file(s) in $WORKD/log/"
@@ -2375,10 +2382,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
   
   # MODE9: ThreadSync Crash testing
-  if [ $MODE -eq 9 ]; then
+  elif [ $MODE -eq 9 ]; then
     if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then
       if [ "$STAGE" = "T" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TSCrash*] [$NOISSUEFLOW] Swapping files & saving last known good crash thread file(s) in $WORKD/log/"
@@ -2395,6 +2401,11 @@ process_outcome(){
       fi
       return 0
     fi
+
+  # Invalid mode
+  else
+    echoit "Assert: invalid MODE (MODE=${MODE}) discovered. Terminating."
+    exit 1
   fi
 }
 
