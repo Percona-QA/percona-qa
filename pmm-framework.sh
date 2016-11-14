@@ -21,7 +21,9 @@ usage () {
   echo "Options:"
     echo " --setup                   This will setup and configure a PMM server"
     echo " --addclient=ps,2          Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
-    echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2" 
+    echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
+    echo " --list                    List all the client information from pmm-admin"
+    echo " --clean                   It will stop all client instances and remove from pmm-admin"
 }
 
 # Check if we have a functional getopt(1)
@@ -45,6 +47,14 @@ do
     shift
     setup=1
     ;;
+    --list )
+    shift
+    list=1
+    ;;
+    --clean )
+    shift
+    clean=1
+    ;;
     --help )
     usage
     exit 0
@@ -55,6 +65,9 @@ done
 if [ ! -z $setup ]; then
   #PMM configuration setup
   #PMM sanity check
+  if ! ps -ef | grep docker | grep -q daemon; then
+    echo "ERROR! docker service is not running. Terminating"
+  fi
   if docker ps | grep 'pmm-server' > /dev/null ; then
     echo "ERROR! pmm-server docker container is alreay runnning. Terminating"
     exit 1
@@ -77,6 +90,7 @@ if [ ! -z $setup ]; then
       echo "ERROR! The pmm-admin client version is $PMM_ADMIN_VERSION. Required version is $PMM_VERSION"  
       exit 1
     else
+      sleep 10
       IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`
       sudo pmm-admin config --server $IP_ADDRESS
     fi
@@ -216,6 +230,28 @@ add_ps_client(){
     fi
   done
 }
+
+if [ ! -z $list ]; then
+  sudo pmm-admin list
+fi
+
+if [ ! -z $clean ]; then
+  for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
+    mysqldump -uroot --socket=${i}
+  done
+  sleep 5
+  sudo pmm-admin remove --all
+  if [[ ! -e `which mlaunch 2> /dev/null` ]] ;then
+    echo "WARNING! The mlaunch mongodb spin up local test environments tool is not installed. Removing MondoDB server manually"
+  else
+    MTOOLS_MLAUNCH=`which mlaunch`
+  fi
+  if [ ! -z $MTOOLS_MLAUNCH ];then
+    sudo $MTOOLS_MLAUNCH stop --all --dir=${BASEDIR}/data 2> /dev/null
+  else
+    killall mongod 2> /dev/null
+  fi
+fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
   add_ps_client
