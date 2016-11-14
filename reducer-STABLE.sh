@@ -57,6 +57,8 @@ TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seco
 # === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
+USE_TEXT_STRING=0               # On/off (1/0) If enabled, when using MODE=3, this uses text_string.sh (percona-qa) instead of searching the entire error log. No effect otherwise
+TEXT_STRING_LOC=~/percona-qa/text_string.sh  # text_string.sh binary in percona-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/percona-qa.git
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -71,7 +73,7 @@ PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (default=0), unless you fully un
 
 # === pquery options            # Note: only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI
 PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
-PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary
+PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary in percona-qa. To get this binary use:  cd ~; git clone https://github.com/Percona-QA/percona-qa.git
 
 # === Other options             # The options are not often changed
 CLI_MODE=0                      # When using the CLI; 0: sent SQL using a pipe, 1: sent SQL using --execute="SOURCE ..." command, 2: sent SQL using redirection (mysql < input.sql)
@@ -98,6 +100,9 @@ TS_TRXS_SETS=0
 TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
+
+# ======== Machine configurable variables section: DO NOT REMOVE THIS
+#VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
 
 # ==== MySQL command line (CLI) output TEXT search examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for MySQL CLI output (for MODE=2 or 5)
@@ -240,10 +245,8 @@ TS_VARIABILITY_SLEEP=1
 #   - Or, they will be in the same aforementioned directory $WORKD (and the output files from the initial template creation will now have been overwritten, 
 #     though not the actual template), provided reducer.sh is working in single-threaded reduction mode (i.e. [MULTI] mode is not active).
 
-# ======== Machine configurable variables section
-#VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
-
 # ======== Ideas for improvement
+# - The write of the file should be atomic - i.e. if reducer is interrupted during a testcase_out write, the file may be faulty. Check if this is so & fix
 # - STAGE8 does currently know/consider whetter an issue is sporadic (alike to other STAGES, except STAGE 1). We could have an additional option like
 #   STAGE8_FORCE_SPORADIC=0/1 Which would - specifically for STAGE 8 - try each option x times (STAGE8_SPORADIC_ATTEMPTS) when an issue is found to be (by the
 #   auto-sporadic issue detection) or is forced to be (by STAGE8_FORCE_SPORADIC=1) sporadic. This allows easier reduction of mysqld options for sporadic issues)
@@ -586,6 +589,12 @@ options_check(){
     echo "Terminating now."
     exit 1
   fi
+  if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
+    if [ ! -s "$TEXT_STRING_LOC" ] ; then
+      echo "Assert: MODE=3 and USE_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this file was either not found, or is not script readable"
+      exit
+    fi
+  fi 
   if [ $MODE -eq 2 ]; then
     if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run in MODE=2 - we need to make sure we have pquery client logging activated
       if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -io "log-client-output")" != "log-client-output" ]; then
@@ -1165,7 +1174,7 @@ init_workdir_and_files(){
     fi
     echo_out "[Init] Input file: $INPUTFILE"
     # Initial INPUTFILE to WORKF copy
-    (echo "$DROPC"; (cat $INPUTFILE | grep -v "$DROPC")) > $WORKF
+    (echo "$DROPC"; (cat $INPUTFILE | grep --binary-files=text -v "$DROPC")) > $WORKF
   fi
   if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
@@ -1195,6 +1204,9 @@ init_workdir_and_files(){
         echo_out "[Init] PQUERY_REVERSE_NOSHUFFLE_OPT turned on. Replay will be random instead of sequential (whilst still using a single thread client per mysqld). This setting is best combined with FORCE_SKIPV=1 and FORCE_SPORADIC=1 ! Please edit the settings, unless you know what you're doing"
       fi
     fi
+  fi
+  if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
+    echo_out "[Init] MODE=3 and USE_TEXT_STRING turned on. Scanning for TEXT in the output of 'text_string.sh error_log' instead of using the default error log grep"
   fi
   if [ $FORCE_SKIPV -gt 0 ]; then 
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer
@@ -1667,11 +1679,11 @@ start_mysqld_main(){
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
@@ -1681,11 +1693,11 @@ start_mysqld_main(){
     PIDV="$!"
   else
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
-                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $MYEXTRA  --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $MYEXTRA $TOKUDB_LOAD --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
+                         --user=$MYUSER $MYEXTRA  --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_ROCKSDB}" == "1" ];then  
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
@@ -1702,10 +1714,10 @@ start_mysqld_main(){
   for X in $(seq 1 120); do
     sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
     # Check if the server crashed or shutdown, then there is no need to wait any longer (new beta feature as of 1 July 16)
-    if grep -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
-    if grep -qi "Writing a core file" $WORKD/error.log.out; then break; fi
-    if grep -qi "terribly wrong" $WORKD/error.log.out; then break; fi
-    if grep -qi "Shutdown complete" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "Writing a core file" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "terribly wrong" $WORKD/error.log.out; then break; fi
+    if grep --binary-files=text -qi "Shutdown complete" $WORKD/error.log.out; then break; fi
   done
 }
 
@@ -1716,7 +1728,7 @@ start_valgrind_mysqld_main(){
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
   CMD="${TIMEOUT_COMMAND} valgrind --suppressions=$BASEDIR/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
               ${BIN} --basedir=${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
-                              --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA $TOKUDB_LOAD \
+                              --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA  \
                               --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none 
   if [ "${CHK_ROCKSDB}" == "1" ];then
@@ -1736,7 +1748,7 @@ start_valgrind_mysqld_main(){
   echo "valgrind --suppressions=\${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
        \$BIN --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-       --socket=$WORKD/socket.sock $MYEXTRA $TOKUDB_LOAD ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
+       --socket=$WORKD/socket.sock $MYEXTRA ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   if [ "${CHK_ROCKSDB}" == "1" ];then
     sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START_VALGRIND
   fi
@@ -1885,7 +1897,7 @@ cut_threadsync_chunk(){
           tail -n$LAST_LINE $TS_WORKF | grep -v "^[\t ]*;[\t ]*$" | \
             sed -e "s/SET DEBUG_SYNC\(.*\)now SIGNAL GO_T2/SELECT SLEEP($TS_VARIABILITY_SLEEP);SET DEBUG_SYNC\1now SIGNAL GO_T2/" > $TS_WORKT
         else
-          tail -n$LAST_LINE $TS_WORKF | grep -v "^[\t ]*;[\t ]*$" > $TS_WORKT
+          tail -n$LAST_LINE $TS_WORKF | grep --binary-files=text -v "^[\t ]*;[\t ]*$" > $TS_WORKT
         fi
       else
         # Sub threads
@@ -1900,7 +1912,7 @@ cut_threadsync_chunk(){
           tail -n$LAST_LINE $TS_WORKF | grep -v "^[\t ]*;[\t ]*$" | \
             sed -e "s/SET DEBUG_SYNC/SELECT SLEEP($TS_VARIABILITY_SLEEP_TENTH);SET DEBUG_SYNC/" > $TS_WORKT
         else
-          tail -n$LAST_LINE $TS_WORKF | grep -v "^[\t ]*;[\t ]*$" > $TS_WORKT
+          tail -n$LAST_LINE $TS_WORKF | grep --binary-files=text -v "^[\t ]*;[\t ]*$" > $TS_WORKT
         fi
       fi
     else
@@ -1956,9 +1968,9 @@ run_sql_code(){
   if   [ $MODE -ge 6 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [DATA] Loading datafile before SQL threads replay"
     if [ $TS_DBG_CLI_OUTPUT -eq 0 ]; then
-      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null
+      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep --binary-files=text -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null
     else
-      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql_data.out 2>&1
+      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep --binary-files=text -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql_data.out 2>&1
     fi
     TXT_OUT="$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] Forking SQL threads [PIDs]:"
     for t in $(eval echo {1..$TS_THREADS}); do 
@@ -2137,16 +2149,15 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE1: Valgrind output testing (set TEXT) 
-  if [ $MODE -eq 1 ]; then
+  elif [ $MODE -eq 1 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Waiting for Valgrind to terminate analysis" 
     while :; do
       sleep 1; sync
       if egrep -q "ERROR SUMMARY" $WORKD/valgrind.out; then break; fi
     done
-    if egrep -iq "$TEXT" $WORKD/valgrind.out $WORKD/error.log.out; then
+    if egrep --binary-files=text -iq "$TEXT" $WORKD/valgrind.out $WORKD/error.log.out; then
       if [ ! "$STAGE" = "V" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ValgrindBug*] [$NOISSUEFLOW] Swapping files & saving last known good Valgrind issue in $WORKO" 
         control_backtrack_flow
@@ -2160,10 +2171,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE2: mysql CLI/pquery client output testing (set TEXT)
-  if [ $MODE -eq 2 ]; then
+  elif [ $MODE -eq 2 ]; then
     FILETOCHECK=
     # Check if this is a pquery client output testing run
     if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run
@@ -2189,10 +2199,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE3: mysqld error output log testing (set TEXT)
-  if [ $MODE -eq 3 ]; then
+  elif [ $MODE -eq 3 ]; then
     M3_ISSUE_FOUND=0
     ERRORLOG=
     if [ $PXC_MOD -eq 1 ]; then
@@ -2210,8 +2219,16 @@ process_outcome(){
       fi
       M3_OUTPUT_TEXT="ConsoleTypescript"
     else
-      if egrep -iq "$TEXT" $ERRORLOG; then M3_ISSUE_FOUND=1; fi
-      M3_OUTPUT_TEXT="ErrorLog"
+      if [ $USE_TEXT_STRING -eq 1 ]; then
+        rm -f ${ERRORLOG}.text_string
+        touch ${ERRORLOG}.text_string
+        $TEXT_STRING_LOC $ERRORLOG >> ${ERRORLOG}.text_string
+        if egrep -iq "$TEXT" $ERRORLOG.text_string; then M3_ISSUE_FOUND=1; fi
+        M3_OUTPUT_TEXT="TextString"
+      else
+        if egrep -iq "$TEXT" $ERRORLOG; then M3_ISSUE_FOUND=1; fi
+        M3_OUTPUT_TEXT="ErrorLog"
+      fi
     fi
     if [ $M3_ISSUE_FOUND -eq 1 ]; then
       if [ ! "$STAGE" = "V" ]; then
@@ -2229,10 +2246,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
   
   # MODE4: Crash testing
-  if [ $MODE -eq 4 ]; then
+  elif [ $MODE -eq 4 ]; then
     M4_ISSUE_FOUND=0
     if [ $PXC_MOD -eq 1 ]; then
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 1 ]; then
@@ -2281,10 +2297,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
   
   # MODE5: MTR testcase reduction testing (set TEXT)
-  if [ $MODE -eq 5 ]; then
+  elif [ $MODE -eq 5 ]; then
     COUNT_TEXT_OCCURENCES=$(egrep -ic "$TEXT" $WORKD/mysql.out)
     if [ $COUNT_TEXT_OCCURENCES -ge $MODE5_COUNTTEXT ]; then
       COUNT_TEXT_OCCURENCES=$(egrep -ic "$MODE5_ADDITIONAL_TEXT" $WORKD/mysql.out)
@@ -2309,10 +2324,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE6: ThreadSync Valgrind output testing (set TEXT) 
-  if [ $MODE -eq 6 ]; then
+  elif [ $MODE -eq 6 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Waiting for Valgrind to terminate analysis" 
     while :; do
       sleep 1; sync
@@ -2334,10 +2348,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE7: ThreadSync mysql CLI output testing (set TEXT)
-  if [ $MODE -eq 7 ]; then
+  elif [ $MODE -eq 7 ]; then
     if egrep -iq "$TEXT" $WORKD/mysql.out; then
       if [ "$STAGE" = "T" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TSCLIOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good CLI output issue thread file(s) in $WORKD/log/"
@@ -2354,11 +2367,10 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
 
   # MODE8: ThreadSync mysqld error output log testing (set TEXT)
-  if [ $MODE -eq 8 ]; then
-    if egrep -iq "$TEXT" $WORKD/error.log.out; then
+  elif [ $MODE -eq 8 ]; then
+    if egrep --binary-files=text -iq "$TEXT" $WORKD/error.log.out; then
       if [ "$STAGE" = "T" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TSErrorLogOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good error log output issue thread file(s) in $WORKD/log/"
       elif [ ! "$STAGE" = "V" ]; then
@@ -2374,10 +2386,9 @@ process_outcome(){
       fi
       return 0
     fi
-  fi
   
   # MODE9: ThreadSync Crash testing
-  if [ $MODE -eq 9 ]; then
+  elif [ $MODE -eq 9 ]; then
     if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then
       if [ "$STAGE" = "T" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*TSCrash*] [$NOISSUEFLOW] Swapping files & saving last known good crash thread file(s) in $WORKD/log/"
@@ -2394,6 +2405,11 @@ process_outcome(){
       fi
       return 0
     fi
+
+  # Invalid mode
+  else
+    echoit "Assert: invalid MODE (MODE=${MODE}) discovered. Terminating."
+    exit 1
   fi
 }
 
@@ -2652,7 +2668,7 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2679,7 +2695,7 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2709,7 +2725,7 @@ verify(){
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2732,7 +2748,7 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2753,7 +2769,7 @@ verify(){
             | sed -e 's/;[\t ]*#.*/;/i' > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -v "$DROPC")" > $WORKT
+            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep --binary-files=text -v "$DROPC")" > $WORKT
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2811,19 +2827,25 @@ verify(){
   if [ $MODE -eq 4 ]; then 
     if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
                            echo_out "[Init] Run mode: MODE=4: GLIBC crash"
-                           echo_out "[Init] Looking for any GLIBC crash"; else
+                           echo_out "[Init] Looking for any GLIBC crash"; 
+    else
                            echo_out "[Init] Run mode: MODE=4: Crash"
                            echo_out "[Init] Looking for any mysqld crash"; fi; fi
   if [ $MODE -eq 3 ]; then
     if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
                            echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_CRASHES=1: console typscript log"
-                           echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)"; else
+                           echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)";
+    elif [ $USE_TEXT_STRING -gt 0 ]; then
+                           echo_out "[Init] Run mode: MODE=3 with USE_TEXT_STRING=1: text_string.sh against mysqld error log"   
+                           echo_out "[Init] Looking for this string: '$TEXT' in text_string.sh error_log output (@ $WORKD/error.log.out.text_string when MULTI mode is not active)"; 
+    else
                            echo_out "[Init] Run mode: MODE=3: mysqld error log"   
                            echo_out "[Init] Looking for this string: '$TEXT' in mysqld error log output (@ $WORKD/error.log.out when MULTI mode is not active)"; fi; fi
   if [ $MODE -eq 2 ]; then 
     if [ $PQUERY_MOD -eq 1 ]; then 
                            echo_out "[Init] Run mode: MODE=2: pquery client output"
-                           echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/pquery_thread-0.out when MULTI mode is not active)"; else
+                           echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/pquery_thread-0.out when MULTI mode is not active)";
+    else
                            echo_out "[Init] Run mode: MODE=2: mysql CLI output"
                            echo_out "[Init] Looking for this string: '$TEXT' in mysql CLI output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi; fi 
   if [ $MODE -eq 1 ]; then echo_out "[Init] Run mode: MODE=1: Valgrind output"
@@ -2888,7 +2910,7 @@ if [ $MODE -ge 6 ]; then
             export TS_WORKF=$(eval echo $(echo '$WORKF'"$t"))
             export TS_WORKT=$(eval echo $(echo '$WORKT'"$t"))
             if egrep -qi "SIGNAL GO_T2" $TS_WORKF; then  # Control thread
-              egrep -v "DEBUG_SYNC.*$TS_T_THREAD " $TS_WORKF > $TS_WORKT  # do not remove critical end space (T2 == T20 delete otherwise!)
+              egrep --binary-files=text -v "DEBUG_SYNC.*$TS_T_THREAD " $TS_WORKF > $TS_WORKT  # do not remove critical end space (T2 == T20 delete otherwise!)
             fi
           done
         fi
@@ -3350,7 +3372,7 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
         # Eliminate the column from the correct CREATE TABLE table (this will match the first occurence of that column name in the correct CREATE TABLE)
         # This sed presumes that each column is on one line, by itself, terminated by a comma (can be improved upon as per the above remark note)
         WORKT2=`echo $WORKT | sed 's/$/.2/'`
-        sed -e "/CREATE.*TABLE.*$TABLENAME/,/^[ ]*$COL.*,/s/^[ ]*$COL.*,//1" $WORKF | grep -v "^$" > $WORKT2  # Remove the column from table defintion
+        sed -e "/CREATE.*TABLE.*$TABLENAME/,/^[ ]*$COL.*,/s/^[ ]*$COL.*,//1" $WORKF | grep --binary-files=text -v "^$" > $WORKT2  # Remove the column from table defintion
         # Write the testcase with removed column table definition to WORKT as well in case there are no INSERT removals
         # (and hence $WORKT will not be replaced with $WORKT2 anymore below, so reducer does it here as a harmless, but potentially needed, precaution)
         cp -f $WORKT2 $WORKT  
@@ -3635,7 +3657,7 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 145 ]; then sed "s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 146 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 147 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 148 ]; then egrep -v "^#|^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 148 ]; then egrep --binary-files=text -v "^#|^$" $WORKF > $WORKT
     elif [ $TRIAL -eq 149 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
@@ -3654,10 +3676,24 @@ fi
 
 #STAGE8: Execute mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
 if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
+  PGA=0
   STAGE=8
   TRIAL=1
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
   COUNT_MYEXTRA=`echo ${MYEXTRA} | wc -w`
+  if [ $COUNT_MYEXTRA -gt 3 ]; then
+    if grep --binary-files=text '\--plugin-load.*=ha_tokudb.so' $WORKD/mysqld_opt.out > /dev/null ; then 
+      sed -i '/--plugin-load.*=ha_tokudb.so/d' $WORKD/mysqld_opt.out ; 
+      PGA=1
+    fi
+  else
+    if echo $MYEXTRA |  grep --binary-files=text '\--plugin-load.*=ha_tokudb.so' > /dev/null ; then  
+      MYEXTRA=$(echo $MYEXTRA | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g;s|--plugin-load=tokudb=ha_tokudb.so||g');
+      echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
+      echo " --plugin-load-add=tokudb=ha_tokudb.so" >> $WORKD/mysqld_opt.out
+      MYEXTRA=$(cat $WORKD/mysqld_opt.out | tr -s "\n" " ")
+    fi
+  fi 
   FILE1="$WORKD/file1"
   FILE2="$WORKD/file2"
   MYROCKS="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"
@@ -3691,13 +3727,6 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       STAGE8_CHK=0
       COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
-      if echo "${MYEXTRA}" | grep 'tokudb'; then
-        if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
-          TOKUDB_LOAD=" --plugin-load-add=tokudb=ha_tokudb.so"
-        else
-          TOKUDB_LOAD=""
-        fi
-      fi
       run_and_check
       TRIAL=$[$TRIAL+1]
       STAGE8_OPT=$line
@@ -3709,6 +3738,9 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       while true; do
         ISSUE_CHECK=0
         NEXTACTION="& try removing next mysqld option"
+        if [ $PGA -eq 1 ] ; then
+          echo " --plugin-load-add=tokudb=ha_tokudb.so" >> $FILE1
+        fi
         MYEXTRA=$(cat $FILE1 | tr -s "\n" " ")
         rocksdb_startup_chk
         COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
@@ -3717,19 +3749,15 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
         fi
-        if echo "${MYEXTRA}" | grep 'tokudb'; then
-          if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so'; then
-            TOKUDB_LOAD=" --plugin-load-add=tokudb=ha_tokudb.so"
-          else
-            TOKUDB_LOAD=""
-          fi
-        fi
         run_and_check
         if [ "${STAGE8_CHK}" == "1" ]; then
           ISSUE_CHECK=1
           echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
           myextra_check
         else
+          if [ $PGA -eq 1 ] ; then
+            echo " --plugin-load-add=tokudb=ha_tokudb.so" >> $FILE2
+          fi
           MYEXTRA=$(cat $FILE2 | tr -s "\n" " ")
           rocksdb_startup_chk
           COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
@@ -3737,13 +3765,6 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
             echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
           else
             echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
-          fi
-          if echo "${MYEXTRA}" | grep 'tokudb'; then
-            if ! echo "${MYEXTRA}" | grep '\--plugin-load-add=tokudb=ha_tokudb.so' ; then
-              TOKUDB_LOAD=" --plugin-load-add=tokudb=ha_tokudb.so"
-            else
-              TOKUDB_LOAD=""
-            fi
           fi
           run_and_check
           if [ "${STAGE8_CHK}" == "1" ]; then
