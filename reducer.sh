@@ -1204,6 +1204,9 @@ init_workdir_and_files(){
       fi
     fi
   fi
+  if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
+    echo_out "[Init] MODE=3 and USE_TEXT_STRING turned on. Scanning for TEXT in the output of 'text_string.sh error_log' instead of using the default error log grep"
+  fi
   if [ $FORCE_SKIPV -gt 0 ]; then 
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer
       echo_out "[Init] FORCE_SKIPV active. Verify stage skipped, and immediately commencing multi threaded simplification"
@@ -2823,19 +2826,25 @@ verify(){
   if [ $MODE -eq 4 ]; then 
     if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
                            echo_out "[Init] Run mode: MODE=4: GLIBC crash"
-                           echo_out "[Init] Looking for any GLIBC crash"; else
+                           echo_out "[Init] Looking for any GLIBC crash"; 
+    else
                            echo_out "[Init] Run mode: MODE=4: Crash"
                            echo_out "[Init] Looking for any mysqld crash"; fi; fi
   if [ $MODE -eq 3 ]; then
     if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
                            echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_CRASHES=1: console typscript log"
-                           echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)"; else
+                           echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)";
+    elif [ $USE_TEXT_STRING -gt 0 ]; then
+                           echo_out "[Init] Run mode: MODE=3 with USE_TEXT_STRING=1: text_string.sh against mysqld error log"   
+                           echo_out "[Init] Looking for this string: '$TEXT' in text_string.sh error_log output (@ $WORKD/error.log.out.text_string when MULTI mode is not active)"; 
+    else
                            echo_out "[Init] Run mode: MODE=3: mysqld error log"   
                            echo_out "[Init] Looking for this string: '$TEXT' in mysqld error log output (@ $WORKD/error.log.out when MULTI mode is not active)"; fi; fi
   if [ $MODE -eq 2 ]; then 
     if [ $PQUERY_MOD -eq 1 ]; then 
                            echo_out "[Init] Run mode: MODE=2: pquery client output"
-                           echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/pquery_thread-0.out when MULTI mode is not active)"; else
+                           echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/pquery_thread-0.out when MULTI mode is not active)";
+    else
                            echo_out "[Init] Run mode: MODE=2: mysql CLI output"
                            echo_out "[Init] Looking for this string: '$TEXT' in mysql CLI output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi; fi 
   if [ $MODE -eq 1 ]; then echo_out "[Init] Run mode: MODE=1: Valgrind output"
