@@ -222,14 +222,15 @@ Handlerton. share->file == NULL                                  ## PS5.7 # http
 ZN6tokudb6memory4freeEPv                                         ## PS5.7 $ http://tokutek.atlassian.net/browse/FT-727
 
 ## =========== PS 5.7 TokuDB bugs ==========
-Handlerton. error == 0                                                ## http://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
+#Handlerton. error == 0                                                ## http://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
 #Handlerton. kc_info->cp_info.keynr. == NULL                           ## http://tokutek.atlassian.net/browse/DB-917 # Fixed 5.7 RC2
-Handlerton: ctx->alter_txn == trx->stmt                               ## http://tokutek.atlassian.net/browse/DB-936
-Handlerton. next_key_part < _rec_per_keys                             ## http://tokutek.atlassian.net/browse/DB-944
-Handlerton. db .= NULL                                                ## http://tokutek.atlassian.net/browse/DB-945 
-mh->m_magic == 1234                                                   ## http://tokutek.atlassian.net/browse/DB-920  
+Handlerton. 0                                                          ## http://tokutek.atlassian.net/browse/DB-1028
+Handlerton: ctx->alter_txn == trx->stmt                                ## http://tokutek.atlassian.net/browse/DB-936
+Handlerton. next_key_part < _rec_per_keys                              ## http://tokutek.atlassian.net/browse/DB-944
+Handlerton. db .= NULL                                                 ## http://tokutek.atlassian.net/browse/DB-945 
+mh->m_magic == 1234                                                    ## http://tokutek.atlassian.net/browse/DB-920  
 #used_keyparts <= key->user_defined_key_parts                          ## http://tokutek.atlassian.net/browse/DB-926 # Fixed 5.7 RC2
-ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb   ## http://tokutek.atlassian.net/browse/DB-921
+ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb    ## http://tokutek.atlassian.net/browse/DB-921
 Z26toku_xids_can_create_childP6XIDS_S                                  ## http://tokutek.atlassian.net/browse/DB-940
 Z17mysql_lock_tablesP3THDPP5TABLEmj                                    ## http://tokutek.atlassian.net/browse/DB-941
 #TEXT=.r == 0.$                                                        ## PS Bug #1511969 (verified), also see http://tokutek.atlassian.net/browse/DB-933 / DB-737
@@ -432,7 +433,7 @@ ut0lst.h line 131                                                               
 
 ## =========== Assertion based ===========
 #1 == num_erased                                                                        ## http://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
-.tables .. thd->lex->is_query_tables_locked                                             ## https://tokutek.atlassian.net/browse/DB-1027
+.tables .. thd->lex->is_query_tables_locked                                             ## http://tokutek.atlassian.net/browse/DB-1027
 .auto_increment_lock.*.auto_increment_safe_stmt_log_lock                                ## http://bugs.mysql.com/bug.php?id=76542
 args.0.->fixed                                                  ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74695 (Fixed in 5.7.8)
 auto_increment_value                                                                    ## http://bugs.mysql.com/bug.php?id=75057 (old LP #1384684)
@@ -650,7 +651,7 @@ ZN14Item_func_plus10decimal_opEP10my_decimal                                    
 ZNK14user_var_entry13assert_lockedEv                                                    ## http://tokutek.atlassian.net/browse/DB-1018
 #ZN15Query_log_eventC1EP3THDPKcmbbbib                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1397173 (dup of 1412423)
 ZN16Rpl_info_handlerD1Ev                                                                ## http://bugs.launchpad.net/percona-server/+bug/1452125
-ZN16Partition_helper19handle_ordered_prevEPh                                            ## https://tokutek.atlassian.net/browse/DB-1025 (also see LP 1634708 and MS 83435)
+ZN16Partition_helper19handle_ordered_prevEPh                                            ## http://tokutek.atlassian.net/browse/DB-1025 (also see LP 1634708 and MS 83435)
 ZN17I_P_List_iteratorI10MDL_ticket8I_P_ListIS0_16I_P_List_adapterIS0_XadL_ZNS0_15next_in_contextEEEXadL_ZNS0_15prev_in_contextEEEE21I_P_List_null_counter21I_P_List_no_push_backIS0_EEEppEi                                                         ## http://bugs.launchpad.net/percona-server/+bug/1441001
 ZN17sys_var_pluginvar14session_updateEP3THDP7set_var                                    ## http://bugs.launchpad.net/percona-server/+bug/1384560
 ZN17Opt_trace_context5startEbbbbllmy                                                    ## Likely not a bug, asked Umesh to check (testcase: see above at top)
