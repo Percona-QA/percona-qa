@@ -64,20 +64,19 @@ do
   esac
 done
 
-mkdir -p $WORKDIR/pmm
-rm -rf $WORKDIR/pmm/index.html
-pushd $WORKDIR/pmm
-wget https://hub.docker.com/r/percona/pmm-server/tags/
-if [ ! -z $dev ]; then
-  PMM_VERSION=`lynx --dump index.html | grep 1.0 | sed 's|   ||' | head -n1`
-else
-  PMM_VERSION=`lynx --dump index.html | grep 1.0 | sed 's|   ||' | grep -v dev | head -n1`
-fi
-
-popd
-
 if [ ! -z $setup ]; then
   #PMM configuration setup
+  mkdir -p $WORKDIR/pmm
+  rm -rf $WORKDIR/pmm/index.html
+  pushd $WORKDIR/pmm
+  wget -q https://hub.docker.com/r/percona/pmm-server/tags/
+  if [ ! -z $dev ]; then
+    PMM_VERSION=`lynx --dump index.html | grep 1.0 | sed 's|   ||' | head -n1`
+  else
+    PMM_VERSION=`lynx --dump index.html | grep 1.0 | sed 's|   ||' | grep -v dev | head -n1`
+  fi
+  popd
+
   #PMM sanity check
   if ! ps -ef | grep docker | grep -q daemon; then
     echo "ERROR! docker service is not running. Terminating"
@@ -99,14 +98,14 @@ if [ ! -z $setup ]; then
   rm -rf $WORKDIR/pmm_client/index.html
 
   pushd $WORKDIR/pmm_client
-  wget https://www.percona.com/downloads/TESTING/pmm/
+  wget -q https://www.percona.com/downloads/TESTING/pmm/
   if [ ! -z $dev ]; then
     PMM_CLIENT_TAR=$(grep pmm-client $WORKDIR/pmm_client/index.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g'  | grep -E 'dev.*tar.gz' | head -n1 | awk '{ print $1}')
   else
     PMM_CLIENT_TAR=$(grep pmm-client $WORKDIR/pmm_client/index.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g'  | grep -E 'tar.gz' | grep -v dev | head -n1 | awk '{ print $1}')
   fi
   if ! ls -1 $PMM_CLIENT_TAR 2> /dev/null >/dev/null; then 
-    wget https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
+    wget -q https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
   fi
   tar -xzf $PMM_CLIENT_TAR
   PMM_CLIENT_BASEDIR=`ls -1td pmm-client-* | grep -v ".tar" | head -n1`
@@ -263,6 +262,10 @@ add_ps_client(){
           if ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
             break
           fi
+          if ! ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
+            echo "ERROR! ${NODE_NAME} startup failed. Please check error log $node/error.err"
+            exit 1
+          fi
         done
         sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=$node/n${j}.sock --user=root --query-source=perfschema
       done
@@ -276,7 +279,7 @@ fi
 
 if [ ! -z $clean ]; then
   for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
-    mysqldump -uroot --socket=${i}
+    mysqladmin -uroot --socket=${i} shutdown
   done
   sleep 5
   sudo pmm-admin remove --all
