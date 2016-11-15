@@ -2629,7 +2629,7 @@ verify(){
         report_linecounts
         break
       fi
-      echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] As (possibly sporadic) issue did not reproduce with $MULTI_THREADS threads, now increasing number of threads to $[$MULTI_THREADS+MULTI_THREADS_INCREASE] (maximum is 50)"
+      echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] As (possibly sporadic) issue did not reproduce with $MULTI_THREADS threads, now increasing number of threads to $[$MULTI_THREADS+MULTI_THREADS_INCREASE] (maximum is $MULTI_THREADS_MAX)"
       MULTI_THREADS=$[$MULTI_THREADS+MULTI_THREADS_INCREASE]
       if [ $MULTI_THREADS -gt $MULTI_THREADS_MAX ]; then  # Verify failed. Terminate.
         verify_not_found
