@@ -27,7 +27,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options= --longoptions=addclient:,setup,dev,help \
+  go_out="$(getopt --options= --longoptions=addclient:,setup,list,clean,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -122,6 +122,18 @@ if [ ! -z $setup ]; then
     IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`
     sudo pmm-admin config --server $IP_ADDRESS
   fi
+  echo -e "******************************************************************"
+  echo -e "Please execute below command to access docker container"
+  echo -e "docker exec -it pmm-server bash\n"
+  (
+  printf "%s\t%s\n" "PMM landing page" "http://$IP_ADDRESS"
+  printf "%s\t%s\n" "Query Analytics (QAN web app)" "http://$IP_ADDRESS/qan"
+  printf "%s\t%s\n" "Metrics Monitor (Grafana)" "http://$IP_ADDRESS/graph"
+  printf "%s\t%s\n" " " "user name: admin"
+  printf "%s\t%s\n" " " "password : admin"
+  printf "%s\t%s\n" "Orchestrator" "http://$IP_ADDRESS/orchestrator"
+  ) | column -t -s $'\t'
+  echo -e "******************************************************************"
 fi
 
 #Percona Server configuration.
