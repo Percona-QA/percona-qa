@@ -11,6 +11,9 @@ WORKDIR=${PWD}
 RPORT=$(( RANDOM%21 + 10 ))
 RBASE="$(( RPORT*1000 ))"
 SERVER_START_TIMEOUT=100
+SUSER=root
+SPASS=""
+ADDR="127.0.0.1"
 
 # Dispay script usage details
 usage () {
@@ -144,7 +147,7 @@ add_ps_client(){
       PORT_CHECK=101
       NODE_NAME="PS_NODE"
       BASEDIR=`ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1`
-      if [ ! -z $BASEDIR ]; then
+      if [ -z $BASEDIR ]; then
         BASE_TAR=`ls -1td ?ercona-?erver-5.* | grep ".tar" | head -n1`
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
@@ -162,7 +165,7 @@ add_ps_client(){
       PORT_CHECK=201
       NODE_NAME="MS_NODE"
       BASEDIR=`ls -1td mysql-5.* | grep -v ".tar" | head -n1`
-      if [ ! -z $BASEDIR ]; then
+      if [ -z $BASEDIR ]; then
         BASE_TAR=`ls -1td mysql-5.* | grep ".tar" | head -n1`
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
@@ -180,7 +183,7 @@ add_ps_client(){
       PORT_CHECK=301
       NODE_NAME="MD_NODE"
       BASEDIR=`ls -1td mariadb-* | grep -v ".tar" | head -n1`
-      if [ ! -z $BASEDIR ]; then
+      if [ -z $BASEDIR ]; then
         BASE_TAR=`ls -1td mariadb-* | grep ".tar" | head -n1`
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
@@ -194,6 +197,34 @@ add_ps_client(){
       else
         BASEDIR="$WORKDIR/$BASEDIR"
       fi
+    elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
+      echo "[mysqld]" > my_pxc.cnf
+      echo "innodb_autoinc_lock_mode=2" >> my_pxc.cnf
+      echo "innodb_locks_unsafe_for_binlog=1" >> my_pxc.cnf
+      echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> my_pxc.cnf
+      echo "wsrep_node_incoming_address=$ADDR" >> my_pxc.cnf
+      echo "wsrep_sst_method=rsync" >> my_pxc.cnf
+      echo "wsrep_sst_auth=$SUSER:$SPASS" >> my_pxc.cnf
+      echo "wsrep_node_address=$ADDR" >> my_pxc.cnf
+      echo "server-id=1" >> my_pxc.cnf
+      echo "wsrep_slave_threads=2" >> my_pxc.cnf
+      PORT_CHECK=401
+      NODE_NAME="PXC_NODE"
+      BASEDIR=`ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1`
+      if [ -z $BASEDIR ]; then
+        BASE_TAR=`ls -1td Percona-XtraDB-Cluster-5.* | grep ".tar" | head -n1`
+        if [ ! -z $BASE_TAR ];then
+          tar -xzf $BASE_TAR
+          BASEDIR=`ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1`
+          BASEDIR="$WORKDIR/$BASEDIR"
+          rm -rf $BASEDIR/node*
+        else
+          echo "ERROR! Percona XtraDB Cluster binary tar ball does not exist. Terminating."
+          exit 1
+        fi
+      else
+        BASEDIR="$WORKDIR/$BASEDIR"
+      fi
     elif [[ "${CLIENT_NAME}" == "mo" ]]; then
       if [[ ! -e `which mlaunch 2> /dev/null` ]] ;then
         echo "WARNING! The mlaunch mongodb spin up local test environments tool is not installed. Configuring MondoDB server manually"
@@ -201,7 +232,7 @@ add_ps_client(){
         MTOOLS_MLAUNCH=`which mlaunch`
       fi
       BASEDIR=`ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1`
-      if [ ! -z $BASEDIR ]; then
+      if [ -z $BASEDIR ]; then
         BASE_TAR=`ls -1td percona-server-mongodb-* | grep ".tar" | head -n1`
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
@@ -246,6 +277,7 @@ add_ps_client(){
     else
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
         RBASE1="$(( RBASE + ( $PORT_CHECK * $j ) ))"
+        LADDR1="$ADDR:$(( RBASE1 + 8 ))"
         node="${BASEDIR}/node$j"
         if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
           mkdir -p $node
@@ -255,7 +287,18 @@ add_ps_client(){
             ${MID} --datadir=$node  > ${BASEDIR}/startup_node$j.err 2>&1
           fi
         fi
-        ${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+        if  [[ "${CLIENT_NAME}" == "pxc" ]]; then
+          WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
+          if [ $j -eq 1 ]; then
+            WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm:// "
+          else
+            WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
+          fi
+          MYEXTRA="--no-defaults $WSREP_CLUSTER_ADD --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 "
+        else
+          MYEXTRA="--no-defaults"
+        fi
+        ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
           --socket=$node/n${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
         for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
           sleep 1
@@ -278,21 +321,15 @@ if [ ! -z $list ]; then
 fi
 
 if [ ! -z $clean ]; then
+  #Shutdown all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
     mysqladmin -uroot --socket=${i} shutdown
   done
+  #Kills mongodb processes
+  sudo killall mongod 2> /dev/null
   sleep 5
+  #Remove all client instances
   sudo pmm-admin remove --all
-  if [[ ! -e `which mlaunch 2> /dev/null` ]] ;then
-    echo "WARNING! The mlaunch mongodb spin up local test environments tool is not installed. Removing MondoDB server manually"
-  else
-    MTOOLS_MLAUNCH=`which mlaunch`
-  fi
-  if [ ! -z $MTOOLS_MLAUNCH ];then
-    sudo $MTOOLS_MLAUNCH stop --all --dir=${BASEDIR}/data 2> /dev/null
-  else
-    killall mongod 2> /dev/null
-  fi
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
