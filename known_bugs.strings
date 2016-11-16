@@ -255,6 +255,7 @@ ZN11Query_arena10mem_callocEm                                          ## 6, PS2
 
 ## =========== Special ===========
 ha_innodb.cc line 3469                                              ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
+ha_innodb.cc line 2797                                              ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512), PS 5.5.53
 ha_innodb.cc line 3495                                              ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
 ha_innodb.cc line 19339                                             ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
 ha_innodb.cc line 19411                                             ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
@@ -263,6 +264,7 @@ ut0ut.cc line 932                                                   ##DONOTREMOV
 btr0cur.c line 3918                                                 ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
 handler0alter.cc line 5083                                          ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread 
 handler0alter.cc line 4966                                          ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
+rem0rec.c line 738                                                  ##DONOTREMOVE## --innodb-fake-changes=1 will crash PS 5.5 (ref https://bugs.launchpad.net/bugs/1629220)
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
@@ -360,6 +362,7 @@ ha_innodb.cc line 1870                                                          
 ha_innodb.cc line 1878                                                                  ## http://bugs.mysql.com/bug.php?id=74585, MS build (old LP #1384616)
 ha_innodb.cc line 19335                                                                 ## PS 5.6.31     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 19383                                                                 ## PS 5.6.34     --innodb-log-buffer-size=1125899906842624 (or similar)
+mem0mem.c line 361                                                                      ## PS 5.5.53     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 18962                                                                 ## MS/PS 5.6.31  SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc line 935                                                                       ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc line 936                                                                       ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
@@ -373,12 +376,12 @@ lock0lock.cc line 2715                                                          
 lock0lock.cc line 2738                                                                  ## http://bugs.mysql.com/bug.php?id=74759, PS build
 lock0lock.cc line 5573                                                                  ## http://bugs.mysql.com/bug.php?id=77289, MS build
 lock0lock.cc line 5618                                                                  ## http://bugs.mysql.com/bug.php?id=77289, PS build
-#lock0lock.cc line 5985                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
-#lock0lock.cc line 5986                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
-#lock0lock.cc line 6004                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
-#lock0lock.cc line 6005                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
-#lock0lock.cc line 6007                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525
-#lock0lock.cc line 6452                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1395579
+#lock0lock.cc line 5985                                                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
+#lock0lock.cc line 5986                                                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
+#lock0lock.cc line 6004                                                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
+#lock0lock.cc line 6005                                                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525 (with oldPS)
+#lock0lock.cc line 6007                                                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226525
+#lock0lock.cc line 6452                                                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1395579
 mem0dbg.cc line 680                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1233128 (TokuDB)
 mtr0mtr.cc line 323                                                                     ## http://bugs.mysql.com/bug.php?id=77972, MS build
 mtr0mtr.cc line 325                                                                     ## http://bugs.mysql.com/bug.php?id=77972, PS build
@@ -394,13 +397,13 @@ os0sync.cc line 419                                                             
 pars0pars.cc line 865                                                                   ## http://bugs.mysql.com/bug.php?id=68987
 que0que.cc line 1206                                                                    ## http://bugs.mysql.com/bug.php?id=74762, MS build
 que0que.cc line 1216                                                                    ## http://bugs.mysql.com/bug.php?id=74762, PS build
-rem0rec.cc line 867                                                                     ## http://bugs.mysql.com/bug.php?id=79794 (5.7.10 only, seemingly not in 5.7.9)
+rem0rec.cc line 867                                                                     ## http://bugs.mysql.com/bug.php?id=79794
 rem0rec.cc line 845                                                                     ## http://bugs.mysql.com/bug.php?id=74664
-#rem0rec.ic line 939                                                            ## Fixed ## http://bugs.launchpad.net/percona-server/5.6/+bug/1226532
-#row0import.cc line 3453                                                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1372219
-#row0ins.cc line 276                                                            ## Fixed ## http://bugs.launchpad.net/percona-server/5.6/+bug/1395706
-#row0ins.cc line 277                                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1195614 (fixed in 1395706)
-#row0ins.cc line 365                                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1224272 (dup of 1395579)
+#rem0rec.ic line 939                                                           ## Fixed ## http://bugs.launchpad.net/percona-server/5.6/+bug/1226532
+#row0import.cc line 3453                                                       ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1372219
+#row0ins.cc line 276                                                           ## Fixed ## http://bugs.launchpad.net/percona-server/5.6/+bug/1395706
+#row0ins.cc line 277                                                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1195614 (fixed in 1395706)
+#row0ins.cc line 365                                                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1224272 (dup of 1395579)
 row0ins.c line 2333                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1628751
 row0merge.cc line 2692                                                                  ## http://bugs.mysql.com/bug.php?id=74887, MS build
 row0merge.cc line 2698                                                                  ## http://bugs.mysql.com/bug.php?id=74887, PS build
@@ -437,6 +440,7 @@ trx0trx.cc line 1950                                                            
 ut0lst.h line 131                                                                       ## http://bugs.launchpad.net/percona-server/+bug/1449994
 
 ## =========== Assertion based ===========
+allocated_status_memory .= __null                                                       ## http://bugs.mysql.com/bug.php?id=83797 (as subsequent testcase)
 #1 == num_erased                                                                        ## http://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
 .tables .. thd->lex->is_query_tables_locked                                             ## http://tokutek.atlassian.net/browse/DB-1027
 .auto_increment_lock.*.auto_increment_safe_stmt_log_lock                                ## http://bugs.mysql.com/bug.php?id=76542
@@ -553,6 +557,7 @@ Z10open_tableP3THDP10TABLE_LISTP18Open_table_context                            
 #Z17mysql_create_userP3THDR4ListI11st_lex_userE                                ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384651) (fixed in 5.6.24)
 #Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (fixed in 5.6.24)
 #Z11open_tablesP3THDPP10TABLE_LISTPjjP19Prelocking_strategy                    ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1416956 (dup of 1387951)
+Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                          ## http://bugs.mysql.com/bug.php?id=83816
 Z12find_filenumRKP2ftS2_                                                                ## http://tokutek.atlassian.net/browse/DB-837
 #Z12find_sys_varP3THDPKcj                                                               ## http://bugs.launchpad.net/percona-server/+bug/1415828 # Need new testcase
 Z12setup_tablesP3THDP23Name_resolution_contextP4ListI10TABLE_LISTEPS4_PS7_b             ## http://bugs.launchpad.net/percona-server/+bug/1435740

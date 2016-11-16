@@ -145,6 +145,8 @@
   objdump -s --section .comment /path/binary
 # Attach gdb to a certain PID then write a coredump. In the example below, $! is used which is the PID for the last started process (sleep in this example)
   sleep 1000 &  gdb /usr/bin/sleep --pid=$! --ex 'generate-core-file'
+# Check your bash scripts
+  https://www.shellcheck.net/  https://github.com/koalaman/shellcheck
 
 # ------ Common Issues ------
 # Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;
@@ -187,7 +189,7 @@
   time echo "a";echo "a"     # WRONG: this does not achieve the objective, it only times the first command
   time (echo "a";echo "a")   # CORRECT: this times both commands (without anything affecting time and without any sub-execution or variable assignment)
 # Obtain the primary IP address of this machine
-  IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`; echo ${IP_ADDRESS}
+  IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8); echo ${IP_ADDRESS}
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
