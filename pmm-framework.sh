@@ -68,6 +68,10 @@ do
 done
 
 if [ ! -z $setup ]; then
+  if [[ ! -e `which lynx 2> /dev/null` ]] ;then
+    echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"  
+    exit 1
+  fi
   #PMM configuration setup
   mkdir -p $WORKDIR/pmm
   rm -rf $WORKDIR/pmm/index.html
@@ -83,12 +87,13 @@ if [ ! -z $setup ]; then
   #PMM sanity check
   if ! ps -ef | grep docker | grep -q daemon; then
     echo "ERROR! docker service is not running. Terminating"
+    exit 1
   fi
-  if docker ps | grep 'pmm-server' > /dev/null ; then
+  if sudo docker ps | grep 'pmm-server' > /dev/null ; then
     echo "ERROR! pmm-server docker container is alreay runnning. Terminating"
     exit 1
-  elif  docker ps -a | grep 'pmm-server' > /dev/null ; then
-    CONTAINER_NAME=$(docker ps -a | grep 'pmm-server' | grep $PMM_VERSION | grep -v pmm-data | awk '{ print $1}')
+  elif  sudo docker ps -a | grep 'pmm-server' > /dev/null ; then
+    CONTAINER_NAME=$(sudo docker ps -a | grep 'pmm-server' | grep $PMM_VERSION | grep -v pmm-data | awk '{ print $1}')
     echo "ERROR! The name 'pmm-server' is already in use by container $CONTAINER_NAME"
     exit 1
   fi
