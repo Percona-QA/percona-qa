@@ -240,18 +240,6 @@ Z17mysql_lock_tablesP3THDPP5TABLEmj                                    ## http:/
 join == __null                                                         ## http://tokutek.atlassian.net/browse/DB-985
 part_id < m_tot_part s                                                 ## http://tokutek.atlassian.net/browse/DB-983
 
-## =========== PREP (need to log)
-#ut0lst.h line 412                                                      ## 4 PS1
-#Z16dispatch_commandP3THDPK8COM_DATA19enum_server_command               ## 4 PS2
-#ZN11ha_innobase9write_rowEPh                                           ## 4 PS3
-#ZN7handler11ha_rnd_nextEPh                                             ## 4 MS
-#ZN7ha_heap8rnd_nextEPh                                                 ## 5 MS1
-#ZN12ut_allocatorIhE10deallocateEPhm                                    ## 5 MS2
-#Z14free_tmp_tableP3THDP5TABLE                                          ## 5 PS1
-#mh->m_magic == 1234                                                    ## 5 PS2
-#ZN12ut_allocatorIhE8allocateEmPKhPKcbb                                 ## 6 MS,PS
-#ZN11Query_arena10mem_callocEm                                          ## 6 PS2
-
 ## =========== Special ===========
 ha_innodb.cc line 3469                                              ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
 ha_innodb.cc line 2797                                              ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.5.53
@@ -592,7 +580,9 @@ Z18create_ref_for_keyP4JOINP13st_join_tableP7Key_usey                           
 Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm                         ## http://bugs.launchpad.net/percona-server/+bug/1631555
 #Z19close_thread_tablesP3THD                                                   ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1392924 (dup of 1387951)
 #Z19mysql_unlock_tablesP3THDP13st_mysql_lock                                            ## http://bugs.mysql.com/bug.php?id=75234 (dup of 74583)
-Z19mysql_unlock_tablesP3THDP13st_mysql_lock                                             ## http://bugs.mysql.com/bug.php?id=83899
+Z19mysql_unlock_tablesP3THDP13st_mysql_lock                                             ## http://bugs.mysql.com/bug.php?id=83899 MS/PS 5.6
+ZN11ha_innobase9write_rowEPh                                                            ## http://bugs.mysql.com/bug.php?id=83899 PS 5.7
+ZN11ha_innobase5closeEv                                                                 ## http://bugs.mysql.com/bug.php?id=83899 MS 5.7 (on shutdown)
 Z19toku_drd_unsafe_setIhEvPT_S0_                                                        ## http://tokutek.atlassian.net/browse/DB-852
 Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxPK5TABLEP5trx_tPK ## http://bugs.mysql.com/bug.php?id=74363
 Z20get_parts_for_updatePKhPhS0_P14partition_infoPjS4_Px                                 ## http://bugs.mysql.com/bug.php?id=74856
