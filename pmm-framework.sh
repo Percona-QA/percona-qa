@@ -72,17 +72,13 @@ if [ ! -z $setup ]; then
     echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"  
     exit 1
   fi
+
   #PMM configuration setup
-  mkdir -p $WORKDIR/pmm
-  rm -rf $WORKDIR/pmm/index.html
-  pushd $WORKDIR/pmm
-  wget -q https://hub.docker.com/r/percona/pmm-server/tags/
   if [ ! -z $dev ]; then
-    PMM_VERSION=`lynx --dump index.html | grep 1.0 | sed 's|   ||' | head -n1`
+    PMM_VERSION=`lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | head -n1`
   else
-    PMM_VERSION=`lynx --dump index.html | grep 1.0 | sed 's|   ||' | grep -v dev | head -n1`
+    PMM_VERSION=`lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | grep -v dev | head -n1`
   fi
-  popd
 
   #PMM sanity check
   if ! ps -ef | grep docker | grep -q daemon; then
