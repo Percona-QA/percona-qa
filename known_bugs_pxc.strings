@@ -52,6 +52,8 @@ ZN19Event_queue_element27compute_next_execution_timeEv                          
 transactional_table .. .changed .. thd->get_transaction                                  ## https://github.com/codership/mysql-wsrep/issues/280 
 pause_seqno_ .= .-1                                                                      ## https://github.com/codership/mysql-wsrep/issues/282
 thd->enable_slow_log .. opt_slow_log                                                     ## http://bugs.mysql.com/bug.php?id=82899
+cnt <= keycache->blocks_used                                                             ## https://jira.percona.com/browse/PXC-733
+thd->security_context                                                                    ## https://jira.percona.com/browse/PXC-734
 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
