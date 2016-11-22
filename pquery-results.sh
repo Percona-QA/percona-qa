@@ -107,7 +107,7 @@ if [ $COUNT -gt 0 ]; then
 fi
 echo "================"
 echo -n "Coredumps found in trials: "
-find . | grep core | grep -v parse | grep -v pquery | grep -o "./.*/" | sed 's|[^[0-9]||g' | sort -nu | tr '\n' ' ' | sed 's|$|\n|'
+find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -nu | tr '\n' ' ' | sed 's|$|\n|'
 echo "================"
 if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | wc -l` -gt 0 ]; then
   echo "Detected one or more empty (0 byte) reducer script(s): `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | tr '\n' ' '`- you may want to check what's causing this (possibly a bug in pquery-prep-red.sh, or did you simply run out of space while running pquery-prep-red.sh?) and do the analysis for these trial numbers manually, or free some space, delete the reducer*.sh scripts and re-run pquery-prep-red.sh"
