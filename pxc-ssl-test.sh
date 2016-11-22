@@ -249,6 +249,13 @@ sst_encryption_run(){
     echo "tkey=${BUILD}/certs/sst_server.key" >> my.cnf
     echo "tcert=${BUILD}/certs/sst_server.pem" >> my.cnf
     DEFAULT_FILE="--defaults-file=${BUILD}/my.cnf"
+  elif [ "$SST_ENCRYPTION_OPTION" == "xtrabackup_native_key" ]; then
+    echo "[sst]" >> my.cnf
+    echo "encrypt = 4" >> my.cnf
+    echo "ssl-ca=${BUILD}/certs/ca.pem" >> my.cnf
+    echo "ssl-cert=${BUILD}/certs/server-cert.pem" >> my.cnf
+    echo "ssl-key=${BUILD}/certs/server-key.pem" >> my.cnf
+    DEFAULT_FILE="--defaults-file=${BUILD}/my.cnf"
   fi
 
   rm -rf ${BUILD}/node* ${BUILD}/keyring_node*
@@ -314,12 +321,20 @@ test_result "mysqldump SST"
 echoit "Starting SST test using xtrabackup with encryption key"
 sst_encryption_run xtrabackup_encrypt
 test_result "xtrabackup SST (encryption key)"
+
 echoit "Starting SST test using xtrabackup with certificate authority and certificate files"
 sst_encryption_run xtrabackup_tca
 test_result "xtrabackup SST (certificate authority and certificate files)"
+
 echoit "Starting SST test using xtrabackup with key and certificate files"
 sst_encryption_run xtrabackup_tkey
 test_result "xtrabackup SST (key and certificate files)"
+
+echoit "Starting SST test using xtrabackup with MySQL-generated SSL files"
+sst_encryption_run xtrabackup_native_key
+test_result "xtrabackup SST (using MySQL-generated SSL files)"
+
+echoit "Starting SST test with different key and certificate files"
 sst_encryption_run xtrabackup_tkey shuffle_test
 test_result "xtrabackup SST with different key and certificate files"
 
