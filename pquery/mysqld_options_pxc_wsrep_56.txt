@@ -1,3 +1,5 @@
+--pxc-encrypt-cluster-traffic=1
+--pxc-encrypt-cluster-traffic=0
 --wsrep-OSU-method=TOI
 --wsrep-OSU-method=RSU
 --wsrep-auto-increment-control=1

@@ -1,3 +1,5 @@
+--pxc-encrypt-cluster-traffic=1
+--pxc-encrypt-cluster-traffic=0
 --pxc-strict-mode=DISABLED
 --pxc-strict-mode=PERMISSIVE
 --pxc-strict-mode=ENFORCING
