@@ -23,17 +23,24 @@ usage () {
     echo " --addclient=ps,2       Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
     echo "                        You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
     echo " --list                 List all client information as obtained from pmm-admin"
-    echo " --clean                This will stop all client instances and remove all clients from pmm-admin"
+    echo " --wipe-clients         This will stop all client instances and remove all clients from pmm-admin"
+    echo " --wipe-server          This will stop pmm-server container and remove all pmm containers"
+    echo " --wipe                 This will wipe all pmm configuration"
     echo " --dev                  When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options= --longoptions=addclient:,setup,list,clean,dev,help \
+  go_out="$(getopt --options= --longoptions=addclient:,setup,list,wipe-clients,wipe-server,wipe,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
+fi
+
+if [[ $go_out == " --" ]];then
+  usage
+  exit 1
 fi
 
 for arg
@@ -52,9 +59,17 @@ do
     shift
     list=1
     ;;
-    --clean )
+    --wipe-clients )
     shift
-    clean=1
+    wipe_clients=1
+    ;;
+    --wipe-server )
+    shift
+    wipe_server=1
+    ;;
+    --wipe )
+    shift
+    wipe=1
     ;;
     --dev )
     shift
@@ -101,7 +116,7 @@ if [ ! -z $setup ]; then
   mkdir -p $WORKDIR/pmm_client
   rm -rf $WORKDIR/pmm_client/index.html
 
-  pushd $WORKDIR/pmm_client
+  pushd $WORKDIR/pmm_client > /dev/null
   wget -q https://www.percona.com/downloads/TESTING/pmm/
   if [ ! -z $dev ]; then
     PMM_CLIENT_TAR=$(grep pmm-client $WORKDIR/pmm_client/index.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g'  | grep -E 'dev.*tar.gz' | head -n1 | awk '{ print $1}')
@@ -115,7 +130,7 @@ if [ ! -z $setup ]; then
   PMM_CLIENT_BASEDIR=`ls -1td pmm-client-* | grep -v ".tar" | head -n1`
   cd $PMM_CLIENT_BASEDIR
   sudo ./install
-  popd
+  popd > /dev/null
   
   if [[ ! -e `which pmm-admin 2> /dev/null` ]] ;then
     echo "ERROR! The pmm-admin client binary was not found, please install the pmm-admin client package"  
@@ -140,7 +155,7 @@ if [ ! -z $setup ]; then
 fi
 
 #Percona Server configuration.
-add_ps_client(){
+add_clients(){
   mkdir -p $WORKDIR/logs
   for i in ${ADDCLIENT[@]};do
     CLIENT_NAME=`echo $i | grep -o  '[[:alpha:]]*'`
@@ -317,24 +332,41 @@ add_ps_client(){
   done
 }
 
-if [ ! -z $list ]; then
-  sudo pmm-admin list
-fi
-
-if [ ! -z $clean ]; then
+clean_clients(){ 
   #Shutdown all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
     mysqladmin -uroot --socket=${i} shutdown
+    sleep 2
   done
   #Kills mongodb processes
   sudo killall mongod 2> /dev/null
   sleep 5
   #Remove all client instances
   sudo pmm-admin remove --all
+}
+
+clean_server(){
+  #Stop/Remove pmm-server docker containers
+  sudo docker stop pmm-server  > /dev/null
+  sudo docker rm pmm-server pmm-data  > /dev/null
+}
+
+if [ ! -z $list ]; then
+  sudo pmm-admin list
+fi
+
+if [ ! -z $wipe_clients ]; then
+  clean_clients
+fi
+if [ ! -z $wipe_server ]; then
+  clean_server
+fi
+
+if [ ! -z $wipe ]; then
+  clean_clients
+  clean_server
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
-  add_ps_client
+  add_clients
 fi
-
-
