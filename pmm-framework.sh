@@ -19,12 +19,12 @@ ADDR="127.0.0.1"
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-    echo " --setup                   This will setup and configure a PMM server"
-    echo " --addclient=ps,2          Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
-    echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
-    echo " --list                    List all the client information from pmm-admin"
-    echo " --clean                   It will stop all client instances and remove from pmm-admin"
-    echo " --dev                     It wil configure PMM beta version"
+    echo " --setup                This will setup and configure a PMM server"
+    echo " --addclient=ps,2       Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
+    echo "                        You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
+    echo " --list                 List all client information as obtained from pmm-admin"
+    echo " --clean                This will stop all client instances and remove all clients from pmm-admin"
+    echo " --dev                  When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
 }
 
 # Check if we have a functional getopt(1)
