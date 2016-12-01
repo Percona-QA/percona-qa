@@ -82,21 +82,28 @@ do
   esac
 done
 
-if [ ! -z $setup ]; then
-  if [[ ! -e `which lynx 2> /dev/null` ]] ;then
+sanity_check(){
+  if ! sudo docker ps | grep 'pmm-server' > /dev/null ; then
+    echo "ERROR! pmm-server docker container is not runnning. Terminating"
+    exit 1
+  fi
+}
+
+setup(){
+  if [[ ! -e $(which lynx 2> /dev/null) ]] ;then
     echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"  
     exit 1
   fi
 
   #PMM configuration setup
   if [ ! -z $dev ]; then
-    PMM_VERSION=`lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | head -n1`
+    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | head -n1)
   else
-    PMM_VERSION=`lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | grep -v dev | head -n1`
+    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | grep -v dev | head -n1)
   fi
 
   #PMM sanity check
-  if ! ps -ef | grep docker | grep -q daemon; then
+  if ! pgrep docker > /dev/null ; then
     echo "ERROR! docker service is not running. Terminating"
     exit 1
   fi
@@ -113,31 +120,47 @@ if [ ! -z $setup ]; then
   sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null 
   sudo docker run -d -p 80:80 --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
 
-  mkdir -p $WORKDIR/pmm_client
-  rm -rf $WORKDIR/pmm_client/index.html
-
-  pushd $WORKDIR/pmm_client > /dev/null
-  wget -q https://www.percona.com/downloads/TESTING/pmm/
-  if [ ! -z $dev ]; then
-    PMM_CLIENT_TAR=$(grep pmm-client $WORKDIR/pmm_client/index.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g'  | grep -E 'dev.*tar.gz' | head -n1 | awk '{ print $1}')
+  echo "Initiating PMM client configuration"
+  PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+  if [ -z $PMM_CLIENT_BASEDIR ]; then
+    PMM_CLIENT_TAR=$(ls -1td pmm-client-* | grep ".tar" | head -n1)
+    if [ ! -z $PMM_CLIENT_TAR ];then
+      tar -xzf $PMM_CLIENT_TAR
+      PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+      pushd $PMM_CLIENT_BASEDIR > /dev/null
+      sudo ./install
+      popd
+    else
+      if [ ! -z $dev ]; then
+        PMM_CLIENT_TAR=$(lynx --dump https://www.percona.com/downloads/TESTING/pmm/ | grep -o pmm-client.*.tar.gz   | head -n1)
+        wget https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
+        tar -xzf $PMM_CLIENT_TAR
+        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+        pushd $PMM_CLIENT_BASEDIR > /dev/null
+        sudo ./install
+        popd
+      else
+        PMM_CLIENT_TAR=$(lynx --dump  https://www.percona.com/downloads/pmm-client/pmm-client-1.0.6/binary/tarball | grep -o pmm-client.*.tar.gz | head -n1)
+        wget https://www.percona.com/downloads/pmm-client/pmm-client-1.0.6/binary/tarball/$PMM_CLIENT_TAR
+        tar -xzf $PMM_CLIENT_TAR
+        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+        pushd $PMM_CLIENT_BASEDIR > /dev/null
+        sudo ./install
+        popd 
+      fi
+    fi
   else
-    PMM_CLIENT_TAR=$(grep pmm-client $WORKDIR/pmm_client/index.html | sed 's|<tr>|\n|g;s|<[^>]*>| |g'  | grep -E 'tar.gz' | grep -v dev | head -n1 | awk '{ print $1}')
+    pushd $PMM_CLIENT_BASEDIR > /dev/null
+    sudo ./install
+    popd 
   fi
-  if ! ls -1 $PMM_CLIENT_TAR 2> /dev/null >/dev/null; then 
-    wget -q https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
-  fi
-  tar -xzf $PMM_CLIENT_TAR
-  PMM_CLIENT_BASEDIR=`ls -1td pmm-client-* | grep -v ".tar" | head -n1`
-  cd $PMM_CLIENT_BASEDIR
-  sudo ./install
-  popd > /dev/null
   
-  if [[ ! -e `which pmm-admin 2> /dev/null` ]] ;then
+  if [[ ! -e $(which pmm-admin 2> /dev/null) ]] ;then
     echo "ERROR! The pmm-admin client binary was not found, please install the pmm-admin client package"  
     exit 1
   else
     sleep 10
-    IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`
+    IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
     sudo pmm-admin config --server $IP_ADDRESS
   fi
   echo -e "******************************************************************"
@@ -152,22 +175,22 @@ if [ ! -z $setup ]; then
   printf "%s\t%s\n" "Orchestrator" "http://$IP_ADDRESS/orchestrator"
   ) | column -t -s $'\t'
   echo -e "******************************************************************"
-fi
+}
 
 #Percona Server configuration.
 add_clients(){
   mkdir -p $WORKDIR/logs
   for i in ${ADDCLIENT[@]};do
-    CLIENT_NAME=`echo $i | grep -o  '[[:alpha:]]*'`
+    CLIENT_NAME=$(echo $i | grep -o  '[[:alpha:]]*')
     if [[ "${CLIENT_NAME}" == "ps" ]]; then
       PORT_CHECK=101
       NODE_NAME="PS_NODE"
-      BASEDIR=`ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1`
+      BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
       if [ -z $BASEDIR ]; then
-        BASE_TAR=`ls -1td ?ercona-?erver-5.* | grep ".tar" | head -n1`
+        BASE_TAR=$(ls -1td ?ercona-?erver-5.* | grep ".tar" | head -n1)
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
-          BASEDIR=`ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1`
+          BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
           BASEDIR="$WORKDIR/$BASEDIR"
           rm -rf $BASEDIR/node*
         else
@@ -180,12 +203,12 @@ add_clients(){
     elif [[ "${CLIENT_NAME}" == "ms" ]]; then
       PORT_CHECK=201
       NODE_NAME="MS_NODE"
-      BASEDIR=`ls -1td mysql-5.* | grep -v ".tar" | head -n1`
+      BASEDIR=$(ls -1td mysql-5.* | grep -v ".tar" | head -n1)
       if [ -z $BASEDIR ]; then
-        BASE_TAR=`ls -1td mysql-5.* | grep ".tar" | head -n1`
+        BASE_TAR=$(ls -1td mysql-5.* | grep ".tar" | head -n1)
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
-          BASEDIR=`ls -1td mysql-5.* | grep -v ".tar" | head -n1`
+          BASEDIR=$(ls -1td mysql-5.* | grep -v ".tar" | head -n1)
           BASEDIR="$WORKDIR/$BASEDIR"
           rm -rf $BASEDIR/node*
         else
@@ -198,12 +221,12 @@ add_clients(){
     elif [[ "${CLIENT_NAME}" == "md" ]]; then
       PORT_CHECK=301
       NODE_NAME="MD_NODE"
-      BASEDIR=`ls -1td mariadb-* | grep -v ".tar" | head -n1`
+      BASEDIR=$(ls -1td mariadb-* | grep -v ".tar" | head -n1)
       if [ -z $BASEDIR ]; then
-        BASE_TAR=`ls -1td mariadb-* | grep ".tar" | head -n1`
+        BASE_TAR=$(ls -1td mariadb-* | grep ".tar" | head -n1)
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
-          BASEDIR=`ls -1td mariadb-* | grep -v ".tar" | head -n1`
+          BASEDIR=$(ls -1td mariadb-* | grep -v ".tar" | head -n1)
           BASEDIR="$WORKDIR/$BASEDIR"
           rm -rf $BASEDIR/node*
         else
@@ -226,12 +249,12 @@ add_clients(){
       echo "wsrep_slave_threads=2" >> my_pxc.cnf
       PORT_CHECK=401
       NODE_NAME="PXC_NODE"
-      BASEDIR=`ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1`
+      BASEDIR=$(ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1)
       if [ -z $BASEDIR ]; then
-        BASE_TAR=`ls -1td Percona-XtraDB-Cluster-5.* | grep ".tar" | head -n1`
+        BASE_TAR=$(ls -1td Percona-XtraDB-Cluster-5.* | grep ".tar" | head -n1)
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
-          BASEDIR=`ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1`
+          BASEDIR=$(ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1)
           BASEDIR="$WORKDIR/$BASEDIR"
           rm -rf $BASEDIR/node*
         else
@@ -247,12 +270,12 @@ add_clients(){
       else
         MTOOLS_MLAUNCH=`which mlaunch`
       fi
-      BASEDIR=`ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1`
+      BASEDIR=$(ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1)
       if [ -z $BASEDIR ]; then
-        BASE_TAR=`ls -1td percona-server-mongodb-* | grep ".tar" | head -n1`
+        BASE_TAR=$(ls -1td percona-server-mongodb-* | grep ".tar" | head -n1)
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
-          BASEDIR=`ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1`
+          BASEDIR=$(ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1)
           BASEDIR="$WORKDIR/$BASEDIR"
           sudo rm -rf $BASEDIR/data
         else
@@ -351,10 +374,6 @@ clean_server(){
   sudo docker rm pmm-server pmm-data  > /dev/null
 }
 
-if [ ! -z $list ]; then
-  sudo pmm-admin list
-fi
-
 if [ ! -z $wipe_clients ]; then
   clean_clients
 fi
@@ -367,6 +386,15 @@ if [ ! -z $wipe ]; then
   clean_server
 fi
 
+if [ ! -z $list ]; then
+  sudo pmm-admin list
+fi
+
+if [ ! -z $setup ]; then
+  setup
+fi
+
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
+  sanity_check
   add_clients
 fi
