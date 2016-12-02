@@ -118,7 +118,7 @@ setup(){
 
   echo "Initiating PMM configuration"
   sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null 
-  sudo docker run -d -p 80:80 --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  sudo docker run -d -p 80:80 -e ORCHESTRATOR_USER=admin -e ORCHESTRATOR_PASSWORD=passw0rd --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
 
   echo "Initiating PMM client configuration"
   PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
@@ -129,7 +129,7 @@ setup(){
       PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
       pushd $PMM_CLIENT_BASEDIR > /dev/null
       sudo ./install
-      popd
+      popd > /dev/null
     else
       if [ ! -z $dev ]; then
         PMM_CLIENT_TAR=$(lynx --dump https://www.percona.com/downloads/TESTING/pmm/ | grep -o pmm-client.*.tar.gz   | head -n1)
@@ -138,7 +138,7 @@ setup(){
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
         sudo ./install
-        popd
+        popd > /dev/null
       else
         PMM_CLIENT_TAR=$(lynx --dump  https://www.percona.com/downloads/pmm-client/pmm-client-1.0.6/binary/tarball | grep -o pmm-client.*.tar.gz | head -n1)
         wget https://www.percona.com/downloads/pmm-client/pmm-client-1.0.6/binary/tarball/$PMM_CLIENT_TAR
@@ -146,13 +146,13 @@ setup(){
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
         sudo ./install
-        popd 
+        popd > /dev/null
       fi
     fi
   else
     pushd $PMM_CLIENT_BASEDIR > /dev/null
     sudo ./install
-    popd 
+    popd > /dev/null 
   fi
   
   if [[ ! -e $(which pmm-admin 2> /dev/null) ]] ;then
@@ -170,9 +170,11 @@ setup(){
   printf "%s\t%s\n" "PMM landing page" "http://$IP_ADDRESS"
   printf "%s\t%s\n" "Query Analytics (QAN web app)" "http://$IP_ADDRESS/qan"
   printf "%s\t%s\n" "Metrics Monitor (Grafana)" "http://$IP_ADDRESS/graph"
-  printf "%s\t%s\n" " " "user name: admin"
-  printf "%s\t%s\n" " " "password : admin"
+  printf "%s\t%s\n" "Metrics Monitor username" "admin"
+  printf "%s\t%s\n" "Metrics Monitor password" "admin"
   printf "%s\t%s\n" "Orchestrator" "http://$IP_ADDRESS/orchestrator"
+  printf "%s\t%s\n" "Orchestrator username" "admin"
+  printf "%s\t%s\n" "Orchestrator password" "passw0rd"
   ) | column -t -s $'\t'
   echo -e "******************************************************************"
 }
@@ -265,10 +267,10 @@ add_clients(){
         BASEDIR="$WORKDIR/$BASEDIR"
       fi
     elif [[ "${CLIENT_NAME}" == "mo" ]]; then
-      if [[ ! -e `which mlaunch 2> /dev/null` ]] ;then
+      if [[ ! -e $(which mlaunch 2> /dev/null) ]] ;then
         echo "WARNING! The mlaunch mongodb spin up local test environments tool is not installed. Configuring MondoDB server manually"
       else
-        MTOOLS_MLAUNCH=`which mlaunch`
+        MTOOLS_MLAUNCH=$(which mlaunch)
       fi
       BASEDIR=$(ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1)
       if [ -z $BASEDIR ]; then
@@ -318,6 +320,13 @@ add_clients(){
         RBASE1="$(( RBASE + ( $PORT_CHECK * $j ) ))"
         LADDR1="$ADDR:$(( RBASE1 + 8 ))"
         node="${BASEDIR}/node$j"
+        if ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
+          echo "WARNING! Another mysqld process using $node/n${j}.sock"
+          if ! sudo pmm-admin list | grep "$node/n${j}.sock" > /dev/null ; then
+            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=$node/n${j}.sock --user=root --query-source=perfschema 
+          fi
+          continue
+        fi
         if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
           mkdir -p $node
           ${MID} --datadir=$node  > ${BASEDIR}/startup_node$j.err 2>&1
