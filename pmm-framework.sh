@@ -11,8 +11,10 @@ WORKDIR=${PWD}
 RPORT=$(( RANDOM%21 + 10 ))
 RBASE="$(( RPORT*1000 ))"
 SERVER_START_TIMEOUT=100
-SUSER=root
+SUSER="root"
 SPASS=""
+OUSER="admin"
+OPASS="passw0rd"
 ADDR="127.0.0.1"
 
 # Dispay script usage details
@@ -118,7 +120,7 @@ setup(){
 
   echo "Initiating PMM configuration"
   sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null 
-  sudo docker run -d -p 80:80 -e ORCHESTRATOR_USER=admin -e ORCHESTRATOR_PASSWORD=passw0rd --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  sudo docker run -d -p 80:80 -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
 
   echo "Initiating PMM client configuration"
   PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
@@ -351,6 +353,7 @@ add_clients(){
         for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
           sleep 1
           if ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
+            ${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "CREATE USER IF NOT EXISTS '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
             break
           fi
           if ! ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
