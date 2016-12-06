@@ -1191,6 +1191,7 @@ init_workdir_and_files(){
   if [ $SKIPSTAGEBELOW -gt 0 ]; then echo_out "[Init] SKIPSTAGEBELOW active. Stages up to and including $SKIPSTAGEBELOW are skipped"; fi
   if [ $SKIPSTAGEABOVE -lt 9 ]; then echo_out "[Init] SKIPSTAGEABOVE active. Stages above and including $SKIPSTAGEABOVE are skipped"; fi
   if [ $PQUERY_MULTI -gt 0 ]; then
+    echo_out "[Init] PQUERY_MULTI mode active, so automatically set PQUERY_MOD=1: testcase reduction will be done using pquery"
     if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -gt 0 ]; then
       echo_out "[Init] PQUERY_MULTI mode active, PQUERY_REVERSE_NOSHUFFLE_OPT on: Semi-true multi-threaded testcase reduction using pquery sequential replay commencing";
     else
@@ -1244,9 +1245,6 @@ init_workdir_and_files(){
   fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
     echo_out "[Init] FORCE_SPORADIC active, so automatically enabled SLOW_DOWN_CHUNK_SCALING to speed up testcase reduction (SLOW_DOWN_CHUNK_SCALING_NR is set to $SLOW_DOWN_CHUNK_SCALING_NR)"
-  fi
-  if [ $PQUERY_MULTI -eq 1 ]; then
-    echo_out "[Init] PQUERY_MULTI turned on, so automatically set PQUERY_MOD=1: testcase reduction will be done using pquery"
   fi
   if [ ${REDUCE_STARTUP_ISSUES} -eq 1 ]; then
     echo_out "[Init] REDUCE_STARTUP_ISSUES active. Issue is assumed to be a startup issue"

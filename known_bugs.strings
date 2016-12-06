@@ -257,6 +257,8 @@ rem0rec.c line 738                                                  ##DONOTREMOV
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
 #btr0btr.cc line 1081                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74605 MS (old LP #1384561)
 #btr0btr.cc line 1101                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=74605 PS (old LP #1384561)
+btr0btr.cc line 1334                                                                    ## http://bugs.mysql.com/bug.php?id=84067, MS
+btr0btr.cc line 1373                                                                    ## http://bugs.mysql.com/bug.php?id=84067, PS
 #btr0btr.ic line 125                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74577
 #btr0btr.ic line 141                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74577
 #btr0btr.ic line 143                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74577 (old LP #1369520)
@@ -292,6 +294,7 @@ buf0buf.cc line 2741                                            ## Still present
 buf0buf.cc line 2743                                                                    ## http://bugs.launchpad.net/percona-server/+bug/1392617 (with oldPS)
 buf0buf.cc line 2749                                                                    ## http://bugs.launchpad.net/percona-server/+bug/1392617 
 buf0buf.cc line 2969                                                                    ## http://bugs.mysql.com/bug.php?id=74729 MS
+buf0buf.cc line 3060                                                                    ## http://bugs.launchpad.net/percona-server/+bug/1647530
 buf0buf.cc line 3078                                                                    ## http://bugs.mysql.com/bug.php?id=74729 PS (with oldPS)
 buf0buf.cc line 3087                                                                    ## http://bugs.mysql.com/bug.php?id=74729 PS (with oldPS)
 buf0buf.cc line 2742                                                                    ## http://bugs.mysql.com/bug.php?id=83794 PS
@@ -305,8 +308,9 @@ buf0buf.cc line 4361                                                            
 #buf0buf.cc line 4369                                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1385030
 #buf0buf.cc line 4377                                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1385030 
 dict0dict.ic line 220                                                                   ## http://bugs.mysql.com/bug.php?id=81495
-dict0dict.ic line 786                                                                   ## http://bugs.mysql.com/bug.php?id=73926
-dict0dict.ic line 787                                                                   ## http://bugs.mysql.com/bug.php?id=73926
+dict0dict.ic line 786                                                                   ## http://bugs.mysql.com/bug.php?id=73926, NS 5.6.20
+dict0dict.ic line 787                                                                   ## http://bugs.mysql.com/bug.php?id=73926, MS 5.6.34
+fsp0fsp.ic line 172                                                                     ## http://bugs.mysql.com/bug.php?id=73926, MS 5.7.16
 #dict0dict.cc line 1202                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74900 (Fixed in 5.6.24, 5.7.6)
 fil0fil.cc line 3412                                                                    ## http://bugs.mysql.com/bug.php?id=74873, older build
 fil0fil.cc line 3485                                                                    ## http://bugs.mysql.com/bug.php?id=74873 PS (5.6 only)
