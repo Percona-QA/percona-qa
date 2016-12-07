@@ -1118,9 +1118,9 @@ pquery_test(){
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
       # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
       timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
       for X in $(seq 0 600); do  # Wait for full Valgrind output in error log
         sleep 1
         if [[ ! -r ${RUNDIR}/${TRIAL}/node1/node1.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err ]]; then
@@ -1403,9 +1403,9 @@ else
     exit 1
   fi
   echoit "Created PXC data templates for pquery run.."
-  ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  shutdown > /dev/null 2>&1
-  ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  shutdown > /dev/null 2>&1
   ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  shutdown > /dev/null 2>&1
+  ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  shutdown > /dev/null 2>&1
+  ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  shutdown > /dev/null 2>&1
 fi
 
 # Start actual pquery testing
