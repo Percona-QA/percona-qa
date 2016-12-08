@@ -54,6 +54,8 @@ pause_seqno_ .= .-1                                                             
 thd->enable_slow_log .. opt_slow_log                                                     ## http://bugs.mysql.com/bug.php?id=82899
 cnt <= keycache->blocks_used                                                             ## https://jira.percona.com/browse/PXC-733
 thd->security_context                                                                    ## https://jira.percona.com/browse/PXC-734
+field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_LONGLONG                        ## https://jira.percona.com/browse/PXC-745
+trx0trx.cc line 697                                                                      ## https://jira.percona.com/browse/PXC-736
 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
