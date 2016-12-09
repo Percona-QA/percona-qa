@@ -168,8 +168,9 @@ echo -e "        break" >> ./start_pxc
 echo -e "      fi" >> ./start_pxc
 echo -e "    done" >> ./start_pxc
 
-echo -e "    echo -e \"\${BUILD}/bin/mysqladmin -uroot -S\$node1/socket.sock shutdown\" >> ./stop_pxc "  >> ./start_pxc
-echo -e "    echo -e \"echo 'Server on socket \$node1/socket.sock with datadir \$node1 halted'\" >> ./stop_pxc"  >> ./start_pxc
+echo -e "    echo -e \"echo 'Server on socket \$node1/socket.sock with datadir \$node1 halted'\" | cat - ./stop_pxc > ./temp && mv ./temp ./stop_pxc"  >> ./start_pxc
+echo -e "    echo -e \"\${BUILD}/bin/mysqladmin -uroot -S\$node1/socket.sock shutdown\" | cat - ./stop_pxc > ./temp && mv ./temp ./stop_pxc"  >> ./start_pxc
+
 echo -e "    echo -e \"if [ -d \$node1.PREV ]; then rm -Rf \$node1.PREV.older; mv \$node1.PREV \$node1.PREV.older; fi;mv \$node1 \$node1.PREV\" >> ./wipe"  >> ./start_pxc
 echo -e "    echo -e \"\$BUILD/bin/mysql -A -uroot -S\$node1/socket.sock --prompt \\\"node\$i> \\\"\" > \${BUILD}/\$i\\_node_cli "  >> ./start_pxc
 echo -e "    chmod +x  \${BUILD}/\$i\\_node_cli  "  >> ./start_pxc
