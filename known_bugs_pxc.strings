@@ -9,7 +9,7 @@ cache_el.i.->used_tables.is_empty                                               
 #cache_mngr->is_binlog_empty                                                     # Fixed ## https://jira.percona.com/browse/PXC-462
 #key_count > 0                                                                   # Fixed ## https://jira.percona.com/browse/PXC-450
 #mdl_ticket->m_duration == MDL_TRANSACTION .. duration .= MDL_TRANSACTION        # Fixed ## https://jira.percona.com/browse/PXC-463
-#pool_.size                                                                      # Fixed ## https://jira.percona.com/browse/PXC-454
+pool_.size                                                                               ## https://jira.percona.com/browse/PXC-749
 #thd->wsrep_exec_mode == LOCAL_STATE                                             # Fixed ## https://jira.percona.com/browse/PXC-451
 trx->state                                                                               ## https://jira.percona.com/browse/PXC-678
 #hton == innodb_hton_pt                                                          # Non-reproducible  ## https://jira.percona.com/browse/PXC-581
