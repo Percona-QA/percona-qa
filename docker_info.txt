@@ -49,6 +49,9 @@
 # Where are the images stored
   /var/lib/docker/
 
+# Removing all Docker images
+  rm -rf /var/lib/docker/  # WARNING; only run this if you know what you are doing!
+
 # CLI Level Help
   sudo docker
   sudo docker run  # All options for the run command, etc.
