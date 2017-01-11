@@ -6,6 +6,7 @@ import subprocess
 import mysql.connector
 import shlex
 from general_conf.generalops import GeneralClass
+from os.path import isdir
 
 # Script Logic from -> David Bennett (david.bennett@percona.com)
 # Usage info:
@@ -29,12 +30,24 @@ class CheckMySQLEnvironment(GeneralClass):
 
         cursor = cnx.cursor()
 
-        select = "select variable_value from information_schema.global_variables where variable_name='%s'" % variable_name
+        select_version = "select @@version"
+
+        select_56 = "select variable_value from information_schema.global_variables where variable_name='%s'" % variable_name
+        select_57 = "select variable_value from performance_schema.global_variables where variable_name='%s'" % variable_name
         try:
-            cursor.execute(select)
+            cursor.execute(select_version)
+            for i in cursor:
+                if '5.6' in i[0]:
+                    cursor.execute(select_56)
+
+                elif '5.7' in i[0]:
+                    cursor.execute(select_57)
+
+
             for i in cursor:
                 if i[0] != '/var/lib/mysql':
                     self.variable_values.append(i[0])
+
         except mysql.connector.Error as err:
             print("Something went wrong: {}".format(err))
 
@@ -163,7 +176,11 @@ if __name__ == "__main__":
 
     a = CheckMySQLEnvironment()
     #dest_path = sys.argv[1]
-    a.run_backup(backup_dir=a.backupdir)
+    if isdir(a.backupdir):
+        a.run_backup(backup_dir=a.backupdir)
+    else:
+        print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
+        sys.exit(-1)
     #observer = PausingObserver()
     observer = Observer()
     event_handler = BackupProgressEstimate()
