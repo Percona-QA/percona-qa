@@ -179,7 +179,7 @@ if __name__ == "__main__":
     if isdir(a.backupdir):
         a.run_backup(backup_dir=a.backupdir)
     else:
-        print("Specidifed backup directory doest not exist!")
+        print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
     #observer = PausingObserver()
     observer = Observer()
