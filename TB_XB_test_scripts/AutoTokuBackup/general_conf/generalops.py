@@ -2,6 +2,7 @@
 
 import configparser
 from os.path import isfile
+import sys
 
 class GeneralClass:
 
@@ -28,4 +29,5 @@ class GeneralClass:
 
         else:
             print("Missing config file : /etc/tokubackup.conf")
+            sys.exit(-1)
 
