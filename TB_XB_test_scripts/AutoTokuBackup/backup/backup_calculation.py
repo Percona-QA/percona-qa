@@ -9,7 +9,8 @@ from general_conf.generalops import GeneralClass
 
 # Script Logic from -> David Bennett (david.bennett@percona.com)
 # Usage info:
-    # Run script from Python3 and specify backup directory to watch. It will calculate and show which files backed up in real-time.
+# Run script from Python3 and specify backup directory to watch.
+# It will calculate and show which files backed up in real-time.
 
 class CheckMySQLEnvironment(GeneralClass):
 

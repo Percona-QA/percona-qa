@@ -5,7 +5,7 @@ from os.path import isfile
 
 class GeneralClass:
 
-    def __init__(self, config='/home/sh/REPOS/percona-qa/TB_XB_test_scripts/AutoTokuBackup/general_conf/tokubackup.conf'):
+    def __init__(self, config='/etc/tokubackup.conf'):
 
         if isfile(config):
             con = configparser.ConfigParser()
