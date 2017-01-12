@@ -69,9 +69,6 @@ class CheckMySQLEnvironment(GeneralClass):
 
     def create_mysql_variables_info(self, backup_dir):
         cursor = self.cursor
-        #select_global = "SHOW GLOBAL VARIABLES"
-        #select_session = "SHOW SESSION VARIABLES"
-
 
         global_variables = join(backupdir, "global_variables")
         session_variables = join(backupdir,"session_variables")
@@ -148,7 +145,7 @@ class CheckMySQLEnvironment(GeneralClass):
 
 
         except Exception as err:
-            print("Something went wrong: {}".format(err))
+            print("Something went wrong in run_backup(): {}".format(err))
 
 
 
