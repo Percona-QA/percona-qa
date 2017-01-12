@@ -52,7 +52,7 @@ class CheckMySQLEnvironment(GeneralClass):
                     self.variable_values.append(i[0])
 
         except mysql.connector.Error as err:
-            print("Something went wrong: {}".format(err))
+            print("Something went wrong in get_tokudb_variable_value: {}".format(err))
 
         cursor.close()
         cnx.close()
@@ -70,7 +70,7 @@ class CheckMySQLEnvironment(GeneralClass):
             else:
                 print("Could not change owner of backup directory!")
         except Exception as err:
-            print("Something went wrong: {}".format(err))
+            print("Something went wrong in create_backup_directory(): {}".format(err))
 
 
     def run_backup(self, backup_dir):
@@ -195,6 +195,7 @@ if __name__ == "__main__":
     #dest_path = sys.argv[1]
     event_handler = BackupProgressEstimate()
     backupdir = event_handler.backup_dir
+    print("From __main__", backupdir)
     if isdir(backupdir):
         a.run_backup(backup_dir=backupdir)
     else:
@@ -202,7 +203,7 @@ if __name__ == "__main__":
         sys.exit(-1)
     #observer = PausingObserver()
     observer = Observer()
-    event_handler = BackupProgressEstimate()
+    #event_handler = BackupProgressEstimate()
     observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
     try:
