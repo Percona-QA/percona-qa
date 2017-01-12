@@ -89,23 +89,27 @@ class CheckMySQLEnvironment(GeneralClass):
                 cursor.execute(select_global_56)
                 for i in cursor:
                     with open(global_variables, "w") as f:
-                        f.write(i)
+                        str = i[0] + "==>" + i[1]
+                        f.write(str)
 
                 cursor.execute(select_session_56)
                 for i in cursor:
                     with open(session_variables, "w") as f:
-                        f.write(i)
+                        str = i[0] + "==>" + i[1]
+                        f.write(str)
 
             elif '5.7' in mysql_version:
                 cursor.execute(select_global_57)
                 for i in cursor:
                     with open(global_variables, "w") as f:
-                        f.write(i)
+                        str = i[0] + "==>" + i[1]
+                        f.write(str)
 
                 cursor.execute(select_session_57)
                 for i in cursor:
                     with open(session_variables, "w") as f:
-                        f.write(i)
+                        str = i[0] + "==>" + i[1]
+                        f.write(str)
 
         except mysql.connector.Error as err:
             print("Something went wrong in create_mysql_variables_info(): {}".format(err))
