@@ -195,7 +195,7 @@ if __name__ == "__main__":
     #dest_path = sys.argv[1]
     event_handler = BackupProgressEstimate()
     backupdir = event_handler.backup_dir
-    print("From __main__", backupdir)
+    print("Backup will bo stored in ", backupdir)
     if isdir(backupdir):
         a.run_backup(backup_dir=backupdir)
     else:
