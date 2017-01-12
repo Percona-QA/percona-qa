@@ -45,7 +45,7 @@ class CheckMySQLEnvironment(GeneralClass):
 
     def get_tokudb_variable_value(self, variable_name):
 
-        cursor = self.cursor()
+        cursor = self.cursor
 
         select_56 = "select variable_value from information_schema.global_variables where variable_name='%s'" % variable_name
         select_57 = "select variable_value from performance_schema.global_variables where variable_name='%s'" % variable_name
@@ -68,7 +68,7 @@ class CheckMySQLEnvironment(GeneralClass):
 
 
     def create_mysql_variables_info(self, backup_dir):
-        cursor = self.cursor()
+        cursor = self.cursor
         #select_global = "SHOW GLOBAL VARIABLES"
         #select_session = "SHOW SESSION VARIABLES"
 
