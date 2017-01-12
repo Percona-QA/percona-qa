@@ -52,7 +52,7 @@ class CheckMySQLEnvironment(GeneralClass):
                     self.variable_values.append(i[0])
 
         except mysql.connector.Error as err:
-            print("Something went wrong: {}".format(err))
+            print("Something went wrong in get_tokudb_variable_value: {}".format(err))
 
         cursor.close()
         cnx.close()
@@ -70,7 +70,7 @@ class CheckMySQLEnvironment(GeneralClass):
             else:
                 print("Could not change owner of backup directory!")
         except Exception as err:
-            print("Something went wrong: {}".format(err))
+            print("Something went wrong in create_backup_directory(): {}".format(err))
 
 
     def run_backup(self, backup_dir):
@@ -104,7 +104,7 @@ class BackupProgressEstimate(FileSystemEventHandler):
         #initialize MySQL datadir and backup directory here
         self.chck = CheckMySQLEnvironment()
         self.datadir = self.chck.datadir
-        self.backup_dir = self.chck.backupdir
+        self.backup_dir = self.chck.create_backup_directory()
         self.chck.get_tokudb_variable_value('tokudb_data_dir')
         self.chck.get_tokudb_variable_value('tokudb_log_dir')
         self.variable_values_list = self.chck.variable_values
@@ -193,7 +193,9 @@ if __name__ == "__main__":
 
     a = CheckMySQLEnvironment()
     #dest_path = sys.argv[1]
-    backupdir = a.create_backup_directory()
+    event_handler = BackupProgressEstimate()
+    backupdir = event_handler.backup_dir
+    print("Backup will bo stored in ", backupdir)
     if isdir(backupdir):
         a.run_backup(backup_dir=backupdir)
     else:
@@ -201,8 +203,8 @@ if __name__ == "__main__":
         sys.exit(-1)
     #observer = PausingObserver()
     observer = Observer()
-    event_handler = BackupProgressEstimate()
-    observer.schedule(event_handler, a.backupdir, recursive=True)
+    #event_handler = BackupProgressEstimate()
+    observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
     try:
         while True:
