@@ -202,7 +202,7 @@ if __name__ == "__main__":
     #observer = PausingObserver()
     observer = Observer()
     event_handler = BackupProgressEstimate()
-    observer.schedule(event_handler, a.backupdir, recursive=True)
+    observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
     try:
         while True:
