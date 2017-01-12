@@ -60,8 +60,15 @@ class CheckMySQLEnvironment(GeneralClass):
     def create_backup_directory(self):
         new_backup_dir = join(self.backupdir, datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
         try:
+            # Creating backup directory
             makedirs(new_backup_dir)
-            return new_backup_dir
+            # Changing owner
+            chown_command = "chown mysql:mysql %s" % new_backup_dir
+            status, output = subprocess.getstatusoutput(chown_command)
+            if status == 0:
+                return new_backup_dir
+            else:
+                print("Could not change owner of backup directory!")
         except Exception as err:
             print("Something went wrong: {}".format(err))
 
