@@ -104,7 +104,7 @@ class BackupProgressEstimate(FileSystemEventHandler):
         #initialize MySQL datadir and backup directory here
         self.chck = CheckMySQLEnvironment()
         self.datadir = self.chck.datadir
-        self.backup_dir = self.chck.backupdir
+        self.backup_dir = self.chck.create_backup_directory()
         self.chck.get_tokudb_variable_value('tokudb_data_dir')
         self.chck.get_tokudb_variable_value('tokudb_log_dir')
         self.variable_values_list = self.chck.variable_values
@@ -193,7 +193,8 @@ if __name__ == "__main__":
 
     a = CheckMySQLEnvironment()
     #dest_path = sys.argv[1]
-    backupdir = a.create_backup_directory()
+    event_handler = BackupProgressEstimate()
+    backupdir = event_handler.backup_dir
     if isdir(backupdir):
         a.run_backup(backup_dir=backupdir)
     else:
