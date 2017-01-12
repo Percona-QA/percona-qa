@@ -87,27 +87,27 @@ class CheckMySQLEnvironment(GeneralClass):
             mysql_version = self.check_mysql_version()
             if '5.6' in mysql_version:
                 cursor.execute(select_global_56)
-                for i in cursor:
-                    with open(global_variables, "w") as f:
+                with open(global_variables, "w") as f:
+                    for i in cursor:
                         str = i[0] + "==>" + i[1]
                         f.write(str)
 
                 cursor.execute(select_session_56)
-                for i in cursor:
-                    with open(session_variables, "w") as f:
+                with open(session_variables, "w") as f:
+                    for i in cursor:
                         str = i[0] + "==>" + i[1]
                         f.write(str)
 
             elif '5.7' in mysql_version:
                 cursor.execute(select_global_57)
-                for i in cursor:
-                    with open(global_variables, "w") as f:
+                with open(global_variables, "w") as f:
+                    for i in cursor:
                         str = i[0] + "==>" + i[1]
                         f.write(str)
 
                 cursor.execute(select_session_57)
-                for i in cursor:
-                    with open(session_variables, "w") as f:
+                with open(session_variables, "w") as f:
+                    for i in cursor:
                         str = i[0] + "==>" + i[1]
                         f.write(str)
 
