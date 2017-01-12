@@ -7,6 +7,9 @@ import mysql.connector
 import shlex
 from general_conf.generalops import GeneralClass
 from os.path import isdir
+from os.path import join
+from os import makedirs
+from datetime import datetime
 
 # Script Logic from -> David Bennett (david.bennett@percona.com)
 # Usage info:
@@ -54,6 +57,13 @@ class CheckMySQLEnvironment(GeneralClass):
         cursor.close()
         cnx.close()
 
+    def create_backup_directory(self):
+        new_backup_dir = join(self.backupdir, datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+        try:
+            makedirs(new_backup_dir)
+            return new_backup_dir
+        except Exception as err:
+            print("Something went wrong: {}".format(err))
 
 
     def run_backup(self, backup_dir):
@@ -176,8 +186,9 @@ if __name__ == "__main__":
 
     a = CheckMySQLEnvironment()
     #dest_path = sys.argv[1]
-    if isdir(a.backupdir):
-        a.run_backup(backup_dir=a.backupdir)
+    backupdir = a.create_backup_directory()
+    if isdir(backupdir):
+        a.run_backup(backup_dir=backupdir)
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
