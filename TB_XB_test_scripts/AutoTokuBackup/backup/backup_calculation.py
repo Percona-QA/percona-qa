@@ -18,44 +18,101 @@ from datetime import datetime
 
 class CheckMySQLEnvironment(GeneralClass):
 
+    # Constructor
     def __init__(self):
         GeneralClass.__init__(self)
         self.variable_values=[]
+        self.cnx = mysql.connector.connect(user=self.user, password=self.password,
+                              host=self.host,port=self.port)
+        self.cursor = self.cnx.cursor()
+
+    # Desctructor
+    def __del__(self):
+        self.cursor.close()
+        self.cnx.close()
 
 
+    def check_mysql_version(self):
+        cursor = self.cursor
+        select_version = "select @@version"
+        try:
+            cursor.execute(select_version)
+            for i in cursor:
+                return i[0]
+        except mysql.connector.Error as err:
+            print("Something went wrong in check_mysql_version(): {}".format(err))
 
 
     def get_tokudb_variable_value(self, variable_name):
 
-        cnx = mysql.connector.connect(user=self.user, password=self.password,
-                              host=self.host,port=self.port)
-
-
-        cursor = cnx.cursor()
-
-        select_version = "select @@version"
+        cursor = self.cursor()
 
         select_56 = "select variable_value from information_schema.global_variables where variable_name='%s'" % variable_name
         select_57 = "select variable_value from performance_schema.global_variables where variable_name='%s'" % variable_name
+
         try:
-            cursor.execute(select_version)
-            for i in cursor:
-                if '5.6' in i[0]:
-                    cursor.execute(select_56)
-
-                elif '5.7' in i[0]:
-                    cursor.execute(select_57)
-
+            mysql_version = self.check_mysql_version()
+            if '5.6' in mysql_version:
+                cursor.execute(select_56)
+            elif '5.7' in mysql_version:
+                cursor.execute(select_57)
 
             for i in cursor:
                 if i[0] != '/var/lib/mysql':
                     self.variable_values.append(i[0])
 
         except mysql.connector.Error as err:
-            print("Something went wrong in get_tokudb_variable_value: {}".format(err))
+            print("Something went wrong in get_tokudb_variable_value(): {}".format(err))
 
-        cursor.close()
-        cnx.close()
+
+
+
+    def create_mysql_variables_info(self, backup_dir):
+        cursor = self.cursor()
+        #select_global = "SHOW GLOBAL VARIABLES"
+        #select_session = "SHOW SESSION VARIABLES"
+
+
+        global_variables = join(backupdir, "global_variables")
+        session_variables = join(backupdir,"session_variables")
+
+
+        select_global_56 = "select variable_name, variable_value from information_schema.global_variables"
+        select_session_56 = "select variable_name, variable_value from information_schema.session_variables"
+
+        select_global_57 = "select variable_name, variable_value from performance_schema.global_variables"
+        select_session_57 = "select variable_name, variable_value from performance_schema.session_variables"
+
+        try:
+            mysql_version = self.check_mysql_version()
+            if '5.6' in mysql_version:
+                cursor.execute(select_global_56)
+                for i in cursor:
+                    with open(global_variables, "w") as f:
+                        f.write(i)
+
+                cursor.execute(select_session_56)
+                for i in cursor:
+                    with open(session_variables, "w") as f:
+                        f.write(i)
+
+            elif '5.7' in mysql_version:
+                cursor.execute(select_global_57)
+                for i in cursor:
+                    with open(global_variables, "w") as f:
+                        f.write(i)
+
+                cursor.execute(select_session_57)
+                for i in cursor:
+                    with open(session_variables, "w") as f:
+                        f.write(i)
+
+        except mysql.connector.Error as err:
+            print("Something went wrong in create_mysql_variables_info(): {}".format(err))
+        except Exception as err:
+            print("Something went wrong in create_mysql_variables_info(): {}".format(err))
+
+
 
     def create_backup_directory(self):
         new_backup_dir = join(self.backupdir, datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
@@ -195,9 +252,10 @@ if __name__ == "__main__":
     #dest_path = sys.argv[1]
     event_handler = BackupProgressEstimate()
     backupdir = event_handler.backup_dir
-    print("Backup will bo stored in ", backupdir)
+    print("Backup will be stored in ", backupdir)
     if isdir(backupdir):
         a.run_backup(backup_dir=backupdir)
+        a.create_mysql_variables_info(backup_dir=backupdir)
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
