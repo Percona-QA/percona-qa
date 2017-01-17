@@ -237,8 +237,6 @@ setup(){
     printf "%s\t%s\n" "Metrics Monitor username" "admin"
     printf "%s\t%s\n" "Metrics Monitor password" "admin"
     printf "%s\t%s\n" "Orchestrator" "https://$IP_ADDRESS:443/orchestrator"
-    printf "%s\t%s\n" "Orchestrator username" "admin"
-    printf "%s\t%s\n" "Orchestrator password" "passw0rd"
     ) | column -t -s $'\t'
   else
     (
@@ -254,8 +252,6 @@ setup(){
     printf "%s\t%s\n" "Metrics Monitor username" "admin"
     printf "%s\t%s\n" "Metrics Monitor password" "admin"
     printf "%s\t%s\n" "Orchestrator" "http://$IP_ADDRESS/orchestrator"
-    printf "%s\t%s\n" "Orchestrator username" "admin"
-    printf "%s\t%s\n" "Orchestrator password" "passw0rd"
     ) | column -t -s $'\t'
   fi
   echo -e "******************************************************************"
@@ -433,7 +429,16 @@ add_clients(){
         for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
           sleep 1
           if ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
-            ${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "CREATE USER IF NOT EXISTS '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
+            check_user=`${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
+            if [[ -z "$check_user" ]]; then
+              ${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
+              (
+              printf "%s\t%s\n" "Orchestrator username" "admin"
+              printf "%s\t%s\n" "Orchestrator password" "passw0rd"
+              ) | column -t -s $'\t'
+            else
+              echo "User '$OUSER' is already present in MySQL server. Please create Orchestrator user manually."
+            fi
             break
           fi
           if ! ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
