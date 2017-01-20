@@ -1268,7 +1268,6 @@ fi
 rm -Rf ${WORKDIR} ${RUNDIR}
 mkdir ${WORKDIR} ${WORKDIR}/log ${RUNDIR}
 WORKDIRACTIVE=1
-INFILE=${SCRIPT_PWD}/pquery/main-ms-ps-md.sql.tar.gz
 # User for recovery testing
 echo "create user recovery@'%';grant all on *.* to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
 if [ ${PXC} -eq 0 ];then
