@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-# In active development: 2012-2016
+# In active development: 2012-2017
 
 # ======== Dev Contacts
 # Main developer: Roel Van de Paar <roel A.T vandepaar D.O.T com>
@@ -1712,10 +1712,12 @@ start_mysqld_main(){
   for X in $(seq 1 120); do
     sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
     # Check if the server crashed or shutdown, then there is no need to wait any longer (new beta feature as of 1 July 16)
-    if grep --binary-files=text -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
-    if grep --binary-files=text -qi "Writing a core file" $WORKD/error.log.out; then break; fi
-    if grep --binary-files=text -qi "terribly wrong" $WORKD/error.log.out; then break; fi
-    if grep --binary-files=text -qi "Shutdown complete" $WORKD/error.log.out; then break; fi
+    # RV fix made 10 Jan 17; if no error.log.out is created (for whatever reason) then 120x4 'not found' messages scroll on the screen: added '2>/dev/null'. The Reason for the
+    #   missing error.log.out files in some circumstances needs to be found (seems to be related to bad startup options (usually in stage 8), but why is there no output at all?)
+    if grep --binary-files=text -qi "identify the cause of the crash" $WORKD/error.log.out 2>/dev/null; then break; fi
+    if grep --binary-files=text -qi "Writing a core file" $WORKD/error.log.out 2>/dev/null; then break; fi
+    if grep --binary-files=text -qi "terribly wrong" $WORKD/error.log.out 2>/dev/null; then break; fi
+    if grep --binary-files=text -qi "Shutdown complete" $WORKD/error.log.out 2>/dev/null; then break; fi
   done
 }
 
