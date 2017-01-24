@@ -1,1 +1,58 @@
-Here will be stored pmm-client and pmm-server tests
+Here will be stored pmm-client and pmm-server tests.
+
+Sample output:
+
+
+```
+
+[root@ps-pxb-5 pmm-tests]# bats pmm-client.bats
+ ✗ run pmm-admin without root privileges
+   (in test file pmm-client.bats, line 12)
+     `[ "${lines[0]}" = "pmm-admin requires superuser privileges to manage system services." ]' failed
+   Usage:
+     pmm-admin [flags]
+     pmm-admin [command]
+   
+   Available Commands:
+     config         Configure PMM Client.
+     add            Add service to monitoring.
+     remove         Remove service from monitoring.
+     list           List monitoring services for this system.
+     info           Display PMM Client information (works offline).
+     check-network  Check network connectivity between client and server.
+     ping           Check if PMM server is alive.
+     start          Start monitoring service.
+     stop           Stop monitoring service.
+     restart        Restart monitoring service.
+     show-passwords Show PMM Client password information (works offline).
+     purge          Purge metrics data on PMM server.
+     repair         Repair installation.
+     uninstall      Removes all monitoring services with the best effort.
+   
+   Flags:
+     -c, --config-file string   PMM config file (default "/usr/local/percona/pmm-client/pmm.yml")
+     -h, --help                 help for pmm-admin
+     -v, --version              show version
+   
+   Use "pmm-admin [command] --help" for more information about a command.
+ ✓ run pmm-admin under root privileges
+ ✓ run pmm-admin without any arguments
+ ✓ run pmm-admin help
+ ✓ run pmm-admin -h
+ ✓ run pmm-admin with wrong option
+ ✓ run pmm-admin ping
+ ✓ run pmm-admin check-network
+ ✓ run pmm-admin list
+ ✓ run pmm-admin add linux:metrics
+ ✓ run pmm-admin add linux:metrics again
+ ✓ run pmm-admin remove linux:metrics
+ ✓ run pmm-admin remove linux:metrics again
+ ✓ run pmm-admin add linux:metrics with given name
+ ✓ run pmm-admin remove linux:metrics with given name
+ ✓ run pmm-admin list to check os monitoring
+ ✓ run pmm-admin info
+ ✓ run pmm-admin show-passwords
+ ✓ run pmm-admin --version
+
+```
+
