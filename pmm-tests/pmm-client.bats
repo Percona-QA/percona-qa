@@ -126,4 +126,29 @@ echo "$output"
 run sudo pmm-admin list
 echo "$output"
     [ "$status" -eq 0 ]
+    echo "${output}" | grep "No services under monitoring."	
+}
+
+
+@test "run pmm-admin info" {
+run sudo pmm-admin info
+echo $output
+	[ "$status" -eq 0 ]
+	echo "${output}" | grep "Go Version"
+}
+
+
+@test "run pmm-admin show-passwords" {
+run sudo pmm-admin show-passwords
+echo "$output"
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "HTTP basic authentication" ]
+}
+
+
+@test "run pmm-admin --version" {
+run sudo pmm-admin --version
+echo "$output"
+	[ "$status" -eq 0 ]
+	echo "$output" | grep "1.0"
 }
