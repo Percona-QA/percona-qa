@@ -5,6 +5,8 @@
 #    echo "echo"
 #}
 
+DEFAULTS_FILE='/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf'
+
 
 @test "run pmm-admin under regular(non-root) user privileges" {
 if [[ $(id -u) -eq 0 ]] ; then
@@ -123,6 +125,13 @@ echo "$output"
     [ "${lines[0]}" = "OK, now monitoring this system." ]
 }
 
+@test "run pmm-admin add linux:metrics with given name again" {
+run sudo pmm-admin add linux:metrics mytest1.os1
+echo "$output"
+    [ "$status" -eq 1 ]
+    echo "${output}" | grep "there could be only one instance"
+}
+
 @test "run pmm-admin remove linux:metrics with given name" {
 run sudo pmm-admin remove linux:metrics mytest1.os1
 echo "$output"
@@ -130,11 +139,221 @@ echo "$output"
     [ "${lines[0]}" = "OK, removed system mytest1.os1 from monitoring." ]
 }
 
-@test "run pmm-admin list to check os monitoring" {
+
+@test "run pmm-admin remove linux:metrics with given name again" {
+run sudo pmm-admin remove linux:metrics mytest1.os1
+echo "$output"
+    [ "$status" -eq 1 ]
+    echo "${output}" | grep "no service found"
+}
+
+
+## mysql:metrics
+
+@test "run pmm-admin add mysql:metrics" {
+run sudo pmm-admin add mysql:metrics --defaults-file=${DEFAULTS_FILE}
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${lines[0]}" | grep "OK, now monitoring"
+}
+
+
+@test "run pmm-admin add mysql:metrics again" {
+run sudo pmm-admin add mysql:metrics --defaults-file=${DEFAULTS_FILE}
+echo "$output"
+    [ "$status" -eq 1 ]
+    [ "${lines[0]}" = "Error adding MySQL metrics: there is already one instance with this name under monitoring." ]
+}
+
+
+@test "run pmm-admin remove mysql:metrics" {
+run sudo pmm-admin remove mysql:metrics
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${output}" | grep "OK, removed MySQL metrics"
+}
+
+
+@test "run pmm-admin remove mysql:metrics again" {
+run sudo pmm-admin remove mysql:metrics
+echo "$output"
+    [ "$status" -eq 1 ]
+    echo "${output}" | grep "no service found"
+}
+
+@test "run pmm-admin add mysql:metrics with given name" {
+run sudo pmm-admin add mysql:metrics --defaults-file=${DEFAULTS_FILE} mysqltest1.os1
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${lines[0]}" | grep "OK, now monitoring MySQL metrics"
+}
+
+@test "run pmm-admin add mysql:metrics with given name again" {
+run sudo pmm-admin add mysql:metrics --defaults-file=${DEFAULTS_FILE} mysqltest1.os1
+echo "$output"
+    [ "$status" -eq 1 ]
+		[ "${lines[0]}" = "Error adding MySQL metrics: there is already one instance with this name under monitoring." ]
+}
+
+@test "run pmm-admin remove mysql:metrics with given name" {
+run sudo pmm-admin remove mysql:metrics mysqltest1.os1
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${lines[0]}" | grep "OK, removed"
+}
+
+
+@test "run pmm-admin remove mysql:metrics with given name again" {
+run sudo pmm-admin remove mysql:metrics mysqltest1.os1
+echo "$output"
+    [ "$status" -eq 1 ]
+    echo "${output}" | grep "no service found"
+}
+
+## mysql:queries
+
+@test "run pmm-admin add mysql:queries" {
+run sudo pmm-admin add mysql:queries --defaults-file=${DEFAULTS_FILE}
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${lines[0]}" | grep "OK, now monitoring"
+}
+
+
+@test "run pmm-admin add mysql:queries again" {
+run sudo pmm-admin add mysql:queries --defaults-file=${DEFAULTS_FILE}
+echo "$output"
+    [ "$status" -eq 1 ]
+    [ "${lines[0]}" = "Error adding MySQL queries: there is already one instance with this name under monitoring." ]
+}
+
+
+@test "run pmm-admin remove mysql:queries" {
+run sudo pmm-admin remove mysql:queries
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${output}" | grep "OK, removed MySQL queries"
+}
+
+
+@test "run pmm-admin remove mysql:queries again" {
+run sudo pmm-admin remove mysql:queries
+echo "$output"
+    [ "$status" -eq 1 ]
+    echo "${output}" | grep "no service found"
+}
+
+@test "run pmm-admin add mysql:queries with given name" {
+run sudo pmm-admin add mysql:queries --defaults-file=${DEFAULTS_FILE} mysqltest1.os1
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${lines[0]}" | grep "OK, now monitoring MySQL queries"
+}
+
+@test "run pmm-admin add mysql:queries with given name again" {
+run sudo pmm-admin add mysql:queries --defaults-file=${DEFAULTS_FILE} mysqltest1.os1
+echo "$output"
+    [ "$status" -eq 1 ]
+		[ "${lines[0]}" = "Error adding MySQL queries: there is already one instance with this name under monitoring." ]
+}
+
+@test "run pmm-admin remove mysql:queries with given name" {
+run sudo pmm-admin remove mysql:queries mysqltest1.os1
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${lines[0]}" | grep "OK, removed"
+}
+
+
+@test "run pmm-admin remove mysql:queries with given name again" {
+run sudo pmm-admin remove mysql:queries mysqltest1.os1
+echo "$output"
+    [ "$status" -eq 1 ]
+    echo "${output}" | grep "no service found"
+}
+
+
+## add mysql
+@test "run pmm-admin add mysql(with hardcoded --defaults-file)[Subject to Change]" {
+run sudo pmm-admin add mysql --defaults-file=/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf
+echo "$output"
+	[ "$status" -eq 0 ]
+	echo "${lines[0]}" | grep "OK, now"
+	echo "${lines[1]}" | grep "OK, now"
+	echo "${lines[2]}" | grep "OK, now"
+}
+
+@test "run pmm-admin add mysql(with hardcoded --defaults-file)[Subject to Change] again" {
+run sudo pmm-admin add mysql --defaults-file=/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf
+echo "$output"
+	[ "$status" -eq 0 ]
+	echo "${lines[0]}" | grep "OK, already"
+	echo "${lines[1]}" | grep "OK, already"
+	echo "${lines[2]}" | grep "OK, already"
+}
+
+@test "run pmm-admin remove mysql[see above how it was added]" {
+run sudo pmm-admin remove mysql
+echo "$output"
+	[ "$status" -eq 0 ]
+	echo "${lines[0]}" | grep "OK, removed"
+	echo "${lines[1]}" | grep "OK, removed"
+	echo "${lines[2]}" | grep "OK, removed"
+}
+
+
+@test "run pmm-admin remove mysql[see above how it was added] again" {
+run sudo pmm-admin remove mysql
+echo "$output"
+	[ "$status" -eq 0 ]
+	echo "${lines[0]}" | grep "OK, no"
+	echo "${lines[1]}" | grep "OK, no"
+	echo "${lines[2]}" | grep "OK, no"
+}
+
+@test "run pmm-admin add mysql(with hardcoded --defaults-file) with given name[Subject to Change]" {
+run sudo pmm-admin add mysql --defaults-file=/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf msb_5_6_33
+echo "$output"
+	[ "$status" -eq 0 ]
+	echo "${lines[0]}" | grep "OK, now"
+	echo "${lines[1]}" | grep "OK, now"
+	echo "${lines[2]}" | grep "OK, now"
+}
+
+@test "run pmm-admin add mysql(with hardcoded --defaults-file) with given name[Subject to Change] again" {
+run sudo pmm-admin add mysql --defaults-file=/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf msb_5_6_33
+echo "$output"
+	[ "$status" -eq 0 ]
+	echo "${lines[0]}" | grep "OK, already"
+	echo "${lines[1]}" | grep "OK, already"
+	echo "${lines[2]}" | grep "OK, already"
+}
+
+@test "run pmm-admin remove mysql with given name[see above how it was added]" {
+run sudo pmm-admin remove mysql msb_5_6_33
+echo "$output"
+	[ "$status" -eq 0 ]
+	echo "${lines[0]}" | grep "OK, removed"
+	echo "${lines[1]}" | grep "OK, removed"
+	echo "${lines[2]}" | grep "OK, removed"
+}
+
+
+@test "run pmm-admin remove mysql with given name[see above how it was added] again" {
+run sudo pmm-admin remove mysql msb_5_6_33
+echo "$output"
+	[ "$status" -eq 0 ]
+	echo "${lines[0]}" | grep "OK, no"
+	echo "${lines[1]}" | grep "OK, no"
+	echo "${lines[2]}" | grep "OK, no"
+}
+
+
+@test "run pmm-admin list to check for available services" {
 run sudo pmm-admin list
 echo "$output"
     [ "$status" -eq 0 ]
-    echo "${output}" | grep "No services under monitoring."	
+    echo "${output}" | grep "No services under monitoring."
 }
 
 
@@ -159,4 +378,44 @@ run sudo pmm-admin --version
 echo "$output"
 	[ "$status" -eq 0 ]
 	echo "$output" | grep "1.0"
+}
+
+
+@test "run pmm-admin start without service type" {
+run sudo pmm-admin start
+echo "$output"
+	[ "$status" -eq 1 ]
+	[ "${lines[0]}" = "No service type specified." ]
+}
+
+
+@test "run pmm-admin stop without service type" {
+run sudo pmm-admin stop
+echo "$output"
+	[ "$status" -eq 1 ]
+	[ "${lines[0]}" = "No service type specified." ]
+}
+
+
+@test "run pmm-admin restart without service type" {
+run sudo pmm-admin restart
+echo "$output"
+	[ "$status" -eq 1 ]
+	[ "${lines[0]}" = "No service type specified." ]
+}
+
+
+@test "run pmm-admin purge without service type" {
+run sudo pmm-admin purge
+echo "$output"
+	[ "$status" -eq 1 ]
+	[ "${lines[0]}" = "No service type specified." ]
+}
+
+
+@test "run pmm-admin config without parameters" {
+run sudo pmm-admin config
+echo "$output"
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "OK, PMM server is alive." ]
 }
