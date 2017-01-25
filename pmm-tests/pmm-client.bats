@@ -5,14 +5,22 @@
 #    echo "echo"
 #}
 
-@test "run pmm-admin without root privileges" {
+
+@test "run pmm-admin under regular(non-root) user privileges" {
+if [[ $(id -u) -eq 0 ]] ; then
+	skip "Skipping this test, because you are running under root"
+fi
 run pmm-admin
 echo "$output"
     [ "$status" -eq 1 ]
     [ "${lines[0]}" = "pmm-admin requires superuser privileges to manage system services." ]
 }
 
+
 @test "run pmm-admin under root privileges" {
+if [[ $(id -u) -ne 0 ]] ; then
+	skip "Skipping this test, because you are NOT running under root"
+fi
 run pmm-admin
 echo "$output"
     [ "$status" -eq 1 ]
