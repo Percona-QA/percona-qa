@@ -269,7 +269,8 @@ btr0btr.cc line 1373                                                            
 #btr0btr.ic line 144                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74577 (Fixed in 5.7.6)
 #btr0btr.ic line 169                                                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1192898
 btr0cur.cc line 768                                                                     ## http://bugs.mysql.com/bug.php?id=74747
-btr0cur.c line 763                                                                      ## http://bugs.launchpad.net/percona-server/+bug/1382764 or 1604218 (asked Laurynas; email)
+btr0cur.c line 763                                                                      ## http://bugs.launchpad.net/percona-server/+bug/1604218
+fil0fil.c line 5462                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1604218
 btr0cur.cc line 769                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1382764
 btr0cur.c line 758                                                                      ## http://bugs.launchpad.net/percona-server/+bug/1382764/comments/9 PS 5.5 (.c)
 #btr0cur.cc line 854                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75718 PS
