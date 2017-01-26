@@ -557,7 +557,7 @@ function call_tests() {
     echo "ERROR! The program 'bats' is currently not installed. Please install bats. Terminating"
     exit 1
   else
-    BATS=$(which bats}
+    BATS=$(which bats)
   fi
   sudo $BATS ${SCRIPT_PWD}/pmm-client.bats
 }
