@@ -31,6 +31,7 @@ usage () {
     echo " --dev                     When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
     echo " --pmm-server-username     User name to access the PMM Server web interface"
     echo " --pmm-server-password     Password to access the PMM Server web interface"
+    echo " --run-tests               Run automated bats tests"
 }
 
 # Check if we have a functional getopt(1)
@@ -74,6 +75,10 @@ do
     --wipe )
     shift
     wipe=1
+    ;;
+    --run-tests )
+    shift
+    run_tests=1
     ;;
     --dev )
     shift
@@ -166,7 +171,7 @@ setup(){
   fi
 
   echo "Initiating PMM configuration"
-  sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null 
+  sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
   if [ "$IS_SSL" == "Yes" ];then
     sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
   else
@@ -238,7 +243,7 @@ setup(){
     fi
     if [ ! -z $pmm_server_password ];then
       printf "%s\t%s\n" "PMM landing page password" "$pmm_server_password"
-    fi 
+    fi
     printf "%s\t%s\n" "Query Analytics (QAN web app)" "https://$IP_ADDRESS:443/qan"
     printf "%s\t%s\n" "Metrics Monitor (Grafana)" "https://$IP_ADDRESS:443/graph"
     printf "%s\t%s\n" "Metrics Monitor username" "admin"
@@ -253,7 +258,7 @@ setup(){
     fi
     if [ ! -z $pmm_server_password ];then
       printf "%s\t%s\n" "PMM landing page password" "$pmm_server_password"
-    fi 
+    fi
     printf "%s\t%s\n" "Query Analytics (QAN web app)" "http://$IP_ADDRESS/qan"
     printf "%s\t%s\n" "Metrics Monitor (Grafana)" "http://$IP_ADDRESS/graph"
     printf "%s\t%s\n" "Metrics Monitor username" "admin"
@@ -486,6 +491,15 @@ clean_server(){
   sudo docker stop pmm-server  > /dev/null
   sudo docker rm pmm-server pmm-data  > /dev/null
 }
+
+function call_tests() {
+  sudo /usr/local/bin/bats /home/sh/percona-qa/pmm-tests/pmm-client.bats
+}
+
+if [ ! -z $run_tests ]; then
+  call_tests
+fi
+
 
 if [ ! -z $wipe_clients ]; then
   clean_clients
