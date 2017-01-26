@@ -140,7 +140,7 @@ setup(){
     ;;
   esac
   if [[ ! -e $(which lynx 2> /dev/null) ]] ;then
-    echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"  
+    echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"
     exit 1
   fi
 
@@ -167,6 +167,13 @@ setup(){
 
   echo "Initiating PMM configuration"
   sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null 
+  if [ "$IS_SSL" == "Yes" ];then
+    sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  else
+    sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  fi
+
+  sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
   if [ "$IS_SSL" == "Yes" ];then
     sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
   else
@@ -205,11 +212,11 @@ setup(){
   else
     pushd $PMM_CLIENT_BASEDIR > /dev/null
     sudo ./install
-    popd > /dev/null 
+    popd > /dev/null
   fi
-  
+
   if [[ ! -e $(which pmm-admin 2> /dev/null) ]] ;then
-    echo "ERROR! The pmm-admin client binary was not found, please install the pmm-admin client package"  
+    echo "ERROR! The pmm-admin client binary was not found, please install the pmm-admin client package"
     exit 1
   else
     sleep 10
@@ -401,7 +408,7 @@ add_clients(){
         if ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
           echo "WARNING! Another mysqld process using $node/n${j}.sock"
           if ! sudo pmm-admin list | grep "$node/n${j}.sock" > /dev/null ; then
-            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=$node/n${j}.sock --user=root --query-source=perfschema 
+            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=$node/n${j}.sock --user=root --query-source=perfschema
           fi
           continue
         fi
@@ -452,10 +459,10 @@ add_clients(){
   done
 }
 
-clean_clients(){ 
+clean_clients(){
   #Shutdown all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
-    mysqladmin -uroot --socket=${i} shutdown
+    ${BASEDIR}/bin/mysqladmin -uroot --socket=${i} shutdown
     sleep 2
   done
   #Kills mongodb processes
