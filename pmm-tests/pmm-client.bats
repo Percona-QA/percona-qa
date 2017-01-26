@@ -6,7 +6,8 @@
 #}
 
 DEFAULTS_FILE='/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf'
-
+MYSQL_SOCK='/tmp/pmm_ps_data/mysql.sock'
+MYSQL_USER='root'
 
 @test "run pmm-admin under regular(non-root) user privileges" {
 if [[ $(id -u) -eq 0 ]] ; then
@@ -151,7 +152,7 @@ echo "$output"
 ## mysql:metrics
 
 @test "run pmm-admin add mysql:metrics" {
-run sudo pmm-admin add mysql:metrics --defaults-file=${DEFAULTS_FILE}
+run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
 echo "$output"
     [ "$status" -eq 0 ]
     echo "${lines[0]}" | grep "OK, now monitoring"
@@ -159,7 +160,7 @@ echo "$output"
 
 
 @test "run pmm-admin add mysql:metrics again" {
-run sudo pmm-admin add mysql:metrics --defaults-file=${DEFAULTS_FILE}
+run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
 echo "$output"
     [ "$status" -eq 1 ]
     [ "${lines[0]}" = "Error adding MySQL metrics: there is already one instance with this name under monitoring." ]
@@ -182,14 +183,14 @@ echo "$output"
 }
 
 @test "run pmm-admin add mysql:metrics with given name" {
-run sudo pmm-admin add mysql:metrics --defaults-file=${DEFAULTS_FILE} mysqltest1.os1
+run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  mysqltest1.os1
 echo "$output"
     [ "$status" -eq 0 ]
     echo "${lines[0]}" | grep "OK, now monitoring MySQL metrics"
 }
 
 @test "run pmm-admin add mysql:metrics with given name again" {
-run sudo pmm-admin add mysql:metrics --defaults-file=${DEFAULTS_FILE} mysqltest1.os1
+run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  mysqltest1.os1
 echo "$output"
     [ "$status" -eq 1 ]
 		[ "${lines[0]}" = "Error adding MySQL metrics: there is already one instance with this name under monitoring." ]
@@ -213,7 +214,7 @@ echo "$output"
 ## mysql:queries
 
 @test "run pmm-admin add mysql:queries" {
-run sudo pmm-admin add mysql:queries --defaults-file=${DEFAULTS_FILE}
+run sudo pmm-admin add mysql:queries --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
 echo "$output"
     [ "$status" -eq 0 ]
     echo "${lines[0]}" | grep "OK, now monitoring"
@@ -221,7 +222,7 @@ echo "$output"
 
 
 @test "run pmm-admin add mysql:queries again" {
-run sudo pmm-admin add mysql:queries --defaults-file=${DEFAULTS_FILE}
+run sudo pmm-admin add mysql:queries --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
 echo "$output"
     [ "$status" -eq 1 ]
     [ "${lines[0]}" = "Error adding MySQL queries: there is already one instance with this name under monitoring." ]
@@ -244,14 +245,14 @@ echo "$output"
 }
 
 @test "run pmm-admin add mysql:queries with given name" {
-run sudo pmm-admin add mysql:queries --defaults-file=${DEFAULTS_FILE} mysqltest1.os1
+run sudo pmm-admin add mysql:queries --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  mysqltest1.os1
 echo "$output"
     [ "$status" -eq 0 ]
     echo "${lines[0]}" | grep "OK, now monitoring MySQL queries"
 }
 
 @test "run pmm-admin add mysql:queries with given name again" {
-run sudo pmm-admin add mysql:queries --defaults-file=${DEFAULTS_FILE} mysqltest1.os1
+run sudo pmm-admin add mysql:queries --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  mysqltest1.os1
 echo "$output"
     [ "$status" -eq 1 ]
 		[ "${lines[0]}" = "Error adding MySQL queries: there is already one instance with this name under monitoring." ]
@@ -275,7 +276,7 @@ echo "$output"
 
 ## add mysql
 @test "run pmm-admin add mysql(with hardcoded --defaults-file)[Subject to Change]" {
-run sudo pmm-admin add mysql --defaults-file=/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf
+run sudo pmm-admin add mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
 echo "$output"
 	[ "$status" -eq 0 ]
 	echo "${lines[0]}" | grep "OK, now"
@@ -284,7 +285,7 @@ echo "$output"
 }
 
 @test "run pmm-admin add mysql(with hardcoded --defaults-file)[Subject to Change] again" {
-run sudo pmm-admin add mysql --defaults-file=/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf
+run sudo pmm-admin add mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
 echo "$output"
 	[ "$status" -eq 0 ]
 	echo "${lines[0]}" | grep "OK, already"
@@ -312,7 +313,7 @@ echo "$output"
 }
 
 @test "run pmm-admin add mysql(with hardcoded --defaults-file) with given name[Subject to Change]" {
-run sudo pmm-admin add mysql --defaults-file=/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf msb_5_6_33
+run sudo pmm-admin add mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  msb_5_6_33
 echo "$output"
 	[ "$status" -eq 0 ]
 	echo "${lines[0]}" | grep "OK, now"
@@ -321,7 +322,7 @@ echo "$output"
 }
 
 @test "run pmm-admin add mysql(with hardcoded --defaults-file) with given name[Subject to Change] again" {
-run sudo pmm-admin add mysql --defaults-file=/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf msb_5_6_33
+run sudo pmm-admin add mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  msb_5_6_33
 echo "$output"
 	[ "$status" -eq 0 ]
 	echo "${lines[0]}" | grep "OK, already"
