@@ -8,6 +8,7 @@
 
 # Internal variables
 WORKDIR=${PWD}
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
 RPORT=$(( RANDOM%21 + 10 ))
 RBASE="$(( RPORT*1000 ))"
 SERVER_START_TIMEOUT=100
@@ -552,7 +553,13 @@ clean_server(){
 
 function call_tests() {
   dummy_startup
-  sudo /usr/local/bin/bats /home/sh/percona-qa/pmm-tests/pmm-client.bats
+  if [[ ! -e $(which bats 2> /dev/null) ]] ;then
+    echo "ERROR! The program 'bats' is currently not installed. Please install bats. Terminating"
+    exit 1
+  else
+    BATS=$(which bats}
+  fi
+  sudo $BATS ${SCRIPT_PWD}/pmm-client.bats
 }
 
 if [ ! -z $wipe_clients ]; then
