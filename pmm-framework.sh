@@ -21,20 +21,22 @@ ADDR="127.0.0.1"
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-    echo " --setup                This will setup and configure a PMM server"
-    echo " --addclient=ps,2       Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
-    echo "                        You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
-    echo " --list                 List all client information as obtained from pmm-admin"
-    echo " --wipe-clients         This will stop all client instances and remove all clients from pmm-admin"
-    echo " --wipe-server          This will stop pmm-server container and remove all pmm containers"
-    echo " --wipe                 This will wipe all pmm configuration"
-    echo " --dev                  When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
+    echo " --setup                   This will setup and configure a PMM server"
+    echo " --addclient=ps,2          Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
+    echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
+    echo " --list                    List all client information as obtained from pmm-admin"
+    echo " --wipe-clients            This will stop all client instances and remove all clients from pmm-admin"
+    echo " --wipe-server             This will stop pmm-server container and remove all pmm containers"
+    echo " --wipe                    This will wipe all pmm configuration"
+    echo " --dev                     When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
+    echo " --pmm-server-username     User name to access the PMM Server web interface"
+    echo " --pmm-server-password     Password to access the PMM Server web interface"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options= --longoptions=addclient:,setup,list,wipe-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,pmm-server-username:,pmm-server-password::,setup,list,wipe-clients,wipe-server,wipe,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -77,12 +79,41 @@ do
     shift
     dev=1
     ;;
+    --pmm-server-username )
+    pmm_server_username="$2"
+    shift 2
+    ;;
+    --pmm-server-password )
+    case "$2" in
+      "")
+      read -r -s -p  "Enter PMM Server web interface password:" INPUT_PASS
+      if [ -z "$INPUT_PASS" ]; then
+        pmm_server_password=""
+	printf "\nConfiguring without PMM Server web interface password...\n";
+      else
+        pmm_server_password="$INPUT_PASS"
+      fi
+      printf "\n"
+      ;;
+      *)
+      pmm_server_password="$2"
+      ;;
+    esac
+    shift 2
+    ;;
     --help )
     usage
     exit 0
     ;;
   esac
 done
+
+if [[ -z "$pmm_server_username" ]];then
+  if [[ ! -z "$pmm_server_password" ]];then
+    echo "ERROR! PMM Server web interface username is empty. Terminating"
+    exit 1
+  fi
+fi
 
 sanity_check(){
   if ! sudo docker ps | grep 'pmm-server' > /dev/null ; then
@@ -92,6 +123,22 @@ sanity_check(){
 }
 
 setup(){
+  read -p "Would you like to enable SSL encryption to protect PMM from unauthorized access[y/n] ? " check_param
+  case $check_param in
+    y|Y)
+      echo -e "\nGenerating SSL certificate files to protect PMM from unauthorized access"
+      openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout server.key -out server.crt -subj '/CN=www.percona.com/O=Database Performance./C=US'
+      IS_SSL="Yes"
+    ;;
+    n|N)
+      echo ""
+      IS_SSL="No"
+    ;;
+    *)
+      echo "Please type [y/n]! Terminating."
+      exit 1
+    ;;
+  esac
   if [[ ! -e $(which lynx 2> /dev/null) ]] ;then
     echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"
     exit 1
@@ -119,8 +166,12 @@ setup(){
   fi
 
   echo "Initiating PMM configuration"
-  sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
-  sudo docker run -d -p 80:80 -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null 
+  if [ "$IS_SSL" == "Yes" ];then
+    sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  else
+    sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  fi
 
   sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
   if [ "$IS_SSL" == "Yes" ];then
@@ -170,21 +221,46 @@ setup(){
   else
     sleep 10
     IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
-    sudo pmm-admin config --server $IP_ADDRESS
+    if [ "$IS_SSL" == "Yes" ];then
+      sudo pmm-admin config --server $IP_ADDRESS --server-user="$pmm_server_username" --server-password="$pmm_server_password" --server-insecure-ssl
+    else
+      sudo pmm-admin config --server $IP_ADDRESS --server-user="$pmm_server_username" --server-password="$pmm_server_password"
+    fi
   fi
   echo -e "******************************************************************"
   echo -e "Please execute below command to access docker container"
   echo -e "docker exec -it pmm-server bash\n"
-  (
-  printf "%s\t%s\n" "PMM landing page" "http://$IP_ADDRESS"
-  printf "%s\t%s\n" "Query Analytics (QAN web app)" "http://$IP_ADDRESS/qan"
-  printf "%s\t%s\n" "Metrics Monitor (Grafana)" "http://$IP_ADDRESS/graph"
-  printf "%s\t%s\n" "Metrics Monitor username" "admin"
-  printf "%s\t%s\n" "Metrics Monitor password" "admin"
-  printf "%s\t%s\n" "Orchestrator" "http://$IP_ADDRESS/orchestrator"
-  printf "%s\t%s\n" "Orchestrator username" "admin"
-  printf "%s\t%s\n" "Orchestrator password" "passw0rd"
-  ) | column -t -s $'\t'
+  if [ "$IS_SSL" == "Yes" ];then
+    (
+    printf "%s\t%s\n" "PMM landing page" "https://$IP_ADDRESS:443"
+    if [ ! -z $pmm_server_username ];then
+      printf "%s\t%s\n" "PMM landing page username" "$pmm_server_username"
+    fi
+    if [ ! -z $pmm_server_password ];then
+      printf "%s\t%s\n" "PMM landing page password" "$pmm_server_password"
+    fi 
+    printf "%s\t%s\n" "Query Analytics (QAN web app)" "https://$IP_ADDRESS:443/qan"
+    printf "%s\t%s\n" "Metrics Monitor (Grafana)" "https://$IP_ADDRESS:443/graph"
+    printf "%s\t%s\n" "Metrics Monitor username" "admin"
+    printf "%s\t%s\n" "Metrics Monitor password" "admin"
+    printf "%s\t%s\n" "Orchestrator" "https://$IP_ADDRESS:443/orchestrator"
+    ) | column -t -s $'\t'
+  else
+    (
+    printf "%s\t%s\n" "PMM landing page" "http://$IP_ADDRESS"
+    if [ ! -z $pmm_server_username ];then
+      printf "%s\t%s\n" "PMM landing page username" "$pmm_server_username"
+    fi
+    if [ ! -z $pmm_server_password ];then
+      printf "%s\t%s\n" "PMM landing page password" "$pmm_server_password"
+    fi 
+    printf "%s\t%s\n" "Query Analytics (QAN web app)" "http://$IP_ADDRESS/qan"
+    printf "%s\t%s\n" "Metrics Monitor (Grafana)" "http://$IP_ADDRESS/graph"
+    printf "%s\t%s\n" "Metrics Monitor username" "admin"
+    printf "%s\t%s\n" "Metrics Monitor password" "admin"
+    printf "%s\t%s\n" "Orchestrator" "http://$IP_ADDRESS/orchestrator"
+    ) | column -t -s $'\t'
+  fi
   echo -e "******************************************************************"
 }
 
@@ -360,7 +436,16 @@ add_clients(){
         for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
           sleep 1
           if ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
-            ${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "CREATE USER IF NOT EXISTS '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
+            check_user=`${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
+            if [[ -z "$check_user" ]]; then
+              ${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
+              (
+              printf "%s\t%s\n" "Orchestrator username" "admin"
+              printf "%s\t%s\n" "Orchestrator password" "passw0rd"
+              ) | column -t -s $'\t'
+            else
+              echo "User '$OUSER' is already present in MySQL server. Please create Orchestrator user manually."
+            fi
             break
           fi
           if ! ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then

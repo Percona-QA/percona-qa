@@ -58,7 +58,7 @@ ZN7myrocks15RDBSE_TABLE_DEF8put_dictEPNS_12Dict_managerEPN7rocksdb10WriteBatchEP
 ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm  ## http://github.com/facebook/mysql-5.6/issues/220
 Z17build_equal_itemsP3THDP4ItemP10COND_EQUALbP4ListI10TABLE_LISTEPS4_  ## Another --query-alloc-block-size=-[small or large negative value], ignore for the moment
 options.use_os_buffer                                    ## http://github.com/facebook/mysql-5.6/issues/221
-prebuilt->trx->error_key_num < ha_alter_info->key_count  ## 
+#prebuilt->trx->error_key_num < ha_alter_info->key_count ## NEEDS BUG NUMBER - MAY NOT BE FIXED YET - REMARKED FTM SO WE CAN GET BUG NR
 
 ## =========== Early 5.7 Prepatory Work ===========
 ut0ut.cc line 981                ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug) ( Fixed in 5.7.7, 5.8.0)
@@ -161,7 +161,7 @@ ZN7SEL_ARG9store_minEjPPhj                               ## http://bugs.mysql.co
 #ZN3THD21send_statement_statusEv                ## Fixed ## http://bugs.mysql.com/bug.php?id=78701
 #dict0stats.cc line 3049                        ## Fixed ## http://bugs.mysql.com/bug.php?id=78714
 #ha_innopart.cc line 3526                       ## Fixed ## http://bugs.mysql.com/bug.php?id=78728
-#ha_innodb.cc line 1803                         ## Fixed ## http://bugs.mysql.com/bug.php?id=78732
+#ha_innodb.cc line 1803                         ## Fixed ## http://bugs.mysql.com/bug.php?id=78732 (only fixed in 5.7.10. Still exists in 5.5, listed elsewhere)
 
 ## =========== MS 5.7 GA ===========
 .xid->is_null                                            ## http://bugs.mysql.com/bug.php?id=80694
@@ -241,17 +241,21 @@ join == __null                                                         ## http:/
 part_id < m_tot_part s                                                 ## http://tokutek.atlassian.net/browse/DB-983
 
 ## =========== Special ===========
-ha_innodb.cc line 3469                                              ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
-ha_innodb.cc line 2797                                              ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.5.53
-ha_innodb.cc line 3495                                              ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
-ha_innodb.cc line 19339                                             ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
-ha_innodb.cc line 19411                                             ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
-InnoDB. log block checksum mismatch. expected                       ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
-ut0ut.cc line 932                                                   ##DONOTREMOVE## InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
-btr0cur.c line 3918                                                 ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
-handler0alter.cc line 5083                                          ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread 
-handler0alter.cc line 4966                                          ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
-rem0rec.c line 738                                                  ##DONOTREMOVE## --innodb-fake-changes=1 will crash PS 5.5 (ref http://bugs.launchpad.net/bugs/1629220)
+ha_innodb.cc line 3469                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
+ha_innodb.cc line 2797                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.5.53
+ha_innodb.cc line 3495                           ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
+ha_innodb.cc line 19339                          ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
+ha_innodb.cc line 19411                          ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
+InnoDB. log block checksum mismatch. expected    ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
+ut0ut.cc line 932                                ##DONOTREMOVE## InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
+btr0cur.c line 3918                              ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
+handler0alter.cc line 5083                       ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread 
+handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
+rem0rec.c line 738                               ##DONOTREMOVE## --innodb-fake-changes=1 will crash PS 5.5 (ref http://bugs.launchpad.net/bugs/1629220)
+fil0fil.cc line 3499                             ##DONOTREMOVE## SET SESSION debug="+d,dict_tf_to_fsp_flags_failure" > Failing assertion: fsp_flags_is_valid(flags) in PS 5.7.16
+fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above, for MS 5.7.16 (also logged as http://bugs.mysql.com/bug.php?id=84593 Also see #73926, #74873)
+ha_innodb.cc line 1128                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and likely 5.6) 1128=MS5.5
+ha_innodb.cc line 1401                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and likely 5.6) 1401=PS5.5
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
@@ -265,7 +269,8 @@ btr0btr.cc line 1373                                                            
 #btr0btr.ic line 144                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74577 (Fixed in 5.7.6)
 #btr0btr.ic line 169                                                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1192898
 btr0cur.cc line 768                                                                     ## http://bugs.mysql.com/bug.php?id=74747
-btr0cur.c line 763                                                                      ## http://bugs.launchpad.net/percona-server/+bug/1382764 or 1604218 (asked Laurynas; email)
+btr0cur.c line 763                                                                      ## http://bugs.launchpad.net/percona-server/+bug/1604218
+fil0fil.c line 5462                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1604218
 btr0cur.cc line 769                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1382764
 btr0cur.c line 758                                                                      ## http://bugs.launchpad.net/percona-server/+bug/1382764/comments/9 PS 5.5 (.c)
 #btr0cur.cc line 854                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75718 PS
@@ -445,7 +450,8 @@ bitmap_is_subset.*m_part_info->lock_partitions, .*m_locked_partitions           
 #bit < map->n_bits                                                             ## Fixed ## http://bugs.mysql.com/bug.php?id=74491 (Fixed in 5.6.24)
 .check_datetime_range.ltime                                                             ## (Originally PS Bug #1385043)
 comma_length > 0                                                                        ## http://bugs.mysql.com/bug.php?id=74603 (old LP #1384625)
-cur_shape .= Gcalc_function..shape_point                                                ## http://bugs.mysql.com/bug.php?id=83739
+cur_shape .= Gcalc_function..shape_point                                                ## http://bugs.mysql.com/bug.php?id=83739 and 84075
+ZN23Gcalc_operation_reducer15get_line_resultEPNS_9res_pointEP21Gcalc_result_receiver    ## http://bugs.mysql.com/bug.php?id=84075
 data_offset == ..null_count                                                             ## http://bugs.mysql.com/bug.php?id=74677
 db_length == copy->db_length                                                            ## http://bugs.mysql.com/bug.php?id=74604 (old LP #1384621)
 decimals_arg <= 30                                                                      ## http://bugs.mysql.com/bug.php?id=83437
@@ -523,6 +529,7 @@ thd->killed .= THD.*KILL_BAD_DATA .* error > 0                                  
 #. thd->in_sub_stmt                                                            ## Fixed ## http://bugs.mysql.com/bug.php?id=74665
 .thd->is_current_stmt_binlog_format_row                                                 ## http://bugs.launchpad.net/percona-server/+bug/1427030
 #thd->is_error                                                                 ## Fixed ## http://bugs.mysql.com/bug.php?id=74493
+thd->is_error                                                                           ## http://bugs.mysql.com/bug.php?id=84076 (5.6 only)
 .thd->lex->context_analysis_only                                ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74668 (Fixed in 5.7.6)
 thd->transaction.stmt.is_empty                                                          ## http://bugs.mysql.com/bug.php?id=74606 (old LP #1384620)
 thd == _current_thd                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1633988
@@ -534,6 +541,7 @@ thd == _current_thd                                                             
 #txn->do_fsync_lsn.lsn == ZERO_LSN.lsn                                         ## Fixed ## http://tokutek.atlassian.net/browse/DB-763 (fixed in 5.6.23/Tk7.5.6)
 #txn->roll_info.num_rollentries == 0                                           ## Fixed ## http://tokutek.atlassian.net/browse/DB-764 (fixed in 5.6.23/Tk7.5.6)
 #transactional_table .* .changed .* thd->transaction.stmt.cannot_safely_rollback ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1382745
+transactional_table .. .changed .. thd->transaction.stmt.cannot_safely_rollback         ## http://bugs.launchpad.net/percona-server/+bug/1647608
 unknown error code 47                                                                   ## http://bugs.mysql.com/bug.php?id=74343, both build
 #void Protocol::end_statement ## This assertion is a generic assertion indicative of many causes. It should not be filtered. (Was: http://bugs.mysql.com/bug.php?id=74411, RQG)
 next_insert_id >= auto_inc_interval_for_cur_row.minimum                                 ## http://bugs.launchpad.net/percona-server/+bug/1582577
@@ -623,6 +631,7 @@ Z39get_partition_id_cols_list_for_endpointP14partition_infobbj                  
 Z8filesortP3THDP5TABLEP8FilesortbPyS5_                                                  ## http://bugs.mysql.com/bug.php?id=74579 (old LP #1384595)
 Z9os_mallocm                                                                            ## http://tokutek.atlassian.net/browse/DB-839
 #ZN7handler18ha_end_bulk_insertEv                                              ## Fixed ## http://tokutek.atlassian.net/browse/DB-760  (fixed in ps-5.6.25)
+ZN7sys_var5checkEP3THDP7set_var                                                         ## http://bugs.mysql.com/bug.php?id=84656
 ZN7handler25update_global_table_statsEv                                                 ## http://bugs.mysql.com/bug.php?id=75741 (LP PS#1417382)
 #ZN7handler8ha_checkEP3THDP15st_ha_check_opt                                   ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1433197
 ZN7MDL_map6removeEP8MDL_lock                                                            ## http://bugs.launchpad.net/percona-server/+bug/1417116

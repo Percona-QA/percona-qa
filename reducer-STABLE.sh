@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-# In active development: 2012-2016
+# In active development: 2012-2017
 
 # ======== Dev Contacts
 # Main developer: Roel Van de Paar <roel A.T vandepaar D.O.T com>
@@ -77,7 +77,7 @@ PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary in percona-qa. To get
 
 # === Other options             # The options are not often changed
 CLI_MODE=0                      # When using the CLI; 0: sent SQL using a pipe, 1: sent SQL using --execute="SOURCE ..." command, 2: sent SQL using redirection (mysql < input.sql)
-ENABLE_QUERYTIMEOUT=1           # On/Off (1/0) Enable the Query Timeout function (enables and uses the MySQL event scheduler)
+ENABLE_QUERYTIMEOUT=0           # On/Off (1/0) Enable the Query Timeout function (which also enables and uses the MySQL event scheduler)
 QUERYTIMEOUT=90                 # Query timeout in sec. Note: queries terminated by the query timeout did not fully replay, and thus overall issue reproducibility may be affected
 LOAD_TIMEZONE_DATA=0            # On/Off (1/0) Enable loading Timezone data into the database (mainly applicable for RQG runs) (turned off by default=0 since 26.05.2016)
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
@@ -1191,6 +1191,7 @@ init_workdir_and_files(){
   if [ $SKIPSTAGEBELOW -gt 0 ]; then echo_out "[Init] SKIPSTAGEBELOW active. Stages up to and including $SKIPSTAGEBELOW are skipped"; fi
   if [ $SKIPSTAGEABOVE -lt 9 ]; then echo_out "[Init] SKIPSTAGEABOVE active. Stages above and including $SKIPSTAGEABOVE are skipped"; fi
   if [ $PQUERY_MULTI -gt 0 ]; then
+    echo_out "[Init] PQUERY_MULTI mode active, so automatically set PQUERY_MOD=1: testcase reduction will be done using pquery"
     if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -gt 0 ]; then
       echo_out "[Init] PQUERY_MULTI mode active, PQUERY_REVERSE_NOSHUFFLE_OPT on: Semi-true multi-threaded testcase reduction using pquery sequential replay commencing";
     else
@@ -1244,9 +1245,6 @@ init_workdir_and_files(){
   fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
     echo_out "[Init] FORCE_SPORADIC active, so automatically enabled SLOW_DOWN_CHUNK_SCALING to speed up testcase reduction (SLOW_DOWN_CHUNK_SCALING_NR is set to $SLOW_DOWN_CHUNK_SCALING_NR)"
-  fi
-  if [ $PQUERY_MULTI -eq 1 ]; then
-    echo_out "[Init] PQUERY_MULTI turned on, so automatically set PQUERY_MOD=1: testcase reduction will be done using pquery"
   fi
   if [ ${REDUCE_STARTUP_ISSUES} -eq 1 ]; then
     echo_out "[Init] REDUCE_STARTUP_ISSUES active. Issue is assumed to be a startup issue"
@@ -1714,10 +1712,12 @@ start_mysqld_main(){
   for X in $(seq 1 120); do
     sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
     # Check if the server crashed or shutdown, then there is no need to wait any longer (new beta feature as of 1 July 16)
-    if grep --binary-files=text -qi "identify the cause of the crash" $WORKD/error.log.out; then break; fi
-    if grep --binary-files=text -qi "Writing a core file" $WORKD/error.log.out; then break; fi
-    if grep --binary-files=text -qi "terribly wrong" $WORKD/error.log.out; then break; fi
-    if grep --binary-files=text -qi "Shutdown complete" $WORKD/error.log.out; then break; fi
+    # RV fix made 10 Jan 17; if no error.log.out is created (for whatever reason) then 120x4 'not found' messages scroll on the screen: added '2>/dev/null'. The Reason for the
+    #   missing error.log.out files in some circumstances needs to be found (seems to be related to bad startup options (usually in stage 8), but why is there no output at all?)
+    if grep --binary-files=text -qi "identify the cause of the crash" $WORKD/error.log.out 2>/dev/null; then break; fi
+    if grep --binary-files=text -qi "Writing a core file" $WORKD/error.log.out 2>/dev/null; then break; fi
+    if grep --binary-files=text -qi "terribly wrong" $WORKD/error.log.out 2>/dev/null; then break; fi
+    if grep --binary-files=text -qi "Shutdown complete" $WORKD/error.log.out 2>/dev/null; then break; fi
   done
 }
 
@@ -2629,7 +2629,7 @@ verify(){
         report_linecounts
         break
       fi
-      echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] As (possibly sporadic) issue did not reproduce with $MULTI_THREADS threads, now increasing number of threads to $[$MULTI_THREADS+MULTI_THREADS_INCREASE] (maximum is 50)"
+      echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] As (possibly sporadic) issue did not reproduce with $MULTI_THREADS threads, now increasing number of threads to $[$MULTI_THREADS+MULTI_THREADS_INCREASE] (maximum is $MULTI_THREADS_MAX)"
       MULTI_THREADS=$[$MULTI_THREADS+MULTI_THREADS_INCREASE]
       if [ $MULTI_THREADS -gt $MULTI_THREADS_MAX ]; then  # Verify failed. Terminate.
         verify_not_found
