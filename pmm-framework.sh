@@ -467,6 +467,7 @@ clean_clients(){
   fi
   if [[ -z "$MYSQLADMIN_CLIENT" ]];then
    echo "ERROR! 'mysqladmin' is currently not installed. Please install mysqladmin. Terminating."
+   exit 1
   fi
   #Shutdown all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
