@@ -460,9 +460,17 @@ add_clients(){
 }
 
 clean_clients(){
+  if [[ ! -e $(which mysqladmin 2> /dev/null) ]] ;then
+    MYSQLADMIN_CLIENT=$(find . -name mysqladmin | head -n1)
+  else
+    MYSQLADMIN_CLIENT=$(which mysqladmin)
+  fi
+  if [[ -z "$MYSQLADMIN_CLIENT" ]];then
+   echo "ERROR! 'mysqladmin' is currently not installed. Please install mysqladmin. Terminating."
+  fi
   #Shutdown all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
-    ${BASEDIR}/bin/mysqladmin -uroot --socket=${i} shutdown
+    ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
   done
   #Kills mongodb processes
