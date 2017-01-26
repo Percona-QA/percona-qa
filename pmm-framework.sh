@@ -466,6 +466,7 @@ add_clients(){
 
 #Percona Server dummy startup.
 dummy_startup(){
+  echo -e "\nConfiguring Percona Server daemon for pmm test run.\n"
   BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
   if [ -z $BASEDIR ]; then
     BASE_TAR=$(ls -1td ?ercona-?erver-5.* | grep ".tar" | head -n1)
@@ -483,6 +484,7 @@ dummy_startup(){
   fi
 
   #Cleaning existing Percona Server daemon
+  node=/tmp/pmm_ps_data
   ${BASEDIR}/bin/mysqladmin -uroot -S$node/mysql.sock shutdown > /dev/null
   rm -rf $node
 
@@ -492,7 +494,7 @@ dummy_startup(){
   else
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
   fi
-  node=/tmp/pmm_ps_data
+
   if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
     mkdir -p $node
     ${MID} --datadir=$node  > /tmp/startup_node.err 2>&1
@@ -553,11 +555,6 @@ function call_tests() {
   sudo /usr/local/bin/bats /home/sh/percona-qa/pmm-tests/pmm-client.bats
 }
 
-if [ ! -z $run_tests ]; then
-  call_tests
-fi
-
-
 if [ ! -z $wipe_clients ]; then
   clean_clients
 fi
@@ -576,6 +573,10 @@ fi
 
 if [ ! -z $setup ]; then
   setup
+fi
+
+if [ ! -z $run_tests ]; then
+  call_tests
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
