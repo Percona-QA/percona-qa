@@ -5,7 +5,7 @@
 #    echo "echo"
 #}
 
-DEFAULTS_FILE='/home/sh/sandboxes/msb_5_6_33/my.sandbox.cnf'
+
 MYSQL_SOCK='/tmp/pmm_ps_data/mysql.sock'
 MYSQL_USER='root'
 
@@ -275,7 +275,7 @@ echo "$output"
 
 
 ## add mysql
-@test "run pmm-admin add mysql(with hardcoded --defaults-file)[Subject to Change]" {
+@test "run pmm-admin add mysql" {
 run sudo pmm-admin add mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
 echo "$output"
 	[ "$status" -eq 0 ]
@@ -284,7 +284,7 @@ echo "$output"
 	echo "${lines[2]}" | grep "OK, now"
 }
 
-@test "run pmm-admin add mysql(with hardcoded --defaults-file)[Subject to Change] again" {
+@test "run pmm-admin add mysql again" {
 run sudo pmm-admin add mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
 echo "$output"
 	[ "$status" -eq 0 ]
@@ -293,7 +293,7 @@ echo "$output"
 	echo "${lines[2]}" | grep "OK, already"
 }
 
-@test "run pmm-admin remove mysql[see above how it was added]" {
+@test "run pmm-admin remove mysql" {
 run sudo pmm-admin remove mysql
 echo "$output"
 	[ "$status" -eq 0 ]
@@ -303,7 +303,7 @@ echo "$output"
 }
 
 
-@test "run pmm-admin remove mysql[see above how it was added] again" {
+@test "run pmm-admin remove mysql again" {
 run sudo pmm-admin remove mysql
 echo "$output"
 	[ "$status" -eq 0 ]
@@ -312,7 +312,7 @@ echo "$output"
 	echo "${lines[2]}" | grep "OK, no"
 }
 
-@test "run pmm-admin add mysql(with hardcoded --defaults-file) with given name[Subject to Change]" {
+@test "run pmm-admin add mysql with given name" {
 run sudo pmm-admin add mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  msb_5_6_33
 echo "$output"
 	[ "$status" -eq 0 ]
@@ -321,7 +321,7 @@ echo "$output"
 	echo "${lines[2]}" | grep "OK, now"
 }
 
-@test "run pmm-admin add mysql(with hardcoded --defaults-file) with given name[Subject to Change] again" {
+@test "run pmm-admin add mysql with given name again" {
 run sudo pmm-admin add mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  msb_5_6_33
 echo "$output"
 	[ "$status" -eq 0 ]
@@ -330,7 +330,7 @@ echo "$output"
 	echo "${lines[2]}" | grep "OK, already"
 }
 
-@test "run pmm-admin remove mysql with given name[see above how it was added]" {
+@test "run pmm-admin remove mysql with given name" {
 run sudo pmm-admin remove mysql msb_5_6_33
 echo "$output"
 	[ "$status" -eq 0 ]
@@ -340,7 +340,7 @@ echo "$output"
 }
 
 
-@test "run pmm-admin remove mysql with given name[see above how it was added] again" {
+@test "run pmm-admin remove mysql with given name again" {
 run sudo pmm-admin remove mysql msb_5_6_33
 echo "$output"
 	[ "$status" -eq 0 ]
