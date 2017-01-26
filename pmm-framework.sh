@@ -464,6 +464,62 @@ add_clients(){
   done
 }
 
+#Percona Server dummy startup.
+dummy_startup(){
+  BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
+  if [ -z $BASEDIR ]; then
+    BASE_TAR=$(ls -1td ?ercona-?erver-5.* | grep ".tar" | head -n1)
+    if [ ! -z $BASE_TAR ];then
+      tar -xzf $BASE_TAR
+      BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
+      BASEDIR="$WORKDIR/$BASEDIR"
+      rm -rf $BASEDIR/node*
+    else
+      echo "ERROR! Percona Server binary tar ball does not exist. Terminating."
+      exit 1
+    fi
+  else
+    BASEDIR="$WORKDIR/$BASEDIR"
+  fi
+
+  #Cleaning existing Percona Server daemon
+  ${BASEDIR}/bin/mysqladmin -uroot -S$node/mysql.sock shutdown > /dev/null
+  rm -rf $node
+
+  # Initializing Percona Server
+  if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+    MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+  else
+    MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
+  fi
+  node=/tmp/pmm_ps_data
+  if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+    mkdir -p $node
+    ${MID} --datadir=$node  > /tmp/startup_node.err 2>&1
+  else
+    if [ ! -d $node ]; then
+      ${MID} --datadir=$node  > /tmp/startup_node.err 2>&1
+    fi
+  fi
+  
+  # Starting Percona Server daemon
+  ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+          --socket=$node/mysql.sock --port=3307  > $node/error.err 2>&1 &
+
+  for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node/mysql.sock ping > /dev/null 2>&1; then
+      echo "Dummy Percona Server started ok. Client:"
+      echo "${BASEDIR}/bin/mysql -uroot -S$node/mysql.sock"
+      break
+    fi
+  done
+  if ! ${BASEDIR}/bin/mysqladmin -uroot -S$node/mysql.sock ping > /dev/null 2>&1; then
+    echo "ERROR! Dummy Percona Server startup failed. Please check error log $node/error.err"
+    exit 1
+  fi
+}
+
 clean_clients(){
   if [[ ! -e $(which mysqladmin 2> /dev/null) ]] ;then
     MYSQLADMIN_CLIENT=$(find . -name mysqladmin | head -n1)
@@ -493,6 +549,7 @@ clean_server(){
 }
 
 function call_tests() {
+  dummy_startup
   sudo /usr/local/bin/bats /home/sh/percona-qa/pmm-tests/pmm-client.bats
 }
 
