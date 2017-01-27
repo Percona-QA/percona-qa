@@ -1,4 +1,4 @@
-#Here will be stored pmm-client and pmm-server tests.
+# Welcome to PMM testing land.
 
 It is integrated into pmm-framework.sh
   > Please call pmm-framework.sh from where PS tarball downloaded.
@@ -25,7 +25,7 @@ Options:
 ```
 
 The options are quite clear.
-The interesting part for us maybe `--run-tests` option. I will start the PS instance on /tmp and will run all tests agains it.
+The interesting part for us maybe `--run-tests` option. It will start the PS instance on /tmp and will run all tests against it.
 
 ```
 
