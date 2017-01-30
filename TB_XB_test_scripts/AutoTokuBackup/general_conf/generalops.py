@@ -21,6 +21,8 @@ class GeneralClass(object):
                 self.mysql_socket = DB['socket']
             self.mysql_host = DB['host']
             self.datadir = DB['datadir']
+            if 'defaults_file' in DB:
+                self.mysql_defaults_file = DB['defaults_file']
 
             ######################################################
 
