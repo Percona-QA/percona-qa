@@ -4,7 +4,7 @@ import configparser
 from os.path import isfile
 import sys
 
-class GeneralClass:
+class GeneralClass(object):
 
     def __init__(self, config='/etc/tokubackup.conf'):
 
