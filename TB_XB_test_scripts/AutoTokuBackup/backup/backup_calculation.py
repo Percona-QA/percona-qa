@@ -20,8 +20,8 @@ from datetime import datetime
 class CheckMySQLEnvironment(GeneralClass):
 
     # Constructor
-    def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+    def __init__(self):
+        super(CheckMySQLEnvironment).__init__(self)
         self.variable_values=[]
         self.cnx = mysql.connector.connect(user=self.mysql_user,
                                            password=self.mysql_password,
