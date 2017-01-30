@@ -138,17 +138,33 @@ class CheckMySQLEnvironment(GeneralClass):
 
         # Backuper command
 
-        backup_command = '{} -u{} --password={} --host={} --socket={} -e "set tokudb_backup_dir=\'{}\'"'
+        backup_command_connection = '{} -u{} --password={} --host={}'
+        backup_command_execute = ' -e "set tokudb_backup_dir=\'{}\'"'
 
 
         try:
-            new_backup_command = shlex.split(backup_command.format(self.mysql,
+
+            if hasattr(self, 'mysql_socket'):
+                backup_command_connection += ' --socket={}'
+                backup_command_connection += backup_command_execute
+                new_backup_command = shlex.split(backup_command_connection.format(self.mysql,
+                                                                       self.mysql_user,
+                                                                       self.mysql_password,
+                                                                       self.mysql_host,
+                                                                       self.mysql_socket,
+                                                                       backup_dir))
+            else:
+                backup_command_connection += ' --port={}'
+                backup_command_connection += backup_command_execute
+                new_backup_command = shlex.split(backup_command_connection.format(self.mysql,
                                                                    self.mysql_user,
                                                                    self.mysql_password,
                                                                    self.mysql_host,
-                                                                   self.mysql_socket,
+                                                                   self.mysql_port,
                                                                    backup_dir))
             # Do not return anything from subprocess
+            print("Running backup command => %s" % (backup_command_connection))
+
             process = subprocess.Popen(new_backup_command, stdin=None, stdout=None, stderr=None)
 
 

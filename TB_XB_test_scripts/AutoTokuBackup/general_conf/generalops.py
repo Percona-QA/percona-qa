@@ -17,7 +17,8 @@ class GeneralClass:
             self.mysql_user = DB['user']
             self.mysql_password = DB['password']
             self.mysql_port = DB['port']
-            self.mysql_socket = DB['socket']
+            if 'socket' in DB:
+                self.mysql_socket = DB['socket']
             self.mysql_host = DB['host']
             self.datadir = DB['datadir']
 
