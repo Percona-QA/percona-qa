@@ -4,28 +4,28 @@ import configparser
 from os.path import isfile
 import sys
 
-class GeneralClass:
+class GeneralClass(object):
 
     def __init__(self, config='/etc/tokubackup.conf'):
 
         if isfile(config):
             con = configparser.ConfigParser()
             con.read(config)
-            catalog = con.sections()
 
-            DB = catalog[0]
-            self.mysql = con[DB]['mysql']
-            self.user = con[DB]['user']
-            self.password = con[DB]['password']
-            self.port = con[DB]['port']
-            self.socket = con[DB]['socket']
-            self.host = con[DB]['host']
-            self.datadir = con[DB]['datadir']
+            DB = con['MySQL']
+            self.mysql = DB['mysql']
+            self.mysql_user = DB['user']
+            self.mysql_password = DB['password']
+            self.mysql_port = DB['port']
+            if 'socket' in DB:
+                self.mysql_socket = DB['socket']
+            self.mysql_host = DB['host']
+            self.datadir = DB['datadir']
 
             ######################################################
 
-            BCK = catalog[1]
-            self.backupdir = con[BCK]['backupdir']
+            BCK = con['Backup']
+            self.backupdir = BCK['backupdir']
 
         else:
             print("Missing config file : /etc/tokubackup.conf")

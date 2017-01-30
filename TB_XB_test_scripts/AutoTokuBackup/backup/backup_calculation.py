@@ -11,7 +11,8 @@ from os.path import join
 from os import makedirs
 from datetime import datetime
 
-# Script Logic from -> David Bennett (david.bennett@percona.com)
+# Calculating Backup progress Logic from -> David Bennett (david.bennett@percona.com)
+# Developed by Shako (shahriyar.rzayev@percona.com)
 # Usage info:
 # Run script from Python3 and specify backup directory to watch.
 # It will calculate and show which files backed up in real-time.
@@ -20,10 +21,12 @@ class CheckMySQLEnvironment(GeneralClass):
 
     # Constructor
     def __init__(self):
-        GeneralClass.__init__(self)
+        super().__init__()
         self.variable_values=[]
-        self.cnx = mysql.connector.connect(user=self.user, password=self.password,
-                              host=self.host,port=self.port)
+        self.cnx = mysql.connector.connect(user=self.mysql_user,
+                                           password=self.mysql_password,
+                                           host=self.mysql_host,
+                                           port=self.mysql_port)
         self.cursor = self.cnx.cursor()
 
     # Desctructor
@@ -135,12 +138,33 @@ class CheckMySQLEnvironment(GeneralClass):
 
         # Backuper command
 
-        backup_command = '{} -u{} --password={} --host={} -e "set tokudb_backup_dir=\'{}\'"'
+        backup_command_connection = '{} -u{} --password={} --host={}'
+        backup_command_execute = ' -e "set tokudb_backup_dir=\'{}\'"'
 
 
         try:
-            new_backup_command = shlex.split(backup_command.format(self.mysql, self.user, self.password, self.host, backup_dir))
+
+            if hasattr(self, 'mysql_socket'):
+                backup_command_connection += ' --socket={}'
+                backup_command_connection += backup_command_execute
+                new_backup_command = shlex.split(backup_command_connection.format(self.mysql,
+                                                                       self.mysql_user,
+                                                                       self.mysql_password,
+                                                                       self.mysql_host,
+                                                                       self.mysql_socket,
+                                                                       backup_dir))
+            else:
+                backup_command_connection += ' --port={}'
+                backup_command_connection += backup_command_execute
+                new_backup_command = shlex.split(backup_command_connection.format(self.mysql,
+                                                                   self.mysql_user,
+                                                                   self.mysql_password,
+                                                                   self.mysql_host,
+                                                                   self.mysql_port,
+                                                                   backup_dir))
             # Do not return anything from subprocess
+            print("Running backup command => %s" % (' '.join(new_backup_command)))
+
             process = subprocess.Popen(new_backup_command, stdin=None, stdout=None, stderr=None)
 
 
