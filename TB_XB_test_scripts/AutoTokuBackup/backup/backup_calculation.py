@@ -21,7 +21,7 @@ class CheckMySQLEnvironment(GeneralClass):
 
     # Constructor
     def __init__(self, *args, **kwargs):
-        GeneralClass.__init__(self, *args, **kwargs)
+        super().__init__(self, *args, **kwargs)
         self.variable_values=[]
         self.cnx = mysql.connector.connect(user=self.mysql_user,
                                            password=self.mysql_password,
