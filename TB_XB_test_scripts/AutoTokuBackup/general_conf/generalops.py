@@ -15,6 +15,7 @@ class GeneralClass:
             DB = con['MySQL']
             self.mysql = DB['mysql']
             self.user = DB['user']
+            print(self.user)
             self.password = DB['password']
             self.port = DB['port']
             self.socket = DB['socket']
