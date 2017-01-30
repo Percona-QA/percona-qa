@@ -11,21 +11,20 @@ class GeneralClass:
         if isfile(config):
             con = configparser.ConfigParser()
             con.read(config)
-            catalog = con.sections()
 
-            DB = catalog[0]
-            self.mysql = con[DB]['mysql']
-            self.user = con[DB]['user']
-            self.password = con[DB]['password']
-            self.port = con[DB]['port']
-            self.socket = con[DB]['socket']
-            self.host = con[DB]['host']
-            self.datadir = con[DB]['datadir']
+            DB = con['MySQL']
+            self.mysql = DB['mysql']
+            self.user = DB['user']
+            self.password = DB['password']
+            self.port = DB['port']
+            self.socket = DB['socket']
+            self.host = DB['host']
+            self.datadir = DB['datadir']
 
             ######################################################
 
-            BCK = catalog[1]
-            self.backupdir = con[BCK]['backupdir']
+            BCK = con['Backup']
+            self.backupdir = BCK['backupdir']
 
         else:
             print("Missing config file : /etc/tokubackup.conf")
