@@ -300,8 +300,6 @@ if __name__ == "__main__":
             a.copy_mysql_config_file(a.mysql_defaults_file, backup_dir=backupdir)
         else:
             print("The original MySQL config file is missing check if it is specified and exists!")
-            print("Exiting backup!")
-            sys.exit(-1)
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
