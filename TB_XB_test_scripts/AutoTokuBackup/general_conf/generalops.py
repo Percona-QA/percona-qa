@@ -15,11 +15,10 @@ class GeneralClass:
             DB = con['MySQL']
             self.mysql = DB['mysql']
             self.mysql_user = DB['user']
-            print(self.mysql_user)
-            self.password = DB['password']
-            self.port = DB['port']
-            self.socket = DB['socket']
-            self.host = DB['host']
+            self.mysql_password = DB['password']
+            self.mysql_port = DB['port']
+            self.mysql_socket = DB['socket']
+            self.mysql_host = DB['host']
             self.datadir = DB['datadir']
 
             ######################################################
