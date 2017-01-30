@@ -72,18 +72,13 @@ class CheckMySQLEnvironment(GeneralClass):
     def copy_mysql_config_file(self, defaults_file, backup_dir):
         """
         Copy the passed MySQL configuration file to backup directory.
-        :return: True, if file successfully copied
-        :return: False, if defaults-file is not specified in tokubackup.conf
-        :return: Error, if error occured during copy operation(for eg, could not find specified file)
+        :return: True, if file successfully copied.
+        :return: Error, if error occured during copy operation.
         """
         try:
-            if hasattr(self, 'mysql_defaults_file'):
-                backup_dir += "/"+"original.my.cnf"
-                copy(defaults_file, backup_dir)
-            else:
-                print("defaults-file is not specified in tokubackup.conf")
-                return False
 
+            backup_dir += "/"+"original.my.cnf"
+            copy(defaults_file, backup_dir)
             return True
 
         except Exception as err:
@@ -301,8 +296,11 @@ if __name__ == "__main__":
     if isdir(backupdir):
         a.run_backup(backup_dir=backupdir)
         a.create_mysql_variables_info(backup_dir=backupdir)
-        if isfile(a.mysql_defaults_file):
+        if hasattr(a, 'mysql_defaults_file') and isfile(a.mysql_defaults_file):
             a.copy_mysql_config_file(a.mysql_defaults_file, backup_dir=backupdir)
+        else:
+            print("The original config file will be missing check if it is specified and exists")
+            sys.exit(-1)
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
