@@ -10,7 +10,7 @@ from os.path import isdir, isfile
 from os.path import join
 from os import makedirs
 from datetime import datetime
-import shutil.copy
+from shutil import copy
 
 # Calculating Backup progress Logic from -> David Bennett (david.bennett@percona.com)
 # Developed by Shako (shahriyar.rzayev@percona.com)
@@ -78,7 +78,7 @@ class CheckMySQLEnvironment(GeneralClass):
         """
         try:
             if hasattr(self, 'mysql_defaults_file'):
-                shutil.copy(defaults_file, backup_dir)
+                copy(defaults_file, backup_dir)
             else:
                 print("defaults-file is not specified in tokubackup.conf")
                 return False
