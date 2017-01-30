@@ -14,13 +14,9 @@ class GeneralClass(object):
 
             DB = con['MySQL']
             self.mysql = DB['mysql']
-            print(self.mysql)
             self.mysql_user = DB['user']
-            print(self.mysql_user)
             self.mysql_password = DB['password']
-            print(self.mysql_user)
             self.mysql_port = DB['port']
-            print(self.mysql_port)
             if 'socket' in DB:
                 self.mysql_socket = DB['socket']
             self.mysql_host = DB['host']
