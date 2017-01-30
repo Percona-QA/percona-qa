@@ -163,7 +163,7 @@ class CheckMySQLEnvironment(GeneralClass):
                                                                    self.mysql_port,
                                                                    backup_dir))
             # Do not return anything from subprocess
-            print("Running backup command => %s" % (new_backup_command))
+            print("Running backup command => %s" % (''.join(new_backup_command)))
 
             process = subprocess.Popen(new_backup_command, stdin=None, stdout=None, stderr=None)
 
