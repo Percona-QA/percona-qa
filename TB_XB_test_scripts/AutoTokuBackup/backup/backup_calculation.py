@@ -143,10 +143,10 @@ class CheckMySQLEnvironment(GeneralClass):
 
         try:
             new_backup_command = shlex.split(backup_command.format(self.mysql,
-                                                                   self.user,
-                                                                   self.password,
-                                                                   self.host,
-                                                                   self.socket,
+                                                                   self.mysql_user,
+                                                                   self.mysql_password,
+                                                                   self.mysql_host,
+                                                                   self.mysql_socket,
                                                                    backup_dir))
             # Do not return anything from subprocess
             process = subprocess.Popen(new_backup_command, stdin=None, stdout=None, stderr=None)
