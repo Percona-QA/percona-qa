@@ -11,7 +11,8 @@ from os.path import join
 from os import makedirs
 from datetime import datetime
 
-# Script Logic from -> David Bennett (david.bennett@percona.com)
+# Calculating Backup progress Logic from -> David Bennett (david.bennett@percona.com)
+# Developed by Shako (shahriyar.rzayev@percona.com)
 # Usage info:
 # Run script from Python3 and specify backup directory to watch.
 # It will calculate and show which files backed up in real-time.
@@ -135,11 +136,16 @@ class CheckMySQLEnvironment(GeneralClass):
 
         # Backuper command
 
-        backup_command = '{} -u{} --password={} --host={} -e "set tokudb_backup_dir=\'{}\'"'
+        backup_command = '{} -u{} --password={} --host={} --socket={} -e "set tokudb_backup_dir=\'{}\'"'
 
 
         try:
-            new_backup_command = shlex.split(backup_command.format(self.mysql, self.user, self.password, self.host, backup_dir))
+            new_backup_command = shlex.split(backup_command.format(self.mysql,
+                                                                   self.user,
+                                                                   self.password,
+                                                                   self.host,
+                                                                   self.socket,
+                                                                   backup_dir))
             # Do not return anything from subprocess
             process = subprocess.Popen(new_backup_command, stdin=None, stdout=None, stderr=None)
 
