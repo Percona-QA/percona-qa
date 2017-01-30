@@ -6,10 +6,11 @@ import subprocess
 import mysql.connector
 import shlex
 from general_conf.generalops import GeneralClass
-from os.path import isdir
+from os.path import isdir, isfile
 from os.path import join
 from os import makedirs
 from datetime import datetime
+import shutil.copy
 
 # Calculating Backup progress Logic from -> David Bennett (david.bennett@percona.com)
 # Developed by Shako (shahriyar.rzayev@percona.com)
@@ -68,6 +69,24 @@ class CheckMySQLEnvironment(GeneralClass):
             print("Something went wrong in get_tokudb_variable_value(): {}".format(err))
 
 
+    def copy_mysql_config_file(self, defaults_file, backup_dir):
+        """
+        Copy the passed MySQL configuration file to backup directory.
+        :return: True, if file successfully copied
+        :return: False, if defaults-file is not specified in tokubackup.conf
+        :return: Error, if error occured during copy operation(for eg, could not find specified file)
+        """
+        try:
+            if hasattr(self, 'mysql_defaults_file'):
+                shutil.copy(defaults_file, backup_dir)
+            else:
+                print("defaults-file is not specified in tokubackup.conf")
+                return False
+
+            return True
+
+        except Exception as err:
+            print("Something went wrong in copy_mysql_config_file(): {}".format(err))
 
 
     def create_mysql_variables_info(self, backup_dir):
@@ -281,6 +300,8 @@ if __name__ == "__main__":
     if isdir(backupdir):
         a.run_backup(backup_dir=backupdir)
         a.create_mysql_variables_info(backup_dir=backupdir)
+        if isfile(a.mysql_defaults_file):
+            a.copy_mysql_config_file(a.mysql_defaults_file, backup_dir=backupdir)
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
