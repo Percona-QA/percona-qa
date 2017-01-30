@@ -78,6 +78,7 @@ class CheckMySQLEnvironment(GeneralClass):
         """
         try:
             if hasattr(self, 'mysql_defaults_file'):
+                backup_dir += "/"+"original.my.cnf"
                 copy(defaults_file, backup_dir)
             else:
                 print("defaults-file is not specified in tokubackup.conf")
