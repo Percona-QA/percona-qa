@@ -324,13 +324,15 @@ def main():
     observer.start()
     try:
         while True:
-            if event_handler.waitForEvent(5) == False:
+            if event_handler.waitForEvent(1) == False:
+                print("Empty Queue!")
                 break
-        print("Completed - OK")
-        observer.stop()
+
     except KeyboardInterrupt:
         observer.stop()
 
+    print("Completed - OK")
+    observer.stop()
     observer.join()
 
 
