@@ -252,11 +252,11 @@ class BackupProgressEstimate(FileSystemEventHandler):
     #     self.final_calculation(event)
 
     def on_created(self, event):
-         print("Created file in backup directory -> {}".format(event.src_path))
          if not event.src_path and not event.is_directory:
              print("Completed - OK")
              self.observer.stop()
-             sys.exit(0)
+         print("Created file in backup directory -> {}".format(event.src_path))
+
 
 
 
@@ -302,6 +302,9 @@ def main():
             a.copy_mysql_config_file(a.mysql_defaults_file, backup_dir=backupdir)
         else:
             print("The original MySQL config file is missing check if it is specified and exists!")
+
+        print("Completed - OK")
+        sys.exit(0)
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
