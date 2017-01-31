@@ -300,7 +300,8 @@ if __name__ == "__main__":
     flag = 0
     a = CheckMySQLEnvironment()
     #dest_path = sys.argv[1]
-    event_handler = BackupProgressEstimate()
+    observer = Observer()
+    event_handler = BackupProgressEstimate(observer=observer)
     backupdir = event_handler.backup_dir
     print("Backup will be stored in ", backupdir)
     if isdir(backupdir):
@@ -314,7 +315,7 @@ if __name__ == "__main__":
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
     #observer = PausingObserver()
-    observer = Observer()
+
     #event_handler = BackupProgressEstimate()
     observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
