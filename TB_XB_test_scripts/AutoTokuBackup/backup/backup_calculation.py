@@ -12,7 +12,6 @@ from os import makedirs
 from datetime import datetime
 from shutil import copy
 
-# Calculating Backup progress Logic from -> David Bennett (david.bennett@percona.com)
 # Developed by Shako (shahriyar.rzayev@percona.com)
 # Usage info:
 # Run script from Python3 and specify backup directory to watch.
@@ -207,44 +206,44 @@ class BackupProgressEstimate(FileSystemEventHandler):
         self.variable_values_list = self.chck.variable_values
 
 
-    def calculate_progress(self, src_path_size, dest_path_size):
-        # Calculate percentage
-
-        percentage = float(dest_path_size)/float(src_path_size)*100
-        return percentage
-
-    def get_size_of_folder(self, get_path):
-        # Get size of folder
-
-        get_size_command = "du -bs %s | cut -f1" % get_path
-
-        status, output = subprocess.getstatusoutput(get_size_command)
-        if status == 0:
-            size_in_bytes = output
-            return size_in_bytes
-        else:
-            print("error")
+    # def calculate_progress(self, src_path_size, dest_path_size):
+    #     # Calculate percentage
+    #
+    #     percentage = float(dest_path_size)/float(src_path_size)*100
+    #     return percentage
+    #
+    # def get_size_of_folder(self, get_path):
+    #     # Get size of folder
+    #
+    #     get_size_command = "du -bs %s | cut -f1" % get_path
+    #
+    #     status, output = subprocess.getstatusoutput(get_size_command)
+    #     if status == 0:
+    #         size_in_bytes = output
+    #         return size_in_bytes
+    #     else:
+    #         print("error")
 
 
     def final_calculation(self, event):
-        # Print result of percentage calculation
+        # # Print result of percentage calculation
+        #
+        # if len(self.variable_values_list) != 0:
+        #     source_folder_size = self.get_size_of_folder(self.datadir)
+        #     dest_folder_size = self.get_size_of_folder(self.backup_dir)
+        #     for i in self.variable_values_list:
+        #         tokudb_path_size = self.get_size_of_folder(i)
+        #         source_folder_size = float(source_folder_size) + float(tokudb_path_size)
+        #
+        # else:
+        #     source_folder_size = self.get_size_of_folder(self.datadir)
+        #     dest_folder_size = self.get_size_of_folder(self.backup_dir)
+        #percentage = self.calculate_progress(source_folder_size, dest_folder_size)
 
-        if len(self.variable_values_list) != 0:
-            source_folder_size = self.get_size_of_folder(self.datadir)
-            dest_folder_size = self.get_size_of_folder(self.backup_dir)
-            for i in self.variable_values_list:
-                tokudb_path_size = self.get_size_of_folder(i)
-                source_folder_size = float(source_folder_size) + float(tokudb_path_size)
-
+        if event.src_path:
+            print("Created file in backup directory -> {}".format(event.src_path))
         else:
-            source_folder_size = self.get_size_of_folder(self.datadir)
-            dest_folder_size = self.get_size_of_folder(self.backup_dir)
-
-
-        percentage = self.calculate_progress(source_folder_size, dest_folder_size)
-        print("Created file in backup directory -> {}".format(event.src_path))
-        print("Backup completed {} %".format(int(percentage)), end='\r')
-        sys.stdout.flush()
+            print("Completed - OK")
 
 
     # def dispatch(self, event):
@@ -287,7 +286,7 @@ class BackupProgressEstimate(FileSystemEventHandler):
 
 
 if __name__ == "__main__":
-    observer_stop = True
+
     a = CheckMySQLEnvironment()
     #dest_path = sys.argv[1]
     event_handler = BackupProgressEstimate()
@@ -300,7 +299,6 @@ if __name__ == "__main__":
             a.copy_mysql_config_file(a.mysql_defaults_file, backup_dir=backupdir)
         else:
             print("The original MySQL config file is missing check if it is specified and exists!")
-        observer_stop = False
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
@@ -310,11 +308,8 @@ if __name__ == "__main__":
     observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
     try:
-        if observer_stop:
-            while True:
-                time.sleep(1)
-        else:
-            observer.stop()
+        while True:
+           time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
