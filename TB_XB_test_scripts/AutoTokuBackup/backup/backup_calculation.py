@@ -311,7 +311,7 @@ if __name__ == "__main__":
     observer.start()
     try:
         if observer_stop:
-            while observer_stop:
+            while True:
                 time.sleep(1)
         else:
             observer.stop()
