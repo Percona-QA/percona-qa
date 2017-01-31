@@ -212,7 +212,7 @@ class BackupProgressEstimate(FileSystemEventHandler):
         self.events_queue.put(event.src_path)
         print("Created file in backup directory -> {}".format(event.src_path))
 
-    def waitForEvent(self, block=True, timeout=None):
+    def wait_for_event(self, block=True, timeout=None):
         try:
             return self.events_queue.get(block, timeout)
         except Empty:
@@ -325,11 +325,9 @@ def main():
     observer.start()
     try:
         while True:
+            print(event_handler.wait_for_event(1))
             if event_handler.waitForEvent(1) == False:
                 break
-        print("Completed - OK")
-        observer.stop()
-        observer.join()
     except KeyboardInterrupt:
         observer.stop()
 
