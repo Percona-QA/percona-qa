@@ -1,4 +1,5 @@
 import sys
+from queue import Queue, Empty
 import time
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -202,9 +203,23 @@ class BackupProgressEstimate(FileSystemEventHandler):
         self.chck = CheckMySQLEnvironment()
         self.datadir = self.chck.datadir
         self.backup_dir = self.chck.create_backup_directory()
+        self.events_queue = Queue()
         self.chck.get_tokudb_variable_value('tokudb_data_dir')
         self.chck.get_tokudb_variable_value('tokudb_log_dir')
         self.variable_values_list = self.chck.variable_values
+
+    def on_created(self, event):
+        self.events_queue.put(event.src_path)
+        print("Created file in backup directory -> {}".format(event.src_path))
+
+    def waitForEvent(self, block=True, timeout=None):
+        try:
+            return self.events_queue.get(block, timeout)
+        except Empty:
+            return False
+
+
+
 
 
     # def calculate_progress(self, src_path_size, dest_path_size):
@@ -251,11 +266,7 @@ class BackupProgressEstimate(FileSystemEventHandler):
     #
     #     self.final_calculation(event)
 
-    def on_created(self, event):
-         if not event.src_path and not event.is_directory:
-             print("Completed - OK")
-             self.observer.stop()
-         print("Created file in backup directory -> {}".format(event.src_path))
+
 
 
 
@@ -303,8 +314,6 @@ def main():
         else:
             print("The original MySQL config file is missing check if it is specified and exists!")
 
-        print("Completed - OK")
-        sys.exit(0)
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
@@ -313,11 +322,14 @@ def main():
     # event_handler = BackupProgressEstimate()
     observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
-    # try:
-    #     while True:
-    #         time.sleep(1)
-    # except KeyboardInterrupt:
-    #     observer.stop()
+    try:
+        while True:
+            if event_handler.waitForEvent(5) == False:
+                break
+        print("Completed - OK")
+        observer.stop()
+    except KeyboardInterrupt:
+        observer.stop()
 
     observer.join()
 
