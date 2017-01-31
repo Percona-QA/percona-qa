@@ -23,7 +23,6 @@ class CheckMySQLEnvironment(GeneralClass):
     # Constructor
     def __init__(self):
         super().__init__()
-        self.variable_values=[]
         self.cnx = mysql.connector.connect(user=self.mysql_user,
                                            password=self.mysql_password,
                                            host=self.mysql_host,
@@ -37,6 +36,9 @@ class CheckMySQLEnvironment(GeneralClass):
 
 
     def check_mysql_version(self):
+        """
+        Check for MySQL version
+        """
         cursor = self.cursor
         select_version = "select @@version"
         try:
@@ -47,26 +49,6 @@ class CheckMySQLEnvironment(GeneralClass):
             print("Something went wrong in check_mysql_version(): {}".format(err))
 
 
-    def get_tokudb_variable_value(self, variable_name):
-
-        cursor = self.cursor
-
-        select_56 = "select variable_value from information_schema.global_variables where variable_name='%s'" % variable_name
-        select_57 = "select variable_value from performance_schema.global_variables where variable_name='%s'" % variable_name
-
-        try:
-            mysql_version = self.check_mysql_version()
-            if '5.6' in mysql_version:
-                cursor.execute(select_56)
-            elif '5.7' in mysql_version:
-                cursor.execute(select_57)
-
-            for i in cursor:
-                if i[0] != '/var/lib/mysql':
-                    self.variable_values.append(i[0])
-
-        except mysql.connector.Error as err:
-            print("Something went wrong in get_tokudb_variable_value(): {}".format(err))
 
 
     def copy_mysql_config_file(self, defaults_file, backup_dir):
@@ -86,6 +68,10 @@ class CheckMySQLEnvironment(GeneralClass):
 
 
     def create_mysql_variables_info(self, backup_dir):
+        """
+        Capturing MySQL global and session variables and putting inside 2 separate files.
+        :param backup_dir:
+        """
         cursor = self.cursor
 
         global_variables = join(backup_dir, "global_variables")
@@ -134,6 +120,10 @@ class CheckMySQLEnvironment(GeneralClass):
 
 
     def create_backup_directory(self):
+        """
+        Creating timestamped backup directory.
+        :return: Newly created backup directory or Error.
+        """
         new_backup_dir = join(self.backupdir, datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
         try:
             # Creating backup directory
@@ -150,8 +140,11 @@ class CheckMySQLEnvironment(GeneralClass):
 
 
     def run_backup(self, backup_dir):
+        """
+        Running actual backup command to MySQL server.
+        :param backup_dir:
+        """
 
-        # Backuper command
 
         backup_command_connection = '{} -u{} --password={} --host={}'
         backup_command_execute = ' -e "set tokudb_backup_dir=\'{}\'"'
@@ -198,111 +191,43 @@ class CheckMySQLEnvironment(GeneralClass):
 class BackupProgressEstimate(FileSystemEventHandler):
 
     def __init__(self, observer):
-        #initialize MySQL datadir and backup directory here
+        """
+        Constructor
+        :param observer:
+        """
         self.observer = observer
         self.chck = CheckMySQLEnvironment()
         self.datadir = self.chck.datadir
         self.backup_dir = self.chck.create_backup_directory()
         self.events_queue = Queue()
-        self.chck.get_tokudb_variable_value('tokudb_data_dir')
-        self.chck.get_tokudb_variable_value('tokudb_log_dir')
-        self.variable_values_list = self.chck.variable_values
+
 
     def on_created(self, event):
+        """
+        Called when a file or directory is created.
+        :param event:
+        :return:
+        """
         self.events_queue.put(event.src_path)
         print("Created file in backup directory -> {}".format(event.src_path))
 
     def wait_for_event(self, block=True, timeout=None):
+        """
+        Work with queued events
+        :param block:
+        :param timeout:
+        :return: False if queue is empty
+        """
+
         try:
             return self.events_queue.get(block, timeout)
         except Empty:
-            print("Empty queue!")
             return False
 
 
 
-
-
-    # def calculate_progress(self, src_path_size, dest_path_size):
-    #     # Calculate percentage
-    #
-    #     percentage = float(dest_path_size)/float(src_path_size)*100
-    #     return percentage
-    #
-    # def get_size_of_folder(self, get_path):
-    #     # Get size of folder
-    #
-    #     get_size_command = "du -bs %s | cut -f1" % get_path
-    #
-    #     status, output = subprocess.getstatusoutput(get_size_command)
-    #     if status == 0:
-    #         size_in_bytes = output
-    #         return size_in_bytes
-    #     else:
-    #         print("error")
-
-
-    #def final_calculation(self, event):
-        # # Print result of percentage calculation
-        #
-        # if len(self.variable_values_list) != 0:
-        #     source_folder_size = self.get_size_of_folder(self.datadir)
-        #     dest_folder_size = self.get_size_of_folder(self.backup_dir)
-        #     for i in self.variable_values_list:
-        #         tokudb_path_size = self.get_size_of_folder(i)
-        #         source_folder_size = float(source_folder_size) + float(tokudb_path_size)
-        #
-        # else:
-        #     source_folder_size = self.get_size_of_folder(self.datadir)
-        #     dest_folder_size = self.get_size_of_folder(self.backup_dir)
-        #percentage = self.calculate_progress(source_folder_size, dest_folder_size)
-
-        # if event.src_path:
-        #     print("Created file in backup directory -> {}".format(event.src_path))
-        # else:
-        #     print("Completed - OK")
-
-
-    # def dispatch(self, event):
-    #
-    #     self.final_calculation(event)
-
-
-
-
-
-
-    # def on_modified(self, event):
-    #      print("Modified -> ", event.src_path)
-
-    # def on_moved(self, event):
-    #     print("Moved -> ", event.src_path)
-
-    # def on_any_event(self, event):
-    #     print("On Any Event -> " , event.src_path)
-
-
-
-
-
-
-# class PausingObserver(Observer):
-#     def dispatch_events(self, *args, **kwargs):
-#         if not getattr(self, '_is_paused', False):
-#             super(PausingObserver, self).dispatch_events(*args, **kwargs)
-#
-#     def pause(self):
-#         self._is_paused = True
-#
-#     def resume(self):
-#         #time.sleep(10)  # sleep time for observer
-#         self.event_queue.queue.clear()
-#         self._is_paused = False
-
-
 def main():
     a = CheckMySQLEnvironment()
-    # dest_path = sys.argv[1]
     observer = Observer()
     event_handler = BackupProgressEstimate(observer=observer)
     backupdir = event_handler.backup_dir
@@ -318,15 +243,12 @@ def main():
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
-    # observer = PausingObserver()
 
-    # event_handler = BackupProgressEstimate()
     observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
     try:
         while True:
             if event_handler.wait_for_event(timeout=1) == False:
-                print("Breaking from while loop")
                 break
     except KeyboardInterrupt:
         observer.stop()
