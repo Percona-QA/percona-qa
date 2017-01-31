@@ -216,7 +216,7 @@ class BackupProgressEstimate(FileSystemEventHandler):
         try:
             return self.events_queue.get(block, timeout)
         except Empty:
-            print("Empty Queue!")
+            print("Empty queue!")
             return False
 
 
@@ -325,14 +325,13 @@ def main():
     observer.start()
     try:
         while True:
-            print(event_handler.wait_for_event(timeout=1))
             if event_handler.wait_for_event(timeout=1) == False:
-                print("breaking")
+                print("Breaking from while loop")
                 break
     except KeyboardInterrupt:
         observer.stop()
 
-    print("Completed - OK2")
+    print("Completed - OK")
     observer.stop()
     observer.join()
 
