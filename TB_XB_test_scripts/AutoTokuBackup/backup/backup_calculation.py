@@ -317,7 +317,7 @@ if __name__ == "__main__":
     try:
         while(flag == 0):
            time.sleep(1)
-        observer.stop()
     except KeyboardInterrupt:
         observer.stop()
+    observer.stop()
     observer.join()
