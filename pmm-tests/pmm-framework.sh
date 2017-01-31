@@ -8,6 +8,7 @@
 
 # Internal variables
 WORKDIR=${PWD}
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
 RPORT=$(( RANDOM%21 + 10 ))
 RBASE="$(( RPORT*1000 ))"
 SERVER_START_TIMEOUT=100
@@ -31,12 +32,13 @@ usage () {
     echo " --dev                     When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
     echo " --pmm-server-username     User name to access the PMM Server web interface"
     echo " --pmm-server-password     Password to access the PMM Server web interface"
+    echo " --run-tests               Run automated bats tests"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,pmm-server-username:,pmm-server-password::,setup,list,wipe-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,pmm-server-username:,pmm-server-password::,setup,list,wipe-clients,wipe-server,wipe,dev,run-tests,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -74,6 +76,10 @@ do
     --wipe )
     shift
     wipe=1
+    ;;
+    --run-tests )
+    shift
+    run_tests=1
     ;;
     --dev )
     shift
@@ -140,7 +146,7 @@ setup(){
     ;;
   esac
   if [[ ! -e $(which lynx 2> /dev/null) ]] ;then
-    echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"  
+    echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"
     exit 1
   fi
 
@@ -166,7 +172,14 @@ setup(){
   fi
 
   echo "Initiating PMM configuration"
-  sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null 
+  sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
+  if [ "$IS_SSL" == "Yes" ];then
+    sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  else
+    sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  fi
+
+  sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
   if [ "$IS_SSL" == "Yes" ];then
     sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
   else
@@ -205,11 +218,11 @@ setup(){
   else
     pushd $PMM_CLIENT_BASEDIR > /dev/null
     sudo ./install
-    popd > /dev/null 
+    popd > /dev/null
   fi
-  
+
   if [[ ! -e $(which pmm-admin 2> /dev/null) ]] ;then
-    echo "ERROR! The pmm-admin client binary was not found, please install the pmm-admin client package"  
+    echo "ERROR! The pmm-admin client binary was not found, please install the pmm-admin client package"
     exit 1
   else
     sleep 10
@@ -231,7 +244,7 @@ setup(){
     fi
     if [ ! -z $pmm_server_password ];then
       printf "%s\t%s\n" "PMM landing page password" "$pmm_server_password"
-    fi 
+    fi
     printf "%s\t%s\n" "Query Analytics (QAN web app)" "https://$IP_ADDRESS:443/qan"
     printf "%s\t%s\n" "Metrics Monitor (Grafana)" "https://$IP_ADDRESS:443/graph"
     printf "%s\t%s\n" "Metrics Monitor username" "admin"
@@ -246,7 +259,7 @@ setup(){
     fi
     if [ ! -z $pmm_server_password ];then
       printf "%s\t%s\n" "PMM landing page password" "$pmm_server_password"
-    fi 
+    fi
     printf "%s\t%s\n" "Query Analytics (QAN web app)" "http://$IP_ADDRESS/qan"
     printf "%s\t%s\n" "Metrics Monitor (Grafana)" "http://$IP_ADDRESS/graph"
     printf "%s\t%s\n" "Metrics Monitor username" "admin"
@@ -401,7 +414,7 @@ add_clients(){
         if ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
           echo "WARNING! Another mysqld process using $node/n${j}.sock"
           if ! sudo pmm-admin list | grep "$node/n${j}.sock" > /dev/null ; then
-            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=$node/n${j}.sock --user=root --query-source=perfschema 
+            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=$node/n${j}.sock --user=root --query-source=perfschema
           fi
           continue
         fi
@@ -452,10 +465,77 @@ add_clients(){
   done
 }
 
-clean_clients(){ 
+#Percona Server dummy startup.
+dummy_startup(){
+  echo -e "\nConfiguring Percona Server daemon for pmm test run.\n"
+  BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
+  if [ -z $BASEDIR ]; then
+    BASE_TAR=$(ls -1td ?ercona-?erver-5.* | grep ".tar" | head -n1)
+    if [ ! -z $BASE_TAR ];then
+      tar -xzf $BASE_TAR
+      BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
+      BASEDIR="$WORKDIR/$BASEDIR"
+      rm -rf $BASEDIR/node*
+    else
+      echo "ERROR! Percona Server binary tar ball does not exist. Terminating."
+      exit 1
+    fi
+  else
+    BASEDIR="$WORKDIR/$BASEDIR"
+  fi
+
+  #Cleaning existing Percona Server daemon
+  node=/tmp/pmm_ps_data
+  ${BASEDIR}/bin/mysqladmin -uroot -S$node/mysql.sock shutdown > /dev/null
+  rm -rf $node
+
+  # Initializing Percona Server
+  if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+    MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+  else
+    MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
+  fi
+
+  if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+    mkdir -p $node
+    ${MID} --datadir=$node  > /tmp/startup_node.err 2>&1
+  else
+    if [ ! -d $node ]; then
+      ${MID} --datadir=$node  > /tmp/startup_node.err 2>&1
+    fi
+  fi
+  
+  # Starting Percona Server daemon
+  ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+          --socket=$node/mysql.sock --port=3307  > $node/error.err 2>&1 &
+
+  for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node/mysql.sock ping > /dev/null 2>&1; then
+      echo "Dummy Percona Server started ok. Client:"
+      echo "${BASEDIR}/bin/mysql -uroot -S$node/mysql.sock"
+      break
+    fi
+  done
+  if ! ${BASEDIR}/bin/mysqladmin -uroot -S$node/mysql.sock ping > /dev/null 2>&1; then
+    echo "ERROR! Dummy Percona Server startup failed. Please check error log $node/error.err"
+    exit 1
+  fi
+}
+
+clean_clients(){
+  if [[ ! -e $(which mysqladmin 2> /dev/null) ]] ;then
+    MYSQLADMIN_CLIENT=$(find . -name mysqladmin | head -n1)
+  else
+    MYSQLADMIN_CLIENT=$(which mysqladmin)
+  fi
+  if [[ -z "$MYSQLADMIN_CLIENT" ]];then
+   echo "ERROR! 'mysqladmin' is currently not installed. Please install mysqladmin. Terminating."
+   exit 1
+  fi
   #Shutdown all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
-    mysqladmin -uroot --socket=${i} shutdown
+    ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
   done
   #Kills mongodb processes
@@ -469,6 +549,17 @@ clean_server(){
   #Stop/Remove pmm-server docker containers
   sudo docker stop pmm-server  > /dev/null
   sudo docker rm pmm-server pmm-data  > /dev/null
+}
+
+function call_tests() {
+  dummy_startup
+  if [[ ! -e $(which bats 2> /dev/null) ]] ;then
+    echo "ERROR! The program 'bats' is currently not installed. Please install bats. Terminating"
+    exit 1
+  else
+    BATS=$(which bats)
+  fi
+  sudo $BATS ${SCRIPT_PWD}/pmm-client.bats
 }
 
 if [ ! -z $wipe_clients ]; then
@@ -489,6 +580,10 @@ fi
 
 if [ ! -z $setup ]; then
   setup
+fi
+
+if [ ! -z $run_tests ]; then
+  call_tests
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then

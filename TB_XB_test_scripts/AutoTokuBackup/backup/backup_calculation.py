@@ -6,12 +6,14 @@ import subprocess
 import mysql.connector
 import shlex
 from general_conf.generalops import GeneralClass
-from os.path import isdir
+from os.path import isdir, isfile
 from os.path import join
 from os import makedirs
 from datetime import datetime
+from shutil import copy
 
-# Script Logic from -> David Bennett (david.bennett@percona.com)
+# Calculating Backup progress Logic from -> David Bennett (david.bennett@percona.com)
+# Developed by Shako (shahriyar.rzayev@percona.com)
 # Usage info:
 # Run script from Python3 and specify backup directory to watch.
 # It will calculate and show which files backed up in real-time.
@@ -20,10 +22,12 @@ class CheckMySQLEnvironment(GeneralClass):
 
     # Constructor
     def __init__(self):
-        GeneralClass.__init__(self)
+        super().__init__()
         self.variable_values=[]
-        self.cnx = mysql.connector.connect(user=self.user, password=self.password,
-                              host=self.host,port=self.port)
+        self.cnx = mysql.connector.connect(user=self.mysql_user,
+                                           password=self.mysql_password,
+                                           host=self.mysql_host,
+                                           port=self.mysql_port)
         self.cursor = self.cnx.cursor()
 
     # Desctructor
@@ -65,6 +69,20 @@ class CheckMySQLEnvironment(GeneralClass):
             print("Something went wrong in get_tokudb_variable_value(): {}".format(err))
 
 
+    def copy_mysql_config_file(self, defaults_file, backup_dir):
+        """
+        Copy the passed MySQL configuration file to backup directory.
+        :return: True, if file successfully copied.
+        :return: Error, if error occured during copy operation.
+        """
+        try:
+
+            backup_dir += "/"+"original.my.cnf"
+            copy(defaults_file, backup_dir)
+            return True
+
+        except Exception as err:
+            print("Something went wrong in copy_mysql_config_file(): {}".format(err))
 
 
     def create_mysql_variables_info(self, backup_dir):
@@ -135,12 +153,33 @@ class CheckMySQLEnvironment(GeneralClass):
 
         # Backuper command
 
-        backup_command = '{} -u{} --password={} --host={} -e "set tokudb_backup_dir=\'{}\'"'
+        backup_command_connection = '{} -u{} --password={} --host={}'
+        backup_command_execute = ' -e "set tokudb_backup_dir=\'{}\'"'
 
 
         try:
-            new_backup_command = shlex.split(backup_command.format(self.mysql, self.user, self.password, self.host, backup_dir))
+
+            if hasattr(self, 'mysql_socket'):
+                backup_command_connection += ' --socket={}'
+                backup_command_connection += backup_command_execute
+                new_backup_command = shlex.split(backup_command_connection.format(self.mysql,
+                                                                       self.mysql_user,
+                                                                       self.mysql_password,
+                                                                       self.mysql_host,
+                                                                       self.mysql_socket,
+                                                                       backup_dir))
+            else:
+                backup_command_connection += ' --port={}'
+                backup_command_connection += backup_command_execute
+                new_backup_command = shlex.split(backup_command_connection.format(self.mysql,
+                                                                   self.mysql_user,
+                                                                   self.mysql_password,
+                                                                   self.mysql_host,
+                                                                   self.mysql_port,
+                                                                   backup_dir))
             # Do not return anything from subprocess
+            print("Running backup command => %s" % (' '.join(new_backup_command)))
+
             process = subprocess.Popen(new_backup_command, stdin=None, stdout=None, stderr=None)
 
 
@@ -257,6 +296,10 @@ if __name__ == "__main__":
     if isdir(backupdir):
         a.run_backup(backup_dir=backupdir)
         a.create_mysql_variables_info(backup_dir=backupdir)
+        if hasattr(a, 'mysql_defaults_file') and isfile(a.mysql_defaults_file):
+            a.copy_mysql_config_file(a.mysql_defaults_file, backup_dir=backupdir)
+        else:
+            print("The original MySQL config file is missing check if it is specified and exists!")
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
