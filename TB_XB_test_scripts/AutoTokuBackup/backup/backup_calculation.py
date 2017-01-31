@@ -255,11 +255,8 @@ class BackupProgressEstimate(FileSystemEventHandler):
          #print("Created -> ", event.src_path)
          #self.final_calculation(event)
          print("Created file in backup directory -> {}".format(event.src_path))
-         if not event.src_path:
+         if not event.src_path and not event.is_directory:
              print("Completed - OK")
-             global flag
-             flag = 1
-             self.observer.unschedule_all()
              self.observer.stop()
 
 
@@ -292,14 +289,9 @@ class BackupProgressEstimate(FileSystemEventHandler):
 #         self._is_paused = False
 
 
-
-
-
-if __name__ == "__main__":
-    global flag
-    flag = 0
+def main():
     a = CheckMySQLEnvironment()
-    #dest_path = sys.argv[1]
+    # dest_path = sys.argv[1]
     observer = Observer()
     event_handler = BackupProgressEstimate(observer=observer)
     backupdir = event_handler.backup_dir
@@ -314,15 +306,20 @@ if __name__ == "__main__":
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
-    #observer = PausingObserver()
+    # observer = PausingObserver()
 
-    #event_handler = BackupProgressEstimate()
+    # event_handler = BackupProgressEstimate()
     observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
-    try:
-        while(flag == 0):
-           time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
+    # try:
+    #     while True:
+    #         time.sleep(1)
+    # except KeyboardInterrupt:
+    #     observer.stop()
 
     observer.join()
+
+
+
+if __name__ == "__main__":
+    sys.exit(main())
