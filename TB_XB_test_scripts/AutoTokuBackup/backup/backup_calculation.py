@@ -287,7 +287,7 @@ class BackupProgressEstimate(FileSystemEventHandler):
 
 
 if __name__ == "__main__":
-
+    observer_stop = True
     a = CheckMySQLEnvironment()
     #dest_path = sys.argv[1]
     event_handler = BackupProgressEstimate()
@@ -300,6 +300,7 @@ if __name__ == "__main__":
             a.copy_mysql_config_file(a.mysql_defaults_file, backup_dir=backupdir)
         else:
             print("The original MySQL config file is missing check if it is specified and exists!")
+        observer_stop = False
     else:
         print("Specified backup directory does not exist! Check /etc/tokubackup.conf")
         sys.exit(-1)
@@ -309,8 +310,11 @@ if __name__ == "__main__":
     observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
     try:
-        while True:
-            time.sleep(1)
+        if observer_stop:
+            while observer_stop:
+                time.sleep(1)
+        else:
+            observer.stop()
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
