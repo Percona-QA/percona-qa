@@ -196,8 +196,9 @@ class CheckMySQLEnvironment(GeneralClass):
 
 class BackupProgressEstimate(FileSystemEventHandler):
 
-    def __init__(self):
+    def __init__(self, observer):
         #initialize MySQL datadir and backup directory here
+        self.observer = observer
         self.chck = CheckMySQLEnvironment()
         self.datadir = self.chck.datadir
         self.backup_dir = self.chck.create_backup_directory()
@@ -258,6 +259,9 @@ class BackupProgressEstimate(FileSystemEventHandler):
              print("Completed - OK")
              global flag
              flag = 1
+             self.observer.unschedule_all()
+             self.observer.stop()
+
 
 
     # def on_modified(self, event):
@@ -319,5 +323,5 @@ if __name__ == "__main__":
            time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
-    observer.stop()
+
     observer.join()
