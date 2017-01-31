@@ -252,12 +252,11 @@ class BackupProgressEstimate(FileSystemEventHandler):
     #     self.final_calculation(event)
 
     def on_created(self, event):
-         #print("Created -> ", event.src_path)
-         #self.final_calculation(event)
          print("Created file in backup directory -> {}".format(event.src_path))
          if not event.src_path and not event.is_directory:
              print("Completed - OK")
              self.observer.stop()
+             sys.exit(0)
 
 
 
