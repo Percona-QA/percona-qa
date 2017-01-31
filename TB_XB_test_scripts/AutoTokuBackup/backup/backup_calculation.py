@@ -225,7 +225,7 @@ class BackupProgressEstimate(FileSystemEventHandler):
     #         print("error")
 
 
-    def final_calculation(self, event):
+    #def final_calculation(self, event):
         # # Print result of percentage calculation
         #
         # if len(self.variable_values_list) != 0:
@@ -240,10 +240,10 @@ class BackupProgressEstimate(FileSystemEventHandler):
         #     dest_folder_size = self.get_size_of_folder(self.backup_dir)
         #percentage = self.calculate_progress(source_folder_size, dest_folder_size)
 
-        if event.src_path:
-            print("Created file in backup directory -> {}".format(event.src_path))
-        else:
-            print("Completed - OK")
+        # if event.src_path:
+        #     print("Created file in backup directory -> {}".format(event.src_path))
+        # else:
+        #     print("Completed - OK")
 
 
     # def dispatch(self, event):
@@ -252,7 +252,13 @@ class BackupProgressEstimate(FileSystemEventHandler):
 
     def on_created(self, event):
          #print("Created -> ", event.src_path)
-         self.final_calculation(event)
+         #self.final_calculation(event)
+         print("Created file in backup directory -> {}".format(event.src_path))
+         if not event.src_path:
+             print("Completed - OK")
+             global flag
+             flag = 1
+
 
     # def on_modified(self, event):
     #      print("Modified -> ", event.src_path)
@@ -286,7 +292,8 @@ class BackupProgressEstimate(FileSystemEventHandler):
 
 
 if __name__ == "__main__":
-
+    global flag
+    flag = 0
     a = CheckMySQLEnvironment()
     #dest_path = sys.argv[1]
     event_handler = BackupProgressEstimate()
@@ -308,8 +315,9 @@ if __name__ == "__main__":
     observer.schedule(event_handler, backupdir, recursive=True)
     observer.start()
     try:
-        while True:
+        while(flag == 0):
            time.sleep(1)
+        observer.stop()
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
