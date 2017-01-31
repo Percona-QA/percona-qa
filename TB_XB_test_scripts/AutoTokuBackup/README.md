@@ -11,7 +11,7 @@ Requirements:
 -------------
 
     * Percona Server with enabled TokuBackup plugin
-    * Python 3 (tested version 3.3.2)
+    * Python 3 (tested version 3.5.3)
     * Official mysql-connector-python (>= 2.0.2 )
     * Python Click package (>= 3.3)
     * watchdog>=0.8.3
@@ -52,32 +52,55 @@ General Usage:
 Sample Output:
 ----------
 
-    root@percona-XPS-15:~# /opt/Python3/bin/tokubackup --help
+    tokubackup --help
     Usage: tokubackup [OPTIONS]
 
     Options:
-      --backup   Take full backup using TokuBackup.
-      --version  Version information.
-      --help     Show this message and exit.
+    --backup   Take full backup using TokuBackup.
+    --version  Version information.
+    --help     Show this message and exit.
+
       
       
-    root@percona-XPS-15:~# /opt/Python3/bin/tokubackup --version
+    # tokubackup --version
     Developed by Shahriyar Rzayev from Percona
     Link : https://github.com/Percona-QA/percona-qa
     Email: shahriyar.rzayev@percona.com
     Based on Percona TokuBackup: https://www.percona.com/doc/percona-server/5.6/tokudb/toku_backup.html
     MySQL-AutoTokuBackup Version 1.0
+
     
     
-    root@percona-XPS-15:~# /opt/Python3/bin/tokubackup --backup
-    Warning: Using a password on the command line interface can be insecure.
-    Created file in backup directory -> /home/tokubackupdir/mysql_data_dir/debian-5.6.flag
-    Created file in backup directory -> /home/tokubackupdir/mysql_data_dir/mysql-bin.000132
-    Created file in backup directory -> /home/tokubackupdir/mysql_data_dir/mysql-bin.000096
-    Created file in backup directory -> /home/tokubackupdir/mysql_data_dir/mysql-bin.000114
-    Created file in backup directory -> /home/tokubackupdir/mysql_data_dir/mysql-bin.000135
-    Created file in backup directory -> /home/tokubackupdir/mysql_data_dir/mysql-bin.000074
-    Created file in backup directory -> /home/tokubackupdir/mysql_data_dir/mysql-bin.000146
-    Backup completed 15%
+    # tokubackup --backup
+    Backup will be stored in  /var/lib/tokubackupdir/2017-01-31_14-15-46
+    Running backup command => /home/sh/percona-server/5.7.16/bin/mysql -uroot --password=msandbox --host=localhost --socket=/tmp/mysql_sandbox5716.sock -e set tokudb_backup_dir='/var/lib/tokubackupdir/2017-01-31_14-15-46'
+    mysql: [Warning] Using a password on the command line interface can be insecure.
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/__tokudb_lock_dont_delete_me_data
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/__tokudb_lock_dont_delete_me_logs
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/__tokudb_lock_dont_delete_me_temp
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/log000000000006.tokulog29
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/tokudb.rollback
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/tokudb.environment
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/tokudb.directory
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/tc.log
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/client-key.pem
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/server-cert.pem
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/server-key.pem
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/ca.pem
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/ca-key.pem
+    Created file in backup directory -> /var/lib/tokubackupdir/2017-01-31_14-15-46/mysql_data_dir/auto.cnf
+    Completed - OK
+
+
+Supplementary Files
+-------------------
+
+The original MySQL configuration file as well as, MySQL Global and Session variable values will be stored in backup directory:
+
+
+    # ls 2017-01-31_14-15-46/
+    global_variables  mysql_data_dir  original.my.cnf  session_variables
+
+
 
 
