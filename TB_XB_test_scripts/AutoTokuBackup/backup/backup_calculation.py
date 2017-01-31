@@ -87,8 +87,8 @@ class CheckMySQLEnvironment(GeneralClass):
     def create_mysql_variables_info(self, backup_dir):
         cursor = self.cursor
 
-        global_variables = join(backupdir, "global_variables")
-        session_variables = join(backupdir,"session_variables")
+        global_variables = join(backup_dir, "global_variables")
+        session_variables = join(backup_dir,"session_variables")
 
 
         select_global_56 = "select variable_name, variable_value from information_schema.global_variables"
