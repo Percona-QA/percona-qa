@@ -27,6 +27,8 @@ TEXT=.false.$                                            ## http://bugs.mysql.co
 #row0merge.cc line 526                                   ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1630485
 #ha_innodb.cc line 4167                                           ## http://bugs.launchpad.net/percona-server/+bug/1629257 (old line nr)
 #ha_innodb.cc line 4203                                           ## http://bugs.launchpad.net/percona-server/+bug/1629257 (old line nr)
+ha_innodb.cc line 4529                                            ## SET DEBUG='+d,ib_create_table_fail_too_many_trx'; CREATE COMPRESSION_DICTIONARY d0('a'); Asked Yura email 5.7
+ha_innodb.cc line 4182                                            ## SET DEBUG='+d,ib_create_table_fail_too_many_trx'; CREATE COMPRESSION_DICTIONARY d0('a'); Asked Yura email 5.6
 ha_innodb.cc line 4170                                            ## http://bugs.launchpad.net/percona-server/+bug/1629257
 row0log.ic line 40                                                ## http://bugs.launchpad.net/percona-server/+bug/1630500
 zip_dict_name.str == 0 .. column_format                           ## http://bugs.launchpad.net/percona-server/+bug/1633957
@@ -671,6 +673,10 @@ ZN16Rpl_info_handlerD1Ev                                                        
 ZN16Partition_helper19handle_ordered_prevEPh                                            ## http://tokutek.atlassian.net/browse/DB-1025 (also see LP 1634708 and MS 83435)
 ZN17I_P_List_iteratorI10MDL_ticket8I_P_ListIS0_16I_P_List_adapterIS0_XadL_ZNS0_15next_in_contextEEEXadL_ZNS0_15prev_in_contextEEEE21I_P_List_null_counter21I_P_List_no_push_backIS0_EEEppEi                                                         ## http://bugs.launchpad.net/percona-server/+bug/1441001
 ZN17sys_var_pluginvar14session_updateEP3THDP7set_var                                    ## http://bugs.launchpad.net/percona-server/+bug/1384560
+Z17mysql_create_userP3THDR4ListI11st_lex_userE                                          ## http://bugs.mysql.com/bug.php?id=84658
+Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb         ## http://bugs.mysql.com/bug.php?id=84658
+Z19mysql_routine_grantP3THDP10TABLE_LISTbR4ListI11st_lex_userEmbb                       ## http://bugs.mysql.com/bug.php?id=84658
+Z15change_passwordP3THDPKcS2_Pc                                                         ## http://bugs.mysql.com/bug.php?id=84658
 ZN17Opt_trace_context5startEbbbbllmy                                                    ## Likely not a bug, asked Umesh to check (testcase: see above at top)
 ZN18base_list_iterator4nextEv                                                           ## http://bugs.mysql.com/bug.php?id=74478
 ZN18Locked_tables_list20unlock_locked_tablesEP3THD                                      ## http://tokutek.atlassian.net/browse/DB-768

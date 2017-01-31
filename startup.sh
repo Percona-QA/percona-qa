@@ -70,7 +70,7 @@ echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; 
 cp start start_valgrind  # Idem for Valgrind
 cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
 echo "$BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start
-echo "ps -ef | grep "\$(whoami)" | grep ${PORT} | grep -v grep | awk '{print \$2}' | xargs kill -9" > kill
+echo "ps -ef | grep \"\$(whoami)\" | grep ${PORT} | grep -v grep | awk '{print \$2}' | xargs kill -9" > kill
 echo " valgrind --suppressions=${PWD}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err >>${PWD}/log/master.err 2>&1 &" >> start_valgrind
 echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_gypsy
 echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
@@ -107,7 +107,7 @@ if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO
   echo "mkdir ${PWD}/data/test" >> init
 fi
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5;./cl" > all
-chmod +x start start_valgrind start_gypsy stop setup cl test kill init wipe all prepare run measure tokutek_init pmm_os_agent pmm-mysql-agent
+chmod +x start start_valgrind start_gypsy stop setup cl test kill init wipe all prepare run measure tokutek_init pmm_os_agent pmm-mysql-agent 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
