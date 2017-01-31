@@ -326,7 +326,7 @@ def main():
     try:
         while True:
             print(event_handler.wait_for_event(1))
-            if event_handler.waitForEvent(1) == False:
+            if event_handler.wait_for_event(timeout=1) == False:
                 break
     except KeyboardInterrupt:
         observer.stop()
