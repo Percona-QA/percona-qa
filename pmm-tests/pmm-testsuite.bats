@@ -1,14 +1,14 @@
-:'
-This testsuite should act as overall wrapper.
-It will call pmm-framework.sh
- - to setup PMM,
- - to add clients
- - to wipe all configurations
- It will call specific tests for eg,
- - generic-tests.bats
- - linux-metrics.bats
- - ps-specific-tests.bats
-'
+
+#This testsuite should act as overall wrapper.
+#It will call pmm-framework.sh
+# - to setup PMM,
+# - to add clients
+# - to wipe all configurations
+# It will call specific tests for eg,
+# - generic-tests.bats
+# - linux-metrics.bats
+# - ps-specific-tests.bats
+
 
 WORKDIR="${PWD}"
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
@@ -29,5 +29,10 @@ function pmm_framwork_add_clients() {
 @test "Downloading tarball" {
   #statement
   download_tarballs
+  [ "$status" -eq 0 ]
+}
+
+@test "Adding clients" {
+  pmm_framwork_add_clients ps 2
   [ "$status" -eq 0 ]
 }
