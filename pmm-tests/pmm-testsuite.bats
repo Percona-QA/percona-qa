@@ -12,6 +12,8 @@
 
 WORKDIR="${PWD}"
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
+echo ${WORKDIR}
+echo ${SCRIPT_PWD}
 
 function download_tarballs() {
   # For now simply wget PS for CentOS 7
