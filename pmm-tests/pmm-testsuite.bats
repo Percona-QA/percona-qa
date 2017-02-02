@@ -13,8 +13,6 @@
 
 WORKDIR="${PWD}"
 SCRIPT_PWD="$BATS_TEST_DIRNAME"
-echo ${WORKDIR}
-echo ${SCRIPT_PWD}
 
 function download_tarballs() {
   # For now simply wget PS for CentOS 7
