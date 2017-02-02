@@ -18,6 +18,9 @@ OUSER="admin"
 OPASS="passw0rd"
 ADDR="127.0.0.1"
 
+# User configurable variables
+IS_BATS_RUN=0
+
 # Dispay script usage details
 usage () {
   echo "Usage: [ options ]"
@@ -124,22 +127,27 @@ sanity_check(){
 }
 
 setup(){
+  if [ $IS_BATS_RUN -eq 0 ];then
   read -p "Would you like to enable SSL encryption to protect PMM from unauthorized access[y/n] ? " check_param
-  case $check_param in
-    y|Y)
-      echo -e "\nGenerating SSL certificate files to protect PMM from unauthorized access"
-      openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout server.key -out server.crt -subj '/CN=www.percona.com/O=Database Performance./C=US'
-      IS_SSL="Yes"
-    ;;
-    n|N)
-      echo ""
-      IS_SSL="No"
-    ;;
-    *)
-      echo "Please type [y/n]! Terminating."
-      exit 1
-    ;;
-  esac
+    case $check_param in
+      y|Y)
+        echo -e "\nGenerating SSL certificate files to protect PMM from unauthorized access"
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout server.key -out server.crt -subj '/CN=www.percona.com/O=Database Performance./C=US'
+         IS_SSL="Yes"
+      ;;
+      n|N)
+        echo ""
+        IS_SSL="No"
+      ;;
+      *)
+        echo "Please type [y/n]! Terminating."
+        exit 1
+      ;;
+    esac
+  else
+    IS_SSL="No"
+  fi
+
   if [[ ! -e $(which lynx 2> /dev/null) ]] ;then
     echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"
     exit 1
@@ -506,6 +514,7 @@ fi
 
 if [ ! -z $setup ]; then
   setup
+  echo "PMM Server configuration completed!"
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
