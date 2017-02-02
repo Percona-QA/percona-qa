@@ -12,7 +12,7 @@
 
 
 WORKDIR="${PWD}"
-SCRIPT_PWD="$(cd `dirname $0` && pwd)"
+SCRIPT_PWD="$BATS_TEST_DIRNAME"
 echo ${WORKDIR}
 echo ${SCRIPT_PWD}
 
