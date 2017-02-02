@@ -1,17 +1,19 @@
-:'
-This testsuite should act as overall wrapper.
-It will call pmm-framework.sh
- - to setup PMM,
- - to add clients
- - to wipe all configurations
- It will call specific tests for eg,
- - generic-tests.bats
- - linux-metrics.bats
- - ps-specific-tests.bats
-'
+
+#This testsuite should act as overall wrapper.
+#It will call pmm-framework.sh
+# - to setup PMM,
+# - to add clients
+# - to wipe all configurations
+# It will call specific tests for eg,
+# - generic-tests.bats
+# - linux-metrics.bats
+# - ps-specific-tests.bats
+
 
 WORKDIR="${PWD}"
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
+echo ${WORKDIR}
+echo ${SCRIPT_PWD}
 
 function download_tarballs() {
   # For now simply wget PS for CentOS 7
@@ -25,9 +27,14 @@ function pmm_framework_setup() {
 function pmm_framwork_add_clients() {
   ${SCRIPT_PWD}/pmm-framework.sh --addclient=$1,$2
 }
+#
+# @test "Downloading tarball" {
+#   #statement
+#   download_tarballs
+#   [ "$status" -eq 0 ]
+# }
 
-@test "Downloading tarball" {
-  #statement
-  download_tarballs
+@test "Adding clients" {
+  pmm_framwork_add_clients ps 2
   [ "$status" -eq 0 ]
 }
