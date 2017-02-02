@@ -27,12 +27,12 @@ function pmm_framework_setup() {
 function pmm_framwork_add_clients() {
   ${SCRIPT_PWD}/pmm-framework.sh --addclient=$1,$2
 }
-
-@test "Downloading tarball" {
-  #statement
-  download_tarballs
-  [ "$status" -eq 0 ]
-}
+#
+# @test "Downloading tarball" {
+#   #statement
+#   download_tarballs
+#   [ "$status" -eq 0 ]
+# }
 
 @test "Adding clients" {
   pmm_framwork_add_clients ps 2
