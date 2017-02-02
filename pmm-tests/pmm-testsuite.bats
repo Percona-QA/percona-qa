@@ -1,3 +1,4 @@
+#!/usr/bin/env bats
 
 #This testsuite should act as overall wrapper.
 #It will call pmm-framework.sh
@@ -11,7 +12,7 @@
 
 
 WORKDIR="${PWD}"
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD="$(cd `dirname $0` && pwd)"
 echo ${WORKDIR}
 echo ${SCRIPT_PWD}
 
