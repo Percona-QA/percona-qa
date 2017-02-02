@@ -19,7 +19,7 @@ OPASS="passw0rd"
 ADDR="127.0.0.1"
 
 # User configurable variables
-IS_BATS_RUN=0
+IS_BATS_RUN=1
 
 # Dispay script usage details
 usage () {
@@ -506,6 +506,7 @@ fi
 if [ ! -z $wipe ]; then
   clean_clients
   clean_server
+  echo "Removed PMM configuration!"
 fi
 
 if [ ! -z $list ]; then
@@ -520,4 +521,5 @@ fi
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
   sanity_check
   add_clients
+  echo "Added pmm-clients to the currently live PMM server!"
 fi
