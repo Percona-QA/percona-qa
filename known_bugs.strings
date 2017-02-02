@@ -718,6 +718,7 @@ ZNK5Field7is_nullEx                                                             
 ZNK6String7charsetEv                                                                    ## http://bugs.mysql.com/bug.php?id=74578
 #ZNK7handler6ha_thdEv                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=75284 (fixed in 5.6.23) Duplicate MS#74292
 ZNK7handler22ha_statistic_incrementEM17system_status_vary                               ## http://bugs.mysql.com/bug.php?id=75234 
+ZNK7evictor24unsafe_read_size_currentEv                                                 ## http://tokutek.atlassian.net/browse/DB-1034
 ZNK8Item_row4typeEv                                                                     ## http://bugs.mysql.com/bug.php?id=81408
 ZNK11Gis_polygon4areaEPdPPKc                                                            ## http://bugs.mysql.com/bug.php?id=81409
 Z14get_all_tablesP3THDP10TABLE_LISTP4Item                                               ## http://bugs.mysql.com/bug.php?id=81412
