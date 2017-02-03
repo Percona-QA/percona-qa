@@ -166,7 +166,7 @@ setup(){
     exit 1
   fi
   if sudo docker ps | grep 'pmm-server' > /dev/null ; then
-    echo "ERROR! pmm-server docker container is alreay runnning. Terminating"
+    #echo "ERROR! pmm-server docker container is already runnning. Terminating"
     exit 1
   elif  sudo docker ps -a | grep 'pmm-server' > /dev/null ; then
     CONTAINER_NAME=$(sudo docker ps -a | grep 'pmm-server' | grep $PMM_VERSION | grep -v pmm-data | awk '{ print $1}')
@@ -498,28 +498,31 @@ clean_server(){
 
 if [ ! -z $wipe_clients ]; then
   clean_clients
+  exit 0
 fi
 if [ ! -z $wipe_server ]; then
   clean_server
+  exit 0
 fi
 
 if [ ! -z $wipe ]; then
   clean_clients
   clean_server
-  echo "Removed PMM configuration!"
+  exit 0
 fi
 
 if [ ! -z $list ]; then
   sudo pmm-admin list
+  exit 0
 fi
 
 if [ ! -z $setup ]; then
   setup
-  echo "PMM Server configuration completed!"
+  exit 0
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
   sanity_check
   add_clients
-  echo "Added pmm-clients to the currently live PMM server!"
+  exit 0
 fi
