@@ -27,9 +27,7 @@ echo "$output"
 }
 
 
-
-
-	@test "run pmm-admin add mysql:metrics" {
+@test "run pmm-admin add mysql:metrics" {
 		for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
 			MYSQL_SOCK=${i}
 			run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
