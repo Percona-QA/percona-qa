@@ -35,18 +35,15 @@ echo "$output"
 	    	[ "$status" -eq 0 ]
 	    	echo "${lines[0]}" | grep "OK, now monitoring"
 		done
-	}
+}
 
 
-	@test "run pmm-admin add mysql:metrics again" {
+@test "run pmm-admin add mysql:metrics again" {
 	run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
 	echo "$output"
 	    [ "$status" -eq 1 ]
 	    [ "${lines[0]}" = "Error adding MySQL metrics: there is already one instance with this name under monitoring." ]
-	}
-
-
-
+}
 
 
 @test "run pmm-admin remove mysql:metrics" {
@@ -65,13 +62,13 @@ echo "$output"
 }
 
 
-
 @test "run pmm-admin add mysql:metrics with given name" {
 run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  mysqltest1.os1
 echo "$output"
     [ "$status" -eq 0 ]
     echo "${lines[0]}" | grep "OK, now monitoring MySQL metrics"
 }
+
 
 @test "run pmm-admin add mysql:metrics with given name again" {
 run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  mysqltest1.os1
