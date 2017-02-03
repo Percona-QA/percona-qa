@@ -26,7 +26,7 @@ function pmm_framework_setup() {
   ${SCRIPT_PWD}/pmm-framework.sh --setup
 }
 
-function pmm_framwork_add_clients() {
+function pmm_framework_add_clients() {
   ${SCRIPT_PWD}/pmm-framework.sh --addclient=$1,$2
 }
 
@@ -46,12 +46,11 @@ function  pmm_wipe_server() {
 
 
 @test "Adding clients" {
-  pmm_framwork_add_clients $1 $2
+  pmm_framework_add_clients ps 2
   echo $output
   [ "$status" -eq 0 ]
 }
 
-bats_add_clients ps 2
 #
 # @test "Downloading tarball" {
 #   #statement
