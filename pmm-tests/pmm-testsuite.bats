@@ -48,7 +48,7 @@ function run_generic_tests() {
   run bats ${SCRIPT_PWD}/generic-tests.bats
 }
 
-function run_ps_specific_tests.bats {
+function run_ps_specific_tests() {
   run bats ${SCRIPT_PWD}/ps-specific-tests.bats
 }
 
