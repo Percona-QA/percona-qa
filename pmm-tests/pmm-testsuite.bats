@@ -23,19 +23,19 @@ function download_tarballs() {
 # pmm-framework.sh functions
 
 function pmm_framework_setup() {
-  ${SCRIPT_PWD}/pmm-framework.sh --setup
+  run ${SCRIPT_PWD}/pmm-framework.sh --setup
 }
 
 function pmm_framework_add_clients() {
-  ${SCRIPT_PWD}/pmm-framework.sh --addclient=$1,$2
+  run ${SCRIPT_PWD}/pmm-framework.sh --addclient=$1,$2
 }
 
 function pmm_wipe_all() {
-  ${SCRIPT_PWD}/pmm-framework.sh --wipe
+  run ${SCRIPT_PWD}/pmm-framework.sh --wipe
 }
 
 function pmm_wipe_clients() {
-  ${SCRIPT_PWD}/pmm-framework.sh --wipe-clients
+  run ${SCRIPT_PWD}/pmm-framework.sh --wipe-clients
 }
 
 function  pmm_wipe_server() {
