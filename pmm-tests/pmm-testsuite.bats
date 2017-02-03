@@ -62,8 +62,9 @@ function run_generic_tests() {
 
 @test "Running generic tests" {
   run bats ${SCRIPT_PWD}/generic-tests.bats
-  #echo $output
+  echo $output
   [ "$status" -eq 0 ]
+  echo $output
 }
 
 

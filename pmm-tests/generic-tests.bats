@@ -70,6 +70,7 @@ echo "$output"
 run sudo pmm-admin list
 echo "$output"
     [ "$status" -eq 0 ]
+		echo "$output"
     #echo "${output}" | grep "No services under monitoring."
 }
 
