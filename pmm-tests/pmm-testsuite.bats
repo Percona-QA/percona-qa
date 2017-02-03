@@ -44,12 +44,11 @@ function  pmm_wipe_server() {
 
 # functions for bats calling
 
-function bats_add_clients() {
-  @test "Adding clients" {
-    pmm_framwork_add_clients $1 $2
-    echo $output
-    [ "$status" -eq 0 ]
-  }
+
+@test "Adding clients" {
+  pmm_framwork_add_clients $1 $2
+  echo $output
+  [ "$status" -eq 0 ]
 }
 
 bats_add_clients ps 2
