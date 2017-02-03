@@ -27,15 +27,16 @@ echo "$output"
 }
 
 
-for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
 
-	MYSQL_SOCK=${i}
 
 	@test "run pmm-admin add mysql:metrics" {
-	run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
-	echo "$output"
-	    [ "$status" -eq 0 ]
-	    echo "${lines[0]}" | grep "OK, now monitoring"
+		for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
+			MYSQL_SOCK=${i}
+			run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
+			echo "$output"
+	    	[ "$status" -eq 0 ]
+	    	echo "${lines[0]}" | grep "OK, now monitoring"
+		done
 	}
 
 
@@ -45,8 +46,6 @@ for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; d
 	    [ "$status" -eq 1 ]
 	    [ "${lines[0]}" = "Error adding MySQL metrics: there is already one instance with this name under monitoring." ]
 	}
-
-done
 
 
 
