@@ -444,6 +444,7 @@ trx0trx.cc line 1950                                                            
 ut0lst.h line 131                                                                       ## http://bugs.launchpad.net/percona-server/+bug/1449994
 
 ## =========== Assertion based ===========
+user_stats->concurrent_connections > 0                                                  ## https://bugs.launchpad.net/percona-server/+bug/1661488
 allocated_status_memory .= __null                                                       ## http://bugs.mysql.com/bug.php?id=83797 (as subsequent testcase)
 #1 == num_erased                                                                        ## http://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
 .tables .. thd->lex->is_query_tables_locked                                             ## http://tokutek.atlassian.net/browse/DB-1027
