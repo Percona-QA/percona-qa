@@ -44,6 +44,12 @@ function  pmm_wipe_server() {
 
 # functions for bats calling
 
+@test "Wipe clients" {
+  pmm_wipe_clients
+  echo $output
+  [ "$status" -eq 0 ]
+}
+
 
 @test "Adding clients" {
   pmm_framework_add_clients ps 2
