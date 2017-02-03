@@ -48,6 +48,10 @@ function run_generic_tests() {
   run bats ${SCRIPT_PWD}/generic-tests.bats
 }
 
+function run_ps_specific_tests.bats {
+  run bats ${SCRIPT_PWD}/ps-specific-tests.bats
+}
+
 @test "Wipe clients" {
   pmm_wipe_clients
   echo $output
@@ -61,10 +65,16 @@ function run_generic_tests() {
 }
 
 @test "Running generic tests" {
-  run bats ${SCRIPT_PWD}/generic-tests.bats
+  run_generic_tests
   #echo $output
   [ "$status" -eq 0 ]
   #echo $output
+}
+
+@test "Running PS specific tests" {
+  run_ps_specific_tests
+  echo ${output}
+  [ "$status" -eq 0 ]
 }
 
 @test "Wipe clients" {

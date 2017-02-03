@@ -2,7 +2,7 @@
 
 ## mysql:metrics
 
-MYSQL_SOCK='/tmp/pmm_ps_data/mysql.sock'
+
 MYSQL_USER='root'
 
 @test "run pmm-admin under regular(non-root) user privileges" {
@@ -27,21 +27,29 @@ echo "$output"
 }
 
 
+for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
 
-@test "run pmm-admin add mysql:metrics" {
-run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
-echo "$output"
-    [ "$status" -eq 0 ]
-    echo "${lines[0]}" | grep "OK, now monitoring"
-}
+	MYSQL_SOCK=${i}
+
+	@test "run pmm-admin add mysql:metrics" {
+	run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
+	echo "$output"
+	    [ "$status" -eq 0 ]
+	    echo "${lines[0]}" | grep "OK, now monitoring"
+	}
 
 
-@test "run pmm-admin add mysql:metrics again" {
-run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
-echo "$output"
-    [ "$status" -eq 1 ]
-    [ "${lines[0]}" = "Error adding MySQL metrics: there is already one instance with this name under monitoring." ]
-}
+	@test "run pmm-admin add mysql:metrics again" {
+	run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}
+	echo "$output"
+	    [ "$status" -eq 1 ]
+	    [ "${lines[0]}" = "Error adding MySQL metrics: there is already one instance with this name under monitoring." ]
+	}
+
+done
+
+
+
 
 
 @test "run pmm-admin remove mysql:metrics" {
@@ -58,6 +66,8 @@ echo "$output"
     [ "$status" -eq 1 ]
     echo "${output}" | grep "no service found"
 }
+
+
 
 @test "run pmm-admin add mysql:metrics with given name" {
 run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK}  mysqltest1.os1
