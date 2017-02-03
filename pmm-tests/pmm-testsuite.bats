@@ -39,10 +39,14 @@ function pmm_wipe_clients() {
 }
 
 function  pmm_wipe_server() {
-  ${SCRIPT_PWD}/pmm-framework.sh --wipe-server
+  run ${SCRIPT_PWD}/pmm-framework.sh --wipe-server
 }
 
 # functions for bats calling
+
+function run_generic_tests() {
+  run bats ${SCRIPT_PWD}/generic-tests.bats
+}
 
 @test "Wipe clients" {
   pmm_wipe_clients
@@ -50,12 +54,20 @@ function  pmm_wipe_server() {
   [ "$status" -eq 0 ]
 }
 
-
 @test "Adding clients" {
   pmm_framework_add_clients ps 2
   echo $output
   [ "$status" -eq 0 ]
 }
+
+@test "Running generic tests" {
+  run bats "${SCRIPT_PWD}/generic-tests.bats"
+  echo $output
+  [ "$status" -eq 0 ]
+}
+
+
+
 
 #
 # @test "Downloading tarball" {
