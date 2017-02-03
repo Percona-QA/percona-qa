@@ -65,9 +65,3 @@ bats_add_clients ps 2
 #   echo $output
 #   [ "$status" -eq 0 ]
 # }
-
-@test "Adding clients" {
-  pmm_framwork_add_clients ps 2
-  echo $output
-  [ "$status" -eq 0 ]
-}
