@@ -47,7 +47,6 @@ Options:
  --dev                     When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used
  --pmm-server-username     User name to access the PMM Server web interface
  --pmm-server-password     Password to access the PMM Server web interface
- --run-tests               Run automated bats tests
 ```
 
 The options are quite clear.
