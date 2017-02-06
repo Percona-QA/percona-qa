@@ -28,6 +28,7 @@ COUNTER=0
 for TRIAL in "${issues[@]}"; do
   COUNTER=$[ $COUNTER + 1 ]
   screen -admS s${COUNTER} bash -c "./reducer${TRIAL}.sh;bash"  # Start reducer, and when done give a usable bash prompt
+  sleep 0.3  # Avoid a /dev/shm/<epoch> directory conflict (yes, it happened)
   echo "Started screen with name 's${COUNTER}' and started ./reducer${TRIAL}.sh within it for issue: $(grep "   TEXT=" reducer${TRIAL}.sh | sed 's|   TEXT="||;s|"$||')"
   if [ ${COUNTER} -eq $1 ]; then break; fi
 done

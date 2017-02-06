@@ -26,9 +26,10 @@ maybe_null                                               ## http://bugs.mysql.co
 #row0merge.cc line 526                                   ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1630485
 #ha_innodb.cc line 4167                                           ## http://bugs.launchpad.net/percona-server/+bug/1629257 (old line nr)
 #ha_innodb.cc line 4203                                           ## http://bugs.launchpad.net/percona-server/+bug/1629257 (old line nr)
+#ha_innodb.cc line 4170                                           ## http://bugs.launchpad.net/percona-server/+bug/1629257 (old line nr)
+ha_innodb.cc line 4218                                            ## http://bugs.launchpad.net/percona-server/+bug/1629257 (PS 5.6.35)
 ha_innodb.cc line 4529                                            ## SET DEBUG='+d,ib_create_table_fail_too_many_trx'; CREATE COMPRESSION_DICTIONARY d0('a'); Asked Yura email 5.7
 ha_innodb.cc line 4182                                            ## SET DEBUG='+d,ib_create_table_fail_too_many_trx'; CREATE COMPRESSION_DICTIONARY d0('a'); Asked Yura email 5.6
-ha_innodb.cc line 4170                                            ## http://bugs.launchpad.net/percona-server/+bug/1629257
 row0log.ic line 40                                                ## http://bugs.launchpad.net/percona-server/+bug/1630500
 zip_dict_name.str == 0 .. column_format                           ## http://bugs.launchpad.net/percona-server/+bug/1633957
 
@@ -249,7 +250,8 @@ ha_innodb.cc line 3469                           ##DONOTREMOVE## http://bugs.lau
 ha_innodb.cc line 2797                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.5.53
 ha_innodb.cc line 3495                           ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
 ha_innodb.cc line 19339                          ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
-ha_innodb.cc line 19411                          ##DONOTREMOVE## ^IDEM (PS 5.6.33-78.0)
+ha_innodb.cc line 19411                          ##DONOTREMOVE## ^IDEM (PS 5.6.33)
+ha_innodb.cc line 19384                          ##DONOTREMOVE## ^IDEM (PS 5.6.35)
 InnoDB. log block checksum mismatch. expected    ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1318453 (documented)
 ut0ut.cc line 932                                ##DONOTREMOVE## InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
 btr0cur.c line 3918                              ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
@@ -260,6 +262,8 @@ fil0fil.cc line 3499                             ##DONOTREMOVE## SET SESSION deb
 fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above, for MS 5.7.16 (also logged as http://bugs.mysql.com/bug.php?id=84593 Also see #73926, #74873)
 ha_innodb.cc line 1128                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and likely 5.6) 1128=MS5.5
 ha_innodb.cc line 1401                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and likely 5.6) 1401=PS5.5
+ha_innodb.cc line 1725                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (MS 5.6, alike to 78732) 
+ha_innodb.cc line 2102                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732) 
 
 ## =========== Line number based ===========
 ## Idea; if certain bugs start showing up again because line numbers have changed, one can [0-9] regex (or '.' any char) the last number. Not perfect, but...
@@ -444,7 +448,7 @@ trx0trx.cc line 1950                                                            
 ut0lst.h line 131                                                                       ## http://bugs.launchpad.net/percona-server/+bug/1449994
 
 ## =========== Assertion based ===========
-user_stats->concurrent_connections > 0                                                  ## https://bugs.launchpad.net/percona-server/+bug/1661488
+user_stats->concurrent_connections > 0                                                  ## http://bugs.launchpad.net/percona-server/+bug/1661488
 allocated_status_memory .= __null                                                       ## http://bugs.mysql.com/bug.php?id=83797 (as subsequent testcase)
 #1 == num_erased                                                                        ## http://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
 .tables .. thd->lex->is_query_tables_locked                                             ## http://tokutek.atlassian.net/browse/DB-1027
@@ -473,6 +477,7 @@ field_types == 0.*MYSQL_TYPE_GEOMETRY                                           
 fixed == 1                                                                              ## http://bugs.launchpad.net/percona-server/+bug/1381853
 ftnode->blocknum.b == blocknum.b                                                        ## http://tokutek.atlassian.net/browse/DB-852
 #from->len == to->len                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=76477
+from->len == to->len                                                                    ## http://bugs.mysql.com/bug.php?id=84827 (Ref also 76477) (Still present in MS 5.6.35)
 #from->m_byte_count == 0                                                       ## Fixed ## http://bugs.mysql.com/bug.php?id=76090 (fixed in 5.6.25)
 #Handlerton.*offset_start                                                               ## http://tokutek.atlassian.net/browse/DB-771 (Fixed tokudb-7.5.4)
 #Handlerton.*.share->kc_info.num_blobs == 0                                    ## Fixed ## http://tokutek.atlassian.net/browse/DB-811 (Fixed in tokudb-7.5.7)
@@ -533,7 +538,9 @@ tab->ref.use_count                                                              
 tab->select->quick->index==.uint                                                        ## http://bugs.mysql.com/bug.php?id=74505
 thd->get_stmt_da()->is_eof()                                                            ## http://bugs.mysql.com/bug.php?id=73868
 thd->killed .= THD.*KILL_BAD_DATA .* error > 0                                          ## http://bugs.mysql.com/bug.php?id=75227
-#. thd->in_sub_stmt                                                            ## Fixed ## http://bugs.mysql.com/bug.php?id=74665
+.field->orig_table->const_table                                                         ## http://bugs.launchpad.net/percona-server/+bug/1662091
+#. thd->in_sub_stmt                                                            ## Fixed ## http://bugs.mysql.com/bug.php?id=74665 
+. thd->in_sub_stmt                                                                      ## http://bugs.mysql.com/bug.php?id=84828 (See also 74665) (Still present in MS 5.6.35)
 .thd->is_current_stmt_binlog_format_row                                                 ## http://bugs.launchpad.net/percona-server/+bug/1427030
 #thd->is_error                                                                 ## Fixed ## http://bugs.mysql.com/bug.php?id=74493
 thd->is_error                                                                           ## http://bugs.mysql.com/bug.php?id=84076 (5.6 only)
@@ -571,6 +578,7 @@ Z12find_filenumRKP2ftS2_                                                        
 #Z12find_sys_varP3THDPKcj                                                               ## http://bugs.launchpad.net/percona-server/+bug/1415828 # Need new testcase
 Z12setup_tablesP3THDP23Name_resolution_contextP4ListI10TABLE_LISTEPS4_PS7_b             ## http://bugs.launchpad.net/percona-server/+bug/1435740
 Z12make_sortkeyP10Sort_paramPhS1_                                                       ## http://bugs.mysql.com/bug.php?id=74260
+ZN8Table_idaSERKS_                                                                      ## http://bugs.mysql.com/bug.php?id=84829
 #ZN8Protocol24send_result_set_metadataEP4ListI4ItemEj                          ## Fixed ## http://bugs.mysql.com/bug.php?id=77832 (Fixed in 5.5.57, 5.6.28, 5.7.10, 5.8.0)
 #Z22store_token_identifierP18PSI_digest_storagejjPKc                           ## Fixed ## http://bugs.mysql.com/bug.php?id=77832 (Fixed in 5.5.57, 5.6.28, 5.7.10, 5.8.0)
 Z14my_decimal_addjP10my_decimalPKS_S2_                                                  ## http://bugs.mysql.com/bug.php?id=74619 (old LP #1384658)
@@ -646,6 +654,7 @@ ZN7MDL_map6removeEP8MDL_lock                                                    
 #ZN8MDL_lock11Ticket_list13remove_ticketEP10MDL_ticket                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1403373 (dup of 1393682)
 ZN9ha_myisam5extraE17ha_extra_function                                                  ## http://bugs.mysql.com/bug.php?id=76946
 ZN9ha_myisam9write_rowEPh                                                               ## http://bugs.mysql.com/bug.php?id=75083
+ZN9PROFILING13status_changeEPKcS1_S1_j                                                  ## http://bugs.mysql.com/bug.php?id=84826
 ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                                     ## http://bugs.mysql.com/bug.php?id=74953
 ZN10Item_fieldC2EP5Field                                                                ## http://bugs.mysql.com/bug.php?id=74628
 #ZN10Item_param22safe_charset_converterEPK15charset_info_st                    ## Fixed ## http://bugs.mysql.com/bug.php?id=76039 (Fixed in 5.5.49, 5.6.30, 5.7.12, 5.8.0)
@@ -716,6 +725,7 @@ ZN9READ_INFO10read_fieldEv                                                      
 ZNK10MDL_ticket26has_stronger_or_equal_typeE13enum_mdl_type                             ## http://bugs.launchpad.net/percona-server/+bug/1444706
 ZNK10MDL_ticket28has_pending_conflicting_lockEv                                         ## http://bugs.launchpad.net/percona-server/+bug/1384570 and #74584 ?
 ZNK5Field7is_nullEx                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1445833 - now DB-838
+ZNK5Field13column_formatEv                                                              ## http://bugs.launchpad.net/percona-server/+bug/1662055
 ZNK6String7charsetEv                                                                    ## http://bugs.mysql.com/bug.php?id=74578
 #ZNK7handler6ha_thdEv                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=75284 (fixed in 5.6.23) Duplicate MS#74292
 ZNK7handler22ha_statistic_incrementEM17system_status_vary                               ## http://bugs.mysql.com/bug.php?id=75234 
@@ -728,6 +738,7 @@ Z34set_field_to_null_with_conversionsP5Fieldb                                   
 Z17store_create_infoP3THDP10TABLE_LISTP6StringP24st_ha_create_informationb              ## http://bugs.mysql.com/bug.php?id=81446
 Z19create_schema_tableP3THDP10TABLE_LIST                                                ## http://bugs.mysql.com/bug.php?id=81446
 ZN10Item_field13save_in_fieldEP5Fieldb                                                  ## http://bugs.mysql.com/bug.php?id=81446
+ZN10Sort_param17init_for_filesortEjP5TABLEmyb                                           ## http://bugs.mysql.com/bug.php?id=84824
 ZN8Item_int13save_in_fieldEP5Fieldb                                                     ## http://bugs.mysql.com/bug.php?id=81446
 ZN13Protocol_text5storeEP5Field                                                         ## http://bugs.mysql.com/bug.php?id=81446
 Z14servers_reloadP3THD                                                                  ## http://bugs.mysql.com/bug.php?id=81447
