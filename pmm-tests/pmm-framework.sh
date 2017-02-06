@@ -19,7 +19,7 @@ OPASS="passw0rd"
 ADDR="127.0.0.1"
 
 # User configurable variables
-IS_BATS_RUN=1
+IS_BATS_RUN=0
 
 # Dispay script usage details
 usage () {
@@ -449,8 +449,8 @@ add_clients(){
             if [[ -z "$check_user" ]]; then
               ${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
               (
-              printf "%s\t%s\n" "Orchestrator username" "admin"
-              printf "%s\t%s\n" "Orchestrator password" "passw0rd"
+              printf "%s\t%s\n" "Orchestrator username :" "admin"
+              printf "%s\t%s\n" "Orchestrator password :" "passw0rd"
               ) | column -t -s $'\t'
             else
               echo "User '$OUSER' is already present in MySQL server. Please create Orchestrator user manually."
@@ -498,31 +498,27 @@ clean_server(){
 
 if [ ! -z $wipe_clients ]; then
   clean_clients
-  exit 0
 fi
 if [ ! -z $wipe_server ]; then
   clean_server
-  exit 0
 fi
 
 if [ ! -z $wipe ]; then
   clean_clients
   clean_server
-  exit 0
 fi
 
 if [ ! -z $list ]; then
   sudo pmm-admin list
-  exit 0
 fi
 
 if [ ! -z $setup ]; then
   setup
-  exit 0
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
   sanity_check
   add_clients
-  exit 0
 fi
+
+exit 0
