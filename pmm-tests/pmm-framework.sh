@@ -28,8 +28,10 @@ usage () {
     echo " --setup                   This will setup and configure a PMM server"
     echo " --addclient=ps,2          Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
     echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
+    echo " --add-docker-client       Add docker pmm-clients with percona server to the currently live PMM server" 
     echo " --list                    List all client information as obtained from pmm-admin"
     echo " --wipe-clients            This will stop all client instances and remove all clients from pmm-admin"
+    echo " --wipe-docker-clients     This will stop all docker client instances and remove all clients from docker container"
     echo " --wipe-server             This will stop pmm-server container and remove all pmm containers"
     echo " --wipe                    This will wipe all pmm configuration"
     echo " --dev                     When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
@@ -40,7 +42,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,pmm-server-username:,pmm-server-password::,setup,list,wipe-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,pmm-server-username:,pmm-server-password::,setup,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -59,6 +61,10 @@ do
     ADDCLIENT+=("$2")
     shift 2
     ;;
+    --add-docker-client )
+    shift
+    add_docker_client=1
+    ;;
     --setup )
     shift
     setup=1
@@ -70,6 +76,10 @@ do
     --wipe-clients )
     shift
     wipe_clients=1
+    ;;
+    --wipe-docker-clients )
+    shift
+    wipe_docker_clients=1
     ;;
     --wipe-server )
     shift
@@ -175,13 +185,6 @@ setup(){
   fi
 
   echo "Initiating PMM configuration"
-  sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
-  if [ "$IS_SSL" == "Yes" ];then
-    sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
-  else
-    sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
-  fi
-
   sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
   if [ "$IS_SSL" == "Yes" ];then
     sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
@@ -468,6 +471,86 @@ add_clients(){
   done
 }
 
+pmm_docker_client_startup(){
+  centos_docker_client(){
+    rm -rf Dockerfile docker-compose.yml
+    echo "FROM centos:centos6" >> Dockerfile
+    echo "RUN yum install -y http://www.percona.com/downloads/percona-release/redhat/0.1-4/percona-release-0.1-4.noarch.rpm" >> Dockerfile
+    echo "RUN yum install -y yum install Percona-Server-server-57 pmm-client" >> Dockerfile
+    echo "RUN echo \"UNINSTALL PLUGIN validate_password;\" > init.sql " >> Dockerfile
+    echo "RUN echo \"ALTER USER  root@localhost IDENTIFIED BY '';\" >> init.sql " >> Dockerfile
+    echo "RUN echo \"CREATE USER root@'%';\" >> init.sql " >> Dockerfile
+    echo "RUN echo \"GRANT ALL ON *.* TO root@'%';\" >> init.sql" >> Dockerfile
+    echo "RUN service mysql start" >> Dockerfile
+    echo "EXPOSE 3306 42000 42002 42003 42004" >> Dockerfile
+    echo "centos_ps:" >> docker-compose.yml
+    echo "   build: ." >> docker-compose.yml
+    echo "   hostname: centos_ps1" >> docker-compose.yml
+    echo "   command: sh -c \"mysqld --init-file=/init.sql --user=root\"" >> docker-compose.yml
+    echo "   ports:" >> docker-compose.yml
+    echo "      - \"3306\"" >> docker-compose.yml
+    echo "      - \"42000\"" >> docker-compose.yml
+    echo "      - \"42002\"" >> docker-compose.yml
+    echo "      - \"42003\"" >> docker-compose.yml
+    echo "      - \"42004\"" >> docker-compose.yml
+    docker-compose up >/dev/null 2>&1 &
+    BASE_DIR=$(basename "$PWD")
+    BASE_DIR=${BASE_DIR//[^[:alnum:]]/}
+    while ! docker ps | grep ${BASE_DIR}_centos_ps_1 > /dev/null; do  
+      sleep 5 ; 
+    done
+    DOCKER_CONTAINER_NAME=$(docker ps | grep ${BASE_DIR}_centos_ps | awk '{print $NF}')
+    IP_ADD=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+    if [ ! -z $DOCKER_CONTAINER_NAME ]; then
+      echo -e "\nAdding pmm-client instance from CentOS docker container to the currently live PMM server" 
+      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+      docker exec -it $DOCKER_CONTAINER_NAME pmm-admin config --server $IP_ADD --bind-address $IP_DOCKER_ADD
+      docker exec -it $DOCKER_CONTAINER_NAME pmm-admin add mysql
+    fi
+  }
+
+  ubuntu_docker_client(){
+    rm -rf Dockerfile docker-compose.yml
+    echo "FROM ubuntu:16.04" >> Dockerfile
+    echo "RUN apt-get update" >> Dockerfile
+    echo "RUN apt-get install -y wget lsb-release net-tools vim iproute" >> Dockerfile
+    echo "RUN wget http://repo.percona.com/apt/percona-release_0.1-4.\$(lsb_release -sc)_all.deb" >> Dockerfile
+    echo "RUN dpkg -i percona-release_0.1-4.\$(lsb_release -sc)_all.deb" >> Dockerfile
+    echo "RUN apt-get update" >> Dockerfile
+    echo "RUN apt-get install -y percona-server-server-5.7 pmm-client" >> Dockerfile
+    echo "RUN echo \"CREATE USER root@'%';\" > init.sql " >> Dockerfile
+    echo "RUN echo \"GRANT ALL ON *.* TO root@'%';\" >> init.sql" >> Dockerfile
+    echo "RUN service mysql start" >> Dockerfile
+    echo "EXPOSE 3306 42000 42002 42003 42004" >> Dockerfile
+    echo "ubuntu_ps:" >> docker-compose.yml
+    echo "   build: ." >> docker-compose.yml
+    echo "   hostname: ubuntu_ps1" >> docker-compose.yml
+    echo "   command: sh -c \"mysqld --init-file=/init.sql\"" >> docker-compose.yml
+    echo "   ports:" >> docker-compose.yml
+    echo "      - 3306:3306" >> docker-compose.yml
+    echo "      - 42000:42000" >> docker-compose.yml
+    echo "      - 42002:42002" >> docker-compose.yml
+    echo "      - 42003:42003" >> docker-compose.yml
+    echo "      - 42004:42004" >> docker-compose.yml
+    docker-compose up >/dev/null 2>&1 &
+    BASE_DIR=$(basename "$PWD")
+    BASE_DIR=${BASE_DIR//[^[:alnum:]]/}
+    while ! docker ps | grep ${BASE_DIR}_ubuntu_ps_1 > /dev/null; do  
+      sleep 5 ; 
+    done
+    DOCKER_CONTAINER_NAME=$(docker ps | grep ${BASE_DIR}_ubuntu_ps | awk '{print $NF}')
+    IP_ADD=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+    if [ ! -z $DOCKER_CONTAINER_NAME ]; then
+      echo -e "\nAdding pmm-client instance from Ubuntu docker container to the currently live PMM server" 
+      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+      docker exec -it $DOCKER_CONTAINER_NAME pmm-admin config --server $IP_ADD --bind-address $IP_DOCKER_ADD
+      docker exec -it $DOCKER_CONTAINER_NAME pmm-admin add mysql
+    fi
+  }
+
+  centos_docker_client
+  ubuntu_docker_client
+}
 clean_clients(){
   if [[ ! -e $(which mysqladmin 2> /dev/null) ]] ;then
     MYSQLADMIN_CLIENT=$(find . -name mysqladmin | head -n1)
@@ -480,31 +563,53 @@ clean_clients(){
   fi
   #Shutdown all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
+    echo -e "Shutting down mysql instance (--socket=${i})" 
     ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
   done
   #Kills mongodb processes
+  echo -e "Killing mongodb processes" 
   sudo killall mongod 2> /dev/null
   sleep 5
   #Remove all client instances
-  sudo pmm-admin remove --all
+  echo -e "Removing all local pmm client instances" 
+  sudo pmm-admin remove --all 2&>/dev/null
+}
+
+clean_docker_clients(){
+  #Remove docker pmm-clients
+  BASE_DIR=$(basename "$PWD")
+  BASE_DIR=${BASE_DIR//[^[:alnum:]]/}
+  echo -e "Removing pmm-client instances from docker containers" 
+  sudo docker exec -it ${BASE_DIR}_centos_ps_1  pmm-admin remove --all 2&> /dev/null
+  sudo docker exec -it ${BASE_DIR}_ubuntu_ps_1  pmm-admin remove --all  2&> /dev/null
+  echo -e "Removing pmm-client docker containers" 
+  sudo docker stop ${BASE_DIR}_ubuntu_ps_1 ${BASE_DIR}_centos_ps_1  2&> /dev/null
+  sudo docker rm ${BASE_DIR}_ubuntu_ps_1 ${BASE_DIR}_centos_ps_1  2&> /dev/null
 }
 
 clean_server(){
   #Stop/Remove pmm-server docker containers
-  sudo docker stop pmm-server  > /dev/null
-  sudo docker rm pmm-server pmm-data  > /dev/null
+  echo -e "Removing pmm-server docker containers" 
+  sudo docker stop pmm-server  2&> /dev/null
+  sudo docker rm pmm-server pmm-data  2&> /dev/null
 }
 
 if [ ! -z $wipe_clients ]; then
   clean_clients
 fi
+
+if [ ! -z $wipe_docker_clients ]; then
+  clean_docker_clients
+fi
+
 if [ ! -z $wipe_server ]; then
   clean_server
 fi
 
 if [ ! -z $wipe ]; then
   clean_clients
+  clean_docker_clients
   clean_server
 fi
 
@@ -519,6 +624,11 @@ fi
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
   sanity_check
   add_clients
+fi
+
+if [ ! -z $add_docker_client ]; then
+  sanity_check
+  pmm_docker_client_startup
 fi
 
 exit 0
