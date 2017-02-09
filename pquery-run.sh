@@ -99,7 +99,13 @@ PXC_IGNORE_ALL_OPTION_ISSUES=1                                 # Never end a run
                                                                # which does come with responsibility: you should check that your runs are running fine without them all ending
                                                                # immediately on mysqld startup, due to some faulty base MYEXTRA setting for example!
 
-# ========================================= User configurable variables to enable pmm testing only ===========================
+# ========================================= User configurable variables to enable/for Group Replication testing only =============
+GRP_RPL=0                                                      # Set to 1 to make this a Group Replication testing run
+GRP_RPL_CLUSTER_RUN=0                                          # Set to 1 to make this a Group Replication pquery cluster run (enables multi-node SQL instead of using a single node only)
+GRP_RPL_CLUSTER_CONFIG=${SCRIPT_PWD}/pquery/pquery-cluster.cfg  # Default group replication pquery cluster configuration file.
+GRP_RPL_START_TIMEOUT=200                                      # Should not be necessary to change. Default: 200
+
+# ========================================= User configurable variables to enable pmm testing only ===============================
 PMM=0                                                          # Set to 1 to make this a PMM testing run
 PMM_CLEAN_TRIAL=0                                              # Set to 1 to clean pmm-client service after every trial
 PMM_VERSION_CHECK="1.0.5"                                      # Set PMM admin version to use PMM testing
@@ -176,6 +182,10 @@ if [ "$(whoami)" == "root" ]; then MYEXTRA="--user=root ${MYEXTRA}"; fi
 if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
   echoit "As PXC_CLUSTER_RUN=1, this script is auto-assuming this is a PXC run and will set PXC=1"
   PXC=1
+fi
+if [ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]; then
+  echoit "As GRP_RPL_CLUSTER_RUN=1, this script is auto-assuming this is a Group Replication run and will set GRP_RPL=1"
+  GRP_RPL=1
 fi 
 if [ ${PXC} -eq 1 ]; then
   if [ ${QUERIES_PER_THREAD} -lt 2147483647 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
@@ -188,7 +198,24 @@ if [ ${PXC} -eq 1 ]; then
   fi
   ADD_RANDOM_OPTIONS=0
   ADD_RANDOM_TOKUDB_OPTIONS=0
+  GRP_RPL=0
+  GRP_RPL_CLUSTER_RUN=0
 fi
+
+if [ ${GRP_RPL} -eq 1 ]; then
+  if [ ${QUERIES_PER_THREAD} -lt 2147483647 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
+    echoit "Note: As this is a GRP_RPL=1 run, and QUERIES_PER_THREAD was set to only ${QUERIES_PER_THREAD}, this script is setting the queries per thread to the required minimum of 2147483647 for this run."
+    QUERIES_PER_THREAD=2147483647  # Max int
+  fi
+  if [ ${PQUERY_RUN_TIMEOUT} -lt 120 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
+    echoit "Note: As this is a GRP_RPL=1 run, and PQUERY_RUN_TIMEOUT was set to only ${PQUERY_RUN_TIMEOUT}, this script is setting the timeout to the required minimum of 120 for this run."
+    PQUERY_RUN_TIMEOUT=120
+  fi
+  ADD_RANDOM_TOKUDB_OPTIONS=0
+  PXC=0
+  PXC_CLUSTER_RUN=0
+fi
+
 if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then echoit "MODE: Query Duration Testing"; fi
 if [ ${QUERY_DURATION_TESTING} -ne 1 -a ${QUERY_CORRECTNESS_TESTING} -ne 1 -a ${CRASH_RECOVERY_TESTING} -ne 1 ]; then 
   if [ ${VALGRIND_RUN} -eq 1 ]; then
@@ -294,7 +321,7 @@ ctrl-c(){
 
 savetrial(){
   TOSAVE=0
-  if [ ${PXC} -eq 0 ]; then
+  if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
   else
     if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
@@ -490,6 +517,150 @@ pxc_startup(){
   done
 }
 
+gr_startup(){
+  ADDR="127.0.0.1"
+  RPORT=$(( RANDOM%21 + 10 ))
+  RBASE="$(( RPORT*1000 ))"
+  RBASE1="$(( RBASE + 1 ))"
+  RBASE2="$(( RBASE + 2 ))"
+  RBASE3="$(( RBASE + 3 ))"
+  LADDR1="$ADDR:$(( RBASE + 101 ))"
+  LADDR2="$ADDR:$(( RBASE + 102 ))"
+  LADDR3="$ADDR:$(( RBASE + 103 ))"
+  
+  SUSER=root
+  SPASS=
+  
+  MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+
+  if [ "$1" == "startup" ]; then
+    node1="${WORKDIR}/node1.template"
+    node2="${WORKDIR}/node2.template"
+    node3="${WORKDIR}/node3.template"
+  else
+    node1="${RUNDIR}/${TRIAL}/node1"
+    node2="${RUNDIR}/${TRIAL}/node2"
+    node3="${RUNDIR}/${TRIAL}/node3"
+  fi
+
+  gr_startup_chk(){
+    ERROR_LOG=$1
+    if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
+      if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
+        echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
+        savetrial
+      else
+        echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MYEXTRA (${MYEXTRA}) startup options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings."
+        grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
+        STOREANYWAY=1
+        savetrial
+        echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
+        exit 1
+      fi
+    fi
+  }
+
+  if [ "$1" == "startup" ]; then
+    ${MID} --datadir=$node1  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
+  fi
+
+  ${BASEDIR}/bin/mysqld --no-defaults \
+    --basedir=${BASEDIR} --datadir=$node1 \
+    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --server_id=1 --gtid_mode=ON --enforce_gtid_consistency=ON \
+    --master_info_repository=TABLE --relay_log_info_repository=TABLE \
+    --binlog_checksum=NONE --log_slave_updates=ON --log_bin=binlog \
+    --binlog_format=ROW --innodb_flush_method=O_DIRECT \
+    --core-file --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$node1/node1.err \
+    --socket=$node1/node1_socket.sock --log-output=none \
+    --port=$RBASE1 --transaction_write_set_extraction=XXHASH64 \
+    --loose-group_replication_group_name="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" \
+    --loose-group_replication_start_on_boot=off --loose-group_replication_local_address="$LADDR1" \
+    --loose-group_replication_group_seeds="$LADDR1,$LADDR2,$LADDR3" \
+    --loose-group_replication_bootstrap_group=off > $node1/node1.err 2>&1 &
+
+  for X in $(seq 0 ${GRP_RPL_START_TIMEOUT}); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node1/node1_socket.sock ping > /dev/null 2>&1; then
+      sleep 2
+      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -Bse "create database if not exists test" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -Bse "SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -Bse "CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -Bse "INSTALL PLUGIN group_replication SONAME 'group_replication.so';SET GLOBAL group_replication_bootstrap_group=ON;START GROUP_REPLICATION;SET GLOBAL group_replication_bootstrap_group=OFF;" > /dev/null 2>&1
+      break
+    fi
+    gr_startup_chk $node1/node1.err
+  done
+
+  if [ "$1" == "startup" ]; then
+    ${MID} --datadir=$node2  > ${WORKDIR}/startup_node2.err 2>&1 || exit 1;
+  fi
+
+  ${BASEDIR}/bin/mysqld --no-defaults \
+    --basedir=${BASEDIR} --datadir=$node2 \
+    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --server_id=1 --gtid_mode=ON --enforce_gtid_consistency=ON \
+    --master_info_repository=TABLE --relay_log_info_repository=TABLE \
+    --binlog_checksum=NONE --log_slave_updates=ON --log_bin=binlog \
+    --binlog_format=ROW --innodb_flush_method=O_DIRECT \
+    --core-file --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$node2/node2.err \
+    --socket=$node2/node2_socket.sock --log-output=none \
+    --port=$RBASE2 --transaction_write_set_extraction=XXHASH64 \
+    --loose-group_replication_group_name="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" \
+    --loose-group_replication_start_on_boot=off --loose-group_replication_local_address="$LADDR2" \
+    --loose-group_replication_group_seeds="$LADDR1,$LADDR2,$LADDR3" \
+    --loose-group_replication_bootstrap_group=off > $node2/node2.err 2>&1 &
+
+  for X in $(seq 0 ${GRP_RPL_START_TIMEOUT}); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node2/node2_socket.sock ping > /dev/null 2>&1; then
+      sleep 2
+      ${BASEDIR}/bin/mysql -uroot -S$node2/node2_socket.sock -Bse "SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node2/node2_socket.sock -Bse "CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node2/node2_socket.sock -Bse "INSTALL PLUGIN group_replication SONAME 'group_replication.so';START GROUP_REPLICATION;" > /dev/null 2>&1
+      break
+    fi
+    gr_startup_chk $node2/node2.err
+  done
+  
+  if [ "$1" == "startup" ]; then
+    ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
+  fi
+
+  ${BASEDIR}/bin/mysqld --no-defaults \
+    --basedir=${BASEDIR} --datadir=$node3 \
+    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --server_id=1 --gtid_mode=ON --enforce_gtid_consistency=ON \
+    --master_info_repository=TABLE --relay_log_info_repository=TABLE \
+    --binlog_checksum=NONE --log_slave_updates=ON --log_bin=binlog \
+    --binlog_format=ROW --innodb_flush_method=O_DIRECT \
+    --core-file --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$node3/node3.err \
+    --socket=$node3/node3_socket.sock --log-output=none \
+    --port=$RBASE3 --transaction_write_set_extraction=XXHASH64 \
+    --loose-group_replication_group_name="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" \
+    --loose-group_replication_start_on_boot=off --loose-group_replication_local_address="$LADDR3" \
+    --loose-group_replication_group_seeds="$LADDR1,$LADDR2,$LADDR3" \
+    --loose-group_replication_bootstrap_group=off > $node3/node3.err 2>&1 &
+
+  for X in $(seq 0 ${GRP_RPL_START_TIMEOUT}); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node3/node3_socket.sock ping > /dev/null 2>&1; then
+      sleep 2
+      ${BASEDIR}/bin/mysql -uroot -S$node3/node3_socket.sock -Bse "SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node3/node3_socket.sock -Bse "CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node3/node3_socket.sock -Bse "INSTALL PLUGIN group_replication SONAME 'group_replication.so';START GROUP_REPLICATION;" > /dev/null 2>&1
+      break
+    fi
+    gr_startup_chk $node3/node3.err
+  done
+}
+
 pquery_test(){
   TRIAL=$[ ${TRIAL} + 1 ]
   echoit "====== TRIAL #${TRIAL} ======"
@@ -526,7 +697,7 @@ pquery_test(){
   fi
   echoit "Generating new trial workdir ${RUNDIR}/${TRIAL}..."
   ISSTARTED=0
-  if [ ${PXC} -eq 0 ]; then
+  if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     mkdir -p ${RUNDIR}/${TRIAL}/data/test ${RUNDIR}/${TRIAL}/data/mysql ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log
     echo 'SELECT 1;' > ${RUNDIR}/${TRIAL}/startup_failure_thread-0.sql  # Add fake file enabling pquery-prep-red.sh/reducer.sh to be used with/for mysqld startup issues
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
@@ -723,7 +894,7 @@ pquery_test(){
         sudo pmm-admin add mysql pq${RANDOMD}-${TRIAL} --socket=${RUNDIR}/${TRIAL}/socket.sock --user=root --query-source=perfschema
       fi
     fi
-  else
+  elif [[ ${PXC} -eq 1 ]]; then
     mkdir -p ${RUNDIR}/${TRIAL}/
     cp -R ${WORKDIR}/node1.template ${RUNDIR}/${TRIAL}/node1
     cp -R ${WORKDIR}/node2.template ${RUNDIR}/${TRIAL}/node2
@@ -797,7 +968,19 @@ pquery_test(){
         break
       fi
     done
+  elif [[ ${GRP_RPL} -eq 1 ]];then
+    mkdir -p ${RUNDIR}/${TRIAL}/
+    cp -R ${WORKDIR}/node1.template ${RUNDIR}/${TRIAL}/node1
+    cp -R ${WORKDIR}/node2.template ${RUNDIR}/${TRIAL}/node2
+    cp -R ${WORKDIR}/node3.template ${RUNDIR}/${TRIAL}/node3
+    gr_startup
+    ISSTARTED=1
+    echoit "3 Node Group Replication Cluster started ok. Clients:"
+    echoit "Node #1: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock"
+    echoit "Node #2: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock"
+    echoit "Node #3: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock"
   fi
+
   if [ ${ISSTARTED} -eq 1 ]; then
     rm -f ${RUNDIR}/${TRIAL}/startup_failure_thread-0.sql  # Remove the earlier created fake (SELECT 1; only) file present for startup issues (server is started OK now)
     if [ ${THREADS} -eq 1 ]; then  # Single-threaded run (1 client only)
@@ -910,7 +1093,7 @@ pquery_test(){
         sed -i "s|ndbcluster|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         SQL_FILE_1="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}"
         SQL_FILE_2="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}"
-        if [ ${PXC} -eq 0 ]; then
+        if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
           echoit "Starting Primary pquery run for engine ${QC_PRI_ENGINE} (log stored in ${RUNDIR}/${TRIAL}/pquery1.log)..."
           if [ ${QUERY_CORRECTNESS_MODE} -ne 2 ]; then
             ${PQUERY_BIN} ${SQL_FILE_1} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
@@ -956,12 +1139,19 @@ pquery_test(){
       else  # Not a query correctness testing run
         echoit "Starting pquery (log stored in ${RUNDIR}/${TRIAL}/pquery.log)..."
         if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then  # Query duration testing run
-          if [ ${PXC} -eq 0 ]; then
+          if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             PQPID="$!"
           else
-            if [ ${PXC_CLUSTER_RUN} -eq 1 ];then
+            if [[ ${PXC_CLUSTER_RUN} -eq 1 ]];then
               cat ${PXC_CLUSTER_CONFIG} \
+                | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
+                | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
+                > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
+              ${PQUERY_BIN} --config-file=${RUNDIR}/${TRIAL}/pquery-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+              PQPID="$!"
+            elif [[ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]];then
+              cat ${GRP_RPL_CLUSTER_CONFIG} \
                 | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
                 | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
@@ -973,12 +1163,19 @@ pquery_test(){
             fi
           fi
         else  # Standard pquery run / Not a query duration testing run
-          if [ ${PXC} -eq 0 ]; then
+          if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             PQPID="$!"
           else
-            if [ ${PXC_CLUSTER_RUN} -eq 1 ];then
+            if [[ ${PXC_CLUSTER_RUN} -eq 1 ]];then
               cat ${PXC_CLUSTER_CONFIG} \
+                | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
+                | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
+                > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
+              ${PQUERY_BIN} --config-file=${RUNDIR}/${TRIAL}/pquery-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+              PQPID="$!"
+            elif [[ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]];then
+              cat ${GRP_RPL_CLUSTER_CONFIG} \
                 | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
                 | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
@@ -1001,7 +1198,7 @@ pquery_test(){
         SQL_FILE="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql"
       fi
       # Debug echo "-------"; cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql; echo "-------"
-      if [ ${PXC} -eq 0 ]; then
+      if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
         ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
         PQPID="$!"
       else
@@ -1043,7 +1240,7 @@ pquery_test(){
       fi 
     fi
   else
-    if [ ${PXC} -eq 0 ]; then
+    if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
         echoit "Either the Primary server (PID: ${MPID} | Socket: ${RUNDIR}/${TRIAL}/socket.sock), or the Secondary server (PID: ${MPID2} | Socket: ${RUNDIR}/${TRIAL}/socket2.sock) failed to start after ${MYSQLD_START_TIMEOUT} seconds. Will issue extra kill -9 to ensure it's gone..."
         (sleep 0.2; kill -9 ${MPID2} >/dev/null 2>&1; wait ${MPID2} >/dev/null 2>&1) &
@@ -1054,8 +1251,12 @@ pquery_test(){
       (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; wait ${MPID} >/dev/null 2>&1) &
       wait ${MPID} >/dev/null 2>&1
       sleep 2; sync
-    else
+    elif [[ ${PXC} -eq 1 ]]; then
       echoit "3 Node PXC Cluster failed to start after ${PXC_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
+      (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+      sleep 2; sync
+    elif [[ ${GRP_RPL} -eq 1 ]]; then
+      echoit "3 Node Group Replication Cluster failed to start after ${GRP_RPL_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
       (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       sleep 2; sync
     fi
@@ -1071,7 +1272,7 @@ pquery_test(){
   # actually shutting down the server which will auto-terminate pquery due to 250 consecutive queries failing. If 250 queries failed and ${PQUERY_RUN_TIMEOUT}s timeout was
   # reached, and if there is no core/Valgrind issue, then we do not need to save this trial (it is a standard occurence). If however we saw 250 queries failed before the timeout
   # was complete, then there may be another problem and the trial should be saved.
-  if [ ${PXC} -eq 0 ]; then
+  if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     if [ ${VALGRIND_RUN} -eq 1 ]; then  # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
@@ -1113,7 +1314,7 @@ pquery_test(){
       (sleep 0.2; kill -9 ${PQPID2} >/dev/null 2>&1; wait ${PQPID2} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time, also see NOTE** above)
     fi
     sleep 1  # <^ Make sure all is gone
-  else
+  elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
     if [ ${VALGRIND_RUN} -eq 1 ]; then # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
@@ -1209,15 +1410,15 @@ pquery_test(){
     if [ ${TRIAL_SAVED} -eq 0 ]; then
       if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
         echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null)"
-        if [ ${PXC} -eq 0 ]; then
+        if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
           echoit "Bug found (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err`"
-        else
+        elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
           CORE1=`ls ${RUNDIR}/${TRIAL}/node1/*core.* 2>/dev/null || true`
           CORE2=`ls ${RUNDIR}/${TRIAL}/node2/*core.* 2>/dev/null || true`
           CORE3=`ls ${RUNDIR}/${TRIAL}/node3/*core.* 2>/dev/null || true`
-          if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err`"; fi
-          if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err`"; fi
-          if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err`"; fi
+          if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC/GR node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err`"; fi
+          if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC/GR node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err`"; fi
+          if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC/GR node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err`"; fi
         fi
         savetrial;TRIAL_SAVED=1
       elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
@@ -1270,14 +1471,21 @@ mkdir ${WORKDIR} ${WORKDIR}/log ${RUNDIR}
 WORKDIRACTIVE=1
 # User for recovery testing
 echo "create user recovery@'%';grant all on *.* to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
-if [ ${PXC} -eq 0 ];then
+if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
   echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} "
-else
+elif [[ ${PXC} -eq 1 ]]; then
   echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: TRUE"
   if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
     echoit "PXC Cluster run: 'YES'"
   else
     echoit "PXC Cluster run: 'NO'"
+  fi
+elif [[ ${GRP_RPL} -eq 1 ]]; then
+  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | Group Replication Mode: TRUE"
+  if [ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]; then
+    echoit "Group Replication Cluster run: 'YES'"
+  else
+    echoit "Group Replication Cluster run: 'NO'"
   fi
 fi
 if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then 
@@ -1319,7 +1527,7 @@ elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
   echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
 fi
 
-if [ ${PXC} -eq 0 ]; then
+if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
   echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
   mkdir ${WORKDIR}/mysqld
   cp ${BIN} ${WORKDIR}/mysqld
@@ -1388,7 +1596,7 @@ if [ ${PXC} -eq 0 ]; then
       fi
     fi
   fi
-else
+elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
   echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
   mkdir ${WORKDIR}/mysqld
   cp ${BIN} ${WORKDIR}/mysqld
@@ -1397,23 +1605,43 @@ else
   cd ${WORKDIR}/mysqld
   ${SCRIPT_PWD}/ldd_files.sh
   cd ${PWDTMPSAVE}
-  echoit "Ensuring PXC templates created for pquery run.."
-  pxc_startup startup
-  sleep 5
-  if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  ping > /dev/null 2>&1; then
-    echoit "PXC node1.template started" ; fi
-  if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  ping > /dev/null 2>&1; then
-    echoit "PXC node2.template started" ; fi
-  if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  ping > /dev/null 2>&1; then
-    echoit "PXC node3.template started" ;
-  else
-    echoit "Assert: PXC data template creation failed.."
-    exit 1
+  if [[ ${PXC} -eq 1 ]] ;then
+    echoit "Ensuring PXC templates created for pquery run.."
+    pxc_startup startup
+    sleep 5
+    if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  ping > /dev/null 2>&1; then
+      echoit "PXC node1.template started" ; fi
+    if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  ping > /dev/null 2>&1; then
+      echoit "PXC node2.template started" ; fi
+    if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  ping > /dev/null 2>&1; then
+      echoit "PXC node3.template started" ;
+    else
+      echoit "Assert: PXC data template creation failed.."
+      exit 1
+    fi
+    echoit "Created PXC data templates for pquery run.."
+    ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  shutdown > /dev/null 2>&1
+    ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  shutdown > /dev/null 2>&1
+    ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  shutdown > /dev/null 2>&1
+  elif [[ ${GRP_RPL} -eq 1 ]] ;then
+    echoit "Ensuring Group Replication templates created for pquery run.."
+    gr_startup startup
+    sleep 5
+    if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  ping > /dev/null 2>&1; then
+      echoit "Group Replication node1.template started" ; fi
+    if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  ping > /dev/null 2>&1; then
+      echoit "Group Replication node2.template started" ; fi
+    if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  ping > /dev/null 2>&1; then
+      echoit "Group Replication node3.template started" ;
+    else
+      echoit "Assert: Group Replication data template creation failed.."
+      exit 1
+    fi
+    echoit "Created Group Replication data templates for pquery run.."
+    ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  shutdown > /dev/null 2>&1
+    ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  shutdown > /dev/null 2>&1
+    ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  shutdown > /dev/null 2>&1
   fi
-  echoit "Created PXC data templates for pquery run.."
-  ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock  shutdown > /dev/null 2>&1
-  ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock  shutdown > /dev/null 2>&1
-  ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock  shutdown > /dev/null 2>&1
 fi
 
 # Start actual pquery testing
@@ -1425,7 +1653,7 @@ for X in $(seq 1 ${TRIALS}); do
 done
 # All done, wrap up pquery run
 echoit "pquery finished requested number of trials (${TRIALS})... Terminating..."
-if [ ${PXC} -eq 0 ]; then 
+if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then 
   echoit "Cleaning up any leftover processes..."
   KILL_PIDS=`ps -ef | grep "$RANDOMD" | grep -v "grep" | awk '{print $2}' | tr '\n' ' '`
   if [ "${KILL_PIDS}" != "" ]; then
