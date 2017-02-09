@@ -248,6 +248,7 @@ part_id < m_tot_part s                                                 ## http:/
 ## =========== Special ===========
 ha_innodb.cc line 3469                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
 ha_innodb.cc line 2797                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.5.53
+ha_innodb.cc line 3512                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.35
 ha_innodb.cc line 3495                           ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
 ha_innodb.cc line 19339                          ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
 ha_innodb.cc line 19411                          ##DONOTREMOVE## ^IDEM (PS 5.6.33)
@@ -428,6 +429,7 @@ row0trunc.cc line 1983                                                          
 #row0upd.ic line 182                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74589 - With MS debug build (fixed in 5.6.24, 5.7.6)
 #row0upd.cc line 1794                                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226538 (dup of 1395579)
 srv0srv.cc line 2664                                                                    ## http://bugs.mysql.com/bug.php?id=73913 (same asrt as 74418 but diff)
+srv0srv.cc line 3337                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35
 srv0srv.cc line 2666                                                                    ## http://bugs.mysql.com/bug.php?id=73913 MS 5.6.22
 srv0srv.cc line 3353                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.5.53
 sync0sync.ic line 307                                                                   ## http://bugs.launchpad.net/percona-server/+bug/1435678
