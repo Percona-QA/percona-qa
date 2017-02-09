@@ -26,6 +26,13 @@ else
   PXC=0
 fi
 
+# Check if this is a group replication run
+if [ "$(grep 'Group Replication Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*Group Replication Mode[: \t]*||')" == "TRUE" ]; then
+  GRP_RPL=1
+else
+  GRP_RPL=0
+fi
+
 # Check if this an automated (pquery-reach.sh) run
 if [ "$1" == "reach" ]; then
   REACH=1  # Minimal output, and no 2x enter required
@@ -335,6 +342,13 @@ generate_reducer_script(){
     PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
     PXC_STRING1="s|ZERO0|ZERO0|"
   fi
+  if [ ${GRP_RPL} -eq 1 ]; then
+    GRP_RPL_CLEANUP1="0,/^[ \t]*GRP_RPL_MOD[ \t]*=.*$/s|^[ \t]*GRP_RPL_MOD[ \t]*=.*$|#GRP_RPL_MOD=<set_below_in_machine_variables_section>|"
+    GRP_RPL_STRING1="0,/#VARMOD#/s:#VARMOD#:GRP_RPL_MOD=1\n#VARMOD#:"
+  else
+    GRP_RPL_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
+    GRP_RPL_STRING1="s|ZERO0|ZERO0|"
+  fi
   if [ ${QC} -eq 0 ]; then
     REDUCER_FILENAME=reducer${OUTFILE}.sh
     QC_STRING1="s|ZERO0|ZERO0|"
@@ -363,6 +377,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*PQUERY_MOD[ \t]*=.*$/s|^[ \t]*PQUERY_MOD[ \t]*=.*$|#PQUERY_MOD=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "${PXC_CLEANUP1}" \
+   | sed -e "${GRP_RPL_CLEANUP1}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:DISABLE_TOKUDB_AUTOLOAD=${DISABLE_TOKUDB_AUTOLOAD}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
@@ -377,6 +392,7 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_MOD=1\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
    | sed -e "${PXC_STRING1}" \
+   | sed -e "${GRP_RPL_STRING1}" \
    | sed -e "${QC_STRING1}" \
    | sed -e "${QC_STRING2}" \
    | sed -e "${QC_STRING3}" \
@@ -388,7 +404,7 @@ generate_reducer_script(){
 
 # Main pquery results processing
 if [ ${QC} -eq 0 ]; then
-  if [ ${PXC} -eq 1 ]; then
+  if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
     for TRIAL in $(ls ./*/node*/core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | uniq); do
       for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d'  | awk '{print $8}' | tr -dc '0-9\n' | sort`; do
         OUTFILE="${TRIAL}-${SUBDIR}"
