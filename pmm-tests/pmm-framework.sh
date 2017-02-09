@@ -176,7 +176,7 @@ setup(){
     exit 1
   fi
   if sudo docker ps | grep 'pmm-server' > /dev/null ; then
-    #echo "ERROR! pmm-server docker container is already runnning. Terminating"
+    echo "ERROR! pmm-server docker container is already runnning. Terminating"
     exit 1
   elif  sudo docker ps -a | grep 'pmm-server' > /dev/null ; then
     CONTAINER_NAME=$(sudo docker ps -a | grep 'pmm-server' | grep $PMM_VERSION | grep -v pmm-data | awk '{ print $1}')
