@@ -1750,7 +1750,7 @@ gr_start_main(){
     --loose-group_replication_group_name="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" \
     --loose-group_replication_start_on_boot=off --loose-group_replication_local_address="$LADDR1" \
     --loose-group_replication_group_seeds="$LADDR1,$LADDR2,$LADDR3" \
-    --loose-group_replication_bootstrap_group=off > $node1/node1.err 2>&1 &
+    --loose-group_replication_bootstrap_group=off --super_read_only=OFF > $node1/node1.err 2>&1 &
 
   for X in $(seq 0 200); do
     sleep 1
@@ -1780,7 +1780,7 @@ gr_start_main(){
     --loose-group_replication_group_name="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" \
     --loose-group_replication_start_on_boot=off --loose-group_replication_local_address="$LADDR2" \
     --loose-group_replication_group_seeds="$LADDR1,$LADDR2,$LADDR3" \
-    --loose-group_replication_bootstrap_group=off > $node2/node2.err 2>&1 &
+    --loose-group_replication_bootstrap_group=off --super_read_only=OFF > $node2/node2.err 2>&1 &
 
   for X in $(seq 0 200); do
     sleep 1
@@ -1809,7 +1809,7 @@ gr_start_main(){
     --loose-group_replication_group_name="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" \
     --loose-group_replication_start_on_boot=off --loose-group_replication_local_address="$LADDR3" \
     --loose-group_replication_group_seeds="$LADDR1,$LADDR2,$LADDR3" \
-    --loose-group_replication_bootstrap_group=off > $node3/node3.err 2>&1 &
+    --loose-group_replication_bootstrap_group=off --super_read_only=OFF > $node3/node3.err 2>&1 &
 
   for X in $(seq 0 200); do
     sleep 1
