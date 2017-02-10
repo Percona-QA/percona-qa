@@ -237,7 +237,7 @@ generate_reducer_script(){
     TEXT_STRING1="s|ZERO0|ZERO0|"
     TEXT_STRING2="s|ZERO0|ZERO0|"
   else  # Bug-specific TEXT string found, use MODE=3 to let reducer.sh reduce for that specific string
-    if [ $VALGRIND_CHECK -eq 1 ]; then
+    if [[ $VALGRIND_CHECK -eq 1 ]]; then
       MODE=1
     else
       if [ ${QC} -eq 0 ]; then
@@ -472,7 +472,7 @@ if [ ${QC} -eq 0 ]; then
       if [ "${WSREP_PROVIDER_OPTIONS}" != "" ]; then
         echo "* WSREP_PROVIDER_OPTIONS variable set to: ${WSREP_PROVIDER_OPTIONS}"
       fi
-      if [ ${VALGRIND_CHECK} -eq 1 ]; then
+      if [[ ${VALGRIND_CHECK} -eq 1 ]]; then
         echo "* Valgrind was used for this trial"
       fi
     done
