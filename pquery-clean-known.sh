@@ -20,13 +20,20 @@ else
   PXC=0
 fi
 
+# Check if this is a group replication run
+if [ "$(grep 'Group Replication Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*Group Replication Mode[: \t]*||')" == "TRUE" ]; then
+  GRP_RPL=1
+else
+  GRP_RPL=0
+fi
+
 # Current location checks
 if [ `ls ./*/*.sql 2>/dev/null | wc -l` -eq 0 ]; then
   echo "Assert: no pquery trials (with logging - i.e. ./*/*.sql) were found in this directory"
   exit 1
 fi
 
-if [ ${PXC} -eq 1 ]; then
+if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
   while read line; do
     STRING="`echo "$line" | sed 's|[ \t]*##.*$||'`"
     if [ "`echo "$STRING" | sed 's|^[ \t]*$||' | grep -v '^[ \t]*#'`" != "" ]; then
@@ -42,7 +49,7 @@ while read line; do
   STRING="`echo "$line" | sed 's|[ \t]*##.*$||'`"
   if [ "`echo "$STRING" | sed 's|^[ \t]*$||' | grep -v '^[ \t]*#'`" != "" ]; then
     if [ `ls reducer[0-9]* 2>/dev/null | wc -l` -gt 0 ]; then
-      if [ ${PXC} -eq 1 ]; then
+      if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
         grep -li "${STRING}" reducer[0-9]* | sed 's/[^0-9.]*\([0-9.]*\).*/\1/' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
       else
         grep -li "${STRING}" reducer[0-9]* | sed 's/[^0-9]//g' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _

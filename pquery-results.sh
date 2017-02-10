@@ -14,6 +14,13 @@ else
   PXC=0
 fi
 
+# Check if this is a group replication run
+if [ "$(grep 'Group Replication Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*Group Replication Mode[: \t]*||')" == "TRUE" ]; then
+  GRP_RPL=1
+else
+  GRP_RPL=0
+fi
+
 # Current location checks
 if [ `ls ./*/*.sql 2>/dev/null | wc -l` -eq 0 ]; then
   echo "Assert: no pquery trials (with logging - i.e. ./*/*.sql) were found in this directory (or they were all cleaned up already)"
@@ -27,7 +34,7 @@ fi
 TRIALS_EXECUTED=$(cat pquery-run.log 2>/dev/null | grep -o "==.*TRIAL.*==" | tail -n1 | sed 's|[^0-9]*||;s|[ \t=]||g')
 echo "================ [Run: $(echo ${PWD} | sed 's|.*/||')] Sorted unique issue strings (${TRIALS_EXECUTED} trials executed, `ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l` remaining reducer scripts)"
 ORIG_IFS=$IFS; IFS=$'\n'  # Use newline seperator instead of space seperator in the for loop
-if [ $PXC == 0 ]; then
+if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
   for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT="||;s|"$||' | sort -u`; do
     COUNT=`grep "   TEXT=" reducer* 2>/dev/null | sed 's|reducer\([0-9]\).sh:|reducer\1.sh:  |;s|reducer\([0-9][0-9]\).sh:|reducer\1.sh: |;s|  TEXT|TEXT|' | grep "${STRING}" | wc -l`
     MATCHING_TRIALS=`grep -H "   TEXT=" reducer* 2>/dev/null | sed 's|reducer\([0-9]\).sh:|reducer\1.sh:  |;s|reducer\([0-9][0-9]\).sh:|reducer\1.sh: |;s|  TEXT|TEXT|' | grep "${STRING}" | sed 's|.sh.*||;s|reducer||' | tr '\n' ',' | sed 's|,$||'`
@@ -50,7 +57,7 @@ else
 fi
 IFS=$ORIG_IFS
 # MODE 4 TRIALS
-if [ $PXC == 0 ]; then
+if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
   COUNT=`grep -l "^MODE=4$" reducer* 2>/dev/null | wc -l`
   if [ $COUNT -gt 0 ]; then
     MATCHING_TRIALS=`grep -l "^MODE=4$" reducer* 2>/dev/null | tr -d '\n' | sed 's|reducer|,|g;s|[.sh]||g;s|^,||'`
