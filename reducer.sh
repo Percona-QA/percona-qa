@@ -49,9 +49,9 @@ REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce mysq
 REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. MODE=3 (set TEXT) and MODE=4 (all) supported
 SCRIPT_LOC=/usr/bin/script      # Script binary (sudo yum install util-linux), which is required when/for reducing GLIBC crashes
 
-# === Shutdown/hanging issues   # For mysqld hang testcas reduction (use TIMEOUT_CHECK + MODE=0) and for 'only reproducible at shutdown' testcase reduction (use TIMEOUT_COMMAND)
+# === Shutdown/hanging issues   # For mysqld hang testcase reduction (use TIMEOUT_CHECK + MODE=0) and for 'only reproducible at shutdown' testcase reduction (use TIMEOUT_COMMAND)
 TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
-TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout in TIMEOUT_COMMAND here. Do not set too small (e.g. >600 sec)
+TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout here. Do not set too small (e.g. >600 sec)
                                 # Note: TIMEOUT_CHECK + MODE=0 is better for hanging mysqld's whereas TIMEOUT_COMMAND is better for "checkable" (i.e. use MODE=2 or =3) issues 
 
 # === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
@@ -2647,10 +2647,10 @@ finish(){
   echo_out "[Finish] Reducer log                       : $WORKD/reducer.log"
   if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
     cp -f $WORKO $WORK_OUT
-    echo_out "[Finish] Final testcase                    : $WORKO"
+    echo_out "[Finish] Final testcase                    : $WORKO ($(wc -l $WORKO | awk '{print $1}') lines)"
   else
     cp $INPUTFILE $WORK_OUT
-    echo_out "[Finish] Final testcase                    : $INPUTFILE (= input file, no optimizations were successful)"
+    echo_out "[Finish] Final testcase                    : $INPUTFILE (= input file, no optimizations were successful. $(wc -l $WORKO | awk '{print $1}') lines)"
   fi
   BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
   rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
