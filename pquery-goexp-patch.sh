@@ -6,5 +6,14 @@
 # pquery-run.sh > pquery-go-expert.sh > {reducer<trialnr>.sh or pquery-mass-reducer.sh} > testcase reduced but now stuck at stage1 and ~4 lines (multi-threaded) > this script >
 # restart reducer<trialnr>.sh with the said changes done by this script. It will then run through all other stages
 
+if [ "$1" == "" ]; then
+  echo "Assert: This script expects one option, namely the trial number for which this script should patch reducer<trialnr>.sh"
+  echo "Terminating."
+  exit 1
+elif [ "$(echo $1 | sed 's|^[0-9]\+||')" != "" ]; then
+  echo "Assert: option passed is not numeric. If you do not know how to use this script, execute it without options to see more information"
+  exit 1
+fi
+
 sed -i "s|^FORCE_SKIPV=1|FORCE_SKIPV=0|" reducer$1.sh
 sed -i "s|default.node.tld_thread-0.sql\"$|default.node.tld_thread-0.sql_out\"|" reducer$1.sh
