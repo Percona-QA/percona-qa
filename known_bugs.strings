@@ -428,7 +428,8 @@ row0trunc.cc line 1983                                                          
 #row0umod.cc line 338                                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1381916 (dup of 1395579)
 #row0upd.ic line 182                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74589 - With MS debug build (fixed in 5.6.24, 5.7.6)
 #row0upd.cc line 1794                                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226538 (dup of 1395579)
-srv0srv.cc line 2664                                                                    ## http://bugs.mysql.com/bug.php?id=73913 (same asrt as 74418 but diff)
+srv0srv.cc line 2664                                                                    ## http://bugs.mysql.com/bug.php?id=73913 (same assert as 74418 but diff)
+##srv0srv.cc line 3072                                                                    ## http://bugs.mysql.com/bug.php?id=73913 or 74418, PS 5.17.16
 srv0srv.cc line 3337                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35
 srv0srv.cc line 2666                                                                    ## http://bugs.mysql.com/bug.php?id=73913 MS 5.6.22
 srv0srv.cc line 3353                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.5.53
