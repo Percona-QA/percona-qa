@@ -28,6 +28,7 @@ usage () {
     echo " --setup                   This will setup and configure a PMM server"
     echo " --addclient=ps,2          Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
     echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
+    echo " --mongo-with-rocksdb       This will start mongodb with rocksdb engine" 
     echo " --add-docker-client       Add docker pmm-clients with percona server to the currently live PMM server" 
     echo " --list                    List all client information as obtained from pmm-admin"
     echo " --wipe-clients            This will stop all client instances and remove all clients from pmm-admin"
@@ -42,7 +43,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,pmm-server-username:,pmm-server-password::,setup,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,pmm-server-username:,pmm-server-password::,setup,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -61,6 +62,10 @@ do
     ADDCLIENT+=("$2")
     shift 2
     ;;
+    --mongo-with-rocksdb )
+    shift
+    mongo_with_rocksdb=1
+    ;;   
     --add-docker-client )
     shift
     add_docker_client=1
@@ -400,18 +405,29 @@ add_clients(){
     ADDCLIENTS_COUNT=$(echo "${i}" | sed 's|[^0-9]||g')
     if  [[ "${CLIENT_NAME}" == "mo" ]]; then
       PSMDB_PORT=27017
-      if [ ! -z $MTOOLS_MLAUNCH ];then
-        sudo $MTOOLS_MLAUNCH --replicaset --nodes $ADDCLIENTS_COUNT --binarypath=$BASEDIR/bin --dir=${BASEDIR}/data
-      else
+      if [ ! -z $mongo_with_rocksdb ]; then
         mkdir $BASEDIR/replset
         for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
           PORT=$(( $PSMDB_PORT + $j - 1 ))
           sudo mkdir -p ${BASEDIR}/data/db$j
-          sudo $BASEDIR/bin/mongod --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
+          sudo $BASEDIR/bin/mongod --storageEngine rocksdb --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
           sleep 5
         done
+        sudo pmm-admin add  mongodb:metrics
+      else
+        if [ ! -z $MTOOLS_MLAUNCH ];then
+          sudo $MTOOLS_MLAUNCH --replicaset --nodes $ADDCLIENTS_COUNT --binarypath=$BASEDIR/bin --dir=${BASEDIR}/data
+        else
+          mkdir $BASEDIR/replset
+          for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
+            PORT=$(( $PSMDB_PORT + $j - 1 ))
+            sudo mkdir -p ${BASEDIR}/data/db$j
+            sudo $BASEDIR/bin/mongod --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
+            sleep 5
+          done
+        fi
+        sudo pmm-admin add  mongodb:metrics
       fi
-      sudo pmm-admin add  mongodb:metrics
     else
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
         RBASE1="$(( RBASE + ( $PORT_CHECK * $j ) ))"
