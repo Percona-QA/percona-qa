@@ -5,6 +5,13 @@ PORT=$[$RANDOM % 10000 + 10000]
 MTRT=$[$RANDOM % 100 + 700]
 BUILD=$(pwd | sed 's|^.*/||')
 
+if find . -name group_replication.so | grep -q . ; then 
+  GRP_RPL=1
+else
+  echo "Warning! Group Replication plugin not found. Skipping Group Replication startup"
+  GRP_RPL=0
+fi
+
 JE1="if [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
 JE2=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
 JE3=" elif [ -r /usr/local/lib/libjemalloc.so ]; then export LD_PRELOAD=/usr/local/lib/libjemalloc.so"
@@ -51,9 +58,108 @@ elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
   echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
 fi
 
-# Setup scritps 
-echo "Adding scripts: start | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | tokutek_init"
-rm -f start start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure tokutek_init pmm_os_agent pmm_mysql_agent
+# Setup scritps
+if [[ $GRP_RPL -eq 1 ]];then
+  echo "Adding scripts: start | start_group_replication | start_valgrind | start_gypsy | stop | stop_group_replication | kill | setup | cl | *node_cli | test | init | wipe | wipe_group_replication | all | prepare | run | measure | tokutek_init"
+  rm -f start start_group_replication start_valgrind start_gypsy stop stop_group_replication setup cl *node_cli test init wipe wipe_group_replication all prepare run measure tokutek_init pmm_os_agent pmm_mysql_agent
+else
+  echo "Adding scripts: start | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | tokutek_init"
+  rm -f start start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure tokutek_init pmm_os_agent pmm_mysql_agent
+fi
+
+#GR startup scripts
+if [[ $GRP_RPL -eq 1 ]];then
+  echo -e "#!/bin/bash" > ./start_group_replication
+  echo -e "NODES=\$1"  >> ./start_group_replication
+  echo -e "ADDR=\"127.0.0.1\""  >> ./start_group_replication
+  echo -e "RPORT=$(( RANDOM%21 + 10 ))"  >> ./start_group_replication
+  echo -e "RBASE=\"\$(( RPORT*1000 ))\""  >> ./start_group_replication
+  echo -e "MYEXTRA=\"\"" >> ./start_group_replication
+  echo -e "GR_START_TIMEOUT=300"  >> ./start_group_replication
+  echo -e "BUILD=\$(pwd)\n"  >> ./start_group_replication
+  echo -e "touch ./stop_group_replication " >> ./start_group_replication
+  echo -e "echo 'Starting Group Replication nodes..'\n" >> ./start_group_replication
+
+  echo -e "if [ -z \$NODES ]; then"  >> ./start_group_replication
+  echo -e "  echo \"+--------------------------------------------------------------------------+\""  >> ./start_group_replication
+  echo -e "  echo \"| ** Triggered default startup. Starting single node Group Replication  ** |\""  >> ./start_group_replication
+  echo -e "  echo \"+--------------------------------------------------------------------------+\""  >> ./start_group_replication
+  echo -e "  echo \"|  To start multiple nodes please execute script as;                       |\""  >> ./start_group_replication
+  echo -e "  echo \"|  $./start_group_replication 2                                            |\""  >> ./start_group_replication
+  echo -e "  echo \"|  This would lead to start 2 node cluster                                 |\""  >> ./start_group_replication
+  echo -e "  echo \"+--------------------------------------------------------------------------+\""  >> ./start_group_replication
+  echo -e "  NODES=1"  >> ./start_group_replication
+  echo -e "fi"  >> ./start_group_replication
+
+  echo -e "MID=\"\${BUILD}/bin/mysqld --no-defaults --initialize-insecure --basedir=\${BUILD}\"" >> ./start_group_replication
+
+  if [[ $i -eq 1 ]]; then
+    GR_GROUP_SEEDS=$LADDR
+  else
+    GR_GROUP_SEEDS=$GR_GROUP_SEEDS,$LADDR
+  fi
+
+  echo -e "for i in \`seq 1 \$NODES\`;do" >> ./start_group_replication
+  echo -e "  LADDR=\"\$ADDR:\$(( RBASE + 100 + \$i ))\"" >> ./start_group_replication
+  echo -e "  if [[ \$i -eq 1 ]]; then"  >> ./start_group_replication
+  echo -e "    GR_GROUP_SEEDS="\$LADDR"" >> ./start_group_replication
+  echo -e "  else"  >> ./start_group_replication
+  echo -e "    GR_GROUP_SEEDS=\"\$GR_GROUP_SEEDS,\$LADDR\"" >> ./start_group_replication
+  echo -e "  fi"  >> ./start_group_replication
+  echo -e "done" >> ./start_group_replication
+
+  echo -e "function start_multi_node(){" >> ./start_group_replication
+  echo -e "  for i in \`seq 1 \$NODES\`;do" >> ./start_group_replication
+  echo -e "    RBASE1=\"\$(( RBASE + \$i ))\"" >> ./start_group_replication
+  echo -e "    LADDR1=\"\$ADDR:\$(( RBASE + 100 + \$i ))\"" >> ./start_group_replication
+  echo -e "    node=\"\${BUILD}/node\$i\"" >> ./start_group_replication
+  echo -e "    if [ ! -d \$node ]; then" >> ./start_group_replication
+  echo -e "      \${MID} --datadir=\$node  > \${BUILD}/startup_node\$i.err 2>&1 || exit 1;" >> ./start_group_replication
+  echo -e "    fi\n" >> ./start_group_replication
+
+  echo -e "    \${BUILD}/bin/mysqld --no-defaults \\" >> ./start_group_replication
+  echo -e "      --basedir=\${BUILD} --datadir=\$node \\" >> ./start_group_replication
+  echo -e "      --innodb_file_per_table \$MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \\" >> ./start_group_replication
+  echo -e "      --server_id=1 --gtid_mode=ON --enforce_gtid_consistency=ON \\" >> ./start_group_replication
+  echo -e "      --master_info_repository=TABLE --relay_log_info_repository=TABLE \\" >> ./start_group_replication
+  echo -e "      --binlog_checksum=NONE --log_slave_updates=ON --log_bin=binlog \\" >> ./start_group_replication
+  echo -e "      --binlog_format=ROW --innodb_flush_method=O_DIRECT \\" >> ./start_group_replication
+  echo -e "      --core-file  --sql-mode=no_engine_substitution \\" >> ./start_group_replication
+  echo -e "      --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_group_replication
+  echo -e "      --log-error=\$node/node\$i.err --socket=\$node/socket.sock --log-output=none \\" >> ./start_group_replication
+  echo -e "      --port=\$RBASE1 --transaction_write_set_extraction=XXHASH64 \\" >> ./start_group_replication
+  echo -e "      --loose-group_replication_group_name=\"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\" \\" >> ./start_group_replication
+  echo -e "      --loose-group_replication_start_on_boot=off --loose-group_replication_local_address=\$LADDR1 \\" >> ./start_group_replication
+  echo -e "      --loose-group_replication_group_seeds=\$GR_GROUP_SEEDS \\" >> ./start_group_replication
+  echo -e "      --loose-group_replication_bootstrap_group=off --super_read_only=OFF > \$node/node\$i.err 2>&1 &\n" >> ./start_group_replication
+
+  echo -e "    for X in \$(seq 0 \${GR_START_TIMEOUT}); do" >> ./start_group_replication
+  echo -e "      sleep 1" >> ./start_group_replication
+  echo -e "      if \${BUILD}/bin/mysqladmin -uroot -S\$node/socket.sock ping > /dev/null 2>&1; then" >> ./start_group_replication
+  echo -e "        \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;\" > /dev/null 2>&1" >> ./start_group_replication
+  echo -e "        \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';\" > /dev/null 2>&1" >> ./start_group_replication
+  echo -e "        if [[ \$i -eq 1 ]]; then"  >> ./start_group_replication
+  echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"INSTALL PLUGIN group_replication SONAME 'group_replication.so';SET GLOBAL group_replication_bootstrap_group=ON;START GROUP_REPLICATION;SET GLOBAL group_replication_bootstrap_group=OFF;\" > /dev/null 2>&1"  >> ./start_group_replication
+  echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"create database if not exists test\" > /dev/null 2>&1" >> ./start_group_replication
+  echo -e "        else"  >> ./start_group_replication
+  echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"INSTALL PLUGIN group_replication SONAME 'group_replication.so';START GROUP_REPLICATION;\" > /dev/null 2>&1"  >> ./start_group_replication
+  echo -e "        fi"  >> ./start_group_replication
+  echo -e "        break" >> ./start_group_replication
+  echo -e "      fi" >> ./start_group_replication
+  echo -e "    done" >> ./start_group_replication
+
+  echo -e "    echo -e \"echo 'Server on socket \$node/socket.sock with datadir \$node halted'\" | cat - ./stop_group_replication > ./temp && mv ./temp ./stop_group_replication"  >> ./start_group_replication
+  echo -e "    echo -e \"\${BUILD}/bin/mysqladmin -uroot -S\$node/socket.sock shutdown\" | cat - ./stop_group_replication > ./temp && mv ./temp ./stop_group_replication"  >> ./start_group_replication
+  echo -e "    echo -e \"if [ -d \$node.PREV ]; then rm -Rf \$node.PREV.older; mv \$node.PREV \$node.PREV.older; fi;mv \$node \$node.PREV\" >> ./wipe_group_replication"  >> ./start_group_replication
+  echo -e "    echo -e \"\$BUILD/bin/mysql -A -uroot -S\$node/socket.sock --prompt \\\"node\$i> \\\"\" > \${BUILD}/\$i\\_node_cli "  >> ./start_group_replication
+  echo -e "  done\n" >> ./start_group_replication
+  echo -e "}\n" >> ./start_group_replication
+
+  echo -e "start_multi_node" >> ./start_group_replication
+  echo -e "chmod +x ./stop_group_replication ./*node_cli ./wipe_group_replication" >> ./start_group_replication
+  chmod +x ./start_group_replication
+fi
+
 mkdir -p data data/mysql data/test log
 if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
   TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
