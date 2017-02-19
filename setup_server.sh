@@ -146,33 +146,33 @@ fi
 if [ "$(grep -m1 '* hard core unlimited' /etc/security/limits.conf)" != '* hard core unlimited' ]; then
   sudo sh -c 'echo "* hard core unlimited" >> /etc/security/limits.conf'
 fi
-## Temporarily disabled - these seem to be giving system hang issues on Centos7
-#if [ "$(grep -m1 'fs.file-max=6815744' /etc/sysctl.conf)" != 'fs.file-max=6815744' ]; then
+# With all disabled settings below, it is likely that only one of them caused the original system hangs
+#if [ "$(grep -m1 'fs.file-max=6815744' /etc/sysctl.conf)" != 'fs.file-max=6815744' ]; then  # May cause system hangs on Centos7?
 #  sudo sh -c 'echo "fs.file-max=6815744" >> /etc/sysctl.conf'
 #fi
 # Do not increase nofile soft/hard limit beyond 1048576, unless you want serious Linux authentication/login issues.
 #if [ "$(grep -m1 '* soft nofile 1048576' /etc/security/limits.conf)" != '* soft nofile 1048576' ]; then
 #  sudo sh -c 'echo "* soft nofile 1048576" >> /etc/security/limits.conf'
 #fi
-#if [ "$(grep -m1 '* hard nofile 1048576' /etc/security/limits.conf)" != '* hard nofile 1048576' ]; then
-#  sudo sh -c 'echo "* hard nofile 1048576" >> /etc/security/limits.conf'
-#fi
-#if [ "$(grep -m1 '* soft stack 20480' /etc/security/limits.conf)" != '* soft stack 20480' ]; then
-#  sudo sh -c 'echo "* soft stack 20480" >> /etc/security/limits.conf'
-#fi
-#if [ "$(grep -m1 '* hard stack 20480' /etc/security/limits.conf)" != '* hard stack 20480' ]; then
-#  sudo sh -c 'echo "* hard stack 20480" >> /etc/security/limits.conf'
-#fi
-#if [ "$(grep -m1 '* soft nproc 1048576' /etc/security/limits.conf)" != '* soft nproc 1048576' ]; then
-#  sudo sh -c 'echo "* soft nproc 1048576" >> /etc/security/limits.conf'
-#fi
-#if [ "$(grep -m1 '* hard nproc 1048576' /etc/security/limits.conf)" != '* hard nproc 1048576' ]; then
-#  sudo sh -c 'echo "* hard nproc 1048576" >> /etc/security/limits.conf'
-#fi
-#if [ "$(grep -m1 '* soft memlock 128' /etc/security/limits.conf)" != '* soft memlock 128' ]; then
+if [ "$(grep -m1 '* hard nofile 1048576' /etc/security/limits.conf)" != '* hard nofile 1048576' ]; then
+  sudo sh -c 'echo "* hard nofile 1048576" >> /etc/security/limits.conf'
+fi
+if [ "$(grep -m1 '* soft stack 20480' /etc/security/limits.conf)" != '* soft stack 20480' ]; then
+  sudo sh -c 'echo "* soft stack 20480" >> /etc/security/limits.conf'
+fi
+if [ "$(grep -m1 '* hard stack 20480' /etc/security/limits.conf)" != '* hard stack 20480' ]; then
+  sudo sh -c 'echo "* hard stack 20480" >> /etc/security/limits.conf'
+fi
+if [ "$(grep -m1 '* soft nproc 20480' /etc/security/limits.conf)" != '* soft nproc 1048576' ]; then  # Previously; 1048576. May cause system hangs on Centos7?
+  sudo sh -c 'echo "* soft nproc 20480" >> /etc/security/limits.conf'
+fi
+if [ "$(grep -m1 '* hard nproc 20480' /etc/security/limits.conf)" != '* hard nproc 1048576' ]; then  # Previously; 1048576. May cause system hangs on Centos7?
+  sudo sh -c 'echo "* hard nproc 20480" >> /etc/security/limits.conf'
+fi
+#if [ "$(grep -m1 '* soft memlock 128' /etc/security/limits.conf)" != '* soft memlock 128' ]; then  # May cause system hangs on Centos7?
 #  sudo sh -c 'echo "* soft memlock 128" >> /etc/security/limits.conf'
 #fi
-#if [ "$(grep -m1 '* hard memlock 128' /etc/security/limits.conf)" != '* hard memlock 128' ]; then
+#if [ "$(grep -m1 '* hard memlock 128' /etc/security/limits.conf)" != '* hard memlock 128' ]; then  # May cause system hangs on Centos7?
 #  sudo sh -c 'echo "* hard memlock 128" >> /etc/security/limits.conf'
 #fi
 if [ "$(grep -m1 'DAEMON_COREFILE_LIMIT' /etc/sysconfig/init)" != "DAEMON_COREFILE_LIMIT='unlimited'" ]; then

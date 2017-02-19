@@ -63,14 +63,11 @@ options.use_os_buffer                                    ## http://github.com/fa
 #prebuilt->trx->error_key_num < ha_alter_info->key_count ## NEEDS BUG NUMBER - MAY NOT BE FIXED YET - REMARKED FTM SO WE CAN GET BUG NR
 
 ## =========== Early 5.7 Prepatory Work ===========
-ut0ut.cc line 981                ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug) ( Fixed in 5.7.7, 5.8.0)
-ut0ut.cc line 906                ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; ( Fixed in 5.7.7, 5.8.0)
-ut0ut.cc line 916                ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; ( Fixed in 5.7.7, 5.8.0)
-ut0ut.cc line 918                ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS 5.7B2 ( Fixed in 5.7.7, 5.8.0)
-ut0ut.cc line 923                ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10 ( Fixed in 5.7.7, 5.8.0)
-ut0ut.cc line 924                ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; PS5.7.10R1 ( Fixed in 5.7.7, 5.8.0)
-buf0buf.cc line 2852             ## Still present in 5.6 ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0; ( Fixed in 5.7.7, 5.8.0)
-fil0fil.cc line 6933             ## Still present in 5.6 ## Idem to 74481: SET @@GLOBAL.innodb_fil_make_page_dirty_debug=22;
+ut0ut.cc line 98[0-9]                   ## Still present ## http://bugs.mysql.com/bug.php?id=74481 and MS 74855 and LP 1385030 (likely non-bug)
+ut0ut.cc line 9[0-2][0-9]               ## Still present ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
+buf0buf.cc line 2852                    ## Still present ## Idem to 74481: set global innodb_saved_page_number_debug=100; set global innodb_fil_make_page_dirty_debug=0;
+fil0fil.cc line 6933                    ## Still present ## Idem to 74481: SET @@GLOBAL.innodb_fil_make_page_dirty_debug=22;
+fil0fil.cc line 5133                    ## Still present ## Idem to 74481
 buf0buf.cc line 2678                                     ## Not logged: SET GLOBAL innodb_fil_make_page_dirty_debug=38098908;
 #sync0debug.cc line 299                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
 #buf0lru.cc line 2245                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1415357                                 (# after next bzr pull)
@@ -92,7 +89,6 @@ trx0trx.cc line 1292                                     ## http://bugs.mysql.co
 #trx0trx.cc line 1270                           ## Fixed ## http://bugs.mysql.com/bug.php?id=75782                                                 (# after MS 5.7.8 merged)
 #btr0btr.ic line 126                            ## Fixed ## http://bugs.mysql.com/bug.php?id=75784 (Apparent dup of MS #74577)                     (# after MS 5.7.6 merged)
 btr0cur.cc line 1240                                     ## http://bugs.mysql.com/bug.php?id=74747 (Apparently does not exist in 5.7.6)
-fil0fil.cc line 5133             ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74481 (Fixed in 5.7.7, 5.8.0)
 fil0fil.cc line 6973                                     ## http://bugs.mysql.com/bug.php?id=82386
 fsp0fsp.cc line 2025                                     ## http://bugs.mysql.com/bug.php?id=74876 (MS 5.7.15-m15) (InnoDB: Failing assertion: inode)
 fsp0fsp.cc line 2023                                     ## http://bugs.mysql.com/bug.php?id=74343 (testcase from bug #74876 triggers this assertion also)
@@ -326,6 +322,7 @@ dict0dict.ic line 786                                                           
 dict0dict.ic line 787                                                                   ## http://bugs.mysql.com/bug.php?id=73926, MS 5.6.34
 fsp0fsp.ic line 172                                                                     ## http://bugs.mysql.com/bug.php?id=73926, MS 5.7.16
 #dict0dict.cc line 1202                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74900 (Fixed in 5.6.24, 5.7.6)
+dict0dict.cc line 2332                                                                  ## http://bugs.mysql.com/bug.php?id=85060
 fil0fil.cc line 3412                                                                    ## http://bugs.mysql.com/bug.php?id=74873, older build
 fil0fil.cc line 3485                                                                    ## http://bugs.mysql.com/bug.php?id=74873 PS (5.6 only)
 fil0fil.cc line 3438                                                                    ## http://bugs.mysql.com/bug.php?id=74873 MS (5.6 only)
@@ -492,6 +489,7 @@ item_in->left_expr->cols                                        ## Still present
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## http://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## http://bugs.mysql.com/bug.php?id=74646
 .length % 4                                                                             ## http://bugs.mysql.com/bug.php?id=74220
+length > 0                                                                              ## http://bugs.mysql.com/bug.php?id=85059
 length > 0 .. keyparts .= 0                                                             ## http://bugs.mysql.com/bug.php?id=76604
 length <= max_data_length                                                               ## http://bugs.mysql.com/bug.php?id=75648
 lex.sphead == __null                                                                    ## http://bugs.mysql.com/bug.php?id=74537
