@@ -95,7 +95,7 @@ echo "$output"
 run sudo pmm-admin --version
 echo "$output"
 	[ "$status" -eq 0 ]
-	echo "$output" | grep "1.0"
+	echo "$output" | grep "1.1"
 }
 
 
