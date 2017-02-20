@@ -60,8 +60,8 @@ fi
 
 # Setup scritps
 if [[ $GRP_RPL -eq 1 ]];then
-  echo "Adding scripts: start | start_group_replication | start_valgrind | start_gypsy | stop | stop_group_replication | kill | setup | cl | *node_cli | test | init | wipe | wipe_group_replication | all | prepare | run | measure | tokutek_init"
-  rm -f start start_group_replication start_valgrind start_gypsy stop stop_group_replication setup cl *node_cli test init wipe wipe_group_replication all prepare run measure tokutek_init pmm_os_agent pmm_mysql_agent
+  echo "Adding scripts: start | start_group_replication | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | tokutek_init"
+  rm -f start start_group_replication start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure tokutek_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl wipe_group_replication
 else
   echo "Adding scripts: start | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | tokutek_init"
   rm -f start start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure tokutek_init pmm_os_agent pmm_mysql_agent
@@ -78,17 +78,16 @@ if [[ $GRP_RPL -eq 1 ]];then
   echo -e "GR_START_TIMEOUT=300"  >> ./start_group_replication
   echo -e "BUILD=\$(pwd)\n"  >> ./start_group_replication
   echo -e "touch ./stop_group_replication " >> ./start_group_replication
-  echo -e "echo 'Starting Group Replication nodes..'\n" >> ./start_group_replication
-
   echo -e "if [ -z \$NODES ]; then"  >> ./start_group_replication
-  echo -e "  echo \"+--------------------------------------------------------------------------+\""  >> ./start_group_replication
-  echo -e "  echo \"| ** Triggered default startup. Starting single node Group Replication  ** |\""  >> ./start_group_replication
-  echo -e "  echo \"+--------------------------------------------------------------------------+\""  >> ./start_group_replication
-  echo -e "  echo \"|  To start multiple nodes please execute script as;                       |\""  >> ./start_group_replication
-  echo -e "  echo \"|  $./start_group_replication 2                                            |\""  >> ./start_group_replication
-  echo -e "  echo \"|  This would lead to start 2 node cluster                                 |\""  >> ./start_group_replication
-  echo -e "  echo \"+--------------------------------------------------------------------------+\""  >> ./start_group_replication
-  echo -e "  NODES=1"  >> ./start_group_replication
+  echo -e "  echo \"No valid parameter is passed. Need to pass how many nodes to start. Retry.\""  >> ./start_group_replication
+  echo -e "  echo \"Usage example:\""  >> ./start_group_replication
+  echo -e "  echo \"   $./start_group_replication 2\""  >> ./start_group_replication
+  echo -e "  echo \"   This would start a 2 node Group Replication cluster.\""  >> ./start_group_replication
+  echo -e "  exit 1"  >> ./start_group_replication
+  echo -e "else"  >> ./start_group_replication
+  echo -e "  echo \"Starting \$NODES node Group Replication, please wait...\""  >> ./start_group_replication
+  echo -e "  rm -f ./stop_group_replication ./*cli ./wipe_group_replication" >> ./start_group_replication
+  echo -e "  touch ./stop_group_replication" >> ./start_group_replication
   echo -e "fi"  >> ./start_group_replication
 
   echo -e "MID=\"\${BUILD}/bin/mysqld --no-defaults --initialize-insecure --basedir=\${BUILD}\"" >> ./start_group_replication
@@ -144,6 +143,8 @@ if [[ $GRP_RPL -eq 1 ]];then
   echo -e "        else"  >> ./start_group_replication
   echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"INSTALL PLUGIN group_replication SONAME 'group_replication.so';START GROUP_REPLICATION;\" > /dev/null 2>&1"  >> ./start_group_replication
   echo -e "        fi"  >> ./start_group_replication
+  echo -e "        echo \"Started node\$i.\""  >> ./start_group_replication
+  echo -e "        CLI_SCRIPTS=\"\$CLI_SCRIPTS | \${i}cl \""  >> ./start_group_replication
   echo -e "        break" >> ./start_group_replication
   echo -e "      fi" >> ./start_group_replication
   echo -e "    done" >> ./start_group_replication
@@ -156,10 +157,14 @@ if [[ $GRP_RPL -eq 1 ]];then
   echo -e "}\n" >> ./start_group_replication
 
   echo -e "start_multi_node" >> ./start_group_replication
-  echo -e "chmod +x ./stop_group_replication ./*node_cli ./wipe_group_replication" >> ./start_group_replication
+  echo -e "chmod +x ./stop_group_replication ./*cl ./wipe_group_replication" >> ./start_group_replication
+  echo -e "echo \"Added scripts: \$CLI_SCRIPTS | wipe_group_replication | stop_group_replication \""  >> ./start_group_replication
+  echo -e "echo \"Started \$NODES Node Group Replication. You may access the clients using the scripts above\""  >> ./start_group_replication
+  echo -e "echo \"Please note the wipe_group_replication script is specific for this number of nodes. To setup a completely new Group Replication setup, please use ./start_group_replication again.\""  >> ./start_group_replication
   chmod +x ./start_group_replication
 fi
 
+exit 0
 mkdir -p data data/mysql data/test log
 if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
   TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
