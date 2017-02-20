@@ -27,6 +27,7 @@ ZN24subselect_hash_sj_engine7cleanupEv                                          
 #lock_get_wait(other_lock)                                                       # Fixed ## https://jira.percona.com/browse/PXC-561
 trx0sys.cc line 354                                                                      ## https://github.com/codership/galera/issues/382
 trx0sys.cc line 356                                                                      ## https://github.com/codership/galera/issues/382
+trx0trx.cc line 383                                                                      ## https://github.com/codership/mysql-wsrep/issues/301
 trx0trx.cc line 1290                                                                     ## https://bugs.mysql.com/bug.php?id=82024
 trx0trx.cc line 1296                                                                     ## https://bugs.mysql.com/bug.php?id=82024
 #lock0lock.cc line 2015                                                          # Fixed ## https://jira.percona.com/browse/PXC-561
