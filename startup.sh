@@ -135,13 +135,21 @@ if [[ $GRP_RPL -eq 1 ]];then
   echo -e "    for X in \$(seq 0 \${GR_START_TIMEOUT}); do" >> ./start_group_replication
   echo -e "      sleep 1" >> ./start_group_replication
   echo -e "      if \${BUILD}/bin/mysqladmin -uroot -S\$node/socket.sock ping > /dev/null 2>&1; then" >> ./start_group_replication
-  echo -e "        \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;\" > /dev/null 2>&1" >> ./start_group_replication
-  echo -e "        \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';\" > /dev/null 2>&1" >> ./start_group_replication
-  echo -e "        if [[ \$i -eq 1 ]]; then"  >> ./start_group_replication
-  echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"INSTALL PLUGIN group_replication SONAME 'group_replication.so';SET GLOBAL group_replication_bootstrap_group=ON;START GROUP_REPLICATION;SET GLOBAL group_replication_bootstrap_group=OFF;\" > /dev/null 2>&1"  >> ./start_group_replication
-  echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"create database if not exists test\" > /dev/null 2>&1" >> ./start_group_replication
+  echo -e "        if [ ! -d \$node ]; then" >> ./start_group_replication
+  echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;\" > /dev/null 2>&1" >> ./start_group_replication
+  echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';\" > /dev/null 2>&1" >> ./start_group_replication
+  echo -e "          if [[ \$i -eq 1 ]]; then"  >> ./start_group_replication
+  echo -e "            \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"INSTALL PLUGIN group_replication SONAME 'group_replication.so';SET GLOBAL group_replication_bootstrap_group=ON;START GROUP_REPLICATION;SET GLOBAL group_replication_bootstrap_group=OFF;\" > /dev/null 2>&1"  >> ./start_group_replication
+  echo -e "            \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"create database if not exists test\" > /dev/null 2>&1" >> ./start_group_replication
+  echo -e "          else"  >> ./start_group_replication
+  echo -e "            \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"INSTALL PLUGIN group_replication SONAME 'group_replication.so';START GROUP_REPLICATION;\" > /dev/null 2>&1"  >> ./start_group_replication
+  echo -e "          fi"  >> ./start_group_replication
   echo -e "        else"  >> ./start_group_replication
-  echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"INSTALL PLUGIN group_replication SONAME 'group_replication.so';START GROUP_REPLICATION;\" > /dev/null 2>&1"  >> ./start_group_replication
+  echo -e "          if [[ \$i -eq 1 ]]; then"  >> ./start_group_replication
+  echo -e "            \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"SET GLOBAL group_replication_bootstrap_group=ON;START GROUP_REPLICATION;SET GLOBAL group_replication_bootstrap_group=OFF;\" > /dev/null 2>&1"  >> ./start_group_replication
+  echo -e "          else"  >> ./start_group_replication
+  echo -e "            \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"START GROUP_REPLICATION;\" > /dev/null 2>&1"  >> ./start_group_replication
+  echo -e "          fi"  >> ./start_group_replication
   echo -e "        fi"  >> ./start_group_replication
   echo -e "        echo \"Started node\$i.\""  >> ./start_group_replication
   echo -e "        CLI_SCRIPTS=\"\$CLI_SCRIPTS | \${i}cl \""  >> ./start_group_replication
