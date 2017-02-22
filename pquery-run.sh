@@ -532,7 +532,9 @@ gr_startup(){
   SPASS=
   
   MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
-
+  if [ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]; then
+    MYEXTRA="$MYEXTRA --group_replication_single_primary_mode=OFF"
+  fi
   if [ "$1" == "startup" ]; then
     node1="${WORKDIR}/node1.template"
     node2="${WORKDIR}/node2.template"
