@@ -86,7 +86,7 @@ if [[ $GRP_RPL -eq 1 ]];then
   echo -e "  exit 1"  >> ./start_group_replication
   echo -e "else"  >> ./start_group_replication
   echo -e "  echo \"Starting \$NODES node Group Replication, please wait...\""  >> ./start_group_replication
-  echo -e "  rm -f ./stop_group_replication ./*cli ./wipe_group_replication" >> ./start_group_replication
+  echo -e "  rm -f ./stop_group_replication ./*cl ./wipe_group_replication" >> ./start_group_replication
   echo -e "  touch ./stop_group_replication" >> ./start_group_replication
   echo -e "fi"  >> ./start_group_replication
 
@@ -108,12 +108,14 @@ if [[ $GRP_RPL -eq 1 ]];then
   echo -e "done" >> ./start_group_replication
 
   echo -e "function start_multi_node(){" >> ./start_group_replication
+  echo -e "  NODE_CHK=0" >> ./start_group_replication
   echo -e "  for i in \`seq 1 \$NODES\`;do" >> ./start_group_replication
   echo -e "    RBASE1=\"\$(( RBASE + \$i ))\"" >> ./start_group_replication
   echo -e "    LADDR1=\"\$ADDR:\$(( RBASE + 100 + \$i ))\"" >> ./start_group_replication
   echo -e "    node=\"\${BUILD}/node\$i\"" >> ./start_group_replication
   echo -e "    if [ ! -d \$node ]; then" >> ./start_group_replication
   echo -e "      \${MID} --datadir=\$node  > \${BUILD}/startup_node\$i.err 2>&1 || exit 1;" >> ./start_group_replication
+  echo -e "      NODE_CHK=1" >> ./start_group_replication
   echo -e "    fi\n" >> ./start_group_replication
 
   echo -e "    \${BUILD}/bin/mysqld --no-defaults \\" >> ./start_group_replication
@@ -135,7 +137,7 @@ if [[ $GRP_RPL -eq 1 ]];then
   echo -e "    for X in \$(seq 0 \${GR_START_TIMEOUT}); do" >> ./start_group_replication
   echo -e "      sleep 1" >> ./start_group_replication
   echo -e "      if \${BUILD}/bin/mysqladmin -uroot -S\$node/socket.sock ping > /dev/null 2>&1; then" >> ./start_group_replication
-  echo -e "        if [ ! -d \$node ]; then" >> ./start_group_replication
+  echo -e "        if [ \$NODE_CHK -eq 1 ]; then" >> ./start_group_replication
   echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;\" > /dev/null 2>&1" >> ./start_group_replication
   echo -e "          \${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse \"CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';\" > /dev/null 2>&1" >> ./start_group_replication
   echo -e "          if [[ \$i -eq 1 ]]; then"  >> ./start_group_replication
