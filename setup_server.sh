@@ -62,7 +62,7 @@ sudo yum install kernel-devel wget patch make cmake automake autoconf bzr git ht
      gcc gcc-c++ ncurses-devel ncurses-devel-5* libtool libaio libaio-devel bison jemalloc \
      valgrind perl-DBD-mysql perl-Time-HiRes cpan bzip2 valgrind-devel svn strace screen \
      hdparm pam-devel openssl openssl-devel gtest zlib zlib-devel zlib-static tree vim libasan \
-     yum-utils jemalloc-debuginfo readline-devel lshw lscpu iotop pymongo lzma lzma*
+     yum-utils jemalloc-debuginfo readline-devel lshw lscpu iotop pymongo bats lzma lzma*
 
 sudo yum remove abrt    # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
 sudo yum remove pulseaudio* 

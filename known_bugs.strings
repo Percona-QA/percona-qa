@@ -35,32 +35,32 @@ row0log.ic line 40                                                ## http://bugs
 zip_dict_name.str == 0 .. column_format                           ## http://bugs.launchpad.net/percona-server/+bug/1633957
 
 ## =========== fb-mysql ===========
-v->cfd_->internal_comparator                             ## http://github.com/facebook/mysql-5.6/issues/131
-Z18table_stats_deletePKc                                 ## http://github.com/facebook/mysql-5.6/issues/132
-ZN7rocksdb10TableCache9FindTableERKNS_10EnvOptionsERKNS_21InternalKeyComparatorERKNS_14FileDescriptorEPPNS_5Cache6HandleEbbPNS_13HistogramImplE  ## http://github.com/facebook/mysql-5.6/issues/133
-block_restart_interval_ >= 1                             ## http://github.com/facebook/mysql-5.6/issues/134
-ZNK8Item_ref11used_tablesEv                              ## http://github.com/facebook/mysql-5.6/issues/139
-ZN9__gnu_cxx13new_allocatorImE8allocateEmPKv             ## http://github.com/facebook/mysql-5.6/issues/140
-Z19fill_table_stats_cbPKcS0_bP17my_io_perf_structS2_S2_S2_S2_P17page_stats_structP17comp_stats_structiiS0_  ## http://github.com/facebook/mysql-5.6/issues/141
-Z12mysql_deleteP3THDP10TABLE_LISTP4ItemP10SQL_I_ListI8st_orderEyy  ## http://github.com/facebook/mysql-5.6/issues/142
-ZNKSt6vectorISsSaISsEE14_M_range_checkEm                 ## http://github.com/facebook/mysql-5.6/issues/218
-ha_innodb.cc line 11527                                  ## http://github.com/facebook/mysql-5.6/issues/170
-ha_innodb.cc line 11540                                  ## http://github.com/facebook/mysql-5.6/issues/170
-ut0mem.cc line 105                                       ## http://github.com/facebook/mysql-5.6/issues/171
-rate_ bytes_per_sec > 0                                  ## http://github.com/facebook/mysql-5.6/issues/172
-ZNKSt6vectorIbSaIbEE12_M_check_lenEmPKc                  ## http://github.com/facebook/mysql-5.6/issues/173
-ZN7rocksdb10ThreadPool11PthreadCallEPKci                 ## http://github.com/facebook/mysql-5.6/issues/175
-ZN15RDBSE_TABLE_DEF8put_dictEP12Dict_managerPN7rocksdb10WriteBatchEPhm     ## http://github.com/facebook/mysql-5.6/issues/176
-BaseValid                                                ## http://github.com/facebook/mysql-5.6/issues/185
-ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm     ## http://github.com/facebook/mysql-5.6/issues/202
-os0sync.cc line 490                                      ## http://github.com/facebook/mysql-5.6/issues/190
-trx->has_snapshot                                        ## http://github.com/facebook/mysql-5.6/issues/211
-Z10key_unpackP6StringP5TABLEP6st_key                     ## http://github.com/facebook/mysql-5.6/issues/213
-ZN10Field_long3cmpEPKhS1_                                ## http://github.com/facebook/mysql-5.6/issues/214
-ZN7myrocks15RDBSE_TABLE_DEF8put_dictEPNS_12Dict_managerEPN7rocksdb10WriteBatchEPhm  ## http://github.com/facebook/mysql-5.6/issues/219 (also seen as an empty text string sig11)
-ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm  ## http://github.com/facebook/mysql-5.6/issues/220
-Z17build_equal_itemsP3THDP4ItemP10COND_EQUALbP4ListI10TABLE_LISTEPS4_  ## Another --query-alloc-block-size=-[small or large negative value], ignore for the moment
-options.use_os_buffer                                    ## http://github.com/facebook/mysql-5.6/issues/221
+#TEMP_DISABLE#v->cfd_->internal_comparator                             ## http://github.com/facebook/mysql-5.6/issues/131
+#TEMP_DISABLE#Z18table_stats_deletePKc                                 ## http://github.com/facebook/mysql-5.6/issues/132
+#TEMP_DISABLE#ZN7rocksdb10TableCache9FindTableERKNS_10EnvOptionsERKNS_21InternalKeyComparatorERKNS_14FileDescriptorEPPNS_5Cache6HandleEbbPNS_13HistogramImplE  ## http://github.com/facebook/mysql-5.6/issues/133
+#TEMP_DISABLE#block_restart_interval_ >= 1                             ## http://github.com/facebook/mysql-5.6/issues/134
+#TEMP_DISABLE#ZNK8Item_ref11used_tablesEv                              ## http://github.com/facebook/mysql-5.6/issues/139
+#TEMP_DISABLE#ZN9__gnu_cxx13new_allocatorImE8allocateEmPKv             ## http://github.com/facebook/mysql-5.6/issues/140
+#TEMP_DISABLE#Z19fill_table_stats_cbPKcS0_bP17my_io_perf_structS2_S2_S2_S2_P17page_stats_structP17comp_stats_structiiS0_  ## http://github.com/facebook/mysql-5.6/issues/141
+#TEMP_DISABLE#Z12mysql_deleteP3THDP10TABLE_LISTP4ItemP10SQL_I_ListI8st_orderEyy  ## http://github.com/facebook/mysql-5.6/issues/142
+#TEMP_DISABLE#ZNKSt6vectorISsSaISsEE14_M_range_checkEm                 ## http://github.com/facebook/mysql-5.6/issues/218
+#TEMP_DISABLE#ha_innodb.cc line 11527                                  ## http://github.com/facebook/mysql-5.6/issues/170
+#TEMP_DISABLE#ha_innodb.cc line 11540                                  ## http://github.com/facebook/mysql-5.6/issues/170
+#TEMP_DISABLE#ut0mem.cc line 105                                       ## http://github.com/facebook/mysql-5.6/issues/171
+#TEMP_DISABLE#rate_ bytes_per_sec > 0                                  ## http://github.com/facebook/mysql-5.6/issues/172
+#TEMP_DISABLE#ZNKSt6vectorIbSaIbEE12_M_check_lenEmPKc                  ## http://github.com/facebook/mysql-5.6/issues/173
+#TEMP_DISABLE#ZN7rocksdb10ThreadPool11PthreadCallEPKci                 ## http://github.com/facebook/mysql-5.6/issues/175
+#TEMP_DISABLE#ZN15RDBSE_TABLE_DEF8put_dictEP12Dict_managerPN7rocksdb10WriteBatchEPhm     ## http://github.com/facebook/mysql-5.6/issues/176
+#TEMP_DISABLE#BaseValid                                                ## http://github.com/facebook/mysql-5.6/issues/185
+#TEMP_DISABLE#ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm     ## http://github.com/facebook/mysql-5.6/issues/202
+#TEMP_DISABLE#os0sync.cc line 490                                      ## http://github.com/facebook/mysql-5.6/issues/190
+#TEMP_DISABLE#trx->has_snapshot                                        ## http://github.com/facebook/mysql-5.6/issues/211
+#TEMP_DISABLE#Z10key_unpackP6StringP5TABLEP6st_key                     ## http://github.com/facebook/mysql-5.6/issues/213
+#TEMP_DISABLE#ZN10Field_long3cmpEPKhS1_                                ## http://github.com/facebook/mysql-5.6/issues/214
+#TEMP_DISABLE#ZN7myrocks15RDBSE_TABLE_DEF8put_dictEPNS_12Dict_managerEPN7rocksdb10WriteBatchEPhm  ## http://github.com/facebook/mysql-5.6/issues/219 (also seen as an empty text string sig11)
+#TEMP_DISABLE#ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm  ## http://github.com/facebook/mysql-5.6/issues/220
+#TEMP_DISABLE#Z17build_equal_itemsP3THDP4ItemP10COND_EQUALbP4ListI10TABLE_LISTEPS4_  ## Another --query-alloc-block-size=-[small or large negative value], ignore for the moment
+#TEMP_DISABLE#options.use_os_buffer                                    ## http://github.com/facebook/mysql-5.6/issues/221
 #prebuilt->trx->error_key_num < ha_alter_info->key_count ## NEEDS BUG NUMBER - MAY NOT BE FIXED YET - REMARKED FTM SO WE CAN GET BUG NR
 
 ## =========== Early 5.7 Prepatory Work ===========
@@ -428,7 +428,7 @@ row0trunc.cc line 1983                                                          
 #row0upd.ic line 182                                                           ## Fixed ## http://bugs.mysql.com/bug.php?id=74589 - With MS debug build (fixed in 5.6.24, 5.7.6)
 #row0upd.cc line 1794                                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226538 (dup of 1395579)
 srv0srv.cc line 2664                                                                    ## http://bugs.mysql.com/bug.php?id=73913 (same assert as 74418 but diff)
-##srv0srv.cc line 3072                                                                    ## http://bugs.mysql.com/bug.php?id=73913 or 74418, PS 5.17.16
+srv0srv.cc line 3072                                                                    ## http://bugs.mysql.com/bug.php?id=73913 or 74418, PS 5.17.16 (also see PS bug 1369326)
 srv0srv.cc line 3337                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35
 srv0srv.cc line 2666                                                                    ## http://bugs.mysql.com/bug.php?id=73913 MS 5.6.22
 srv0srv.cc line 3353                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.5.53

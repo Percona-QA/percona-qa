@@ -132,6 +132,8 @@
   screen -admS s1 bash -c "ls --color=auto;bash"  # With thanks, http://www.cyberciti.biz/faq/how-to-turn-on-or-off-colors-in-bash/ and http://askubuntu.com/q/62562
 # An easy way to get all text from a webpage, ready for further textual processing
   lynx --dump http://someurl.com
+# Sort a numeric array  # With thanks, https://www.reddit.com/r/bash/comments/3cbt1p/sorting_array_of_numeric_values/csu2150/
+  mapfile -t ARRAY < <(printf '%s\n' "${ARRAY[@]}" | sort -n)  # You can also use -u with the sort to have unqiue values only and/or -r to have a reverse (large>small) sort
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging

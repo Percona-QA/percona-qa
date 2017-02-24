@@ -31,21 +31,27 @@ elif [ `ls ./reducer* ./qcreducer* 2>/dev/null | wc -l` -eq 0 ]; then
   exit 1
 fi
 
+# String (TEXT=string) specific trials (commonly these are MODE=3 trials)
 TRIALS_EXECUTED=$(cat pquery-run.log 2>/dev/null | grep -o "==.*TRIAL.*==" | tail -n1 | sed 's|[^0-9]*||;s|[ \t=]||g')
 echo "================ [Run: $(echo ${PWD} | sed 's|.*/||')] Sorted unique issue strings (${TRIALS_EXECUTED} trials executed, `ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l` remaining reducer scripts)"
 ORIG_IFS=$IFS; IFS=$'\n'  # Use newline seperator instead of space seperator in the for loop
 if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
-  for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT="||;s|"$||' | sort -u`; do
+  for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*:||;s|"|.|g' | sort -u`; do
+    MATCHING_TRIALS=()
+    for MATCHING_TRIAL in `grep -H "${STRING}" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
+      MATCHING_TRIAL=$(echo ${MATCHING_TRIAL} | sed 's|.*TEXT=.||;s|\.[ \t]*$||')
+      MATCHING_TRIALS+=($MATCHING_TRIAL)
+    done
+    STRING=$(echo ${STRING} | sed 's|.*TEXT=.||;s|\.[ \t]*$||')
     COUNT=`grep "   TEXT=" reducer* 2>/dev/null | sed 's|reducer\([0-9]\).sh:|reducer\1.sh:  |;s|reducer\([0-9][0-9]\).sh:|reducer\1.sh: |;s|  TEXT|TEXT|' | grep "${STRING}" | wc -l`
-    MATCHING_TRIALS=`grep -H "   TEXT=" reducer* 2>/dev/null | sed 's|reducer\([0-9]\).sh:|reducer\1.sh:  |;s|reducer\([0-9][0-9]\).sh:|reducer\1.sh: |;s|  TEXT|TEXT|' | grep "${STRING}" | sed 's|.sh.*||;s|reducer||' | tr '\n' ',' | sed 's|,$||'`
     STRING_OUT=`echo $STRING | awk -F "\n" '{printf "%-55s",$1}'`
     COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
-    echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS})"
+    echo -e "${STRING_OUT}${COUNT_OUT}$(echo ${MATCHING_TRIALS[@]}|sed 's| |,|g'))"
   done
 else
   for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT="||;s|"$||' | sort -u`; do
     MATCHING_TRIALS=()
-    for TRIAL in `grep -H ${STRING} reducer* 2>/dev/null | awk '{ print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | uniq` ; do
+    for TRIAL in `grep -H "${STRING}" reducer* 2>/dev/null | awk '{print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | sort -un` ; do
       MATCHING_TRIAL=`grep -H "   TEXT=" reducer${TRIAL}-* 2>/dev/null | sed 's|reducer\([0-9]\).sh:|reducer\1.sh:  |;s|reducer\([0-9][0-9]\).sh:|reducer\1.sh: |;s|  TEXT|TEXT|' | grep "${STRING}" | sed "s|.sh.*||;s|reducer${TRIAL}-||" | tr '\n' ',' | sed 's|,$||' | xargs -I {} echo "[${TRIAL}-{}] "`
       MATCHING_TRIALS+=("$MATCHING_TRIAL")
     done
@@ -56,20 +62,24 @@ else
   done
 fi
 IFS=$ORIG_IFS
+
 # MODE 4 TRIALS
 if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
   COUNT=`grep -l "^MODE=4$" reducer* 2>/dev/null | wc -l`
   if [ $COUNT -gt 0 ]; then
-    MATCHING_TRIALS=`grep -l "^MODE=4$" reducer* 2>/dev/null | tr -d '\n' | sed 's|reducer|,|g;s|[.sh]||g;s|^,||'`
+    MATCHING_TRIALS=()
+    for MATCHING_TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
+      MATCHING_TRIALS+=($MATCHING_TRIAL)
+    done
     STRING_OUT=`echo "* TRIALS TO CHECK MANUALLY (NO TEXT SET: MODE=4) *" | awk -F "\n" '{printf "%-55s",$1}'`
     COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
-    echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS})"
+    echo -e "${STRING_OUT}${COUNT_OUT}$(echo ${MATCHING_TRIALS[@]}|sed 's| |,|g'))"
   fi
 else
   COUNT=`grep -l "^MODE=4$" reducer* 2>/dev/null | wc -l`
   if [ $COUNT -gt 0 ]; then
     MATCHING_TRIALS=()
-    for TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{ print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | uniq` ; do
+    for TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | sort -un`; do
       MATCHING_TRIAL=`grep -H "^MODE=4$" reducer${TRIAL}-* 2>/dev/null | sed "s|.sh.*||;s|reducer${TRIAL}-||" | tr '\n' , | sed 's|,$||' | xargs -I '{}' echo "[${TRIAL}-{}] "`
       MATCHING_TRIALS+=("$MATCHING_TRIAL")
     done
@@ -78,6 +88,7 @@ else
     echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS[@]})"
   fi
 fi
+
 # 'MySQL server has gone away' seen >= 200 times + timeout was not reached
 if [ $(ls */GONEAWAY 2>/dev/null | wc -l) -gt 0 ]; then
   echo "--------------"
@@ -90,6 +101,7 @@ if [ $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; t
   echo "'SIGKILL myself' trials found: $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | sed 's|/.*||' | tr '\n' ',' | sed 's|,$||')"
   echo "(> 'SIGKILL myself' trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='SIGKILL myself' in their reducer<trialnr>.sh files. Then, simply reduce as normal.)"
 fi
+
 # ASAN errors
 if [ $(grep -l "ERROR:" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then 
   echo "--------------"
@@ -97,12 +109,13 @@ if [ $(grep -l "ERROR:" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then
   grep "ERROR:" */log/master.err 2>/dev/null | sed 's|/log/master.err||'
   echo "(> ASAN trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='ERROR: <copy some limited detail from line above but NOT the addresses>' in their reducer<trialnr>.sh files. Then, simply reduce as normal.)"
 fi
+
 # MODE 2 TRIALS (Query correctness trials)
 COUNT=`grep -l "^MODE=2$" qcreducer* 2>/dev/null | wc -l`
 if [ $COUNT -gt 0 ]; then
   for STRING in `grep "   TEXT=" qcreducer* 2>/dev/null | sed 's|.*TEXT="||;s|"$||' | sort -u`; do
     MATCHING_TRIALS=()
-    for TRIAL in `grep -H ${STRING} qcreducer* 2>/dev/null | awk '{ print $1}' | cut -d'-' -f1 | sed 's/[^0-9]//g' | uniq` ; do
+    for TRIAL in `grep -H "${STRING}" qcreducer* 2>/dev/null | awk '{ print $1}' | cut -d'-' -f1 | sed 's/[^0-9]//g' | sort -un` ; do
       MATCHING_TRIAL=`grep -H "   TEXT=" qcreducer${TRIAL}* 2>/dev/null | sed 's!qcreducer\([0-9]\).sh:!qcreducer\1.sh:  !;s!qcreducer\([0-9][0-9]\).sh:!qcreducer\1.sh: !;s!  TEXT!TEXT!' | grep "${STRING}" | sed "s!.sh.*!!;s!reducer${TRIAL}!!" | tr '\n' ',' | sed 's!,$!!' | xargs -I {} echo "[${TRIAL}{}] " 2>/dev/null | sed 's!qc!!' `
       MATCHING_TRIALS+=("$MATCHING_TRIAL")
     done
