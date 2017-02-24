@@ -30,6 +30,7 @@ trx0sys.cc line 356                                                             
 trx0trx.cc line 383                                                                      ## https://github.com/codership/mysql-wsrep/issues/301
 trx0trx.cc line 1290                                                                     ## https://bugs.mysql.com/bug.php?id=82024
 trx0trx.cc line 1296                                                                     ## https://bugs.mysql.com/bug.php?id=82024
+trx0trx.cc line 1306                                                                     ## http://bugs.mysql.com/bug.php?id=79349
 #lock0lock.cc line 2015                                                          # Fixed ## https://jira.percona.com/browse/PXC-561
 row0mysql.cc line 1012                                                                   ## http://bugs.mysql.com/bug.php?id=82652 (PXC-669)
 rem0rec.cc line 870                                                                      ## https://bugs.mysql.com/bug.php?id=79794

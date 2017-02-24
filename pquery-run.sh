@@ -534,6 +534,8 @@ gr_startup(){
   MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
   if [ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]; then
     MYEXTRA="$MYEXTRA --plugin-load=group_replication.so --group_replication_single_primary_mode=OFF"
+  else
+    MYEXTRA="$MYEXTRA --plugin-load=group_replication.so"
   fi
   if [ "$1" == "startup" ]; then
     node1="${WORKDIR}/node1.template"
