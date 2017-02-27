@@ -61,6 +61,7 @@ trx0trx.cc line 697                                                             
 pfs_mutex->m_class .= __null                                                             ## https://jira.percona.com/browse/PXC-746
 loop .. seqno == seqno_released                                                          ## https://jira.percona.com/browse/PXC-747
 1 == conn->stop_sent                                                                     ## https://jira.percona.com/browse/PXC-748
+.mdl_context.has_locks                                                                   ## https://github.com/codership/mysql-wsrep/issues/303
 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
