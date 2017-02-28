@@ -59,7 +59,7 @@ function run_ps_specific_tests() {
 }
 
 @test "Adding clients" {
-  pmm_framework_add_clients ps 2
+  pmm_framework_add_clients $instance_t $instance_c
   echo $output
   [ "$status" -eq 0 ]
 }

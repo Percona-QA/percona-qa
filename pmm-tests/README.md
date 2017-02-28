@@ -12,7 +12,6 @@ pmm-framework.sh   -> Executable for creating environment
 pmm-testsuite.bats -> The test suite bats file
 ps-specific-tests.bats -> PS specific tests
 
-
 ```
 
 
@@ -20,7 +19,7 @@ Sample run for PS:
 
 ```
 
-[sh@centos7-base ~]$ bats percona-qa/pmm-tests/pmm-testsuite.bats
+[sh@centos7-base ~]$ instance_t="ps" instance_c="2" bats percona-qa/pmm-tests/pmm-testsuite.bats
 ✓ Wipe clients
 ✓ Adding clients
 ✓ Running generic tests
