@@ -433,10 +433,10 @@ add_clients(){
         RBASE1="$(( RBASE + ( $PORT_CHECK * $j ) ))"
         LADDR1="$ADDR:$(( RBASE1 + 8 ))"
         node="${BASEDIR}/node$j"
-        if ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
-          echo "WARNING! Another mysqld process using $node/n${j}.sock"
-          if ! sudo pmm-admin list | grep "$node/n${j}.sock" > /dev/null ; then
-            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=$node/n${j}.sock --user=root --query-source=perfschema
+        if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+          echo "WARNING! Another mysqld process using /tmp/${NODE_NAME}_${j}.sock"
+          if ! sudo pmm-admin list | grep "/tmp/${NODE_NAME}_${j}.sock" > /dev/null ; then
+            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
           fi
           continue
         fi
@@ -460,13 +460,13 @@ add_clients(){
           MYEXTRA="--no-defaults"
         fi
         ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
-          --socket=$node/n${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
+          --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
         for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
           sleep 1
-          if ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
-            check_user=`${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
+          if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+            check_user=`${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
             if [[ -z "$check_user" ]]; then
-              ${BASEDIR}/bin/mysql  -uroot -S$node/n${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
+              ${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
               (
               printf "%s\t%s\n" "Orchestrator username :" "admin"
               printf "%s\t%s\n" "Orchestrator password :" "passw0rd"
@@ -476,12 +476,12 @@ add_clients(){
             fi
             break
           fi
-          if ! ${BASEDIR}/bin/mysqladmin -uroot -S$node/n${j}.sock ping > /dev/null 2>&1; then
+          if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
             echo "ERROR! ${NODE_NAME} startup failed. Please check error log $node/error.err"
             exit 1
           fi
         done
-        sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=$node/n${j}.sock --user=root --query-source=perfschema
+        sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
       done
     fi
   done
