@@ -174,7 +174,6 @@ if [[ $GRP_RPL -eq 1 ]];then
   chmod +x ./start_group_replication
 fi
 
-exit 0
 mkdir -p data data/mysql data/test log
 if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
   TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
