@@ -44,6 +44,10 @@ function  pmm_wipe_server() {
 
 # functions for bats calling
 
+function run_linux_metrics_tests() {
+  run bats ${SCRIPT_PWD}/linux-metrics.bats
+}
+
 function run_generic_tests() {
   run bats ${SCRIPT_PWD}/generic-tests.bats
 }
@@ -60,6 +64,12 @@ function run_ps_specific_tests() {
 
 @test "Adding clients" {
   pmm_framework_add_clients $instance_t $instance_c
+  echo $output
+  [ "$status" -eq 0 ]
+}
+
+@test "Running linux metrics tests" {
+  run_linux_metrics_tests
   echo $output
   [ "$status" -eq 0 ]
 }
