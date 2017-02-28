@@ -1846,6 +1846,9 @@ start_mysqld_main(){
     if [ "${CHK_ROCKSDB}" == "1" ];then
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
+    elif [ "${CHK_LOGBIN57}" == "1" ];then
+      CMD="${CMD} --server-id=100"
+      sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -1860,6 +1863,9 @@ start_mysqld_main(){
     if [ "${CHK_ROCKSDB}" == "1" ];then  
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
+    elif [ "${CHK_LOGBIN57}" == "1" ];then
+      CMD="${CMD} --server-id=100"
+      sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -2264,6 +2270,7 @@ cleanup_and_save(){
     fi
     cp -f $WORKT $WORKO
     cp -f $WORKO $WORK_OUT
+    sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
     # Save a tarball of full self-contained testcase on each successful reduction
     BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
     rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
@@ -3877,12 +3884,28 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
 
   myextra_check
 
+  #RocksDB startup option check
   rocksdb_startup_chk(){
    if echo "${MYEXTRA}" | grep '\--rocksdb\|--default-storage-engine=RocksDB\|--skip-innodb\|--default-tmp-storage-engine=MyISAM'; then
      MYEXTRA=$(echo $MYEXTRA | sed 's|--default-storage-engine=RocksDB||;s|--skip-innodb ||;s|--default-tmp-storage-engine=MyISAM||;s|--rocksdb ||')
      CHK_ROCKSDB=1
      ECHO_ROCKSDB=": RocksDB run, server startup will use following mysqld options - $MYROCKS"
    fi
+  }
+
+  #binary log server-id startup option check with 5.7 version
+  logbin_startup_chk(){
+    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+      if echo "${MYEXTRA}" | grep '\--log-bin'; then
+        if ! echo "${MYEXTRA}" | grep '\--server-id'; then
+          CHK_LOGBIN57=1
+        else
+          CHK_LOGBIN57=0
+        fi
+      fi
+    else
+      CHK_LOGBIN57=0
+    fi
   }
 
   myextra_reduction(){
@@ -3899,6 +3922,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       STAGE8_CHK=0
       COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
+      logbin_startup_chk
       run_and_check
       TRIAL=$[$TRIAL+1]
       STAGE8_OPT=$line
@@ -3915,6 +3939,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
         fi
         MYEXTRA=$(cat $FILE1 | tr -s "\n" " ")
         rocksdb_startup_chk
+        logbin_startup_chk
         COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
         if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
           echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
@@ -3932,6 +3957,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
           fi
           MYEXTRA=$(cat $FILE2 | tr -s "\n" " ")
           rocksdb_startup_chk
+          logbin_startup_chk
           COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
           if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
             echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
