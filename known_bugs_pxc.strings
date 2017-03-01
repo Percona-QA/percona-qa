@@ -62,7 +62,16 @@ pfs_mutex->m_class .= __null                                                    
 loop .. seqno == seqno_released                                                          ## https://jira.percona.com/browse/PXC-747
 1 == conn->stop_sent                                                                     ## https://jira.percona.com/browse/PXC-748
 .mdl_context.has_locks                                                                   ## https://github.com/codership/mysql-wsrep/issues/303
-
+mi->rli->inited                                                                          ## https://jira.percona.com/browse/PXC-772
+sync0policy.ic line 63                                                                   ## https://jira.percona.com/browse/PXC-773
+tabledef->type.i                                                                         ## https://jira.percona.com/browse/PXC-774
+thd->wsrep_next_trx_id                                                                   ## https://jira.percona.com/browse/PXC-775
+Z11plugin_lockP3THDPPP13st_plugin_int                                                    ## https://jira.percona.com/browse/PXC-776
+Z26log_online_follow_redo_logv                                                           ## https://jira.percona.com/browse/PXC-777
+ZN2gu12MutexWithPFSC2E19wsrep_pfs_instr_tag                                              ## https://jira.percona.com/browse/PXC-778
+fil0fil.cc line 2099                                                                     ## https://jira.percona.com/browse/PXC-779
+fil0fil.cc line 632                                                                      ## https://jira.percona.com/browse/PXC-780
+ 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
