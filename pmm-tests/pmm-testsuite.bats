@@ -68,6 +68,12 @@ function run_ps_specific_tests() {
   [ "$status" -eq 0 ]
 }
 
+@test "Running linux metrics tests" {
+  run_linux_metrics_tests
+  echo $output
+  [ "$status" -eq 0 ]
+}
+
 @test "Running generic tests" {
   run_generic_tests
   #echo $output
