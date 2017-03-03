@@ -28,7 +28,8 @@ maybe_null                                               ## http://bugs.mysql.co
 #ha_innodb.cc line 4203                                           ## http://bugs.launchpad.net/percona-server/+bug/1629257 (old line nr)
 #ha_innodb.cc line 4170                                           ## http://bugs.launchpad.net/percona-server/+bug/1629257 (old line nr)
 ha_innodb.cc line 4218                                            ## http://bugs.launchpad.net/percona-server/+bug/1629257 (PS 5.6.35)
-ha_innodb.cc line 4206                                            ## http://bugs.launchpad.net/percona-server/+bug/1666101
+ha_innodb.cc line 4206                                            ## http://bugs.launchpad.net/percona-server/+bug/1666101 (similar to 1668508)
+ha_innodb.cc line 4170                                            ## http://bugs.launchpad.net/percona-server/+bug/1668508 (similar to 1666101)
 ha_innodb.cc line 4529                                            ## SET DEBUG='+d,ib_create_table_fail_too_many_trx'; CREATE COMPRESSION_DICTIONARY d0('a'); Asked Yura email 5.7
 ha_innodb.cc line 4182                                            ## SET DEBUG='+d,ib_create_table_fail_too_many_trx'; CREATE COMPRESSION_DICTIONARY d0('a'); Asked Yura email 5.6
 row0log.ic line 40                                                ## http://bugs.launchpad.net/percona-server/+bug/1630500
@@ -261,6 +262,7 @@ fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above
 ha_innodb.cc line 1128                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and likely 5.6) 1128=MS5.5
 ha_innodb.cc line 1401                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and likely 5.6) 1401=PS5.5
 ha_innodb.cc line 1725                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (MS 5.6, alike to 78732) 
+ha_innodb.cc line 2085                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732)
 ha_innodb.cc line 2102                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732) 
 
 ## =========== Line number based ===========

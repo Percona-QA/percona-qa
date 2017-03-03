@@ -2705,6 +2705,7 @@ finish(){
 }
 
 copy_workdir_to_tmp(){
+  WORKDIR_COPY_SUCCESS=0
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
@@ -2722,6 +2723,7 @@ copy_workdir_to_tmp(){
       SPACE_WORKD=$(du -s $WORKD 2>/dev/null | sed 's|[ \t].*||')
       SPACE_TMPCP=$(du -s /tmp/$EPOCH 2>/dev/null | sed 's|[ \t].*||')
       if [ -d /tmp/$EPOCH -a ${SPACE_TMPCP} -gt ${SPACE_WORKD} ]; then
+        WORKDIR_COPY_SUCCESS=1
         echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$EPOCH now deleting temporary work directory $WORKD"
         rm -Rf $WORKD
       else 
@@ -2766,26 +2768,32 @@ verify_not_found(){
   fi
   echo_out "$ATLEASTONCE [Stage $STAGE] Initial verify of the issue: fail. Bug/issue is not present. Terminating."
   echo_out "[Finish] Verification failed. It may help to check the following files to get an idea as to why this run did not reproduce the issue (if these files do not give any further hints, please check variable/initialization differences, enviroment differences etc.):"
+  WORKDIR_COPY_SUCCESS=0  # Defensive programming, not required (as copy_workdir_to_tmp sets it)
+  copy_workdir_to_tmp
+  if [ $WORKDIR_COPY_SUCCESS -eq 0 ]; then 
+    PRINTWORKD="$WORKD"
+  else
+    PRINTWORKD="/tmp/${EPOCH}"
+  fi
   if [ $MODE -ge 6 ]; then
     if [ $TS_DBG_CLI_OUTPUT -eq 1 ]; then
-      echo_out "[Finish] mysql CLI client output : $WORKD/${EXTRA_PATH}mysql<threadid>.out   (Look for clear signs of non-replay or a terminated connection)"
+      echo_out "[Finish] mysql CLI client output : ${PRINTWORKD}/${EXTRA_PATH}mysql<threadid>.out   (Look for clear signs of non-replay or a terminated connection)"
     else
       echo_out "[Finish] mysql CLI client output : not recorded                 (You may want to *TEMPORARY* turn on TS_DBG_CLI_OUTPUT to debug. Ensure to turn it back off before re-testing if the issue exists as it will likely not show with debug on if this is a multi-threaded issue)"
      fi
   else
     if [ $PQUERY_MOD -eq 1 ]; then
-      echo_out "[Finish] pquery client output    : $WORKD/${EXTRA_PATH}pquery_thread-0.out   (Look for clear signs of non-replay or a terminated connection"
-    else
-      echo_out "[Finish] mysql CLI client output : $WORKD/${EXTRA_PATH}mysql.out             (Look for clear signs of non-replay or a terminated connection"
+      echo_out "[Finish] pquery client output    : ${PRINTWORKD}/{EXTRA_PATH}default.node.tld_thread-0.sql  (Look for clear signs of non-replay or a terminated connection)"
+    elset
+      echo_out "[Finish] mysql CLI client output : ${PRINTWORKD}/${EXTRA_PATH}mysql.out             (Look for clear signs of non-replay or a terminated connection)"
     fi
   fi
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-    echo_out "[Finish] Valgrind output         : $WORKD/${EXTRA_PATH}valgrind.out          (Check if there are really 0 errors)"
+    echo_out "[Finish] Valgrind output         : ${PRINTWORKD}/${EXTRA_PATH}valgrind.out          (Check if there are really 0 errors)"
   fi
-  echo_out "[Finish] mysqld error log output : $WORKD/${EXTRA_PATH}error.log(.out)       (Check if the mysqld server output looks normal. ".out" = last startup)"
-  echo_out "[Finish] initialization output   : $WORKD/${EXTRA_PATH}init.log              (Check if the inital server initalization happened correctly)"
-  echo_out "[Finish] time init output        : $WORKD/${EXTRA_PATH}timezone.init         (Check if the timezone information was installed correctly)"
-  copy_workdir_to_tmp
+  echo_out "[Finish] mysqld error log output : ${PRINTWORKD}/${EXTRA_PATH}error.log(.out)       (Check if the mysqld server output looks normal. ".out" = last startup)"
+  echo_out "[Finish] initialization output   : ${PRINTWORKD}/${EXTRA_PATH}init.log              (Check if the inital server initalization happened correctly)"
+  echo_out "[Finish] time init output        : ${PRINTWORKD}/${EXTRA_PATH}timezone.init         (Check if the timezone information was installed correctly)"
   exit 1
 }
 
@@ -3032,7 +3040,7 @@ verify(){
   if [ $MODE -eq 2 ]; then 
     if [ $PQUERY_MOD -eq 1 ]; then 
                            echo_out "[Init] Run mode: MODE=2: pquery client output"
-                           echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/pquery_thread-0.out when MULTI mode is not active)";
+                           echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/default.node.tld_thread-0.sql when MULTI mode is not active)";
     else
                            echo_out "[Init] Run mode: MODE=2: mysql CLI output"
                            echo_out "[Init] Looking for this string: '$TEXT' in mysql CLI output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi; fi 
