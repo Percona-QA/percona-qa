@@ -134,6 +134,8 @@
   lynx --dump http://someurl.com
 # Sort a numeric array  # With thanks, https://www.reddit.com/r/bash/comments/3cbt1p/sorting_array_of_numeric_values/csu2150/
   mapfile -t ARRAY < <(printf '%s\n' "${ARRAY[@]}" | sort -n)  # You can also use -u with the sort to have unqiue values only and/or -r to have a reverse (large>small) sort
+# Find a certain string within all files in a subdirectory (handy for finding text like function names etc. in source code etc.)
+  grep -R --include=* -n "search string"  # From the highest directory
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
