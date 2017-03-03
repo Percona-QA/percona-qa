@@ -63,8 +63,12 @@ if [ ! -r character.txt ]; then echo "Assert: character.txt not found!"; exit 1;
 if [ ! -r numsimple.txt ]; then echo "Assert: numsimple.txt not found!"; exit 1; fi
 if [ ! -r numeric.txt ]; then echo "Assert: numeric.txt not found!"; exit 1; fi
 if [ ! -r aggregate.txt ]; then echo "Assert: aggregate.txt not found!"; exit 1; fi
+if [ ! -r month.txt ]; then echo "Assert: month.txt not found!"; exit 1; fi
+if [ ! -r day.txt ]; then echo "Assert: day.txt not found!"; exit 1; fi
+if [ ! -r hour.txt ]; then echo "Assert: hour.txt not found!"; exit 1; fi
+if [ ! -r minsec.txt ]; then echo "Assert: minsec.txt not found!"; exit 1; fi
 
-# ====== Read data files into arrays                                            # ====== From arrays
+# ====== Read data files into arrays                                            # ====== Usable functions to read from those arrays
 mapfile -t tables    < tables.txt       ; TABLES=${#tables[*]}                  ; table()      { echo "${tables[$[$RANDOM % $TABLES]]}"; }
 mapfile -t views     < views.txt        ; VIEWS=${#views[*]}                    ; view()       { echo "${views[$[$RANDOM % $VIEWS]]}"; }
 mapfile -t pk        < pk.txt           ; PK=${#pk[*]}                          ; pk()         { echo "${pk[$[$RANDOM % $PK]]}"; }
@@ -101,6 +105,10 @@ mapfile -t character < character.txt    ; CHARACTER=${#character[*]}            
 mapfile -t numsimple < numsimple.txt    ; NUMSIMPLE=${#numsimple[*]}            ; numsimple()  { echo "${numsimple[$[$RANDOM % $NUMSIMPLE]]}"; }
 mapfile -t numeric   < numeric.txt      ; NUMERIC=${#numeric[*]}                ; numeric()    { echo "${numeric[$[$RANDOM % $NUMERIC]]}"; }
 mapfile -t aggregate < aggregate.txt    ; AGGREGATE=${#aggregate[*]}            ; aggregate()  { echo "${aggregate[$[$RANDOM % $AGGREGATE]]}"; }
+mapfile -t month     < month.txt        ; MONTH=${#month[*]}                    ; month()      { echo "${month[$[$RANDOM % $MONTH]]}"; }
+mapfile -t day       < day.txt          ; DAY=${#day[*]}                        ; day()        { echo "${day[$[$RANDOM % $DAY]]}"; }
+mapfile -t hour      < hour.txt         ; HOUR=${#hour[*]}                      ; hour()       { echo "${hour[$[$RANDOM % $HOUR]]}"; }
+mapfile -t minsec    < minsec.txt       ; MINSEC=${#minsec[*]}                  ; minsec()     { echo "${minsec[$[$RANDOM % $MINSEC]]}"; }
 
 if [ ${TABLES} -lt 2 ]; then echo "Assert: number of table names is less then 2. A minimum of two tables is required for proper operation. Please ensure tables.txt has at least two table names"; exit 1; fi
 
@@ -143,6 +151,7 @@ extended()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "EXTENDED"; fi }    
 usefrm()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "USE_FRM"; fi }                      # 20% USE_FRM
 localonly()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LOCAL"; fi }                        # 50% LOCAL (note 'local' is system keyword, hence 'localonly')
 # ========================================= Single, fixed
+dategen()    { echo "`n9``n9``n9``n9`-`month`-`day` `hour`:`minsec`:`minsec`"; }
 alias2()     { echo "a`n2`"; }
 alias3()     { echo "a`n3`"; }
 asalias2()   { echo "AS a`n2`"; }
