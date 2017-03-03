@@ -51,12 +51,13 @@ if [ ! -r sqlmode.txt ]; then echo "Assert: sqlmode.txt not found!"; exit 1; fi
 if [ ! -r optimizersw.txt ]; then echo "Assert: optimizersw.txt not found!"; exit 1; fi
 if [ ! -r inmetrics.txt ]; then echo "Assert: inmetrics.txt not found!"; exit 1; fi
 if [ ! -r event.txt ]; then echo "Assert: event.txt not found!"; exit 1; fi
+if [ ! -r timefunc.txt ]; then echo "Assert: timefunc.txt not found!"; exit 1; fi
 if [ ! -r func.txt ]; then echo "Assert: func.txt not found!"; exit 1; fi
 if [ ! -r proc.txt ]; then echo "Assert: proc.txt not found!"; exit 1; fi
 if [ ! -r trigger.txt ]; then echo "Assert: trigger.txt not found!"; exit 1; fi
 if [ ! -r users.txt ]; then echo "Assert: users.txt not found!"; exit 1; fi
 if [ ! -r profiletypes.txt ]; then echo "Assert: profiletypes.txt not found!"; exit 1; fi
-if [ ! -r interval.txt ]; then echo "Assert: interval.txt not found!"; exit 1; fi
+if [ ! -r intervals.txt ]; then echo "Assert: intervals.txt not found!"; exit 1; fi
 if [ ! -r lctimenames.txt ]; then echo "Assert: lctimenames.txt not found!"; exit 1; fi
 if [ ! -r character.txt ]; then echo "Assert: character.txt not found!"; exit 1; fi
 if [ ! -r numsimple.txt ]; then echo "Assert: numsimple.txt not found!"; exit 1; fi
@@ -88,12 +89,13 @@ mapfile -t sqlmode   < sqlmode.txt      ; SQLMODE=${#sqlmode[*]}                
 mapfile -t optsw     < optimizersw.txt  ; OPTSW=${#optsw[*]}                    ; optsw()      { echo "${optsw[$[$RANDOM % $OPTSW]]}"; }
 mapfile -t inmetrics < inmetrics.txt    ; INMETRICS=${#inmetrics[*]}            ; inmetrics()  { echo "${inmetrics[$[$RANDOM % $INMETRICS]]}"; }
 mapfile -t event     < event.txt        ; EVENT=${#event[*]}                    ; event()      { echo "${event[$[$RANDOM % $EVENT]]}"; }
+mapfile -t timefunc  < timefunc.txt     ; TIMEFUNC=${#timefunc[*]}              ; timefunc()   { echo "${timefunc[$[$RANDOM % $TIMEFUNC]]}"; }
 mapfile -t func      < func.txt         ; FUNC=${#func[*]}                      ; func()       { echo "${func[$[$RANDOM % $FUNC]]}"; }
 mapfile -t proc      < proc.txt         ; PROC=${#proc[*]}                      ; proc()       { echo "${proc[$[$RANDOM % $PROC]]}"; }
 mapfile -t trigger   < trigger.txt      ; TRIGGER=${#trigger[*]}                ; trigger()    { echo "${trigger[$[$RANDOM % $TRIGGER]]}"; }
 mapfile -t users     < users.txt        ; USERS=${#users[*]}                    ; user()       { echo "${users[$[$RANDOM % $USERS]]}"; }
 mapfile -t proftypes < profiletypes.txt ; PROFTYPES=${#proftypes[*]}            ; proftype()   { echo "${proftypes[$[$RANDOM % $PROFTYPES]]}"; }
-mapfile -t interval  < interval.txt     ; INTERVAL=${#interval[*]}              ; interval()   { echo "${interval[$[$RANDOM % $INTERVAL]]}"; }
+mapfile -t intervals < intervals.txt    ; INTERVALS=${#intervals[*]}            ; interval()   { echo "${intervals[$[$RANDOM % $INTERVALS]]}"; }
 mapfile -t lctimenms < lctimenames.txt  ; LCTIMENMS=${#lctimenms[*]}            ; lctimename() { echo "${lctimenms[$[$RANDOM % $LCTIMENMS]]}"; }
 mapfile -t character < character.txt    ; CHARACTER=${#character[*]}            ; character()  { echo "${character[$[$RANDOM % $CHARACTER]]}"; }
 mapfile -t numsimple < numsimple.txt    ; NUMSIMPLE=${#numsimple[*]}            ; numsimple()  { echo "${numsimple[$[$RANDOM % $NUMSIMPLE]]}"; }
@@ -106,8 +108,10 @@ if [ ${TABLES} -lt 2 ]; then echo "Assert: number of table names is less then 2.
 # ========================================= Combinations
 azn9()       { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }       # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
 # ========================================= Single, random
+neg()        { if [ $[$RANDOM % 20 + 1] -le 1  ]; then echo "-"; fi }                            #  5% - (negative number)
 temp()       { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; fi }                   # 20% TEMPORARY
 ignore()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "IGNORE"; fi }                       # 20% IGNORE
+linear()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LINEAR"; fi }                       # 50% LINEAR
 lowprio()    { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "LOW_PRIORITY"; fi }                 # 25% LOW_PRIORITY
 quick()      { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "QUICK"; fi }                        # 20% QUICK
 limit()      { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIMIT `n9`"; fi }                   # 50% LIMIT 0-9
@@ -116,7 +120,7 @@ ofslimit()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIMIT `limoffset``n
 natural()    { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "NATURAL"; fi }                      # 10% NATURAL (for JOINs) (NATURAL may cause queries with >2 tables to fail ref http://dev.mysql.com/doc/refman/5.7/en/join.html)
 outer()      { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "OUTER"; fi }                        # 40% OUTER (for JOINs)
 partition()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "PARTITION p`n3`"; fi }              # 20% PARTITION p1-3
-partitionby(){
+partitionby(){ if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "PARTITION BY `partdecl`"; fi }      # 25% PARTITION BY
 full()       { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "FULL"; fi }                         # 20% FULL
 not()        { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "NOT"; fi }                          # 25% NOT
 no()         { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "NO"; fi }                           # 40% NO (for transactions)
@@ -129,7 +133,7 @@ ifnotexist() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF NOT EXISTS"; fi 
 ifexist()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF EXISTS"; fi }                    # 50% IF EXISTS
 completion() { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "ON COMPLETION `not` PRESERVE"; fi } # 25% ON COMPLETION [NOT] PRESERVE
 comment()    { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "COMMENT '$(echo "`data`" | sed "s|'||g")'"; fi }  # 25% COMMENT
-intervalad() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "+ INTERVAL `n9` `interval`"; fi }   # 20% + 0-9 INTERVAL
+intervalad() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "+ INTERVAL `n9` `interval`" | sed "s|DUMMY|`neg``n100`|;s|DUMMY|`neg``n100`|;s|DUMMY|`neg``n100`|;s|DUMMY|`neg``n100`|;s|DUMMY|`neg``n100`|" ; fi }   # 20% + 0-9 INTERVAL Note that each DUMMY needs individual replacing to ensure unique numbers
 work()       { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "WORK"; fi }                         # 25% WORK (for transactions and savepoints)
 savepoint()  { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "SAVEPOINT"; fi }                    # 25% SAVEPOINT (for savepoints)
 chain()      { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "AND `no` CHAIN"; fi }               # 35% AND [NO] CHAIN (for transactions)
@@ -174,6 +178,7 @@ aggregated() { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed 
 aggregatec() { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed "s|DUMMY|c`n3`|"; else echo "`aggregate`" | sed "s|DUMMY|`aggregated`|"; fi }  # 80% AGGREGATE FUNCTION using a column, 20% with data, numbers or full function (for use inside a SELECT ... FROM ... query)
 # ========================================= Triple
 ac()         { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "a"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "b"; else echo "c"; fi; fi }  # 40% a, 30% b, 30% c
+algorithm()  { if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ALGORITHM=1"; else echo "ALGORITHM=2"; fi; fi }  # 15% ALGORITHM=1, ALGORITHM=2, 70% EMPTY/NOTHING
 trxopt()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`readwrite`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "WITH CONSISTENT SNAPSHOT, `readwrite`"; else echo "WITH CONSISTENT SNAPSHOT"; fi; fi }  # 50% R/W or R/O, 25% WITH C/S + R/W or R/O, 25% C/S
 definer()    { if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "DEFINER=`user`"; else echo "DEFINER=CURRENT_USER"; fi; fi }  # 15% DEFINER=random user, 15% DEFINER=CURRENT USER, 70% EMPTY/NOTHING
 suspendfm()  { if [ $[$RANDOM % 20 + 1] -le 2  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "SUSPEND"; else echo "SUSPEND FOR MIGRATE"; fi; fi }  # 5% SUSPEND, 5% SUSPEND FOR MIGRATE, 90% EMPTY/NOTHING (needs to be low, ref url above)
@@ -184,6 +189,7 @@ bincharco()  { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'CHARACTER SET "Bina
 inout()      { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "INOUT"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IN"; else echo "OUT"; fi; fi }  # 40% INOUT, 30% IN, 30% OUT
 nowriteloc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi; fi }   # 25% NO_WRITE_TO_BINLOG, 25% LOCAL, 50% EMPTY/NOTHING
 # ========================================= Quadruple
+collist()    { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 12 ]; then echo "(c`n3`)"; else echo "(c`n3`,c`n3`)"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "(c1,c2)"; else echo "(c3,c1)"; fi; fi }  # 24% random single column, 16% random dual column (may fail), 30% (c1,c2), 30% (c3,c1)
 like()       { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 5 ]; then echo "LIKE '`azn9`'"; else echo "LIKE '`azn9`%'"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIKE '%`azn9`'"; else echo "LIKE '%`azn9`%'"; fi; fi; }                                                                                 # 10% LIKE '<char>', 30% LIKE '<char>%', 30% LIKE '%<char>', 30% LIKE '%<char>%'
 isolation()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ COMMITTED"; else echo "REPEATABLE READ"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ UNCOMMITTED"; else echo "SERIALIZABLE"; fi; fi; }                                                                               # 25% READ COMMITTED, 25% REPEATABLE READ, 25% READ UNCOMMITTED, 25% SERIALIZABLE
 timestamp()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "CURRENT_TIMESTAMP"; else echo "CURRENT_TIMESTAMP()"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NOW()"; else echo "`data`"; fi; fi; }                                                                                         # 25% CURRENT_TIMESTAMP, 25% CURRENT_TIMESTAMP(), 25% NOW(), 25% random data
@@ -278,17 +284,41 @@ query(){
 
 partition_options:
     PARTITION BY
-        { [LINEAR] HASH(expr)
-        | [LINEAR] KEY [ALGORITHM={1|2}] (column_list)
-        | RANGE{(expr) | COLUMNS(column_list)}
-        | LIST{(expr) | COLUMNS(column_list)} }
+
+partdecl(){ 
+        { `linear` HASH(expr) | `linear` KEY `algorithm` (`collist`) | RANGE (expr) | RANGE COLUMNS(`collist`) | LIST(expr) | COLUMNS(`collist`)
     [PARTITIONS num]
     [SUBPARTITION BY
-        { [LINEAR] HASH(expr)
-        | [LINEAR] KEY [ALGORITHM={1|2}] (column_list) }
+        { `linear` HASH(expr)
+        | `linear` KEY `algorithm` (`collist`) }
       [SUBPARTITIONS num]
     ]
     [(partition_definition [, partition_definition] ...)]
+
+partition_definition:
+    PARTITION partition_name
+        [VALUES
+            {LESS THAN {(expr | value_list) | MAXVALUE}
+            |
+            IN (value_list)}]
+        [[STORAGE] ENGINE [=] engine_name]
+        [COMMENT [=] 'comment_text' ]
+        [DATA DIRECTORY [=] 'data_dir']
+        [INDEX DIRECTORY [=] 'index_dir']
+        [MAX_ROWS [=] max_number_of_rows]
+        [MIN_ROWS [=] min_number_of_rows]
+        [TABLESPACE [=] tablespace_name]
+        [(subpartition_definition [, subpartition_definition] ...)]
+
+subpartition_definition:
+    SUBPARTITION logical_name
+        [[STORAGE] ENGINE [=] engine_name]
+        [COMMENT [=] 'comment_text' ]
+        [DATA DIRECTORY [=] 'data_dir']
+        [INDEX DIRECTORY [=] 'index_dir']
+        [MAX_ROWS [=] max_number_of_rows]
+        [MIN_ROWS [=] min_number_of_rows]
+        [TABLESPACE [=] tablespace_name]
 
 
     [1-3]) case $[$RANDOM % 6 + 1] in  # CREATE (needs further work)
