@@ -6,26 +6,72 @@ It is integrated into pmm-testsuite.bats
 The project structure:
 ```
 
-generic-tests.bats -> Generic PMM client tests/
-linux-metrics.bats -> linux:metrics tests
-pmm-framework.sh   -> Executable for creating environment
-pmm-testsuite.bats -> The test suite bats file
-ps-specific-tests.bats -> PS specific tests
+generic-tests.bats      -> Generic PMM client tests/
+linux-metrics.bats      -> linux:metrics tests
+pmm-framework.sh        -> Executable for creating environment
+mongodb-tests.bats      -> MongoDB specific tests
+pmm-testsuite.bats      -> The test suite bats file
+proxysql-tests.bats     -> proxysql:metrics tests
+ps-specific-tests.bats  -> PS specific tests
+pxc-specific-tests.bats -> PXC specific tests
+
 
 ```
 
+
+Sample run for PXC:
+
+```
+
+$ instance_t="pxc" instance_c="3" bats ./percona-qa/pmm-tests/pmm-testsuite.bats
+ ✓ Wipe clients
+ ✓ Adding clients
+ ✓ Running linux metrics tests
+ ✓ Running generic tests
+ - Running MongoDB specific tests (skipped: Skipping MongoDB specific tests! )
+ - Running PS specific tests (skipped: Skipping PS specific tests! )
+ ✓ Running PXC specific tests
+ ✓ Running ProxySQL tests
+ ✓ Wipe clients
+
+9 tests, 0 failures, 2 skipped
+
+```
+
+Sample run for Mongo:
+
+```
+
+$ instance_t="mo" instance_c="3" bats ./percona-qa/pmm-tests/pmm-testsuite.bats
+ ✓ Wipe clients
+ ✓ Adding clients
+ - Running linux metrics tests (skipped: Skipping this test)
+ ✓ Running generic tests
+ ✓ Running MongoDB specific tests
+ - Running PS specific tests (skipped: Skipping PS specific tests! )
+ - Running PXC specific tests (skipped: Skipping PXC specific tests! )
+ - Running ProxySQL tests (skipped: Skipping ProxySQL specific tests!)
+ ✓ Wipe clients
+
+9 tests, 0 failures, 4 skipped
+
+```
 
 Sample run for PS:
 
 ```
+$ instance_t="ps" instance_c="3" bats ./percona-qa/pmm-tests/pmm-testsuite.bats
+ ✓ Wipe clients
+ ✓ Adding clients
+ ✓ Running linux metrics tests
+ ✓ Running generic tests
+ - Running MongoDB specific tests (skipped: Skipping MongoDB specific tests! )
+ ✓ Running PS specific tests
+ - Running PXC specific tests (skipped: Skipping PXC specific tests! )
+ - Running ProxySQL tests (skipped: Skipping ProxySQL specific tests!)
+ ✓ Wipe clients
 
-[sh@centos7-base ~]$ instance_t="ps" instance_c="2" bats percona-qa/pmm-tests/pmm-testsuite.bats
-✓ Wipe clients
-✓ Adding clients
-✓ Running generic tests
-✓ Running PS specific tests
-✓ Wipe clients
-5 tests, 0 failures
+9 tests, 0 failures, 3 skipped
 
 ```
 
