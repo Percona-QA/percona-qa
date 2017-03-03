@@ -999,7 +999,7 @@ pquery_test(){
     # If count reached 3, then the Cluster is up & running and consistent in it's Cluster topology views (as seen by each node)
     if [ ${CLUSTER_UP} -eq 3 ]; then
       ISSTARTED=1
-      echoit "3 Node PXC Cluster started ok. Clients:"
+      echoit "3 Node Group Replication Cluster started ok. Clients:"
       echoit "Node #1: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock"
       echoit "Node #2: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock"
       echoit "Node #3: `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock"
