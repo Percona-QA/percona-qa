@@ -461,26 +461,41 @@ add_clients(){
         fi
         ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
           --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
-        for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
-          sleep 1
-          if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
-            check_user=`${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
-            if [[ -z "$check_user" ]]; then
-              ${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
-              (
-              printf "%s\t%s\n" "Orchestrator username :" "admin"
-              printf "%s\t%s\n" "Orchestrator password :" "passw0rd"
-              ) | column -t -s $'\t'
-            else
-              echo "User '$OUSER' is already present in MySQL server. Please create Orchestrator user manually."
+        function startup_chk(){
+          for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
+            sleep 1
+            if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+              check_user=`${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
+              if [[ -z "$check_user" ]]; then
+                ${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
+                (
+                printf "%s\t%s\n" "Orchestrator username :" "admin"
+                printf "%s\t%s\n" "Orchestrator password :" "passw0rd"
+                ) | column -t -s $'\t'
+              else
+                echo "User '$OUSER' is already present in MySQL server. Please create Orchestrator user manually."
+              fi
+              break
             fi
-            break
-          fi
-          if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+          done
+        }
+        startup_chk
+        if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+          if grep -q "TCP/IP port: Address already in use" $node/error.err; then
+            echo "TCP/IP port: Address already in use, restarting ${NODE_NAME}_${j} mysqld daemon with different port"
+            RBASE1="$(( RBASE1 - 1 ))"
+            ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+               --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
+            startup_chk
+            if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+              echo "ERROR! ${NODE_NAME} startup failed. Please check error log $node/error.err"
+              exit 1
+            fi
+          else
             echo "ERROR! ${NODE_NAME} startup failed. Please check error log $node/error.err"
             exit 1
           fi
-        done
+        fi
         sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
       done
     fi
