@@ -590,13 +590,16 @@ clean_clients(){
     ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
   done
-  #Kills mongodb processes
-  echo -e "Killing mongodb processes" 
+  #Kills mongodb processes 
   sudo killall mongod 2> /dev/null
   sleep 5
-  #Remove all client instances
-  echo -e "Removing all local pmm client instances" 
-  sudo pmm-admin remove --all 2&>/dev/null
+  if sudo pmm-admin list | grep -q 'No services under monitoring' ; then
+    echo -e "No services under pmm monitoring"
+  else
+    #Remove all client instances
+    echo -e "Removing all local pmm client instances" 
+    sudo pmm-admin remove --all 2&>/dev/null
+  fi
 }
 
 clean_docker_clients(){
