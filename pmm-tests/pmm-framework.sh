@@ -170,9 +170,9 @@ setup(){
 
   #PMM configuration setup
   if [ ! -z $dev ]; then
-    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | head -n1)
+    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
   else
-    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | grep -v dev | head -n1)
+    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | grep -v dev | head -n1)
   fi
 
   #PMM sanity check
@@ -217,8 +217,8 @@ setup(){
         sudo ./install
         popd > /dev/null
       else
-        PMM_CLIENT_TAR=$(lynx --dump  https://www.percona.com/downloads/pmm-client/pmm-client-1.0.6/binary/tarball | grep -o pmm-client.*.tar.gz | head -n1)
-        wget https://www.percona.com/downloads/pmm-client/pmm-client-1.0.6/binary/tarball/$PMM_CLIENT_TAR
+        PMM_CLIENT_TAR=$(lynx --dump  https://www.percona.com/downloads/pmm-client/pmm-client-$PMM_VERSION/binary/tarball | grep -o pmm-client.*.tar.gz | head -n1)
+        wget https://www.percona.com/downloads/pmm-client/pmm-client-$PMM_VERSION/binary/tarball/$PMM_CLIENT_TAR
         tar -xzf $PMM_CLIENT_TAR
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
@@ -369,11 +369,6 @@ add_clients(){
         BASEDIR="$WORKDIR/$BASEDIR"
       fi
     elif [[ "${CLIENT_NAME}" == "mo" ]]; then
-      if [[ ! -e $(which mlaunch 2> /dev/null) ]] ;then
-        echo "WARNING! The mlaunch mongodb spin up local test environments tool is not installed. Configuring MondoDB server manually"
-      else
-        MTOOLS_MLAUNCH=$(which mlaunch)
-      fi
       BASEDIR=$(ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1)
       if [ -z $BASEDIR ]; then
         BASE_TAR=$(ls -1td percona-server-mongodb-* | grep ".tar" | head -n1)
@@ -412,21 +407,18 @@ add_clients(){
           sudo mkdir -p ${BASEDIR}/data/db$j
           sudo $BASEDIR/bin/mongod --storageEngine rocksdb --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
           sleep 5
+          sudo pmm-admin add mongodb --cluster mongo_rocksdb_cluster  --uri localhost:$PORT mongodb_rocksdb_inst_${j}
         done
-        sudo pmm-admin add  mongodb:metrics
       else
-        if [ ! -z $MTOOLS_MLAUNCH ];then
-          sudo $MTOOLS_MLAUNCH --replicaset --nodes $ADDCLIENTS_COUNT --binarypath=$BASEDIR/bin --dir=${BASEDIR}/data
-        else
-          mkdir $BASEDIR/replset
-          for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
-            PORT=$(( $PSMDB_PORT + $j - 1 ))
-            sudo mkdir -p ${BASEDIR}/data/db$j
-            sudo $BASEDIR/bin/mongod --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
-            sleep 5
-          done
-        fi
-        sudo pmm-admin add  mongodb:metrics
+        mkdir $BASEDIR/replset
+        for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
+          PORT=$(( $PSMDB_PORT + $j - 1 ))
+          sudo mkdir -p ${BASEDIR}/data/db$j
+          sudo $BASEDIR/bin/mongod --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
+          sleep 5
+          sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$PORT mongodb_inst_${j}
+        done
+        #sudo pmm-admin add  mongodb:metrics
       fi
     else
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
@@ -461,26 +453,41 @@ add_clients(){
         fi
         ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
           --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
-        for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
-          sleep 1
-          if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
-            check_user=`${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
-            if [[ -z "$check_user" ]]; then
-              ${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
-              (
-              printf "%s\t%s\n" "Orchestrator username :" "admin"
-              printf "%s\t%s\n" "Orchestrator password :" "passw0rd"
-              ) | column -t -s $'\t'
-            else
-              echo "User '$OUSER' is already present in MySQL server. Please create Orchestrator user manually."
+        function startup_chk(){
+          for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
+            sleep 1
+            if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+              check_user=`${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
+              if [[ -z "$check_user" ]]; then
+                ${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
+                (
+                printf "%s\t%s\n" "Orchestrator username :" "admin"
+                printf "%s\t%s\n" "Orchestrator password :" "passw0rd"
+                ) | column -t -s $'\t'
+              else
+                echo "User '$OUSER' is already present in MySQL server. Please create Orchestrator user manually."
+              fi
+              break
             fi
-            break
-          fi
-          if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+          done
+        }
+        startup_chk
+        if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+          if grep -q "TCP/IP port: Address already in use" $node/error.err; then
+            echo "TCP/IP port: Address already in use, restarting ${NODE_NAME}_${j} mysqld daemon with different port"
+            RBASE1="$(( RBASE1 - 1 ))"
+            ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+               --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
+            startup_chk
+            if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+              echo "ERROR! ${NODE_NAME} startup failed. Please check error log $node/error.err"
+              exit 1
+            fi
+          else
             echo "ERROR! ${NODE_NAME} startup failed. Please check error log $node/error.err"
             exit 1
           fi
-        done
+        fi
         sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
       done
     fi
@@ -583,13 +590,16 @@ clean_clients(){
     ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
   done
-  #Kills mongodb processes
-  echo -e "Killing mongodb processes" 
+  #Kills mongodb processes 
   sudo killall mongod 2> /dev/null
   sleep 5
-  #Remove all client instances
-  echo -e "Removing all local pmm client instances" 
-  sudo pmm-admin remove --all 2&>/dev/null
+  if sudo pmm-admin list | grep -q 'No services under monitoring' ; then
+    echo -e "No services under pmm monitoring"
+  else
+    #Remove all client instances
+    echo -e "Removing all local pmm client instances" 
+    sudo pmm-admin remove --all 2&>/dev/null
+  fi
 }
 
 clean_docker_clients(){
