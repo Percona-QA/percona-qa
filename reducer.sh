@@ -1846,9 +1846,14 @@ start_mysqld_main(){
     if [ "${CHK_ROCKSDB}" == "1" ];then
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
-    elif [ "${CHK_LOGBIN57}" == "1" ];then
+    fi
+    if [ "${CHK_LOGBIN57}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
+    fi
+    if [ "${CHK_TOKUDB}" == "1" ];then
+      CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so|');
+      sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -1863,9 +1868,14 @@ start_mysqld_main(){
     if [ "${CHK_ROCKSDB}" == "1" ];then  
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
-    elif [ "${CHK_LOGBIN57}" == "1" ];then
+    fi
+    if [ "${CHK_LOGBIN57}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
+    fi
+    if [ "${CHK_TOKUDB}" == "1" ];then
+      CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so|');
+      sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -3915,6 +3925,16 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       CHK_LOGBIN57=0
     fi
   }
+  
+  #TokuDB startup option check
+  tokudb_startup_chk(){
+    if echo "${MYEXTRA}" | grep -q 'tokudb'; then
+      MYEXTRA=$(echo $MYEXTRA | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g;s|--plugin-load=tokudb=ha_tokudb.so||g');
+      CHK_TOKUDB=1
+    else
+      CHK_TOKUDB=0
+    fi
+  }
 
   myextra_reduction(){
     while read line; do
@@ -3930,7 +3950,9 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       STAGE8_CHK=0
       COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
+      rocksdb_startup_chk
       logbin_startup_chk
+      tokudb_startup_chk
       run_and_check
       TRIAL=$[$TRIAL+1]
       STAGE8_OPT=$line
@@ -3948,6 +3970,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
         MYEXTRA=$(cat $FILE1 | tr -s "\n" " ")
         rocksdb_startup_chk
         logbin_startup_chk
+        tokudb_startup_chk
         COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
         if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
           echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
@@ -3966,6 +3989,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
           MYEXTRA=$(cat $FILE2 | tr -s "\n" " ")
           rocksdb_startup_chk
           logbin_startup_chk
+          tokudb_startup_chk
           COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
           if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
             echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
