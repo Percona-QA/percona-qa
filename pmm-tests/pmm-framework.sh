@@ -170,9 +170,9 @@ setup(){
 
   #PMM configuration setup
   if [ ! -z $dev ]; then
-    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | head -n1)
+    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
   else
-    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep 1.0 | sed 's|   ||' | grep -v dev | head -n1)
+    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | grep -v dev | head -n1)
   fi
 
   #PMM sanity check
@@ -217,8 +217,8 @@ setup(){
         sudo ./install
         popd > /dev/null
       else
-        PMM_CLIENT_TAR=$(lynx --dump  https://www.percona.com/downloads/pmm-client/pmm-client-1.0.6/binary/tarball | grep -o pmm-client.*.tar.gz | head -n1)
-        wget https://www.percona.com/downloads/pmm-client/pmm-client-1.0.6/binary/tarball/$PMM_CLIENT_TAR
+        PMM_CLIENT_TAR=$(lynx --dump  https://www.percona.com/downloads/pmm-client/pmm-client-$PMM_VERSION/binary/tarball | grep -o pmm-client.*.tar.gz | head -n1)
+        wget https://www.percona.com/downloads/pmm-client/pmm-client-$PMM_VERSION/binary/tarball/$PMM_CLIENT_TAR
         tar -xzf $PMM_CLIENT_TAR
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
@@ -369,11 +369,6 @@ add_clients(){
         BASEDIR="$WORKDIR/$BASEDIR"
       fi
     elif [[ "${CLIENT_NAME}" == "mo" ]]; then
-      if [[ ! -e $(which mlaunch 2> /dev/null) ]] ;then
-        echo "WARNING! The mlaunch mongodb spin up local test environments tool is not installed. Configuring MondoDB server manually"
-      else
-        MTOOLS_MLAUNCH=$(which mlaunch)
-      fi
       BASEDIR=$(ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1)
       if [ -z $BASEDIR ]; then
         BASE_TAR=$(ls -1td percona-server-mongodb-* | grep ".tar" | head -n1)
@@ -412,21 +407,18 @@ add_clients(){
           sudo mkdir -p ${BASEDIR}/data/db$j
           sudo $BASEDIR/bin/mongod --storageEngine rocksdb --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
           sleep 5
+          sudo pmm-admin add mongodb --cluster mongo_rocksdb_cluster  --uri localhost:$PORT mongodb_rocksdb_inst_${j}
         done
-        sudo pmm-admin add  mongodb:metrics
       else
-        if [ ! -z $MTOOLS_MLAUNCH ];then
-          sudo $MTOOLS_MLAUNCH --replicaset --nodes $ADDCLIENTS_COUNT --binarypath=$BASEDIR/bin --dir=${BASEDIR}/data
-        else
-          mkdir $BASEDIR/replset
-          for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
-            PORT=$(( $PSMDB_PORT + $j - 1 ))
-            sudo mkdir -p ${BASEDIR}/data/db$j
-            sudo $BASEDIR/bin/mongod --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
-            sleep 5
-          done
-        fi
-        sudo pmm-admin add  mongodb:metrics
+        mkdir $BASEDIR/replset
+        for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
+          PORT=$(( $PSMDB_PORT + $j - 1 ))
+          sudo mkdir -p ${BASEDIR}/data/db$j
+          sudo $BASEDIR/bin/mongod --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
+          sleep 5
+          sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$PORT mongodb_inst_${j}
+        done
+        #sudo pmm-admin add  mongodb:metrics
       fi
     else
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
