@@ -207,6 +207,7 @@ aggregatec() { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed 
 azn9()       { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }  # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
 dategen()    { if [ $[$RANDOM % 20 + 1] -le 19 ]; then echo "`dategenpr`"; else echo "`timefuncpr`"; fi }  # 95% generated date, 5% interval (MAX 10% to avoid inf loop)
 # ========================================= Triple
+subpart()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "SUBPARTITION BY `linear` HASH(`collist2`) `partnumsub`"; else echo "SUBPARTITION BY `linear` KEY `algorithm` (`collist2`) `partnumsub`"; fi; fi }  # 10% SUBPARTITION BY HASH, 10% SUBPARTITION BY KEY, 80% EMPTY/NOTHING
 partdefar1() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef1b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pMAX VALUES LESS THAN MAXVALUE"; fi; fi }  # 20% partdef1b, 40% MAXVALUE parition, 40% EMPTY/NOTHING
 partdefar2() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef2b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pMAX VALUES LESS THAN (MAXVALUE,MAXVALUE)"; fi; fi }  # 20% partdef2b, 40% MAXVALUE parition, 40% EMPTY/NOTHING
 partdefar3() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef3b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pNEG VALUES IN (-1,-2,-3,-4,-5)"; fi; fi }  # 20% partdef3b, 40% some negative values parition, 40% EMPTY/NOTHING
@@ -224,7 +225,8 @@ bincharco()  { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'CHARACTER SET "Bina
 inout()      { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "INOUT"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IN"; else echo "OUT"; fi; fi }  # 40% INOUT, 30% IN, 30% OUT
 nowriteloc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi; fi }  # 25% NO_WRITE_TO_BINLOG, 25% LOCAL, 50% EMPTY/NOTHING
 # ========================================= Quadruple
-collist()    { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 12 ]; then echo "(c`n3`)"; else echo "(c`n3`,c`n3`)"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "(c1,c2)"; else echo "(c3,c1)"; fi; fi }  # 24% random single column, 16% random dual column (may fail), 30% (c1,c2), 30% (c3,c1)
+collist1()   { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 12 ]; then echo "(c`n3`)"; else echo "(c`n3`,c`n3`)"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "(c1,c2)"; else echo "(c3,c1)"; fi; fi }  # 24% random single column, 16% random dual column (may fail), 30% (c1,c2), 30% (c3,c1)
+collist2()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "(c1,c2)"; else echo "(c2,c3)"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "(c1,c3)"; else echo "(c3,c1)"; fi; fi }  # 25% (c1,c2), 25% (c2,c3), 25% (c1,c3), 25% (c3,c1)
 like()       { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 5 ]; then echo "LIKE '`azn9`'"; else echo "LIKE '`azn9`%'"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIKE '%`azn9`'"; else echo "LIKE '%`azn9`%'"; fi; fi; }  # 10% LIKE '<char>', 30% LIKE '<char>%', 30% LIKE '%<char>', 30% LIKE '%<char>%'
 isolation()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ COMMITTED"; else echo "REPEATABLE READ"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ UNCOMMITTED"; else echo "SERIALIZABLE"; fi; fi; }  # 25% READ COMMITTED, 25% REPEATABLE READ, 25% READ UNCOMMITTED, 25% SERIALIZABLE
 timestamp()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "CURRENT_TIMESTAMP"; else echo "CURRENT_TIMESTAMP()"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NOW()"; else echo "`data`"; fi; fi; }  # 25% CURRENT_TIMESTAMP, 25% CURRENT_TIMESTAMP(), 25% NOW(), 25% random data
@@ -317,48 +319,31 @@ query(){
     # Frequencies for CREATE (1-3), INSERT (4-7), and DROP (8) statements are well tuned, please do not change these case ranges
     # Most other statements have been frequency tuned also, but not to the same depth. If you find bugs (for example too many errors because of frequency), please fix them
 
+    # Possible expansions for partitoning:
+    # - Instead of `collist1` use, this can be expanded with timefunc, but need to swap DUMMY_DATE to columns + match CREATE TABLE columns to it
+    # - These partdef (partitions+subpartitions) options were not added yet: [DATA DIRECTORY [=] 'data_dir'], [INDEX DIRECTORY [=] 'index_dir'], [TABLESPACE [=] tablespace_name]
+    # - VALUES LESS THAN (ref partdef1b/partdef2b/partdefar1/partdefar2) can be expanded further with an expression instead of a static number
+    # - Subpartioning support was added, but it can be reviewed and be extended, see https://dev.mysql.com/doc/refman/5.7/en/partitioning-subpartitions.html
+    #   - Subpartion defenition (subpartition_definition in https://dev.mysql.com/doc/refman/5.7/en/create-table.html) needs to be added. Clauses (COMMENT= etc.) already added
 
-echo "PARTITION BY `linear` HASH(`collist`) `partnum`";  # Instead of `collist` this can be expanded with timefunc, but need to swap DUMMY_DATE to columns + match CREATE TABLE columns to it
-echo "PARTITION BY `linear` KEY `algorithm` (`collist`) `partnum`";  # Instead of `collist` this can be expanded with timefunc, but need to swap DUMMY_DATE to columns + match CREATE TABLE columns to it
-echo "PARTITION BY RANGE(c`n3`) `partdef1`";
-echo "PARTITION BY RANGE COLUMNS(`collist`) `partdef2`";
-echo "PARTITION BY LIST(c`n3`) `partdef3`";
-echo "PARTITION BY LIST COLUMNS(`collist`) `partdef4`";
+`partdecl`
+echo "`linear` HASH(`collist1`) `partnum`";  
+echo "`linear` KEY `algorithm` (`collist1`) `partnum`";
+echo "RANGE(c`n3`) `partdef1`";
+echo "RANGE(c`n3`) `subpart` `partdef1`";
+echo "RANGE COLUMNS(`collist2`) `partdef2`";
+echo "LIST(c`n3`) `partdef3`";
+echo "LIST(c`n3`) `subpart` `partdef3`";
+echo "LIST COLUMNS(`collist2`) `partdef4`";
 
-echo "SUBPARTITION BY `linear` HASH(`collist`) `partnum`";
-echo "SUBPARTITION BY `linear` KEY `algorithm` (`collist`) `partnumsub`";
-
-PARTITION BY RANGE COLUMNS(a,b) (
-    PARTITION p0 VALUES LESS THAN (10,5),
-    PARTITION p1 VALUES LESS THAN (20,10),
-    PARTITION p2 VALUES LESS THAN (MAXVALUE,15),
-    PARTITION p3 VALUES LESS THAN (MAXVALUE,MAXVALUE)
-);
 
 partition_definition:
     PARTITION partition_name
-        [VALUES
-            {LESS THAN {(expr | value_list) | MAXVALUE}
-            |
-            IN (value_list)}]
         [[STORAGE] ENGINE [=] engine_name]
         [COMMENT [=] 'comment_text' ]
-        [DATA DIRECTORY [=] 'data_dir']
-        [INDEX DIRECTORY [=] 'index_dir']
         [MAX_ROWS [=] max_number_of_rows]
         [MIN_ROWS [=] min_number_of_rows]
-        [TABLESPACE [=] tablespace_name]
-        [(subpartition_definition [, subpartition_definition] ...)]
 
-subpartition_definition:
-    SUBPARTITION logical_name
-        [[STORAGE] ENGINE [=] engine_name]
-        [COMMENT [=] 'comment_text' ]
-        [DATA DIRECTORY [=] 'data_dir']
-        [INDEX DIRECTORY [=] 'index_dir']
-        [MAX_ROWS [=] max_number_of_rows]
-        [MIN_ROWS [=] min_number_of_rows]
-        [TABLESPACE [=] tablespace_name]
 
 
     [1-3]) case $[$RANDOM % 6 + 1] in  # CREATE (needs further work)
