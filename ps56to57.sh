@@ -7,7 +7,6 @@ PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 WORKDIR=$1
 ROOT_FS=$WORKDIR
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
-LPATH="/usr/share/doc/sysbench/tests/db"
 MYSQLD_START_TIMEOUT=200
 
 if [ -z ${BUILD_NUMBER} ]; then
@@ -31,6 +30,18 @@ fi
 if [ -z ${TCOUNT} ]; then
   TCOUNT=10
 fi
+
+sysbench_run(){
+  SE="$1"
+  DB="$2"
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    LPATH="/usr/share/doc/sysbench/tests/db"
+    SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --mysql-table-engine=$SE --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    LPATH="/usr/share/sysbench"
+    SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --mysql_storage_engine=$SE --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
+  fi
+}
 
 cleanup(){
   tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
@@ -132,8 +143,8 @@ popd
 echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $PS56_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps56.sock 
 $PS56_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps56.sock < ${SCRIPT_PWD}/TokuDB.sql
 echoit "Sysbench Run: Prepare stage"
-
-$SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=$WORKDIR/ps56.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+sysbench_run innodb test
+$SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps56.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
 echoit "Loading sakila test database"
 $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
@@ -168,7 +179,8 @@ done
 
 echoit "Sysbench Run: Creating MyISAM tables"
 echo "CREATE DATABASE sysbench_myisam_db;" | $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root || true
-$SBENCH --test=$LPATH/parallel_prepare.lua --mysql-engine-trx=yes --mysql-table-engine=myisam --oltp-table-size=5000 --oltp_tables_count=100 --mysql-db=sysbench_myisam_db --mysql-user=root  --num-threads=100 --db-driver=mysql --mysql-socket=$WORKDIR/ps56.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+sysbench_run myisam sysbench_myisam_db
+$SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps56.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
 $PS56_BASEDIR/bin/mysql --socket=$WORKDIR/ps56.sock -u root sysbench_myisam_db -e"CREATE TABLE sbtest_mrg like sbtest1" || true
 
@@ -378,8 +390,8 @@ function rpl_test(){
   ${PS57_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS57_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
  
   startup_check $WORKDIR/ps_slave.sock
-
-  $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=5000 --oltp_tables_count=10 --mysql-db=test --mysql-user=root  --num-threads=10 --db-driver=mysql --mysql-socket=$WORKDIR/ps_master.sock prepare  2>&1 | tee $WORKDIR/logs/rpl_sysbench_prepare.txt
+  sysbench_run innodb test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_master.sock prepare  2>&1 | tee $WORKDIR/logs/rpl_sysbench_prepare.txt
 
   #Upgrade PS 5.6 master
 
