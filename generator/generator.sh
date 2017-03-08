@@ -82,7 +82,7 @@ mapfile -t engines   < engines.txt      ; ENGINES=${#engines[*]}                
 mapfile -t az        < a-z.txt          ; AZ=${#az[*]}                          ; az()         { echo "${az[$[$RANDOM % $AZ]]}"; }
 mapfile -t n9        < 0-9.txt          ; N9=${#n9[*]}                          ; n9()         { echo "${n9[$[$RANDOM % $N9]]}"; }
 mapfile -t n3        < 1-3.txt          ; N3=${#n3[*]}                          ; n3()         { echo "${n3[$[$RANDOM % $N3]]}"; }
-mapfile -t n6        < 1-6.txt          ; N6=${#n6[*]}                          ; n6()         { echo "${n6[$[$RANDOM % $N6]]}"; }
+mapfile -t n6        < 0-6.txt          ; N6=${#n6[*]}                          ; n6()         { echo "${n6[$[$RANDOM % $N6]]}"; }
 mapfile -t n10       < 1-10.txt         ; N10=${#n10[*]}                        ; n10()        { echo "${n10[$[$RANDOM % $N10]]}"; }
 mapfile -t n100      < 1-100.txt        ; N100=${#n100[*]}                      ; n100()       { echo "${n100[$[$RANDOM % $N100]]}"; }
 mapfile -t n1000     < 1-1000.txt       ; N1000=${#n1000[*]}                    ; n1000()      { echo "${n1000[$[$RANDOM % $N1000]]}"; }
@@ -129,12 +129,26 @@ asalias3()   { echo "AS a`n3`"; }
 numericop()  { echo "`numeric`" | sed "s|DUMMY|`danrorfull`|;s|DUMMY2|`danrorfull`|;s|DUMMY3|`danrorfull`|"; }  # NUMERIC FUNCTION with data (includes numbers) or -1000 to 1000 as options, for example ABS(nr)
 joinlron()   { echo "`leftright` `outer` JOIN"; }
 joinlronla() { echo "`natural` `leftright` `outer` JOIN"; }
-interval()   { echo "`intervalpr`" | sed "s|DUMMY|`neg``dataornum2`|;s|DUMMY|`neg``dataornum2`|;s|DUMMY|`neg``dataornum2`|;s|DUMMY|`neg``dataornum2`|;s|DUMMY|`neg``dataornum2`|" }
+interval()   { echo "`intervalpr`" | sed "s|DUMMY|`neg``dataornum2`|;s|DUMMY|`neg``dataornum2`|;s|DUMMY|`neg``dataornum2`|;s|DUMMY|`neg``dataornum2`|;s|DUMMY|`neg``dataornum2`|"; }
 intervaln()  { echo "INTERVAL `interval`"; }
 dategenpr()  { echo "`n9``n9``n9``n9`-`month`-`day` `hour`:`minsec`:`minsec`"; }
 timefunc()   { echo "`timefuncpr`" | sed "s|DUMMY_DATE|`dategen`|;s|DUMMY_DATE|`dategen`|g;s|DUMMY_NR|`dataornum2`|;s|DUMMY_NR|`dataornum2`|;s|DUMMY_NR|`dataornum2`|g;s|DUMMY_INTERVAL|`intervaln`|;s|DUMMY_TIMEZONE|`timezone`|;s|DUMMY_TIMEZONE|`timezone`|g;s|DUMMY_N6|`n6`|g;s|DUMMY_DATA|`data`|g;s|DUMMY_UNIT|`timeunit`|g"; }
+timefunccol(){ echo "`timefuncpr`" | sed "s|DUMMY_DATE|c`n3`|;s|DUMMY_DATE|c`n3`|g;s|DUMMY_NR|`dataornum2`|;s|DUMMY_NR|`dataornum2`|;s|DUMMY_NR|`dataornum2`|g;s|DUMMY_INTERVAL|`intervaln`|;s|DUMMY_TIMEZONE|`timezone`|;s|DUMMY_TIMEZONE|`timezone`|g;s|DUMMY_N6|`n6`|g;s|DUMMY_DATA|`data`|g;s|DUMMY_UNIT|`timeunit`|g"; }
+partnum()    { echo "PARTITIONS `n1000`"; }
+partnumsub() { echo "SUBPARTITIONS `n1000`"; }
+partdef1()   { INC1=0; echo "(`partdef1b`)"; }
+partdef2()   { INC1=0; INC2=0; echo "(`partdef2b`)"; }
+partdef3()   { INC1=0; echo "(`partdef3b`)"; }
+partdef4()   { INC1=0; INC2=0; echo "(`partdef4b`)"; }
+partdef1b()  { INC1=$[ $INC1 + $[ $RANDOM % 100 + 1 ] ]; echo "PARTITION p${INC1} VALUES LESS THAN (${INC1}) `partse` `partcomment` `partmax` `partmin` `partdefar1`"; }
+partdef2b()  { INC1=$[ $INC1 + $[ $RANDOM % 100 + 1 ] ]; INC2=$[ $INC2 + $[ $RANDOM % 100 + 1 ] ]; echo "PARTITION p${INC1} VALUES LESS THAN (${INC1},${INC2}) `partse` `partcomment` `partmax` `partmin` `partdefar2`"; }
+partdef3b()  { INC1=$[ $INC1 + 5 + $[ $RANDOM % 10 + 1 ] ]; echo "PARTITION p${INC1} VALUES IN (${INC1},$[ ${INC1} + 1 ],$[ ${INC1} + 2 ],$[ ${INC1} + 3 ],$[ ${INC1} + 4 ],$[ ${INC1} + 5 ]) `partse` `partcomment` `partmax` `partmin` `partdefar3`"; }
+partdef4b()  { INC1=$[ $INC1 + 5 + $[ $RANDOM % 10 + 1 ] ]; INC2=$[ $INC2 + 5 + $[ $RANDOM % 10 + 1 ] ]; echo "PARTITION p${INC1} VALUES IN ((${INC1},${INC2}),($[ ${INC1} + 1 ],$[ ${INC2} + 1 ]),($[ ${INC1} + 2 ],$[ ${INC2} + 2 ]),($[ ${INC1} + 3 ],$[ ${INC2} + 3 ]),($[ ${INC1} + 4 ],$[ ${INC2} + 4 ]),($[ ${INC1} + 5 ],$[ ${INC2} + 5 ])) `partse` `partcomment` `partmax` `partmin` `partdefar4`"; }
+parthash()   { echo "`linear` HASH(`collist1`) `partnum`"; }
+partkey()    { echo "`linear` KEY `algorithm` (`collist1`) `partnum`"; }
 # ========================================= Single, random
 neg()        { if [ $[$RANDOM % 20 + 1] -le 1  ]; then echo "-"; fi }                            #  5% - (negative number)
+storage()    { if [ $[$RANDOM % 20 + 1] -le 3  ]; then echo "STORAGE"; fi }                      # 15% STORAGE
 temp()       { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; fi }                   # 20% TEMPORARY
 ignore()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "IGNORE"; fi }                       # 20% IGNORE
 linear()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LINEAR"; fi }                       # 50% LINEAR
@@ -147,6 +161,10 @@ natural()    { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "NATURAL"; fi }     
 outer()      { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "OUTER"; fi }                        # 40% OUTER (for JOINs)
 partition()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "PARTITION p`n3`"; fi }              # 20% PARTITION p1-3
 partitionby(){ if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "PARTITION BY `partdecl`"; fi }      # 25% PARTITION BY
+partse()     { if [ $[$RANDOM % 20 + 1] -le 3  ]; then echo "`storage` ENGINE`equals``engine`" ; fi }  # 15% ENGINE (for partitioning)
+partcomment(){ if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "COMMENT`equals``data`"; fi }        # 10% COMMENT (for partitioning)
+partmax()    { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "MAX_ROWS`equals``n1000`"; fi }      # 10% MAX_ROWS (for partitioning)
+partmin()    { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "MIN_ROWS`equals``n1000`"; fi }      # 10% MIN_ROWS (for partitioning)
 full()       { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "FULL"; fi }                         # 20% FULL
 not()        { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "NOT"; fi }                          # 25% NOT
 no()         { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "NO"; fi }                           # 40% NO (for transactions)
@@ -159,7 +177,7 @@ ifnotexist() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF NOT EXISTS"; fi 
 ifexist()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF EXISTS"; fi }                    # 50% IF EXISTS
 completion() { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "ON COMPLETION `not` PRESERVE"; fi } # 25% ON COMPLETION [NOT] PRESERVE
 comment()    { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "COMMENT '$(echo "`data`" | sed "s|'||g")'"; fi }  # 25% COMMENT
-intervaladd(){ if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "+ INTERVAL `interval`"              # 20% + 0-9 INTERVAL
+intervaladd(){ if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "+ INTERVAL `interval`"; fi }        # 20% + 0-9 INTERVAL
 work()       { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "WORK"; fi }                         # 25% WORK (for transactions and savepoints)
 savepoint()  { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "SAVEPOINT"; fi }                    # 25% SAVEPOINT (for savepoints)
 chain()      { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "AND `no` CHAIN"; fi }               # 35% AND [NO] CHAIN (for transactions)
@@ -169,8 +187,10 @@ extended()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "EXTENDED"; fi }    
 usefrm()     { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "USE_FRM"; fi }                      # 20% USE_FRM
 localonly()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LOCAL"; fi }                        # 50% LOCAL (note 'local' is system keyword, hence 'localonly')
 # ========================================= Dual
+n2()         { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "1"; else echo "2"; fi }                       # 50% 1, 50% 2
 onoff()      { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "ON"; else echo "OFF"; fi }                    # 75% ON, 25% OFF
 onoff01()    { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "1"; else echo "0"; fi }                       # 75% 1 (on), 25% 0 (off)
+equals()     { if [ $[$RANDOM % 20 + 1] -le 3  ]; then echo "="; else echo " "; fi }                       # 15% =, 85% space
 allor1()     { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "*"; else echo "1"; fi }                       # 80% *, 20% 1
 startsends() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "STARTS"; else echo "ENDS"; fi }               # 50% STARTS, 50% ENDS
 globses()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "GLOBAL"; else echo "SESSION"; fi }            # 50% GLOBAL, 50% SESSION
@@ -189,13 +209,18 @@ danrorfull() { if [ $[$RANDOM % 20 + 1] -le 19 ]; then echo "`dataornum`"; else 
 numericadd() { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`numsimple` `eitherornn` `numericadd`"; else echo "`numsimple` `eitherornn`" ; fi }  # 40% NESTED +/-/etc. NR FUNCTION() OR SIMPLE, 60% SINGLE (OR FINAL) +/-/etc. as above
 dataornum()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`data`"; else echo "`nn1000`"; fi }           # 20% data (inc numbers), 80% -1000 to 1000
 dataornum2() { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "`data`"; else echo "`n100`"; fi }             # 10% data (inc numbers), 90% 0 to 100
-eitherornn() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`dataornum`"; else echo "`numericop`"; fi }   # 50% data (inc numbers), 50% NUMERIC FUNCTION() like ABS(nr) etc.
 fullnrfunc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`eitherornn` `numsimple` `eitherornn`"; else echo "`eitherornn` `numsimple` `eitherornn` `numericadd`"; fi }  # 50% full numeric function, 50% idem with nesting
 aggregated() { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed "s|DUMMY|`data`|"; else echo "`aggregate`" | sed "s|DUMMY|`danrorfull`|"; fi }  # 80% AGGREGATE FUNCTION with data, 20% with numbers or full function (for use inside a SELECT ... query)
 aggregatec() { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed "s|DUMMY|c`n3`|"; else echo "`aggregate`" | sed "s|DUMMY|`aggregated`|"; fi }  # 80% AGGREGATE FUNCTION using a column, 20% with data, numbers or full function (for use inside a SELECT ... FROM ... query)
 azn9()       { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }  # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
 dategen()    { if [ $[$RANDOM % 20 + 1] -le 19 ]; then echo "`dategenpr`"; else echo "`timefuncpr`"; fi }  # 95% generated date, 5% interval (MAX 10% to avoid inf loop)
 # ========================================= Triple
+eitherornn() { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`dataornum`"; else if [ $[$RANDOM % 20 + 1] -le 13 ]; then echo "`numericop`"; else echo "`timefunc`"; fi; fi }  # 40% data (inc numbers), 39% NUMERIC FUNCTION() like ABS(nr) etc., 21% time function
+subpart()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "SUBPARTITION BY `linear` HASH(`collist2`) `partnumsub`"; else echo "SUBPARTITION BY `linear` KEY `algorithm` (`collist2`) `partnumsub`"; fi; fi }  # 10% SUBPARTITION BY HASH, 10% SUBPARTITION BY KEY, 80% EMPTY/NOTHING
+partdefar1() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef1b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pMAX VALUES LESS THAN MAXVALUE `partse` `partcomment` `partmax` `partmin`"; fi; fi }  # 20% partdef1b, 40% MAXVALUE parition, 40% EMPTY/NOTHING
+partdefar2() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef2b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pMAX VALUES LESS THAN (MAXVALUE,MAXVALUE) `partse` `partcomment` `partmax` `partmin`"; fi; fi }  # 20% partdef2b, 40% MAXVALUE parition, 40% EMPTY/NOTHING
+partdefar3() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef3b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pNEG VALUES IN (-1,-2,-3,-4,-5) `partse` `partcomment` `partmax` `partmin`"; fi; fi }  # 20% partdef3b, 40% some negative values parition, 40% EMPTY/NOTHING
+partdefar4() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef4b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pNEG VALUES IN ((NULL,NULL),(-2,-2),(-3,-3),(-4,-4),(-5,-5)) `partse` `partcomment` `partmax` `partmin`"; fi; fi }  # 20% partdef4b, 40% some NULL/negative values parition, 40% EMPTY/NOTHING
 data()       { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`datafile`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`timefunc`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi; fi }  # 80% data from data.txt file, 10% date/time function data from timefunc.txt, 10% generated full numerical function
 ac()         { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "a"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "b"; else echo "c"; fi; fi }  # 40% a, 30% b, 30% c
 algorithm()  { if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ALGORITHM=1"; else echo "ALGORITHM=2"; fi; fi }  # 15% ALGORITHM=1, ALGORITHM=2, 70% EMPTY/NOTHING
@@ -208,18 +233,22 @@ emascdesc()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] 
 bincharco()  { if [ $[$RANDOM % 30 + 1] -le 10 ]; then echo 'CHARACTER SET "Binary" COLLATE "Binary"'; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo 'CHARACTER SET "utf8" COLLATE "utf8_bin"'; else echo 'CHARACTER SET "latin1" COLLATE "latin1_bin"'; fi; fi }   # 33% Binary/Binary, 33% utf8/utf8_bin, 33% latin1/latin1_bin
 inout()      { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "INOUT"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IN"; else echo "OUT"; fi; fi }  # 40% INOUT, 30% IN, 30% OUT
 nowriteloc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NO_WRITE_TO_BINLOG"; else echo "LOCAL"; fi; fi }  # 25% NO_WRITE_TO_BINLOG, 25% LOCAL, 50% EMPTY/NOTHING
+partrange()   { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "RANGE(c`n3`) `partdef1`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "RANGE(c`n3`) `subpart` `partdef1`"; else echo "RANGE COLUMNS(`collist2`) `partdef2`"; fi; fi }  # 35% RANGE(col), 33% RANGE(col) w/ subpart, 33% RANGE COLUMNS(col)
+partlist()    { if [ $[$RANDOM % 20 + 1] -le 7  ]; then echo "LIST(c`n3`) `partdef3`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIST(c`n3`) `subpart` `partdef3`"; else echo "LIST COLUMNS(`collist2`) `partdef4`"; fi; fi }  # 35% LIST(col), 33% LIST(col) w/ subpart, 33% LIST COLUMNS(col)
 # ========================================= Quadruple
-collist()    { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 12 ]; then echo "(c`n3`)"; else echo "(c`n3`,c`n3`)"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "(c1,c2)"; else echo "(c3,c1)"; fi; fi }  # 24% random single column, 16% random dual column (may fail), 30% (c1,c2), 30% (c3,c1)
-like()       { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 5 ]; then echo "LIKE '`azn9`'"; else echo "LIKE '`azn9`%'"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIKE '%`azn9`'"; else echo "LIKE '%`azn9`%'"; fi; fi; }  # 10% LIKE '<char>', 30% LIKE '<char>%', 30% LIKE '%<char>', 30% LIKE '%<char>%'
-isolation()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ COMMITTED"; else echo "REPEATABLE READ"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ UNCOMMITTED"; else echo "SERIALIZABLE"; fi; fi; }  # 25% READ COMMITTED, 25% REPEATABLE READ, 25% READ UNCOMMITTED, 25% SERIALIZABLE
-timestamp()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "CURRENT_TIMESTAMP"; else echo "CURRENT_TIMESTAMP()"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NOW()"; else echo "`data`"; fi; fi; }  # 25% CURRENT_TIMESTAMP, 25% CURRENT_TIMESTAMP(), 25% NOW(), 25% random data
+collist1()   { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 12 ]; then echo "(c`n3`)"; else echo "(c`n3`,c`n3`)"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "(c1,c2)"; else echo "(c3,c1)"; fi; fi }  # 24% random single column, 16% random dual column (may fail), 30% (c1,c2), 30% (c3,c1)
+collist2()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "(c1,c2)"; else echo "(c2,c3)"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "(c1,c3)"; else echo "(c3,c1)"; fi; fi }  # 25% (c1,c2), 25% (c2,c3), 25% (c1,c3), 25% (c3,c1)
+like()       { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] -le 5 ]; then echo "LIKE '`azn9`'"; else echo "LIKE '`azn9`%'"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "LIKE '%`azn9`'"; else echo "LIKE '%`azn9`%'"; fi; fi }  # 10% LIKE '<char>', 30% LIKE '<char>%', 30% LIKE '%<char>', 30% LIKE '%<char>%'
+isolation()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ COMMITTED"; else echo "REPEATABLE READ"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ UNCOMMITTED"; else echo "SERIALIZABLE"; fi; fi }  # 25% READ COMMITTED, 25% REPEATABLE READ, 25% READ UNCOMMITTED, 25% SERIALIZABLE
+timestamp()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "CURRENT_TIMESTAMP"; else echo "CURRENT_TIMESTAMP()"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NOW()"; else echo "`data`"; fi; fi }  # 25% CURRENT_TIMESTAMP, 25% CURRENT_TIMESTAMP(), 25% NOW(), 25% random data
+partdecl()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`parthash`"; else echo "`partkey`"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`partrange`"; else echo "`partlist`"; fi; fi }  # Partitioning: 25% HASH, 25% KEY, 25% RANGE (split further), 25% LIST (split furter)
 # ========================================= Quintuple
-operator()   { if [ $[$RANDOM % 20 + 1] -le 8 ]; then echo "="; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ">"; else echo ">="; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "<"; else echo "<="; fi; fi; fi; }  # 40% =, 15% >, 15% >=, 15% <, 15% <=
-pstimer()    { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "idle"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "wait"; else echo "stage"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "statement"; else echo "statement"; fi; fi; fi; }  # 20% idle, 20% wait, 20% stage, 20% statement, 20% statement
-pstimernm()  { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "CYCLE"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NANOSECOND"; else echo "MICROSECOND"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "MILLISECOND"; else echo "TICK"; fi; fi; fi; }  # 20% CYCLE, 20% NANOSECOND, 20% MICROSECOND, 20% MILLISECOND, 20% TICK
+operator()   { if [ $[$RANDOM % 20 + 1] -le 8 ]; then echo "="; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ">"; else echo ">="; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "<"; else echo "<="; fi; fi; fi }  # 40% =, 15% >, 15% >=, 15% <, 15% <=
+pstimer()    { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "idle"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "wait"; else echo "stage"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "statement"; else echo "statement"; fi; fi; fi }  # 20% idle, 20% wait, 20% stage, 20% statement, 20% statement
+pstimernm()  { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "CYCLE"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NANOSECOND"; else echo "MICROSECOND"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "MILLISECOND"; else echo "TICK"; fi; fi; fi }  # 20% CYCLE, 20% NANOSECOND, 20% MICROSECOND, 20% MILLISECOND, 20% TICK
 # ========================================= Subcalls
 subwhact()   { if [ ${SUBWHEREACTIVE} -eq 0 ]; then echo "WHERE "; fi }  # Only use 'WHERE' if this is not a sub-WHERE, i.e. a call from subwhere()
-subwhere()   { SUBWHEREACTIVE=1; if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`andor` `whereal`"; fi; }  # 20% sub-WHERE (additional and/or WHERE clause)
+subwhere()   { SUBWHEREACTIVE=1; if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`andor` `whereal`"; fi }  # 20% sub-WHERE (additional and/or WHERE clause)
 subordby()   { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ",c`n3` `emascdesc`"; fi }                    # 20% sub-ORDER BY (additional ORDER BY column)
 # ========================================= Special/Complex
 opstend()    { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`startsends` `timestamp` `intervaladd`"; fi } # 20% optional START/STOP (for EVENTs)
@@ -301,45 +330,12 @@ query(){
   case $[$RANDOM % 39 + 1] in
     # Frequencies for CREATE (1-3), INSERT (4-7), and DROP (8) statements are well tuned, please do not change these case ranges
     # Most other statements have been frequency tuned also, but not to the same depth. If you find bugs (for example too many errors because of frequency), please fix them
-
-partition_options:
-parition(){ echo "PARTITION BY `partdecl`
-
-partdecl(){ `linear` HASH(expr) | `linear` KEY `algorithm` (`collist`) | RANGE (expr) | RANGE COLUMNS(`collist`) | LIST(expr) | COLUMNS(`collist`) }  # choose one
-partnum(){ echo "PARTITIONS `n1000`"
-    [SUBPARTITION BY
-        { `linear` HASH(expr)
-        | `linear` KEY `algorithm` (`collist`) }
-      [SUBPARTITIONS num]
-    ]
-    [(partition_definition [, partition_definition] ...)]
-
-partition_definition:
-    PARTITION partition_name
-        [VALUES
-            {LESS THAN {(expr | value_list) | MAXVALUE}
-            |
-            IN (value_list)}]
-        [[STORAGE] ENGINE [=] engine_name]
-        [COMMENT [=] 'comment_text' ]
-        [DATA DIRECTORY [=] 'data_dir']
-        [INDEX DIRECTORY [=] 'index_dir']
-        [MAX_ROWS [=] max_number_of_rows]
-        [MIN_ROWS [=] min_number_of_rows]
-        [TABLESPACE [=] tablespace_name]
-        [(subpartition_definition [, subpartition_definition] ...)]
-
-subpartition_definition:
-    SUBPARTITION logical_name
-        [[STORAGE] ENGINE [=] engine_name]
-        [COMMENT [=] 'comment_text' ]
-        [DATA DIRECTORY [=] 'data_dir']
-        [INDEX DIRECTORY [=] 'index_dir']
-        [MAX_ROWS [=] max_number_of_rows]
-        [MIN_ROWS [=] min_number_of_rows]
-        [TABLESPACE [=] tablespace_name]
-
-
+    # Possible expansions for partitoning (partitioning tree starts down from `partionby`)
+    # - Instead of `collist1` use, this can be expanded with timefunc, but need to swap DUMMY_DATE to columns + match CREATE TABLE columns to it
+    # - These partdef (partitions+subpartitions) options were not added yet: [DATA DIRECTORY [=] 'data_dir'], [INDEX DIRECTORY [=] 'index_dir'], [TABLESPACE [=] tablespace_name]
+    # - VALUES LESS THAN (ref partdef1b/partdef2b/partdefar1/partdefar2) can be expanded further with an expression instead of a static number
+    # - Subpartioning support was added, but it can be reviewed and be extended, see https://dev.mysql.com/doc/refman/5.7/en/partitioning-subpartitions.html
+    #   - Subpartion defenition (subpartition_definition in https://dev.mysql.com/doc/refman/5.7/en/create-table.html) needs to be added. Clauses (COMMENT= etc.) already added
     [1-3]) case $[$RANDOM % 6 + 1] in  # CREATE (needs further work)
         1) echo "CREATE `temp` TABLE `ifnotexist` `table` (c1 `pk`,c2 `ctype`,c3 `ctype`) ENGINE=`engine` `partitionby`";;
         2) echo "CREATE `temp` TABLE `ifnotexist` `table` (c1 `ctype`,c2 `ctype`,c3 `ctype`) ENGINE=`engine` `partitionby`";;
