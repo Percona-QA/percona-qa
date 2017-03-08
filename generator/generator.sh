@@ -135,10 +135,15 @@ dategenpr()  { echo "`n9``n9``n9``n9`-`month`-`day` `hour`:`minsec`:`minsec`"; }
 timefunc()   { echo "`timefuncpr`" | sed "s|DUMMY_DATE|`dategen`|;s|DUMMY_DATE|`dategen`|g;s|DUMMY_NR|`dataornum2`|;s|DUMMY_NR|`dataornum2`|;s|DUMMY_NR|`dataornum2`|g;s|DUMMY_INTERVAL|`intervaln`|;s|DUMMY_TIMEZONE|`timezone`|;s|DUMMY_TIMEZONE|`timezone`|g;s|DUMMY_N6|`n6`|g;s|DUMMY_DATA|`data`|g;s|DUMMY_UNIT|`timeunit`|g"; }
 timefunccol(){ echo "`timefuncpr`" | sed "s|DUMMY_DATE|c`n3`|;s|DUMMY_DATE|c`n3`|g;s|DUMMY_NR|`dataornum2`|;s|DUMMY_NR|`dataornum2`|;s|DUMMY_NR|`dataornum2`|g;s|DUMMY_INTERVAL|`intervaln`|;s|DUMMY_TIMEZONE|`timezone`|;s|DUMMY_TIMEZONE|`timezone`|g;s|DUMMY_N6|`n6`|g;s|DUMMY_DATA|`data`|g;s|DUMMY_UNIT|`timeunit`|g"; }
 partnum()    { echo "PARTITIONS `n1000`"; }  
-partdef1()   { INC1=0; echo "(`partdefac1`)"; }
-partdef2()   { INC1=0; INC2=0; echo "(`partdefac2`)"; }
-partdefac1() { INC1=$[ $INC1 + $[ $RANDOM % 100 + 1 ] ]; echo "PARTITION p${INC1} VALUES LESS THAN (${INC1}) `partdefar1`"; }
-partdefac2() { INC1=$[ $INC1 + $[ $RANDOM % 100 + 1 ] ]; INC2=$[ $INC2 + $[ $RANDOM % 100 + 1 ] ]; echo "PARTITION p${INC1} VALUES LESS THAN (${INC1},${INC2}) `partdefar2`"; }
+partnumsub() { echo "SUBPARTITIONS `n1000`"; }
+partdef1()   { INC1=0; echo "(`partdef1b`)"; }
+partdef2()   { INC1=0; INC2=0; echo "(`partdef2b`)"; }
+partdef3()   { INC1=0; echo "(`partdef3b`)"; }
+partdef4()   { INC1=0; INC2=0; echo "(`partdef4b`)"; }
+partdef1b()  { INC1=$[ $INC1 + $[ $RANDOM % 100 + 1 ] ]; echo "PARTITION p${INC1} VALUES LESS THAN (${INC1}) `partdefar1`"; }
+partdef2b()  { INC1=$[ $INC1 + $[ $RANDOM % 100 + 1 ] ]; INC2=$[ $INC2 + $[ $RANDOM % 100 + 1 ] ]; echo "PARTITION p${INC1} VALUES LESS THAN (${INC1},${INC2}) `partdefar2`"; }
+partdef3b()  { INC1=$[ $INC1 + 5 + $[ $RANDOM % 10 + 1 ] ]; echo "PARTITION p${INC1} VALUES IN (${INC1},$[ ${INC1} + 1 ],$[ ${INC1} + 2 ],$[ ${INC1} + 3 ],$[ ${INC1} + 4 ],$[ ${INC1} + 5 ]) `partdefar3`"; }
+partdef4b()  { INC1=$[ $INC1 + 5 + $[ $RANDOM % 10 + 1 ] ]; INC2=$[ $INC2 + 5 + $[ $RANDOM % 10 + 1 ] ]; echo "PARTITION p${INC1} VALUES IN ((${INC1},${INC2}),($[ ${INC1} + 1 ],$[ ${INC2} + 1 ]),($[ ${INC1} + 2 ],$[ ${INC2} + 2 ]),($[ ${INC1} + 3 ],$[ ${INC2} + 3 ]),($[ ${INC1} + 4 ],$[ ${INC2} + 4 ]),($[ ${INC1} + 5 ],$[ ${INC2} + 5 ])) `partdefar4`"; }
 # ========================================= Single, random
 neg()        { if [ $[$RANDOM % 20 + 1] -le 1  ]; then echo "-"; fi }                            #  5% - (negative number)
 temp()       { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "TEMPORARY "; fi }                   # 20% TEMPORARY
@@ -202,8 +207,10 @@ aggregatec() { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed 
 azn9()       { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }  # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
 dategen()    { if [ $[$RANDOM % 20 + 1] -le 19 ]; then echo "`dategenpr`"; else echo "`timefuncpr`"; fi }  # 95% generated date, 5% interval (MAX 10% to avoid inf loop)
 # ========================================= Triple
-partdefar1() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`partdefac1`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "PARTITION pMAX VALUES LESS THAN MAXVALUE"; fi; fi }  # 20% partdefac, 40% MAXVALUE parition, 40% EMPTY/NOTHING
-partdefar2() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`partdefac2`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "PARTITION pMAX VALUES LESS THAN (MAXVALUE,MAXVALUE)"; fi; fi }  # 20% partdefac, 40% MAXVALUE parition, 40% EMPTY/NOTHING
+partdefar1() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef1b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pMAX VALUES LESS THAN MAXVALUE"; fi; fi }  # 20% partdef1b, 40% MAXVALUE parition, 40% EMPTY/NOTHING
+partdefar2() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef2b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pMAX VALUES LESS THAN (MAXVALUE,MAXVALUE)"; fi; fi }  # 20% partdef2b, 40% MAXVALUE parition, 40% EMPTY/NOTHING
+partdefar3() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef3b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pNEG VALUES IN (-1,-2,-3,-4,-5)"; fi; fi }  # 20% partdef3b, 40% some negative values parition, 40% EMPTY/NOTHING
+partdefar4() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef4b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pNEG VALUES IN ((NULL,NULL),(-2,-2),(-3,-3),(-4,-4),(-5,-5))"; fi; fi }  # 20% partdef4b, 40% some NULL/negative values parition, 40% EMPTY/NOTHING
 data()       { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`datafile`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`timefunc`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi; fi }  # 80% data from data.txt file, 10% date/time function data from timefunc.txt, 10% generated full numerical function
 ac()         { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "a"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "b"; else echo "c"; fi; fi }  # 40% a, 30% b, 30% c
 algorithm()  { if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ALGORITHM=1"; else echo "ALGORITHM=2"; fi; fi }  # 15% ALGORITHM=1, ALGORITHM=2, 70% EMPTY/NOTHING
@@ -311,31 +318,15 @@ query(){
     # Most other statements have been frequency tuned also, but not to the same depth. If you find bugs (for example too many errors because of frequency), please fix them
 
 
-echo "PARTITION BY `linear` HASH(`collist`) `partnum` ";  # Instead of `collist` this can be expanded with timefunc, but need to swap DUMMY_DATE to columns + match CREATE TABLE columns to it
-echo "PARTITION BY `linear` KEY `algorithm` (`collist`) `partnum` ";  # Instead of `collist` this can be expanded with timefunc, but need to swap DUMMY_DATE to columns + match CREATE TABLE columns to it
-echo "PARTITION BY RANGE(c`n3`) `partdef1` ";
-echo "PARTITION BY RANGE COLUMN(`collist`) `partdef2` ";
+echo "PARTITION BY `linear` HASH(`collist`) `partnum`";  # Instead of `collist` this can be expanded with timefunc, but need to swap DUMMY_DATE to columns + match CREATE TABLE columns to it
+echo "PARTITION BY `linear` KEY `algorithm` (`collist`) `partnum`";  # Instead of `collist` this can be expanded with timefunc, but need to swap DUMMY_DATE to columns + match CREATE TABLE columns to it
+echo "PARTITION BY RANGE(c`n3`) `partdef1`";
+echo "PARTITION BY RANGE COLUMNS(`collist`) `partdef2`";
+echo "PARTITION BY LIST(c`n3`) `partdef3`";
+echo "PARTITION BY LIST COLUMNS(`collist`) `partdef4`";
 
-
-
-CREATE TABLE t1 (
-    year_col  INT,
-    some_data INT
-)
-PARTITION BY RANGE (year_col) (
-    PARTITION p0 VALUES LESS THAN (1991),
-    PARTITION p1 VALUES LESS THAN (1995),
-    PARTITION p2 VALUES LESS THAN (1999),
-    PARTITION p3 VALUES LESS THAN (2002),
-    PARTITION p4 VALUES LESS THAN (2006),
-    PARTITION p5 VALUES LESS THAN MAXVALUE
-);
-
-
-parition(){ echo "PARTITION BY `partdecl` `partnum` `subpart` `partdef` "
-partdecl(){ RANGE (expr) | RANGE COLUMNS(`collist`) | LIST(expr) | COLUMNS(`collist`) }  # choose one
-subpart(){ echo "SUBPARTITION BY `linear` HASH(expr) | `linear` KEY `algorithm` (`collist`) `subpartnum`"; } # 10% 
-partnum(){ echo "SUBPARTITIONS `n1000`"; }  # 20 %
+echo "SUBPARTITION BY `linear` HASH(`collist`) `partnum`";
+echo "SUBPARTITION BY `linear` KEY `algorithm` (`collist`) `partnumsub`";
 
 PARTITION BY RANGE COLUMNS(a,b) (
     PARTITION p0 VALUES LESS THAN (10,5),
