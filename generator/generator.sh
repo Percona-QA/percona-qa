@@ -648,8 +648,8 @@ query(){
 
 thread(){
   for i in `eval echo {1..${QUERIES_PER_THREAD}}`; do
-    while [ ${MUTEX_THREAD_BUSY} -eq 1 ]; do sleep 0.0$RANDOM; done
-    MUTEX_THREAD_BUSY=1; echo "`query`;" >> out.sql; MUTEX_THREAD_BUSY=0
+    echo "`query`;" >> out${1}.sql
+    sync
   done
 }
 
@@ -662,15 +662,28 @@ MUTEX_THREAD_BUSY=0
 PIDS=
 QUERIES_PER_THREAD=$[ ${QUERIES} / ${THREADS} ]
 if [ ${QUERIES_PER_THREAD} -gt 0 ]; then
+  # Remove old out file
+  rm -f out.sql
+  # Remove old temporary files (if any)
   for i in `eval echo {1..${THREADS}}`; do
-    thread &
+    rm -f out${1}.sql
+  done
+  # Actual query generation
+  for i in `eval echo {1..${THREADS}}`; do
+    thread $i &
     PIDS="${PIDS} $!"
   done
   wait ${PIDS}
+  # Recombine individual thread files
+  for i in `eval echo {1..${THREADS}}`; do
+    cat out$i.sql >> out.sql
+    rm out$i.sql
+  done
+  # Process the leftover queries (result of rounding (queries/threads) into an integer result)
+  QUERIES_PER_THREAD=$[ ${QUERIES} - ( ${THREADS} * ${QUERIES_PER_THREAD} ) ];
+  if [ ${QUERIES_PER_THREAD} -gt 0 ]; then thread 1; fi
 fi
-# == Process the leftover queries (result of rounding (queries/threads) into an integer result)
-QUERIES_PER_THREAD=$[ ${QUERIES} - ( ${THREADS} * ${QUERIES_PER_THREAD} ) ];
-if [ ${QUERIES_PER_THREAD} -gt 0 ]; then thread; fi
+
 # == Check for failures or report outcome
 if grep -qi "Assert" out.sql; then
   echo "Errors found, please fix generator.sh code:"
