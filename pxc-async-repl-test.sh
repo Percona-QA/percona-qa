@@ -91,6 +91,25 @@ if [[ ! -e `which sysbench` ]];then
 fi
 echo "Note: Using sysbench at $(which sysbench)"
 
+
+sysbench_run(){
+  TEST_TYPE="$1"
+  DB="$2"
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    fi
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+    fi
+  fi
+}
+
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 
 PXC_BASEDIR="${ROOT_FS}/$PXCBASE"
@@ -211,8 +230,9 @@ function async_rpl_test(){
     echo "START SLAVE;" >> $node1/rpl.sql
   
     echo "Sysbench Run: Prepare stage"
-   
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+    sysbench_run load_data test
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+
     check_script $?  
     echo "Starting PXC node2"
     ${MID} --datadir=$node2  > ${WORKDIR}/logs/node2.err 2>&1 || exit 1;
@@ -373,9 +393,9 @@ function async_rpl_test(){
   function node1_master_test(){
     echo "******************** $MYEXTRA_CHECK PXC node-1 as master ************************"
     #OLTP RW run
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-      --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-      --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/pxc1.sock run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
+    sysbench_run oltp test
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
+
     check_script $?
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
 
@@ -424,9 +444,8 @@ function async_rpl_test(){
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e"START SLAVE;"
 
     #OLTP RW run
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-      --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-      --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/pxc2.sock run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
+    sysbench_run oltp test
+    $SBENCH $SYSBENCH_OPTIONS --db-driver=mysql --mysql-socket=/tmp/pxc2.sock run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
     check_script $?
 
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -475,9 +494,8 @@ function async_rpl_test(){
 
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e"create database if not exists ps_test_1"
     #OLTP RW run
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-     --oltp_tables_count=$TCOUNT --mysql-db=ps_test_1 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-     --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+    sysbench_run load_data ps_test_1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
     check_script $?
 
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -494,10 +512,8 @@ function async_rpl_test(){
     done
 
     # OLTP RW run
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-      --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-      --oltp_tables_count=$TCOUNT --mysql-db=ps_test_1 --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/ps2.sock  \
-      run  2>&1 | tee $WORKDIR/logs/sysbench_ps_rw.log
+    sysbench_run oltp ps_test_1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock run  2>&1 | tee $WORKDIR/logs/sysbench_ps_rw.log
     check_script $?
     sleep 5
     while [ $SB_MASTER -gt 0 ]; do
@@ -533,9 +549,8 @@ function async_rpl_test(){
 
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e"create database if not exists ps_test_2"
     #OLTP RW run
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-    --oltp_tables_count=$TCOUNT --mysql-db=ps_test_2 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-    --mysql-socket=/tmp/ps3.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+    sysbench_run load_data ps_test_2
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps3.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
     check_script $?
 
     SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -552,9 +567,8 @@ function async_rpl_test(){
     done
 
     # OLTP RW run
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-      --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-      --oltp_tables_count=$TCOUNT --mysql-db=ps_test_2 --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/ps3.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_rw.log
+    sysbench_run oltp ps_test_2
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps3.sock run  2>&1 | tee $WORKDIR/logs/sysbench_ps_rw.log
     check_script $?
     sleep 5
     while [ $SB_MASTER -gt 0 ]; do
@@ -586,9 +600,8 @@ function async_rpl_test(){
     echo "Sysbench Run for replication master master test : Prepare stage"
 
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -e "drop database if exists master_test;create database master_test;"
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-     --oltp_tables_count=$TCOUNT --mysql-db=master_test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-     --mysql-socket=/tmp/pxc2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_ps_prepare.txt
+    sysbench_run load_data master_test
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_ps_prepare.txt
     check_script $?
 
     if [ "$MYEXTRA_CHECK" == "GTID" ]; then
@@ -599,11 +612,8 @@ function async_rpl_test(){
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e"START SLAVE;"
 
     #OLTP RW run
-
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=master_test --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/pxc2.sock \
-     run  2>&1 | tee $WORKDIR/logs/sysbench_ps_rw.log
+    sysbench_run oltp master_test
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc2.sock run  2>&1 | tee $WORKDIR/logs/sysbench_ps_rw.log
     check_script $?
 
     SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/ps3.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -644,10 +654,8 @@ function async_rpl_test(){
     echo "Stopping PXC node1 for shuffle test"
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown > /dev/null 2>&1
 
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/ps1.sock run  2>&1 | tee $WORKDIR/logs/sysbench_ps_shuffle_rw.log
+    sysbench_run oltp test
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock run  2>&1 | tee $WORKDIR/logs/sysbench_ps_shuffle_rw.log
     check_script $?
 
 
@@ -679,10 +687,8 @@ function async_rpl_test(){
     done
     sleep 10
 
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/pxc2.sock  \
-     run  2>&1 | tee $WORKDIR/logs/sysbench_ps_shuffle_rw.log
+    sysbench_run oltp test
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc2.sock run  2>&1 | tee $WORKDIR/logs/sysbench_ps_shuffle_rw.log
     check_script $?
 
     SB_MASTER=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -756,17 +762,14 @@ function async_rpl_test(){
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e "drop database if exists msr_db_master3;create database msr_db_master3;"
   
     # Sysbench dataload for MSR test
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master1 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/ps1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master1_prepare.txt
+    sysbench_run load_data msr_db_master1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master1_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master2 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master2_prepare.txt
+    sysbench_run load_data msr_db_master2
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master2_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master3 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/ps3.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master3_prepare.txt
+    sysbench_run load_data msr_db_master2
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps3.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master3_prepare.txt
 
     check_script $?
 
@@ -784,21 +787,15 @@ function async_rpl_test(){
 #    ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE5, MASTER_USER='root', MASTER_AUTO_POSITION=1 FOR CHANNEL 'master2';"
 #    ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE6, MASTER_USER='root', MASTER_AUTO_POSITION=1 FOR CHANNEL 'master3';"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"START SLAVE;"
-   
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master1 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/ps1.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel1_rw.log
+
+    sysbench_run oltp msr_db_master1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel1_rw.log
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master2 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/ps2.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel2_rw.log
+    sysbench_run oltp msr_db_master2
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel2_rw.log
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=msr_db_master3 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/ps3.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel3_rw.log
+    sysbench_run oltp msr_db_master3
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps3.sock  run  2>&1 | tee $WORKDIR/logs/sysbench_ps_channel3_rw.log
     check_script $?
     sleep 10
     SB_CHANNEL1=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show slave status for channel 'master1'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -880,45 +877,35 @@ function async_rpl_test(){
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists mtr_db_ps5;create database mtr_db_ps5;"
   
     # Sysbench dataload for MTR test
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc1 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc1_prepare.txt
+    sysbench_run load_data mtr_db_pxc1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc1_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc2 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc2_prepare.txt
+    sysbench_run load_data mtr_db_pxc2
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc2_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc3 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc3_prepare.txt
+    sysbench_run load_data mtr_db_pxc3
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc3_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc4 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc4_prepare.txt
+    sysbench_run load_data mtr_db_pxc4
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc4_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc5 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc5_prepare.txt
+    sysbench_run load_data mtr_db_pxc5
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_pxc5_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps1 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps1_prepare.txt
+    sysbench_run load_data mtr_db_ps1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps1_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-    --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps2 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-    --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps2_prepare.txt
+    sysbench_run load_data mtr_db_ps2
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps2_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps3 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps3_prepare.txt
+    sysbench_run load_data mtr_db_ps3
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps3_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-      --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps4 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-      --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps4_prepare.txt
+    sysbench_run load_data mtr_db_ps4
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps4_prepare.txt
     check_script $?
-    $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-    --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps5 --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-    --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps5_prepare.txt
+    sysbench_run load_data mtr_db_ps5
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_mtr_db_ps5_prepare.txt
     check_script $?
     if [ "$MYEXTRA_CHECK" == "GTID" ]; then
       ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$RBASE1, MASTER_USER='root', MASTER_AUTO_POSITION=1;"
@@ -932,56 +919,36 @@ function async_rpl_test(){
  
 
     # Sysbench RW MTR test run...
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc1 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc1_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_pxc1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc1_rw.log 2>&1 &
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc2 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc2_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_pxc2
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc2_rw.log 2>&1 &
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc3 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc3_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_pxc3
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc3_rw.log 2>&1 &
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc4 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc4_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_pxc4
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc4_rw.log 2>&1 &
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_pxc5 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc5_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_pxc5
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_pxc5_rw.log 2>&1 &
     check_script $?
     # Sysbench RW MTR test run...
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps1 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_ps1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_rw.log 2>&1 &
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps2 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_ps2
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_rw.log 2>&1 &
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-   --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps3 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps3_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_ps3
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps3_rw.log 2>&1 &
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps4 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps4_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_ps4
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps4_rw.log 2>&1 &
     check_script $?
-    $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-     --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 \
-     --oltp_tables_count=$TCOUNT --mysql-db=mtr_db_ps5 --mysql-user=root --db-driver=mysql \
-     --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps5_rw.log 2>&1 &
+    sysbench_run oltp mtr_db_ps5
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps5_rw.log 2>&1 &
     check_script $?
     sleep 10
     SB_PS=`$PXC_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
