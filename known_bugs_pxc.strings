@@ -72,7 +72,12 @@ ZN2gu12MutexWithPFSC2E19wsrep_pfs_instr_tag                                     
 fil0fil.cc line 2099                                                                     ## https://jira.percona.com/browse/PXC-779
 fil0fil.cc line 632                                                                      ## https://jira.percona.com/browse/PXC-780
 lock0lock.cc line 5884                                                                   ## https://jira.percona.com/browse/PXC-781
- 
+...flags . MYSQL_START_TRANS_OPT_READ_ONLY                                               ## https://jira.percona.com/browse/PXC-787
+row0log.cc line 1909                                                                     ## https://jira.percona.com/browse/PXC-788
+Z18compute_digest_md5PK18sql_digest_storagePh                                            ## https://jira.percona.com/browse/PXC-789
+ZN10Rpl_filter14get_rewrite_dbEPKcPm                                                     ## https://jira.percona.com/browse/PXC-790
+.thd->sp_runtime_ctx                                                                     ## https://jira.percona.com/browse/PXC-791
+
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
