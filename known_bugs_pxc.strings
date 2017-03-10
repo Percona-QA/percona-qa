@@ -77,6 +77,7 @@ row0log.cc line 1909                                                            
 Z18compute_digest_md5PK18sql_digest_storagePh                                            ## https://jira.percona.com/browse/PXC-789
 ZN10Rpl_filter14get_rewrite_dbEPKcPm                                                     ## https://jira.percona.com/browse/PXC-790
 .thd->sp_runtime_ctx                                                                     ## https://jira.percona.com/browse/PXC-791
+trx0trx.cc line 2157                                                                     ## https://jira.percona.com/browse/PXC-792
 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
