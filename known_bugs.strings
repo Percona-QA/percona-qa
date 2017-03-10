@@ -114,7 +114,7 @@ db_return_                                               ## http://bugs.mysql.co
 i == uint2korr.part_rec_buf_ptr                          ## http://bugs.mysql.com/bug.php?id=76418
 #row0mysql.cc line 2405                         ## Fixed ## http://bugs.mysql.com/bug.php?id=76419                                                 (# after MS 5.7.8 merged)
 #row0mysql.cc line 2418                         ## Fixed ## http://bugs.mysql.com/bug.php?id=76419                                                 (# after MS 5.7.8 merged)
-row0mysql.cc line 3339                                   ## http://bugs.mysql.com/bug.php?id=75945
+#row0mysql.cc line 3339                         ## Fixed ## http://bugs.mysql.com/bug.php?id=75945
 ZN13MYSQL_BIN_LOG12find_log_posEP11st_log_infoPKcb       ## http://bugs.mysql.com/bug.php?id=76420
 #thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE ## Fixed in 5.7.8 http://bugs.mysql.com/bug.php?id=76424
 #dict0priv.ic line 44                           ## Fixed ## http://bugs.mysql.com/bug.php?id=76430
@@ -416,9 +416,9 @@ row0ins.c line 2333                                                             
 row0merge.cc line 2692                                                                  ## http://bugs.mysql.com/bug.php?id=74887 MS
 row0merge.cc line 2698                                                                  ## http://bugs.mysql.com/bug.php?id=74887 PS
 #row0mysql.cc line 2644                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74634 MS (Fixed in 5.6.25)
-row0mysql.cc line 2711                                                         ## Fixed ## http://bugs.mysql.com/bug.php?id=74634 PS (Fixed in 5.6.25)
-row0mysql.cc line 5027                                                                  ## http://bugs.mysql.com/bug.php?id=74790 MS
-row0mysql.cc line 5094                                                                  ## http://bugs.mysql.com/bug.php?id=74790 PS
+#row0mysql.cc line 2711                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74634 PS (Fixed in 5.6.25)
+#row0mysql.cc line 5027                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74790 MS (Fixed in 5.6.24, 5.7.6)
+#row0mysql.cc line 5094                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74790 PS (Fixed in 5.6.24, 5.7.6)
 #row0mysql.cc line 688                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1200502 (with oldPS) (dup of 1410410)
 #row0mysql.cc line 689                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1200502 (dup of 1410410)
 #row0quiesce.cc line 683                                                       ## Fixed ## http://bugs.mysql.com/bug.php?id=75398 (fixed in 5.6.23) Duplicate MS#74346
@@ -771,6 +771,7 @@ ZN15Event_scheduler5startEPi                                                    
 ## =========== pquery reducer scripts TEXT based (for short strings that may be part of other assertion messages. End with $ EOL char and add . before and after text) ===========
 #TEXT=.is_started.$                                                            ## Fixed ## http://bugs.mysql.com/bug.php?id=76425
 #TEXT=.r == 0.$                                                                         ## PS Bug #1511969 (verified), also see http://tokutek.atlassian.net/browse/DB-933 / DB-737
+#TEXT=.r == 0.$                                                                         ## http://tokutek.atlassian.net/browse/FT-723 also see DB-737 (fixed in 5.6.23/Tk7.5.6) 
 #TEXT=.my_b_write.$                                                            ## Fixed ## http://bugs.mysql.com/bug.php?id=74950 (fixed in 5.6.27, 5.7.9)
 #TEXT=.strlen.m_ptr.$                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=75870 (Also ref bug 79905) (Fixed in MS 5.7.8)
 TEXT=.strlen.m_ptr.$                                                                    ## http://bugs.mysql.com/bug.php?id=84754
@@ -781,7 +782,6 @@ TEXT=...tables.$                                                                
 TEXT=.child_l.$                                                                         ## http://bugs.mysql.com/bug.php?id=76277 (with debug build)
 TEXT=.false.$                                                                           ## http://bugs.mysql.com/bug.php?id=74877
 TEXT=.fd .= -1.$                                                                        ## http://bugs.mysql.com/bug.php?id=74641
-TEXT=.r == 0.$                                                                          ## http://tokutek.atlassian.net/browse/FT-723 also see DB-737 (fixed in 5.6.23/Tk7.5.6) 
 TEXT=.res.$                                                                             ## http://bugs.mysql.com/bug.php?id=76745
 TEXT=.src.$                                                 ## Still present in 5.5,5.6 ## http://bugs.mysql.com/bug.php?id=74500 (fixed in 5.7.6)
 TEXT=.strlen.db.$                                                                       ## http://bugs.mysql.com/bug.php?id=76467
