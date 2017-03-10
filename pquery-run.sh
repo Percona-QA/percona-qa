@@ -32,7 +32,7 @@ STORE_COPY_OF_INFILE=0                                         # Store a copy of
 PQUERY_RUN_TIMEOUT=15                                          # x sec max trial runtime within which pquery tries to process QUERIES_PER_THREAD x THREADS queries against 1 mysqld
 QUERIES_PER_THREAD=100000                                      # Maximum number of queries executed per thread (THREADS) per trial (small = faster reduction, large = more crashes)
 QUERIES_PER_GENERATOR_RUN=25000                                # Used when USE_GENERATOR_INSTEAD_OF_INFILE=1. Default: 20000. Generating 10K queries takes about 15 seconds on SSD
-GENERATE_NEW_QUERIES_WITH_GENERATOR_EVERY_X_TRIALS=10          # Run the SQL Generator every x trials. Default is 10. This aids runs as less time is spent generating queries
+GENERATE_NEW_QUERIES_EVERY_X_TRIALS=10                         # Run the SQL Generator every x trials. Default is 10. This aids runs as less time is spent generating queries
 MYEXTRA=""                                                     # Extra options to pass to mysqld. Examples below
 MYSAFE="--no-defaults --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY" #5.6/5.7
                                                                # MYSAFE: See http://bugs.mysql.com/?id=73916 re: testing env setup. MYSAFE ensures cleaner/better QA runs
@@ -40,7 +40,7 @@ THREADS=1                                                      # Number of threa
 MULTI_THREADED_TESTC_LINES=25000                               # Only takes effect if THREADS>1. pquery-run will take this amount of lines to form individual testcases for multi-threaded runs. IOW, if THREADS=1, pquery-run will just run one client, continously getting random queries out of INFILE, untill QUERIES_PER_THREAD queries is reached (if mysqld does not crash earlier). On the other hand, if THREADS>1, pquery-run will take a random chunk out of INFILE (to the amount of MULTI_THREADED_TESTC_LINES lines) _before_ starting each trial run. It will then run pquery, with THREADS threads, only using that smaller chunk extracted from INFILE. These individual SQL input files are saved in the trial's dirtory. You may want to keep this number small to ensure that true-multi-threaded testcase reduction using reducer.sh is still sufficiently fast (25K lines takes a few days to reduce), while keeping it large enough to ensure crashes/asserts to start with.
 
 # ==== PS 5.7 example: 
-#MYEXTRA="--log-bin --thread_handling=pool-of-threads --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/plugins_57.sql --server-id=0"
+#MYEXTRA="--log-bin --server-id=0 --thread_handling=pool-of-threads --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/plugins_57.sql"
 
 # ==== PS 5.6 example: all plugins, binlog, threadpool, TokuDB.  Can be adapted for MS by removing threadpool and changing plugins to plugins_MS.sql
 #MYEXTRA="--log-bin --thread_handling=pool-of-threads --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/plugins_56.sql"
@@ -293,7 +293,12 @@ trap ctrl-c SIGINT
 
 ctrl-c(){
   echoit "CTRL+C Was pressed. Attempting to terminate running processes..."
-  KILL_PIDS=`ps -ef | grep "$RANDOMD" | grep -v "grep" | awk '{print $2}' | tr '\n' ' '`
+  KILL_PIDS1=`ps -ef | grep "$RANDOMD" | grep -v "grep" | awk '{print $2}' | tr '\n' ' '`
+  KILL_PIDS2=
+  if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -eq 1 ]; then
+    KILL_PIDS2=`ps -ef | grep generator | grep -v "grep" | awk '{print $2}' | tr '\n' ' '`
+  fi
+  KILL_PIDS="${KILL_PIDS1} ${KILL_PIDS2}"
   if [ "${KILL_PIDS}" != "" ]; then
     echoit "Terminating the following PID's: ${KILL_PIDS}"
     kill -9 ${KILL_PIDS} >/dev/null 2>&1
@@ -691,7 +696,7 @@ pquery_test(){
     echoit "Generating new SQL inputfile using the SQL Generator..."
     SAVEDIR=${PWD}
     cd ${SCRIPT_PWD}/generator/
-    if [ ${TRIAL} -eq 1 -o $[ ${TRIAL} % ${GENERATE_NEW_QUERIES_WITH_GENERATOR_EVERY_X_TRIALS} ] -eq 0 ]; then
+    if [ ${TRIAL} -eq 1 -o $[ ${TRIAL} % ${GENERATE_NEW_QUERIES_EVERY_X_TRIALS} ] -eq 0 ]; then
       rm -f out.sql
       ./generator.sh ${QUERIES_PER_GENERATOR_RUN} >/dev/null
       if [ ! -r out.sql ]; then 
@@ -1518,7 +1523,15 @@ if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
 else
   echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Queries/Thread: ${QUERIES_PER_THREAD} | Trials: ${TRIALS} | Save coredump/valgrind issue trials only: `if [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 1 ]; then echo -n 'TRUE'; if [ ${SAVE_SQL} -eq 1 ]; then echo ' + save all SQL traces'; else echo ''; fi; else echo 'FALSE'; fi`"
 fi
-echoit "Valgrind run: `if [ ${VALGRIND_RUN} -eq 1 ]; then echo -n 'TRUE'; else echo -n 'FALSE'; fi` | pquery timeout: ${PQUERY_RUN_TIMEOUT} | SQL file used: ${INFILE} `if [ ${THREADS} -ne 1 ]; then echo -n "| Testcase size (chunked from infile): ${MULTI_THREADED_TESTC_LINES}"; fi`"
+SQL_INPUT_TEXT="SQL file used: ${INFILE}"
+if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -eq 1 ]; then
+  if [ ${ADD_INFILE_TO_GENERATED_SQL} -eq 0 ]; then
+    SQL_INPUT_TEXT="Using SQL Generator"
+  else
+    SQL_INPUT_TEXT="Using SQL Generator combined with SQL file ${INFILE}"
+  fi
+fi
+echoit "Valgrind run: `if [ ${VALGRIND_RUN} -eq 1 ]; then echo -n 'TRUE'; else echo -n 'FALSE'; fi` | pquery timeout: ${PQUERY_RUN_TIMEOUT} | ${SQL_INPUT_TEXT} `if [ ${THREADS} -ne 1 ]; then echo -n "| Testcase size (chunked from infile): ${MULTI_THREADED_TESTC_LINES}"; fi`"
 echoit "pquery Binary: ${PQUERY_BIN}"
 if [ "${MYEXTRA}" != "" ]; then echoit "MYEXTRA: ${MYEXTRA}"; fi
 if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a "${MYEXTRA2}" != "" ]; then echoit "MYEXTRA2: ${MYEXTRA2}"; fi
