@@ -75,6 +75,24 @@ $ instance_t="ps" instance_c="3" bats ./percona-qa/pmm-tests/pmm-testsuite.bats
 
 ```
 
+Sample stress test run(creating 10 tables with each added instance):
+
+```
+$ instance_t="ps" instance_c="3" stress=1 table_c=10  bats  ../percona-qa/pmm-tests/pmm-testsuite.bats
+ ✓ Wipe clients
+ ✓ Adding clients
+ ✓ Running linux metrics tests
+ ✓ Running generic tests
+ ✓ WARN: Running stress tests
+ - Running MongoDB specific tests (skipped: Skipping MongoDB specific tests! )
+ ✓ Running PS specific tests
+ - Running PXC specific tests (skipped: Skipping PXC specific tests! )
+ - Running ProxySQL tests (skipped: Skipping ProxySQL specific tests!)
+ ✓ Wipe clients
+
+10 tests, 0 failures, 3 skipped
+```
+
 pmm-framework usage:
 
 
