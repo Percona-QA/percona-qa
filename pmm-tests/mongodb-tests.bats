@@ -22,8 +22,8 @@ echo "$output"
 @test "run pmm-admin add mongodb" {
   run sudo pmm-admin add mongodb
   [ "$status" -eq 0 ]
-  echo "${lines[0]}" | grep "OK, now monitoring"
-  echo "${lines[1]}" | grep "OK, already"
+  echo "${lines[0]}" | grep "OK, already"
+  echo "${lines[1]}" | grep "OK, now monitoring"
 }
 
 @test "run pmm-admin add mongodb again" {
@@ -50,7 +50,7 @@ echo "$output"
 @test "run pmm-admin rm mongodb" {
   run sudo pmm-admin rm mongodb
   [ "$status" -eq 0 ]
-  echo "${lines[0]}" | grep "OK, removed"
+  echo "${lines[0]}" | grep "OK, no system"
   echo "${lines[1]}" | grep "OK, removed"
 }
 

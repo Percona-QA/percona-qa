@@ -92,9 +92,8 @@ function run_proxysql_tests() {
 
 @test "Running generic tests" {
     run_generic_tests
-    #echo $output
     [ "$status" -eq 0 ]
-    #echo $output
+    echo $output
 }
 
 @test "Running MongoDB specific tests" {
