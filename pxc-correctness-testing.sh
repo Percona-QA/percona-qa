@@ -116,8 +116,25 @@ trap archives EXIT KILL
 
 ps -ef | grep 'pxc-pxc-mysql.sock' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
-SYSBENCH_LOC="/usr/share/doc/sysbench/tests/db"
 SBENCH="sysbench"
+
+sysbench_run(){
+  TEST_TYPE="$1"
+  DB="$2"
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    fi
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+    fi
+  fi
+}
 
 pxc_startup(){
   ADDR="127.0.0.1"
@@ -279,7 +296,8 @@ $BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id
 
 
 #Sysbench prepare run
-$SBENCH --test=$SYSBENCH_LOC/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=pxc_test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql --mysql-socket=/tmp/n1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+sysbench_run load_data pxc_test
+$SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 check_script $?
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then
@@ -306,7 +324,8 @@ check_script $?
 
 for i in {1..5}; do
   # Sysbench transaction run
-  $SBENCH --test=$SYSBENCH_LOC/oltp.lua --mysql-socket=/tmp/n1.sock  --mysql-user=root --num-threads=$NUMT --oltp-tables-count=$TCOUNT --mysql-db=pxc_test --oltp-table-size=$TSIZE --max-time=$SDURATION --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1
+  sysbench_run oltp pxc_test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock run | grep tps > /dev/null 2>&1
   check_script $?
   # Run pt-table-checksum to analyze data consistency
   if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
