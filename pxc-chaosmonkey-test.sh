@@ -14,6 +14,28 @@ RPORT=$(( RANDOM%21 + 10 ))
 RBASE="$(( RPORT*1000 ))"
 SUSER=root
 SPASS=
+TSIZE=1000
+TCOUNT=30
+NUMT=30
+SDURATION=1800
+
+sysbench_run(){
+  TEST_TYPE="$1"
+  DB="$2"
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    fi
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+    fi
+  fi
+}
 
 rm -rf ${BUILD}/pxc_chaosmonkey_testing.log &> /dev/null
 echoit(){
@@ -136,10 +158,12 @@ ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status li
 ${BUILD}/bin/mysql  -uroot --socket=${BUILD}/node1/socket.sock -e"drop database if exists test;create database test"
 #sysbench data load
 echoit "Running sysbench load data..."
-sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --num-threads=30 --oltp_tables_count=30 --oltp_table_size=1000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_load.log 2>&1
+sysbench_run load_data test
+$SBENCH $SYSBENCH_OPTIONS --mysql-socket=${BUILD}/node1/socket.sock prepare > ${BUILD}/logs/sysbench_load.log 2>&1
 #sysbench OLTP run
 echoit "Initiated sysbench read write run ..."
-sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua --report-interval=1 --num-threads=30 --max-time=1800 --max-requests=1870000000 --oltp-tables-count=30 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
+sysbench_run oltp test
+$SBENCH $SYSBENCH_OPTIONS --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
 SYSBENCH_PID="$!"
 
 function recovery_test(){
