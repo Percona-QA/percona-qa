@@ -55,7 +55,7 @@ transactional_table .. .changed .. thd->get_transaction                         
 pause_seqno_ .= .-1                                                                      ## https://github.com/codership/mysql-wsrep/issues/282
 thd->enable_slow_log .. opt_slow_log                                                     ## http://bugs.mysql.com/bug.php?id=82899
 cnt <= keycache->blocks_used                                                             ## https://jira.percona.com/browse/PXC-733
-thd->security_context                                                                    ## https://jira.percona.com/browse/PXC-734
+thd->security_context                                                                    ## https://github.com/codership/mysql-wsrep/issues/304
 field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_LONGLONG                        ## https://jira.percona.com/browse/PXC-745
 trx0trx.cc line 697                                                                      ## https://jira.percona.com/browse/PXC-736
 pfs_mutex->m_class .= __null                                                             ## https://jira.percona.com/browse/PXC-746
