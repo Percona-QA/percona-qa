@@ -159,11 +159,11 @@ ${BUILD}/bin/mysql  -uroot --socket=${BUILD}/node1/socket.sock -e"drop database 
 #sysbench data load
 echoit "Running sysbench load data..."
 sysbench_run load_data test
-$SBENCH $SYSBENCH_OPTIONS --mysql-socket=${BUILD}/node1/socket.sock prepare > ${BUILD}/logs/sysbench_load.log 2>&1
+sysbench $SYSBENCH_OPTIONS --mysql-socket=${BUILD}/node1/socket.sock prepare > ${BUILD}/logs/sysbench_load.log 2>&1
 #sysbench OLTP run
 echoit "Initiated sysbench read write run ..."
 sysbench_run oltp test
-$SBENCH $SYSBENCH_OPTIONS --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
+sysbench $SYSBENCH_OPTIONS --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
 SYSBENCH_PID="$!"
 
 function recovery_test(){
