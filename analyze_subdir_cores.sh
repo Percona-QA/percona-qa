@@ -8,7 +8,7 @@ echoit(){ echo "[$(date +'%T')] $1"; }
 if [ "$1" == "" ]; then
   if [ -r ./mysqld/mysqld ]; then
     echoit "No mysqld location passed. However, this script found a local ./mysqld/mysqld binary, and assumed it was the one used for this run. GDB will use with this binary."
-    echoit "Should the created stack traces all look mangled/unresolved, please check the mysqld binary used for the cores in the subdirectories, and pass it as the 1st option to this script."
+    echoit "If created stack traces look mangled/unresolved, check the mysqld binary used for the coredumps (in subdirectories), and pass it as the 1st option to this script."
     BIN="./mysqld/mysqld"
   else
     echo "This script analyzes core files in subdirectories and writes output to gdb_<core file name>_STD/_FULL.txt."
@@ -20,10 +20,10 @@ else
   BIN=$1
 fi
 
-for CORE in $(find . | grep "core.*") ; do
-  # For debugging purposes, remove ">/dev/null 2>&1" on the next line and observe output
-  COREFILE=$(echo $CORE | sed 's|data.\([0-9]*\).|core_data.\1_|' | sed 's|.*core|core|')
+for CORE in $(find . | grep "core") ; do
+  COREFILE=$(echo $CORE | sed 's|[^/]*/||;s|\([^/]*\)\(.*\)|\1_\2|;s|/.*/||')
   echoit "Now processing core ${COREFILE}..."
+  # For debugging purposes, remove ">/dev/null 2>&1" on the next line and observe output
   gdb ${BIN} ${CORE} >/dev/null 2>&1 <<EOF
     # Avoids libary loading issues / more manual work, see bash$ info "(gdb)Auto-loading safe path"
     set auto-load safe-path /         
