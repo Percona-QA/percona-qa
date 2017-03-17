@@ -417,8 +417,8 @@ row0merge.cc line 2692                                                          
 row0merge.cc line 2698                                                                  ## http://bugs.mysql.com/bug.php?id=74887 PS
 #row0mysql.cc line 2644                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74634 MS (Fixed in 5.6.25)
 #row0mysql.cc line 2711                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74634 PS (Fixed in 5.6.25)
-row0mysql.cc line 5027                                                                  ## http://bugs.mysql.com/bug.php?id=74790 MS
-row0mysql.cc line 5094                                                                  ## http://bugs.mysql.com/bug.php?id=74790 PS
+#row0mysql.cc line 5027                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74790 MS (Fixed in 5.6.24, 5.7.6)
+#row0mysql.cc line 5094                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74790 PS (Fixed in 5.6.24, 5.7.6)
 #row0mysql.cc line 688                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1200502 (with oldPS) (dup of 1410410)
 #row0mysql.cc line 689                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1200502 (dup of 1410410)
 #row0quiesce.cc line 683                                                       ## Fixed ## http://bugs.mysql.com/bug.php?id=75398 (fixed in 5.6.23) Duplicate MS#74346
