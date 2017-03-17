@@ -4,68 +4,89 @@
 # Analyze script_out.log file from workdir to get the PXC testcase output
 # Also install following tools
 # https://github.com/jayjanssen/myq_gadgets
-# sysbench 0.5
+# sysbench
 IFS=$'\n'
 WORKDIR="/ssd/pxc_test"
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 dbuser="test"
 dbpass="test"
 cd $WORKDIR
-SYSBENCH_LOC="/usr/share/doc/sysbench/tests"
+TSIZE=50000
+TCOUNT=10
+NUMT=10
 header="|%-10s |%-25s |%-25s |\n"
 rm -rf script_out.log before-node*.log
 
-#Change PXC Node IPs as per your configurations
+sysbench_run(){
+  TEST_TYPE="$1"
+  DB="$2"
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=$dbuser --mysql-password=$dbpass --mysql-host=$node1 --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --report-interval=1 --max-requests=0 --mysql-db=$DB --mysql-user=$dbuser --mysql-password=$dbpass --mysql-host=$i --num-threads=$NUMT --db-driver=mysql"
+    fi
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=$dbuser --mysql-password=$dbpass --mysql-host=$node1 --threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=$dbuser --mysql-password=$dbpass --mysql-host=$i --threads=$NUMT --report-interval=1 --events=0 --db-driver=mysql"
+    fi
+  fi
+}
 
+#Change PXC Node IPs as per your configurations
 nodes=("208.88.225.243" "208.88.225.240" "208.88.225.160")
 node1="208.88.225.243"
 node2="208.88.225.240"
 node3="208.88.225.160"
 
 function varifyPXC {
- #Checking PXC running status
- for i in "${nodes[@]}"
- do
-  check=`ssh $i "/etc/init.d/mysql status"`
-  status=`echo $check | awk '{print $1}'`
-  if [ "$status" == "ERROR!" ] ; then
-   echo "PXC is not running on $i"
-   exit 1
-  fi
- ssh $i "mkdir -p ${WORKDIR};cd ${WORKDIR};if [ -d percona-qa ]; then   cd percona-qa;   bzr pull; else   bzr branch lp:percona-qa; fi;"
- done
- # Sysbench Prepare run
- mysql -u$dbuser -p$dbpass -e "drop database if exists pxc_test;create database pxc_test"
- sysbench --test=$SYSBENCH_LOC/db/parallel_prepare.lua  --mysql-host=$node1  --num-threads=10    --oltp-tables-count=10 --oltp-table-size=5000  --mysql-db=pxc_test --mysql-user=$dbuser --mysql-password=$dbpass   --db-driver=mysql run > sysbench_prepare.log
+  #Checking PXC running status
+  for i in "${nodes[@]}"
+  do
+    check=`ssh $i "/etc/init.d/mysql status"`
+    status=`echo $check | awk '{print $1}'`
+    if [ "$status" == "ERROR!" ] ; then
+      echo "PXC is not running on $i"
+      exit 1
+    fi
+  ssh $i "mkdir -p ${WORKDIR};cd ${WORKDIR};if [ -d percona-qa ]; then   cd percona-qa;   bzr pull; else   bzr branch lp:percona-qa; fi;"
+  done
+  # Sysbench Prepare run
+  mysql -u$dbuser -p$dbpass -e "drop database if exists pxc_test;create database pxc_test"
+  sysbench_run load_data pxc_test
+  sysbench $SYSBENCH_OPTIONS prepare > sysbench_prepare.log
 
- for i in "${nodes[@]}"
- do
-   echo $i
-   sysbench --test=$SYSBENCH_LOC/db/oltp.lua --mysql-host=$i --mysql-user=$dbuser   --mysql-password=$dbpass --num-threads=10    --oltp-tables-count=10 --mysql-db=pxc_test --oltp-table-size=50000 --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1 &
- done
+  for i in "${nodes[@]}"
+  do
+    echo $i
+    sysbench_run oltp pxc_test
+    sysbench $SYSBENCH_OPTIONS run | grep tps > /dev/null 2>&1 &
+  done
 
- #Get monitoring state of each PXC node
- rm -rf node*.log after-node*.log
- myq_status -u $dbuser -p $dbpass -h $node1 -t 1 wsrep > node1.log &
- echo $! > myq_status_pid.txt
- myq_status -u $dbuser -p $dbpass -h $node2 -t 1 wsrep > node2.log &
- echo $! >> myq_status_pid.txt
- myq_status -u $dbuser -p $dbpass -h $node3 -t 1 wsrep > node3.log &
- echo $! >> myq_status_pid.txt
- sleep 120 
- strt=`eval date +'%H:%M'`
- sleep 60
- stop=`eval date +'%H:%M'`
+  #Get monitoring state of each PXC node
+  rm -rf node*.log after-node*.log
+  myq_status -u $dbuser -p $dbpass -h $node1 -t 1 wsrep > node1.log &
+  echo $! > myq_status_pid.txt
+  myq_status -u $dbuser -p $dbpass -h $node2 -t 1 wsrep > node2.log &
+  echo $! >> myq_status_pid.txt
+  myq_status -u $dbuser -p $dbpass -h $node3 -t 1 wsrep > node3.log &
+  echo $! >> myq_status_pid.txt
+  sleep 120 
+  strt=`eval date +'%H:%M'`
+  sleep 60
+  stop=`eval date +'%H:%M'`
 
- sed -n "/$strt/ , /$stop/p" node1.log > before-node1.log
- sed -n "/$strt/ , /$stop/p" node2.log > before-node2.log
- sed -n "/$strt/ , /$stop/p" node3.log > before-node3.log
- bnode1_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' before-node1.log`
- bnode2_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' before-node2.log`
- bnode3_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' before-node3.log`
- bnode1_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' before-node1.log`
- bnode2_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' before-node2.log`
- bnode3_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' before-node3.log`
+  sed -n "/$strt/ , /$stop/p" node1.log > before-node1.log
+  sed -n "/$strt/ , /$stop/p" node2.log > before-node2.log
+  sed -n "/$strt/ , /$stop/p" node3.log > before-node3.log
+  bnode1_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' before-node1.log`
+  bnode2_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' before-node2.log`
+  bnode3_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' before-node3.log`
+  bnode1_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' before-node1.log`
+  bnode2_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' before-node2.log`
+  bnode3_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' before-node3.log`
 
 }
 #check mysql status on PXC nodes
@@ -93,56 +114,57 @@ function checkPXC {
 
 #Function for Network delay
 function NWdelay {
- ms="$1ms"
- for i in "${nodes[@]}"
- do
-  check=`ssh $i "/etc/init.d/mysql status"`
-  node=`ssh $i "hostname"`
-  status=`echo $check | awk '{print $1}'`
-  if [ "$status" == "ERROR!" ] ; then
-   ssh $i 'sudo rm -rf /var/lib/mysql/*.pid;sudo /etc/init.d/mysql start' 
-   sysbench --test=$SYSBENCH_LOC/db/oltp.lua --mysql-host=$i --mysql-user=$dbuser   --mysql-password=$dbpass --num-threads=10    --oltp-tables-count=10 --mysql-db=pxc_test --oltp-table-size=50000 --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1 &
-   rm -rf $node.log
-   myq_status -u $dbuser -p $dbpass -h $i -t 1 wsrep > $node.log &
-   echo $! >> myq_status_pid.txt
-  fi
- done
+  ms="$1ms"
+  for i in "${nodes[@]}"
+  do
+    check=`ssh $i "/etc/init.d/mysql status"`
+    node=`ssh $i "hostname"`
+    status=`echo $check | awk '{print $1}'`
+    if [ "$status" == "ERROR!" ] ; then
+      ssh $i 'sudo rm -rf /var/lib/mysql/*.pid;sudo /etc/init.d/mysql start' 
+      sysbench_run oltp pxc_test
+      sysbench $SYSBENCH_OPTIONS run | grep tps > /dev/null 2>&1 &
+      rm -rf $node.log
+      myq_status -u $dbuser -p $dbpass -h $i -t 1 wsrep > $node.log &
+     echo $! >> myq_status_pid.txt
+    fi
+  done
  
- tc qdisc add dev eth1 root netem delay $ms
- sleep 120
- strt=`eval date +'%H:%M'`
- sleep 60
- stop=`eval date +'%H:%M'`
+  tc qdisc add dev eth1 root netem delay $ms
+  sleep 120
+  strt=`eval date +'%H:%M'`
+  sleep 60
+  stop=`eval date +'%H:%M'`
  
- sed -n "/$strt/ , /$stop/p" node1.log > after-node1.log
- sed -n "/$strt/ , /$stop/p" node2.log > after-node2.log
- sed -n "/$strt/ , /$stop/p" node3.log > after-node3.log
+  sed -n "/$strt/ , /$stop/p" node1.log > after-node1.log
+  sed -n "/$strt/ , /$stop/p" node2.log > after-node2.log
+  sed -n "/$strt/ , /$stop/p" node3.log > after-node3.log
  
- node1_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' after-node1.log`
- node2_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' after-node2.log`
- node3_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' after-node3.log`
- node1_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' after-node1.log`
- node2_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' after-node2.log`
- node3_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' after-node3.log`
+  node1_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' after-node1.log`
+  node2_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' after-node2.log`
+  node3_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' after-node3.log`
+  node1_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' after-node1.log`
+  node2_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' after-node2.log`
+  node3_dn=`awk '{ if ( substr($12,length($12),1) == "K" )  sum += $12 * 1024 ;else if (substr($12,length($12),1) == "M")  sum += $12 * 1024 * 1024 ; else if ($12 ~ /[0-9]/) sum += $12 fi } END {printf ("%0.2f\n",sum /1024)}' after-node3.log`
 
- echo -e "\n\n*************** Network Delay $1 milliseconds byte transfer rate b/w nodes ******************\n" >> script_out.log
- printf "|%-10s %-21s *%-20s |%-20s *%-20s |\n" "" "Normal" "" "NW delay($ms)" "" >> script_out.log
- echo -e "----------------------------------------------------------------------------------------------------------" >> script_out.log 
- header1="|%-10s |%-20s |%-20s |%-20s |%-20s |\n"
- printf "$header1" "Nodes" "Upload Rate(KB)" "Download Rate(KB)" "Upload Rate(KB)" "Download Rate(KB)" >> script_out.log
- echo -e "----------------------------------------------------------------------------------------------------------" >> script_out.log
- printf "$header1" "Node 1" $bnode1_up $bnode1_dn $node1_up $node1_dn >> script_out.log
- printf "$header1" "Node 2" $bnode2_up $bnode2_dn $node2_up $node2_dn >> script_out.log
- printf "$header1" "Node 3" $bnode3_up $bnode3_dn $node3_up $node3_dn >> script_out.log
- checkPXC
+  echo -e "\n\n*************** Network Delay $1 milliseconds byte transfer rate b/w nodes ******************\n" >> script_out.log
+  printf "|%-10s %-21s *%-20s |%-20s *%-20s |\n" "" "Normal" "" "NW delay($ms)" "" >> script_out.log
+  echo -e "----------------------------------------------------------------------------------------------------------" >> script_out.log 
+  header1="|%-10s |%-20s |%-20s |%-20s |%-20s |\n"
+  printf "$header1" "Nodes" "Upload Rate(KB)" "Download Rate(KB)" "Upload Rate(KB)" "Download Rate(KB)" >> script_out.log
+  echo -e "----------------------------------------------------------------------------------------------------------" >> script_out.log
+  printf "$header1" "Node 1" $bnode1_up $bnode1_dn $node1_up $node1_dn >> script_out.log
+  printf "$header1" "Node 2" $bnode2_up $bnode2_dn $node2_up $node2_dn >> script_out.log
+  printf "$header1" "Node 3" $bnode3_up $bnode3_dn $node3_up $node3_dn >> script_out.log
+  checkPXC
 
- tc qdisc delete dev eth1 root
- echo -e "\n\n" >> script_out.log
- printf "$header" "Nodes" "wsrep_cluster_status" "wsrep_local_state" >> script_out.log
- echo -e "--------------------------------------------------------------------------" >> script_out.log
- printf "$header" "Node 1" ${cluster_status[0]} ${state_comment[0]} >> script_out.log
- printf "$header" "Node 2" ${cluster_status[1]} ${state_comment[1]} >> script_out.log
- printf "$header" "Node 3" ${cluster_status[2]} ${state_comment[2]} >> script_out.log
+  tc qdisc delete dev eth1 root
+  echo -e "\n\n" >> script_out.log
+  printf "$header" "Nodes" "wsrep_cluster_status" "wsrep_local_state" >> script_out.log
+  echo -e "--------------------------------------------------------------------------" >> script_out.log
+  printf "$header" "Node 1" ${cluster_status[0]} ${state_comment[0]} >> script_out.log
+  printf "$header" "Node 2" ${cluster_status[1]} ${state_comment[1]} >> script_out.log
+  printf "$header" "Node 3" ${cluster_status[2]} ${state_comment[2]} >> script_out.log
 }
 
 #Function for network packet loss
@@ -154,7 +176,8 @@ function NWpacketloss {
   status=`echo $check | awk '{print $1}'`
   if [ "$status" == "ERROR!" ] ; then
    ssh $i 'sudo rm -rf /var/lib/mysql/*.pid;sudo /etc/init.d/mysql start'
-   sysbench --test=$SYSBENCH_LOC/db/oltp.lua --mysql-host=$i --mysql-user=$dbuser  --mysql-password=$dbpass --num-threads=10    --oltp-tables-count=10 --mysql-db=pxc_test --oltp-table-size=50000 --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1 &
+   sysbench_run oltp pxc_test
+   sysbench $SYSBENCH_OPTIONS  run | grep tps > /dev/null 2>&1 &
    rm -rf $node.log
    myq_status -u $dbuser -p $dbpass -h $i -t 1 wsrep > $node.log &
    echo $! >> myq_status_pid.txt
@@ -210,7 +233,8 @@ function NWpkt_corruption {
   status=`echo $check | awk '{print $1}'`
   if [ "$status" == "ERROR!" ] ; then
    ssh $i 'sudo rm -rf /var/lib/mysql/*.pid;sudo /etc/init.d/mysql start'
-   sysbench --test=$SYSBENCH_LOC/db/oltp.lua --mysql-host=$i --mysql-user=$dbuser   --num-threads=10    --oltp-tables-count=10 --mysql-db=pxc_test --oltp-table-size=50000 --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1 &
+   sysbench_run oltp pxc_test
+   sysbench $SYSBENCH_OPTIONS run | grep tps > /dev/null 2>&1 &
    rm -rf $node.log
    myq_status -u $dbuser -p $dbpass -h $i -t 1 wsrep > $node.log &
    echo $! >> myq_status_pid.txt
@@ -266,7 +290,8 @@ function NWpkt_reordering {
   status=`echo $check | awk '{print $1}'`
   if [ "$status" == "ERROR!" ] ; then
    ssh $i 'sudo rm -rf /var/lib/mysql/*.pid;sudo /etc/init.d/mysql start'
-   sysbench --test=$SYSBENCH_LOC/db/oltp.lua --mysql-host=$i --mysql-user=$dbuser   --mysql-password=$dbpass --num-threads=10    --oltp-tables-count=10 --mysql-db=pxc_test --oltp-table-size=50000 --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1 &
+   sysbench_run oltp pxc_test
+   sysbench $SYSBENCH_OPTIONS run | grep tps > /dev/null 2>&1 &
    rm -rf $node.log
    myq_status -u $dbuser -p $dbpass -h $i -t 1 wsrep > $node.log &
    echo $! >> myq_status_pid.txt
@@ -321,7 +346,8 @@ function singleNodefailure {
   status=`echo $check | awk '{print $1}'`
   if [ "$status" == "ERROR!" ] ; then
    ssh $i 'sudo rm -rf /var/lib/mysql/*.pid;sudo /etc/init.d/mysql start'
-   sysbench --test=$SYSBENCH_LOC/db/oltp.lua --mysql-host=$i --mysql-user=$dbuser  --mysql-password=$dbpass --num-threads=10    --oltp-tables-count=10 --mysql-db=pxc_test --oltp-table-size=50000 --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1 &
+   sysbench_run oltp pxc_test
+   sysbench $SYSBENCH_OPTIONS run | grep tps > /dev/null 2>&1 &
    rm -rf $node.log
    myq_status -u $dbuser -p $dbpass -h $i -t 1 wsrep > $node.log &
    echo $! >> myq_status_pid.txt
@@ -372,7 +398,8 @@ function pxc269 {
   status=`echo $check | awk '{print $1}'`
   if [ "$status" == "ERROR!" ] ; then
    ssh $i 'killall -9 mysqld mysqld_safe;sudo rm -rf /var/lib/mysql/*.pid;sudo /etc/init.d/mysql start'
-   sysbench --test=$SYSBENCH_LOC/db/oltp.lua --mysql-host=$i --mysql-user=$dbuser  --mysql-password=$dbpass --num-threads=10    --oltp-tables-count=10 --mysql-db=pxc_test --oltp-table-size=50000 --report-interval=1 --max-requests=0 --tx-rate=100 run | grep tps > /dev/null 2>&1 &
+   sysbench_run oltp pxc_test
+   sysbench $SYSBENCH_OPTIONS run | grep tps > /dev/null 2>&1 &
    rm -rf $node.log
    myq_status -u $dbuser -p $dbpass -h $i -t 1 wsrep > $node.log &
    echo $! >> myq_status_pid.txt
