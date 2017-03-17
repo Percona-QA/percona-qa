@@ -3,18 +3,22 @@
 
 # This script analyzes core files in subdirectories (at any depth) and writes output to gdb_<core file name>_STD/_FULL.txt
 
+echoit(){ echo "[$(date +'%T')] $1"; }
+
 if [ "$1" == "" ]; then
-  echo "This script analyzes core files in subdirectories and writes output to gdb_<core file name>_STD/_FULL.txt."
-  echo "It expects one parameter: a full path pointer to the binary used to generate these core dumps. For example:"
-  echo "$ cd my_work_dir; <your_percona-qa_path>/analyze_subdir_cores.sh /ssd/Percona-Server-5.6.14-rel62.0-508-debug.Linux.x86_64/bin/mysqld"
-  exit 1
+  if [ -r ./mysqld/mysqld ]; then
+    echoit "No mysqld location passed. However, this script found a local ./mysqld/mysqld binary, and assumed it was the one used for this run. GDB will use with this binary."
+    echoit "Should the created stack traces all look mangled/unresolved, please check the mysqld binary used for the cores in the subdirectories, and pass it as the 1st option to this script."
+    BIN="./mysqld/mysqld"
+  else
+    echo "This script analyzes core files in subdirectories and writes output to gdb_<core file name>_STD/_FULL.txt."
+    echo "It expects one parameter: a full path pointer to the binary used to generate these core dumps. For example:"
+    echo "$ cd my_work_dir; <your_percona-qa_path>/analyze_subdir_cores.sh /ssd/Percona-Server-5.6.14-rel62.0-508-debug.Linux.x86_64/bin/mysqld"
+    exit 1
+  fi
 else
   BIN=$1
 fi
-
-echoit(){
-  echo "[$(date +'%T')] $1"
-}
 
 for CORE in $(find . | grep "core.*") ; do
   # For debugging purposes, remove ">/dev/null 2>&1" on the next line and observe output
