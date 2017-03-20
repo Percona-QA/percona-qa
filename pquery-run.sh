@@ -325,16 +325,17 @@ ctrl-c(){
 }
 
 savetrial(){  # Only call this if you definitely want to save a trial
-  SAVED=$[ $SAVED + 1 ]
   echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
   mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
   if [ $PMM_CLEAN_TRIAL -eq 1 ];then
     echoit "Removing mysql instance (pq${RANDOMD}-${TRIAL}) from pmm-admin"
     sudo pmm-admin remove mysql pq${RANDOMD}-${TRIAL} > /dev/null
   fi
+  SAVED=$[ $SAVED + 1 ]
 }
 
 removetrial(){
+  echoit "Removing trial rundir ${RUNDIR}/${TRIAL}"
   if [ "${RUNDIR}" != "" -a "${TRIAL}" != "" -a -d ${RUNDIR}/${TRIAL}/ ]; then  # Protection against dangerous rm's
     rm -Rf ${RUNDIR}/${TRIAL}/
   fi
@@ -1302,7 +1303,22 @@ pquery_test(){
     if [ ${VALGRIND_RUN} -eq 1 ]; then  # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
+      # ==========================================================================================================================================================
+      # TODO: the timeout...mysqladmin shutdown can be improved further to catch shutdown issues. For this, a new special "CATCH_SHUTDOWN=0/1" mode should be
+      #       added (because the runs would be much slower, so you would want to run this on-demand), and a much longer timeout should be given for mysqladmin
+      #       to succeed getting the server down (3 minutes for single thread runs for example?) if the shutdown fails to complete (i.e. exit status code of 
+      #       timeout is 137 as the timeout took place), then a shutdown issue is likely present. It should not take 3+ minutes to shutdown a server. There a 
+      #       good number of trials that seem to run into this situation. Likely a subset of them will be related to the already seen shutdown issues in TokuDB. 
+      # UPDATE: As an intial stopgap workaround, the timeout was increased to 90 seconds, and the timeout exit code is checked. Trials are saved when this
+      #         happens and a special "SHUTDOWN_TIMEOUT_ISSUE empty file is saved in the trial's directory. pquery-results has been updated to scan for this file
+      # ==========================================================================================================================================================
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
+      if [ $? -eq 137 ]; then
+        echoit "mysqld failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+        touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+        savetrial
+        TRIAL_SAVED=1
+      fi
       VALGRIND_SUMMARY_FOUND=0
       for X in $(seq 0 600); do  # Wait for full Valgrind output in error log
         sleep 1
@@ -1329,7 +1345,13 @@ pquery_test(){
       fi
     else     
       if [ ${QUERY_CORRECTNESS_TESTING} -ne 1 ]; then
-        timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), may catch shutdown bugs + see NOTE** above
+        timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
+        if [ $? -eq 137 ]; then
+          echoit "mysqld failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+          touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+          savetrial
+          TRIAL_SAVED=1
+        fi
         sleep 2
       fi
     fi
@@ -1345,9 +1367,27 @@ pquery_test(){
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
       # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1 
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1 
+      if [ $? -eq 137 ]; then
+        echoit "mysqld for node3 failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+        touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+        savetrial
+        TRIAL_SAVED=1
+      fi
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
+      if [ $? -eq 137 ]; then
+        echoit "mysqld for node2 failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+        touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+        savetrial
+        TRIAL_SAVED=1
+      fi
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
+      if [ $? -eq 137 ]; then
+        echoit "mysqld for node1 failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+        touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+        savetrial
+        TRIAL_SAVED=1
+      fi
       for X in $(seq 0 600); do  # Wait for full Valgrind output in error log
         sleep 1
         if [[ ! -r ${RUNDIR}/${TRIAL}/node1/node1.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err ]]; then
@@ -1474,7 +1514,7 @@ pquery_test(){
             echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no issue was seen), except the SQL trace (as SAVE_SQL=1)"
           fi
           savesql
-        else
+        else 
           if [ ${VALGRIND_RUN} -eq 1 ]; then
             if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
               echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 and SAVE_SQL=0, and no issue was seen)" 
@@ -1485,6 +1525,9 @@ pquery_test(){
         fi
       fi
     fi  
+    if [ ${TRIAL_SAVED} -eq 0 ]; then
+      removetrial
+    fi
   fi
 } 
 
