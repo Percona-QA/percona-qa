@@ -148,7 +148,7 @@ if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|"
 fi
 
 extract_valgrind_error(){
-  for i in $( ls  */log/master.err ); do
+  for i in $( ls  */log/master.err 2>/dev/null); do
     TRIAL=`echo $i | cut -d'/' -f1`
     echo "============ Trial $TRIAL ===================="
     egrep --no-group-separator  -A4 "Thread[ \t][0-9]+:" $i | cut -d' ' -f2- |  sed 's/0x.*:[ \t]\+//' |  sed 's/(.*)//' | rev | cut -d '(' -f2- | sed 's/^[ \t]\+//' | rev  | sed 's/^[ \t]\+//'  |  tr '\n' '|' |xargs |  sed 's/Thread[ \t][0-9]\+:/\nIssue #/ig'
