@@ -799,9 +799,11 @@ pquery_test(){
       sleep 1
     fi
     echo "## Good for reproducing mysqld (5.7+) startup issues only (full issues need a data dir, so use mysql_install_db or mysqld --init for those)" > ${RUNDIR}/${TRIAL}/start
+    echo "## Another strategy is to activate the data dir copy below, this way the server will be brought up with the same state as it crashed/was shutdown" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Setting up directories...'" >> ${RUNDIR}/${TRIAL}/start
     echo "rm -Rf ${RUNDIR}/${TRIAL}" >> ${RUNDIR}/${TRIAL}/start
     echo "mkdir -p ${RUNDIR}/${TRIAL}/data ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log" >> ${RUNDIR}/${TRIAL}/start
+    echo "#cp -R ./data/* ${RUNDIR}/${TRIAL}/data  # When using this, please also remark the 'Data dir init' below to avoid overwriting the data directory" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Data dir init...'" >> ${RUNDIR}/${TRIAL}/start
     echo "${BIN} --no-defaults --initialize-insecure --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${RUNDIR}/${TRIAL}/socket.sock --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Starting mysqld...'" >> ${RUNDIR}/${TRIAL}/start
