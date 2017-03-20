@@ -329,7 +329,7 @@ savetrial(){
   if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
   else
-    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
+    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
   fi
   if [ ${TOSAVE} -eq 1 ]; then
     SAVED=$[ $SAVED + 1 ]
@@ -894,7 +894,7 @@ pquery_test(){
           fi
         fi
       fi
-      if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then break; fi  # Break the wait-for-server-started loop if a core file is found. Handling of core is done below.
+      if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 ]; then break; fi  # Break the wait-for-server-started loop if a core file is found. Handling of core is done below.
     done
     # Check if mysqld is alive and if so, set ISSTARTED=1 so pquery will run
     if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock ping > /dev/null 2>&1; then
@@ -1387,7 +1387,7 @@ pquery_test(){
       echoit "pquery run details:$(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|.*:||')"
     fi
   fi
-  if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -eq 0 -a "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/log/master.err 2>/dev/null)" == "" ]; then  # If a core is found (or text_string.sh sees a crash) when query correctness testing is in progress, it will process it as a normal crash (without considering query correctness)
+  if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -eq 0 -a "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/log/master.err 2>/dev/null)" == "" ]; then  # If a core is found (or text_string.sh sees a crash) when query correctness testing is in progress, it will process it as a normal crash (without considering query correctness)
     if [ "${FAILEDSTARTABORT}" != "1" ]; then
       if [ ${QUERY_CORRECTNESS_MODE} -ne 2 ]; then
         QC_RESULT1=$(diff ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result)
@@ -1439,9 +1439,9 @@ pquery_test(){
       fi
     fi
     if [ ${TRIAL_SAVED} -eq 0 ]; then
-      if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/log/master.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node1/node1.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2>/dev/null)" != "" ]; then
-        if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
-          echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null)"
+      if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/log/master.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node1/node1.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2>/dev/null)" != "" ]; then
+        if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 ]; then
+          echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null)"
         else
           echoit "mysqld crash detected in the error log via text-string.sh scan"
         fi
