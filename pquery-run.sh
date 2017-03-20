@@ -324,22 +324,20 @@ ctrl-c(){
   exit 2
 }
 
-savetrial(){
-  TOSAVE=0
-  if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
-    if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
-  else
-    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
+savetrial(){  # Only call this if you definitely want to save a trial
+  SAVED=$[ $SAVED + 1 ]
+  echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
+  mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
+  if [ $PMM_CLEAN_TRIAL -eq 1 ];then
+    echoit "Removing mysql instance (pq${RANDOMD}-${TRIAL}) from pmm-admin"
+    sudo pmm-admin remove mysql pq${RANDOMD}-${TRIAL} > /dev/null
   fi
-  if [ ${TOSAVE} -eq 1 ]; then
-    SAVED=$[ $SAVED + 1 ]
-    echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
-    mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
-  else
-    echoit "Could not find core dump or Valgrind issue: Deleting rundir ${RUNDIR}/${TRIAL}"
-    rm -Rf ${RUNDIR}/${TRIAL}
+}
+
+removetrial(){
+  if [ "${RUNDIR}" != "" -a "${TRIAL}" != "" -a -d ${RUNDIR}/${TRIAL}/ ]; then  # Protection against dangerous rm's
+    rm -Rf ${RUNDIR}/${TRIAL}/
   fi
-  STOREANYWAY=0
   if [ $PMM_CLEAN_TRIAL -eq 1 ];then
     echoit "Removing mysql instance (pq${RANDOMD}-${TRIAL}) from pmm-admin"
     sudo pmm-admin remove mysql pq${RANDOMD}-${TRIAL} > /dev/null
@@ -408,7 +406,7 @@ pxc_startup(){
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
       if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
         echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
-        savetrial
+        removetrial
       else
         if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the PXC_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
           echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${PXC_WSREP_OPTIONS_INFILE} and ${PXC_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
@@ -416,7 +414,6 @@ pxc_startup(){
           if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
             echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
           else
-            STOREANYWAY=1
             savetrial
             echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
             exit 1
@@ -557,11 +554,10 @@ gr_startup(){
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
       if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
         echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
-        savetrial
+        removetrial
       else
         echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MYEXTRA (${MYEXTRA}) startup options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings."
         grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
-        STOREANYWAY=1
         savetrial
         echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
         exit 1
@@ -877,12 +873,11 @@ pquery_test(){
       if grep -qi "ERROR. Aborting" ${RUNDIR}/${TRIAL}/log/master.err; then
         if grep -qi "TCP.IP port. Address already in use" ${RUNDIR}/${TRIAL}/log/master.err; then
           echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
-          savetrial
+          removetrial
         else
           if [ ${ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for ADD_RANDOM_OPTIONS=0 runs, they should not produce errors like these, as MYEXTRA should be high-quality/non-faulty
             echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MEXTRA (or \$MYSAFE) startup parameters. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against the \$MYEXTRA (or \$MYSAFE if it was modified) settings. You may also want to try setting \$MYEXTRA=\"\"..."
             grep "ERROR" ${RUNDIR}/${TRIAL}/log/master.err | tee -a /${WORKDIR}/pquery-run.log
-            STOREANYWAY=1
             savetrial
             echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
             exit 1
@@ -1406,7 +1401,6 @@ pquery_test(){
       #  QC_DIFF_FOUND=1
       #fi
       if [ ${QC_DIFF_FOUND} -eq 1 ]; then
-        STOREANYWAY=1
         savetrial
         TRIAL_SAVED=1
       fi
@@ -1452,19 +1446,24 @@ pquery_test(){
           if [ "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #2 (as per error log): $(${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err)"; fi
           if [ "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #3 (as per error log): $(${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err)"; fi
         fi
-        savetrial;TRIAL_SAVED=1
+        savetrial
+        TRIAL_SAVED=1
       elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
         echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
-        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+        savetrial
+        TRIAL_SAVED=1
       elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 -a ${TIMEOUT_REACHED} -eq 0 ]; then
         echoit "'MySQL server has gone away' detected >=200 times for this trial, and the pquery timeout was not reached; saving this trial for further analysis"
-        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+        savetrial
+        TRIAL_SAVED=1
       elif [ $(grep "ERROR:" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
         echoit "ASAN issue detected in the mysqld error log for this trial; saving this trial"
-        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+        savetrial
+        TRIAL_SAVED=1
       elif [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
         echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
-        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+        savetrial
+        TRIAL_SAVED=1
       else
         if [ ${SAVE_SQL} -eq 1 ]; then 
           if [ ${VALGRIND_RUN} -eq 1 ]; then
