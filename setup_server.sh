@@ -64,8 +64,8 @@ sudo yum install kernel-devel wget patch make cmake automake autoconf bzr git ht
      hdparm pam-devel openssl openssl-devel gtest zlib zlib-devel zlib-static tree vim libasan \
      yum-utils jemalloc-debuginfo readline-devel lshw lscpu iotop pymongo bats lzma lzma*
 
-sudo yum remove abrt    # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
-sudo yum remove pulseaudio* 
+sudo yum remove abrt  # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
+sudo yum remove pulseaudio*  # Only do this on servers, to avoid writing of pulse* files into /dev/shm. Best to leave on workstations (for audio)
 
 # Apt-get equivalent
 #sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc \
