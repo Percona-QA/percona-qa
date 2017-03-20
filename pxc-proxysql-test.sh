@@ -7,7 +7,6 @@ PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 WORKDIR=$1
 ROOT_FS=$WORKDIR
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
-LPATH="/usr/share/doc/sysbench/tests/db"
 PXC_START_TIMEOUT=200
 ADDR="127.0.0.1"
 RPORT=$(( RANDOM%21 + 10 ))
@@ -44,6 +43,29 @@ cleanup(){
 
 trap cleanup EXIT KILL
 cd $ROOT_FS
+
+sysbench_run(){
+  TEST_TYPE="$1"
+  DB="$2"
+  SDURATION=50
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB  --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB  --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp_read" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp-read-only --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB  --num-threads=$NUMT --db-driver=mysql"
+    fi
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp_read" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_only.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+    fi
+  fi
+}
 
 PXC_TAR=`ls -1td ?ercona-?tra??-?luster* | grep ".tar" | head -n1`
 
@@ -168,6 +190,7 @@ proxysql_startup(){
   ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'proxysql'@'%' IDENTIFIED BY 'proxysql'"
   ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'monitor'@'%' IDENTIFIED BY 'monitor'"
   check_script $?
+  sleep 5
   echo  "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '127.0.0.1', ${PORT_ARRAY[0]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[1]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[2]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[3]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[4]}, 20)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
   check_script $?
   echo  "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin 
@@ -190,9 +213,8 @@ get_connection_pool(){
 
 }
 #Sysbench data load
-$SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-  --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --num-threads=$TCOUNT --db-driver=mysql \
-  prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+sysbench_run load_data test
+$SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
 check_script $?
 get_connection_pool
@@ -222,7 +244,8 @@ get_connection_pool
 #Sysbench run
 echo -e "Sysbench readonly run...\n"
 for i in `seq 1 5`; do
-  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=1870000000 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --oltp-read-only --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  sysbench_run oltp_read test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
   check_script $?
   sleep 1
   get_connection_pool
@@ -230,7 +253,8 @@ done
 
 echo -e "Sysbench read write run...\n"
 for i in `seq 1 5`; do
-  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=1870000000 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  sysbench_run oltp test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
   check_script $?
   sleep 1
   get_connection_pool
@@ -243,7 +267,8 @@ $BASEDIR/bin/mysqladmin  --socket=/tmp/node1.sock -u root shutdown
 #Sysbench run
 echo -e "Sysbench readonly run...\n"
 for i in `seq 1 5`; do
-  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=1870000000 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --oltp-read-only --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  sysbench_run oltp_read test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
   check_script $?
   sleep 1
   get_connection_pool
@@ -251,7 +276,8 @@ done
 
 echo -e "Sysbench read write run...\n"
 for i in `seq 1 5`; do
-  $SBENCH --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=1870000000 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --num-threads=$NUMT --oltp_table_size=$TSIZE --mysql-db=test --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1  --db-driver=mysql run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
+  sysbench_run oltp test
+  $SBENCH $SYSBENCH_OPTIONS--mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
   check_script $?
   sleep 1
   get_connection_pool

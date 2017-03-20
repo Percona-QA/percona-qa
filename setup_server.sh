@@ -64,8 +64,16 @@ sudo yum install kernel-devel wget patch make cmake automake autoconf bzr git ht
      hdparm pam-devel openssl openssl-devel gtest zlib zlib-devel zlib-static tree vim libasan \
      yum-utils jemalloc-debuginfo readline-devel lshw lscpu iotop pymongo bats lzma lzma*
 
-sudo yum remove abrt    # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
-sudo yum remove pulseaudio* 
+sudo yum remove abrt  # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
+sudo yum remove pulseaudio*  # Only do this on servers, to avoid writing of pulse* files into /dev/shm. Best to leave on workstations (for audio)
+
+# Apt-get equivalent
+#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc \
+#     libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git \
+#     linux-headers-generic g++ ncurses-dev libncurses-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev \
+#     libdbd-mysql libtime-hires-perl libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 \
+#     libreadline6 libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator \
+#     libpam0g-dev
 
 # Bash Profile
 if [ -z "$(cat ~/.bash_profile|grep 'pshugD')" ]; then 

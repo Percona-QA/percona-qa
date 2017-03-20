@@ -14,7 +14,6 @@ export SCRIPT_DIR=$(cd $(dirname $0) && pwd)
 export PXC_START_TIMEOUT=300
 export MYSQL_DATABASE=test
 export MYSQL_NAME=PXC
-export SYSBENCH_DIR=/usr/share/doc/sysbench
 export NODES=1
 
 # make sure we have passed basedir parameter for this benchmark run
@@ -60,6 +59,29 @@ if [ -z $WORKSPACE ]; then
   echo "Assuming this is a local (i.e. non-Jenkins initiated) run."
   export WORKSPACE=$BIG_DIR/backups
 fi
+
+sysbench_run(){
+  TEST_TYPE="$1"
+  DB="$2"
+  SDURATION="$3"
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$NUM_ROWS --oltp_tables_count=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --num-threads=$NUM_TABLES --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --rand-init=on --oltp-table-size=$NUM_ROWS --oltp_tables_count=$NUM_TABLES --max-time=$SDURATION --report-interval=10 --max-requests=1870000000 --mysql-db=$DB --mysql-user=$SUSER  --num-threads=$num_threads --db-driver=mysql --oltp-non-index-updates=1"
+    elif [ "$TEST_TYPE" == "oltp_read" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --rand-init=on --oltp-table-size=$NUM_ROWS --oltp-read-only --oltp_tables_count=$NUM_TABLES --max-time=$SDURATION --report-interval=10 --max-requests=1870000000 --mysql-db=$DB  --mysql-user=$SUSER --num-threads=$num_threads --db-driver=mysql"
+    fi
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --threads=$NUM_TABLES --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --threads=$num_threads --time=$SDURATION --report-interval=10 --events=1870000000 --db-driver=mysql --non_index_updates=1"
+    elif [ "$TEST_TYPE" == "oltp_read" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_only.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER --threads=$num_threads --time=$SDURATION --report-interval=10 --events=1870000000 --db-driver=mysql"
+    fi
+  fi
+}
 
 # Default my.cnf creation
 # Creating default my.cnf file
@@ -134,7 +156,8 @@ function start_multi_node(){
   done
   if [ $run_mid -eq 1 ]; then
     ${DB_DIR}/bin/mysql -uroot -S${WS_DATADIR}/node${DATASIZE}_1/socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
-    /usr/bin/sysbench --test=${SYSBENCH_DIR}/tests/db/parallel_prepare.lua --num-threads=${NUM_TABLES} --oltp-tables-count=${NUM_TABLES}  --oltp-table-size=${NUM_ROWS} --mysql-db=test --mysql-user=root    --db-driver=mysql --mysql-socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock run > $LOGS/sysbench_prepare.log 2>&1
+    sysbench_run load_data $MYSQL_DATABASE
+    sysbench $SYSBENCH_OPTIONS --mysql-socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock prepare > $LOGS/sysbench_prepare.log 2>&1
     for i in `seq 1 $NODES`;do
       timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_${i}/socket.sock shutdown > /dev/null 2>&1
     done
@@ -183,7 +206,8 @@ function sysbench_rw_run(){
     # *** REMEMBER *** warmmup is READ ONLY!
     num_threads=64
     WARMUP_TIME_SECONDS=600
-    sysbench --test=${SYSBENCH_DIR}/tests/db/oltp.lua --oltp_tables_count=$NUM_TABLES --oltp-table-size=$NUM_ROWS --rand-init=on --num-threads=$num_threads --oltp-read-only=on --report-interval=$REPORT_INTERVAL --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --mysql-table-engine=InnoDB --max-time=$WARMUP_TIME_SECONDS --mysql-user=$SUSER --mysql-password=$SPASS --mysql-db=${MYSQL_DATABASE} --max-requests=0 --percentile=99 run > $LOGS/sysbench_warmup.log 2>&1
+    sysbench_run oltp_read $MYSQL_DATABASE $WARMUP_TIME_SECONDS
+    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --percentile=99 run > $LOGS/sysbench_warmup.log 2>&1
     sleep 60
   fi
   echo "Storing Sysbench results in ${WORKSPACE}"
@@ -204,8 +228,8 @@ function sysbench_rw_run(){
         iostat -dxm $IOSTAT_INTERVAL $IOSTAT_ROUNDS  > $LOG_NAME_IOSTAT &
         dstat -t -v --nocolor --output $LOG_NAME_DSTAT_CSV $DSTAT_INTERVAL $DSTAT_ROUNDS > $LOG_NAME_DSTAT &
     fi
-
-    sysbench --test=${SYSBENCH_DIR}/tests/db/oltp.lua --oltp-non-index-updates=1 --oltp_tables_count=$NUM_TABLES --oltp-table-size=$NUM_ROWS --rand-init=on --num-threads=$num_threads  --report-interval=$REPORT_INTERVAL --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --mysql-table-engine=InnoDB --max-time=$RUN_TIME_SECONDS --mysql-user=$SUSER --mysql-password=$SPASS --mysql-db=${MYSQL_DATABASE} --max-requests=0 --percentile=99 run | tee $LOG_NAME
+    sysbench_run oltp $MYSQL_DATABASE $RUN_TIME_SECONDS
+    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --percentile=99 run | tee $LOG_NAME
     sleep 6
     AVG_TRANS=`grep "transactions:" $LOG_NAME | awk '{print $3}' | sed 's/(//'`
     echo "$num_threads : $AVG_TRANS" >> ${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$NUM_ROWS.summary

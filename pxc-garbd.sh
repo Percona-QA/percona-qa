@@ -58,6 +58,24 @@ check_script(){
   if [ ${MPID} -ne 0  ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
 }
 
+sysbench_run(){
+  TEST_TYPE="$1"
+  DB="$2"
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    fi
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+    fi
+  fi
+}
+
 ADDR="127.0.0.1"
 RPORT=$(( RANDOM%21 + 10 ))
 RBASE1="$(( RPORT*1000 ))"
@@ -246,12 +264,9 @@ pxc_startup(){
       break
     fi
   done
-
-
   #Sysbench data load
-  $SBENCH --test=$LPATH/parallel_prepare.lua --report-interval=10 --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp-table-size=$TSIZE \
-    --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root  --num-threads=$NUMT --db-driver=mysql \
-    --mysql-socket=/tmp/node1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+  sysbench_run load_data test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/node1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
   check_script $?
   
   $ROOT_FS/garbd --address gcomm://$LADDR1,$LADDR2,$LADDR3 --group "my_wsrep_cluster" --options "gmcast.listen_addr=tcp://$GARBDP" --log /tmp/garbd.log --daemon
@@ -263,10 +278,8 @@ pxc_startup
 garbd_run(){
   pxc_add_nodes $1
   #OLTP RW run
-  $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --max-time=$SDURATION --max-requests=1870000000 \
-    --test=$LPATH/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 \
-    --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test --mysql-user=root --db-driver=mysql \
-    --mysql-socket=/tmp/node1.sock run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
+  sysbench_run oltp test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/node1.sock run  2>&1 | tee $WORKDIR/logs/sysbench_rw.log
   check_script $?
 }
 

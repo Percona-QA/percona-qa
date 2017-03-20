@@ -37,6 +37,23 @@ archives() {
 
 trap archives EXIT KILL
 
+sysbench_run(){
+  TEST_TYPE="$1"
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=1000 --oltp_tables_count=30 --mysql-db=test --mysql-user=root  --num-threads=30 --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=1000 --oltp_tables_count=30 --max-time=200 --report-interval=1 --max-requests=1870000000 --mysql-db=test --mysql-user=root  --num-threads=30 --db-driver=mysql"
+    fi
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=1000 --tables=30 --mysql-db=test --mysql-user=root  --threads=30 --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=1000 --tables=30 --mysql-db=test --mysql-user=root  --threads=30 --time=200 --report-interval=1 --events=1870000000 --db-driver=mysql"
+    fi
+  fi
+}
+
 create_certs(){
   # Creating SSL certificate directories
   rm -rf ${BUILD}/certs* && mkdir -p ${BUILD}/certs ${BUILD}/certs_two && cd ${BUILD}/certs
@@ -256,6 +273,8 @@ sst_encryption_run(){
     echo "ssl-cert=${BUILD}/certs/server-cert.pem" >> my.cnf
     echo "ssl-key=${BUILD}/certs/server-key.pem" >> my.cnf
     DEFAULT_FILE="--defaults-file=${BUILD}/my.cnf"
+  else
+    DEFAULT_FILE="--defaults-file=${BUILD}/my.cnf"
   fi
 
   rm -rf ${BUILD}/node* ${BUILD}/keyring_node*
@@ -265,13 +284,16 @@ sst_encryption_run(){
 
   #sysbench data load
   echoit "Running sysbench load data..."
-  sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --num-threads=30 --oltp_tables_count=30 --oltp_table_size=1000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/n1.sock run > ${BUILD}/logs/sysbench_load.log 2>&1
+  sysbench_run load_data
+  sysbench $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock prepare > ${BUILD}/logs/sysbench_load.log 2>&1
 
   start_pxc_node 2
-
+  
   echoit "Initiated sysbench read write run ..."
-  sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua --report-interval=1 --num-threads=30 --max-time=200 --max-requests=1870000000 --oltp-tables-count=30 --oltp_table_size=1000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/n1.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
+  sysbench_run oltp
+  sysbench $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
   SYSBENCH_PID="$!"
+
   sleep 100
   kill -9 $SYSBENCH_PID
   wait ${SYSBENCH_PID} 2>/dev/null

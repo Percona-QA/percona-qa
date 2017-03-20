@@ -55,7 +55,7 @@ transactional_table .. .changed .. thd->get_transaction                         
 pause_seqno_ .= .-1                                                                      ## https://github.com/codership/mysql-wsrep/issues/282
 thd->enable_slow_log .. opt_slow_log                                                     ## http://bugs.mysql.com/bug.php?id=82899
 cnt <= keycache->blocks_used                                                             ## https://jira.percona.com/browse/PXC-733
-thd->security_context                                                                    ## https://jira.percona.com/browse/PXC-734
+thd->security_context                                                                    ## https://github.com/codership/mysql-wsrep/issues/304
 field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_LONGLONG                        ## https://jira.percona.com/browse/PXC-745
 trx0trx.cc line 697                                                                      ## https://jira.percona.com/browse/PXC-736
 pfs_mutex->m_class .= __null                                                             ## https://jira.percona.com/browse/PXC-746
@@ -76,7 +76,7 @@ lock0lock.cc line 5884                                                          
 row0log.cc line 1909                                                                     ## https://jira.percona.com/browse/PXC-788
 Z18compute_digest_md5PK18sql_digest_storagePh                                            ## https://jira.percona.com/browse/PXC-789
 ZN10Rpl_filter14get_rewrite_dbEPKcPm                                                     ## https://jira.percona.com/browse/PXC-790
-.thd->sp_runtime_ctx                                                                     ## https://jira.percona.com/browse/PXC-791
+.thd->sp_runtime_ctx                                                                     ## https://github.com/codership/mysql-wsrep/issues/305 (PXC-791)
 trx0trx.cc line 2157                                                                     ## https://jira.percona.com/browse/PXC-792
 
 ## =========== First frame from error log based ===========

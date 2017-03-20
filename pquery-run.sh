@@ -324,22 +324,21 @@ ctrl-c(){
   exit 2
 }
 
-savetrial(){
-  TOSAVE=0
-  if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
-    if [ -f ${RUNDIR}/${TRIAL}/data/*core* -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
-  else
-    if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 -o ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 -o ${STOREANYWAY} -eq 1 -o ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then TOSAVE=1; fi
+savetrial(){  # Only call this if you definitely want to save a trial
+  echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
+  mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
+  if [ $PMM_CLEAN_TRIAL -eq 1 ];then
+    echoit "Removing mysql instance (pq${RANDOMD}-${TRIAL}) from pmm-admin"
+    sudo pmm-admin remove mysql pq${RANDOMD}-${TRIAL} > /dev/null
   fi
-  if [ ${TOSAVE} -eq 1 ]; then
-    SAVED=$[ $SAVED + 1 ]
-    echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
-    mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
-  else
-    echoit "Could not find core dump or Valgrind issue: Deleting rundir ${RUNDIR}/${TRIAL}"
-    rm -Rf ${RUNDIR}/${TRIAL}
+  SAVED=$[ $SAVED + 1 ]
+}
+
+removetrial(){
+  echoit "Removing trial rundir ${RUNDIR}/${TRIAL}"
+  if [ "${RUNDIR}" != "" -a "${TRIAL}" != "" -a -d ${RUNDIR}/${TRIAL}/ ]; then  # Protection against dangerous rm's
+    rm -Rf ${RUNDIR}/${TRIAL}/
   fi
-  STOREANYWAY=0
   if [ $PMM_CLEAN_TRIAL -eq 1 ];then
     echoit "Removing mysql instance (pq${RANDOMD}-${TRIAL}) from pmm-admin"
     sudo pmm-admin remove mysql pq${RANDOMD}-${TRIAL} > /dev/null
@@ -408,7 +407,7 @@ pxc_startup(){
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
       if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
         echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
-        savetrial
+        removetrial
       else
         if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the PXC_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
           echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${PXC_WSREP_OPTIONS_INFILE} and ${PXC_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
@@ -416,7 +415,6 @@ pxc_startup(){
           if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
             echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
           else
-            STOREANYWAY=1
             savetrial
             echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
             exit 1
@@ -557,11 +555,10 @@ gr_startup(){
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
       if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
         echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
-        savetrial
+        removetrial
       else
         echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MYEXTRA (${MYEXTRA}) startup options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings."
         grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
-        STOREANYWAY=1
         savetrial
         echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
         exit 1
@@ -802,9 +799,11 @@ pquery_test(){
       sleep 1
     fi
     echo "## Good for reproducing mysqld (5.7+) startup issues only (full issues need a data dir, so use mysql_install_db or mysqld --init for those)" > ${RUNDIR}/${TRIAL}/start
+    echo "## Another strategy is to activate the data dir copy below, this way the server will be brought up with the same state as it crashed/was shutdown" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Setting up directories...'" >> ${RUNDIR}/${TRIAL}/start
     echo "rm -Rf ${RUNDIR}/${TRIAL}" >> ${RUNDIR}/${TRIAL}/start
     echo "mkdir -p ${RUNDIR}/${TRIAL}/data ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log" >> ${RUNDIR}/${TRIAL}/start
+    echo "#cp -R ./data/* ${RUNDIR}/${TRIAL}/data  # When using this, please also remark the 'Data dir init' below to avoid overwriting the data directory" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Data dir init...'" >> ${RUNDIR}/${TRIAL}/start
     echo "${BIN} --no-defaults --initialize-insecure --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${RUNDIR}/${TRIAL}/socket.sock --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Starting mysqld...'" >> ${RUNDIR}/${TRIAL}/start
@@ -877,12 +876,11 @@ pquery_test(){
       if grep -qi "ERROR. Aborting" ${RUNDIR}/${TRIAL}/log/master.err; then
         if grep -qi "TCP.IP port. Address already in use" ${RUNDIR}/${TRIAL}/log/master.err; then
           echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
-          savetrial
+          removetrial
         else
           if [ ${ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for ADD_RANDOM_OPTIONS=0 runs, they should not produce errors like these, as MYEXTRA should be high-quality/non-faulty
             echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MEXTRA (or \$MYSAFE) startup parameters. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against the \$MYEXTRA (or \$MYSAFE if it was modified) settings. You may also want to try setting \$MYEXTRA=\"\"..."
             grep "ERROR" ${RUNDIR}/${TRIAL}/log/master.err | tee -a /${WORKDIR}/pquery-run.log
-            STOREANYWAY=1
             savetrial
             echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
             exit 1
@@ -894,7 +892,7 @@ pquery_test(){
           fi
         fi
       fi
-      if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then break; fi  # Break the wait-for-server-started loop if a core file is found. Handling of core is done below.
+      if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 ]; then break; fi  # Break the wait-for-server-started loop if a core file is found. Handling of core is done below.
     done
     # Check if mysqld is alive and if so, set ISSTARTED=1 so pquery will run
     if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock ping > /dev/null 2>&1; then
@@ -1299,14 +1297,30 @@ pquery_test(){
   TRIAL_SAVED=0;
   sleep 2  # Delay to ensure core was written completely (if any)
   # NOTE**: Do not kill PQPID here/before shutdown. The reason is that pquery may still be writing queries it's executing to the log. The only way to halt pquery properly is by
-  # actually shutting down the server which will auto-terminate pquery due to 250 consecutive queries failing. If 250 queries failed and ${PQUERY_RUN_TIMEOUT}s timeout was
-  # reached, and if there is no core/Valgrind issue, then we do not need to save this trial (it is a standard occurence). If however we saw 250 queries failed before the timeout
-  # was complete, then there may be another problem and the trial should be saved.
+  # actually shutting down the server which will auto-terminate pquery due to 250 consecutive queries failing. If 250 queries failed and ${PQUERY_RUN_TIMEOUT}s timeout was reached,
+  # and if there is no core/Valgrind issue and there is no output of percona-qa/text_string.sh either (in case core dumps are not configured correctly, and thus no core file is
+  # generated, text_string.sh will still produce output in case the server crashed based on the information in the error log), then we do not need to save this trial (as it is a 
+  # standard occurence for this to happen). If however we saw 250 queries failed before the timeout was complete, then there may be another problem and the trial should be saved.
   if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     if [ ${VALGRIND_RUN} -eq 1 ]; then  # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
+      # ==========================================================================================================================================================
+      # TODO: the timeout...mysqladmin shutdown can be improved further to catch shutdown issues. For this, a new special "CATCH_SHUTDOWN=0/1" mode should be
+      #       added (because the runs would be much slower, so you would want to run this on-demand), and a much longer timeout should be given for mysqladmin
+      #       to succeed getting the server down (3 minutes for single thread runs for example?) if the shutdown fails to complete (i.e. exit status code of 
+      #       timeout is 137 as the timeout took place), then a shutdown issue is likely present. It should not take 3+ minutes to shutdown a server. There a 
+      #       good number of trials that seem to run into this situation. Likely a subset of them will be related to the already seen shutdown issues in TokuDB. 
+      # UPDATE: As an intial stopgap workaround, the timeout was increased to 90 seconds, and the timeout exit code is checked. Trials are saved when this
+      #         happens and a special "SHUTDOWN_TIMEOUT_ISSUE empty file is saved in the trial's directory. pquery-results has been updated to scan for this file
+      # ==========================================================================================================================================================
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
+      if [ $? -eq 137 ]; then
+        echoit "mysqld failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+        touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+        savetrial
+        TRIAL_SAVED=1
+      fi
       VALGRIND_SUMMARY_FOUND=0
       for X in $(seq 0 600); do  # Wait for full Valgrind output in error log
         sleep 1
@@ -1333,7 +1347,13 @@ pquery_test(){
       fi
     else     
       if [ ${QUERY_CORRECTNESS_TESTING} -ne 1 ]; then
-        timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), may catch shutdown bugs + see NOTE** above
+        timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
+        if [ $? -eq 137 ]; then
+          echoit "mysqld failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+          touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+          savetrial
+          TRIAL_SAVED=1
+        fi
         sleep 2
       fi
     fi
@@ -1349,9 +1369,27 @@ pquery_test(){
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
       # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1 
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
-      timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1 
+      if [ $? -eq 137 ]; then
+        echoit "mysqld for node3 failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+        touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+        savetrial
+        TRIAL_SAVED=1
+      fi
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
+      if [ $? -eq 137 ]; then
+        echoit "mysqld for node2 failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+        touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+        savetrial
+        TRIAL_SAVED=1
+      fi
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
+      if [ $? -eq 137 ]; then
+        echoit "mysqld for node1 failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
+        touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+        savetrial
+        TRIAL_SAVED=1
+      fi
       for X in $(seq 0 600); do  # Wait for full Valgrind output in error log
         sleep 1
         if [[ ! -r ${RUNDIR}/${TRIAL}/node1/node1.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err ]]; then
@@ -1386,7 +1424,7 @@ pquery_test(){
       echoit "pquery run details:$(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|.*:||')"
     fi
   fi
-  if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -eq 0 ]; then  # If a core is found when query correctness testing is in progress, it will process it as a normal crash (without considering query correctness)
+  if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -eq 0 -a "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/log/master.err 2>/dev/null)" == "" ]; then  # If a core is found (or text_string.sh sees a crash) when query correctness testing is in progress, it will process it as a normal crash (without considering query correctness)
     if [ "${FAILEDSTARTABORT}" != "1" ]; then
       if [ ${QUERY_CORRECTNESS_MODE} -ne 2 ]; then
         QC_RESULT1=$(diff ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result)
@@ -1405,7 +1443,6 @@ pquery_test(){
       #  QC_DIFF_FOUND=1
       #fi
       if [ ${QC_DIFF_FOUND} -eq 1 ]; then
-        STOREANYWAY=1
         savetrial
         TRIAL_SAVED=1
       fi
@@ -1438,31 +1475,37 @@ pquery_test(){
       fi
     fi
     if [ ${TRIAL_SAVED} -eq 0 ]; then
-      if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null | wc -l) -ge 1 ]; then
-        echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core.* 2>/dev/null)"
-        if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
-          echoit "Bug found (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err`"
-        elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
-          CORE1=`ls ${RUNDIR}/${TRIAL}/node1/*core.* 2>/dev/null || true`
-          CORE2=`ls ${RUNDIR}/${TRIAL}/node2/*core.* 2>/dev/null || true`
-          CORE3=`ls ${RUNDIR}/${TRIAL}/node3/*core.* 2>/dev/null || true`
-          if [ ! "${CORE1}" == "" ]; then echoit "Bug found in PXC/GR node #1 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err`"; fi
-          if [ ! "${CORE2}" == "" ]; then echoit "Bug found in PXC/GR node #2 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err`"; fi
-          if [ ! "${CORE3}" == "" ]; then echoit "Bug found in PXC/GR node #3 (as per error log): `${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err`"; fi
+      if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/log/master.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node1/node1.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2>/dev/null)" != "" ]; then
+        if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 ]; then
+          echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null)"
+        else
+          echoit "mysqld crash detected in the error log via text-string.sh scan"
         fi
-        savetrial;TRIAL_SAVED=1
+        if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+          echoit "Bug found (as per error log): $(${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err)"
+        elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
+          if [ "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node1/node1.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #1 (as per error log): $(${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err)"; fi
+          if [ "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #2 (as per error log): $(${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err)"; fi
+          if [ "$(${SCRIPT_PWD}/text-string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #3 (as per error log): $(${SCRIPT_PWD}/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err)"; fi
+        fi
+        savetrial
+        TRIAL_SAVED=1
       elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
         echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
-        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+        savetrial
+        TRIAL_SAVED=1
       elif [ $(grep "MySQL server has gone away" ${RUNDIR}/${TRIAL}/*.sql | wc -l) -ge 200 -a ${TIMEOUT_REACHED} -eq 0 ]; then
         echoit "'MySQL server has gone away' detected >=200 times for this trial, and the pquery timeout was not reached; saving this trial for further analysis"
-        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+        savetrial
+        TRIAL_SAVED=1
       elif [ $(grep "ERROR:" ${RUNDIR}/${TRIAL}/log/master.err | wc -l) -ge 1 ]; then
         echoit "ASAN issue detected in the mysqld error log for this trial; saving this trial"
-        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+        savetrial
+        TRIAL_SAVED=1
       elif [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
         echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
-        STOREANYWAY=1;savetrial;TRIAL_SAVED=1
+        savetrial
+        TRIAL_SAVED=1
       else
         if [ ${SAVE_SQL} -eq 1 ]; then 
           if [ ${VALGRIND_RUN} -eq 1 ]; then
@@ -1473,7 +1516,7 @@ pquery_test(){
             echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no issue was seen), except the SQL trace (as SAVE_SQL=1)"
           fi
           savesql
-        else
+        else 
           if [ ${VALGRIND_RUN} -eq 1 ]; then
             if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
               echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 and SAVE_SQL=0, and no issue was seen)" 
@@ -1484,6 +1527,9 @@ pquery_test(){
         fi
       fi
     fi  
+    if [ ${TRIAL_SAVED} -eq 0 ]; then
+      removetrial
+    fi
   fi
 } 
 

@@ -65,24 +65,30 @@ IFS=$ORIG_IFS
 
 # MODE 4 TRIALS
 if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
-  COUNT=`grep -l "^MODE=4$" reducer* 2>/dev/null | wc -l`
-  if [ $COUNT -gt 0 ]; then
-    MATCHING_TRIALS=()
-    for MATCHING_TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
+  COUNT=0
+  MATCHING_TRIALS=()
+  for MATCHING_TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
+    if [ ! -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then
       MATCHING_TRIALS+=($MATCHING_TRIAL)
-    done
+      COUNT=$[ COUNT + 1 ]
+    fi
+  done
+  if [ $COUNT -gt 0 ]; then
     STRING_OUT=`echo "* TRIALS TO CHECK MANUALLY (NO TEXT SET: MODE=4) *" | awk -F "\n" '{printf "%-55s",$1}'`
     COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
     echo -e "${STRING_OUT}${COUNT_OUT}$(echo ${MATCHING_TRIALS[@]}|sed 's| |,|g'))"
   fi
 else
-  COUNT=`grep -l "^MODE=4$" reducer* 2>/dev/null | wc -l`
+  COUNT=0
+  MATCHING_TRIALS=()
+  for TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | sort -un`; do
+    MATCHING_TRIAL=`grep -H "^MODE=4$" reducer${TRIAL}-* 2>/dev/null | sed "s|.sh.*||;s|reducer${TRIAL}-||" | tr '\n' , | sed 's|,$||' | xargs -I '{}' echo "[${TRIAL}-{}] "`
+    if [ ! -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then
+      MATCHING_TRIALS+=($MATCHING_TRIAL)
+      COUNT=$[ COUNT + 1 ]
+    fi
+  done
   if [ $COUNT -gt 0 ]; then
-    MATCHING_TRIALS=()
-    for TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | sort -un`; do
-      MATCHING_TRIAL=`grep -H "^MODE=4$" reducer${TRIAL}-* 2>/dev/null | sed "s|.sh.*||;s|reducer${TRIAL}-||" | tr '\n' , | sed 's|,$||' | xargs -I '{}' echo "[${TRIAL}-{}] "`
-      MATCHING_TRIALS+=("$MATCHING_TRIAL")
-    done
     STRING_OUT=`echo "* TRIALS TO CHECK MANUALLY (NO TEXT SET: MODE=4) *" | awk -F "\n" '{printf "%-55s",$1}'`
     COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
     echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS[@]})"
@@ -95,7 +101,8 @@ if [ $(ls */GONEAWAY 2>/dev/null | wc -l) -gt 0 ]; then
   echo "'MySQL server has gone away' trials found: $(ls */GONEAWAY | sed 's|/.*||' | tr '\n' ',' | sed 's|,$||')"
   echo "(> 'MySQL server has gone away' trials which did not hit the pquery timeout (i.e. the trial ended before pquery timeout was reached, hence something must have gone wrong) are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. As they did not hit the pquery timeout, something must have gone wrong (in mysqld or in the pquery framework). Please check for existence of a core file (unlikely) and check the mysqld error log, the pquery logs and the SQL log, especially the last query before 'MySQL server has gone away' started happening. If it is a SELECT query on P_S, it's likely http://bugs.mysql.com/bug.php?id=82663 - a mysqld hang)"
 fi
-# 'SIGKILL myself' TRIALS
+
+# 'SIGKILL myself' trials
 if [ $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then 
   echo "--------------"
   echo "'SIGKILL myself' trials found: $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | sed 's|/.*||' | tr '\n' ',' | sed 's|,$||')"
@@ -108,6 +115,13 @@ if [ $(grep -l "ERROR:" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then
   echo "ASAN trials (or other 'ERROR:' issues) found and the issues seen:"
   grep "ERROR:" */log/master.err 2>/dev/null | sed 's|/log/master.err||'
   echo "(> ASAN trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='ERROR: <copy some limited detail from line above but NOT the addresses>' in their reducer<trialnr>.sh files. Then, simply reduce as normal.)"
+fi
+
+# mysqld shutdown issue trials
+if [ $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | wc -l) -gt 0 ]; then 
+  echo "--------------"
+  echo "'mysqld shutdown issue' trials found: $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | sed 's|/.*||' | tr '\n' ',' | sed 's|,$||')"
+  echo "(> The trials failed to shutdown properly within a timeframe of 90 seconds in the original run. Reduce as shutdown problems, unless a crash was found during the same trial also (i.e. it is listed above in the normal crash trials list also)."
 fi
 
 # MODE 2 TRIALS (Query correctness trials)
@@ -134,7 +148,7 @@ if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|"
 fi
 
 extract_valgrind_error(){
-  for i in $( ls  */log/master.err ); do
+  for i in $( ls  */log/master.err 2>/dev/null); do
     TRIAL=`echo $i | cut -d'/' -f1`
     echo "============ Trial $TRIAL ===================="
     egrep --no-group-separator  -A4 "Thread[ \t][0-9]+:" $i | cut -d' ' -f2- |  sed 's/0x.*:[ \t]\+//' |  sed 's/(.*)//' | rev | cut -d '(' -f2- | sed 's/^[ \t]\+//' | rev  | sed 's/^[ \t]\+//'  |  tr '\n' '|' |xargs |  sed 's/Thread[ \t][0-9]\+:/\nIssue #/ig'

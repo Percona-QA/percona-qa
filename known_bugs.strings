@@ -108,6 +108,7 @@ t1->result_range                                         ## http://bugs.mysql.co
 #ha_innodb.cc line 15747                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1423314  ## Fixed in 5.7.10.2rc2 
 #buf0lru.cc line 2245                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1423314 (bug 1415357 not fully fixed yet)  ## Fixed in 5.7.10.2rc2
 m_db.length == copy->m_db.length                         ## http://bugs.mysql.com/bug.php?id=74604 (5.7 version thereof)
+m_index_scan_type .= partition_index_last                ## http://bugs.mysql.com/bug.php?id=85537
 #trx0trx.h line 1410                            ## Fixed ## http://bugs.mysql.com/bug.php?id=76415
 #thd->variables.gtid_next.type == ANONYMOUS_GROUP ## Fixed ## http://bugs.mysql.com/bug.php?id=76416                                               (# after MS 5.7.8 merged)
 db_return_                                               ## http://bugs.mysql.com/bug.php?id=76417
@@ -296,6 +297,7 @@ btr0sea.cc line 1161                                                            
 btr0sea.cc line 1210                                                                    ## http://bugs.mysql.com/bug.php?id=76472 PS
 btr0sea.cc line 1782                                                                    ## http://bugs.mysql.com/bug.php?id=77108
 btr0sea.ic line 111                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1469041
+buf0buf.ic line 743                                                                     ## http://bugs.launchpad.net/percona-server/5.5/+bug/1674285
 buf0buf.cc line 2536                                            ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74481 MS ( Fixed in 5.7.7, 5.8.0)
 buf0buf.cc line 2631                                            ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74481 MS ( Fixed in 5.7.7, 5.8.0)
 buf0buf.cc line 2630                                            ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74481 PS (with oldPS) ( Fixed in 5.7.7, 5.8.0)

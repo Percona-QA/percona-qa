@@ -145,7 +145,23 @@ TAR=`ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | head -n1`
 BASE2="$(tar tf $TAR | head -1 | tr -d '/')"
 tar -xf $TAR
 
-LPATH=${SPATH:-/usr/share/doc/sysbench/tests/db}
+sysbench_cmd(){
+  TEST_TYPE="$1"
+  DB="$2"
+  if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --num-threads=$NUMT --db-driver=mysql"
+    fi
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+    if [ "$TEST_TYPE" == "load_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB  --threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "oltp" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+    fi
+  fi
+}
 
 # User settings
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
@@ -366,9 +382,8 @@ sysbench_run(){
   fi
 
   set -x
-  sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SDURATION --max-requests=1870000000 \
-      --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
-      --mysql-ignore-errors=1062,1213 --db-driver=mysql $SYSB_VAR_OPTIONS run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run_${RUN_NAME}.txt
+  sysbench_cmd oltp test
+  sysbench $SYSBENCH_OPTIONS --mysql-ignore-errors=1062,1213 $SYSB_VAR_OPTIONS run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run_${RUN_NAME}.txt
   #check_script $?
 
   if [[ ${PIPESTATUS[0]} -ne 0 ]];then
@@ -424,8 +439,8 @@ fi
 ## Prepare/setup
 echo -e "\n\n#### Sysbench prepare run on previous version\n"
 
-sysbench --test=$SDIR/parallel_prepare.lua --report-interval=10  --oltp-auto-inc=$AUTOINC --mysql-engine-trx=yes --mysql-table-engine=innodb \
-    --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=test --db-driver=mysql $SYSB_VAR_OPTIONS prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+sysbench_cmd load_data test
+sysbench $SYSBENCH_OPTIONS $SYSB_VAR_OPTIONS prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 #check_script $?
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
