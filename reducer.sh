@@ -2652,6 +2652,12 @@ finish(){
       if [ "${CHK_ROCKSDB}" == "1" ];then
         MYEXTRA="$MYEXTRA ${MYROCKS}"
       fi
+      if [ "${CHK_LOGBIN57}" == "1" ];then
+        MYEXTRA="$MYEXTRA --server-id=100"
+      fi
+      if [ "${CHK_TOKUDB}" == "1" ];then
+        MYEXTRA="$MYEXTRA --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
+      fi
       if [ ${STAGE8_CHK} -eq 0 ]; then
         export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
         sed -i "s|error.log.out|error.log.out $MYEXTRA |" $WORK_START
