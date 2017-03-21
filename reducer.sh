@@ -1852,8 +1852,8 @@ start_mysqld_main(){
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
     if [ "${CHK_TOKUDB}" == "1" ];then
-      CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so|');
-      sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so|" $WORK_START
+      CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|');
+      sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -1874,8 +1874,8 @@ start_mysqld_main(){
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
     if [ "${CHK_TOKUDB}" == "1" ];then
-      CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so|');
-      sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so|" $WORK_START
+      CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|');
+      sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -2651,6 +2651,12 @@ finish(){
     if [ ${STAGE} -eq 8 ]; then
       if [ "${CHK_ROCKSDB}" == "1" ];then
         MYEXTRA="$MYEXTRA ${MYROCKS}"
+      fi
+      if [ "${CHK_LOGBIN57}" == "1" ];then
+        MYEXTRA="$MYEXTRA --server-id=100"
+      fi
+      if [ "${CHK_TOKUDB}" == "1" ];then
+        MYEXTRA="$MYEXTRA --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
       fi
       if [ ${STAGE8_CHK} -eq 0 ]; then
         export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
@@ -3929,7 +3935,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   #TokuDB startup option check
   tokudb_startup_chk(){
     if echo "${MYEXTRA}" | grep -q 'tokudb'; then
-      MYEXTRA=$(echo $MYEXTRA | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g;s|--plugin-load=tokudb=ha_tokudb.so||g');
+      MYEXTRA=$(echo $MYEXTRA | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g;s|--plugin-load=tokudb=ha_tokudb.so||g;s|--tokudb-check-jemalloc=0||g');
       CHK_TOKUDB=1
     else
       CHK_TOKUDB=0

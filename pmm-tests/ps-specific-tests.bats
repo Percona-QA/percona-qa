@@ -42,7 +42,7 @@ echo "$output"
 
 @test "run pmm-admin add mysql:metrics again based on running instances" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "mysql:metrics" | grep "mysql_metrics_" | sed 's|.*(||;s|)||') ; do
+	for i in $(sudo pmm-admin list | grep "mysql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//') ; do
 		let COUNTER=COUNTER+1
 		MYSQL_SOCK=${i}
 		run sudo pmm-admin add mysql:metrics --user=${MYSQL_USER} --socket=${MYSQL_SOCK} mysql_metrics_$COUNTER
@@ -55,7 +55,7 @@ echo "$output"
 
 @test "run pmm-admin remove mysql:metrics" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "mysql:metrics" | grep "mysql_metrics_" | sed 's|.*(||;s|)||') ; do
+	for i in $(sudo pmm-admin list | grep "mysql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//') ; do
 		let COUNTER=COUNTER+1
 		MYSQL_SOCK=${i}
 		run sudo pmm-admin remove mysql:metrics mysql_metrics_$COUNTER
@@ -68,7 +68,7 @@ echo "$output"
 
 @test "run pmm-admin remove mysql:metrics again" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "mysql:metrics" | grep "mysql_metrics_" | sed 's|.*(||;s|)||') ; do
+	for i in $(sudo pmm-admin list | grep "mysql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//') ; do
 		let COUNTER=COUNTER+1
 		MYSQL_SOCK=${i}
 		run sudo pmm-admin remove mysql:metrics mysql_metrics_$COUNTER
