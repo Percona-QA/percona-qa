@@ -83,7 +83,7 @@ else
   MATCHING_TRIALS=()
   for TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | sort -un`; do
     MATCHING_TRIAL=`grep -H "^MODE=4$" reducer${TRIAL}-* 2>/dev/null | sed "s|.sh.*||;s|reducer${TRIAL}-||" | tr '\n' , | sed 's|,$||' | xargs -I '{}' echo "[${TRIAL}-{}] "`
-    if [ ! -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then
+    if [[ ! -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]]; then
       MATCHING_TRIALS+=($MATCHING_TRIAL)
       COUNT=$[ COUNT + 1 ]
     fi
