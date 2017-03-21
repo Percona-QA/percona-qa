@@ -121,7 +121,7 @@ fi
 if [ $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | wc -l) -gt 0 ]; then 
   echo "--------------"
   echo "'mysqld shutdown issue' trials found: $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | sed 's|/.*||' | tr '\n' ',' | sed 's|,$||')"
-  echo "(> The trials failed to shutdown properly within a timeframe of 90 seconds in the original run. Reduce as shutdown problems, unless a crash was found during the same trial also (i.e. it is listed above in the normal crash trials list also)."
+  echo "(> The trials failed to shutdown properly within a timeframe of 90 seconds in the original run. Reduce as shutdown problems, unless a crash was found during the same trial also (i.e. it is listed above in the normal crash trials list also. Also see https://bugs.mysql.com/bug.php?id=73914 as a possible reason)"
 fi
 
 # MODE 2 TRIALS (Query correctness trials)

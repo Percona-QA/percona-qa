@@ -433,7 +433,8 @@ row0trunc.cc line 1983                                                          
 #row0upd.cc line 1794                                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226538 (dup of 1395579)
 srv0srv.cc line 2664                                                                    ## http://bugs.mysql.com/bug.php?id=73913 (same assert as 74418 but diff)
 srv0srv.cc line 3072                                                                    ## http://bugs.mysql.com/bug.php?id=73913 or 74418, PS 5.17.16 (also see PS bug 1369326)
-srv0srv.cc line 3337                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35
+srv0srv.cc line 3337                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35-79
+srv0srv.cc line 3338                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35-80
 srv0srv.cc line 2666                                                                    ## http://bugs.mysql.com/bug.php?id=73913 MS 5.6.22
 srv0srv.cc line 3353                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.5.53
 sync0sync.ic line 307                                                                   ## http://bugs.launchpad.net/percona-server/+bug/1435678
@@ -485,6 +486,7 @@ ftnode->blocknum.b == blocknum.b                                                
 #from->len == to->len                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=76477
 from->len == to->len                                                                    ## http://bugs.mysql.com/bug.php?id=84827 (Ref also 76477) (Still present in MS 5.6.35)
 #from->m_byte_count == 0                                                       ## Fixed ## http://bugs.mysql.com/bug.php?id=76090 (fixed in 5.6.25)
+head->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS                                    ## http://bugs.mysql.com/bug.php?id=85552
 #Handlerton.*offset_start                                                               ## http://tokutek.atlassian.net/browse/DB-771 (Fixed tokudb-7.5.4)
 #Handlerton.*.share->kc_info.num_blobs == 0                                    ## Fixed ## http://tokutek.atlassian.net/browse/DB-811 (Fixed in tokudb-7.5.7)
 #Handlerton.*trx                                                                        ## http://tokutek.atlassian.net/browse/DB-762 (Fixed tokudb-7.5.4)
