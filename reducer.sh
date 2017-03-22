@@ -49,10 +49,11 @@ REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce mysq
 REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. MODE=3 (set TEXT) and MODE=4 (all) supported
 SCRIPT_LOC=/usr/bin/script      # Script binary (sudo yum install util-linux), which is required when/for reducing GLIBC crashes
 
-# === Shutdown/hanging issues   # For mysqld hang testcase reduction (use TIMEOUT_CHECK + MODE=0) and for 'only reproducible at shutdown' testcase reduction (use TIMEOUT_COMMAND)
-TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
-TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout here. Do not set too small (e.g. >600 sec)
-                                # Note: TIMEOUT_CHECK + MODE=0 is better for hanging mysqld's whereas TIMEOUT_COMMAND is better for "checkable" (i.e. use MODE=2 or =3) issues 
+# === TBD                       # TBD... Good for 1) terminating mysqld after x seconds + for still checking MODE=2/3 issues
+TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
+
+# === Hang issues               # TODO/TBD; is 'hang during shutdown' sufficiently covered? i.e. will it catch the timeout if it is in mysqladmin shutdown? See also TBD above.
+TIMEOUT_CHECK=600               # Set MODE=0 for hang issues. When MODE=0 is used, this specifies the number of seconds to used as a timeout. Do not set too small (eg. >600 sec)
 
 # === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
