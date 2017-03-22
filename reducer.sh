@@ -84,7 +84,7 @@ LOAD_TIMEZONE_DATA=0            # On/Off (1/0) Enable loading Timezone data into
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
 SKIPSTAGEBELOW=0                # Usually not changed (default=0), skips stages below and including requested stage
 SKIPSTAGEABOVE=9                # Usually not changed (default=9), skips stages above and including requested stage
-FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully terminate mysqld instead of using proper mysqladmin shutdown etc.
+FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully kill mysqld instead of using mysqladmin shutdown etc. Auto-disabled for MODE=0.
 
 # === Percona XtraDB Cluster
 PXC_MOD=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables PQUERY_MODE=1
@@ -728,6 +728,9 @@ options_check(){
     export -n SPORADIC=1
     export -n SLOW_DOWN_CHUNK_SCALING=1
   fi   
+  if [ $MODE -eq 0 -a $FORCE_KILL=1 ]; then
+    FORCE_KILL=0
+  fi
   export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|[ \t]*--no-defaults[ \t]*||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
 
@@ -2102,10 +2105,10 @@ cut_threadsync_chunk(){
 run_and_check(){
   start_mysqld_or_valgrind_or_pxc
   run_sql_code
-  if [ $MODE -eq 1 -o $MODE -eq 6 ]; then stop_mysqld_or_pxc; fi
+  if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then stop_mysqld_or_pxc; fi
   process_outcome
   OUTCOME="$?"
-  if [ $MODE -ne 1 -a $MODE -ne 6 ]; then stop_mysqld_or_pxc; fi
+  if [ $MODE -ne 0 -a $MODE -ne 1 -a $MODE -ne 6 ]; then stop_mysqld_or_pxc; fi
   # Add error log from this trial to the overall run error log
   if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
     sudo cat $WORKD/node1/error.log > $WORKD/node1_error.log
@@ -2603,11 +2606,13 @@ process_outcome(){
 }
 
 stop_mysqld_or_pxc(){
+  SHUTDOWN_TIME_START=$(date +'%s')
+  MODE0_MIN_SHUTDOWN_TIME=$[ $TIMEOUT_CHECK + 10 ]
   if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
     (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   else
-    if [ ${FORCE_KILL} -eq 1 ]; then
+    if [ ${FORCE_KILL} -eq 1 -a ${MODE} -ne 0 ]; then  # In MODE=0 we may be checking for shutdown hang issues, so do not kill mysqld
       while :; do
         if kill -0 $PIDV > /dev/null 2>&1; then
           sleep 1
@@ -2619,20 +2624,33 @@ stop_mysqld_or_pxc(){
     else
       # RV-15/09/14 Added timeout due to bug http://bugs.mysql.com/bug.php?id=73914
       # RV-02/12/14 We do not want too fast a shutdown either; quite a few bugs happen when mysqld is being shutdown
-      timeout -k40 -s9 40s $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
-      if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
+      # RV-22/03/17 To check for shutdown hangs, need to make sure that timeout of mysqladmin is longer then TIMEOUT_CHECK seconds + 10 seconds safety margin
+      if [ $MODE -eq 0 ]; then
+        timeout -k${MODE0_MIN_SHUTDOWN_TIME} -s9 ${MODE0_MIN_SHUTDOWN_TIME}s $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
+      else
+        timeout -k40 -s9 40s $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1  # Note it is myqladmin being terminated with -9, not mysqld !
+      fi
+      if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
   
+      # Try various things now to bring server down, upto kill -9
       while :; do
         sleep 1
         if kill -0 $PIDV > /dev/null 2>&1; then 
-          if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
-          if kill -0 $PIDV > /dev/null 2>&1; then $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi
-          if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 8; else sleep 4; fi
+          if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
+          if kill -0 $PIDV > /dev/null 2>&1; then $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi  # Retry shutdown one more time
+          if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
           if kill -0 $PIDV > /dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
           sleep 5
           if [ $MODE -ne 1 -a $MODE -ne 6 ]; then
+            if [ $MODE -eq 0 ]; then
+              if [ $[ $(date +'%s') - ${SHUTDOWN_TIME_START} ] -lt $MODE0_MIN_SHUTDOWN_TIME ]; then
+                continue  # Do not proceed to kill -9 if server is hanging and reducer is checking for the same (i.e. MODE=0) untill we've passed $TIMEOUT_CHECK + 10 second safety margin
+              fi
+            fi
             if kill -0 $PIDV > /dev/null 2>&1; then 
-              echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld"
+              if [ $MODE -ne 0 ]; then  # For MODE=0, the following is not a WARNING but fairly normal
+                echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld"
+              fi
               kill -9 $PIDV
             else 
               break
@@ -2645,6 +2663,7 @@ stop_mysqld_or_pxc(){
     fi
     PIDV=""
   fi
+  RUN_TIME=$[ ${RUN_TIME} + $(date +'%s') - ${SHUTDOWN_TIME_START} ]  # Add shutdown runtime to overall runtime which is later checked against TIMEOUT_CHECK
 }
 
 finish(){
