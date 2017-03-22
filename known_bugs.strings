@@ -776,6 +776,7 @@ ZN15Event_scheduler5startEPi                                                    
 ## =========== pquery reducer scripts TEXT based (for short strings that may be part of other assertion messages. End with $ EOL char and add . before and after text) ===========
 #TEXT=.is_started.$                                                            ## Fixed ## http://bugs.mysql.com/bug.php?id=76425
 #TEXT=.r == 0.$                                                                         ## PS Bug #1511969 (verified), also see http://tokutek.atlassian.net/browse/DB-933 / DB-737
+TEXT=.r == 0.$                                                                          ## http://tokutek.atlassian.net/browse/DB-1039
 #TEXT=.r == 0.$                                                                         ## http://tokutek.atlassian.net/browse/FT-723 also see DB-737 (fixed in 5.6.23/Tk7.5.6) 
 #TEXT=.my_b_write.$                                                            ## Fixed ## http://bugs.mysql.com/bug.php?id=74950 (fixed in 5.6.27, 5.7.9)
 #TEXT=.strlen.m_ptr.$                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=75870 (Also ref bug 79905) (Fixed in MS 5.7.8)
