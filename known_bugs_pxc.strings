@@ -66,7 +66,7 @@ loop .. seqno == seqno_released                                                 
 mi->rli->inited                                                                          ## https://jira.percona.com/browse/PXC-772
 sync0policy.ic line 63                                                                   ## https://jira.percona.com/browse/PXC-773
 tabledef->type.i                                                                         ## https://jira.percona.com/browse/PXC-774
-thd->wsrep_next_trx_id                                                                   ## https://jira.percona.com/browse/PXC-775
+thd->wsrep_next_trx_id                                                                   ## https://github.com/codership/mysql-wsrep/issues/306 (PXC-775)
 Z11plugin_lockP3THDPPP13st_plugin_int                                                    ## https://jira.percona.com/browse/PXC-776
 Z26log_online_follow_redo_logv                                                           ## https://jira.percona.com/browse/PXC-777
 ZN2gu12MutexWithPFSC2E19wsrep_pfs_instr_tag                                              ## https://jira.percona.com/browse/PXC-778
