@@ -79,7 +79,10 @@ Z18compute_digest_md5PK18sql_digest_storagePh                                   
 ZN10Rpl_filter14get_rewrite_dbEPKcPm                                                     ## https://jira.percona.com/browse/PXC-790
 .thd->sp_runtime_ctx                                                                     ## https://github.com/codership/mysql-wsrep/issues/305 (PXC-791)
 trx0trx.cc line 2157                                                                     ## https://jira.percona.com/browse/PXC-792
-
+ZN6galera13ReplicatorSMM10async_recvEPv                                                  ## https://jira.percona.com/browse/PXC-798
+thd_list.empty                                                                           ## https://jira.percona.com/browse/PXC-799
+.table->part_info                                                                        ## https://jira.percona.com/browse/PXC-800
+ZN7handler30ha_prepare_inplace_alter_tableEP5TABLEP18Alter_inplace_info                  ## https://jira.percona.com/browse/PXC-801
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
