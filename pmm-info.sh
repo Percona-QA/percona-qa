@@ -33,8 +33,8 @@ echo '==================== PMM list (sudo pmm-admin list):'
 sudo pmm-admin list 2>&1 | grep -v '^$' | sed 's|^|  |'
 
 if [ "$1" != "" ]; then
-  echo '==================== Extended info: cat /opt/VERSION inside docker container:'
-  sudo docker exec -it $(sudo docker ps -a | grep pmm | grep 'Up.*pmm-server' | sed 's|[ \t].*||') cat /opt/VERSION 2>&1 | grep -v '^$' | sed 's|^|  |'
+  echo '==================== Extended info: cat /opt/.../VERSION inside docker container:'
+  sudo docker exec -it $(sudo docker ps -a | grep pmm | grep 'Up.*pmm-server' | sed 's|[ \t].*||') find /opt/ -name VERSION -exec echo {} \; -exec cat {} \; 2>&1 | grep -v '^$' | sed 's|^|  |'
   echo '==================== Extended info: cat /var/log/nginx/error.log inside docker container:'
   sudo docker exec -it $(sudo docker ps -a | grep pmm | grep 'Up.*pmm-server' | sed 's|[ \t].*||') cat /var/log/nginx/error.log 2>&1 | grep -v '^$' | sed 's|^|  |'
   echo '==================== Extended info: cat /var/log/consul.log inside docker container:'
