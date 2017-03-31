@@ -11,11 +11,33 @@ linux-metrics.bats      -> linux:metrics tests
 pmm-framework.sh        -> Executable for creating environment
 mongodb-tests.bats      -> MongoDB specific tests
 pmm-testsuite.bats      -> The test suite bats file
+pmm-testsuite.sh      -> The workaround for issue #80, it will be used in jenkins
 proxysql-tests.bats     -> proxysql:metrics tests
 ps-specific-tests.bats  -> PS specific tests
 pxc-specific-tests.bats -> PXC specific tests
 
 
+```
+
+Sample run for pmm-testsuite.sh:
+
+Available options:
+```
+instance_t -> instance type
+instance_c -> instance count
+tap -> adding --tap option
+stress -> enabling stress test
+table_c -> the table count for stress test
+```
+
+Running stress test, with 100 tables, with --tap option, for 3 ps instances:
+```
+instance_t="ps" instance_c="3" tap=1 stress=1 table_c=100 bash ~/percona-qa/pmm-tests/pmm-testsuite.sh
+```
+
+Running with --tap option, for 3 ps instances:
+```
+instance_t="ps" instance_c="3" tap=1 bash ~/percona-qa/pmm-tests/pmm-testsuite.sh
 ```
 
 
