@@ -71,6 +71,7 @@ buf0buf.cc line 2852                    ## Still present ## Idem to 74481: set g
 fil0fil.cc line 6933                    ## Still present ## Idem to 74481: SET @@GLOBAL.innodb_fil_make_page_dirty_debug=22;
 fil0fil.cc line 5133                    ## Still present ## Idem to 74481
 buf0buf.cc line 2678                                     ## Not logged: SET GLOBAL innodb_fil_make_page_dirty_debug=38098908;
+#buf0flu.cc line 2807                                    ## http://bugs.mysql.com/bug.php?id=85585 (not verified yet, so this line is remarked ftm)
 #sync0debug.cc line 299                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
 #buf0lru.cc line 2245                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1415357                                 (# after next bzr pull)
 #ha_innodb.cc line 15747                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1415357 (2nd addition - ref comment #6) (# after next bzr pull)
@@ -189,7 +190,8 @@ buf0lru.cc line 2259                                     ## http://bugs.launchpa
 #ZN8Item_row7val_strEP6String                   ## Fixed ## alpha # http://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
 #btr0cur.cc line 830                            ## Fixed ## beta  # http://bugs.launchpad.net/percona-server/+bug/1517757  ## Fixed in PS 5.7.10-2rc2
 row0ins.cc line 282                                      ## http://bugs.launchpad.net/percona-server/+bug/1553883
-rem0rec.cc line 886                                      ## beta  # http://bugs.launchpad.net/percona-server/+bug/1540903
+rem0rec.cc line 886                                      ## MS5.7 # http://bugs.mysql.com/bug.php?id=80681
+rem0rec.cc line 872                                      ## MS5.7 # http://bugs.mysql.com/bug.php?id=79794
 trx0trx.cc line 1297                                     ## beta  # http://bugs.mysql.com/bug.php?id=79349
 trx0trx.cc line 1262                                     ## MS5.7 # http://bugs.mysql.com/bug.php?id=79349 (same bug as trx0trx.cc line 1297 on PS)
 #thd->get_transaction                           ## Fixed ## beta  # http://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)  ## Fixed in PS 5.7.10-rc1

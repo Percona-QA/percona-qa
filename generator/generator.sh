@@ -2,6 +2,7 @@
 # Created by Roel Van de Paar, Percona LLC
 
 # ====== User Variables
+OUTPUT_FILE=out      # Output file. Do NOT add .sql suffix, it will be automaticaly added
 MYSQL_VERSION=57     # Valid options: 56, 57
 THREADS=4            # Number of SQL generation threads (default:4). Do not set the default >4 as pquery-run.sh also uses this script (avoids server overload with multiple runs)
 SHEDULING_ENABLED=0  # On/Off (1/0). Enables/disables using mysql EVENTs .When using this, please note that testcases need to be reduced using PQUERY_MULTI=1 in reducer.sh (as they are effectively multi-threaded due to sheduler threads), and that issue reproducibility may be significantly lower (sheduling may not match original OS slicing, other running queries etc.). Still, using PQUERY_MULTI=1 a good number of issues are likely reproducibile and thus reducable given reducer.sh's random replay functionality.
@@ -648,50 +649,50 @@ query(){
 
 thread(){
   for i in `eval echo {1..${QUERIES_PER_THREAD}}`; do
-    echo "`query`;" >> out${1}.sql
+    echo "`query`;" >> ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
     sync
   done
 }
 
 # ====== Main runtime
-# == Setup
-if [ -r out.sql ]; then rm out.sql; fi
-touch out.sql; if [ ! -r out.sql ]; then echo "Assert: out.sql not present after 'touch out.sql' command!"; exit 1; fi
-# == Main run
+RANDOM_SUFFIX=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random number generator (6 digits)
 MUTEX_THREAD_BUSY=0
-PIDS=
 QUERIES_PER_THREAD=$[ ${QUERIES} / ${THREADS} ]
+FINAL_OUTFILE=$(echo ${OUTPUT_FILE} | sed 's|\.sql||')
+PIDS=
 if [ ${QUERIES_PER_THREAD} -gt 0 ]; then
-  # Remove old out file
-  rm -f out.sql
-  # Remove old temporary files (if any)
-  for i in `eval echo {1..${THREADS}}`; do
-    rm -f out${1}.sql
-  done
+  # Remove old output files & old temporary files (if any)
+  rm -f ${FINAL_OUTFILE}*.sql
+  touch ${FINAL_OUTFILE}.sql
+  if [ ! -r ${FINAL_OUTFILE}.sql ]; then 
+    echo "Assert: ${FINAL_OUTFILE}.sql not present after 'touch ${FINAL_OUTFILE}.sql' command!"
+    exit 1
+  fi
   # Actual query generation
   for i in `eval echo {1..${THREADS}}`; do
     thread $i &
     PIDS="${PIDS} $!"
   done
   wait ${PIDS}
+  # Process the leftover queries (result of rounding (queries/threads) into an integer result) by simply adding the leftover queries to the output file of thread 1
+  QUERIES_PER_THREAD=$[ ${QUERIES} - ( ${THREADS} * ${QUERIES_PER_THREAD} ) ];
+  if [ ${QUERIES_PER_THREAD} -gt 0 ]; then thread 1; fi  
   # Recombine individual thread files
   for i in `eval echo {1..${THREADS}}`; do
-    cat out$i.sql >> out.sql
-    rm out$i.sql
+    cat ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${i}.sql >> ${FINAL_OUTFILE}.sql
+    rm ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${i}.sql
   done
-  # Process the leftover queries (result of rounding (queries/threads) into an integer result)
-  QUERIES_PER_THREAD=$[ ${QUERIES} - ( ${THREADS} * ${QUERIES_PER_THREAD} ) ];
-  if [ ${QUERIES_PER_THREAD} -gt 0 ]; then thread 1; fi
 fi
 
 # == Check for failures or report outcome
-if grep -qi "Assert" out.sql; then
+if grep -qi "Assert" ${FINAL_OUTFILE}.sql; then
   echo "Errors found, please fix generator.sh code:"
-  grep "Assert" out.sql | sort -u | sed "s|[ ]*;$||"
-  rm out.sql 2>/dev/null
-else
-  sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g;s|[ ]*;$|;|" out.sql  # Replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma
+  grep "Assert" ${FINAL_OUTFILE}.sql | sort -u | sed "s|[ ]*;$||"
+  rm ${FINAL_OUTFILE}.sql 2>/dev/null
+else 
+  # SQL syntax cleanup; replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma, remove end-of-line spaces
+  sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g;s|[ ]*;$|;|" ${FINAL_OUTFILE}.sql
   END=`date +%s`; RUNTIME=$[ ${END} - ${START} ]; MINUTES=$[ ${RUNTIME} / 60 ]; SECONDS=$[ ${RUNTIME} % 60 ]
-  echo "Done! Generated ${QUERIES} quality queries in ${MINUTES}m${SECONDS}s, and saved the results in out.sql"
-  echo "Please note you may want to do:  \$ sed -i \"s|RocksDB|InnoDB|;s|TokuDB|InnoDB|\" out.sql  # depending on what MySQL distribution you are using. Or, edit engines.txt and run generator.sh again"
+  echo "Done! Generated ${QUERIES} quality queries in ${MINUTES}m${SECONDS}s, and saved the results in ${FINAL_OUTFILE}.sql"
+  echo "Please note you may want to do:  \$ sed -i \"s|RocksDB|InnoDB|;s|TokuDB|InnoDB|\" ${FINAL_OUTFILE}.sql  # depending on what MySQL distribution you are using. Or, edit engines.txt and run generator.sh again"
 fi

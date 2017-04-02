@@ -694,23 +694,29 @@ pquery_test(){
     SAVEDIR=${PWD}
     cd ${SCRIPT_PWD}/generator/
     if [ ${TRIAL} -eq 1 -o $[ ${TRIAL} % ${GENERATE_NEW_QUERIES_EVERY_X_TRIALS} ] -eq 0 ]; then
-      rm -f out.sql
-      ./generator.sh ${QUERIES_PER_GENERATOR_RUN} >/dev/null
-      if [ ! -r out.sql ]; then 
-        echoit "Assert: out.sql not present in ${PWD} after ./generator.sh ${QUERIES_PER_GENERATOR_RUN} execution!"
+      if [ "${RANDOMD}" == "" ]; then 
+        echoit "Assert: RANDOMD is empty. This should not happen. Terminating."
         exit 1
       fi
+      cp generator.sh generator${RANDOMD}.sh
+      sed -e "s|^[ \t]*OUTPUT_FILE[ \t]*=.*|OUTPUT_FILE=out${RANDOMD}|" generator${RANDOMD}.sh
+      ./generator${RANDOMD}.sh ${QUERIES_PER_GENERATOR_RUN} >/dev/null
+      if [ ! -r out${RANDOMD}.sql ]; then 
+        echoit "Assert: out${RANDOMD}.sql not present in ${PWD} after generator execution! This script left ${PWD}/generator${RANDOMD}.sh in place to check what happened"
+        exit 1
+      fi
+      rm -f generator${RANDOMD}.sh
       if [[ "${MYEXTRA^^}" != *"ROCKSDB"* ]]; then  # If this is not a RocksDB run, exclude RocksDB SE
-        sed -i "s|RocksDB|InnoDB|" out.sql
+        sed -i "s|RocksDB|InnoDB|" out${RANDOMD}.sql
       fi
       if [[ "${MYEXTRA^^}" != *"HA_TOKUDB"* ]]; then  # If this is not a TokuDB enabled run, exclude TokuDB SE
-        sed -i "s|TokuDB|InnoDB|" out.sql
+        sed -i "s|TokuDB|InnoDB|" out${RANDOMD}.sql
       fi
       if [ ${ADD_INFILE_TO_GENERATED_SQL} -eq 1 ]; then
-        cat ${INFILE} >> out.sql
+        cat ${INFILE} >> out${RANDOMD}.sql
       fi
     fi
-    INFILE=${PWD}/out.sql
+    INFILE=${PWD}/out${RANDOMD}.sql
     cd ${SAVEDIR}
   fi
   echoit "Generating new trial workdir ${RUNDIR}/${TRIAL}..."
