@@ -296,7 +296,7 @@ pxc_start_node(){
       break
     else
       echo "PXC startup failed. Check error log : ${FUN_LOG_ERR}"
-      grep "ERROR" --log-error=${FUN_LOG_ERR}
+      grep "ERROR" ${FUN_LOG_ERR}
       exit 1
     fi
   done
@@ -348,7 +348,7 @@ pxc_upgrade_node(){
       break
     else
       echo "PXC startup failed. Check error log : ${FUN_LOG_ERR}"
-      grep "ERROR" --log-error=${FUN_LOG_ERR}
+      grep "ERROR" ${FUN_LOG_ERR}
       exit 1
     fi
   done
