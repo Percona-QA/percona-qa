@@ -219,6 +219,8 @@
   sudo yum list jemalloc
 # Undelete utility: testdisk. example with /dev/sda below. Once browsing, use ':' to select files, then use 'C' to copy and again 'C' to specifiy target
   sudo yum install testdisk; sudo umount /dev/sda; sudo testdisk /dev/sda  # Enter on /dev/sda > 'None' partition > Advanced > Select patition > cursor right ('List') > browse
+# Reset all directories to 755 (needed to be able to browse them) and all files to 644. This cannot be done in a single chmod command.
+  find . -type d -exec chmod 0755 {} \; find . -type f -exec chmod 0644 {} \;  # With thanks https://help.directadmin.com/item.php?id=589
 
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax

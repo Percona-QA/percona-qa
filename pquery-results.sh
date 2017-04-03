@@ -83,7 +83,7 @@ else
   MATCHING_TRIALS=()
   for TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | sort -un`; do
     MATCHING_TRIAL=`grep -H "^MODE=4$" reducer${TRIAL}-* 2>/dev/null | sed "s|.sh.*||;s|reducer${TRIAL}-||" | tr '\n' , | sed 's|,$||' | xargs -I '{}' echo "[${TRIAL}-{}] "`
-    if [ ! -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then
+    if [[ ! -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]]; then
       MATCHING_TRIALS+=($MATCHING_TRIAL)
       COUNT=$[ COUNT + 1 ]
     fi
@@ -98,14 +98,14 @@ fi
 # 'MySQL server has gone away' seen >= 200 times + timeout was not reached
 if [ $(ls */GONEAWAY 2>/dev/null | wc -l) -gt 0 ]; then
   echo "--------------"
-  echo "'MySQL server has gone away' trials found: $(ls */GONEAWAY | sed 's|/.*||' | tr '\n' ',' | sed 's|,$||')"
+  echo "'MySQL server has gone away' trials found: $(ls */GONEAWAY | sed 's|/.*||' | sort -un | tr '\n' ',' | sed 's|,$||')"
   echo "(> 'MySQL server has gone away' trials which did not hit the pquery timeout (i.e. the trial ended before pquery timeout was reached, hence something must have gone wrong) are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. As they did not hit the pquery timeout, something must have gone wrong (in mysqld or in the pquery framework). Please check for existence of a core file (unlikely) and check the mysqld error log, the pquery logs and the SQL log, especially the last query before 'MySQL server has gone away' started happening. If it is a SELECT query on P_S, it's likely http://bugs.mysql.com/bug.php?id=82663 - a mysqld hang)"
 fi
 
 # 'SIGKILL myself' trials
 if [ $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then 
   echo "--------------"
-  echo "'SIGKILL myself' trials found: $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | sed 's|/.*||' | tr '\n' ',' | sed 's|,$||')"
+  echo "'SIGKILL myself' trials found: $(grep -l "SIGKILL myself" */log/master.err 2>/dev/null | sed 's|/.*||' | sort -un | tr '\n' ',' | sed 's|,$||')"
   echo "(> 'SIGKILL myself' trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='SIGKILL myself' in their reducer<trialnr>.sh files. Then, simply reduce as normal.)"
 fi
 
@@ -120,8 +120,8 @@ fi
 # mysqld shutdown issue trials
 if [ $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | wc -l) -gt 0 ]; then 
   echo "--------------"
-  echo "'mysqld shutdown issue' trials found: $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | sed 's|/.*||' | tr '\n' ',' | sed 's|,$||')"
-  echo "(> The trials failed to shutdown properly within a timeframe of 90 seconds in the original run. Reduce as shutdown problems, unless a crash was found during the same trial also (i.e. it is listed above in the normal crash trials list also)."
+  echo "'mysqld shutdown issue' trials found: $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | sed 's|/.*||' | sort -un | tr '\n' ',' | sed 's|,$||')"
+  echo "(> The trials failed to shutdown properly within a timeframe of 90 seconds in the original run. Reduce as shutdown problems, unless a crash was found during the same trial also (i.e. it is listed above in the normal crash trials list also. Also see https://bugs.mysql.com/bug.php?id=73914 as a possible reason)"
 fi
 
 # MODE 2 TRIALS (Query correctness trials)
@@ -141,7 +141,7 @@ if [ $COUNT -gt 0 ]; then
 fi
 echo "================"
 echo -n "Coredumps found in trials: "
-find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -nu | tr '\n' ' ' | sed 's|$|\n|'
+find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -un | tr '\n' ' ' | sed 's|$|\n|'
 echo "================"
 if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | wc -l` -gt 0 ]; then
   echo "Detected one or more empty (0 byte) reducer script(s): `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | tr '\n' ' '`- you may want to check what's causing this (possibly a bug in pquery-prep-red.sh, or did you simply run out of space while running pquery-prep-red.sh?) and do the analysis for these trial numbers manually, or free some space, delete the reducer*.sh scripts and re-run pquery-prep-red.sh"

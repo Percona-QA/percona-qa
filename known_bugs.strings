@@ -71,6 +71,7 @@ buf0buf.cc line 2852                    ## Still present ## Idem to 74481: set g
 fil0fil.cc line 6933                    ## Still present ## Idem to 74481: SET @@GLOBAL.innodb_fil_make_page_dirty_debug=22;
 fil0fil.cc line 5133                    ## Still present ## Idem to 74481
 buf0buf.cc line 2678                                     ## Not logged: SET GLOBAL innodb_fil_make_page_dirty_debug=38098908;
+#buf0flu.cc line 2807                                    ## http://bugs.mysql.com/bug.php?id=85585 (not verified yet, so this line is remarked ftm)
 #sync0debug.cc line 299                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
 #buf0lru.cc line 2245                           ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1415357                                 (# after next bzr pull)
 #ha_innodb.cc line 15747                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1415357 (2nd addition - ref comment #6) (# after next bzr pull)
@@ -189,7 +190,8 @@ buf0lru.cc line 2259                                     ## http://bugs.launchpa
 #ZN8Item_row7val_strEP6String                   ## Fixed ## alpha # http://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
 #btr0cur.cc line 830                            ## Fixed ## beta  # http://bugs.launchpad.net/percona-server/+bug/1517757  ## Fixed in PS 5.7.10-2rc2
 row0ins.cc line 282                                      ## http://bugs.launchpad.net/percona-server/+bug/1553883
-rem0rec.cc line 886                                      ## beta  # http://bugs.launchpad.net/percona-server/+bug/1540903
+rem0rec.cc line 886                                      ## MS5.7 # http://bugs.mysql.com/bug.php?id=80681
+rem0rec.cc line 872                                      ## MS5.7 # http://bugs.mysql.com/bug.php?id=79794
 trx0trx.cc line 1297                                     ## beta  # http://bugs.mysql.com/bug.php?id=79349
 trx0trx.cc line 1262                                     ## MS5.7 # http://bugs.mysql.com/bug.php?id=79349 (same bug as trx0trx.cc line 1297 on PS)
 #thd->get_transaction                           ## Fixed ## beta  # http://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)  ## Fixed in PS 5.7.10-rc1
@@ -433,9 +435,11 @@ row0trunc.cc line 1983                                                          
 #row0upd.cc line 1794                                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1226538 (dup of 1395579)
 srv0srv.cc line 2664                                                                    ## http://bugs.mysql.com/bug.php?id=73913 (same assert as 74418 but diff)
 srv0srv.cc line 3072                                                                    ## http://bugs.mysql.com/bug.php?id=73913 or 74418, PS 5.17.16 (also see PS bug 1369326)
-srv0srv.cc line 3337                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35
+srv0srv.cc line 3337                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35-79
+srv0srv.cc line 3338                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35-80
 srv0srv.cc line 2666                                                                    ## http://bugs.mysql.com/bug.php?id=73913 MS 5.6.22
 srv0srv.cc line 3353                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.5.53
+srv0srv.cc line 3058                                                                    ## Also 73913 PS 5.6.35-80. Use grep -i "INNODB_PURGE_STOP_NOW" !
 sync0sync.ic line 307                                                                   ## http://bugs.launchpad.net/percona-server/+bug/1435678
 sync0sync.cc line 1318                                                                  ## http://bugs.mysql.com/bug.php?id=75640 MS
 sync0sync.cc line 1432                                                                  ## http://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
@@ -485,6 +489,7 @@ ftnode->blocknum.b == blocknum.b                                                
 #from->len == to->len                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=76477
 from->len == to->len                                                                    ## http://bugs.mysql.com/bug.php?id=84827 (Ref also 76477) (Still present in MS 5.6.35)
 #from->m_byte_count == 0                                                       ## Fixed ## http://bugs.mysql.com/bug.php?id=76090 (fixed in 5.6.25)
+head->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS                                    ## http://bugs.mysql.com/bug.php?id=85552
 #Handlerton.*offset_start                                                               ## http://tokutek.atlassian.net/browse/DB-771 (Fixed tokudb-7.5.4)
 #Handlerton.*.share->kc_info.num_blobs == 0                                    ## Fixed ## http://tokutek.atlassian.net/browse/DB-811 (Fixed in tokudb-7.5.7)
 #Handlerton.*trx                                                                        ## http://tokutek.atlassian.net/browse/DB-762 (Fixed tokudb-7.5.4)
@@ -773,6 +778,7 @@ ZN15Event_scheduler5startEPi                                                    
 ## =========== pquery reducer scripts TEXT based (for short strings that may be part of other assertion messages. End with $ EOL char and add . before and after text) ===========
 #TEXT=.is_started.$                                                            ## Fixed ## http://bugs.mysql.com/bug.php?id=76425
 #TEXT=.r == 0.$                                                                         ## PS Bug #1511969 (verified), also see http://tokutek.atlassian.net/browse/DB-933 / DB-737
+TEXT=.r == 0.$                                                                          ## http://tokutek.atlassian.net/browse/DB-1039
 #TEXT=.r == 0.$                                                                         ## http://tokutek.atlassian.net/browse/FT-723 also see DB-737 (fixed in 5.6.23/Tk7.5.6) 
 #TEXT=.my_b_write.$                                                            ## Fixed ## http://bugs.mysql.com/bug.php?id=74950 (fixed in 5.6.27, 5.7.9)
 #TEXT=.strlen.m_ptr.$                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=75870 (Also ref bug 79905) (Fixed in MS 5.7.8)
