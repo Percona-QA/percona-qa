@@ -307,6 +307,11 @@ ctrl-c(){
     echoit "Done. Moving the trial $0 was currently working on to workdir as ${WORKDIR}/${TRIAL}/..."
     mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
   fi
+  if [ $USE_GENERATOR_INSTEAD_OF_INFILE -eq 1 ]; then
+    echoit "Attempting to cleanup generator temporary files..."
+    rm -f ${SCRIPT_PWD}/generator/generator${RANDOMD}.sh
+    rm -f ${SCRIPT_PWD}/generator/out${RANDOMD}*.sql
+  fi
   if [ $PMM -eq 1 ]; then
     echoit "Attempting to cleanup PMM client services..."
     sudo pmm-admin remove --all > /dev/null
