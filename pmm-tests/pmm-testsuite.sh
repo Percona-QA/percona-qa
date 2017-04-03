@@ -80,6 +80,9 @@ function run_create_table() {
   bash ${DIRNAME}/create_table.sh $1 $2
 }
 
+function run_populate_table() {
+  bash ${DIRNAME}/populate_table.sh $1 $2 $3
+}
 
 # Running tests
 echo "Wipe clients"
@@ -96,9 +99,12 @@ fi
 echo "Running generic tests"
 run_generic_tests
 
-if [[ $stress == "1" ]] ; then
-  echo "WARN: Running stress tests"
+if [[ $stress == "1" && $table_c != "0" && -z $table_size ]] ; then
+  echo "WARN: Running stress tests; creating empty tables"
   run_create_table $instance_t $table_c
+else
+  echo "WARN: Running stress tests; creating tables and inserting using sysbench"
+  run_populate_table $instance_t $table_c $table_size
 fi
 
 
