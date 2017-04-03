@@ -704,7 +704,7 @@ pquery_test(){
         exit 1
       fi
       cp generator.sh generator${RANDOMD}.sh
-      sed -e "s|^[ \t]*OUTPUT_FILE[ \t]*=.*|OUTPUT_FILE=out${RANDOMD}|" generator${RANDOMD}.sh
+      sed -ie "s|^[ \t]*OUTPUT_FILE[ \t]*=.*|OUTPUT_FILE=out${RANDOMD}|" generator${RANDOMD}.sh
       ./generator${RANDOMD}.sh ${QUERIES_PER_GENERATOR_RUN} >/dev/null
       if [ ! -r out${RANDOMD}.sql ]; then 
         echoit "Assert: out${RANDOMD}.sql not present in ${PWD} after generator execution! This script left ${PWD}/generator${RANDOMD}.sh in place to check what happened"
