@@ -28,16 +28,23 @@ instance_c -> instance count
 tap -> adding --tap option
 stress -> enabling stress test
 table_c -> the table count for stress test
+table_size -> the table size to prepare using sysbench
 ```
 
 Running stress test, with 100 tables, with --tap option, for 3 ps instances:
 ```
-instance_t="ps" instance_c="3" tap=1 stress=1 table_c=100 bash ~/percona-qa/pmm-tests/pmm-testsuite.sh
+$ instance_t="ps" instance_c="3" tap=1 stress=1 table_c=100 bash ~/percona-qa/pmm-tests/pmm-testsuite.sh
 ```
 
-Running with --tap option, for 3 ps instances:
+Running with --tap option, for 3 ps instances (no stress test):
 ```
-instance_t="ps" instance_c="3" tap=1 bash ~/percona-qa/pmm-tests/pmm-testsuite.sh
+$ instance_t="ps" instance_c="3" tap=1 bash ~/percona-qa/pmm-tests/pmm-testsuite.sh
+```
+
+Running with --tap option, for 3 ps instances to populate tables using sysbench(see table_size option).
+It will create 1 table and populate it with 100000 rows for each 3 ps instance.
+```
+$ instance_t="ps" instance_c="3" tap=1 stress=1 table_c=1 table_size=100000 bash ~/percona-qa/pmm-tests/pmm-testsuite.sh
 ```
 
 
