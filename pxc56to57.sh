@@ -344,10 +344,6 @@ pxc_upgrade_node(){
     sleep 1
     if ${FUN_BASE_DIR}/bin/mysqladmin -uroot -S/tmp/node${FUN_NODE_NR}.socket ping > /dev/null 2>&1; then
       break
-    else
-      echo "PXC startup failed. Check error log : ${FUN_LOG_ERR}"
-      grep "ERROR" ${FUN_LOG_ERR}
-      exit 1
     fi
   done
   if ${FUN_BASE_DIR}/bin/mysqladmin -uroot -S/tmp/node${FUN_NODE_NR}.socket ping > /dev/null 2>&1; then
