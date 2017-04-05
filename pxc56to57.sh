@@ -47,8 +47,12 @@ else
   git clone https://github.com/Feh/nocache 
   popd
 fi
-
 export PATH="$PATH:${ROOT_FS}/nocache"
+if [[ ! -e $(which nocache 2> /dev/null) ]] ;then
+  NOCACHE=$(which nocache)
+else
+  NOCACHE=""
+fi
 
 function create_emp_db()
 {
@@ -124,8 +128,8 @@ fi
 if [[ $SST_METHOD == xtrabackup ]]; then
   SST_METHOD="xtrabackup-v2"
   TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
-  nocache tar -xf $TAR
-  BBASE="$(nocache tar tf $TAR | head -1 | tr -d '/')"
+  $NOCACHE tar -xf $TAR
+  BBASE="$($NOCACHE tar tf $TAR | head -1 | tr -d '/')"
   export PATH="$ROOT_FS/$BBASE/bin:$PATH"
 fi
 
@@ -152,12 +156,12 @@ echo "Removing their symlinks"
 find . -maxdepth 1 -type l -mtime +10 -delete
 
 TAR=`ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | head -n1`
-BASE1="$(nocache tar tf $TAR | head -1 | tr -d '/')"
-nocache tar -xf $TAR
+BASE1="$($NOCACHE tar tf $TAR | head -1 | tr -d '/')"
+$NOCACHE tar -xf $TAR
 
 TAR=`ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | head -n1`
-BASE2="$(nocache tar tf $TAR | head -1 | tr -d '/')"
-nocache tar -xf $TAR
+BASE2="$($NOCACHE tar tf $TAR | head -1 | tr -d '/')"
+$NOCACHE tar -xf $TAR
 
 sysbench_cmd(){
   TEST_TYPE="$1"
