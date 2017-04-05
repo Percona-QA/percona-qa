@@ -760,7 +760,7 @@ function async_rpl_test(){
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists msr_db_master1;create database msr_db_master1;"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists msr_db_master2;create database msr_db_master2;"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e "drop database if exists msr_db_master3;create database msr_db_master3;"
-  
+    sleep 5 
     # Sysbench dataload for MSR test
     sysbench_run load_data msr_db_master1
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master1_prepare.txt
