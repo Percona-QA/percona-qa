@@ -36,6 +36,20 @@ if [ ! -d ${ROOT_FS}/test_db ]; then
   popd
 fi
 
+
+if [ -d ${ROOT_FS}/nocache ]; then
+  pushd ${ROOT_FS}
+  cd nocache
+  git pull || true
+  popd
+else
+  pushd ${ROOT_FS}
+  git clone https://github.com/Feh/nocache 
+  popd
+fi
+
+export PATH="$PATH:${ROOT_FS}/nocache"
+
 function create_emp_db()
 {
   DB_NAME=$1
