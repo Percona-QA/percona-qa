@@ -768,7 +768,7 @@ function async_rpl_test(){
     sysbench_run load_data msr_db_master2
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master2_prepare.txt
     check_script $?
-    sysbench_run load_data msr_db_master2
+    sysbench_run load_data msr_db_master3
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps3.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master3_prepare.txt
 
     check_script $?
