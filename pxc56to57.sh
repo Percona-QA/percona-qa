@@ -158,7 +158,7 @@ sysbench_cmd(){
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB  --threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
@@ -282,7 +282,7 @@ pxc_start_node(){
     --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --query_cache_type=0 --query_cache_size=0 \
-    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
+    --innodb_flush_log_at_trx_commit=0 \
     --innodb_log_file_size=500M \
     --core-file --log_bin --binlog_format=ROW \
     --secure-file-priv= --loose-innodb-status-file=1 \
@@ -332,7 +332,7 @@ pxc_upgrade_node(){
     --innodb_file_per_table --innodb_autoinc_lock_mode=2 \
     --wsrep-provider='none' --innodb_flush_method=O_DIRECT \
     --query_cache_type=0 --query_cache_size=0 \
-    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
+    --innodb_flush_log_at_trx_commit=0 \
     --innodb_log_file_size=500M \
     --core-file --log_bin --binlog_format=ROW \
     --secure-file-priv= --loose-innodb-status-file=1 \
