@@ -216,6 +216,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc1.sock ping > /dev/null 2>&1; then
       echo "PXC startup failed.."
       grep "ERROR" ${WORKDIR}/logs/node1.err
+      exit 1
     fi
     sleep 10
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"FLUSH LOGS"
@@ -264,6 +265,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc2.sock ping > /dev/null 2>&1; then
       echo "PXC startup failed.."
       grep "ERROR" ${WORKDIR}/logs/node2.err
+      exit 1
     fi
     sleep 10
     
@@ -297,6 +299,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc3.sock ping > /dev/null 2>&1; then
       echo "PXC startup failed.."
       grep "ERROR" ${WORKDIR}/logs/node3.err
+      exit 1
     fi
   }
   ## Start PXC nodes
@@ -329,6 +332,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps1.sock ping > /dev/null 2>&1; then
       echo "PS startup failed.."
       grep "ERROR" ${WORKDIR}/logs/psnode1.err
+      exit 1
     fi
     echo "Starting independent PS node2.."
     ${MID} --datadir=$psnode2  > $WORKDIR/logs/psnode2.err 2>&1 || exit 1;
@@ -353,6 +357,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps2.sock ping > /dev/null 2>&1; then
       echo "PS startup failed.."
       grep "ERROR" ${WORKDIR}/logs/psnode2.err
+      exit 1
     fi
 
     echo "Starting independent PS node3.."
@@ -378,6 +383,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps3.sock ping > /dev/null 2>&1; then
       echo "PS startup failed.."
       grep "ERROR" ${WORKDIR}/logs/psnode3.err
+      exit 1
     fi
     sleep 5
   
@@ -685,6 +691,11 @@ function async_rpl_test(){
         break
       fi
     done
+    if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc2.sock ping > /dev/null 2>&1; then
+      echo "PXC node2 startup failed.."
+      grep "ERROR" ${WORKDIR}/logs/node2.err
+      exit 1
+    fi
     sleep 10
 
     sysbench_run oltp test
