@@ -36,6 +36,24 @@ if [ ! -d ${ROOT_FS}/test_db ]; then
   popd
 fi
 
+
+if [ -d ${ROOT_FS}/nocache ]; then
+  pushd ${ROOT_FS}
+  cd nocache
+  git pull || true
+  popd
+else
+  pushd ${ROOT_FS}
+  git clone https://github.com/Feh/nocache 
+  popd
+fi
+export PATH="$PATH:${ROOT_FS}/nocache"
+if [[ ! -e $(which nocache 2> /dev/null) ]] ;then
+  NOCACHE=$(which nocache)
+else
+  NOCACHE=""
+fi
+
 function create_emp_db()
 {
   DB_NAME=$1
@@ -110,8 +128,8 @@ fi
 if [[ $SST_METHOD == xtrabackup ]]; then
   SST_METHOD="xtrabackup-v2"
   TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
-  tar -xf $TAR
-  BBASE="$(tar tf $TAR | head -1 | tr -d '/')"
+  $NOCACHE tar -xf $TAR
+  BBASE="$($NOCACHE tar tf $TAR | head -1 | tr -d '/')"
   export PATH="$ROOT_FS/$BBASE/bin:$PATH"
 fi
 
@@ -138,12 +156,12 @@ echo "Removing their symlinks"
 find . -maxdepth 1 -type l -mtime +10 -delete
 
 TAR=`ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | head -n1`
-BASE1="$(tar tf $TAR | head -1 | tr -d '/')"
-tar -xf $TAR
+BASE1="$($NOCACHE tar tf $TAR | head -1 | tr -d '/')"
+$NOCACHE tar -xf $TAR
 
 TAR=`ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | head -n1`
-BASE2="$(tar tf $TAR | head -1 | tr -d '/')"
-tar -xf $TAR
+BASE2="$($NOCACHE tar tf $TAR | head -1 | tr -d '/')"
+$NOCACHE tar -xf $TAR
 
 sysbench_cmd(){
   TEST_TYPE="$1"
@@ -158,7 +176,7 @@ sysbench_cmd(){
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB  --threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
@@ -282,7 +300,7 @@ pxc_start_node(){
     --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --query_cache_type=0 --query_cache_size=0 \
-    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
+    --innodb_flush_log_at_trx_commit=0 \
     --innodb_log_file_size=500M \
     --core-file --log_bin --binlog_format=ROW \
     --secure-file-priv= --loose-innodb-status-file=1 \
@@ -332,7 +350,7 @@ pxc_upgrade_node(){
     --innodb_file_per_table --innodb_autoinc_lock_mode=2 \
     --wsrep-provider='none' --innodb_flush_method=O_DIRECT \
     --query_cache_type=0 --query_cache_size=0 \
-    --innodb_flush_log_at_trx_commit=0 --innodb_buffer_pool_size=500M \
+    --innodb_flush_log_at_trx_commit=0 \
     --innodb_log_file_size=500M \
     --core-file --log_bin --binlog_format=ROW \
     --secure-file-priv= --loose-innodb-status-file=1 \
@@ -344,10 +362,6 @@ pxc_upgrade_node(){
     sleep 1
     if ${FUN_BASE_DIR}/bin/mysqladmin -uroot -S/tmp/node${FUN_NODE_NR}.socket ping > /dev/null 2>&1; then
       break
-    else
-      echo "PXC startup failed. Check error log : ${FUN_LOG_ERR}"
-      grep "ERROR" ${FUN_LOG_ERR}
-      exit 1
     fi
   done
   if ${FUN_BASE_DIR}/bin/mysqladmin -uroot -S/tmp/node${FUN_NODE_NR}.socket ping > /dev/null 2>&1; then
@@ -578,7 +592,7 @@ sleep 10
 #
 echo -e "\n\n#### Backup before downgrade test\n"
 #Workaround for issue 1676401
-$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -e "set global show_compatibility_56=1";
+#$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -e "set global show_compatibility_56=1";
 $MYSQL_BASEDIR2/bin/mysqldump --skip-lock-tables --set-gtid-purged=OFF --triggers --routines --socket=/tmp/node1.socket -uroot --databases `$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
 check_script $?
 

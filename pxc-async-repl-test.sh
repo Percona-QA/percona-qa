@@ -105,7 +105,7 @@ sysbench_run(){
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
@@ -216,6 +216,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc1.sock ping > /dev/null 2>&1; then
       echo "PXC startup failed.."
       grep "ERROR" ${WORKDIR}/logs/node1.err
+      exit 1
     fi
     sleep 10
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e"FLUSH LOGS"
@@ -264,6 +265,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc2.sock ping > /dev/null 2>&1; then
       echo "PXC startup failed.."
       grep "ERROR" ${WORKDIR}/logs/node2.err
+      exit 1
     fi
     sleep 10
     
@@ -297,6 +299,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc3.sock ping > /dev/null 2>&1; then
       echo "PXC startup failed.."
       grep "ERROR" ${WORKDIR}/logs/node3.err
+      exit 1
     fi
   }
   ## Start PXC nodes
@@ -329,6 +332,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps1.sock ping > /dev/null 2>&1; then
       echo "PS startup failed.."
       grep "ERROR" ${WORKDIR}/logs/psnode1.err
+      exit 1
     fi
     echo "Starting independent PS node2.."
     ${MID} --datadir=$psnode2  > $WORKDIR/logs/psnode2.err 2>&1 || exit 1;
@@ -353,6 +357,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps2.sock ping > /dev/null 2>&1; then
       echo "PS startup failed.."
       grep "ERROR" ${WORKDIR}/logs/psnode2.err
+      exit 1
     fi
 
     echo "Starting independent PS node3.."
@@ -378,6 +383,7 @@ function async_rpl_test(){
     if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps3.sock ping > /dev/null 2>&1; then
       echo "PS startup failed.."
       grep "ERROR" ${WORKDIR}/logs/psnode3.err
+      exit 1
     fi
     sleep 5
   
@@ -685,6 +691,11 @@ function async_rpl_test(){
         break
       fi
     done
+    if ! ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc2.sock ping > /dev/null 2>&1; then
+      echo "PXC node2 startup failed.."
+      grep "ERROR" ${WORKDIR}/logs/node2.err
+      exit 1
+    fi
     sleep 10
 
     sysbench_run oltp test
@@ -760,7 +771,7 @@ function async_rpl_test(){
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists msr_db_master1;create database msr_db_master1;"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists msr_db_master2;create database msr_db_master2;"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e "drop database if exists msr_db_master3;create database msr_db_master3;"
-  
+    sleep 5 
     # Sysbench dataload for MSR test
     sysbench_run load_data msr_db_master1
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master1_prepare.txt
@@ -768,7 +779,7 @@ function async_rpl_test(){
     sysbench_run load_data msr_db_master2
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master2_prepare.txt
     check_script $?
-    sysbench_run load_data msr_db_master2
+    sysbench_run load_data msr_db_master3
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps3.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_msr_db_master3_prepare.txt
 
     check_script $?
