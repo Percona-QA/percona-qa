@@ -3,6 +3,14 @@ load test_helper
 
 PATH_TO_CONF="/usr/local/percona/pmm-client/pmm.yml"
 
+
+@test "run pmm-admin remove all mysql metricsi before tests" {
+run sudo pmm-admin remove mysql
+echo "$output"
+  [ "$status" -eq 0 ]
+  echo  "${lines[0]}" |grep  "OK"
+}
+
 @test "run pmm-admin add mysql with default user" {
 run sudo pmm-admin add mysql
 
