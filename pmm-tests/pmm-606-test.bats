@@ -45,7 +45,7 @@ echo "$output"
   assert_success
 }
 
-@test "run pmm-admin remove mysql metrics" {
+@test "run pmm-admin remove mysql" {
 run sudo pmm-admin rm mysql
 echo "$output"
   [ "$status" -eq 0 ]
@@ -57,4 +57,53 @@ echo "$output"
   assert_fail
 }
 
+@test "run pmm-admin add mysql with pmm user" {
+run sudo pmm-admin add mysql --create-user --force
 
+echo "$output"
+  [ "$status" -eq 0 ]
+  echo  "${lines[2]}" |grep  "OK, now monitoring MySQL queries from slowlog using DSN pmm"
+}
+
+@test "run pmm-admin remove mysql:queries" {
+run sudo pmm-admin rm mysql:queries
+echo "$output"
+  [ "$status" -eq 0 ]
+  echo  "${lines[0]}" |grep  "OK"
+}
+
+@test "check mysql_password removed from pmm.yml" {
+  run bash -c "sudo /bin/cat /usr/local/percona/pmm-client/pmm.yml  |grep mysql_password"
+  assert_fail
+}
+
+@test "run pmm-admin add mysql with pmm user" {
+run sudo pmm-admin add mysql --create-user --force
+
+echo "$output"
+  [ "$status" -eq 0 ]
+  echo  "${lines[2]}" |grep  "OK, now monitoring MySQL queries from slowlog using DSN pmm"
+}
+
+@test "run pmm-admin remove mysql:metrics" {
+run sudo pmm-admin rm mysql:metrics
+echo "$output"
+  [ "$status" -eq 0 ]
+  echo  "${lines[0]}" |grep  "OK"
+}
+
+@test "check mysql_password removed from pmm.yml" {
+  run bash -c "sudo /bin/cat /usr/local/percona/pmm-client/pmm.yml  |grep mysql_password"
+  assert_fail
+}
+@test "run pmm-admin remove all metrics" {
+run sudo pmm-admin rm --all
+echo "$output"
+  [ "$status" -eq 0 ]
+  echo  "${lines[0]}" |grep  "OK"
+}
+
+@test "check mysql_password removed from pmm.yml" {
+  run bash -c "sudo /bin/cat /usr/local/percona/pmm-client/pmm.yml  |grep mysql_password"
+  assert_fail
+}
