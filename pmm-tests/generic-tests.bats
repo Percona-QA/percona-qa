@@ -61,9 +61,9 @@ run sudo pmm-admin check-network
 echo "$output"
     [ "$status" -eq 0 ]
     [ "${lines[0]}" = "PMM Network Status" ]
-    [ "${lines[11]}" = "Consul API           OK           " ]
-    [ "${lines[12]}" = "Prometheus API       OK           " ]
-    [ "${lines[13]}" = "Query Analytics API  OK           "  ]
+    [ "${lines[14]}" = "Consul API           OK           " ]
+    [ "${lines[15]}" = "Prometheus API       OK           " ]
+    [ "${lines[16]}" = "Query Analytics API  OK           "  ]
 }
 
 @test "run pmm-admin list to check for available services" {
