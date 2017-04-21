@@ -74,9 +74,9 @@ echo "$output"
 		NTP_SERVER=$(echo ${lines[7]} | awk -F '[|"+"]' '{print $2}')
 		PMM_SERVER=$(echo ${lines[8]} | awk -F '[|"+"]' '{print $2}')
 		PMM_CLIENT=$(echo ${lines[9]} | awk -F '[|"+"]' '{print $2}')
-    echo $NTP_SERVER
-		echo $PMM_SERVER
-		echo $PMM_CLIENT
+    echo ${NTP_SERVER}
+		echo ${PMM_SERVER}
+		echo ${PMM_CLIENT}
 }
 
 
