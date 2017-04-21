@@ -66,17 +66,18 @@ echo "$output"
     [ "${lines[16]}" = "Query Analytics API  OK           "  ]
 }
 
-@test "run pmm-admin check-network datetime" {
+@test "run pmm-admin check-network System Time" {
 run sudo pmm-admin check-network
 echo "$output"
     [ "$status" -eq 0 ]
     [ "${lines[0]}" = "PMM Network Status" ]
-		NTP_SERVER=$(echo ${lines[7]} | awk -F '[|"+"]' '{print $2}')
-		PMM_SERVER=$(echo ${lines[8]} | awk -F '[|"+"]' '{print $2}')
-		PMM_CLIENT=$(echo ${lines[9]} | awk -F '[|"+"]' '{print $2}')
-    echo ${NTP_SERVER}
-		echo ${PMM_SERVER}
-		echo ${PMM_CLIENT}
+    NTP_SERVER="$(echo ${lines[4]} | awk  '{print $5" " $6}' | cut -d ':' -f1,2)"
+    PMM_SERVER="$(echo ${lines[5]} | awk  '{print $5" " $6}' | cut -d ':' -f1,2)"
+    PMM_CLIENT="$(echo ${lines[6]} | awk  '{print $5" " $6}' | cut -d ':' -f1,2)"
+    #[[ "$NTP_SERVER" = "$PMM_CLIENT" ]]
+    # For now checking only PMM_SERVER and PMM_CLIENT
+    [[ "$PMM_SERVER" = "$PMM_CLIENT" ]]
+		[[ "$NTP_SERVER" = "$PMM_SERVER" ]]
 }
 
 
