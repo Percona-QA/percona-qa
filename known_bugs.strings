@@ -83,6 +83,7 @@ inited == INDEX                                          ## http://bugs.mysql.co
 #ha_innodb.cc line 17780                        ## Fixed ## http://bugs.mysql.com/bug.php?id=75736 PS
 #ha_innodb.cc line 17770                        ## Fixed ## http://bugs.mysql.com/bug.php?id=75736 MS
 #ha_innodb.cc line 17770                        ## FIxed ## http://bugs.mysql.com/bug.php?id=75736 MS
+btr0cur.cc line 830                                      ## http://bugs.mysql.com/bug.php?id=86051  
 btr0cur.c line 871                                       ## http://bugs.mysql.com/bug.php?id=84753 (2nd testcase, MS 5.5.52)
 btr0cur.c line 959                                       ## http://bugs.mysql.com/bug.php?id=84753 (2nd testcase, PS 5.5.54)
 trx0trx.cc line 1257                                     ## http://bugs.mysql.com/bug.php?id=84753 (1st testcase, MS 5.7.16)
@@ -458,6 +459,7 @@ trx0trx.cc line 1950                                                            
 ut0lst.h line 131                                                                       ## http://bugs.launchpad.net/percona-server/+bug/1449994
 
 ## =========== Assertion based ===========
+bit < map->n_bits                                                                       ## http://bugs.mysql.com/bug.php?id=86173
 user_stats->concurrent_connections > 0                                                  ## http://bugs.launchpad.net/percona-server/+bug/1661488
 allocated_status_memory .= __null                                                       ## http://bugs.mysql.com/bug.php?id=83797 (as subsequent testcase)
 #1 == num_erased                                                                        ## http://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
