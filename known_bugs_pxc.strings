@@ -87,6 +87,8 @@ part_rec_buf_ptr                                                                
 ZN6galera3FSMINS_10Replicator5StateENS_13ReplicatorSMM10TransitionENS_10EmptyGuardENS3_11StateActionEE8shift_toES2_ ## https://jira.percona.com/browse/PXC-806
 thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->get_transaction              ## https://jira.percona.com/browse/PXC-807
 fts0opt.cc line 2576                                                                     ## https://jira.percona.com/browse/PXC-808
+log0log.cc line 1878                                                                     ## https://jira.percona.com/browse/PXC-809
+
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
