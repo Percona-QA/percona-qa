@@ -1886,9 +1886,12 @@ start_mysqld_main(){
     PIDV="$!"
   fi
   sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START
-#  sed -i "s#$BASEDIR#\$(cat $(echo $WORK_BASEDIR | sed 's|.*/|\${SCRIPT_DIR}/|'))#g" $WORK_START
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
-  sed -i "s|\.so\;|\.so\\\;|" $WORK_START
+  # RV 04/05/17: The following sed line is causing issues with RocksDB, like this;
+  # --plugin-load-add=RocksDB=ha_rocksdb.so\;rocksdb_cfstats=ha_rocksdb.so;rocks...
+  # The adding of a \ (and especially a single one?!) does not make any sense atm, but there was highly like a historical reason
+  # Disabling it for the moment. If any issues are seen, it can be reverted
+  # sed -i "s|\.so\;|\.so\\\;|" $WORK_START
   chmod +x $WORK_START
   for X in $(seq 1 120); do
     sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
