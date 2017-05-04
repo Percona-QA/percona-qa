@@ -796,6 +796,7 @@ TEXT=.res.$                                                                     
 TEXT=.src.$                                                 ## Still present in 5.5,5.6 ## http://bugs.mysql.com/bug.php?id=74500 (fixed in 5.7.6)
 TEXT=.strlen.db.$                                                                       ## http://bugs.mysql.com/bug.php?id=76467
 TEXT=.thd.$                                                                             ## http://bugs.launchpad.net/percona-server/+bug/1372675 (pquery) # May need review
+TEXT=.\.\.thd.$                                                                         ## http://bugs.mysql.com/bug.php?id=86174
 TEXT=.thread .= __null.$                                                                ## http://bugs.mysql.com/bug.php?id=79802 (5.7.10)
 TEXT=.i == .uint16.$                                                                    ## http://bugs.mysql.com/bug.php?id=79829
 TEXT=.\.create_info->options \. 1.$                                                     ## http://bugs.mysql.com/bug.php?id=81451
