@@ -3,6 +3,7 @@
 # Updated by Ramesh Sivaraman, Percona LLC
 
 # ========================================= User configurable variables ==========================================================
+# Note: if an option is passed to this script, it will use that option as the configuration file instead, for example ./pquery-run.sh pquery-run-ps.conf
 CONFIGURATION_FILE=pquery-run.conf  # Do not use any path specifiers, the .conf file should be in the same path as pquery-run.sh
 #CONFIGURATION_FILE=pquery-run-RocksDB.conf  # RocksDB testing
 
@@ -19,6 +20,8 @@ SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/
 WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0; STOREANYWAY=0
 
 # Read configuration
+if [ "$1" != "" ]; then CONFIGURATION_FILE=$1; fi
+if [ ! -r ${SCRIPT_PWD}/${CONFIGURATION_FILE} ]; then echo "Assert: the confiruation file ${SCRIPT_PWD}/${CONFIGURATION_FILE} cannot be read!"; exit 1; fi
 source ${SCRIPT_PWD}/${CONFIGURATION_FILE}
 
 # Security checks: ensure variables are correctly set to avoid rm -Rf issues (if not set correctly, it was likely due to altering internal variables at the top of this file)
