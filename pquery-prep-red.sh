@@ -134,7 +134,12 @@ fi
 
 #Check MS/PS pquery binary
 #PQUERY_BIN="`grep 'pquery Binary' ./pquery-run.log | sed 's|^.*pquery Binary[: \t]*||' | head -n1`"    # < swap back to this one once old runs are gone (upd: maybe not. Issues.)
-PQUERY_BIN=$(echo "$(grep -ihm1 "^[ \t]*PQUERY_BIN=" *pquery*.sh | sed 's|[ \t]*#.*$||;s|PQUERY_BIN=||')" | sed "s|\${SCRIPT_PWD}|${SCRIPT_PWD}|" | head -n1)
+if [ -r *pquery*.conf ]; then
+  SEARCH_STR_BIN="*pquery*.conf"
+else
+  SEARCH_STR_BIN="*pquery*.sh"  # For backward compatibility. Remove October 2017 or later.
+fi
+PQUERY_BIN=$(echo "$(grep -ihm1 "^[ \t]*PQUERY_BIN=" ${SEARCH_STR_BIN} | sed 's|[ \t]*#.*$||;s|PQUERY_BIN=||')" | sed "s|\${SCRIPT_PWD}|${SCRIPT_PWD}|" | head -n1)
 echo "pquery binary used: ${PQUERY_BIN}"
 
 if [ "${PQUERY_BIN}" == "" ]; then
