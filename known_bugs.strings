@@ -251,6 +251,7 @@ part_id < m_tot_part s                                                 ## http:/
 ha_innodb.cc line 3469                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
 ha_innodb.cc line 2797                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.5.53
 ha_innodb.cc line 3512                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.35
+ha_innodb.cc line 3521                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.36
 ha_innodb.cc line 3495                           ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
 ha_innodb.cc line 19339                          ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
 ha_innodb.cc line 19411                          ##DONOTREMOVE## ^IDEM (PS 5.6.33)
@@ -267,6 +268,7 @@ ha_innodb.cc line 1128                           ##DONOTREMOVE## ## http://bugs.
 ha_innodb.cc line 1401                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and likely 5.6) 1401=PS5.5
 ha_innodb.cc line 1725                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (MS 5.6, alike to 78732) 
 ha_innodb.cc line 2085                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732)
+ha_innodb.cc line 2110                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (PS 5.6.36, alike to 78732)
 ha_innodb.cc line 2102                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732) 
 
 ## =========== Line number based ===========
@@ -372,6 +374,7 @@ ha_innodb.cc line 1870                                                          
 ha_innodb.cc line 1878                                                                  ## http://bugs.mysql.com/bug.php?id=74585 MS (old LP #1384616)
 ha_innodb.cc line 19335                                                                 ## PS 5.6.31     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 19383                                                                 ## PS 5.6.34     --innodb-log-buffer-size=1125899906842624 (or similar)
+ha_innodb.cc line 19423                                                                 ## PS 5.6.36     --innodb-log-buffer-size=1125899906842624 (or similar)
 mem0mem.c line 361                                                                      ## PS 5.5.53     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 18962                                                                 ## MS/PS 5.6.31  SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc line 935                                                                       ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
