@@ -663,7 +663,7 @@ Z39get_partition_id_cols_list_for_endpointP14partition_infobbj                  
 Z8filesortP3THDP5TABLEP8FilesortbPyS5_                                                  ## http://bugs.mysql.com/bug.php?id=74579 (old LP #1384595)
 Z9os_mallocm                                                                            ## http://tokutek.atlassian.net/browse/DB-839
 #ZN7handler18ha_end_bulk_insertEv                                              ## Fixed ## http://tokutek.atlassian.net/browse/DB-760  (fixed in ps-5.6.25)
-ZN7sys_var5checkEP3THDP7set_var                                                         ## http://bugs.mysql.com/bug.php?id=84656
+#ZN7sys_var5checkEP3THDP7set_var                                               ## Fixed ## http://bugs.mysql.com/bug.php?id=84656
 ZN7handler25update_global_table_statsEv                                                 ## http://bugs.mysql.com/bug.php?id=75741 (LP PS#1417382)
 #ZN7handler8ha_checkEP3THDP15st_ha_check_opt                                   ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1433197
 ZN7MDL_map6removeEP8MDL_lock                                                            ## http://bugs.launchpad.net/percona-server/+bug/1417116
@@ -702,12 +702,12 @@ ZNK14user_var_entry13assert_lockedEv                                            
 #ZN15Query_log_eventC1EP3THDPKcmbbbib                                          ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1397173 (dup of 1412423)
 ZN16Rpl_info_handlerD1Ev                                                                ## http://bugs.launchpad.net/percona-server/+bug/1452125
 ZN16Partition_helper19handle_ordered_prevEPh                                            ## http://tokutek.atlassian.net/browse/DB-1025 (also see LP 1634708 and MS 83435)
-ZN17I_P_List_iteratorI10MDL_ticket8I_P_ListIS0_16I_P_List_adapterIS0_XadL_ZNS0_15next_in_contextEEEXadL_ZNS0_15prev_in_contextEEEE21I_P_List_null_counter21I_P_List_no_push_backIS0_EEEppEi                                                         ## http://bugs.launchpad.net/percona-server/+bug/1441001
+ZN17I_P_List_iteratorI10MDL_ticket8I_P_ListIS0_16I_P_List_adapterIS0_XadL_ZNS0_15next_in_contextEEEXadL_ZNS0_15prev_in_contextEEEE21I_P_List_null_counter21I_P_List_no_push_backIS0_EEEppEi  ## http://bugs.launchpad.net/percona-server/+bug/1441001
 ZN17sys_var_pluginvar14session_updateEP3THDP7set_var                                    ## http://bugs.launchpad.net/percona-server/+bug/1384560
-Z17mysql_create_userP3THDR4ListI11st_lex_userE                                          ## http://bugs.mysql.com/bug.php?id=84658
-Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb         ## http://bugs.mysql.com/bug.php?id=84658
-Z19mysql_routine_grantP3THDP10TABLE_LISTbR4ListI11st_lex_userEmbb                       ## http://bugs.mysql.com/bug.php?id=84658
-Z15change_passwordP3THDPKcS2_Pc                                                         ## http://bugs.mysql.com/bug.php?id=84658
+#Z17mysql_create_userP3THDR4ListI11st_lex_userE                                 # Fixed ## http://bugs.mysql.com/bug.php?id=84658
+#Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb # Fixed ## http://bugs.mysql.com/bug.php?id=84658
+#Z19mysql_routine_grantP3THDP10TABLE_LISTbR4ListI11st_lex_userEmbb              # Fixed ## http://bugs.mysql.com/bug.php?id=84658
+#Z15change_passwordP3THDPKcS2_Pc                                                # Fixed ## http://bugs.mysql.com/bug.php?id=84658
 ZN17Opt_trace_context5startEbbbbllmy                                                    ## Likely not a bug, asked Umesh to check (testcase: see above at top)
 ZN18base_list_iterator4nextEv                                                           ## http://bugs.mysql.com/bug.php?id=74478
 ZN18sql_digest_storage4copyEPKS_                                                        ## http://bugs.launchpad.net/percona-server/+bug/1660828
@@ -716,7 +716,7 @@ ZN20Field_iterator_table13end_of_fieldsEv                                       
 ZN21Sql_cmd_handler_close7executeEP3THD                                                 ## http://bugs.mysql.com/bug.php?id=75721
 #ZN23Gcalc_operation_reducer10end_coupleEPNS_13active_threadES1_PKN10Gcalc_heap4InfoE ## Fixed ## http://bugs.mysql.com/bug.php?id=77580
 ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## http://bugs.mysql.com/bug.php?id=78201
-ZN24subselect_hash_sj_engine7cleanupEv                                                  ## http://bugs.mysql.com/bug.php?id=82967 (old PS #1622992)
+#ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=82967 (old PS #1622992)
 ZN4JOIN8optimizeEv                                                                      ## http://bugs.mysql.com/bug.php?id=74783
 ZN5TABLE11set_keyreadEb                                                                 ## http://bugs.mysql.com/bug.php?id=84755
 ZN5QueueI16PROF_MEASUREMENTE3popEv                                                      ## http://bugs.launchpad.net/percona-server/+bug/1441139
@@ -760,7 +760,7 @@ ZN8Item_int13save_in_fieldEP5Fieldb                                             
 ZN13Protocol_text5storeEP5Field                                                         ## http://bugs.mysql.com/bug.php?id=81446
 Z14servers_reloadP3THD                                                                  ## http://bugs.mysql.com/bug.php?id=81447
 #ZN11Query_cache13end_of_resultEP3THD                                                   ## http://bugs.mysql.com/bug.php?id=81448 # Testcase needed (may need pquery+mysqld option)
-Z15mysql_drop_userP3THDR4ListI11st_lex_userE                                            ## http://bugs.mysql.com/bug.php?id=81449
+#Z15mysql_drop_userP3THDR4ListI11st_lex_userE                                  ## Fixed ## http://bugs.mysql.com/bug.php?id=81449
 Z8filesortP3THDP5TABLEP13st_sort_fieldjP10SQL_SELECTybPy                                ## http://bugs.mysql.com/bug.php?id=81450
 ZN18st_select_lex_unit4execEv                                                           ## http://bugs.mysql.com/bug.php?id=81454
 ZN7handler11get_dup_keyEi                                                               ## http://bugs.mysql.com/bug.php?id=81455
