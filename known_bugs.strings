@@ -83,6 +83,7 @@ inited == INDEX                                          ## http://bugs.mysql.co
 #ha_innodb.cc line 17780                        ## Fixed ## http://bugs.mysql.com/bug.php?id=75736 PS
 #ha_innodb.cc line 17770                        ## Fixed ## http://bugs.mysql.com/bug.php?id=75736 MS
 #ha_innodb.cc line 17770                        ## FIxed ## http://bugs.mysql.com/bug.php?id=75736 MS
+btr0cur.cc line 830                                      ## http://bugs.mysql.com/bug.php?id=86051  
 btr0cur.c line 871                                       ## http://bugs.mysql.com/bug.php?id=84753 (2nd testcase, MS 5.5.52)
 btr0cur.c line 959                                       ## http://bugs.mysql.com/bug.php?id=84753 (2nd testcase, PS 5.5.54)
 trx0trx.cc line 1257                                     ## http://bugs.mysql.com/bug.php?id=84753 (1st testcase, MS 5.7.16)
@@ -250,6 +251,7 @@ part_id < m_tot_part s                                                 ## http:/
 ha_innodb.cc line 3469                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
 ha_innodb.cc line 2797                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.5.53
 ha_innodb.cc line 3512                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.35
+ha_innodb.cc line 3521                           ##DONOTREMOVE## http://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.36
 ha_innodb.cc line 3495                           ##DONOTREMOVE## ^IDEM (PS 5.6.32-78.0)
 ha_innodb.cc line 19339                          ##DONOTREMOVE## Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
 ha_innodb.cc line 19411                          ##DONOTREMOVE## ^IDEM (PS 5.6.33)
@@ -266,6 +268,7 @@ ha_innodb.cc line 1128                           ##DONOTREMOVE## ## http://bugs.
 ha_innodb.cc line 1401                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and likely 5.6) 1401=PS5.5
 ha_innodb.cc line 1725                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (MS 5.6, alike to 78732) 
 ha_innodb.cc line 2085                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732)
+ha_innodb.cc line 2110                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (PS 5.6.36, alike to 78732)
 ha_innodb.cc line 2102                           ##DONOTREMOVE## ## http://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732) 
 
 ## =========== Line number based ===========
@@ -371,6 +374,7 @@ ha_innodb.cc line 1870                                                          
 ha_innodb.cc line 1878                                                                  ## http://bugs.mysql.com/bug.php?id=74585 MS (old LP #1384616)
 ha_innodb.cc line 19335                                                                 ## PS 5.6.31     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 19383                                                                 ## PS 5.6.34     --innodb-log-buffer-size=1125899906842624 (or similar)
+ha_innodb.cc line 19423                                                                 ## PS 5.6.36     --innodb-log-buffer-size=1125899906842624 (or similar)
 mem0mem.c line 361                                                                      ## PS 5.5.53     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 18962                                                                 ## MS/PS 5.6.31  SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc line 935                                                                       ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
@@ -458,6 +462,7 @@ trx0trx.cc line 1950                                                            
 ut0lst.h line 131                                                                       ## http://bugs.launchpad.net/percona-server/+bug/1449994
 
 ## =========== Assertion based ===========
+bit < map->n_bits                                                                       ## http://bugs.mysql.com/bug.php?id=86173
 user_stats->concurrent_connections > 0                                                  ## http://bugs.launchpad.net/percona-server/+bug/1661488
 allocated_status_memory .= __null                                                       ## http://bugs.mysql.com/bug.php?id=83797 (as subsequent testcase)
 #1 == num_erased                                                                        ## http://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
@@ -654,6 +659,7 @@ Z24get_schema_tables_resultP4JOIN23enum_                                        
 #Z25get_partition_id_list_colP14partition_infoPjPx                             ## Fixed ## http://bugs.mysql.com/bug.php?id=74841 (fixed in 5.6.24)
 #Z25toku_loader_create_loaderP13__toku_db_envP13__toku_db_txnPP13__toku_loaderP9__toku_dbiPS7_PjS9_jb  ## http://tokutek.atlassian.net/browse/DB-760 (Fixed PS 5.6.25)
 Z26get_partition_id_range_colP14partition_infoPjPx                                      ## http://bugs.mysql.com/bug.php?id=74727
+Z26log_online_follow_redo_logv                                                          ## http://bugs.launchpad.net/percona-server/+bug/1688176
 #Z26toku_xids_can_create_childP6XIDS_S                                         ## Fixed ## http://tokutek.atlassian.net/browse/DB-814 (fixed in tokudb-7.5.6)
 Z29toku_db_release_lt_key_rangesP13__toku_db_txnP17txn_lt_key_ranges                    ## http://tokutek.atlassian.net/browse/DB-840
 Z30dict_table_stats_latch_destroyP12dict_table_t                                        ## http://bugs.launchpad.net/percona-server/+bug/1462852
@@ -794,6 +800,7 @@ TEXT=.res.$                                                                     
 TEXT=.src.$                                                 ## Still present in 5.5,5.6 ## http://bugs.mysql.com/bug.php?id=74500 (fixed in 5.7.6)
 TEXT=.strlen.db.$                                                                       ## http://bugs.mysql.com/bug.php?id=76467
 TEXT=.thd.$                                                                             ## http://bugs.launchpad.net/percona-server/+bug/1372675 (pquery) # May need review
+TEXT=.\.\.thd.$                                                                         ## http://bugs.mysql.com/bug.php?id=86174
 TEXT=.thread .= __null.$                                                                ## http://bugs.mysql.com/bug.php?id=79802 (5.7.10)
 TEXT=.i == .uint16.$                                                                    ## http://bugs.mysql.com/bug.php?id=79829
 TEXT=.\.create_info->options \. 1.$                                                     ## http://bugs.mysql.com/bug.php?id=81451
