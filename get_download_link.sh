@@ -6,31 +6,33 @@ BUILD_TYPE="prod"
 BUILD_ARCH="x86_64"
 DISTRIBUTION="ubuntu"
 LINK=""
+DOWNLOAD=0
 
 usage(){
   echo -e "\nThis script prints download link for several products."
   echo -e "Usage:"
-  echo -e "  get_download_link.sh --product=PRODUCT --version=VERSION --type=TYPE --arch=BUILD_ARCH  --distribution=DISTRIBUTION"
+  echo -e "  get_download_link.sh --product=PRODUCT --version=VERSION --type=TYPE --arch=BUILD_ARCH --distribution=DISTRIBUTION --download"
   echo -e "  or"
-  echo -e "  get_download_link.sh -pPRODUCT -vVERSION -tTYPE -aARCH -dDISTRIBUTION\n"
-  echo -e "PRODUCT is a mandatory parameter."
-  echo -e "Available values:"
-  echo -e "PRODUCT = ps|pxc|pxb|psmdb|pt|pmm-client|mysql|mariadb"
-  echo -e "VERSION = depending on the product but eg. 5.5|5.6|5.7 (default: latest major version)"
-  echo -e "          version can be just major version like 5.7 or full version like 5.7.17-12"
-  echo -e "TYPE = prod|test (default: prod)"
-  echo -e "ARCH = x86_64|i686 (default: x86_64)"
-  echo -e "DISTRIBUTION = ubuntu|centos (default: ubuntu)\n"
+  echo -e "  get_download_link.sh -pPRODUCT -vVERSION -tTYPE -aARCH -dDISTRIBUTION -g\n"
+  echo -e "Valid options are:"
+  echo -e "  --product=PRODUCT, -pPRODUCT   this is the only mandatory parameter"
+  echo -e "                                 can be ps|pxc|pxb|psmdb|pt|pmm-client|mysql|mariadb|proxysql"
+  echo -e "  --version=x.x, -vx.x           major or full version of the product like 5.7 or 5.7.17-12"
+  echo -e "                                 (default: latest major version)"
+  echo -e "  --type=TYPE, -tTYPE            build type, can be prod|test (default: prod)"
+  echo -e "  --arch=ARCH, -aARCH            build architecture, can be x86_64|i686 (default: x86_64)"
+  echo -e "  --distribution=DIST, -dDIST    needed because of SSL linking, can be centos|ubuntu (default: ubuntu)"
+  echo -e "  --download, -g                 download tarball with wget (default: off)\n"
   echo -e "Examples: get_download_link.sh --product=ps --version=5.6 --type=prod --arch=x86_64"
   echo -e "          get_download_link.sh --product=ps --version=5.7.17-12"
-  echo -e "          get_download_link.sh --product=mysql --version=5.7.17"
+  echo -e "          get_download_link.sh --product=mysql --version=5.7.17 --download"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=p::v::t:a:d:h \
-  --longoptions=product::,version::,type:,arch:,distribution:,help \
+  go_out="$(getopt --options=p:v:t:a:d:hg \
+  --longoptions=product:,version:,type:,arch:,distribution:,help,download \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -59,6 +61,10 @@ do
     -d | --distribution )
     DISTRIBUTION="$2"
     shift 2
+    ;;
+    -g | --download )
+    DOWNLOAD=1
+    shift
     ;;
     -h | --help )
     usage
@@ -201,7 +207,18 @@ get_link(){
       else
           LINK="https://downloads.mariadb.org/f/mariadb-${VERSION_FULL}/bintar-linux-${BUILD_ARCH_TMP}/mariadb-${VERSION_FULL}-linux-${BUILD_ARCH}.tar.gz"
       fi # version_full
+
+    elif [[ "${PRODUCT}" = "proxysql" ]]; then
+      if [[ -z ${VERSION_FULL} ]]; then
+        BASE_LINK="https://www.percona.com/downloads/proxysql/"
+        VERSION=$(wget -qO- ${BASE_LINK}|grep -o "proxysql-[0-9]*.[0-9]*.[0-9]*"|head -n1|sed 's/^.*-//')
+        TARBALL="proxysql-${VERSION}-Linux-${BUILD_ARCH}.tar.gz"
+        LINK="${BASE_LINK}proxysql-${VERSION}/binary/tarball/${TARBALL}"
+      else
+        LINK="https://www.percona.com/downloads/proxysql/proxysql-${VERSION_FULL}/binary/tarball/proxysql-${VERSION_FULL}-Linux-${BUILD_ARCH}.tar.gz"
+      fi
     fi # last product
+
   fi # build type
 }
 
@@ -211,7 +228,11 @@ if [[ -z ${LINK} ]]; then
 else
   if wget --spider ${LINK} 2>/dev/null; then
     echo "${LINK}"
-    exit 0
+    if [[ ${DOWNLOAD} -eq 1 ]]; then
+      wget ${LINK}
+    else
+      exit 0
+    fi
   else
     exit 1
   fi
