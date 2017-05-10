@@ -711,6 +711,7 @@ ZN13Bounded_queueIPhS0_10Sort_paramE4pushES0_                                   
 ZN13st_join_table7cleanupEv                                                             ## http://bugs.mysql.com/bug.php?id=74628
 ZN13st_select_lex5printEP3THDP6String15enum_query_type                                  ## http://bugs.mysql.com/bug.php?id=78335
 ZN13Item_func_div10decimal_opEP10my_decimal                                             ## http://bugs.mysql.com/bug.php?id=74807 (Same gdb trace of Z14my_decimal_divjP10my_decimalPKS_S2_i)
+ZN13MYSQL_BIN_LOG33handle_binlog_flush_or_sync_errorEP3THDb                             ## http://bugs.mysql.com/bug.php?id=86256
 ZN14Arg_comparator24cache_converted_constantEP3THDPP4ItemS4_11Item_result               ## http://bugs.mysql.com/bug.php?id=77991
 #ZN14cachefile_list15add_cf_unlockedEP9cachefile                               ## Fixed ## http://tokutek.atlassian.net/browse/DB-812 (fixed in 5.6.23/Tk7.5.6)
 ZN14Item_func_plus10decimal_opEP10my_decimal                                            ## http://bugs.mysql.com/bug.php?id=74619 (Same gdb trace of Z14my_decimal_addjP10my_decimalPKS_S2_ assertion)
@@ -736,6 +737,7 @@ ZN21Sql_cmd_handler_close7executeEP3THD                                         
 ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## http://bugs.mysql.com/bug.php?id=78201
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=82967 (old PS #1622992)
 ZN4JOIN8optimizeEv                                                                      ## http://bugs.mysql.com/bug.php?id=74783
+ZN4Item31tmp_table_field_from_field_typeEP5TABLEb                                       ## http://bugs.mysql.com/bug.php?id=86254
 ZN5TABLE11set_keyreadEb                                                                 ## http://bugs.mysql.com/bug.php?id=84755
 ZN5QueueI16PROF_MEASUREMENTE3popEv                                                      ## http://bugs.launchpad.net/percona-server/+bug/1441139
 Z21find_or_create_digestP10PFS_threadPK18sql_digest_storagePKcj                         ## http://bugs.launchpad.net/percona-server/+bug/1441139
@@ -820,3 +822,4 @@ TEXT=.fd >= 0.$                                                                 
 TEXT=.\.shutdown_in_progress.$                                                          ## http://bugs.launchpad.net/percona-server/+bug/1633960 (w/o testcase)
 TEXT=.tab->ref.$                                                                        ## http://bugs.mysql.com/bug.php?id=83541
 TEXT=.false.$                                                                           ## http://bugs.mysql.com/bug.php?id=83120
+TEXT=.part_rec_buf_ptr.$                                                                ## http://bugs.mysql.com/bug.php?id=86255
