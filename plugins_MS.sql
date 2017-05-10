@@ -11,7 +11,7 @@ CREATE FUNCTION version_tokens_lock_exclusive RETURNS INT SONAME 'version_token.
 CREATE FUNCTION version_tokens_unlock RETURNS INT SONAME 'version_token.so';
 INSTALL PLUGIN auth_socket SONAME 'auth_socket.so';
 INSTALL PLUGIN mysql_no_login SONAME 'mysql_no_login.so';
-INSTALL PLUGIN rewriter SONAME 'rewriter.so';
+SOURCE share/install_rewriter.sql  # Do not use: INSTALL PLUGIN rewriter SONAME 'rewriter.so' ref http://bugs.mysql.com/bug.php?id=83407
 CREATE FUNCTION service_get_read_locks RETURNS INT SONAME 'locking_service.so';
 CREATE FUNCTION service_get_write_locks RETURNS INT SONAME 'locking_service.so';
 CREATE FUNCTION service_release_locks RETURNS INT SONAME 'locking_service.so';

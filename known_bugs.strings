@@ -113,7 +113,7 @@ m_db.length == copy->m_db.length                         ## http://bugs.mysql.co
 m_index_scan_type .= partition_index_last                ## http://bugs.mysql.com/bug.php?id=85537
 #trx0trx.h line 1410                            ## Fixed ## http://bugs.mysql.com/bug.php?id=76415
 #thd->variables.gtid_next.type == ANONYMOUS_GROUP ## Fixed ## http://bugs.mysql.com/bug.php?id=76416                                               (# after MS 5.7.8 merged)
-thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  # http://bugs.mysql.com/bug.php?id=86250
+thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  ## http://bugs.mysql.com/bug.php?id=86250
 db_return_                                               ## http://bugs.mysql.com/bug.php?id=76417
 i == uint2korr.part_rec_buf_ptr                          ## http://bugs.mysql.com/bug.php?id=76418
 #row0mysql.cc line 2405                         ## Fixed ## http://bugs.mysql.com/bug.php?id=76419                                                 (# after MS 5.7.8 merged)
@@ -451,6 +451,7 @@ srv0srv.cc line 3353                                                            
 srv0srv.cc line 3058                                                                    ## Also 73913 PS 5.6.35. Use grep -i "INNODB_PURGE_STOP_NOW" on sql
 srv0srv.cc line 3356                                                                    ## Also 73913 PS 5.6.36
 srv0srv.cc line 3074                                                                    ## Also 73913 PS 5.7.18
+srv0srv.cc line 3070                                                                    ## Also 73913 PS 5.7.17
 sync0sync.ic line 307                                                                   ## http://bugs.launchpad.net/percona-server/+bug/1435678
 sync0sync.cc line 1318                                                                  ## http://bugs.mysql.com/bug.php?id=75640 MS
 sync0sync.cc line 1432                                                                  ## http://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
@@ -529,7 +530,8 @@ multi_range_length > 0                                                          
 m_lock_type == 2                                                                        ## http://bugs.mysql.com/bug.php?id=74436 (Originally PS Bug #1382749)
 #m_prot_lock .= __null .* thd->mdl_context.is_lock_owner.m_namespace, .*, .*, MDL_INTENTION_EXCLUSIVE ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1393682
 m_num_writers == 1                                                                      ## http://tokutek.atlassian.net/browse/DB-852
-#m_status == DA_ERROR                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=76912 (old PS #1384632) (fixed in 5.6.27)
+#m_status == DA_ERROR                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=76912 (old LP #1384632) (fixed in 5.6.27)
+m_status == DA_ERROR                                                                    ## http://bugs.mysql.com/bug.php?id=86260 (LP #1689736)
 nr >= 0.0                                                                               ## http://bugs.mysql.com/bug.php?id=74946
 #n < m_size                                                                    ## Fixed ## http://bugs.mysql.com/bug.php?id=74447
 n_linear_rings > 0                                                                      ## http://bugs.mysql.com/bug.php?id=81411
