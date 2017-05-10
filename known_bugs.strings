@@ -448,8 +448,9 @@ srv0srv.cc line 3337                                                            
 srv0srv.cc line 3338                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.6.35-80
 srv0srv.cc line 2666                                                                    ## http://bugs.mysql.com/bug.php?id=73913 MS 5.6.22
 srv0srv.cc line 3353                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.5.53
-srv0srv.cc line 3058                                                                    ## Also 73913 PS 5.6.35-80. Use grep -i "INNODB_PURGE_STOP_NOW" !
-srv0srv.cc line 3356                                                                    ## Also 73913 PS 5.6.36-82.
+srv0srv.cc line 3058                                                                    ## Also 73913 PS 5.6.35. Use grep -i "INNODB_PURGE_STOP_NOW" on sql
+srv0srv.cc line 3356                                                                    ## Also 73913 PS 5.6.36
+srv0srv.cc line 3074                                                                    ## Also 73913 PS 5.7.18
 sync0sync.ic line 307                                                                   ## http://bugs.launchpad.net/percona-server/+bug/1435678
 sync0sync.cc line 1318                                                                  ## http://bugs.mysql.com/bug.php?id=75640 MS
 sync0sync.cc line 1432                                                                  ## http://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
