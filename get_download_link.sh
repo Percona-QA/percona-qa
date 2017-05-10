@@ -70,8 +70,8 @@ if [[ -z ${PRODUCT} ]]; then
   exit 1
 fi
 
-if [[ -z "$(which curl)" ]]; then
-  echo "ERROR: curl is required for proper functioning of this script!"
+if [[ -z "$(which wget)" ]]; then
+  echo "ERROR: wget is required for proper functioning of this script!"
   exit 1
 fi
 
@@ -92,7 +92,7 @@ get_link(){
       if [[ "${VERSION}" = "5.5" || "${VERSION}" = "5.6" ]]; then
         OPT="rel[0-9]+."
       fi
-      LINK=$(curl -s https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/|grep -oE "Percona-Server-${VERSION}\.[0-9]+-${OPT}[0-9]+-Linux\.${BUILD_ARCH}\.${SSL_VER}\.tar\.gz"|head -n1)
+      LINK=$(wget -qO- https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/|grep -oE "Percona-Server-${VERSION}\.[0-9]+-${OPT}[0-9]+-Linux\.${BUILD_ARCH}\.${SSL_VER}\.tar\.gz"|head -n1)
       if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/tarball/${LINK}"; fi
     elif [[ "${PRODUCT}" = "pxc" ]]; then
       DL_VERSION="${VERSION//./}"
@@ -100,24 +100,24 @@ get_link(){
         OPT="\.[0-9]+"
       fi
       if [[ "${VERSION}" != "5.5" ]]; then OPT2="\.${SSL_VER}"; fi
-      LINK=$(curl -s https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/binary/|grep -oE "Percona-XtraDB-Cluster-${VERSION}\.[0-9]+-rel[0-9]+${OPT}-[0-9]+\.[0-9]+\.[0-9]+\.Linux\.${BUILD_ARCH}${OPT2}\.tar\.gz"|head -n1)
+      LINK=$(wget -qO- https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/binary/|grep -oE "Percona-XtraDB-Cluster-${VERSION}\.[0-9]+-rel[0-9]+${OPT}-[0-9]+\.[0-9]+\.[0-9]+\.Linux\.${BUILD_ARCH}${OPT2}\.tar\.gz"|head -n1)
       if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/binary/tarball/${LINK}"; fi
     elif [[ "${PRODUCT}" = "psmdb" && "${BUILD_ARCH}" = "x86_64" ]]; then
       if [[ "${DISTRIBUTION}" = "ubuntu" ]]; then OPT="xenial"; else OPT="centos6"; fi
-      LINK=$(curl -s https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+\.[0-9]+-trusty-${BUILD_ARCH}\.tar\.gz"|head -n1)
+      LINK=$(wget -qO- https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+\.[0-9]+-trusty-${BUILD_ARCH}\.tar\.gz"|head -n1)
       if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/tarball/${LINK}"; fi
     elif [[ "${PRODUCT}" = "pxb" ]]; then
-      LINK=$(curl -s https://www.percona.com/downloads/XtraBackup/LATEST/binary/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+-Linux-${BUILD_ARCH}\.tar\.gz"|head -n1)
+      LINK=$(wget -qO- https://www.percona.com/downloads/XtraBackup/LATEST/binary/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+-Linux-${BUILD_ARCH}\.tar\.gz"|head -n1)
       if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/XtraBackup/LATEST/binary/tarball/${LINK}"; fi
     elif [[ "${PRODUCT}" = "pmm-client" && "${BUILD_ARCH}" = "x86_64" ]]; then
-      LINK=$(curl -s https://www.percona.com/downloads/pmm-client/LATEST/binary/|grep -oE "pmm-client-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
+      LINK=$(wget -qO- https://www.percona.com/downloads/pmm-client/LATEST/binary/|grep -oE "pmm-client-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
       if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/pmm-client/LATEST/binary/tarball/${LINK}"; fi
     elif [[ "${PRODUCT}" = "pt" ]]; then
-      LINK=$(curl -s https://www.percona.com/downloads/percona-toolkit/LATEST/binary/|grep -oE "percona-toolkit-[0-9]+\.[0-9]+\.[0-9]+_${BUILD_ARCH}\.tar\.gz"|head -n1)
+      LINK=$(wget -qO- https://www.percona.com/downloads/percona-toolkit/LATEST/binary/|grep -oE "percona-toolkit-[0-9]+\.[0-9]+\.[0-9]+_${BUILD_ARCH}\.tar\.gz"|head -n1)
       if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/percona-toolkit/LATEST/binary/tarball/${LINK}"; fi
     elif [[ "${PRODUCT}" = "mysql" ]]; then
       BASE_LINK="https://dev.mysql.com/get/Downloads/MySQL-${VERSION}/"
-      TARBALL=$(curl -s https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=2|grep -o -P "(mysql|MySQL).*${BUILD_ARCH}.tar.gz"|grep -v "mysql-test"|head -n1)
+      TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=2|grep -o -P "(mysql|MySQL).*${BUILD_ARCH}.tar.gz"|grep -v "mysql-test"|head -n1)
       LINK="${BASE_LINK}${TARBALL}"
     elif [[ "${PRODUCT}" = "mariadb" ]]; then
       if [[ ${BUILD_ARCH} = "x86_64" ]]; then
@@ -128,7 +128,7 @@ get_link(){
       # main alternative which doesn't provide directory listing
       # https://downloads.mariadb.org/f/mariadb-10.1.23/bintar-linux-x86_64/mariadb-10.1.23-linux-x86_64.tar.gz
       BASE_LINK="http://ftp.nluug.nl/db/mariadb/"
-      DIRECTORY=$(curl -s http://ftp.nluug.nl/db/mariadb/|grep -o "mariadb-${VERSION}.[0-9]*"|tail -n1)
+      DIRECTORY=$(wget -qO- http://ftp.nluug.nl/db/mariadb/|grep -o "mariadb-${VERSION}.[0-9]*"|tail -n1)
       if [[ -z ${DIRECTORY} ]]; then
         LINK=""
       else
@@ -145,11 +145,10 @@ get_link
 if [[ -z ${LINK} ]]; then
   exit 1
 else
-  TEST_LINK=$(curl -Is "${LINK}"|head -n1|grep -c "404 Not Found")
-  if [[ ${TEST_LINK} -ge 1 ]]; then
-    exit 1
-  else
+  if wget --spider ${LINK} 2>/dev/null; then
     echo "${LINK}"
     exit 0
+  else
+    exit 1
   fi
 fi
