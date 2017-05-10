@@ -113,6 +113,7 @@ m_db.length == copy->m_db.length                         ## http://bugs.mysql.co
 m_index_scan_type .= partition_index_last                ## http://bugs.mysql.com/bug.php?id=85537
 #trx0trx.h line 1410                            ## Fixed ## http://bugs.mysql.com/bug.php?id=76415
 #thd->variables.gtid_next.type == ANONYMOUS_GROUP ## Fixed ## http://bugs.mysql.com/bug.php?id=76416                                               (# after MS 5.7.8 merged)
+thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  # http://bugs.mysql.com/bug.php?id=86250
 db_return_                                               ## http://bugs.mysql.com/bug.php?id=76417
 i == uint2korr.part_rec_buf_ptr                          ## http://bugs.mysql.com/bug.php?id=76418
 #row0mysql.cc line 2405                         ## Fixed ## http://bugs.mysql.com/bug.php?id=76419                                                 (# after MS 5.7.8 merged)
@@ -211,7 +212,8 @@ thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_in
 #log0log.cc line 1104 ??
 #fsp0fsp.cc line 766                                     ## RC1   # http://bugs.launchpad.net/percona-server/+bug/1529555  ## Fixed in PS 5.7.10-2rc2
 get_state                                                ## MS5.7 # http://bugs.mysql.com/bug.php?id=80168
-#ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 # http://bugs.mysql.com/bug.php?id=79801
+#ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 # http://bugs.mysql.com/bug.php?id=79801 (Fixed in 5.8 only, ref 86249)
+ZN12Item_func_sp8val_jsonEP12Json_wrapper                ## MS5.7 # http://bugs.mysql.com/bug.php?id=86249
 ha_innodb.cc line 8210                                       ## MS5.7 # http://bugs.mysql.com/bug.php?id=79821 (debug)
 ha_innodb.cc line 8621                                       ## ^     # http://bugs.mysql.com/bug.php?id=79821 (PS 5.7, debug)
 Z18row_search_no_mvccPh15page_cur_mode_tP14row_prebuilt_tmm  ## ^     # http://bugs.mysql.com/bug.php?id=79821 (PS 5.7, opt)
@@ -229,6 +231,7 @@ Z15error_log_print8loglevelPKcP13__va_list_tag                    ## MS5.7 # htt
 #log0log.cc line 1251                                    ## Fixed ## PS5.7 # http://bugs.launchpad.net/percona-server/+bug/1597143
 #log0log.cc line 1256                                    ## Fixed ## PS5.7 # http://bugs.launchpad.net/percona-server/+bug/1597143
 log0log.cc line 562                                               ## PS5.7 # http://bugs.launchpad.net/percona-server/+bug/1660760
+log0log.cc line 556                                               ## ^ .18 # http://bugs.launchpad.net/percona-server/+bug/1660760
 Handlerton. share->file == NULL                                   ## PS5.7 # http://tokutek.atlassian.net/browse/FT-725
 ZN6tokudb6memory4freeEPv                                          ## PS5.7 $ http://tokutek.atlassian.net/browse/FT-727
 
@@ -330,9 +333,10 @@ buf0buf.cc line 4361                                                            
 dict0dict.ic line 220                                                                   ## http://bugs.mysql.com/bug.php?id=81495
 dict0dict.ic line 786                                                                   ## http://bugs.mysql.com/bug.php?id=73926, NS 5.6.20
 dict0dict.ic line 787                                                                   ## http://bugs.mysql.com/bug.php?id=73926, MS 5.6.34
-fsp0fsp.ic line 172                                                                     ## http://bugs.mysql.com/bug.php?id=73926, MS 5.7.16
 #dict0dict.cc line 1202                                                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74900 (Fixed in 5.6.24, 5.7.6)
 dict0dict.cc line 2332                                                                  ## http://bugs.mysql.com/bug.php?id=85060
+dict0dict.cc line 2342                                                                  ## http://bugs.mysql.com/bug.php?id=85060
+fsp0fsp.ic line 172                                                                     ## http://bugs.mysql.com/bug.php?id=73926, MS 5.7.16
 fil0fil.cc line 3412                                                                    ## http://bugs.mysql.com/bug.php?id=74873, older build
 fil0fil.cc line 3485                                                                    ## http://bugs.mysql.com/bug.php?id=74873 PS (5.6 only)
 fil0fil.cc line 3438                                                                    ## http://bugs.mysql.com/bug.php?id=74873 MS (5.6 only)
@@ -498,6 +502,7 @@ from->len == to->len                                                            
 #from->m_byte_count == 0                                                       ## Fixed ## http://bugs.mysql.com/bug.php?id=76090 (fixed in 5.6.25)
 Handlerton. ...share->kc_info.num_blobs == 0                                            ## http://jira.percona.com/browse/TDB-12
 head->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS                                    ## http://bugs.mysql.com/bug.php?id=85552
+head->variables.gtid_next.type == ANONYMOUS_GROUP                                       ## http://bugs.mysql.com/bug.php?id=86251
 #Handlerton.*offset_start                                                               ## http://tokutek.atlassian.net/browse/DB-771 (Fixed tokudb-7.5.4)
 #Handlerton.*.share->kc_info.num_blobs == 0                                    ## Fixed ## http://tokutek.atlassian.net/browse/DB-811 (Fixed in tokudb-7.5.7)
 #Handlerton.*trx                                                                        ## http://tokutek.atlassian.net/browse/DB-762 (Fixed tokudb-7.5.4)
