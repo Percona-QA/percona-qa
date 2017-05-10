@@ -16,4 +16,5 @@ elif [ "$(echo $1 | sed 's|^[0-9]\+||')" != "" ]; then
 fi
 
 sed -i "s|^FORCE_SKIPV=1|FORCE_SKIPV=0|" reducer$1.sh
+sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=1000|" reducer$1.sh
 sed -i "s|default.node.tld_thread-0.sql\"$|default.node.tld_thread-0.sql_out\"|" reducer$1.sh

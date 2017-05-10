@@ -379,6 +379,7 @@ mem0mem.c line 361                                                              
 ha_innodb.cc line 18962                                                                 ## MS/PS 5.6.31  SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc line 935                                                                       ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc line 936                                                                       ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
+mem0dbg.c line 684                                                                      ## http://bugs.mysql.com/bug.php?id=86234 PS 5.5.55, MS 5.5.54
 handler0alter.cc line 5680                                                              ## http://bugs.mysql.com/bug.php?id=74363 MS
 handler0alter.cc line 5694                                                              ## http://bugs.mysql.com/bug.php?id=74363 PS (with oldPS)
 handler0alter.cc line 5708                                                              ## http://bugs.mysql.com/bug.php?id=74363 PS
@@ -444,6 +445,7 @@ srv0srv.cc line 3338                                                            
 srv0srv.cc line 2666                                                                    ## http://bugs.mysql.com/bug.php?id=73913 MS 5.6.22
 srv0srv.cc line 3353                                                                    ## http://bugs.mysql.com/bug.php?id=73913 PS 5.5.53
 srv0srv.cc line 3058                                                                    ## Also 73913 PS 5.6.35-80. Use grep -i "INNODB_PURGE_STOP_NOW" !
+srv0srv.cc line 3356                                                                    ## Also 73913 PS 5.6.36-82.
 sync0sync.ic line 307                                                                   ## http://bugs.launchpad.net/percona-server/+bug/1435678
 sync0sync.cc line 1318                                                                  ## http://bugs.mysql.com/bug.php?id=75640 MS
 sync0sync.cc line 1432                                                                  ## http://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
@@ -494,6 +496,7 @@ ftnode->blocknum.b == blocknum.b                                                
 #from->len == to->len                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=76477
 from->len == to->len                                                                    ## http://bugs.mysql.com/bug.php?id=84827 (Ref also 76477) (Still present in MS 5.6.35)
 #from->m_byte_count == 0                                                       ## Fixed ## http://bugs.mysql.com/bug.php?id=76090 (fixed in 5.6.25)
+Handlerton. ...share->kc_info.num_blobs == 0                                            ## http://jira.percona.com/browse/TDB-12
 head->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS                                    ## http://bugs.mysql.com/bug.php?id=85552
 #Handlerton.*offset_start                                                               ## http://tokutek.atlassian.net/browse/DB-771 (Fixed tokudb-7.5.4)
 #Handlerton.*.share->kc_info.num_blobs == 0                                    ## Fixed ## http://tokutek.atlassian.net/browse/DB-811 (Fixed in tokudb-7.5.7)
@@ -574,6 +577,7 @@ thd == _current_thd                                                             
 #txn->roll_info.num_rollentries == 0                                           ## Fixed ## http://tokutek.atlassian.net/browse/DB-764 (fixed in 5.6.23/Tk7.5.6)
 #transactional_table .* .changed .* thd->transaction.stmt.cannot_safely_rollback ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1382745
 transactional_table .. .changed .. thd->transaction.stmt.cannot_safely_rollback         ## http://bugs.launchpad.net/percona-server/+bug/1647608
+transactional_table .. .changed .. thd->transaction.stmt.modified_non_trans_table       ## http://bugs.launchpad.net/percona-server/+bug/1689473
 unknown error code 47                                                                   ## http://bugs.mysql.com/bug.php?id=74343, both build
 #void Protocol::end_statement ## This assertion is a generic assertion indicative of many causes. It should not be filtered. (Was: http://bugs.mysql.com/bug.php?id=74411, RQG)
 next_insert_id >= auto_inc_interval_for_cur_row.minimum                                 ## http://bugs.launchpad.net/percona-server/+bug/1582577
@@ -585,6 +589,7 @@ ZN3THD19send_explain_fieldsEP13select_result                                    
 ZN3THD17set_new_thread_idEv                                                             ## http://bugs.launchpad.net/percona-server/+bug/1642230
 ZN3THD21send_statement_statusEv                                                         ## http://bugs.launchpad.net/percona-server/+bug/1666116
 #Z10MYSQLerrorP3THDPKc                                                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1415755 (dup of 1412423)
+Z10read_tokenPK18sql_digest_storagejPj                                                  ## http://bugs.launchpad.net/percona-server/+bug/1688698
 Z10open_tableP3THDP10TABLE_LISTP18Open_table_context                                    ## http://bugs.launchpad.net/percona-server/+bug/1384583
 #Z11alloc_queryP3THDPKcj                                                       ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1387951
 #Z11lock_tablesP3THDP10TABLE_LISTjj                                            ## Fixed ## http://tokutek.atlassian.net/browse/DB-767 (Fixed tokudb-7.5.4)
@@ -652,6 +657,7 @@ Z23well_formed_copy_ncharsPK15charset_info_stPcjS1_PKcjjPS4_S5_S5_              
 Z23well_formed_copy_ncharsPK15charset_info_stPcmS1_PKcmmPS4_S5_S5_                      ## http://bugs.mysql.com/bug.php?id=85065
 ZN23Gcalc_operation_reducer11free_resultEPNS_9res_pointE                                ## http://bugs.mysql.com/bug.php?id=85070
 Z24get_schema_tables_resultP4JOIN23enum_                                                ## Another i-s-temp-tables bug (based on crashing query) (see comment)
+Z24plugin_foreach_with_maskP3THDPFcS0_PP13st_plugin_intPvEijS4_                         ## http://bugs.launchpad.net/percona-server/+bug/1688176 (also listed elsewhere)
 #Z24make_used_partitions_strP14partition_infoP4ListIKcE                        ## Fixed ## http://bugs.mysql.com/bug.php?id=74746 (fixed in 5.6.24)
 #Z24mark_tmp_table_for_reuseP5TABLE                                            ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1417533 (dup of 1387951)
 #Z24plugin_foreach_with_maskP3THDPFcS0_PP13st_plugin_intPvEijS4_               ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1368530 (fixed in 5.6.27)
