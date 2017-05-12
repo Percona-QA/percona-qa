@@ -1851,7 +1851,7 @@ start_mysqld_main(){
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
-    if [ "${CHK_LOGBIN57}" == "1" ];then
+    if [ "${CHK_LOGBIN}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
@@ -1873,7 +1873,7 @@ start_mysqld_main(){
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
-    if [ "${CHK_LOGBIN57}" == "1" ];then
+    if [ "${CHK_LOGBIN}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
@@ -2685,7 +2685,7 @@ finish(){
       if [ "${CHK_ROCKSDB}" == "1" ];then
         MYEXTRA="$MYEXTRA ${MYROCKS}"
       fi
-      if [ "${CHK_LOGBIN57}" == "1" ];then
+      if [ "${CHK_LOGBIN}" == "1" ];then
         MYEXTRA="$MYEXTRA --server-id=100"
       fi
       if [ "${CHK_TOKUDB}" == "1" ];then
@@ -3953,16 +3953,16 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
 
   #binary log server-id startup option check with 5.7 version
   logbin_startup_chk(){
-    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+    if [[ ! "$(${BASEDIR}/bin/mysqld --version | egrep -oe '5\.[567]|8\.[0]' | head -n1)" =~ ^5.[56]$ ]]; then
       if echo "${MYEXTRA}" | grep '\--log-bin'; then
         if ! echo "${MYEXTRA}" | grep '\--server-id'; then
-          CHK_LOGBIN57=1
+          CHK_LOGBIN=1
         else
-          CHK_LOGBIN57=0
+          CHK_LOGBIN=0
         fi
       fi
     else
-      CHK_LOGBIN57=0
+      CHK_LOGBIN=0
     fi
   }
   
