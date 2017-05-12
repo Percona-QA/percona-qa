@@ -17,10 +17,11 @@
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
 ## =========== MS/PS 8.0
-strlen.db_name                                           ## http://bugs.mysql.com/bug.php?id=83114
+#strlen.db_name                                 ## Fixed ## http://bugs.mysql.com/bug.php?id=83114
 maybe_null                                               ## http://bugs.mysql.com/bug.php?id=83115
 #MDL_checker..is_read_locked.m_thd, .object     ## Fixed ## http://bugs.mysql.com/bug.php?id=83117
 rc == TYPE_OK                                            ## http://bugs.mysql.com/bug.php?id=86282
+sym_node->table .= NULL                                  ## htts://bugs.mysql.com/bug.php?id=86293
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1621684

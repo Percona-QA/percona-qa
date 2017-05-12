@@ -1,0 +1,7 @@
+GODIR=/sda/PS300117-percona-server-5.7.17-11-linux-x86_64-debug
+cd $GODIR
+vi start
+./all
+./stop
+echo "vi log/master.err"
+echo "gdb bin/mysqld $(ls data/core* 2>/dev/null)"
