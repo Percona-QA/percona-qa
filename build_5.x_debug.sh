@@ -18,7 +18,8 @@ DATE=$(date +'%d%m%y')
 PREFIX=
 MS=0
 
-if [ "$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')" == "" ]; then  # MS has no extra version number
+VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
+if [ "${VERSION_EXTRA}" == "" -o ""${VERSION_EXTRA}" == "-dmr" ]; then  # MS has no extra version number, or shows '-dmr' (exactly and only) in this place
   MS=1
   PREFIX="MS${DATE}"
 else
