@@ -14,7 +14,7 @@ if [ "$1" == "" ]; then
   exit 1
 fi
 
-echo \
+STRING=$(echo \
   $( \
     egrep -i 'Assertion failure.*in file.*line' $1 | sed 's|.*in file ||;s| |DUMMY|g'; \
     egrep 'Assertion.*failed' $1 | grep -v 'Assertion .0. failed' | sed 's/|/./g;s/\&/./g;s/"/./g;s/:/./g;s|^.*Assertion .||;s|. failed.*$||;s| |DUMMY|g'; \
@@ -24,4 +24,14 @@ echo \
   tr ' ' '\n' | \
   sed 's|.*libgalera_smm\.so[\(_]*||;s|.*mysqld[\(_]*||;s|.*ha_tokudb.so[\(_]*||;s|).*||;s|+.*$||;s|DUMMY| |g;s|($||;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g' | \
   grep -v '^[ \t]*$' | \
-  head -n1 | sed 's|^[ \t]\+||;s|[ \t]\+$||;'
+  head -n1 | sed 's|^[ \t]\+||;s|[ \t]\+$||;' \
+)
+
+if [ "${STRING}" == "" -o "${STRING}" == "my_print_stacktrace" -o "${STRING}" == "0" -o "${STRING}" == "NULL" ]; then
+  POTENTIALLY_BETTER_STRING="$(grep 'Assertion failure:' $1 | tail -n1 | sed 's|.*Assertion failure:[ \t]\+||;s|[ \t]+$||;s|.*c:[0-9]\+:||')"
+  if [ "${POTENTIALLY_BETTER_STRING}" != "" -a "${POTENTIALLY_BETTER_STRING}" != "my_print_stacktrace" -a "${POTENTIALLY_BETTER_STRING}" != "0" -a "${POTENTIALLY_BETTER_STRING}" != "NULL" ]; then
+    STRING=${POTENTIALLY_BETTER_STRING}
+  fi
+fi
+
+echo ${STRING}
