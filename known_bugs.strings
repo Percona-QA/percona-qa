@@ -22,6 +22,7 @@ maybe_null                                               ## http://bugs.mysql.co
 #MDL_checker..is_read_locked.m_thd, .object     ## Fixed ## http://bugs.mysql.com/bug.php?id=83117
 rc == TYPE_OK                                            ## http://bugs.mysql.com/bug.php?id=86282
 sym_node->table .= NULL                                  ## htts://bugs.mysql.com/bug.php?id=86293
+thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., tablespace_name, MDL_INTENTION_EXCLUSIVE  ## http://bugs.mysql.com/bug.php?id=86297
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1621684
