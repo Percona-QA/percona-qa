@@ -28,7 +28,7 @@ STRING=$(echo \
 )
 
 if [ "${STRING}" == "" -o "${STRING}" == "my_print_stacktrace" -o "${STRING}" == "0" -o "${STRING}" == "NULL" ]; then
-  POTENTIALLY_BETTER_STRING="$(grep 'Assertion failure:' $1 | tail -n1 | sed 's|.*Assertion failure:[ \t]\+||;s|[ \t]+$||;s|.*c:[0-9]\+:||')"
+  POTENTIALLY_BETTER_STRING="$(grep 'Assertion failure:' $1 | tail -n1 | sed 's|.*Assertion failure:[ \t]\+||;s|[ \t]+$||;s|.*c:[0-9]\+:||;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g')"
   if [ "${POTENTIALLY_BETTER_STRING}" != "" -a "${POTENTIALLY_BETTER_STRING}" != "my_print_stacktrace" -a "${POTENTIALLY_BETTER_STRING}" != "0" -a "${POTENTIALLY_BETTER_STRING}" != "NULL" ]; then
     STRING=${POTENTIALLY_BETTER_STRING}
   fi
