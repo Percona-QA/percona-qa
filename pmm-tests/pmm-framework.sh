@@ -332,7 +332,7 @@ setup(){
 
 #Get PMM client basedir.
 get_basedir(){
-  CLIENT_NAME=$1
+  PRODUCT_NAME=$1
   SERVER_STRING=$2
   CLIENT_MSG=$3
   VERSION=$4
@@ -341,7 +341,7 @@ get_basedir(){
   fi
   if [ $download_link -eq 1 ]; then
     if [ -f $SCRIPT_PWD/../get_download_link.sh ]; then
-      LINK=`$SCRIPT_PWD/../get_download_link.sh --product=${CLIENT_NAME} --distribution=$DISTRUBUTION --version=$VERSION`
+      LINK=`$SCRIPT_PWD/../get_download_link.sh --product=${PRODUCT_NAME} --distribution=$DISTRUBUTION --version=$VERSION`
       echo "Downloading $CLIENT_MSG(Version : $VERSION)"
       wget $LINK 2>/dev/null
       BASEDIR=$(ls -1td $SERVER_STRING 2>/dev/null | grep -v ".tar" | head -n1)
