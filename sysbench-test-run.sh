@@ -59,7 +59,7 @@ for X in $(seq 0 ${PS_START_TIMEOUT}); do
 done
 
 pushd $SYSBENCH_SOURCE/tests
-export SBTEST_MYSQL_ARGS="--mysql-host=localhost --mysql-user=root --mysql-db=sbtest"
+export SBTEST_MYSQL_ARGS="--mysql-host=localhost --mysql-user=root --mysql-socket=/tmp/mysql.sock --mysql-db=sbtest"
 ./test_run.sh
 popd
 
