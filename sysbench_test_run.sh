@@ -16,12 +16,12 @@ cleanup(){
 
 trap cleanup EXIT KILL
 
-SYSBENCH_SOURCE=$(ls -1td sysbench* 2>/dev/null | grep -v ".tar" | head -n1)
+SYSBENCH_SOURCE=$(ls -1td sysbench-* 2>/dev/null | grep -v ".tar" | head -n1)
 if [ -z $SYSBENCH_SOURCE ]; then
-  SYSBENCH_TAR=$(ls -1td sysbench*.tar.gz 2>/dev/null | grep ".tar" | head -n1)
+  SYSBENCH_TAR=$(ls -1td sysbench-*.tar.gz 2>/dev/null | grep ".tar" | head -n1)
   if [ ! -z $SYSBENCH_TAR ];then
     tar -xzf $SYSBENCH_TAR
-	SYSBENCH_SOURCE=$(ls -1td sysbench* 2>/dev/null | grep -v ".tar" | head -n1)
+	SYSBENCH_SOURCE=$(ls -1td sysbench-* 2>/dev/null | grep -v ".tar" | head -n1)
   else
     echo "Could not find sysbench binary tar ball. Terminating!"
 	exit 1
