@@ -45,6 +45,8 @@ if [ -z $PSBASE ]; then
     echo "Could not find Percona Server binary tar ball. Terminating!"
 	exit 1
   fi
+else
+  export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
 fi
 
 PSBASEDIR="${WORKDIR}/$PSBASE"
