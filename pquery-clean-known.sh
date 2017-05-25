@@ -34,7 +34,9 @@ if [ `ls ./*/*.sql 2>/dev/null | wc -l` -eq 0 ]; then
 fi
 
 if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
-  STRINGS_FILE=${SCRIPT_PWD}/known_bugs_pxc.strings
+  cat ${SCRIPT_PWD}/known_bugs.strings > /tmp/pquery_known_bugs
+  cat ${SCRIPT_PWD}/known_bugs_pxc.strings >> /tmp/pquery_known_bugs
+  STRINGS_FILE=/tmp/pquery_known_bugs
 else
   STRINGS_FILE=${SCRIPT_PWD}/known_bugs.strings
 fi
