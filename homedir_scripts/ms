@@ -1,0 +1,6 @@
+PAT=/sda/MS010217-mysql-5.7.17-linux-x86_64-debug
+cd ${PAT}
+vi start
+./setup
+cd ..
+./msi

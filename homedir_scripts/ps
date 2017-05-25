@@ -1,0 +1,6 @@
+PAT=/sda/PS040517-percona-server-5.7.17-13-linux-x86_64-debug
+cd ${PAT}
+vi start
+./setup
+cd ..
+./psi
