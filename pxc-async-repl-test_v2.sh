@@ -241,23 +241,21 @@ function async_rpl_test(){
 	DATABASES=$1
 	LOG_FILE=$2
     set_pxc_strict_mode DISABLED
-	pt-table-checksum S=/tmp/pxc1.sock,u=root -d $DATABASES --recursion-method cluster \
-     --no-check-binlog-format > $LOG_FILE 2>&1
+	pt-table-checksum S=/tmp/pxc1.sock,u=root -d $DATABASES --recursion-method cluster --no-check-binlog-format
     check_cmd $?
-    cat  $LOG_FILE
     set_pxc_strict_mode ENFORCING
   }
   
   function invoke_slave(){
     MASTER_SOCKET=$1
-	SLAVE_SCOKET=$2	
+	SLAVE_SOCKET=$2	
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=$MASTER_SOCKET -e"FLUSH LOGS"
     MASTER_LOG_FILE=`${PXC_BASEDIR}/bin/mysql -uroot --socket=$MASTER_SOCKET -Bse "show master logs" | awk '{print $1}' | tail -1`
 	MASTER_HOST_PORT=`${PXC_BASEDIR}/bin/mysql -uroot --socket=$MASTER_SOCKET -Bse "select @@port"`
     if [ "$MYEXTRA_CHECK" == "GTID" ]; then
-      ${PXC_BASEDIR}/bin/mysql -uroot --socket=$SLAVE_SCOKET -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$MASTER_HOST_PORT, MASTER_USER='root', MASTER_AUTO_POSITION=1;START SLAVE;"
+      ${PXC_BASEDIR}/bin/mysql -uroot --socket=$SLAVE_SOCKET -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$MASTER_HOST_PORT, MASTER_USER='root', MASTER_AUTO_POSITION=1;START SLAVE;"
     else
-      ${PXC_BASEDIR}/bin/mysql -uroot --socket=$SLAVE_SCOKET -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$MASTER_HOST_PORT, MASTER_USER='root', MASTER_LOG_FILE='$MASTER_LOG_FILE', MASTER_LOG_POS=4;START SLAVE;"
+      ${PXC_BASEDIR}/bin/mysql -uroot --socket=$SLAVE_SOCKET -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$MASTER_HOST_PORT, MASTER_USER='root', MASTER_LOG_FILE='$MASTER_LOG_FILE', MASTER_LOG_POS=4;START SLAVE;"
     fi
   }	
   
@@ -283,6 +281,8 @@ function async_rpl_test(){
 	SOCKET_FILE=$1
 	SLAVE_STATUS=$2
 	ERROR_LOG=$3
+	SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+	COUNTER=0
     while [ $SB_MASTER -gt 0 ]; do
       SB_MASTER=`${PXC_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
@@ -290,7 +290,12 @@ function async_rpl_test(){
         echoit "Slave is not started yet. Please check error log and slave status : $WORKDIR/logs/psnode1.err,  $WORKDIR/logs/slave_status_psnode1.log"
         exit 1
       fi
+	  let COUNTER=COUNTER+1
       sleep 5
+	  if [ $COUNTER -eq 300 ]; then
+	    echoit "WARNING! Seems slave second behind master is not moving forward, skipping slave sync status check"
+		break
+	  fi
     done
   }
 
@@ -298,18 +303,18 @@ function async_rpl_test(){
     MASTER_DB=$1
 	SLAVE_DB=$2
     MASTER_SOCKET=$3
-	SLAVE_SCOKET=$4   
+	SLAVE_SOCKET=$4   
     #OLTP RW run on master
 	echoit "OLTP RW run on master (Database: $MASTER_DB)"
     sysbench_run oltp $MASTER_DB
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$MASTER_SOCKET run  > $WORKDIR/logs/sysbench_master_rw.log 2>&1 &
-    check_cmd $? "Failed to execute sysbench oltp read/write run on master ($MASTER_SOCKET)" 
+    #check_cmd $? "Failed to execute sysbench oltp read/write run on master ($MASTER_SOCKET)" 
 	
 	#OLTP RW run on slave
 	echoit "OLTP RW run on slave (Database: $SLAVE_DB)"
     sysbench_run oltp $SLAVE_DB
-    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SLAVE_SCOKET run  > $WORKDIR/logs/sysbench_slave_rw.log 2>&1 
-    check_cmd $? "Failed to execute sysbench oltp read/write run on slave($SLAVE_SCOKET)"  
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SLAVE_SOCKET run  > $WORKDIR/logs/sysbench_slave_rw.log 2>&1 
+    #check_cmd $? "Failed to execute sysbench oltp read/write run on slave($SLAVE_SOCKET)"  
   }
   
   function async_sysbench_load(){
@@ -375,7 +380,7 @@ function async_rpl_test(){
     echoit "********************$MYEXTRA_CHECK PXC-as-slave (node-1) from independent master ************************"
 	#PXC/PS server initialization
 	echoit "PXC/PS server initialization"
-	pxc_start
+	pxc_start "--slave_parallel_workers=2"
     ps_start
 	
 	invoke_slave "/tmp/ps1.sock" "/tmp/pxc1.sock"
@@ -393,6 +398,27 @@ function async_rpl_test(){
     echoit "Checking slave sync status"
     slave_sync_check "/tmp/pxc1.sock" "$WORKDIR/logs/slave_status_node1.log" "$WORKDIR/logs/node1.err"
     sleep 10
+	
+	PS_UUID=$(${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show global variables like 'gtid_executed'" | awk '{print $2}'  | cut -d":" -f1)
+    PXC_NODE1_UUID=$(${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -Bse "show global variables like 'gtid_executed'" | awk '{print $2}'  | cut -d":" -f1)
+	PXC_NODE2_UUID=$(${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -Bse "show global variables like 'gtid_executed'" | awk '{print $2}'  | cut -d":" -f1)
+	PXC_NODE3_UUID=$(${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc3.sock -Bse "show global variables like 'gtid_executed'" | awk '{print $2}'  | cut -d":" -f1)
+	
+    if [ "$MYEXTRA_CHECK" == "GTID" ]; then
+	  if [ "$PS_UUID" != "$PXC_NODE1_UUID" ];then
+	    echoit "ERROR! GTID consistency failed. PS master UUID is not matching with PXC node1 UUID. Terminating."
+		exit 1
+	  fi
+	  	  if [ "$PS_UUID" != "$PXC_NODE2_UUID" ];then
+	    echoit "ERROR! GTID consistency failed. PS master UUID is not matching with PXC node2 UUID. Terminating."
+		exit 1
+	  fi
+	  if [ "$PS_UUID" != "$PXC_NODE3_UUID" ];then
+	    echoit "ERROR! GTID consistency failed. PS master UUID is not matching with PXC node3 UUID. Terminating."
+		exit 1
+	  fi
+	fi  
+	  
 	echoit "3. pxc3. PXC-as-slave (node-1) from independent master: Checksum result."
 	run_pt_table_checksum "sbtest_ps_master" "$WORKDIR/logs/node1_slave_checksum.log"
     #Shutdown PXC/PS servers
@@ -529,15 +555,14 @@ function async_rpl_test(){
 }
 
 async_rpl_test
-
 async_rpl_test GTID
 
 #Shutdown PXC/PS servers
-'
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc3.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
+'
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
 $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
 '
