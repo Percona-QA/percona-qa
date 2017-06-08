@@ -284,7 +284,8 @@ pxc_startup(){
 pxc_startup
 check_script(){
   MPID=$1
-  if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
+  ERROR_MSG=$2
+  if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID}. Terminating!"; exit 1; fi
 }
 
 $BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
@@ -298,7 +299,7 @@ $BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id
 #Sysbench prepare run
 sysbench_run load_data pxc_test
 $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
-check_script $?
+check_script $? "Failed to run sysbench dataload"
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then
   echo "Sysbench run failed"
@@ -308,34 +309,34 @@ fi
 echo "Loading sakila test database"
 #$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
 $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
-check_script $?
+check_script $? "Failed to load sakila test database"
 
 echo "Loading world test database"
 $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
-check_script $?
+check_script $? "Failed to load world test datbase"
 
 echo "Loading employees database with innodb engine.."
 create_emp_db employee_1 innodb employees.sql
-check_script $?
+check_script $? "Failed to load employees database with innodb engine"
 
 echo "Loading employees partitioned database with innodb engine.."
 create_emp_db employee_2 innodb employees_partitioned.sql
-check_script $?
+check_script $? "Failed to load employees partitioned database with innodb engine"
 
 for i in {1..5}; do
   # Sysbench transaction run
   sysbench_run oltp pxc_test
-  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock run | grep tps > /dev/null 2>&1
-  check_script $?
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run.log
+  check_script $? "Failed to run sysbench read write run"
   # Run pt-table-checksum to analyze data consistency
   if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
     $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root -e "set global pxc_strict_mode=DISABLED" 
     pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d pxc_test,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
-    check_script $?
+    check_script $? "Failed to run pt-table-checksum"
     $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root -e "set global pxc_strict_mode=ENFORCING"
   else
     pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d pxc_test,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
-    check_script $?
+    check_script $? "Failed to run pt-table-checksum"
   fi
 done
 

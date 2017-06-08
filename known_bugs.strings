@@ -579,7 +579,9 @@ thd->is_error                                                                   
 .thd->lex->context_analysis_only                                ## Still present in 5.6 ## http://bugs.mysql.com/bug.php?id=74668 (Fixed in 5.7.6)
 thd->transaction.stmt.is_empty                                                          ## http://bugs.mysql.com/bug.php?id=74606 (old LP #1384620)
 thd == _current_thd                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1633988
+this_type .= Json_dom..J_ERROR                                                          ## https://bugs.mysql.com/bug.php?id=86470
 #timer == __null                                                               ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1370002
+.no_data.nbytes                                                                         ## https://bugs.mysql.com/bug.php?id=86471
 .tlen % 2                                                                               ## http://bugs.mysql.com/bug.php?id=74221 (2nd comment)
 .tlen % 4                                                                               ## http://bugs.mysql.com/bug.php?id=74221 (3rd comment)
 #txn..state..TOKUTXN_LIVE                                                      ## Fixed ## http://tokutek.atlassian.net/browse/DB-769 (fixed in 5.6.23/Tk7.5.6)
@@ -766,6 +768,7 @@ ZN8Protocol13end_statementEv                                                    
 ZN9READ_INFO10read_fieldEv                                                              ## http://bugs.mysql.com/bug.php?id=77993 
 ZNK10MDL_ticket26has_stronger_or_equal_typeE13enum_mdl_type                             ## http://bugs.launchpad.net/percona-server/+bug/1444706
 ZNK10MDL_ticket28has_pending_conflicting_lockEv                                         ## http://bugs.launchpad.net/percona-server/+bug/1384570 and #74584 ?
+ZNK12Json_wrapper9to_stringEP6StringbPKc                                                ## https://bugs.mysql.com/bug.php?id=86472
 ZNK5Field7is_nullEx                                                                     ## http://bugs.launchpad.net/percona-server/+bug/1445833 - now DB-838
 ZNK5Field13column_formatEv                                                              ## http://bugs.launchpad.net/percona-server/+bug/1662055
 ZNK6String7charsetEv                                                                    ## http://bugs.mysql.com/bug.php?id=74578
