@@ -668,7 +668,7 @@ clean_clients(){
    exit 1
   fi
   #Shutdown all mysql client instances
-  for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
+  for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||' | uniq) ; do
     echo -e "Shutting down mysql instance (--socket=${i})" 
     ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
