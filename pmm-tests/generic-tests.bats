@@ -61,10 +61,25 @@ run sudo pmm-admin check-network
 echo "$output"
     [ "$status" -eq 0 ]
     [ "${lines[0]}" = "PMM Network Status" ]
-    [ "${lines[11]}" = "Consul API           OK           " ]
-    [ "${lines[12]}" = "Prometheus API       OK           " ]
-    [ "${lines[13]}" = "Query Analytics API  OK           "  ]
+    [ "${lines[14]}" = "Consul API           OK           " ]
+    [ "${lines[15]}" = "Prometheus API       OK           " ]
+    [ "${lines[16]}" = "Query Analytics API  OK           "  ]
 }
+
+@test "run pmm-admin check-network System Time" {
+run sudo pmm-admin check-network
+echo "$output"
+    [ "$status" -eq 0 ]
+    [ "${lines[0]}" = "PMM Network Status" ]
+    NTP_SERVER="$(echo ${lines[4]} | grep -o '|.*+' | sed 's/^| //;s/:[^:]\++//')"
+    PMM_SERVER="$(echo ${lines[5]} | grep -o '|.*+' | sed 's/^| //;s/:[^:]\++//')"
+    PMM_CLIENT="$(echo ${lines[6]} | grep -o '|.*+' | sed 's/^| //;s/:[^:]\++//')"
+    #[[ "$NTP_SERVER" = "$PMM_CLIENT" ]]
+    # For now checking only PMM_SERVER and PMM_CLIENT
+    [[ "$PMM_SERVER" = "$PMM_CLIENT" ]]
+		[[ "$NTP_SERVER" = "$PMM_SERVER" ]]
+}
+
 
 @test "run pmm-admin list to check for available services" {
 run sudo pmm-admin list

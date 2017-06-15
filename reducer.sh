@@ -45,9 +45,9 @@ PQUERY_MULTI=0                  # On/off (1/0) Enables true multi-threaded testc
 # === Reduce startup issues     # Reduces startup issues. This will only work if a clean start (mysqld --no-defaults) works correctly; otherwise template creation will fail also
 REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce mysqld startup issues (without SQL simplication), caused for example by a failing --option to mysqld
 
-# === Reduce GLIBC crashes      # Remember that if you use REDUCE_GLIBC_CRASHES=1 with MODE=3, then the console/typescript log is searched for TEXT, not the mysqld error log
-REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. MODE=3 (set TEXT) and MODE=4 (all) supported
-SCRIPT_LOC=/usr/bin/script      # Script binary (sudo yum install util-linux), which is required when/for reducing GLIBC crashes
+# === Reduce GLIBC/SS crashes   # Remember that if you use REDUCE_GLIBC_OR_SS_CRASHES=1 with MODE=3, then the console/typescript log is searched for TEXT, not the mysqld error log
+REDUCE_GLIBC_OR_SS_CRASHES=0    # Default/normal use: 0. Set to 1 to reduce testcase based on a GLIBC crash or stack smash being detected. MODE=3 (TEXT) and MODE=4 (all) supported
+SCRIPT_LOC=/usr/bin/script      # The script binary (sudo yum install util-linux) is required for reducing GLIBC crashes
 
 # === Hang issues               # For catching hang issues (both in normal runtime as well as during shutdown). Must set MODE=0 for this option to become active
 TIMEOUT_CHECK=600               # When MODE=0 is used, this specifies the nr of seconds to be used as a timeout. Do not set too small (eg. >600 sec). See examples in help below.
@@ -119,8 +119,8 @@ TS_VARIABILITY_SLEEP=1
 #   - MODE=0: Timeout testing (server hangs, shutdown issues, excessive command duration etc.) (set TIMEOUT_CHECK)
 #   - MODE=1: Valgrind output testing (set TEXT)
 #   - MODE=2: mysql CLI (Command Line Interface, i.e. the mysql client)/pquery client output testing (set TEXT) 
-#   - MODE=3: mysqld error output log or console/typescript log (when REDUCE_GLIBC_CRASHES=1) testing (set TEXT)
-#   - MODE=4: Crash or GLIBC crash (when REDUCE_GLIBC_CRASHES=1) testing
+#   - MODE=3: mysqld error output log or console/typescript log (when REDUCE_GLIBC_OR_SS_CRASHES=1) testing (set TEXT)
+#   - MODE=4: Crash or GLIBC crash (when REDUCE_GLIBC_OR_SS_CRASHES=1) testing
 #   - MODE=5 [BETA]: MTR testcase reduction (set TEXT) (Can also be used for multi-occurence CLI output testing - see MODE5_COUNTTEXT)
 #   - MODE=6 [ALPHA]: Multi threaded (ThreadSync) Valgrind output testing (set TEXT)
 #   - MODE=7 [ALPHA]: Multi threaded (ThreadSync) mysql CLI/pquery client output testing (set TEXT)
@@ -357,9 +357,9 @@ TS_VARIABILITY_SLEEP=1
 # * http://stackoverflow.com/questions/4616061/glibc-backtrace-cant-redirect-output-to-file
 # * http://stackoverflow.com/questions/4290336/how-to-redirect-runtime-errors-to-stderr
 # * https://sourceware.org/git/?p=glibc.git;a=patch;h=1327439fc6ef182c3ab8c69a55d3bee15b3c62a7
-if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
   if [ ! -r $SCRIPT_LOC ]; then
-    echo "Error: REDUCE_GLIBC_CRASHES is activated, which requires the 'script' binary (part of the util-linux package), but this binary could not be found at $SCRIPT_LOC"
+    echo "Error: REDUCE_GLIBC_OR_SS_CRASHES is activated, which requires the 'script' binary (part of the util-linux package), but this binary could not be found at $SCRIPT_LOC"
     echo "Please install it and/or set the correct path/binary name using the SCRIPT_LOC variable."
     echo "Terminating now."
     exit 1
@@ -696,13 +696,13 @@ options_check(){
       echo_out "Warning: PQUERY_MULTI active, and PQUERY_MULTI_CLIENT_THREADS is set to $PQUERY_MULTI_CLIENT_THREADS, $PQUERY_MULTI_CLIENT_THREADS threads for reproducing a multi-threaded issue via random replay seems insufficient. You may want to increase PQUERY_MULTI_CLIENT_THREADS. Proceeding, but this is likely incorrect. Please check"
     fi
   fi
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-    export -n MULTI_THREADS=1            # Likely not needed, because MULTI mode should never become active for REDUCE_GLIBC_CRASHES=1 (and there is a matching assert), 
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
+    export -n MULTI_THREADS=1            # Likely not needed, because MULTI mode should never become active for REDUCE_GLIBC_OR_SS_CRASHES=1 (and there is a matching assert), 
     export -n MULTI_THREADS_INCREASE=0   # so it is here as a safety measure only FTM.
     export -n SLOW_DOWN_CHUNK_SCALING=1
     export -n SKIPV=1
     if [ $MODE -ne 3 -a $MODE -ne 4 ]; then
-      echo "REDUCE_GLIBC_CRASHES is active, and MODE is set to MODE=$MODE, which is not supported (yet). Currently only modes 3 and 4 are supported when reducing GLIBC crashes"
+      echo "REDUCE_GLIBC_OR_SS_CRASHES is active, and MODE is set to MODE=$MODE, which is not supported (yet). Currently only modes 3 and 4 are supported when reducing GLIBC crashes"
       echo "Terminating now."
       exit 1
     fi
@@ -795,8 +795,8 @@ multi_reducer(){
   # thereby telling reducer it is a child process)
   # This function does not need to know if reducer is reducing a single or multi-threaded testcase and what MODE is used as all these options are passed
   # verbatim to the child ($1 to the program is $1 to the child, and all ather settings are copied into the child process below)
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-    echo_out "ASSERT: REDUCE_GLIBC_CRASHES is active, and we ended up in multi_reducer() function. This should not be possible as REDUCE_GLIBC_CRASHES uses a single thread only."
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
+    echo_out "ASSERT: REDUCE_GLIBC_OR_SS_CRASHES is active, and we ended up in multi_reducer() function. This should not be possible as REDUCE_GLIBC_OR_SS_CRASHES uses a single thread only."
   fi
   if [ "$STAGE" = "V" ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Starting $MULTI_THREADS verification subreducer threads to verify if the issue is sporadic ($WORKD/subreducer/)"
@@ -1151,7 +1151,7 @@ init_workdir_and_files(){
   touch $WORKD/reducer.log
   echo_out "[Init] Workdir: $WORKD"
   export TMP=$WORKD/tmp
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then echo_out "[Init] Console typescript log for REDUCE_GLIBC_CRASHES: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then echo_out "[Init] Console typescript log for REDUCE_GLIBC_OR_SS_CRASHES: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
   echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
   # jemalloc configuration for TokuDB plugin
   JE1="if [ \"\${JEMALLOC}\" != \"\" -a -r \"\${JEMALLOC}\" ]; then export LD_PRELOAD=\${JEMALLOC}"
@@ -1202,7 +1202,7 @@ init_workdir_and_files(){
     echo_out "[Init] Group Replication Node #3 Client: $BASEDIR/bin/mysql -uroot -S${node3}/node3_socket.sock"
   else
     echo_out "[Init] Server: ${BIN} (as $MYUSER)"
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
       echo_out "[Init] Client: $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock"
     else
       echo_out "[Init] Client (When MULTI mode is not active): $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock"
@@ -1237,20 +1237,20 @@ init_workdir_and_files(){
     fi
   fi
   if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active, so FORCE_SPORADIC is automatically set active also" ; fi
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
     if [ $FORCE_SKIPV -gt 0 ]; then 
-      echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often (this happens irrespective of FORCE_SKIPV=1)"
+      echo_out "[Init] REDUCE_GLIBC_OR_SS_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often (this happens irrespective of FORCE_SKIPV=1)"
     else
-      echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often"
+      echo_out "[Init] REDUCE_GLIBC_OR_SS_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often"
     fi
-    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically set SLOW_DOWN_CHUNK_SCALING=1 to slow down chunk size scaling (both for chunk reductions and increases)"
+    echo_out "[Init] REDUCE_GLIBC_OR_SS_CRASHES active, so automatically set SLOW_DOWN_CHUNK_SCALING=1 to slow down chunk size scaling (both for chunk reductions and increases)"
     if [ $FORCE_SPORADIC -gt 0 ]; then
       echo_out "[Info] FORCE_SPORADIC active, issue is assumed to be sporadic"
       echo_out "[Init] FORCE_SPORADIC active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
     fi
     if [ $MODE -eq 3 ]; then
       echo_out "[WARNING] ---------------------"
-      echo_out "[WARNING] REDUCE_GLIBC_CRASHES active and MODE=3. Have you updated the TEXT=\"...\" to a search string matching the console (on-screen) output of a GLIBC crash instead of using some text from the error log (which is not scanned now)? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***. For the TEXT search string, do not use the hex address but instead, for example, 'corrupted double-linked list', or a specfic frame from the stack trace which is normally shown below this intro line. Alternatively, set MODE=4 to look for any GLIBC crash. If this reducer.sh was generated by pquery-prep-red.sh, then note that TEXT would have been automatically set to content from the error log, or to a more generic MODE=4, but neither of these will reduce for GLIBC crashes. Instead, set the TEXT string to a GLIBC specific string as described"
+      echo_out "[WARNING] REDUCE_GLIBC_OR_SS_CRASHES active and MODE=3. Have you updated the TEXT=\"...\" to a search string matching the console (on-screen) output of a GLIBC crash instead of using some text from the error log (which is not scanned now)? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***. For the TEXT search string, do not use the hex address but instead, for example, 'corrupted double-linked list', or a specfic frame from the stack trace which is normally shown below this intro line. Note that the message can also look like this (on Ubuntu); *** stack smashing detected ***: /your_basedir/bin/mysqld terminated. The best way to find out what the message is on your system is to run reducer first normally (without REDUCE_GLIBC_OR_SS_CRASHES set, and check what the output is. Alternatively, set MODE=4 to look for any GLIBC crash. If this reducer.sh was generated by pquery-prep-red.sh, then note that TEXT would have been automatically set to content from the error log, or to a more generic MODE=4, but neither of these will reduce for GLIBC crashes (is MODE=3 this is because the error log is not scanned, and in MODE=4 this is because the GLIBC crash (or stack smash) may be offset/different from any crash in the error log). Instead, set the TEXT string to a GLIBC specific string as described."
       echo_out "[WARNING] ---------------------"
     fi       
   else
@@ -1560,7 +1560,7 @@ init_mysql_dir(){
       cp -a $WORKD/../../data.init/* $WORKD/data/
     fi
   fi
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
     echo "" > /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log
   fi
 }
@@ -1851,7 +1851,7 @@ start_mysqld_main(){
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
-    if [ "${CHK_LOGBIN57}" == "1" ];then
+    if [ "${CHK_LOGBIN}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
@@ -1873,7 +1873,7 @@ start_mysqld_main(){
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
-    if [ "${CHK_LOGBIN57}" == "1" ];then
+    if [ "${CHK_LOGBIN}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
@@ -1886,9 +1886,12 @@ start_mysqld_main(){
     PIDV="$!"
   fi
   sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START
-#  sed -i "s#$BASEDIR#\$(cat $(echo $WORK_BASEDIR | sed 's|.*/|\${SCRIPT_DIR}/|'))#g" $WORK_START
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
-  sed -i "s|\.so\;|\.so\\\;|" $WORK_START
+  # RV 04/05/17: The following sed line is causing issues with RocksDB, like this;
+  # --plugin-load-add=RocksDB=ha_rocksdb.so\;rocksdb_cfstats=ha_rocksdb.so;rocks...
+  # The adding of a \ (and especially a single one?!) does not make any sense atm, but there was highly like a historical reason
+  # Disabling it for the moment. If any issues are seen, it can be reverted
+  # sed -i "s|\.so\;|\.so\\\;|" $WORK_START
   chmod +x $WORK_START
   for X in $(seq 1 120); do
     sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
@@ -2392,9 +2395,15 @@ process_outcome(){
     else
       ERRORLOG=$WORKD/error.log.out
     fi
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
       # A glibc crash looks similar to: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
       if egrep -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
+        if egrep -iq "$TEXT" /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
+          M3_ISSUE_FOUND=1
+        fi
+      fi
+      # Stack smashing looks similar to: *** stack smashing detected ***: /sda/Percona-Server-5.7.13-6-Linux.x86_64.ssl101/bin/mysqld terminated
+      if egrep -iq '*** stack smashing' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
         if egrep -iq "$TEXT" /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
           M3_ISSUE_FOUND=1
         fi
@@ -2453,16 +2462,20 @@ process_outcome(){
         if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
     else
-      if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+      if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
         # A glibc crash looks similar to: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
         if egrep -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
+          M4_ISSUE_FOUND=1
+        fi
+        # Stack smashing looks similar to: *** stack smashing detected ***: /sda/Percona-Server-5.7.13-6-Linux.x86_64.ssl101/bin/mysqld terminated
+        if egrep -iq '*** stack smashing' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
           M4_ISSUE_FOUND=1
         fi
       else
         if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
     fi
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
       M4_OUTPUT_TEXT="GlibcCrash"
     else
       M4_OUTPUT_TEXT="Crash"
@@ -2672,7 +2685,7 @@ finish(){
       if [ "${CHK_ROCKSDB}" == "1" ];then
         MYEXTRA="$MYEXTRA ${MYROCKS}"
       fi
-      if [ "${CHK_LOGBIN57}" == "1" ];then
+      if [ "${CHK_LOGBIN}" == "1" ];then
         MYEXTRA="$MYEXTRA --server-id=100"
       fi
       if [ "${CHK_TOKUDB}" == "1" ];then
@@ -3047,15 +3060,15 @@ verify(){
     if [ "$MODE5_ADDITIONAL_TEXT" != "" -a $MODE5_ADDITIONAL_COUNTTEXT -ge 1 ]; then 
                            echo_out "[Init] Looking additionally for "$MODE5_ADDITIONAL_COUNTTEXT"x this string: '$MODE5_ADDITIONAL_TEXT' in mysql CLI verbose output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi; fi
   if [ $MODE -eq 4 ]; then 
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
                            echo_out "[Init] Run mode: MODE=4: GLIBC crash"
                            echo_out "[Init] Looking for any GLIBC crash"; 
     else
                            echo_out "[Init] Run mode: MODE=4: Crash"
                            echo_out "[Init] Looking for any mysqld crash"; fi; fi
   if [ $MODE -eq 3 ]; then
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-                           echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_CRASHES=1: console typscript log"
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
+                           echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_OR_SS_CRASHES=1: console typscript log"
                            echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)";
     elif [ $USE_TEXT_STRING -gt 0 ]; then
                            echo_out "[Init] Run mode: MODE=3 with USE_TEXT_STRING=1: text_string.sh against mysqld error log"   
@@ -3195,13 +3208,13 @@ if [ $SKIPSTAGEBELOW -lt 1 -a $SKIPSTAGEABOVE -gt 1 ]; then
   NEXTACTION="& try removing next random line(set)"
   STAGE=1
   TRIAL=1
-  if [ $LINECOUNTF -ge $STAGE1_LINES -o $PQUERY_MULTI -gt 0 -o $FORCE_SKIPV -gt 0 -o $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+  if [ $LINECOUNTF -ge $STAGE1_LINES -o $PQUERY_MULTI -gt 0 -o $FORCE_SKIPV -gt 0 -o $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE (duration depends on initial input file size)"
     while [ $LINECOUNTF -ge $STAGE1_LINES ]; do 
       if [ $LINECOUNTF -eq $STAGE1_LINES  ]; then NEXTACTION="& Progress to the next stage"; fi
       if [ $TRIAL -gt 1 ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining number of lines in input file: $LINECOUNTF"; fi 
-      if [ "$MULTI_REDUCER" != "1" -a $SPORADIC -eq 1 -a $REDUCE_GLIBC_CRASHES -le 0 ]; then  
-        # This is the parent/main reducer AND the issue is sporadic (so; need to use multiple threads). Disabled for REDUCE_GLIBC_CRASHES as it is always single-threaded
+      if [ "$MULTI_REDUCER" != "1" -a $SPORADIC -eq 1 -a $REDUCE_GLIBC_OR_SS_CRASHES -le 0 ]; then  
+        # This is the parent/main reducer AND the issue is sporadic (so; need to use multiple threads). Disabled for REDUCE_GLIBC_OR_SS_CRASHES as it is always single-threaded
         multi_reducer $WORKF  # $WORKT is not used by the main reducer in this case. The subreducer uses $WORKT it's own session however (in the else below) 
       else
         determine_chunk
@@ -3881,7 +3894,8 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 146 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 147 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 148 ]; then egrep --binary-files=text -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 149 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 149 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 150 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
@@ -3939,16 +3953,16 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
 
   #binary log server-id startup option check with 5.7 version
   logbin_startup_chk(){
-    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+    if [[ ! "$(${BASEDIR}/bin/mysqld --version | egrep -oe '5\.[567]|8\.[0]' | head -n1)" =~ ^5.[56]$ ]]; then
       if echo "${MYEXTRA}" | grep '\--log-bin'; then
         if ! echo "${MYEXTRA}" | grep '\--server-id'; then
-          CHK_LOGBIN57=1
+          CHK_LOGBIN=1
         else
-          CHK_LOGBIN57=0
+          CHK_LOGBIN=0
         fi
       fi
     else
-      CHK_LOGBIN57=0
+      CHK_LOGBIN=0
     fi
   }
   

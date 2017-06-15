@@ -68,12 +68,10 @@ sudo yum remove abrt  # abrt: see redhat solution 61536 linked below in core fil
 sudo yum remove pulseaudio*  # Only do this on servers, to avoid writing of pulse* files into /dev/shm. Best to leave on workstations (for audio)
 
 # Apt-get equivalent
-#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc \
-#     libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git \
-#     linux-headers-generic g++ ncurses-dev libncurses-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev \
-#     libdbd-mysql libtime-hires-perl libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 \
-#     libreadline6 libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator \
-#     libpam0g-dev
+# Ubuntu 16.10
+#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ ncurses-dev libncurses-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libtime-hires-perl libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline6 libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev
+# Ubuntu 17.04
+#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libperl5.24 libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline-dev libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev
 
 # Bash Profile
 if [ -z "$(cat ~/.bash_profile|grep 'pshugD')" ]; then 

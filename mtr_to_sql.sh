@@ -36,9 +36,15 @@ echoit(){
 
 if [ ! -r ${TESTS_PATH}/t/1st.test ]; then
   if [ ! -r ${TESTS_PATH}/mysql-test/t/1st.test ]; then
-    echoit "Assert: this script cannot locate/read ${TESTS_PATH}/t/1st.test"
-    echoit "You may want to check the TESTS_PATH setting at the top of this script (currently set to '${TESTS_PATH}')"
-    exit 1
+    if [ ! -r ./mysql-test/t/1st.test ]; then
+      echoit "Assert: this script cannot locate/read ${TESTS_PATH}/t/1st.test"
+      echoit "You may want to check the TESTS_PATH setting at the top of this script (currently set to '${TESTS_PATH}')"
+      exit 1
+    else
+      echoit "Using the current path as the BASEDIR! This differs from the BASEDIR setting in the script, but that directory was not available!"
+      echoit "Found tests located at ${PWD}/mysql-test..."
+      TESTS_PATH="${PWD}/mysql-test"
+    fi
   else
     echoit "Found tests located at ${TESTS_PATH}/mysql-test..."
     TESTS_PATH="${TESTS_PATH}/mysql-test"

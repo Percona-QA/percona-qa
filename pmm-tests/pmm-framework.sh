@@ -17,6 +17,7 @@ SPASS=""
 OUSER="admin"
 OPASS="passw0rd"
 ADDR="127.0.0.1"
+download_link=0
 
 # User configurable variables
 IS_BATS_RUN=0
@@ -26,9 +27,17 @@ usage () {
   echo "Usage: [ options ]"
   echo "Options:"
     echo " --setup                   This will setup and configure a PMM server"
-    echo " --addclient=ps,2          Add Percona (ps), MySQL (ms), MariaDB (md), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
-    echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2"
-    echo " --mongo-with-rocksdb       This will start mongodb with rocksdb engine" 
+    echo " --addclient=ps,2          Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
+    echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
+    echo " --download                This will help us to download pmm client binary tar balls"
+    echo " --ps-version              Pass Percona Server version info"
+    echo " --ms-version              Pass MySQL Server version info"
+    echo " --md-version              Pass MariaDB Server version info"
+    echo " --pxc-version             Pass Percona XtraDB Cluster version info"
+    echo " --mo-version              Pass MongoDB Server version info"
+    echo " --mongo-with-rocksdb      This will start mongodb with rocksdb engine" 
+	echo " --replcount               You can configure multiple mongodb replica sets with this oprion"
+	echo " --with-replica            This will configure mongodb replica set"
     echo " --add-docker-client       Add docker pmm-clients with percona server to the currently live PMM server" 
     echo " --list                    List all client information as obtained from pmm-admin"
     echo " --wipe-clients            This will stop all client instances and remove all clients from pmm-admin"
@@ -43,7 +52,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,pmm-server-username:,pmm-server-password::,setup,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server-username:,pmm-server-password::,setup,with-replica,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -62,9 +71,41 @@ do
     ADDCLIENT+=("$2")
     shift 2
     ;;
-    --mongo-with-rocksdb )
+	--replcount )
+	REPLCOUNT="$2"
+	shift 2
+    ;;
+    --with-replica )
     shift
-    mongo_with_rocksdb=1
+    with_replica=1
+    ;;
+    --download )
+    shift
+    download_link=1
+    ;;
+    --ps-version )
+    ps_version="$2"
+    shift 2
+    ;;
+    --ms-version )
+    ms_version="$2"
+    shift 2
+    ;;
+    --md-version )
+    md_version="$2"
+    shift 2
+    ;;
+    --pxc-version )
+    pxc_version="$2"
+    shift 2
+    ;;
+    --mo-version )
+    mo_version="$2"
+    shift 2
+    ;;
+    --mongo-storage-engine )
+    shift
+    mongo_storage_engine="--storageEngine  $2"
     ;;   
     --add-docker-client )
     shift
@@ -140,6 +181,13 @@ sanity_check(){
     exit 1
   fi
 }
+
+if [[ -z "${ps_version}" ]]; then ps_version="5.7"; fi
+if [[ -z "${pxc_version}" ]]; then pxc_version="5.7"; fi
+if [[ -z "${ms_version}" ]]; then ms_version="5.7"; fi
+if [[ -z "${md_version}" ]]; then md_version="10.1"; fi
+if [[ -z "${mo_version}" ]]; then mo_version="3.4"; fi
+if [[ -z "${REPLCOUNT}" ]]; then REPLCOUNT="1"; fi
 
 setup(){
   if [ $IS_BATS_RUN -eq 0 ];then
@@ -293,6 +341,62 @@ setup(){
   echo -e "******************************************************************"
 }
 
+#Get PMM client basedir.
+get_basedir(){
+  PRODUCT_NAME=$1
+  SERVER_STRING=$2
+  CLIENT_MSG=$3
+  VERSION=$4
+  if cat /etc/os-release | grep rhel >/dev/null ; then
+   DISTRUBUTION=centos
+  fi
+  if [ $download_link -eq 1 ]; then
+    if [ -f $SCRIPT_PWD/../get_download_link.sh ]; then
+      LINK=`$SCRIPT_PWD/../get_download_link.sh --product=${PRODUCT_NAME} --distribution=$DISTRUBUTION --version=$VERSION`
+      echo "Downloading $CLIENT_MSG(Version : $VERSION)"
+      wget $LINK 2>/dev/null
+      BASEDIR=$(ls -1td $SERVER_STRING 2>/dev/null | grep -v ".tar" | head -n1)
+      if [ -z $BASEDIR ]; then
+        BASE_TAR=$(ls -1td $SERVER_STRING 2>/dev/null | grep ".tar" | head -n1)
+        if [ ! -z $BASE_TAR ];then
+          tar -xzf $BASE_TAR
+          BASEDIR=$(ls -1td $SERVER_STRING 2>/dev/null | grep -v ".tar" | head -n1)
+          BASEDIR="$WORKDIR/$BASEDIR"
+          rm -rf $BASEDIR/node*
+        else
+          echo "ERROR! $CLIENT_MSG(this script looked for '$SERVER_STRING') does not exist. Terminating."
+          exit 1
+        fi
+      else
+        BASEDIR="$WORKDIR/$BASEDIR"
+      fi
+    else
+      echo "ERROR! $SCRIPT_PWD/../get_download_link.sh does not exist. Terminating."
+      exit 1
+    fi
+  else
+    BASEDIR=$(ls -1td $SERVER_STRING 2>/dev/null | grep -v ".tar" | head -n1)
+    if [ -z $BASEDIR ]; then
+      BASE_TAR=$(ls -1td $SERVER_STRING 2>/dev/null | grep ".tar" | head -n1)
+      if [ ! -z $BASE_TAR ];then
+        tar -xzf $BASE_TAR
+        BASEDIR=$(ls -1td $SERVER_STRING 2>/dev/null | grep -v ".tar" | head -n1)
+        BASEDIR="$WORKDIR/$BASEDIR"
+        if [[ "${CLIENT_NAME}" == "mo" ]]; then
+          sudo rm -rf $BASEDIR/data
+        else
+          rm -rf $BASEDIR/node*
+        fi
+      else
+        echo "ERROR! $CLIENT_MSG(this script looked for '$SERVER_STRING') does not exist. Terminating."
+        exit 1
+      fi
+    else
+      BASEDIR="$WORKDIR/$BASEDIR"
+    fi
+  fi
+}
+
 #Percona Server configuration.
 add_clients(){
   mkdir -p $WORKDIR/logs
@@ -301,57 +405,15 @@ add_clients(){
     if [[ "${CLIENT_NAME}" == "ps" ]]; then
       PORT_CHECK=101
       NODE_NAME="PS_NODE"
-      BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
-      if [ -z $BASEDIR ]; then
-        BASE_TAR=$(ls -1td ?ercona-?erver-5.* | grep ".tar" | head -n1)
-        if [ ! -z $BASE_TAR ];then
-          tar -xzf $BASE_TAR
-          BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
-          BASEDIR="$WORKDIR/$BASEDIR"
-          rm -rf $BASEDIR/node*
-        else
-          echo "ERROR! Percona Server binary tar ball does not exist. Terminating."
-          exit 1
-        fi
-      else
-        BASEDIR="$WORKDIR/$BASEDIR"
-      fi
+      get_basedir ps "[Pp]ercona-[Ss]erver-${ps_version}*" "Percona Server binary tar ball" ${ps_version}
     elif [[ "${CLIENT_NAME}" == "ms" ]]; then
       PORT_CHECK=201
       NODE_NAME="MS_NODE"
-      BASEDIR=$(ls -1td mysql-5.* | grep -v ".tar" | head -n1)
-      if [ -z $BASEDIR ]; then
-        BASE_TAR=$(ls -1td mysql-5.* | grep ".tar" | head -n1)
-        if [ ! -z $BASE_TAR ];then
-          tar -xzf $BASE_TAR
-          BASEDIR=$(ls -1td mysql-5.* | grep -v ".tar" | head -n1)
-          BASEDIR="$WORKDIR/$BASEDIR"
-          rm -rf $BASEDIR/node*
-        else
-          echo "ERROR! MySQL Server binary tar ball does not exist. Terminating."
-          exit 1
-        fi
-      else
-        BASEDIR="$WORKDIR/$BASEDIR"
-      fi
+      get_basedir mysql "mysql-${ms_version}*" "MySQL Server binary tar ball" ${ms_version}
     elif [[ "${CLIENT_NAME}" == "md" ]]; then
       PORT_CHECK=301
       NODE_NAME="MD_NODE"
-      BASEDIR=$(ls -1td mariadb-* | grep -v ".tar" | head -n1)
-      if [ -z $BASEDIR ]; then
-        BASE_TAR=$(ls -1td mariadb-* | grep ".tar" | head -n1)
-        if [ ! -z $BASE_TAR ];then
-          tar -xzf $BASE_TAR
-          BASEDIR=$(ls -1td mariadb-* | grep -v ".tar" | head -n1)
-          BASEDIR="$WORKDIR/$BASEDIR"
-          rm -rf $BASEDIR/node*
-        else
-          echo "ERROR! MariaDB binary tar ball does not exist. Terminating."
-          exit 1
-        fi
-      else
-        BASEDIR="$WORKDIR/$BASEDIR"
-      fi
+      get_basedir mariadb "mariadb-${md_version}*" "MariaDB Server binary tar ball" ${md_version}
     elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
       echo "[mysqld]" > my_pxc.cnf
       echo "innodb_autoinc_lock_mode=2" >> my_pxc.cnf
@@ -365,37 +427,9 @@ add_clients(){
       echo "wsrep_slave_threads=2" >> my_pxc.cnf
       PORT_CHECK=401
       NODE_NAME="PXC_NODE"
-      BASEDIR=$(ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1)
-      if [ -z $BASEDIR ]; then
-        BASE_TAR=$(ls -1td Percona-XtraDB-Cluster-5.* | grep ".tar" | head -n1)
-        if [ ! -z $BASE_TAR ];then
-          tar -xzf $BASE_TAR
-          BASEDIR=$(ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1)
-          BASEDIR="$WORKDIR/$BASEDIR"
-          rm -rf $BASEDIR/node*
-        else
-          echo "ERROR! Percona XtraDB Cluster binary tar ball does not exist. Terminating."
-          exit 1
-        fi
-      else
-        BASEDIR="$WORKDIR/$BASEDIR"
-      fi
+      get_basedir pxc "Percona-XtraDB-Cluster-${pxc_version}*" "Percona XtraDB Cluster binary tar ball" ${pxc_version}
     elif [[ "${CLIENT_NAME}" == "mo" ]]; then
-      BASEDIR=$(ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1)
-      if [ -z $BASEDIR ]; then
-        BASE_TAR=$(ls -1td percona-server-mongodb-* | grep ".tar" | head -n1)
-        if [ ! -z $BASE_TAR ];then
-          tar -xzf $BASE_TAR
-          BASEDIR=$(ls -1td percona-server-mongodb-* | grep -v ".tar" | head -n1)
-          BASEDIR="$WORKDIR/$BASEDIR"
-          sudo rm -rf $BASEDIR/data
-        else
-          echo "ERROR! Percona Server Mongodb binary tar ball does not exist. Terminating."
-          exit 1
-        fi
-      else
-        BASEDIR="$WORKDIR/$BASEDIR"
-      fi
+      get_basedir psmdb "percona-server-mongodb-${mo_version}*" "Percona Server Mongodb binary tar ball" ${mo_version}
     fi
     if [[ "${CLIENT_NAME}" != "md"  && "${CLIENT_NAME}" != "mo" ]]; then
       if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
@@ -411,27 +445,64 @@ add_clients(){
 
     ADDCLIENTS_COUNT=$(echo "${i}" | sed 's|[^0-9]||g')
     if  [[ "${CLIENT_NAME}" == "mo" ]]; then
-      PSMDB_PORT=27017
-      if [ ! -z $mongo_with_rocksdb ]; then
-        mkdir $BASEDIR/replset
+      sudo rm -rf $BASEDIR/data
+	  for k in `seq 1  ${REPLCOUNT}`;do
+		PSMDB_PORT=$(( (RANDOM%21 + 10) * 1001 ))
+		PSMDB_PORTS+=($PSMDB_PORT)
         for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
           PORT=$(( $PSMDB_PORT + $j - 1 ))
-          sudo mkdir -p ${BASEDIR}/data/db$j
-          sudo $BASEDIR/bin/mongod --storageEngine rocksdb --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
-          sleep 5
-          sudo pmm-admin add mongodb --cluster mongo_rocksdb_cluster  --uri localhost:$PORT mongodb_rocksdb_inst_${j}
+          sudo mkdir -p ${BASEDIR}/data/rpldb$k_$j
+          sudo $BASEDIR/bin/mongod $mongo_storage_engine  --replSet r$k --dbpath=$BASEDIR/data/rpldb$k_$j --logpath=$BASEDIR/data/rpldb$k_$j/mongod.log --port=$PORT --logappend --fork &
+          sleep 20
+          sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
         done
-      else
-        mkdir $BASEDIR/replset
-        for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
-          PORT=$(( $PSMDB_PORT + $j - 1 ))
-          sudo mkdir -p ${BASEDIR}/data/db$j
-          sudo $BASEDIR/bin/mongod --replSet replset --dbpath=$BASEDIR/data/db$j --logpath=$BASEDIR/data/db$j/mongod.log --port=$PORT --logappend --fork &
+      done
+      rm -rf /tmp/config_replset.js
+cat <<FOO >> /tmp/config_replset.js
+      port=parseInt(db.adminCommand("getCmdLineOpts").parsed.net.port)
+      port2=port+1;
+      port3=port+2;
+      conf = {
+      _id : replSet,
+      members: [
+        { _id:0 , host:"localhost:"+port,priority:10},
+        { _id:1 , host:"localhost:"+port2},
+        { _id:2 , host:"localhost:"+port3},
+        ]
+      };	
+
+      printjson(conf)
+      printjson(rs.initiate(conf));
+FOO
+      if [ "$with_replica" == "1" ]; then
+        for k in `seq 1  ${REPLCOUNT}`;do
+	      n=$(( $k - 1 ))
+		  echo "Configuring replcaset"
+          sudo $BASEDIR/bin/mongo --quiet --port ${PSMDB_PORTS[$n]} --eval "var replSet='r${k}'" "/tmp/config_replset.js" 
           sleep 5
-          sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$PORT mongodb_inst_${j}
-        done
-        #sudo pmm-admin add  mongodb:metrics
-      fi
+	    done
+	  fi
+	  
+	  if [ "$with_shrading" == "1" ]; then
+	    #config
+	    CONFIG_MONGOD_PORT=$(( (RANDOM%21 + 10) * 1001 ))
+		CONFIG_MONGOS_PORT=$(( (RANDOM%21 + 10) * 1001 ))
+		sudo mkdir -p $BASEDIR/data/confdb
+        sudo $BASEDIR/bin/mongod --configsvr --logpath $BASEDIR/data/confdb/config_mongo.log --dbpath=$BASEDIR/data/confdb --port $CONFIG_MONGOD_PORT &
+		sleep 10
+        sudo $BASEDIR/bin/mongos -configdb localhost:$CONFIG_MONGOD_PORT --port $CONFIG_MONGOS_PORT --logpath=$BASEDIR/data/confdb/config_mongos.log &
+		sleep 10
+	    sudo $BASEDIR/bin/mongo --quiet --eval "printjson(db.getSisterDB('admin').runCommand({addShard: 'r1/localhost:${PSMDB_PORTS[0]}'}))"
+		sleep 10
+		sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOD_PORT mongod_config_inst
+	    sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
+	    
+		#for k in `seq 1  ${REPLCOUNT}`;do
+	    #  n=$(( $k - 1 ))
+	    #  sudo $BASEDIR/bin/mongo --quiet --eval "printjson(db.getSisterDB('admin').runCommand({addShard: 'r${k}/localhost:${PSMDB_PORTS[$n]}'}))" 
+	    #done
+		
+	  fi
     else
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
         RBASE1="$(( RBASE + ( $PORT_CHECK * $j ) ))"
@@ -597,7 +668,7 @@ clean_clients(){
    exit 1
   fi
   #Shutdown all mysql client instances
-  for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
+  for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||' | uniq) ; do
     echo -e "Shutting down mysql instance (--socket=${i})" 
     ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2

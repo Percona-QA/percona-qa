@@ -34,15 +34,11 @@ if [ `ls ./*/*.sql 2>/dev/null | wc -l` -eq 0 ]; then
 fi
 
 if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
-  while read line; do
-    STRING="`echo "$line" | sed 's|[ \t]*##.*$||'`"
-    if [ "`echo "$STRING" | sed 's|^[ \t]*$||' | grep -v '^[ \t]*#'`" != "" ]; then
-      if [ `ls reducer[0-9]* 2>/dev/null | wc -l` -gt 0 ]; then
-        grep -li "${STRING}" reducer[0-9]* | sed 's/[^0-9.]*\([0-9.]*\).*/\1/' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
-      fi
-    fi
-    #sync; sleep 0.02  # Making sure that next line in file does not trigger same deletions
-  done < ${SCRIPT_PWD}/known_bugs_pxc.strings
+  cat ${SCRIPT_PWD}/known_bugs.strings > /tmp/pquery_known_bugs
+  cat ${SCRIPT_PWD}/known_bugs_pxc.strings >> /tmp/pquery_known_bugs
+  STRINGS_FILE=/tmp/pquery_known_bugs
+else
+  STRINGS_FILE=${SCRIPT_PWD}/known_bugs.strings
 fi
 
 while read line; do
@@ -57,7 +53,7 @@ while read line; do
     fi
   fi
   #sync; sleep 0.02  # Making sure that next line in file does not trigger same deletions
-done < ${SCRIPT_PWD}/known_bugs.strings
+done < ${STRINGS_FILE}
 
 # Other cleanups
 grep "CT NAME_CONST('a', -(1 [ANDOR]\+ 2)) [ANDOR]\+ 1" */log/master.err 2>/dev/null | sed 's|/.*||' | xargs -I{} ~/percona-qa/pquery-del-trial.sh {}  #http://bugs.mysql.com/bug.php?id=81407
