@@ -60,3 +60,17 @@ echo "$output"
   echo "${lines[0]}" | grep "OK, no system"
   echo "${lines[1]}" | grep "OK, removed"
 }
+
+@test "run pmm-admin add mongodb queries" {
+  run sudo pmm-admin add mongodb mongo-queries --dev-enable
+  [ "$status" -eq 0 ]
+  echo "${lines[0]}" | grep "OK, already"
+  echo "${lines[1]}" | grep "OK, now monitoring"
+}
+
+@test "run pmm-admin rm mongodb queries" {
+  run sudo pmm-admin rm mongodb mongo-queries --dev-enable
+  [ "$status" -eq 0 ]
+  echo "${lines[0]}" | grep "OK, no system"
+  echo "${lines[1]}" | grep "OK, removed"
+}
