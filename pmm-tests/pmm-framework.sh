@@ -270,9 +270,7 @@ setup(){
     else
       if [ ! -z $dev ]; then
         PMM_CLIENT_TAR=$(lynx --dump https://www.percona.com/downloads/TESTING/pmm/ | grep -o pmm-client.*.tar.gz   | head -n1)
-       # wget https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
-       #### Workaround (must be fixed) *****
-        wget http://jenkins.percona.com/view/PMM/job/pmm-client-tarball/lastSuccessfulBuild/artifact/pmm-client-1.1.5.tar.gz
+        wget https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
         tar -xzf $PMM_CLIENT_TAR
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
