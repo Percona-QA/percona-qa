@@ -37,7 +37,8 @@ usage () {
     echo " --mo-version              Pass MongoDB Server version info"
     echo " --mongo-with-rocksdb      This will start mongodb with rocksdb engine" 
 	echo " --replcount               You can configure multiple mongodb replica sets with this oprion"
-	echo " --with-replica            This will configure mongodb replica set"
+	echo " --with-replica            This will configure mongodb replica setup"
+	echo " --with-shrading           This will configure mongodb shrading setup"
     echo " --add-docker-client       Add docker pmm-clients with percona server to the currently live PMM server" 
     echo " --list                    List all client information as obtained from pmm-admin"
     echo " --wipe-clients            This will stop all client instances and remove all clients from pmm-admin"
@@ -52,7 +53,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server-username:,pmm-server-password::,setup,with-replica,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -78,6 +79,10 @@ do
     --with-replica )
     shift
     with_replica=1
+    ;;
+    --with-shrading )
+    shift
+    with_shrading=1
     ;;
     --download )
     shift
@@ -168,6 +173,9 @@ do
   esac
 done
 
+if [[ "$with_shrading" == "1" ]];then
+  with_replica=1
+fi
 if [[ -z "$pmm_server_username" ]];then
   if [[ ! -z "$pmm_server_password" ]];then
     echo "ERROR! PMM Server web interface username is empty. Terminating"
@@ -270,9 +278,7 @@ setup(){
     else
       if [ ! -z $dev ]; then
         PMM_CLIENT_TAR=$(lynx --dump https://www.percona.com/downloads/TESTING/pmm/ | grep -o pmm-client.*.tar.gz   | head -n1)
-       # wget https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
-       #### Workaround (must be fixed) *****
-        wget http://jenkins.percona.com/view/PMM/job/pmm-client-tarball/lastSuccessfulBuild/artifact/pmm-client-1.1.5.tar.gz
+        wget https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
         tar -xzf $PMM_CLIENT_TAR
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
@@ -447,15 +453,15 @@ add_clients(){
 
     ADDCLIENTS_COUNT=$(echo "${i}" | sed 's|[^0-9]||g')
     if  [[ "${CLIENT_NAME}" == "mo" ]]; then
-      sudo rm -rf $BASEDIR/data
+      rm -rf $BASEDIR/data
 	  for k in `seq 1  ${REPLCOUNT}`;do
 		PSMDB_PORT=$(( (RANDOM%21 + 10) * 1001 ))
 		PSMDB_PORTS+=($PSMDB_PORT)
         for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
           PORT=$(( $PSMDB_PORT + $j - 1 ))
-          sudo mkdir -p ${BASEDIR}/data/rpldb$k_$j
-          sudo $BASEDIR/bin/mongod $mongo_storage_engine  --replSet r$k --dbpath=$BASEDIR/data/rpldb$k_$j --logpath=$BASEDIR/data/rpldb$k_$j/mongod.log --port=$PORT --logappend --fork &
-          sleep 20
+          mkdir -p ${BASEDIR}/data/rpldb${k}_${j}
+          $BASEDIR/bin/mongod $mongo_storage_engine  --replSet r${k} --dbpath=$BASEDIR/data/rpldb${k}_${j} --logpath=$BASEDIR/data/rpldb${k}_${j}/mongod.log --port=$PORT --logappend --fork &
+		  sleep 10
           sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
         done
       done
@@ -476,7 +482,7 @@ cat <<FOO >> /tmp/config_replset.js
       printjson(conf)
       printjson(rs.initiate(conf));
 FOO
-      if [ "$with_replica" == "1" ]; then
+      if [[ "$with_replica" == "1" ]]; then
         for k in `seq 1  ${REPLCOUNT}`;do
 	      n=$(( $k - 1 ))
 		  echo "Configuring replcaset"
@@ -485,25 +491,37 @@ FOO
 	    done
 	  fi
 	  
-	  if [ "$with_shrading" == "1" ]; then
-	    #config
+      if [[ "$with_shrading" == "1" ]]; then
+    	#config
 	    CONFIG_MONGOD_PORT=$(( (RANDOM%21 + 10) * 1001 ))
 		CONFIG_MONGOS_PORT=$(( (RANDOM%21 + 10) * 1001 ))
-		sudo mkdir -p $BASEDIR/data/confdb
-        sudo $BASEDIR/bin/mongod --configsvr --logpath $BASEDIR/data/confdb/config_mongo.log --dbpath=$BASEDIR/data/confdb --port $CONFIG_MONGOD_PORT &
-		sleep 10
-        sudo $BASEDIR/bin/mongos -configdb localhost:$CONFIG_MONGOD_PORT --port $CONFIG_MONGOS_PORT --logpath=$BASEDIR/data/confdb/config_mongos.log &
-		sleep 10
-	    sudo $BASEDIR/bin/mongo --quiet --eval "printjson(db.getSisterDB('admin').runCommand({addShard: 'r1/localhost:${PSMDB_PORTS[0]}'}))"
-		sleep 10
-		sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOD_PORT mongod_config_inst
-	    sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
-	    
-		#for k in `seq 1  ${REPLCOUNT}`;do
-	    #  n=$(( $k - 1 ))
-	    #  sudo $BASEDIR/bin/mongo --quiet --eval "printjson(db.getSisterDB('admin').runCommand({addShard: 'r${k}/localhost:${PSMDB_PORTS[$n]}'}))" 
-	    #done
+		for m in `seq 1 ${ADDCLIENTS_COUNT}`;do
+		  PORT=$(( $CONFIG_MONGOD_PORT + $m - 1 ))
+		  mkdir -p $BASEDIR/data/confdb${m}
+          $BASEDIR/bin/mongod --fork --logpath $BASEDIR/data/confdb${m}/config_mongo.log --dbpath=$BASEDIR/data/confdb${m} --port $PORT --configsvr --replSet config &
+		  sleep 10
+		  sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
+		  MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
+		done
 		
+		echo "Configuring replcaset"
+        $BASEDIR/bin/mongo --quiet --port ${CONFIG_MONGOD_PORT} --eval "var replSet='config'" "/tmp/config_replset.js" 
+        sleep 20
+	    
+		MONGOS_STARTUP_CMD="${MONGOS_STARTUP_CMD::-1}"
+		mkdir $BASEDIR/data/mongos
+		#Removing default mongodb socket file 
+		sudo rm -rf /tmp/mongodb-27017.sock
+		$BASEDIR/bin/mongos --fork --logpath $BASEDIR/data/mongos/mongos.log --configdb config/$MONGOS_STARTUP_CMD  &
+		sleep 5
+        sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOD_PORT mongod_config_inst
+	    sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
+        echo "Adding Shards"
+		sleep 20
+        for k in `seq 1  ${REPLCOUNT}`;do
+          n=$(( $k - 1 ))
+          $BASEDIR/bin/mongo --quiet --eval "printjson(db.getSisterDB('admin').runCommand({addShard: 'r${k}/localhost:${PSMDB_PORTS[$n]}'}))"
+        done
 	  fi
     else
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
@@ -536,7 +554,7 @@ FOO
         else
           MYEXTRA="--no-defaults"
         fi
-        ${BASEDIR}/bin/mysqld $MYEXTRA --max-connections=30000 --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+        ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
           --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
         function startup_chk(){
           for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
@@ -561,7 +579,7 @@ FOO
           if grep -q "TCP/IP port: Address already in use" $node/error.err; then
             echo "TCP/IP port: Address already in use, restarting ${NODE_NAME}_${j} mysqld daemon with different port"
             RBASE1="$(( RBASE1 - 1 ))"
-            ${BASEDIR}/bin/mysqld $MYEXTRA --max-connections=30000 --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+            ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
                --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
             startup_chk
             if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
@@ -677,6 +695,7 @@ clean_clients(){
   done
   #Kills mongodb processes 
   sudo killall mongod 2> /dev/null
+  sudo killall mongos 2> /dev/null
   sleep 5
   if sudo pmm-admin list | grep -q 'No services under monitoring' ; then
     echo -e "No services under pmm monitoring"
