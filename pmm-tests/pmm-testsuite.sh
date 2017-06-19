@@ -102,9 +102,11 @@ run_generic_tests
 if [[ $stress == "1" && $table_c != "0" && -z $table_size ]] ; then
   echo "WARN: Running stress tests; creating empty tables"
   run_create_table $instance_t $table_c
-else
+elif [[ $stress == "1" && $table_c != "0" && $table_size != "0" ]] ; then
   echo "WARN: Running stress tests; creating tables and inserting using sysbench"
   run_populate_table $instance_t $table_c $table_size
+else
+  echo "Skipping stress test!"
 fi
 
 
