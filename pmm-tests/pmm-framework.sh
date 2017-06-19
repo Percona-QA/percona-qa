@@ -72,13 +72,13 @@ do
     ADDCLIENT+=("$2")
     shift 2
     ;;
-	--replcount )
-	REPLCOUNT="$2"
-	shift 2
-    ;;
     --with-replica )
     shift
     with_replica=1
+    ;;
+	--replcount )
+	REPLCOUNT=$2
+	shift 2
     ;;
     --with-shrading )
     shift
@@ -465,23 +465,28 @@ add_clients(){
           sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
         done
       done
-      rm -rf /tmp/config_replset.js
-cat <<FOO >> /tmp/config_replset.js
-      port=parseInt(db.adminCommand("getCmdLineOpts").parsed.net.port)
-      port2=port+1;
-      port3=port+2;
-      conf = {
-      _id : replSet,
-      members: [
-        { _id:0 , host:"localhost:"+port,priority:10},
-        { _id:1 , host:"localhost:"+port2},
-        { _id:2 , host:"localhost:"+port3},
-        ]
-      };	
+	  create_replset_js(){
+	    REPLSET_COUNT=$(( ${ADDCLIENTS_COUNT} - 1 ))
+	    rm -rf /tmp/config_replset.js
+		echo "port=parseInt(db.adminCommand(\"getCmdLineOpts\").parsed.net.port)" >> /tmp/config_replset.js
+		for i in `seq 1  ${REPLSET_COUNT}`;do
+          echo "port${i}=port+${i};" >> /tmp/config_replset.js
+		done
+        echo "conf = {" >> /tmp/config_replset.js
+        echo "_id : replSet," >> /tmp/config_replset.js
+        echo "members: [" >> /tmp/config_replset.js
+        echo "  { _id:0 , host:\"localhost:\"+port,priority:10}," >> /tmp/config_replset.js
+		for i in `seq 1  ${REPLSET_COUNT}`;do
+          echo "  { _id:${i} , host:\"localhost:\"+port${i}}," >> /tmp/config_replset.js
+        done
+        echo "  ]" >> /tmp/config_replset.js
+        echo "};" >> /tmp/config_replset.js	
 
-      printjson(conf)
-      printjson(rs.initiate(conf));
-FOO
+        echo "printjson(conf)" >> /tmp/config_replset.js	
+        echo "printjson(rs.initiate(conf));" >> /tmp/config_replset.js	
+		
+	  }
+	  create_replset_js
       if [[ "$with_replica" == "1" ]]; then
         for k in `seq 1  ${REPLCOUNT}`;do
 	      n=$(( $k - 1 ))
