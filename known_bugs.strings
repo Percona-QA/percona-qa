@@ -592,7 +592,7 @@ Z10open_tableP3THDP10TABLE_LISTP18Open_table_context                            
 #Z17mysql_create_userP3THDR4ListI11st_lex_userE                                ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (old LP #1384651) (fixed in 5.6.24)
 #Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb ## Fixed ## http://bugs.mysql.com/bug.php?id=74615 (fixed in 5.6.24)
 #Z11open_tablesP3THDPP10TABLE_LISTPjjP19Prelocking_strategy                    ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1416956 (dup of 1387951)
-Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                          ## http://bugs.mysql.com/bug.php?id=83816
+#Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                ## Fixed ## http://bugs.mysql.com/bug.php?id=83816
 Z12find_filenumRKP2ftS2_                                                                ## http://tokutek.atlassian.net/browse/DB-837
 #Z12find_sys_varP3THDPKcj                                                               ## http://bugs.launchpad.net/percona-server/+bug/1415828 # Need new testcase
 Z12setup_tablesP3THDP23Name_resolution_contextP4ListI10TABLE_LISTEPS4_PS7_b             ## http://bugs.launchpad.net/percona-server/+bug/1435740
@@ -761,7 +761,7 @@ Z34set_field_to_null_with_conversionsP5Fieldb                                   
 Z17store_create_infoP3THDP10TABLE_LISTP6StringP24st_ha_create_informationb              ## http://bugs.mysql.com/bug.php?id=81446
 Z19create_schema_tableP3THDP10TABLE_LIST                                                ## http://bugs.mysql.com/bug.php?id=81446
 ZN10Item_field13save_in_fieldEP5Fieldb                                                  ## http://bugs.mysql.com/bug.php?id=81446
-ZN10Sort_param17init_for_filesortEjP5TABLEmyb                                           ## http://bugs.mysql.com/bug.php?id=84824
+#ZN10Sort_param17init_for_filesortEjP5TABLEmyb                                 ## Fixed ## http://bugs.mysql.com/bug.php?id=84824
 ZN8Item_int13save_in_fieldEP5Fieldb                                                     ## http://bugs.mysql.com/bug.php?id=81446
 ZN13Protocol_text5storeEP5Field                                                         ## http://bugs.mysql.com/bug.php?id=81446
 Z14servers_reloadP3THD                                                                  ## http://bugs.mysql.com/bug.php?id=81447
