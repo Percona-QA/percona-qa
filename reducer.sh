@@ -1851,7 +1851,7 @@ start_mysqld_main(){
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
-    if [ "${CHK_LOGBIN57}" == "1" ];then
+    if [ "${CHK_LOGBIN}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
@@ -1873,7 +1873,7 @@ start_mysqld_main(){
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
-    if [ "${CHK_LOGBIN57}" == "1" ];then
+    if [ "${CHK_LOGBIN}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
@@ -2685,7 +2685,7 @@ finish(){
       if [ "${CHK_ROCKSDB}" == "1" ];then
         MYEXTRA="$MYEXTRA ${MYROCKS}"
       fi
-      if [ "${CHK_LOGBIN57}" == "1" ];then
+      if [ "${CHK_LOGBIN}" == "1" ];then
         MYEXTRA="$MYEXTRA --server-id=100"
       fi
       if [ "${CHK_TOKUDB}" == "1" ];then
@@ -3894,7 +3894,8 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 146 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 147 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 148 ]; then egrep --binary-files=text -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 149 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 149 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 150 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
@@ -3952,16 +3953,16 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
 
   #binary log server-id startup option check with 5.7 version
   logbin_startup_chk(){
-    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+    if [[ ! "$(${BASEDIR}/bin/mysqld --version | egrep -oe '5\.[567]|8\.[0]' | head -n1)" =~ ^5.[56]$ ]]; then
       if echo "${MYEXTRA}" | grep '\--log-bin'; then
         if ! echo "${MYEXTRA}" | grep '\--server-id'; then
-          CHK_LOGBIN57=1
+          CHK_LOGBIN=1
         else
-          CHK_LOGBIN57=0
+          CHK_LOGBIN=0
         fi
       fi
     else
-      CHK_LOGBIN57=0
+      CHK_LOGBIN=0
     fi
   }
   

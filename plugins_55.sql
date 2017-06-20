@@ -7,3 +7,5 @@ CREATE FUNCTION fnv1a_64 RETURNS INTEGER SONAME 'libfnv1a_udf.so';
 CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'libfnv_udf.so';
 CREATE FUNCTION murmur_hash RETURNS INTEGER SONAME 'libmurmur_udf.so';
 INSTALL PLUGIN audit_log SONAME 'audit_log.so';
+# This file has odd syntax requirements, ref https://bugs.mysql.com/bug.php?id=86303
+# Do not have remark lines at the top or middle of this file, only at the end

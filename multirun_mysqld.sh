@@ -76,40 +76,28 @@ if [ ${TOKUDB_REQUIRED} -eq 1 ]; then
 fi
 
 echoit "Script work directory : ${WORKDIR}"
-# Get version specific options. MID=mysql_install_db. Copied from startup.sh, then updated to include correct binary or script to use depending on version
-MID_AND_OPT=""; START_OPT=""
-if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.7" ]; then
-  if [[ ! `${BIN}  --version | grep -oe '5\.[1567]\.[0-5]'` ]]; then
-    MID_AND_OPT="${BIN} --initialize-insecure"
-  else
-    MID_AND_OPT="${BIN} --insecure"
-  fi
-  START_OPT="--core-file"
-elif [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.6" ]; then
-  if [ -r ${MYBASE}/scripts/mysql_install_db ]; then
-    MID_AND_OPT="${MYBASE}/scripts/mysql_install_db --force --no-defaults"
-    START_OPT="--core-file"
-  else
-    echoit "Assert: mysqld version was detected as 5.6, yet ${MYBASE}/scripts/mysql_install_db does not exist, or is not readable by this script!"
+# Get version specific options
+BIN=
+if [ -r ${PWD}/bin/mysqld-debug ]; then BIN="${PWD}/bin/mysqld-debug"; fi  # Needs to come first so it's overwritten in next line if both exist
+if [ -r ${PWD}/bin/mysqld ]; then BIN="${PWD}/bin/mysqld"; fi
+if [ "${BIN}" == "" ]; then echo "Assert: no mysqld or mysqld-debug binary was found!"; fi
+MID=
+if [ -r ${PWD}/scripts/mysql_install_db ]; then MID="${PWD}/scripts/mysql_install_db"; fi
+if [ -r ${PWD}/bin/mysql_install_db ]; then MID="${PWD}/bin/mysql_install_db"; fi
+START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
+INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
+INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
+VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
+if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
+  if [ "${MID}" == "" ]; then
+    echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
     exit 1
   fi
-elif [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" == "5.5" ]; then
-  if [ -r ${MYBASE}/scripts/mysql_install_db ]; then
-    MID_AND_OPT="${MYBASE}/scripts/mysql_install_db --force --no-defaults"
-    START_OPT="--core"
-  else
-    echoit "Assert: mysqld version was detected as 5.6, yet ${MYBASE}/scripts/mysql_install_db does not exist, or is not readable by this script!"
-    exit 1
-  fi
-else
-  if [ -r ${MYBASE}/scripts/mysql_install_db ]; then
-    echoit "WARNING: mysqld version detection failed. This is likely caused by using this script with a non-supported (only MS and PS are supported currently for versions 5.5, 5.6 and 5.7) distribution or version of mysqld. Please expand this script to handle. This scipt will try and continue, but this may fail."
-    MID_AND_OPT="${MYBASE}/scripts/mysql_install_db"
-    START_OPT="--core-file"
-  else
-    echoit "Assert: ${MYBASE}/scripts/mysql_install_db does not exist, or is not readable by this script! mysqld version detected failed also! This is likely caused by using this script with a non-supported (only MS and PS are supported currently for versions 5.5, 5.6 and 5.7) distribution or version of mysqld. Please expand this script to handle. This scipt will try and continue, but this may fail."
-    exit 1
-  fi
+  INIT_TOOL="${MID}"
+  INIT_OPT="--force --no-defaults"
+  START_OPT="--core"
+elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
+  echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
 fi
 
 # Run SQL file from reducer<trial>.sh
@@ -125,7 +113,7 @@ for i in ${SERVER_THREADS[@]};do
     if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" != "5.7" ]; then  # For 5.7, the data directory should be empty
       mkdir ${WORKDIR}/${j}
     fi
-    ${MID_AND_OPT} --basedir=${MYBASE} --datadir=${WORKDIR}/${j} --user=${MYUSER} > ${WORKDIR}/${j}_mysql_install_db.out 2>&1
+    $INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data > ${WORKDIR}/${j}_mysql_install_db.out 2>&1
     CMD="bash -c \"set -o pipefail; ${BIN} ${MYEXTRA} ${START_OPT} --basedir=${MYBASE} --datadir=${WORKDIR}/${j} --port=${MYPORT}
          --pid-file=${WORKDIR}/${j}_pid.pid --log-error=${WORKDIR}/${j}_error.log.out --socket=${WORKDIR}/${j}_socket.sock --user=${MYUSER}\""
     eval $CMD > ${WORKDIR}/${j}_mysqld.out 2>&1 &

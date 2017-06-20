@@ -14,7 +14,10 @@ if [ "$1" == "" ]; then
   exit 1
 fi
 
-echo \
+# The 4 egreps are individual commands executed in a subshell of which the output is then combined and processed further
+# Be not misled by the 'libgalera_smm' start of the egrep. note the OR (i.e. '|') in the egreps; mysqld(_ is also scanned for, etc.
+# This code block CAN NOT be changed without breaking backward compatibility, unless ALL bugs in known_bugs.strings are re-string'ed
+STRING=$(echo \
   $( \
     egrep -i 'Assertion failure.*in file.*line' $1 | sed 's|.*in file ||;s| |DUMMY|g'; \
     egrep 'Assertion.*failed' $1 | grep -v 'Assertion .0. failed' | sed 's/|/./g;s/\&/./g;s/"/./g;s/:/./g;s|^.*Assertion .||;s|. failed.*$||;s| |DUMMY|g'; \
@@ -24,4 +27,31 @@ echo \
   tr ' ' '\n' | \
   sed 's|.*libgalera_smm\.so[\(_]*||;s|.*mysqld[\(_]*||;s|.*ha_tokudb.so[\(_]*||;s|).*||;s|+.*$||;s|DUMMY| |g;s|($||;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g' | \
   grep -v '^[ \t]*$' | \
-  head -n1 | sed 's|^[ \t]\+||;s|[ \t]\+$||;'
+  head -n1 | sed 's|^[ \t]\+||;s|[ \t]\+$||;' \
+)
+
+check_better_string(){
+  BETTER_FOUND=0
+  if [ "${POTENTIALLY_BETTER_STRING}" != "" -a "${POTENTIALLY_BETTER_STRING}" != "my_print_stacktrace" -a "${POTENTIALLY_BETTER_STRING}" != "0" -a "${POTENTIALLY_BETTER_STRING}" != "NULL" ]; then
+    STRING=${POTENTIALLY_BETTER_STRING}
+    BETTER_FOUND=1
+  fi
+}
+
+# This block can be added unto with 'ever deeper nesting if's' - i.e. as long as the output is poor (for the cases covered), more can
+# be done to try and get a better quality string. Adding other "poor outputs" is also possible, though not 100% (as someone may have
+# already added that particular poor output to known_bugs.strings - always check that file first, especially the TEXT=... strings
+# towards the end of that file.
+if [ "${STRING}" == "" -o "${STRING}" == "my_print_stacktrace" -o "${STRING}" == "0" -o "${STRING}" == "NULL" ]; then
+  POTENTIALLY_BETTER_STRING="$(grep 'Assertion failure:' $1 | tail -n1 | sed 's|.*Assertion failure:[ \t]\+||;s|[ \t]+$||;s|.*c:[0-9]\+:||;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g')"
+  check_better_string
+  if [ ${BETTER_FOUND} -eq 0 ]; then 
+    # Last resort; try to get first frame from stack trace in error log in a more basic way
+    # This may need some further work, if we start seeing too generic strings like 'do_command', 'parse_sql' etc. text showing in bug list
+    POTENTIALLY_BETTER_STRING="$(egrep -o 'libgalera_smm\.so\(.*|mysqld\(.*|ha_tokudb.so\(.*' $1 | sed 's|[^(]\+(||;s|).*||;s|(.*||;s|+0x.*||' | egrep -v 'my_print_stacktrace|handle.*signal|^[ \t]*$' | head -n1)"
+    check_better_string
+    # More can be added here, always preceded by: if [ ${BETTER_FOUND} -eq 0 ]; then
+  fi
+fi
+
+echo ${STRING}

@@ -1,0 +1,7 @@
+GODIR=/sda/MS010217-mysql-5.7.17-linux-x86_64-debug
+cd $GODIR
+vi start
+./all
+./stop
+echo "vi log/master.err"
+echo "gdb bin/mysqld $(ls data/core* 2>/dev/null)"
