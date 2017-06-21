@@ -109,10 +109,25 @@ def create_db(db_count, i_type):
                     stdin=None,
                     stdout=None,
                     stderr=None)
-    # Getting basedir path here as output
     output, error = process.communicate()
     #process.communicate()
 
+def create_table(table_count, i_type):
+    """
+    Function to create given amount of tables.
+    Using create_table.sh script here.
+    """
+    abspath = os.path.abspath(__file__)
+    dname = os.path.dirname(abspath)
+    bash_command = '{}/create_table.sh {} {}'
+    new_command = bash_command.format(dname, i_type, table_count)
+
+    process = Popen(
+                    split(new_command),
+                    stdin=None,
+                    stdout=None,
+                    stderr=None)
+    output, error = process.communicate()
 
 
 
@@ -165,17 +180,25 @@ def print_version(ctx, param, value):
     nargs=1,
     default=0,
     help="How many databases to create per added instance for stress test?")
+@click.option(
+    "--create_tables",
+    type=int,
+    nargs=1,
+    default=0,
+    help="How many tables to create per added instance for stress test?")
 
 
 
 
-def run_all(threads, instance_type, instance_count, pmm_instance_count, create_databases):
+def run_all(threads, instance_type, instance_count, pmm_instance_count, create_databases, create_tables):
     if (not threads) and (not instance_type) and (not instance_count) and (not pmm_instance_count) and (not create_databases):
         print("ERROR: you must give an option, run with --help for available options")
     else:
         runner(pmm_instance_count, instance_type, instance_count, threads)
         if create_databases:
             create_db(create_databases, instance_type)
+        if create_tables:
+            create_table(create_tables, instance_type)
 
 
 if __name__ == "__main__":
