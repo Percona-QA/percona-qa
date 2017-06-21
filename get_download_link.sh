@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Created by Tomislav Plavcic, Percona LLC
 
 PRODUCT=""
 VERSION=""
@@ -16,7 +17,7 @@ usage(){
   echo -e "  get_download_link.sh -pPRODUCT -vVERSION -tTYPE -aARCH -dDISTRIBUTION -g\n"
   echo -e "Valid options are:"
   echo -e "  --product=PRODUCT, -pPRODUCT   this is the only mandatory parameter"
-  echo -e "                                 can be ps|pxc|pxb|psmdb|pt|pmm-client|mysql|mariadb|proxysql"
+  echo -e "                                 can be ps|pxc|pxb|psmdb|pt|pmm-client|mysql|mariadb|mongodb|proxysql"
   echo -e "  --version=x.x, -vx.x           major or full version of the product like 5.7 or 5.7.17-12"
   echo -e "                                 (default: latest major version)"
   echo -e "  --type=TYPE, -tTYPE            build type, can be prod|test (default: prod)"
@@ -87,6 +88,9 @@ fi
 if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" || "${PRODUCT}" = "mysql" ]]; then VERSION="5.7"; fi
 if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "mariadb" ]]; then VERSION="10.2"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="3.4"; fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then
+  VERSION=$(wget -qO- https://www.mongodb.com/download-center\#community | grep -o -P "Current Stable Release \(.{3,10}\)" | grep -o -P "\(.{3,10}\)" | sed 's/(//' | sed 's/)//')
+fi
 
 get_link(){
   local OPT=""
@@ -209,13 +213,22 @@ get_link(){
       fi # version_full
 
     elif [[ "${PRODUCT}" = "proxysql" ]]; then
+      BASE_LINK="https://www.percona.com/downloads/proxysql/"
       if [[ -z ${VERSION_FULL} ]]; then
-        BASE_LINK="https://www.percona.com/downloads/proxysql/"
         VERSION=$(wget -qO- ${BASE_LINK}|grep -o "proxysql-[0-9]*.[0-9]*.[0-9]*"|head -n1|sed 's/^.*-//')
         TARBALL="proxysql-${VERSION}-Linux-${BUILD_ARCH}.tar.gz"
         LINK="${BASE_LINK}proxysql-${VERSION}/binary/tarball/${TARBALL}"
       else
-        LINK="https://www.percona.com/downloads/proxysql/proxysql-${VERSION_FULL}/binary/tarball/proxysql-${VERSION_FULL}-Linux-${BUILD_ARCH}.tar.gz"
+        LINK="${BASE_LINK}proxysql-${VERSION_FULL}/binary/tarball/proxysql-${VERSION_FULL}-Linux-${BUILD_ARCH}.tar.gz"
+      fi
+
+    elif [[ "${PRODUCT}" = "mongodb" ]]; then
+      BASE_LINK="http://downloads.mongodb.org/linux/"
+      if [[ -z ${VERSION_FULL} ]]; then
+        TARBALL=$(wget -qO- https://www.mongodb.org/dl/linux/x86_64 | grep -o -P "mongodb-linux-x86_64-${VERSION}\..{1,6}\.tgz" | head -n1)
+        LINK="${BASE_LINK}${TARBALL}"
+      else
+        LINK="${BASE_LINK}mongodb-linux-x86_64-${VERSION_FULL}.tgz"
       fi
     fi # last product
 
