@@ -2,7 +2,7 @@ from subprocess import check_output, Popen, PIPE
 from shlex import split
 from uuid import uuid4
 from random import randint
-import threading, click, os
+import threading, click, os, math
 
 ###############################################################################
 # Main logic goes here, below
@@ -73,6 +73,18 @@ def adding_instances(sock, threads=0):
         # Untill pmm-admin is not thread-safe there is no need to run with true multi-thread;
         #process.communicate()
 
+def repeat_adding_instances(sock, threads, count, i, pmm_count):
+    for j in range(count):
+        # For eg, with --pmm_instance_count 20 --threads 10
+        # Here count = 2 from previous function
+        # 0 + 1 + 10 * 2 >= 20
+        # 1 + 1 + 10 * 2 >= 20
+        if j + i * count >= pmm_count:
+            break
+
+        adding_instances(sock, threads)
+
+
 def runner(pmm_count, i_name, i_count, threads=0):
     """
     Main runner function; using Threading;
@@ -83,11 +95,15 @@ def runner(pmm_count, i_name, i_count, threads=0):
     for sock in sockets:
         if threads > 0:
             # Enabling Threads
-            # Worker count is going to be equal to passed pmm_count
-            workers = [threading.Thread(target=adding_instances(sock, threads), name="thread_"+str(i))
-                        for i in range(pmm_count)]
+            # Workers count is equal to passed threads number, \
+            # and we have to divide pmm_count to workers count to get loop range for every thread
+            count = int(math.ceil(pmm_count/float(threads)))
+            print count
+            workers = [threading.Thread(target=repeat_adding_instances(sock, threads, count, i, pmm_count), name="thread_"+str(i))
+                                for i in range(threads)]
             [worker.start() for worker in workers]
             [worker.join() for worker in workers]
+
         elif threads == 0:
             for i in range(pmm_count):
                 adding_instances(sock, threads)
