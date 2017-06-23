@@ -98,7 +98,6 @@ def runner(pmm_count, i_name, i_count, threads=0):
             # Workers count is equal to passed threads number, \
             # and we have to divide pmm_count to workers count to get loop range for every thread
             count = int(math.ceil(pmm_count/float(threads)))
-            print count
             workers = [threading.Thread(target=repeat_adding_instances(sock, threads, count, i, pmm_count), name="thread_"+str(i))
                                 for i in range(threads)]
             [worker.start() for worker in workers]
@@ -145,8 +144,23 @@ def create_table(table_count, i_type):
                     stderr=None)
     output, error = process.communicate()
 
+# TODO: Do this in multi-thread or do some trick with bash side
+def create_sleep_query(query_count, i_type):
+    """
+    Function to create given amount of sleep() queries.
+    Using create_sleep_queries.sh script here
+    """
+    abspath = os.path.abspath(__file__)
+    dname = os.path.dirname(abspath)
+    bash_command = '{}/create_sleep_queries.sh {} {}'
+    new_command = bash_command.format(dname, i_type, query_count)
 
-
+    process = Popen(
+                    split(new_command),
+                    stdin=None,
+                    stdout=None,
+                    stderr=None)
+    #output, error = process.communicate()
 
 ##############################################################################
 # Command line things are here, this is separate from main logic of script.
@@ -202,11 +216,19 @@ def print_version(ctx, param, value):
     nargs=1,
     default=0,
     help="How many tables to create per added instance for stress test?")
+@click.option(
+    "--create_sleep_queries",
+    type=int,
+    nargs=1,
+    default=0,
+    help="How many connections to open with 'select sleep()' per added instance for stress test?")
 
 
 
-
-def run_all(threads, instance_type, instance_count, pmm_instance_count, create_databases, create_tables):
+def run_all(threads, instance_type,
+            instance_count, pmm_instance_count,
+            create_databases, create_tables,
+            create_sleep_queries):
     if (not threads) and (not instance_type) and (not instance_count) and (not pmm_instance_count) and (not create_databases):
         print("ERROR: you must give an option, run with --help for available options")
     else:
@@ -215,6 +237,8 @@ def run_all(threads, instance_type, instance_count, pmm_instance_count, create_d
             create_db(create_databases, instance_type)
         if create_tables:
             create_table(create_tables, instance_type)
+        if create_sleep_queries:
+            create_sleep_query(create_sleep_queries, instance_type)
 
 
 if __name__ == "__main__":
