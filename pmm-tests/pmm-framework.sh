@@ -26,34 +26,38 @@ IS_BATS_RUN=0
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-    echo " --setup                   This will setup and configure a PMM server"
-    echo " --addclient=ps,2          Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
-    echo "                           You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
-    echo " --download                This will help us to download pmm client binary tar balls"
-    echo " --ps-version              Pass Percona Server version info"
-    echo " --ms-version              Pass MySQL Server version info"
-    echo " --md-version              Pass MariaDB Server version info"
-    echo " --pxc-version             Pass Percona XtraDB Cluster version info"
-    echo " --mo-version              Pass MongoDB Server version info"
-    echo " --mongo-with-rocksdb      This will start mongodb with rocksdb engine" 
-	echo " --replcount               You can configure multiple mongodb replica sets with this oprion"
-	echo " --with-replica            This will configure mongodb replica setup"
-	echo " --with-shrading           This will configure mongodb shrading setup"
-    echo " --add-docker-client       Add docker pmm-clients with percona server to the currently live PMM server" 
-    echo " --list                    List all client information as obtained from pmm-admin"
-    echo " --wipe-clients            This will stop all client instances and remove all clients from pmm-admin"
-    echo " --wipe-docker-clients     This will stop all docker client instances and remove all clients from docker container"
-    echo " --wipe-server             This will stop pmm-server container and remove all pmm containers"
-    echo " --wipe                    This will wipe all pmm configuration"
-    echo " --dev                     When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
-    echo " --pmm-server-username     User name to access the PMM Server web interface"
-    echo " --pmm-server-password     Password to access the PMM Server web interface"
+    echo " --setup                          This will setup and configure a PMM server"
+    echo " --addclient=ps,2                 Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
+    echo "                                  You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
+    echo " --download                       This will help us to download pmm client binary tar balls"
+    echo " --ps-version                     Pass Percona Server version info"
+    echo " --ms-version                     Pass MySQL Server version info"
+    echo " --md-version                     Pass MariaDB Server version info"
+    echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
+    echo " --mo-version                     Pass MongoDB Server version info"
+    echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine" 
+	echo " --replcount                      You can configure multiple mongodb replica sets with this oprion"
+	echo " --with-replica                   This will configure mongodb replica setup"
+	echo " --with-shrading                  This will configure mongodb shrading setup"
+    echo " --add-docker-client              Add docker pmm-clients with percona server to the currently live PMM server" 
+    echo " --list                           List all client information as obtained from pmm-admin"
+    echo " --wipe-clients                   This will stop all client instances and remove all clients from pmm-admin"
+    echo " --wipe-docker-clients            This will stop all docker client instances and remove all clients from docker container"
+    echo " --wipe-server                    This will stop pmm-server container and remove all pmm containers"
+    echo " --wipe                           This will wipe all pmm configuration"
+    echo " --dev                            When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
+    echo " --pmm-server-username            User name to access the PMM Server web interface"
+    echo " --pmm-server-password            Password to access the PMM Server web interface"
+	echo " --pmm-server=[docker|ami]        Choose PMM server appliance, default pmm server appliance is docker"
+	echo " --ami-image                      Pass PMM server ami image name"
+    echo " --key-name                       Pass your aws access key file name"
+    
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -88,6 +92,23 @@ do
     shift
     download_link=1
     ;;
+    --pmm-server )
+    pmm_server="$2"
+	shift 2	
+    if [ "$pmm_server" != "docker" ] && [ "$pmm_server" != "ami" ]; then
+      echo "ERROR: Invalid --pmm-server passed:"
+      echo "  Please choose any of these pmm-server options: 'docker', 'ami' "
+      exit 1
+    fi
+    ;;
+	--ami-image )
+    ami_image="$2"
+    shift 2
+    ;;	
+	--key-name )
+    key_name="$2"
+    shift 2
+    ;;	
     --ps-version )
     ps_version="$2"
     shift 2
@@ -154,7 +175,7 @@ do
       read -r -s -p  "Enter PMM Server web interface password:" INPUT_PASS
       if [ -z "$INPUT_PASS" ]; then
         pmm_server_password=""
-	printf "\nConfiguring without PMM Server web interface password...\n";
+        printf "\nConfiguring without PMM Server web interface password...\n";
       else
         pmm_server_password="$INPUT_PASS"
       fi
@@ -183,11 +204,39 @@ if [[ -z "$pmm_server_username" ]];then
   fi
 fi
 
-sanity_check(){
-  if ! sudo docker ps | grep 'pmm-server' > /dev/null ; then
-    echo "ERROR! pmm-server docker container is not runnning. Terminating"
-    exit 1
+if [[ -z "$pmm_server" ]];then
+  pmm_server="docker"
+elif [[ "$pmm_server" == "ami" ]];then
+  if [[ "$setup" == "1" ]];then
+    if [[ -z "$ami_image" ]];then 
+      echo "ERROR! You have not given AMI image name. Please use --ami-image to pass image name. Terminating"
+      exit 1
+    fi
+    if [[ -z "$key_name" ]];then 
+      echo "ERROR! You have not entered  aws key name. Please use --key-name to pass key name. Terminating"
+      exit 1
+    fi 
   fi
+fi
+sanity_check(){
+  if [[ "$pmm_server" == "docker" ]];then
+    if ! sudo docker ps | grep 'pmm-server' > /dev/null ; then
+      echo "ERROR! pmm-server docker container is not runnning. Terminating"
+      exit 1
+    fi
+  elif [[ "$pmm_server" == "ami" ]];then
+    if [ -f $WORKDIR/aws_instance_config.txt ]; then
+      INSTANCE_ID=$(cat $WORKDIR/aws_instance_config.txt | grep "InstanceId"  | awk -F[\"\"] '{print $4}')
+	else
+	  echo "ERROR! Could not read aws instance id. $WORKDIR/aws_instance_config.txt does not exist. Terminating"
+	  exit 1
+	fi
+    INSTANCE_ACTIVE=$(aws ec2 describe-instance-status --instance-ids  $INSTANCE_ID | grep "Code" | sed 's/[^0-9]//g')
+	if [[ "$INSTANCE_ACTIVE" != "16" ]];then
+      echo "ERROR! pmm-server ami instance is not runnning. Terminating"
+      exit 1
+	fi
+  fi 
 }
 
 if [[ -z "${ps_version}" ]]; then ps_version="5.7"; fi
@@ -199,7 +248,7 @@ if [[ -z "${REPLCOUNT}" ]]; then REPLCOUNT="1"; fi
 
 setup(){
   if [ $IS_BATS_RUN -eq 0 ];then
-  read -p "Would you like to enable SSL encryption to protect PMM from unauthorized access[y/n] ? " check_param
+    read -p "Would you like to enable SSL encryption to protect PMM from unauthorized access[y/n] ? " check_param
     case $check_param in
       y|Y)
         echo -e "\nGenerating SSL certificate files to protect PMM from unauthorized access"
@@ -224,47 +273,78 @@ setup(){
     exit 1
   fi
 
-  #PMM configuration setup
-  if [ -z $dev ]; then
-    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
-  else
-    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/perconalab/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
-  fi
-
-  #PMM sanity check
-  if ! pgrep docker > /dev/null ; then
-    echo "ERROR! docker service is not running. Terminating"
-    exit 1
-  fi
-  if sudo docker ps | grep 'pmm-server' > /dev/null ; then
-    echo "ERROR! pmm-server docker container is already runnning. Terminating"
-    exit 1
-  elif  sudo docker ps -a | grep 'pmm-server' > /dev/null ; then
-    CONTAINER_NAME=$(sudo docker ps -a | grep 'pmm-server' | grep $PMM_VERSION | grep -v pmm-data | awk '{ print $1}')
-    echo "ERROR! The name 'pmm-server' is already in use by container $CONTAINER_NAME"
-    exit 1
-  fi
-
-  echo "Initiating PMM configuration"
-  if [ -z $dev ]; then
-     sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
-  else
-     sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data perconalab/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
-  fi
-  if [ -z $dev ]; then
-    if [ "$IS_SSL" == "Yes" ];then
-      sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+  if [[ "$pmm_server" == "docker" ]];then
+    #PMM configuration setup
+    if [ -z $dev ]; then
+      PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
     else
-      sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
-   fi
- else
-   if [ "$IS_SSL" == "Yes" ];then
-     sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
-   else
-     sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
-   fi
- fi
+      PMM_VERSION=$(lynx --dump https://hub.docker.com/r/perconalab/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+    fi
+    #PMM sanity check
+	aws ec2 describe-instance-status --instance-ids  $INSTANCE_ID | grep "Code" | sed 's/[^0-9]//g'
+    if ! pgrep docker > /dev/null ; then
+      echo "ERROR! docker service is not running. Terminating"
+      exit 1
+    fi
+    if sudo docker ps | grep 'pmm-server' > /dev/null ; then
+      echo "ERROR! pmm-server docker container is already runnning. Terminating"
+      exit 1
+    elif  sudo docker ps -a | grep 'pmm-server' > /dev/null ; then
+      CONTAINER_NAME=$(sudo docker ps -a | grep 'pmm-server' | grep $PMM_VERSION | grep -v pmm-data | awk '{ print $1}')
+      echo "ERROR! The name 'pmm-server' is already in use by container $CONTAINER_NAME"
+      exit 1
+    fi
 
+    echo "Initiating PMM configuration"
+    if [ -z $dev ]; then
+      sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
+    else
+      sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data perconalab/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
+    fi
+    if [ -z $dev ]; then
+      if [ "$IS_SSL" == "Yes" ];then
+        sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+      else
+       sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+      fi
+    else
+      if [ "$IS_SSL" == "Yes" ];then
+       sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+      else
+       sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+      fi
+    fi
+  elif [[ "$pmm_server" == "ami" ]] ; then
+    if [[ ! -e $(which aws 2> /dev/null) ]] ;then
+      echo "ERROR! AWS client program is currently not installed. Please install awscli. Terminating"
+      exit 1
+    fi
+    if [ ! -f $HOME/.aws/credentials ]; then
+      echo "ERROR! AWS access key is not configured. Terminating"
+	  exit 1
+	fi
+	aws ec2 run-instances \
+	--image-id $ami_image \
+	--security-group-ids sg-3b6e5e46 \
+	--instance-type t2.micro \
+    --subnet-id subnet-4765a930 \
+    --region us-east-1 \
+    --key-name $key_name > $WORKDIR/aws_instance_config.txt 2> /dev/null
+	
+	INSTANCE_ID=$(cat $WORKDIR/aws_instance_config.txt | grep "InstanceId"  | awk -F[\"\"] '{print $4}')
+
+	aws ec2 create-tags  \
+    --resources $INSTANCE_ID \
+    --region us-east-1 \
+    --tags Key=Name,Value=PMM_test_image 2> /dev/null
+	
+	sleep 30
+	
+	AWS_PUBLIC_IP=$(aws ec2 describe-instances --instance-ids  $INSTANCE_ID | grep "PublicIpAddress" | awk -F[\"\"] '{print $4}')
+  fi
+  #PMM configuration setup
+  PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+	
   echo "Initiating PMM client configuration"
   PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
   if [ -z $PMM_CLIENT_BASEDIR ]; then
@@ -299,51 +379,62 @@ setup(){
     sudo ./install
     popd > /dev/null
   fi
-
+  if [ "$IS_SSL" == "Yes" ];then
+    PMM_MYEXTRA="--server-insecure-ssl"
+  else
+    PMM_MYEXTRA=""
+  fi
   if [[ ! -e $(which pmm-admin 2> /dev/null) ]] ;then
     echo "ERROR! The pmm-admin client binary was not found, please install the pmm-admin client package"
     exit 1
   else
     sleep 10
-    IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
-    if [ "$IS_SSL" == "Yes" ];then
-      sudo pmm-admin config --server $IP_ADDRESS --server-user="$pmm_server_username" --server-password="$pmm_server_password" --server-insecure-ssl
+	#Cleaning existing PMM server configuration.
+	sudo truncate -s0 /usr/local/percona/pmm-client/pmm.yml
+	IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+    if [[ "$pmm_server" == "ami" ]]; then
+	  sudo pmm-admin config --server $AWS_PUBLIC_IP --client-address $IP_ADDRESS $PMM_MYEXTRA
+	  echo "Alert! Password protection is not enabled in ami image, Please configure it manually"
+	  SERVER_IP=$AWS_PUBLIC_IP
     else
-      sudo pmm-admin config --server $IP_ADDRESS --server-user="$pmm_server_username" --server-password="$pmm_server_password"
+      sudo pmm-admin config --server $IP_ADDRESS --server-user="$pmm_server_username" --server-password="$pmm_server_password" $PMM_MYEXTRA
+	  SERVER_IP=$IP_ADDRESS
     fi
   fi
   echo -e "******************************************************************"
-  echo -e "Please execute below command to access docker container"
-  echo -e "docker exec -it pmm-server bash\n"
+  if [[ "$pmm_server" == "docker" ]]; then
+    echo -e "Please execute below command to access docker container"
+    echo -e "docker exec -it pmm-server bash\n"
+  fi
   if [ "$IS_SSL" == "Yes" ];then
     (
-    printf "%s\t%s\n" "PMM landing page" "https://$IP_ADDRESS:443"
+    printf "%s\t%s\n" "PMM landing page" "https://$SERVER_IP:443"
     if [ ! -z $pmm_server_username ];then
       printf "%s\t%s\n" "PMM landing page username" "$pmm_server_username"
     fi
     if [ ! -z $pmm_server_password ];then
       printf "%s\t%s\n" "PMM landing page password" "$pmm_server_password"
     fi
-    printf "%s\t%s\n" "Query Analytics (QAN web app)" "https://$IP_ADDRESS:443/qan"
-    printf "%s\t%s\n" "Metrics Monitor (Grafana)" "https://$IP_ADDRESS:443/graph"
+    printf "%s\t%s\n" "Query Analytics (QAN web app)" "https://$SERVER_IP:443/qan"
+    printf "%s\t%s\n" "Metrics Monitor (Grafana)" "https://$SERVER_IP:443/graph"
     printf "%s\t%s\n" "Metrics Monitor username" "admin"
     printf "%s\t%s\n" "Metrics Monitor password" "admin"
-    printf "%s\t%s\n" "Orchestrator" "https://$IP_ADDRESS:443/orchestrator"
+    printf "%s\t%s\n" "Orchestrator" "https://$SERVER_IP:443/orchestrator"
     ) | column -t -s $'\t'
   else
     (
-    printf "%s\t%s\n" "PMM landing page" "http://$IP_ADDRESS"
+    printf "%s\t%s\n" "PMM landing page" "http://$SERVER_IP"
     if [ ! -z $pmm_server_username ];then
       printf "%s\t%s\n" "PMM landing page username" "$pmm_server_username"
     fi
     if [ ! -z $pmm_server_password ];then
       printf "%s\t%s\n" "PMM landing page password" "$pmm_server_password"
     fi
-    printf "%s\t%s\n" "Query Analytics (QAN web app)" "http://$IP_ADDRESS/qan"
-    printf "%s\t%s\n" "Metrics Monitor (Grafana)" "http://$IP_ADDRESS/graph"
+    printf "%s\t%s\n" "Query Analytics (QAN web app)" "http://$SERVER_IP/qan"
+    printf "%s\t%s\n" "Metrics Monitor (Grafana)" "http://$SERVER_IP/graph"
     printf "%s\t%s\n" "Metrics Monitor username" "admin"
     printf "%s\t%s\n" "Metrics Monitor password" "admin"
-    printf "%s\t%s\n" "Orchestrator" "http://$IP_ADDRESS/orchestrator"
+    printf "%s\t%s\n" "Orchestrator" "http://$SERVER_IP/orchestrator"
     ) | column -t -s $'\t'
   fi
   echo -e "******************************************************************"
@@ -555,9 +646,9 @@ add_clients(){
           else
             WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
           fi
-          MYEXTRA="--no-defaults $WSREP_CLUSTER_ADD --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 "
+          MYEXTRA="--no-defaults $WSREP_CLUSTER_ADD --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 --max-connections=30000"
         else
-          MYEXTRA="--no-defaults"
+          MYEXTRA="--no-defaults --max-connections=30000"
         fi
         ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
           --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
@@ -724,10 +815,21 @@ clean_docker_clients(){
 }
 
 clean_server(){
-  #Stop/Remove pmm-server docker containers
-  echo -e "Removing pmm-server docker containers" 
-  sudo docker stop pmm-server  2&> /dev/null
-  sudo docker rm pmm-server pmm-data  2&> /dev/null
+  #Stop/Remove pmm-server docker/ami instances
+  if [[ "$pmm_server" == "docker" ]] ; then
+    echo -e "Removing pmm-server docker containers" 
+    sudo docker stop pmm-server  2&> /dev/null
+    sudo docker rm pmm-server pmm-data  2&> /dev/null
+  else
+    if [ -f $WORKDIR/aws_instance_config.txt ]; then
+      INSTANCE_ID=$(cat $WORKDIR/aws_instance_config.txt | grep "InstanceId"  | awk -F[\"\"] '{print $4}')
+	else
+	  echo "ERROR! Could not read aws instance id. $WORKDIR/aws_instance_config.txt does not exist. Terminating"
+	  exit 1
+	fi
+    aws ec2 terminate-instances --instance-ids $INSTANCE_ID > $WORKDIR/aws_remove_instance.log
+  fi 
+  
 }
 
 if [ ! -z $wipe_clients ]; then
