@@ -73,8 +73,12 @@ function run_create_table() {
   run bash ${SCRIPT_PWD}/create_table.sh $1 $2
 }
 
-function run_check_dashboards_tests() {
+function run_check_grafana_dashboards_tests() {
   run bats ${SCRIPT_PWD}/check-grafana-dashboards.bats
+}
+
+function run_regression_tests() {
+  run bats ${SCRIPT_PWD}/regression-tests.bats
 }
 
 # Running tests
@@ -155,7 +159,14 @@ function run_check_dashboards_tests() {
 }
 
 @test "Running Grafana dashboards exist tests" {
-  run_proxysql_tests
+  run_check_grafana_dashboards_tests
+  echo ${output}
+  [ "$status" -eq 0 ]
+}
+
+
+@test "Running regression tests" {
+  run_regression_tests
   echo ${output}
   [ "$status" -eq 0 ]
 }
