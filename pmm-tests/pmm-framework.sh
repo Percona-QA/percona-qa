@@ -389,6 +389,8 @@ setup(){
     exit 1
   else
     sleep 10
+	#Cleaning existing PMM server configuration.
+	sudo truncate -s0 /usr/local/percona/pmm-client/pmm.yml
 	IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
     if [[ "$pmm_server" == "ami" ]]; then
 	  sudo pmm-admin config --server $AWS_PUBLIC_IP --client-address $IP_ADDRESS $PMM_MYEXTRA
