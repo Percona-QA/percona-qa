@@ -73,6 +73,14 @@ function run_create_table() {
   run bash ${SCRIPT_PWD}/create_table.sh $1 $2
 }
 
+function run_check_grafana_dashboards_tests() {
+  run bats ${SCRIPT_PWD}/check-grafana-dashboards.bats
+}
+
+function run_regression_tests() {
+  run bats ${SCRIPT_PWD}/regression-tests.bats
+}
+
 # Running tests
 
 @test "Wipe clients" {
@@ -150,6 +158,18 @@ function run_create_table() {
   [ "$status" -eq 0 ]
 }
 
+@test "Running Grafana dashboards exist tests" {
+  run_check_grafana_dashboards_tests
+  echo ${output}
+  [ "$status" -eq 0 ]
+}
+
+
+@test "Running regression tests" {
+  run_regression_tests
+  echo ${output}
+  [ "$status" -eq 0 ]
+}
 # ProxySQL
 
 @test "Wipe clients" {
