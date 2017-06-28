@@ -48,16 +48,17 @@ usage () {
     echo " --dev                            When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
     echo " --pmm-server-username            User name to access the PMM Server web interface"
     echo " --pmm-server-password            Password to access the PMM Server web interface"
-	echo " --pmm-server=[docker|ami]        Choose PMM server appliance, default pmm server appliance is docker"
+	echo " --pmm-server=[docker|ami|ova]    Choose PMM server appliance, default pmm server appliance is docker"
 	echo " --ami-image                      Pass PMM server ami image name"
     echo " --key-name                       Pass your aws access key file name"
+	echo " --ova-image                      Pass PMM server ova image name"
     
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -95,9 +96,9 @@ do
     --pmm-server )
     pmm_server="$2"
 	shift 2	
-    if [ "$pmm_server" != "docker" ] && [ "$pmm_server" != "ami" ]; then
+    if [ "$pmm_server" != "docker" ] && [ "$pmm_server" != "ami" ] && [ "$pmm_server" != "ova" ]; then
       echo "ERROR: Invalid --pmm-server passed:"
-      echo "  Please choose any of these pmm-server options: 'docker', 'ami' "
+      echo "  Please choose any of these pmm-server options: 'docker', 'ami', or ova"
       exit 1
     fi
     ;;
@@ -107,6 +108,10 @@ do
     ;;	
 	--key-name )
     key_name="$2"
+    shift 2
+    ;;	
+	--ova-image )
+    ova_image="$2"
     shift 2
     ;;	
     --ps-version )
@@ -217,6 +222,13 @@ elif [[ "$pmm_server" == "ami" ]];then
       exit 1
     fi 
   fi
+elif [[ "$pmm_server" == "ova" ]];then
+  if [[ "$setup" == "1" ]];then
+    if [[ -z "$ova_image" ]];then 
+      echo "ERROR! You have not given OVA image name. Please use --ova-image to pass image name. Terminating"
+      exit 1
+    fi
+  fi
 fi
 sanity_check(){
   if [[ "$pmm_server" == "docker" ]];then
@@ -234,6 +246,13 @@ sanity_check(){
     INSTANCE_ACTIVE=$(aws ec2 describe-instance-status --instance-ids  $INSTANCE_ID | grep "Code" | sed 's/[^0-9]//g')
 	if [[ "$INSTANCE_ACTIVE" != "16" ]];then
       echo "ERROR! pmm-server ami instance is not runnning. Terminating"
+      exit 1
+	fi
+  elif [[ "$pmm_server" == "ova" ]];then
+    VMBOX=$(vboxmanage list runningvms | grep "PMM-Server" | awk -F[\"\"] '{print $2}')
+	VMBOX_STATUS=$(vboxmanage showvminfo $VMBOX  | grep State | awk '{print $2}')
+	if [[ "$VMBOX_STATUS" != "running" ]]; then
+	  echo "ERROR! pmm-server ova instance is not runnning. Terminating"
       exit 1
 	fi
   fi 
@@ -272,7 +291,7 @@ setup(){
     echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"
     exit 1
   fi
-
+  IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
   if [[ "$pmm_server" == "docker" ]];then
     #PMM configuration setup
     if [ -z $dev ]; then
@@ -341,6 +360,31 @@ setup(){
 	sleep 30
 	
 	AWS_PUBLIC_IP=$(aws ec2 describe-instances --instance-ids  $INSTANCE_ID | grep "PublicIpAddress" | awk -F[\"\"] '{print $4}')
+  elif [[ "$pmm_server" == "ova" ]] ; then
+    if [[ ! -e $(which VBoxManage 2> /dev/null) ]] ;then
+      echo "ERROR! VBoxManage client program is currently not installed. Please install VirtualBox. Terminating"
+      exit 1
+    fi
+	ova_image_name=$(echo $ova_image | sed 's/.ova//')
+    VMBOX=$(vboxmanage list runningvms | grep $ova_image_name | awk -F[\"\"] '{print $2}')
+	VMBOX_STATUS=$(vboxmanage showvminfo $VMBOX  | grep State | awk '{print $2}')
+	if [[ "$VMBOX_STATUS" == "running" ]]; then
+	  echo "ERROR! pmm-server ova instance is already runnning. Terminating"
+      exit 1
+	fi
+	# import image
+	if [ ! -f $ova_image ] ;then 
+	  echo "Alert! ${ova_image} does not exist in $WORKDIR. Downloading ${ova_image} ..."
+	  wget https://s3.amazonaws.com/percona-vm/$ova_image
+	fi
+    VBoxManage import $ova_image > $WORKDIR/ova_instance_config.txt 2> /dev/null
+	NETWORK_INTERFACE=$(ip addr | grep $IP_ADDRESS |  awk 'NF>1{print $NF}')
+	VBoxManage modifyvm $ova_image_name --nic1 bridged --bridgeadapter1 ${NETWORK_INTERFACE}
+	VBoxManage modifyvm $ova_image_name --uart1 0x3F8 4 --uartmode1 file $WORKDIR/pmm-server-console.log
+    # start instance
+    VBoxManage startvm --type headless $ova_image_name > $WORKDIR/pmm-server-starup.log 2> /dev/null
+	sleep 120
+	OVA_PUBLIC_IP=$(grep 'Percona Monitoring and Management' $WORKDIR/pmm-server-console.log | awk -F[\/\/] '{print $3}')
   fi
   #PMM configuration setup
   PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
@@ -391,11 +435,14 @@ setup(){
     sleep 10
 	#Cleaning existing PMM server configuration.
 	sudo truncate -s0 /usr/local/percona/pmm-client/pmm.yml
-	IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
     if [[ "$pmm_server" == "ami" ]]; then
 	  sudo pmm-admin config --server $AWS_PUBLIC_IP --client-address $IP_ADDRESS $PMM_MYEXTRA
 	  echo "Alert! Password protection is not enabled in ami image, Please configure it manually"
 	  SERVER_IP=$AWS_PUBLIC_IP
+    elif [[ "$pmm_server" == "ova" ]]; then
+	  sudo pmm-admin config --server $OVA_PUBLIC_IP --client-address $IP_ADDRESS $PMM_MYEXTRA
+	  echo "Alert! Password protection is not enabled in ova image, Please configure it manually"
+	  SERVER_IP=$OVA_PUBLIC_IP
     else
       sudo pmm-admin config --server $IP_ADDRESS --server-user="$pmm_server_username" --server-password="$pmm_server_password" $PMM_MYEXTRA
 	  SERVER_IP=$IP_ADDRESS
@@ -815,12 +862,22 @@ clean_docker_clients(){
 }
 
 clean_server(){
-  #Stop/Remove pmm-server docker/ami instances
+  #Stop/Remove pmm-server docker/ami/ova instances
   if [[ "$pmm_server" == "docker" ]] ; then
     echo -e "Removing pmm-server docker containers" 
     sudo docker stop pmm-server  2&> /dev/null
     sudo docker rm pmm-server pmm-data  2&> /dev/null
-  else
+  elif [[ "$pmm_server" == "ova" ]] ; then
+	VMBOX=$(vboxmanage list runningvms | grep "PMM-Server" | awk -F[\"\"] '{print $2}')
+	echo "Shutting down ova instance"
+	VBoxManage controlvm $VMBOX poweroff 
+	echo "Unregistering ova instance"
+	VBoxManage unregistervm $VMBOX --delete
+	 VM_DISKS=($(vboxmanage list hdds | grep -B4 $VMBOX | grep UUID | grep -v 'Parent UUID:' | awk '{ print $2}'))
+	for i in ${VM_DISKS[@]}; do 
+	  VBoxManage closemedium disk $i --delete ; 
+	done
+  elif [[ "$pmm_server" == "ami" ]] ; then
     if [ -f $WORKDIR/aws_instance_config.txt ]; then
       INSTANCE_ID=$(cat $WORKDIR/aws_instance_config.txt | grep "InstanceId"  | awk -F[\"\"] '{print $4}')
 	else
