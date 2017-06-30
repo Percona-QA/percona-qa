@@ -1,0 +1,19 @@
+Some examples of gdb commands:
+
+(gdb) p table->file
+$1 = (handler *) 0x7f419542d830
+(gdb) p *0x7f419542d830              < Wrong approach, instead use p *<pointer> to dereference, i.e. p*(table->file)
+$2 = -1669760080
+(gdb) p *(table->file)
+$3 = {<Sql_alloc> = {<No data fields>}, _vptr.handler = 0x7f419c797bb0 <vtable for myrocks::ha_rocksdb+16>, 
+  table_share = 0x7f4195824330, table = 0x7f418f376020, cached_table_flags = 51539707018, estimation_rows_to_insert = 0, 
+  ht = 0x7f41cf3c9120, ref = 0x7f418f355e90 "", dup_ref = 0x7f418f355e98 "NES_PARA\374C\"", stats = {data_file_length = 399, ....
+
+(gdb) p table_to_free
+$1 = (TABLE *) 0x7f418f376020
+(gdb) p *0x7f418f376020              < Idem, use p *table_to_free
+$2 = -1786625232
+(gdb) p *table_to_free
+$32 = {s = 0x7f4195824330, file = 0x7f419542d830, next = 0x7f4195b55e20, prev = 0x7f418f377e20, cache_next = 0x0, 
+  cache_prev = 0x7f419548a208, in_use = 0x0, field = 0x0, hidden_field_count = 0, record = {0x7f418f355c30 "\375\t", 
+    0x7f418f355c40 '\217' <repeats 16 times>, "h\\5\217A\177"}, write_row_record = 0x7f418f355ea0 "\374C\"", insert_values = 0x0, ...
