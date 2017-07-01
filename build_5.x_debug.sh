@@ -2,7 +2,7 @@
 # Created by Roel Van de Paar, Percona LLC
 
 MAKE_THREADS=1   # Number of build threads. There may be a bug with >1 settings
-WITH_ROCKSDB=0   # 0 or 1
+WITH_ROCKSDB=1   # 0 or 1
 
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
@@ -19,7 +19,7 @@ PREFIX=
 MS=0
 
 VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
-if [ "${VERSION_EXTRA}" == "" -o ""${VERSION_EXTRA}" == "-dmr" ]; then  # MS has no extra version number, or shows '-dmr' (exactly and only) in this place
+if [ "${VERSION_EXTRA}" == "" -o "${VERSION_EXTRA}" == "-dmr" ]; then  # MS has no extra version number, or shows '-dmr' (exactly and only) in this place
   MS=1
   PREFIX="MS${DATE}"
 else
