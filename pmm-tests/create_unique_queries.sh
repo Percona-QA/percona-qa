@@ -21,7 +21,8 @@ fi
 for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
 	MYSQL_SOCK=${i}
   echo "MYSQL_SOCK=${MYSQL_SOCK}"
-  ${BASEDIR}/bin/mysqlslap --concurrency=200 --iterations=20 --number-int-cols=2 \
+  ${BASEDIR}/bin/mysqlslap --concurrency=1 \
+  --iterations=1 --number-int-cols=2 \
   --number-char-cols=3 --auto-generate-sql \
   --socket=${MYSQL_SOCK} \
   --user=${MYSQL_USER} \
