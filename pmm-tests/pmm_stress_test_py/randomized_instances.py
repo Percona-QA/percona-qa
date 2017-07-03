@@ -14,7 +14,7 @@ def pmm_framework_add_client(i_name, i_count):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     command = "{}/pmm-framework.sh --addclient={},{}"
-    new_command = command.format(dname, i_name, i_count)
+    new_command = command.format(dname[:-18], i_name, i_count)
     process = Popen(
                     split(new_command),
                     stdin=None,
@@ -29,7 +29,7 @@ def pmm_framework_wipe_client():
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     command = "{}/pmm-framework.sh --wipe-clients"
-    new_command = command.format(dname)
+    new_command = command.format(dname[:-18])
     process = Popen(
                     split(new_command),
                     stdin=None,
@@ -117,7 +117,7 @@ def create_db(db_count, i_type):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_database.sh {} {}'
-    new_command = bash_command.format(dname, i_type, db_count)
+    new_command = bash_command.format(dname[:-18], i_type, db_count)
 
     process = Popen(
                     split(new_command),
@@ -135,14 +135,14 @@ def create_table(table_count, i_type):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_table.sh {} {}'
-    new_command = bash_command.format(dname, i_type, table_count)
+    new_command = bash_command.format(dname[:-18], i_type, table_count)
 
     process = Popen(
                     split(new_command),
                     stdin=None,
                     stdout=None,
                     stderr=None)
-    #output, error = process.communicate()
+    output, error = process.communicate()
 
 def create_sleep_query(query_count, i_type):
     """
@@ -152,7 +152,7 @@ def create_sleep_query(query_count, i_type):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_sleep_queries.sh {} {}'
-    new_command = bash_command.format(dname, i_type, query_count)
+    new_command = bash_command.format(dname[:-18], i_type, query_count)
 
     process = Popen(
                     split(new_command),
@@ -169,7 +169,7 @@ def create_unique_query(query_count, i_type):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_unique_queries.sh {} {}'
-    new_command = bash_command.format(dname, i_type, query_count)
+    new_command = bash_command.format(dname[:-18], i_type, query_count)
 
     process = Popen(
                     split(new_command),
