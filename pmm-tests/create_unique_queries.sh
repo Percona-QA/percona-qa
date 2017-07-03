@@ -29,5 +29,4 @@ for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; d
   --auto-generate-sql-execute-number=${QR_COUNT} \
   --auto-generate-sql-write-number=${QR_COUNT} \
   --auto-generate-sql-unique-write-number=${QR_COUNT}
-  done
 done
