@@ -144,7 +144,6 @@ def create_table(table_count, i_type):
                     stderr=None)
     output, error = process.communicate()
 
-# TODO: Do this in multi-thread or do some trick with bash side
 def create_sleep_query(query_count, i_type):
     """
     Function to create given amount of sleep() queries.
@@ -161,6 +160,22 @@ def create_sleep_query(query_count, i_type):
                     stdout=None,
                     stderr=None)
     #output, error = process.communicate()
+
+def create_unique_query(query_count, i_type):
+    """
+    Function to create and run given number unique queries against instances.
+    Using create_unique_queries.sh script here
+    """
+    abspath = os.path.abspath(__file__)
+    dname = os.path.dirname(abspath)
+    bash_command = '{}/create_unique_queries.sh {} {}'
+    new_command = bash_command.format(dname, i_type, query_count)
+
+    process = Popen(
+                    split(new_command),
+                    stdin=None,
+                    stdout=None,
+                    stderr=None)
 
 ##############################################################################
 # Command line things are here, this is separate from main logic of script.
@@ -222,13 +237,19 @@ def print_version(ctx, param, value):
     nargs=1,
     default=0,
     help="How many connections to open with 'select sleep()' per added instance for stress test?")
-
+@click.option(
+    "--create_unique_queries",
+    type=int,
+    nargs=1,
+    default=0,
+    help="How many unique queries to create and run against added instances?"
+)
 
 
 def run_all(threads, instance_type,
             instance_count, pmm_instance_count,
             create_databases, create_tables,
-            create_sleep_queries):
+            create_sleep_queries, create_unique_queries):
     if (not threads) and (not instance_type) and (not instance_count) and (not pmm_instance_count) and (not create_databases):
         print("ERROR: you must give an option, run with --help for available options")
     else:
@@ -239,6 +260,8 @@ def run_all(threads, instance_type,
             create_table(create_tables, instance_type)
         if create_sleep_queries:
             create_sleep_query(create_sleep_queries, instance_type)
+        if create_unique_queries:
+            create_unique_query(create_unique_queries, instance_type)
 
 
 if __name__ == "__main__":
