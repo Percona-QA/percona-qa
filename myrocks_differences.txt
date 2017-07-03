@@ -9,3 +9,4 @@ MyRocks differences from query correctness perspective:
 
 Informative resources:
 https://github.com/facebook/mysql-5.6/wiki/Build-Steps
+https://github.com/facebook/mysql-5.6/wiki/MyRocks-limitations
