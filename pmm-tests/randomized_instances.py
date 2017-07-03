@@ -142,7 +142,7 @@ def create_table(table_count, i_type):
                     stdin=None,
                     stdout=None,
                     stderr=None)
-    output, error = process.communicate()
+    #output, error = process.communicate()
 
 def create_sleep_query(query_count, i_type):
     """
