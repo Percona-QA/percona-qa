@@ -15,12 +15,17 @@ def pmm_framework_add_client(i_name, i_count):
     dname = os.path.dirname(abspath)
     command = "{}/pmm-framework.sh --addclient={},{}"
     new_command = command.format(dname[:-18], i_name, i_count)
-    process = Popen(
+    try:
+        process = Popen(
                     split(new_command),
                     stdin=None,
                     stdout=None,
                     stderr=None)
-    process.communicate()
+        output, error = process.communicate()
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 def pmm_framework_wipe_client():
     """
