@@ -14,6 +14,7 @@ class TestPMMStress:
 
     def test_pmm_framework_wipe_client(self):
         """Checking return value from function"""
+        pytest.skip("Skipping for test purposes!")
         print("\nIn test_pmm_framework_wipe_client()...")
         return_value = randomized_instances.pmm_framework_wipe_client()
         assert return_value == 0
