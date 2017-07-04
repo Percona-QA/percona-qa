@@ -138,13 +138,18 @@ def create_db(db_count, i_type):
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_database.sh {} {}'
     new_command = bash_command.format(dname[:-18], i_type, db_count)
+    try:
 
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
-    output, error = process.communicate()
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+        output, error = process.communicate()
+    except Exception as e:
+        print(e)
+    else:
+        return 0
     #process.communicate()
 
 def create_table(table_count, i_type):
@@ -156,13 +161,18 @@ def create_table(table_count, i_type):
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_table.sh {} {}'
     new_command = bash_command.format(dname[:-18], i_type, table_count)
+    try:
 
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
-    output, error = process.communicate()
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+        output, error = process.communicate()
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 def create_sleep_query(query_count, i_type):
     """
@@ -173,12 +183,16 @@ def create_sleep_query(query_count, i_type):
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_sleep_queries.sh {} {}'
     new_command = bash_command.format(dname[:-18], i_type, query_count)
-
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
+    try:
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+    except Exception as e:
+        print(e)
+    else:
+        return 0
     #output, error = process.communicate()
 
 def create_unique_query(query_count, i_type):
@@ -190,12 +204,16 @@ def create_unique_query(query_count, i_type):
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_unique_queries.sh {} {}'
     new_command = bash_command.format(dname[:-18], i_type, query_count)
-
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
+    try:
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 ##############################################################################
 # Command line things are here, this is separate from main logic of script.

@@ -32,7 +32,27 @@ class TestPMMStress:
 
     def test_adding_instances(self):
         """Checking for return value from function"""
-        return_value = self.helper_function(100)
+        return_value = self.helper_function(10)
+        assert return_value == 0
+
+    def test_create_db(self):
+        """Checking for return value from function"""
+        return_value = randomized_instances.create_db(10, "ps")
+        assert return_value == 0
+
+    def test_create_table(self):
+        """Checking for return value from function"""
+        return_value = randomized_instances.create_table(10, "ps")
+        assert return_value == 0
+
+    def test_create_sleep_query(self):
+        """Checking for return value from function"""
+        return_value = randomized_instances.create_sleep_query(10, "ps")
+        assert return_value == 0
+
+    def test_create_unique_query(self):
+        """Checking for return value from function"""
+        return_value = randomized_instances.create_unique_query(10, "ps")
         assert return_value == 0
 
     def test_pmm_framework_wipe_client(self):
