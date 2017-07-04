@@ -1,4 +1,4 @@
-from pmm_stress_test_py import randomized_intances
+from pmm_stress_test_py import randomized_instances
 import pytest
 
 class TestPMMStress:
