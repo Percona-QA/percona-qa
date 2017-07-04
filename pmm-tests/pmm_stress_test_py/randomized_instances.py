@@ -14,13 +14,18 @@ def pmm_framework_add_client(i_name, i_count):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     command = "{}/pmm-framework.sh --addclient={},{}"
-    new_command = command.format(dname, i_name, i_count)
-    process = Popen(
+    new_command = command.format(dname[:-18], i_name, i_count)
+    try:
+        process = Popen(
                     split(new_command),
                     stdin=None,
                     stdout=None,
                     stderr=None)
-    process.communicate()
+        output, error = process.communicate()
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 def pmm_framework_wipe_client():
     """
@@ -29,13 +34,18 @@ def pmm_framework_wipe_client():
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     command = "{}/pmm-framework.sh --wipe-clients"
-    new_command = command.format(dname)
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
-    process.communicate()
+    new_command = command.format(dname[:-18])
+    try:
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+        output, error = process.communicate()
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 
 def getting_instance_socket():
@@ -51,25 +61,30 @@ def adding_instances(sock, threads=0):
     Will try to add instances with randomized name, based on already added instances
     """
     # Should Not be a multi-threaded run -> see comment at the end of function
-    if threads == 0:
-        command = "sudo pmm-admin add mysql --user=root --socket={} --service-port={} {} "
-        new_command = command.format(sock, str(randint(10000, 60000)), str(uuid4()))
-        print("Running -> " + new_command)
-        process = Popen(
-                        split(new_command),
-                        stdin=None,
-                        stdout=None,
-                        stderr=None)
-        process.communicate()
-    elif threads > 0:
-        command = "sudo pmm-admin add mysql --user=root --socket={} --service-port={} {} "
-        new_command = command.format(sock, str(randint(10000, 60000)), str(uuid4()))
-        print("Running -> " + new_command)
-        process = Popen(
-                        split(new_command),
-                        stdin=None,
-                        stdout=None,
-                        stderr=None)
+    try:
+        if threads == 0:
+            command = "sudo pmm-admin add mysql --user=root --socket={} --service-port={} {} "
+            new_command = command.format(sock, str(randint(10000, 60000)), str(uuid4()))
+            print("Running -> " + new_command)
+            process = Popen(
+                            split(new_command),
+                            stdin=None,
+                            stdout=None,
+                            stderr=None)
+            process.communicate()
+        elif threads > 0:
+            command = "sudo pmm-admin add mysql --user=root --socket={} --service-port={} {} "
+            new_command = command.format(sock, str(randint(10000, 60000)), str(uuid4()))
+            print("Running -> " + new_command)
+            process = Popen(
+                            split(new_command),
+                            stdin=None,
+                            stdout=None,
+                            stderr=None)
+    except Exception as e:
+        print(e)
+    else:
+        return 0
         # Untill pmm-admin is not thread-safe there is no need to run with true multi-thread;
         #process.communicate()
 
@@ -92,21 +107,26 @@ def runner(pmm_count, i_name, i_count, threads=0):
     pmm_framework_wipe_client()
     pmm_framework_add_client(i_name, i_count)
     sockets = getting_instance_socket()
-    for sock in sockets:
-        if threads > 0:
-            # Enabling Threads
-            # Workers count is equal to passed threads number, \
-            # and we have to divide pmm_count to workers count to get loop range for every thread
-            count = int(math.ceil(pmm_count/float(threads)))
-            workers = [threading.Thread(target=repeat_adding_instances(sock, threads, count, i, pmm_count), name="thread_"+str(i))
-                                for i in range(threads)]
-            [worker.start() for worker in workers]
-            [worker.join() for worker in workers]
+    try:
+        for sock in sockets:
+            if threads > 0:
+                # Enabling Threads
+                # Workers count is equal to passed threads number, \
+                # and we have to divide pmm_count to workers count to get loop range for every thread
+                count = int(math.ceil(pmm_count/float(threads)))
+                workers = [threading.Thread(target=repeat_adding_instances(sock, threads, count, i, pmm_count), name="thread_"+str(i))
+                                    for i in range(threads)]
+                [worker.start() for worker in workers]
+                [worker.join() for worker in workers]
 
-        elif threads == 0:
-            for i in range(pmm_count):
-                adding_instances(sock, threads)
-    return 1
+            elif threads == 0:
+                for i in range(pmm_count):
+                    adding_instances(sock, threads)
+
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 
 def create_db(db_count, i_type):
@@ -117,14 +137,19 @@ def create_db(db_count, i_type):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_database.sh {} {}'
-    new_command = bash_command.format(dname, i_type, db_count)
+    new_command = bash_command.format(dname[:-18], i_type, db_count)
+    try:
 
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
-    output, error = process.communicate()
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+        output, error = process.communicate()
+    except Exception as e:
+        print(e)
+    else:
+        return 0
     #process.communicate()
 
 def create_table(table_count, i_type):
@@ -135,14 +160,19 @@ def create_table(table_count, i_type):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_table.sh {} {}'
-    new_command = bash_command.format(dname, i_type, table_count)
+    new_command = bash_command.format(dname[:-18], i_type, table_count)
+    try:
 
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
-    #output, error = process.communicate()
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+        output, error = process.communicate()
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 def create_sleep_query(query_count, i_type):
     """
@@ -152,13 +182,17 @@ def create_sleep_query(query_count, i_type):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_sleep_queries.sh {} {}'
-    new_command = bash_command.format(dname, i_type, query_count)
-
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
+    new_command = bash_command.format(dname[:-18], i_type, query_count)
+    try:
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+    except Exception as e:
+        print(e)
+    else:
+        return 0
     #output, error = process.communicate()
 
 def create_unique_query(query_count, i_type):
@@ -169,13 +203,17 @@ def create_unique_query(query_count, i_type):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     bash_command = '{}/create_unique_queries.sh {} {}'
-    new_command = bash_command.format(dname, i_type, query_count)
-
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
+    new_command = bash_command.format(dname[:-18], i_type, query_count)
+    try:
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 ##############################################################################
 # Command line things are here, this is separate from main logic of script.
