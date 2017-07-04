@@ -61,25 +61,30 @@ def adding_instances(sock, threads=0):
     Will try to add instances with randomized name, based on already added instances
     """
     # Should Not be a multi-threaded run -> see comment at the end of function
-    if threads == 0:
-        command = "sudo pmm-admin add mysql --user=root --socket={} --service-port={} {} "
-        new_command = command.format(sock, str(randint(10000, 60000)), str(uuid4()))
-        print("Running -> " + new_command)
-        process = Popen(
-                        split(new_command),
-                        stdin=None,
-                        stdout=None,
-                        stderr=None)
-        process.communicate()
-    elif threads > 0:
-        command = "sudo pmm-admin add mysql --user=root --socket={} --service-port={} {} "
-        new_command = command.format(sock, str(randint(10000, 60000)), str(uuid4()))
-        print("Running -> " + new_command)
-        process = Popen(
-                        split(new_command),
-                        stdin=None,
-                        stdout=None,
-                        stderr=None)
+    try:
+        if threads == 0:
+            command = "sudo pmm-admin add mysql --user=root --socket={} --service-port={} {} "
+            new_command = command.format(sock, str(randint(10000, 60000)), str(uuid4()))
+            print("Running -> " + new_command)
+            process = Popen(
+                            split(new_command),
+                            stdin=None,
+                            stdout=None,
+                            stderr=None)
+            process.communicate()
+        elif threads > 0:
+            command = "sudo pmm-admin add mysql --user=root --socket={} --service-port={} {} "
+            new_command = command.format(sock, str(randint(10000, 60000)), str(uuid4()))
+            print("Running -> " + new_command)
+            process = Popen(
+                            split(new_command),
+                            stdin=None,
+                            stdout=None,
+                            stderr=None)
+        except Exception as e:
+            print(e)
+        else:
+            return 0
         # Untill pmm-admin is not thread-safe there is no need to run with true multi-thread;
         #process.communicate()
 
@@ -102,21 +107,26 @@ def runner(pmm_count, i_name, i_count, threads=0):
     pmm_framework_wipe_client()
     pmm_framework_add_client(i_name, i_count)
     sockets = getting_instance_socket()
-    for sock in sockets:
-        if threads > 0:
-            # Enabling Threads
-            # Workers count is equal to passed threads number, \
-            # and we have to divide pmm_count to workers count to get loop range for every thread
-            count = int(math.ceil(pmm_count/float(threads)))
-            workers = [threading.Thread(target=repeat_adding_instances(sock, threads, count, i, pmm_count), name="thread_"+str(i))
-                                for i in range(threads)]
-            [worker.start() for worker in workers]
-            [worker.join() for worker in workers]
+    try:
+        for sock in sockets:
+            if threads > 0:
+                # Enabling Threads
+                # Workers count is equal to passed threads number, \
+                # and we have to divide pmm_count to workers count to get loop range for every thread
+                count = int(math.ceil(pmm_count/float(threads)))
+                workers = [threading.Thread(target=repeat_adding_instances(sock, threads, count, i, pmm_count), name="thread_"+str(i))
+                                    for i in range(threads)]
+                [worker.start() for worker in workers]
+                [worker.join() for worker in workers]
 
-        elif threads == 0:
-            for i in range(pmm_count):
-                adding_instances(sock, threads)
-    return 1
+            elif threads == 0:
+                for i in range(pmm_count):
+                    adding_instances(sock, threads)
+
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 
 def create_db(db_count, i_type):
