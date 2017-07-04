@@ -81,10 +81,10 @@ def adding_instances(sock, threads=0):
                             stdin=None,
                             stdout=None,
                             stderr=None)
-        except Exception as e:
-            print(e)
-        else:
-            return 0
+    except Exception as e:
+        print(e)
+    else:
+        return 0
         # Untill pmm-admin is not thread-safe there is no need to run with true multi-thread;
         #process.communicate()
 
