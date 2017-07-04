@@ -35,12 +35,17 @@ def pmm_framework_wipe_client():
     dname = os.path.dirname(abspath)
     command = "{}/pmm-framework.sh --wipe-clients"
     new_command = command.format(dname[:-18])
-    process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
-    process.communicate()
+    try:
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+        output, error = process.communicate()
+    except Exception as e:
+        print(e)
+    else:
+        return 0
 
 
 def getting_instance_socket():
