@@ -18,6 +18,23 @@ class TestPMMStress:
         assert isinstance(return_value, list)
         assert len(return_value) > 0
 
+    def helper_function(self, count):
+        """Function for calling adding_instances()"""
+        socks = randomized_instances.getting_instance_socket()
+        try:
+            for sock in socks:
+                for i in range(count):
+                    randomized_instances.adding_instances(sock, threads=0)
+        except Exception as e:
+            print(e)
+        else:
+            return 0
+
+    def test_adding_instances(self):
+        """Checking for return value from function"""
+        return_value = self.helper_function(100)
+        assert return_value == 0
+
     def test_pmm_framework_wipe_client(self):
         """Checking return value from function"""
         print("\nIn test_pmm_framework_wipe_client()...")
