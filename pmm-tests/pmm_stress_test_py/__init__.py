@@ -1,1 +1,1 @@
-all = ["randomized_intances"]
+all = ["randomized_instances"]
