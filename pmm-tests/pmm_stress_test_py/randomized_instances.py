@@ -303,7 +303,7 @@ def print_version(ctx, param, value):
     help="How many unique queries to create and run against added instances?"
 )
 @click.option(
-    "--insert_blobs"
+    "--insert_blobs",
     type=int,
     nargs=1,
     default=0,
