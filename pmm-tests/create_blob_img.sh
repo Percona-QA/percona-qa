@@ -28,6 +28,7 @@ for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; d
   echo "Create table using MYSQL_SOCK=${MYSQL_SOCK}"
   ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create table pmm_stress_blob_test.t_blob(id int not null, img longblob)"
   for num in $(seq 1 1 ${INSERT_COUNT}) ; do
+      echo "Inserting image into table"
 	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "insert into pmm_stress_blob_test.t_blob(id, img) values(1, LOAD_FILE('${WORKDIR}/t_blob.img'))"
   done
 done
