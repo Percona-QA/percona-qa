@@ -55,6 +55,11 @@ class TestPMMStress:
         return_value = randomized_instances.create_unique_query(10, "ps")
         assert return_value == 0
 
+    def test_insert_blob(self):
+        """Checking for return value from function"""
+        return_value = randomized_instances.insert_blob(2, "ps")
+        assert return_value == 0    
+
     def test_pmm_framework_wipe_client(self):
         """Checking return value from function"""
         print("\nIn test_pmm_framework_wipe_client()...")
