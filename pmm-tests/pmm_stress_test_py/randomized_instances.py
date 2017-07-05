@@ -215,6 +215,26 @@ def create_unique_query(query_count, i_type):
     else:
         return 0
 
+def insert_blob(insert_count, i_type):
+    """
+    Function to create demo image file and run insert statements up to the given number.
+    Using create_blob_img.sh script here.
+    """
+    abspath = os.path.abspath(__file__)
+    dname = os.path.dirname(abspath)
+    bash_command = '{}/create_blob_img.sh {} {}'
+    new_command = bash_command.format(dname[:-18], i_type, insert_count)
+    try:
+        process = Popen(
+                        split(new_command),
+                        stdin=None,
+                        stdout=None,
+                        stderr=None)
+    except Exception as e:
+        print(e)
+    else:
+        return 0
+
 ##############################################################################
 # Command line things are here, this is separate from main logic of script.
 def print_version(ctx, param, value):
@@ -282,12 +302,20 @@ def print_version(ctx, param, value):
     default=0,
     help="How many unique queries to create and run against added instances?"
 )
+@click.option(
+    "--insert_blobs"
+    type=int,
+    nargs=1,
+    default=0,
+    help="How many times to insert test binary image into demo table?"
+)
 
 
 def run_all(threads, instance_type,
             instance_count, pmm_instance_count,
             create_databases, create_tables,
-            create_sleep_queries, create_unique_queries):
+            create_sleep_queries, create_unique_queries,
+            insert_blobs):
     if (not threads) and (not instance_type) and (not instance_count) and (not pmm_instance_count) and (not create_databases):
         print("ERROR: you must give an option, run with --help for available options")
     else:
@@ -300,6 +328,8 @@ def run_all(threads, instance_type,
             create_sleep_query(create_sleep_queries, instance_type)
         if create_unique_queries:
             create_unique_query(create_unique_queries, instance_type)
+        if insert_blobs:
+            insert_blob(insert_blobs, instance_type)
 
 
 if __name__ == "__main__":
