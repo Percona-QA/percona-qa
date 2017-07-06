@@ -4,6 +4,7 @@
 PORT=$[$RANDOM % 10000 + 10000]
 MTRT=$[$RANDOM % 100 + 700]
 BUILD=$(pwd | sed 's|^.*/||')
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 if find . -name group_replication.so | grep -q . ; then 
   GRP_RPL=1
@@ -60,11 +61,11 @@ fi
 
 # Setup scritps
 if [[ $GRP_RPL -eq 1 ]];then
-  echo "Adding scripts: start | start_group_replication | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | tokutek_init"
-  rm -f start start_group_replication start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure tokutek_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl wipe_group_replication
+  echo "Adding scripts: start | start_group_replication | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | myrocks_tokudb_init"
+  rm -f start start_group_replication start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl wipe_group_replication
 else
-  echo "Adding scripts: start | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | tokutek_init"
-  rm -f start start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure tokutek_init pmm_os_agent pmm_mysql_agent
+  echo "Adding scripts: start | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | myrocks_tokudb_init"
+  rm -f start start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent
 fi
 
 #GR startup scripts
@@ -180,8 +181,16 @@ if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
 else
   TOKUDB=""
 fi
+if [ -r ${PWD}/lib/mysql/plugin/ha_rocksdb.so ]; then
+  ROCKSDB="--plugin-load-add=rocksdb=ha_rocksdb.so"
+else
+  ROCKSDB=""
+fi
+
+if [[ ! -z $TOKUDB ]] || [[ ! -z $ROCKSDB ]];then
+  LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+fi
 echo 'MYEXTRA=" --no-defaults"' > start
-echo '#MYEXTRA=" --no-defaults --plugin-load-add=rocksdb=ha_rocksdb.so"' >> start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
 echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"' >> start
@@ -189,7 +198,7 @@ echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer
 echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start
 cp start start_valgrind  # Idem for Valgrind
 cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
-echo "$BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start
+echo "$BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start
 echo "ps -ef | grep \"\$(whoami)\" | grep ${PORT} | grep -v grep | awk '{print \$2}' | xargs kill -9" > kill
 echo " valgrind --suppressions=${PWD}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err >>${PWD}/log/master.err 2>&1 &" >> start_valgrind
 echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_gypsy
@@ -199,7 +208,7 @@ tail -n1 start >> start_gypsy
 echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
 echo "./init;./start;sleep 5;./cl;./stop;tail log/master.err" > setup
-echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock -e \"INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_trx SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_locks SONAME 'ha_tokudb.so'; INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';\"; ./stop" > tokutek_init
+echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_INIT_FILE} ; ./stop" > myrocks_tokudb_init
 BINMODE=
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" ]; then
   BINMODE="--binary-mode "  # Leave trailing space
@@ -217,6 +226,7 @@ echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" 
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
   echo "mkdir ${PWD}/data/test" >> wipe
 fi
+echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_INIT_FILE} ; ./stop" >> wipe
 echo 'sudo pmm-admin config --server $(ifconfig | grep -A1 "^en" | grep -v "^en" | sed "s|.*inet ||;s| .*||")' > pmm_os_agent
 echo 'sudo pmm-admin add mysql $(echo ${PWD} | sed "s|/|-|g;s|^-\+||") --socket=${PWD}/socket.sock --user=root --query-source=perfschema' > pmm_mysql_agent
 echo "./stop >/dev/null 2>&1" > init
@@ -227,13 +237,13 @@ if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO
   echo "mkdir ${PWD}/data/test" >> init
 fi
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5;./cl" > all
-chmod +x start start_valgrind start_gypsy stop setup cl test kill init wipe all prepare run measure tokutek_init pmm_os_agent pmm-mysql-agent 2>/dev/null
+chmod +x start start_valgrind start_gypsy stop setup cl test kill init wipe all prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
-if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
-  echo "Enabling additional TokuDB engine plugin items"
-  ./tokutek_init
+if [[ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]] || [[ -r ${PWD}/lib/mysql/plugin/ha_rocksdb.so ]] ; then
+  echo "Enabling additional TokuDB/ROCKSDB engine plugin items"
+  ./myrocks_tokudb_init
 fi
 echo "Done! To get a fresh instance at any time, execute: ./all (executes: stop;wipe;start;sleep 5;cl)"
 exit 0 
