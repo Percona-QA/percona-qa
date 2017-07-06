@@ -58,7 +58,12 @@ class TestPMMStress:
     def test_insert_blob(self):
         """Checking for return value from function"""
         return_value = randomized_instances.insert_blob(2, "ps")
-        assert return_value == 0    
+        assert return_value == 0
+
+    def test_insert_longtext(self):
+        """Checking for return value from function"""
+        return_value = randomized_instances.insert_longtext('2 999999999', "ps")
+        assert return_value == 0
 
     def test_pmm_framework_wipe_client(self):
         """Checking return value from function"""
