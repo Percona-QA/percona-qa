@@ -341,7 +341,7 @@ def run_all(threads, instance_type,
             instance_count, pmm_instance_count,
             create_databases, create_tables,
             create_sleep_queries, create_unique_queries,
-            insert_blobs, insert_longtext):
+            insert_blobs, insert_longtexts):
     if (not threads) and (not instance_type) and (not instance_count) and (not pmm_instance_count) and (not create_databases):
         print("ERROR: you must give an option, run with --help for available options")
     else:
@@ -356,8 +356,8 @@ def run_all(threads, instance_type,
             create_unique_query(create_unique_queries, instance_type)
         if insert_blobs:
             insert_blob(insert_blobs, instance_type)
-        if insert_longtext:
-            insert_longtext(insert_longtext, instance_type)
+        if insert_longtexs:
+            insert_longtext(insert_longtexts, instance_type)
 
 
 if __name__ == "__main__":
