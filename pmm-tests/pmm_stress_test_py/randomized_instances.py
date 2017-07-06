@@ -356,7 +356,7 @@ def run_all(threads, instance_type,
             create_unique_query(create_unique_queries, instance_type)
         if insert_blobs:
             insert_blob(insert_blobs, instance_type)
-        if insert_longtexs:
+        if insert_longtexts:
             insert_longtext(insert_longtexts, instance_type)
 
 
