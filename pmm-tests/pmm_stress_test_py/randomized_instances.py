@@ -345,7 +345,8 @@ def run_all(threads, instance_type,
     if (not threads) and (not instance_type) and (not instance_count) and (not pmm_instance_count) and (not create_databases):
         print("ERROR: you must give an option, run with --help for available options")
     else:
-        runner(pmm_instance_count, instance_type, instance_count, threads)
+        if instance_count > 0:
+            runner(pmm_instance_count, instance_type, instance_count, threads)
         if create_databases:
             create_db(create_databases, instance_type)
         if create_tables:
