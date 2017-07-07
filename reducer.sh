@@ -106,7 +106,6 @@ TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
 
-
 # ======== Machine configurable variables section: DO NOT REMOVE THIS
 #VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
 # === Check TokuDB/RocksDB storage engine availability
