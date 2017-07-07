@@ -1862,18 +1862,10 @@ start_mysqld_main(){
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
-    #if [ "${CHK_ROCKSDB}" == "1" ];then
-    #  CMD="${CMD} $MYROCKS"
-    #  sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
-    #fi
     if [ "${CHK_LOGBIN}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
-    #if [ "${CHK_TOKUDB}" == "1" ];then
-    #  CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|');
-    #  sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|" $WORK_START
-    #fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
@@ -1884,18 +1876,10 @@ start_mysqld_main(){
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
-    #if [ "${CHK_ROCKSDB}" == "1" ];then  
-    #  CMD="${CMD} $MYROCKS"
-    #  sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
-    #fi
     if [ "${CHK_LOGBIN}" == "1" ];then
       CMD="${CMD} --server-id=100"
       sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
     fi
-    #if [ "${CHK_TOKUDB}" == "1" ];then
-    #  CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|');
-    #  sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|" $WORK_START
-    #fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
@@ -1930,9 +1914,6 @@ start_valgrind_mysqld_main(){
                               --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB \
                               --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none 
-  #if [ "${CHK_ROCKSDB}" == "1" ];then
-  #  CMD="${CMD} $MYROCKS"
-  #fi
   MYSQLD_START_TIME=$(date +'%s')
   $CMD > $WORKD/valgrind.out 2>&1 &
   
@@ -1948,9 +1929,6 @@ start_valgrind_mysqld_main(){
        \$BIN --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
        --socket=$WORKD/socket.sock $MYEXTRA $TOKUDB $ROCKSDB ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
-  #if [ "${CHK_ROCKSDB}" == "1" ];then
-  #  sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START_VALGRIND
-  #fi
   sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START_VALGRIND
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START_VALGRIND
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START_VALGRIND
@@ -2697,15 +2675,9 @@ stop_mysqld_or_pxc(){
 finish(){
   if [ "${STAGE}" != "" -a "${STAGE8_CHK}" != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
     if [ ${STAGE} -eq 8 ]; then
-      #if [ "${CHK_ROCKSDB}" == "1" ];then
-      #  MYEXTRA="$MYEXTRA ${MYROCKS}"
-      #fi
       if [ "${CHK_LOGBIN}" == "1" ];then
         MYEXTRA="$MYEXTRA --server-id=100"
       fi
-      #if [ "${CHK_TOKUDB}" == "1" ];then
-      #  MYEXTRA="$MYEXTRA --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
-      #fi
       if [ ${STAGE8_CHK} -eq 0 ]; then
         export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
         sed -i "s|error.log.out|error.log.out $MYEXTRA |" $WORK_START
@@ -3933,19 +3905,6 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   TRIAL=1
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
   COUNT_MYEXTRA=`echo ${MYEXTRA} | wc -w`
-  #if [ $COUNT_MYEXTRA -gt 3 ]; then
-  #  if grep --binary-files=text '\--plugin-load.*=ha_tokudb.so' $WORKD/mysqld_opt.out > /dev/null ; then 
-  #    sed -i '/--plugin-load.*=ha_tokudb.so/d' $WORKD/mysqld_opt.out ; 
-  #    PGA=1
-  #  fi
-  #else
-  #  if echo $MYEXTRA |  grep --binary-files=text '\--plugin-load.*=ha_tokudb.so' > /dev/null ; then  
-  #    MYEXTRA=$(echo $MYEXTRA | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g;s|--plugin-load=tokudb=ha_tokudb.so||g');
-  #    echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
-  #    echo " --plugin-load-add=tokudb=ha_tokudb.so" >> $WORKD/mysqld_opt.out
-  #    MYEXTRA=$(cat $WORKD/mysqld_opt.out | tr -s "\n" " ")
-  #  fi
-  #fi 
   FILE1="$WORKD/file1"
   FILE2="$WORKD/file2"
   MYROCKS="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"
@@ -3956,15 +3915,6 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   }
 
   myextra_check
-
-  #RocksDB startup option check
-  #rocksdb_startup_chk(){
-  # if echo "${MYEXTRA}" | grep '\--rocksdb\|--default-storage-engine=RocksDB\|--skip-innodb\|--default-tmp-storage-engine=MyISAM'; then
-  #   MYEXTRA=$(echo $MYEXTRA | sed 's|--default-storage-engine=RocksDB||;s|--skip-innodb ||;s|--default-tmp-storage-engine=MyISAM||;s|--rocksdb ||')
-  #   CHK_ROCKSDB=1
-  #   ECHO_ROCKSDB=": RocksDB run, server startup will use following mysqld options - $MYROCKS"
-  # fi
-  #}
 
   #binary log server-id startup option check with 5.7 version
   logbin_startup_chk(){
@@ -3980,16 +3930,6 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       CHK_LOGBIN=0
     fi
   }
-  
-  #TokuDB startup option check
-  #tokudb_startup_chk(){
-  #  if echo "${MYEXTRA}" | grep -q 'tokudb'; then
-  #    MYEXTRA=$(echo $MYEXTRA | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g;s|--plugin-load=tokudb=ha_tokudb.so||g;s|--tokudb-check-jemalloc=0||g');
-  #    CHK_TOKUDB=1
-  #  else
-  #    CHK_TOKUDB=0
-  #  fi
-  #}
 
   myextra_reduction(){
     while read line; do
@@ -4004,10 +3944,8 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       fi
       STAGE8_CHK=0
       COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
-      #rocksdb_startup_chk
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA";
       logbin_startup_chk
-      #tokudb_startup_chk
       run_and_check
       TRIAL=$[$TRIAL+1]
       STAGE8_OPT=$line
@@ -4019,18 +3957,13 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       while true; do
         ISSUE_CHECK=0
         NEXTACTION="& try removing next mysqld option"
-        #if [ $PGA -eq 1 ] ; then
-        #  echo " --plugin-load-add=tokudb=ha_tokudb.so" >> $FILE1
-        #fi
         MYEXTRA=$(cat $FILE1 | tr -s "\n" " ")
-        #rocksdb_startup_chk
         logbin_startup_chk
-        #tokudb_startup_chk
         COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
         if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA"
         else
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA";
         fi
         run_and_check
         if [ "${STAGE8_CHK}" == "1" ]; then
@@ -4038,18 +3971,13 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
           echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
           myextra_check
         else
-          #if [ $PGA -eq 1 ] ; then
-          #  echo " --plugin-load-add=tokudb=ha_tokudb.so" >> $FILE2
-          #fi
           MYEXTRA=$(cat $FILE2 | tr -s "\n" " ")
-          #rocksdb_startup_chk
           logbin_startup_chk
-          #tokudb_startup_chk
           COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
           if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA"
           else
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA $ECHO_ROCKSDB";
+            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA";
           fi
           run_and_check
           if [ "${STAGE8_CHK}" == "1" ]; then
