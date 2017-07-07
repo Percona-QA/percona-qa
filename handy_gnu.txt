@@ -136,6 +136,8 @@
   mapfile -t ARRAY < <(printf '%s\n' "${ARRAY[@]}" | sort -n)  # You can also use -u with the sort to have unqiue values only and/or -r to have a reverse (large>small) sort
 # Find a certain string within all files in a subdirectory (handy for finding text like function names etc. in source code etc.)
   grep -R --include=* -n "search string"  # From the highest directory
+# Generate a random string  # With thanks, https://gist.github.com/earthgecko/3089509
+  cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-32} | head -n 1
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
