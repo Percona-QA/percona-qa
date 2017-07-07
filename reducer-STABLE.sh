@@ -45,14 +45,15 @@ PQUERY_MULTI=0                  # On/off (1/0) Enables true multi-threaded testc
 # === Reduce startup issues     # Reduces startup issues. This will only work if a clean start (mysqld --no-defaults) works correctly; otherwise template creation will fail also
 REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce mysqld startup issues (without SQL simplication), caused for example by a failing --option to mysqld
 
-# === Reduce GLIBC crashes      # Remember that if you use REDUCE_GLIBC_CRASHES=1 with MODE=3, then the console/typescript log is searched for TEXT, not the mysqld error log
-REDUCE_GLIBC_CRASHES=0          # Default/normal use: 0. Set to 1 to reduce the testcase based on a GLIBC crash being detected or not. MODE=3 (set TEXT) and MODE=4 (all) supported
-SCRIPT_LOC=/usr/bin/script      # Script binary (sudo yum install util-linux), which is required when/for reducing GLIBC crashes
+# === Reduce GLIBC/SS crashes   # Remember that if you use REDUCE_GLIBC_OR_SS_CRASHES=1 with MODE=3, then the console/typescript log is searched for TEXT, not the mysqld error log
+REDUCE_GLIBC_OR_SS_CRASHES=0    # Default/normal use: 0. Set to 1 to reduce testcase based on a GLIBC crash or stack smash being detected. MODE=3 (TEXT) and MODE=4 (all) supported
+SCRIPT_LOC=/usr/bin/script      # The script binary (sudo yum install util-linux) is required for reducing GLIBC crashes
 
-# === Shutdown/hanging issues   # For mysqld hang testcas reduction (use TIMEOUT_CHECK + MODE=0) and for 'only reproducible at shutdown' testcase reduction (use TIMEOUT_COMMAND)
-TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. Ref below. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
-TIMEOUT_CHECK=600               # If MODE=0 is used, specifiy the number of seconds used as a timeout in TIMEOUT_COMMAND here. Do not set too small (e.g. >600 sec)
-                                # Note: TIMEOUT_CHECK + MODE=0 is better for hanging mysqld's whereas TIMEOUT_COMMAND is better for "checkable" (i.e. use MODE=2 or =3) issues 
+# === Hang issues               # For catching hang issues (both in normal runtime as well as during shutdown). Must set MODE=0 for this option to become active
+TIMEOUT_CHECK=600               # When MODE=0 is used, this specifies the nr of seconds to be used as a timeout. Do not set too small (eg. >600 sec). See examples in help below.
+
+# === Timeout mysqld            # Uncommonly used option. Used to terminate (timeout) mysqld after x seconds, while still checking for MODE=2/3 TEXT. See examples in help below.
+TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to mysqld. For example, TIMEOUT_COMMAND="timeout --signal=SIGKILL 10m"
 
 # === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
@@ -83,12 +84,16 @@ LOAD_TIMEZONE_DATA=0            # On/Off (1/0) Enable loading Timezone data into
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
 SKIPSTAGEBELOW=0                # Usually not changed (default=0), skips stages below and including requested stage
 SKIPSTAGEABOVE=9                # Usually not changed (default=9), skips stages above and including requested stage
-FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully terminate mysqld instead of using proper mysqladmin shutdown etc.
+FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully kill mysqld instead of using mysqladmin shutdown etc. Auto-disabled for MODE=0.
 
 # === Percona XtraDB Cluster
 PXC_MOD=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables PQUERY_MODE=1
 PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 WSREP_PROVIDER_OPTIONS=""       # wsrep_provider_options to be used (and reduced).
+
+# === MySQL Group Replication
+GRP_RPL_MOD=0                   # On/Off (1/0) Enable to reduce testcases using MySQL Group Replication. Auto-enables PQUERY_MODE=1
+GRP_RPL_ISSUE_NODE=0            # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 
 # === MODE=5 Settings           # Only applicable when MODE5 is used
 MODE5_COUNTTEXT=1               # Number of times the text should appear (default=minimum=1). Currently only used for MODE=5
@@ -114,8 +119,8 @@ TS_VARIABILITY_SLEEP=1
 #   - MODE=0: Timeout testing (server hangs, shutdown issues, excessive command duration etc.) (set TIMEOUT_CHECK)
 #   - MODE=1: Valgrind output testing (set TEXT)
 #   - MODE=2: mysql CLI (Command Line Interface, i.e. the mysql client)/pquery client output testing (set TEXT) 
-#   - MODE=3: mysqld error output log or console/typescript log (when REDUCE_GLIBC_CRASHES=1) testing (set TEXT)
-#   - MODE=4: Crash or GLIBC crash (when REDUCE_GLIBC_CRASHES=1) testing
+#   - MODE=3: mysqld error output log or console/typescript log (when REDUCE_GLIBC_OR_SS_CRASHES=1) testing (set TEXT)
+#   - MODE=4: Crash or GLIBC crash (when REDUCE_GLIBC_OR_SS_CRASHES=1) testing
 #   - MODE=5 [BETA]: MTR testcase reduction (set TEXT) (Can also be used for multi-occurence CLI output testing - see MODE5_COUNTTEXT)
 #   - MODE=6 [ALPHA]: Multi threaded (ThreadSync) Valgrind output testing (set TEXT)
 #   - MODE=7 [ALPHA]: Multi threaded (ThreadSync) mysql CLI/pquery client output testing (set TEXT)
@@ -130,10 +135,13 @@ TS_VARIABILITY_SLEEP=1
 # - PQUERY_LOC: Location of the pquery binary (retrieve pquery like this; $ cd ~; bzr branch lp:percona-qa; # then ref ~/percona-qa/pquery/pquery[-ms])
 # - PQUERY_EXTRA_OPTIONS: Extra options to pquery which will be added to the pquery command line. This is used for query correctness trials
 # - PXC_MOD: 1: bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
+# - GRP_RPL_MOD: 1: bring up 3 node Group Replication instead of default server, 0: use default non-cluster server (mysqld)
 #   see lp:/percona-qa/pxc-pquery/new/pxc-pquery_info.txt and lp:/percona-qa/docker_info.txt for more information on this. See above for some limitations etc.
 #   IMPORTANT NOTE: If this is set to 1, ftm, these settings (and limitations) are automatically set: INHERENT: PQUERY_MOD=1, LIMTATIONS: FORCE_SPORADIC=0, 
 #   SPORADIC=0, FORCE_SKIPV=0, SKIPV=1, MYEXTRA="", MULTI_THREADS=0 
 # - PXC_ISSUE_NODE: This indicates which node you would like to be checked for presence of the issue. 0 = Any node. Valid options: 0, 1, 2, or 3. Only works
+#   for MODE=4 currently.
+# - GRP_RPL_ISSUE_NODE: This indicates which node you would like to be checked for presence of the issue. 0 = Any node. Valid options: 0, 1, 2, or 3. Only works
 #   for MODE=4 currently.
 # - PXC_DOCKER_COMPOSE_LOC: Location of the Docker Compose file used to bring up 3 node Percona XtraDB Cluster (using images previously prepared by "new" method) 
 # - QUERYTIMEOUT: Number of seconds to wait before terminating a query (similar to RQG's querytimeout option). Do not set < 40 to avoid initial DDL failure
@@ -216,14 +224,14 @@ TS_VARIABILITY_SLEEP=1
 #   check the client output (MODE=2) for (for example) a runaway query. Different are issues where there is a 1) complete hang or 2) an issue that does not
 #   or cannot!) represent itself in the error log/client log etc. In such cases, use TIMEOUT_CHECK and MODE=0. 
 # - TIMEOUT_CHEK: used when MODE=0. Though there is no connection with TIMEOUT_COMMAND, the idea is similar; When MODE=0 is active, a timeout command prefix
-#   for mysqld is auto-generated by reducer.sh. Note that MODE=0 does NOT check for specific TEST string issues. It just checks if a timeout was reached
+#   for mysqld is auto-generated by reducer.sh. Note that MODE=0 does NOT check for specific TEXT string issues. It just checks if a timeout was reached
 #   at the end of each trial run. Thus, if a server was hanging, or a statement ran for a very long time (if not terminated by the QUERYTIMEOUT setting), or
 #   a shutdon was initiated but never completed etc. then reducer.sh will notice that the timeout was reached, and thus assume the issue reproduced. Always
 #   set this setting at least to 2x the expected testcase run/duration lenght in seconds + 30 seconds extra. This longer duration is to prevent false 
 #   positives. Reducer auto-sets this value as the timeout for mysqld, and checks if the termination of mysqld was within 30 seconds of this duration.
 # - FORCE_KILL=0 or 1: If set to 1, then reducer.sh will forcefully terminate mysqld instead of using mysqladmin. This can be used when for example 
 #   authentication issues prevent mysqladmin from shutting down the server cleanly. Normally it is recommended to leave this =0 as certain issues only
-#   present themselves at the time of mysqld shutdown. However, in specific use cases it may be handy. Not often used.
+#   present themselves at the time of mysqld shutdown. However, in specific use cases it may be handy. Not often used. Auto-disabled for MODE=0.
 
 # ======== Gotcha's
 # - When reducing an SQL file using for example FORCE_SKIPV=1, FORCE_SPORADIC=1, PQUERY_MULTI=0, PQUERY_REVERSE_NOSHUFFLE_OPT=1, PQUERY_MOD=1, then reducer
@@ -349,9 +357,9 @@ TS_VARIABILITY_SLEEP=1
 # * http://stackoverflow.com/questions/4616061/glibc-backtrace-cant-redirect-output-to-file
 # * http://stackoverflow.com/questions/4290336/how-to-redirect-runtime-errors-to-stderr
 # * https://sourceware.org/git/?p=glibc.git;a=patch;h=1327439fc6ef182c3ab8c69a55d3bee15b3c62a7
-if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
   if [ ! -r $SCRIPT_LOC ]; then
-    echo "Error: REDUCE_GLIBC_CRASHES is activated, which requires the 'script' binary (part of the util-linux package), but this binary could not be found at $SCRIPT_LOC"
+    echo "Error: REDUCE_GLIBC_OR_SS_CRASHES is activated, which requires the 'script' binary (part of the util-linux package), but this binary could not be found at $SCRIPT_LOC"
     echo "Please install it and/or set the correct path/binary name using the SCRIPT_LOC variable."
     echo "Terminating now."
     exit 1
@@ -388,6 +396,11 @@ ctrl_c(){
   echo_out "[Abort] End of dump stack"
   if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining PXC nodes are terminated and removed"
+    (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    sleep 2; sync 
+  fi
+  if [ $GRP_RPL_MOD -eq 1 ]; then
+    echo_out "[Abort] Ensuring any remaining Group Replication nodes are terminated and removed"
     (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync 
   fi
@@ -627,9 +640,9 @@ options_check(){
       exit 1
     fi
   fi
-  if [ $PXC_MOD -eq 1 ]; then
+  if [[ $PXC_MOD -eq 1  || $GRP_RPL_MOD -eq 1 ]]; then
     PQUERY_MOD=1
-    # ========= These are currently limitations of PXC mode. Feel free to extend reducer.sh to handle these ========
+    # ========= These are currently limitations of PXC/Group Replication mode. Feel free to extend reducer.sh to handle these ========
     #export -n MYEXTRA=""  # Serious shortcoming. Work to be done. PQUERY MYEXTRA variables will be added docker-compose.yml
     export -n FORCE_SPORADIC=0
     export -n SPORADIC=0
@@ -638,22 +651,22 @@ options_check(){
     export -n MULTI_THREADS=0  # Original thought here was to avoid dozens of 3-container docker setups. This needs reviewing now that mysqld is used directly.
     # /==========
     if [ $MODE -eq 0 ]; then
-      echo "Error: PXC mode is set to 1, and MODE=0 set to 0, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
+      echo "Error: PXC/Group Replication mode is set to 1, and MODE=0 set to 0, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
       echo "Terminating now."
       exit 1
     fi
     if [ "${TIMEOUT_COMMAND}" != "" ]; then
-      echo "Error: PXC mode is set to 1, and TIMEOUT_COMMAND is set, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
+      echo "Error: PXC/Group Replication mode is set to 1, and TIMEOUT_COMMAND is set, but this option combination has not been tested/added to reducer.sh yet. Please do so!"
       echo "Terminating now."
       exit 1
     fi
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-      echo "Error: Valgrind for 3 node PXC replay has not been implemented yet. Please do so! Free cookies afterwards!"
+      echo "Error: Valgrind for 3 node PXC/Group Replication replay has not been implemented yet. Please do so! Free cookies afterwards!"
       echo "Terminating now."
       exit 1
     fi
     if [ $MODE -ge 6 -a $MODE -le 9 ]; then
-      echo "Error: wrong option combination: MODE is set to $MODE (ThreadSync) and PXC mode is active"
+      echo "Error: wrong option combination: MODE is set to $MODE (ThreadSync) and PXC/Group Replication mode is active"
       echo 'Please check script contents/options ($MODE and $PXC mode variables)'
       echo "Terminating now."
       exit 1
@@ -683,18 +696,18 @@ options_check(){
       echo_out "Warning: PQUERY_MULTI active, and PQUERY_MULTI_CLIENT_THREADS is set to $PQUERY_MULTI_CLIENT_THREADS, $PQUERY_MULTI_CLIENT_THREADS threads for reproducing a multi-threaded issue via random replay seems insufficient. You may want to increase PQUERY_MULTI_CLIENT_THREADS. Proceeding, but this is likely incorrect. Please check"
     fi
   fi
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-    export -n MULTI_THREADS=1            # Likely not needed, because MULTI mode should never become active for REDUCE_GLIBC_CRASHES=1 (and there is a matching assert), 
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
+    export -n MULTI_THREADS=1            # Likely not needed, because MULTI mode should never become active for REDUCE_GLIBC_OR_SS_CRASHES=1 (and there is a matching assert), 
     export -n MULTI_THREADS_INCREASE=0   # so it is here as a safety measure only FTM.
     export -n SLOW_DOWN_CHUNK_SCALING=1
     export -n SKIPV=1
     if [ $MODE -ne 3 -a $MODE -ne 4 ]; then
-      echo "REDUCE_GLIBC_CRASHES is active, and MODE is set to MODE=$MODE, which is not supported (yet). Currently only modes 3 and 4 are supported when reducing GLIBC crashes"
+      echo "REDUCE_GLIBC_OR_SS_CRASHES is active, and MODE is set to MODE=$MODE, which is not supported (yet). Currently only modes 3 and 4 are supported when reducing GLIBC crashes"
       echo "Terminating now."
       exit 1
     fi
-    if [ $PXC_MOD -gt 0 ]; then
-      echo "GLIBC testcase reduction is not yet supported for PXC_MOD=1. This would be very complex to code, except perhaps for a single node cluster or for one node only. See source code for details. Search for 'GLIBC crash reduction'"
+    if [[ $PXC_MOD -gt 0 || $GRP_RPL_MOD -eq 1 ]]; then
+      echo "GLIBC testcase reduction is not yet supported for PXC_MOD=1 or GRP_RPL_MOD=1. This would be very complex to code, except perhaps for a single node cluster or for one node only. See source code for details. Search for 'GLIBC crash reduction'"
       echo "A workaround may be to see if this GLIBC crash reproduces on standard (non-cluster) mysqld also, which is likely."
       echo "Terminating now."
       exit 1
@@ -715,6 +728,9 @@ options_check(){
     export -n SPORADIC=1
     export -n SLOW_DOWN_CHUNK_SCALING=1
   fi   
+  if [ $MODE -eq 0 -a $FORCE_KILL=1 ]; then
+    FORCE_KILL=0
+  fi
   export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|[ \t]*--no-defaults[ \t]*||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
 
@@ -779,8 +795,8 @@ multi_reducer(){
   # thereby telling reducer it is a child process)
   # This function does not need to know if reducer is reducing a single or multi-threaded testcase and what MODE is used as all these options are passed
   # verbatim to the child ($1 to the program is $1 to the child, and all ather settings are copied into the child process below)
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-    echo_out "ASSERT: REDUCE_GLIBC_CRASHES is active, and we ended up in multi_reducer() function. This should not be possible as REDUCE_GLIBC_CRASHES uses a single thread only."
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
+    echo_out "ASSERT: REDUCE_GLIBC_OR_SS_CRASHES is active, and we ended up in multi_reducer() function. This should not be possible as REDUCE_GLIBC_OR_SS_CRASHES uses a single thread only."
   fi
   if [ "$STAGE" = "V" ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Starting $MULTI_THREADS verification subreducer threads to verify if the issue is sporadic ($WORKD/subreducer/)"
@@ -1135,7 +1151,7 @@ init_workdir_and_files(){
   touch $WORKD/reducer.log
   echo_out "[Init] Workdir: $WORKD"
   export TMP=$WORKD/tmp
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then echo_out "[Init] Console typescript log for REDUCE_GLIBC_CRASHES: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then echo_out "[Init] Console typescript log for REDUCE_GLIBC_OR_SS_CRASHES: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
   echo_out "[Init] Temporary storage directory (TMP environment variable) set to $TMP"
   # jemalloc configuration for TokuDB plugin
   JE1="if [ \"\${JEMALLOC}\" != \"\" -a -r \"\${JEMALLOC}\" ]; then export LD_PRELOAD=\${JEMALLOC}"
@@ -1180,9 +1196,13 @@ init_workdir_and_files(){
     echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
     echo_out "[Init] PXC Node #2 Client: $BASEDIR/bin/mysql -uroot -S${node2}/node2_socket.sock"
     echo_out "[Init] PXC Node #3 Client: $BASEDIR/bin/mysql -uroot -S${node3}/node3_socket.sock"
+  elif [ $GRP_RPL_MOD -eq 1 ]; then
+    echo_out "[Init] Group Replication Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
+    echo_out "[Init] Group Replication Node #2 Client: $BASEDIR/bin/mysql -uroot -S${node2}/node2_socket.sock"
+    echo_out "[Init] Group Replication Node #3 Client: $BASEDIR/bin/mysql -uroot -S${node3}/node3_socket.sock"
   else
     echo_out "[Init] Server: ${BIN} (as $MYUSER)"
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
       echo_out "[Init] Client: $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock"
     else
       echo_out "[Init] Client (When MULTI mode is not active): $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock"
@@ -1217,20 +1237,20 @@ init_workdir_and_files(){
     fi
   fi
   if [ $FORCE_SKIPV -gt 0 -a $FORCE_SPORADIC -gt 0 ]; then echo_out "[Init] FORCE_SKIPV active, so FORCE_SPORADIC is automatically set active also" ; fi
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
     if [ $FORCE_SKIPV -gt 0 ]; then 
-      echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often (this happens irrespective of FORCE_SKIPV=1)"
+      echo_out "[Init] REDUCE_GLIBC_OR_SS_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often (this happens irrespective of FORCE_SKIPV=1)"
     else
-      echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often"
+      echo_out "[Init] REDUCE_GLIBC_OR_SS_CRASHES active, so automatically skipping VERIFY mode as GLIBC crashes may be sporadic more often"
     fi
-    echo_out "[Init] REDUCE_GLIBC_CRASHES active, so automatically set SLOW_DOWN_CHUNK_SCALING=1 to slow down chunk size scaling (both for chunk reductions and increases)"
+    echo_out "[Init] REDUCE_GLIBC_OR_SS_CRASHES active, so automatically set SLOW_DOWN_CHUNK_SCALING=1 to slow down chunk size scaling (both for chunk reductions and increases)"
     if [ $FORCE_SPORADIC -gt 0 ]; then
       echo_out "[Info] FORCE_SPORADIC active, issue is assumed to be sporadic"
       echo_out "[Init] FORCE_SPORADIC active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
     fi
     if [ $MODE -eq 3 ]; then
       echo_out "[WARNING] ---------------------"
-      echo_out "[WARNING] REDUCE_GLIBC_CRASHES active and MODE=3. Have you updated the TEXT=\"...\" to a search string matching the console (on-screen) output of a GLIBC crash instead of using some text from the error log (which is not scanned now)? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***. For the TEXT search string, do not use the hex address but instead, for example, 'corrupted double-linked list', or a specfic frame from the stack trace which is normally shown below this intro line. Alternatively, set MODE=4 to look for any GLIBC crash. If this reducer.sh was generated by pquery-prep-red.sh, then note that TEXT would have been automatically set to content from the error log, or to a more generic MODE=4, but neither of these will reduce for GLIBC crashes. Instead, set the TEXT string to a GLIBC specific string as described"
+      echo_out "[WARNING] REDUCE_GLIBC_OR_SS_CRASHES active and MODE=3. Have you updated the TEXT=\"...\" to a search string matching the console (on-screen) output of a GLIBC crash instead of using some text from the error log (which is not scanned now)? The output of a GLIBC crash is on the main console stdout, so a copy/paste of a suitable search string may be made directly from the console. A GLIBC crash looks similar to this: *** Error in \`/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***. For the TEXT search string, do not use the hex address but instead, for example, 'corrupted double-linked list', or a specfic frame from the stack trace which is normally shown below this intro line. Note that the message can also look like this (on Ubuntu); *** stack smashing detected ***: /your_basedir/bin/mysqld terminated. The best way to find out what the message is on your system is to run reducer first normally (without REDUCE_GLIBC_OR_SS_CRASHES set, and check what the output is. Alternatively, set MODE=4 to look for any GLIBC crash. If this reducer.sh was generated by pquery-prep-red.sh, then note that TEXT would have been automatically set to content from the error log, or to a more generic MODE=4, but neither of these will reduce for GLIBC crashes (is MODE=3 this is because the error log is not scanned, and in MODE=4 this is because the GLIBC crash (or stack smash) may be offset/different from any crash in the error log). Instead, set the TEXT string to a GLIBC specific string as described."
       echo_out "[WARNING] ---------------------"
     fi       
   else
@@ -1290,8 +1310,25 @@ init_workdir_and_files(){
       fi
     fi
   fi
+  if [ $GRP_RPL_MOD -gt 0 ]; then
+    echo_out "[Init] GRP_RPL_MOD active, so automatically set PQUERY_MOD=1: Group Replication Cluster testcase reduction is currently supported only with pquery"
+    if [ $MODE -eq 5 -o $MODE -eq 3 ]; then
+      echo_out "[Warning] MODE=$MODE is set, as well as Group Replication mode active. This combination will likely work, but has not been tested yet. Please remove this warning (for MODE=$MODE only please) when it was tested succesfully"
+    fi
+    if [ $MODE -eq 4 ]; then
+      if [ $GRP_RPL_ISSUE_NODE -eq 0 ]; then
+        echo_out "[Info] All Group Replication nodes will be checked for the issue. As long as one node reproduces, testcase reduction will continue (GRP_RPL_ISSUE_NODE=0)"
+      elif [ $GRP_RPL_ISSUE_NODE -eq 1 ]; then
+        echo_out "[Info] Important: GRP_RPL_ISSUE_NODE is set to 1, so only PXC node 1 will be checked for the presence of the issue"
+      elif [ $GRP_RPL_ISSUE_NODE -eq 2 ]; then
+        echo_out "[Info] Important: GRP_RPL_ISSUE_NODE is set to 2, so only PXC node 2 will be checked for the presence of the issue"
+      elif [ $GRP_RPL_ISSUE_NODE -eq 3 ]; then
+        echo_out "[Info] Important: GRP_RPL_ISSUE_NODE is set to 3, so only PXC node 3 will be checked for the presence of the issue"
+      fi
+    fi
+  fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
-    if [ $PXC_MOD -ne 1 ]; then 
+    if [[ $PXC_MOD -ne 1 && $GRP_RPL_MOD -ne 1 ]]; then 
       echo_out "[Init] Setting up standard working template (without using MYEXTRA options)"
       # Get version specific options
       MID=
@@ -1351,7 +1388,7 @@ init_workdir_and_files(){
         $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
       fi
       stop_mysqld_or_pxc
-    else
+    elif [[ $PXC_MOD -eq 1 ]]; then
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
       if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
         MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
@@ -1364,6 +1401,19 @@ init_workdir_and_files(){
       if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
         mkdir -p $node1 $node2 $node3
       fi
+      ${MID} --datadir=$node1  > ${WORKD}/startup_node1_error.log 2>&1 || exit 1;
+      ${MID} --datadir=$node2  > ${WORKD}/startup_node2_error.log 2>&1 || exit 1;
+      ${MID} --datadir=$node3  > ${WORKD}/startup_node3_error.log 2>&1 || exit 1;
+      mkdir $WORKD/node1.init $WORKD/node2.init $WORKD/node3.init
+      cp -a $WORKD/node1/* $WORKD/node1.init/
+      cp -a $WORKD/node2/* $WORKD/node2.init/
+      cp -a $WORKD/node3/* $WORKD/node3.init/
+    elif [[ $GRP_RPL_MOD -eq 1 ]]; then
+      echo_out "[Init] Setting up standard Group Replication working template (without using MYEXTRA options)"
+      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+      node1="${WORKD}/node1"
+      node2="${WORKD}/node2"
+      node3="${WORKD}/node3"
       ${MID} --datadir=$node1  > ${WORKD}/startup_node1_error.log 2>&1 || exit 1;
       ${MID} --datadir=$node2  > ${WORKD}/startup_node2_error.log 2>&1 || exit 1;
       ${MID} --datadir=$node3  > ${WORKD}/startup_node3_error.log 2>&1 || exit 1;
@@ -1420,7 +1470,7 @@ generate_run_scripts(){
     chmod +x $WORK_RUN
     if [ $PQUERY_MOD -eq 1 ]; then
       cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
-      if [ $PXC_MOD -eq 1 ]; then
+      if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
         echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
         echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
         echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_RUN_PQUERY
@@ -1496,7 +1546,7 @@ generate_run_scripts(){
 }
 
 init_mysql_dir(){
-  if [ $PXC_MOD -eq 1 ]; then
+  if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
     sudo rm -Rf $WORKD/node1 $WORKD/node2 $WORKD/node3
     cp -a ${node1}.init ${node1}
     cp -a ${node2}.init ${node2}
@@ -1510,7 +1560,7 @@ init_mysql_dir(){
       cp -a $WORKD/../../data.init/* $WORKD/data/
     fi
   fi
-  if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+  if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
     echo "" > /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log
   fi
 }
@@ -1519,6 +1569,8 @@ start_mysqld_or_valgrind_or_pxc(){
   init_mysql_dir
   if [ $PXC_MOD -eq 1 ]; then
     start_pxc_main
+  elif [ $GRP_RPL_MOD -eq 1 ]; then
+    gr_start_main
   else
     if [ -f $WORKD/error.log.out ]; then mv -f $WORKD/error.log.out $WORKD/error.log.prev; fi                    # mysqld error log
     if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi                             # mysqld stdout & stderr output, as well as some mysqladmin output
@@ -1663,6 +1715,119 @@ start_pxc_main(){
   fi
 }
 
+gr_start_main(){
+  ADDR="127.0.0.1"
+  RPORT=$(( RANDOM%21 + 10 ))
+  RBASE="$(( RPORT*1000 ))"
+  RBASE1="$(( RBASE + 1 ))"
+  RBASE2="$(( RBASE + 2 ))"
+  RBASE3="$(( RBASE + 3 ))"
+  LADDR1="$ADDR:$(( RBASE + 101 ))"
+  LADDR2="$ADDR:$(( RBASE + 102 ))"
+  LADDR3="$ADDR:$(( RBASE + 103 ))"
+
+  gr_startup_chk(){
+    ERROR_LOG=$1
+    if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
+      if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
+        echo "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
+      else
+        echo "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MYEXTRA (${MYEXTRA}) startup options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings."
+        grep "ERROR" $ERROR_LOG
+        exit 1
+      fi
+    fi
+  }
+
+  ${BASEDIR}/bin/mysqld --no-defaults \
+    --basedir=${BASEDIR} --datadir=$node1 \
+    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --server_id=1 --gtid_mode=ON --enforce_gtid_consistency=ON \
+    --master_info_repository=TABLE --relay_log_info_repository=TABLE \
+    --binlog_checksum=NONE --log_slave_updates=ON --log_bin=binlog \
+    --binlog_format=ROW --innodb_flush_method=O_DIRECT \
+    --core-file --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$node1/error.log \
+    --socket=$node1/node1_socket.sock --log-output=none \
+    --port=$RBASE1 --transaction_write_set_extraction=XXHASH64 \
+    --loose-group_replication_group_name="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" \
+    --loose-group_replication_start_on_boot=off --loose-group_replication_local_address="$LADDR1" \
+    --loose-group_replication_group_seeds="$LADDR1,$LADDR2,$LADDR3" \
+    --loose-group_replication_bootstrap_group=off --super_read_only=OFF > $node1/node1.err 2>&1 &
+
+  for X in $(seq 0 200); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node1/node1_socket.sock ping > /dev/null 2>&1; then
+      sleep 2
+      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -Bse "create database if not exists test" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -Bse "SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -Bse "CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -Bse "INSTALL PLUGIN group_replication SONAME 'group_replication.so';SET GLOBAL group_replication_bootstrap_group=ON;START GROUP_REPLICATION;SET GLOBAL group_replication_bootstrap_group=OFF;" > /dev/null 2>&1
+      break
+    fi
+    gr_startup_chk $node1/node1.err
+  done
+
+  ${BASEDIR}/bin/mysqld --no-defaults \
+    --basedir=${BASEDIR} --datadir=$node2 \
+    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --server_id=1 --gtid_mode=ON --enforce_gtid_consistency=ON \
+    --master_info_repository=TABLE --relay_log_info_repository=TABLE \
+    --binlog_checksum=NONE --log_slave_updates=ON --log_bin=binlog \
+    --binlog_format=ROW --innodb_flush_method=O_DIRECT \
+    --core-file --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$node2/error.log \
+    --socket=$node2/node2_socket.sock --log-output=none \
+    --port=$RBASE2 --transaction_write_set_extraction=XXHASH64 \
+    --loose-group_replication_group_name="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" \
+    --loose-group_replication_start_on_boot=off --loose-group_replication_local_address="$LADDR2" \
+    --loose-group_replication_group_seeds="$LADDR1,$LADDR2,$LADDR3" \
+    --loose-group_replication_bootstrap_group=off --super_read_only=OFF > $node2/node2.err 2>&1 &
+
+  for X in $(seq 0 200); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node2/node2_socket.sock ping > /dev/null 2>&1; then
+      sleep 2
+      ${BASEDIR}/bin/mysql -uroot -S$node2/node2_socket.sock -Bse "SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node2/node2_socket.sock -Bse "CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node2/node2_socket.sock -Bse "INSTALL PLUGIN group_replication SONAME 'group_replication.so';START GROUP_REPLICATION;" > /dev/null 2>&1
+      break
+    fi
+    gr_startup_chk $node2/node2.err
+  done
+
+  ${BASEDIR}/bin/mysqld --no-defaults \
+    --basedir=${BASEDIR} --datadir=$node3 \
+    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
+    --server_id=1 --gtid_mode=ON --enforce_gtid_consistency=ON \
+    --master_info_repository=TABLE --relay_log_info_repository=TABLE \
+    --binlog_checksum=NONE --log_slave_updates=ON --log_bin=binlog \
+    --binlog_format=ROW --innodb_flush_method=O_DIRECT \
+    --core-file --sql-mode=no_engine_substitution \
+    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --log-error=$node3/error.log \
+    --socket=$node3/node3_socket.sock --log-output=none \
+    --port=$RBASE3 --transaction_write_set_extraction=XXHASH64 \
+    --loose-group_replication_group_name="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" \
+    --loose-group_replication_start_on_boot=off --loose-group_replication_local_address="$LADDR3" \
+    --loose-group_replication_group_seeds="$LADDR1,$LADDR2,$LADDR3" \
+    --loose-group_replication_bootstrap_group=off --super_read_only=OFF > $node3/node3.err 2>&1 &
+
+  for X in $(seq 0 200); do
+    sleep 1
+    if ${BASEDIR}/bin/mysqladmin -uroot -S$node3/node3_socket.sock ping > /dev/null 2>&1; then
+      sleep 2
+      ${BASEDIR}/bin/mysql -uroot -S$node3/node3_socket.sock -Bse "SET SQL_LOG_BIN=0;CREATE USER rpl_user@'%';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%' IDENTIFIED BY 'rpl_pass';FLUSH PRIVILEGES;SET SQL_LOG_BIN=1;" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node3/node3_socket.sock -Bse "CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';" > /dev/null 2>&1
+      ${BASEDIR}/bin/mysql -uroot -S$node3/node3_socket.sock -Bse "INSTALL PLUGIN group_replication SONAME 'group_replication.so';START GROUP_REPLICATION;" > /dev/null 2>&1
+      break
+    fi
+    gr_startup_chk $node3/node3.err
+  done
+}
+
 start_mysqld_main(){
   COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
@@ -1686,6 +1851,14 @@ start_mysqld_main(){
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
+    if [ "${CHK_LOGBIN}" == "1" ];then
+      CMD="${CMD} --server-id=100"
+      sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
+    fi
+    if [ "${CHK_TOKUDB}" == "1" ];then
+      CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|');
+      sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|" $WORK_START
+    fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
@@ -1700,14 +1873,25 @@ start_mysqld_main(){
       CMD="${CMD} $MYROCKS"
       sed -i "s|--no-defaults|--no-defaults $MYROCKS|" $WORK_START
     fi
+    if [ "${CHK_LOGBIN}" == "1" ];then
+      CMD="${CMD} --server-id=100"
+      sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
+    fi
+    if [ "${CHK_TOKUDB}" == "1" ];then
+      CMD=$(echo $CMD | sed 's|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|');
+      sed -i "s|--no-defaults|--no-defaults --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0|" $WORK_START
+    fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
   fi
   sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START
-#  sed -i "s#$BASEDIR#\$(cat $(echo $WORK_BASEDIR | sed 's|.*/|\${SCRIPT_DIR}/|'))#g" $WORK_START
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START
-  sed -i "s|\.so\;|\.so\\\;|" $WORK_START
+  # RV 04/05/17: The following sed line is causing issues with RocksDB, like this;
+  # --plugin-load-add=RocksDB=ha_rocksdb.so\;rocksdb_cfstats=ha_rocksdb.so;rocks...
+  # The adding of a \ (and especially a single one?!) does not make any sense atm, but there was highly like a historical reason
+  # Disabling it for the moment. If any issues are seen, it can be reverted
+  # sed -i "s|\.so\;|\.so\\\;|" $WORK_START
   chmod +x $WORK_START
   for X in $(seq 1 120); do
     sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
@@ -1924,12 +2108,12 @@ cut_threadsync_chunk(){
 run_and_check(){
   start_mysqld_or_valgrind_or_pxc
   run_sql_code
-  if [ $MODE -eq 1 -o $MODE -eq 6 ]; then stop_mysqld_or_pxc; fi
+  if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then stop_mysqld_or_pxc; fi
   process_outcome
   OUTCOME="$?"
-  if [ $MODE -ne 1 -a $MODE -ne 6 ]; then stop_mysqld_or_pxc; fi
+  if [ $MODE -ne 0 -a $MODE -ne 1 -a $MODE -ne 6 ]; then stop_mysqld_or_pxc; fi
   # Add error log from this trial to the overall run error log
-  if [ $PXC_MOD -eq 1 ]; then
+  if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
     sudo cat $WORKD/node1/error.log > $WORKD/node1_error.log
     sudo cat $WORKD/node2/error.log > $WORKD/node2_error.log
     sudo cat $WORKD/node3/error.log > $WORKD/node3_error.log
@@ -1948,7 +2132,7 @@ run_sql_code(){
     # Setting up query timeouts using the MySQL Event Scheduler
     # Place event into the mysql db, not test db as the test db is dropped immediately
     SOCKET_TO_BE_USED=
-    if [ $PXC_MOD -eq 1 ]; then
+    if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
       SOCKET_TO_BE_USED=${node1}/node1_socket.sock
     else
       SOCKET_TO_BE_USED=$WORKD/socket.sock
@@ -2001,7 +2185,7 @@ run_sql_code(){
     echo_out "$TXT_OUT"
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] All SQL threads have finished/terminated"
   elif [ $MODE -eq 5 ]; then
-    if [ $PXC_MOD -eq 1 ]; then
+    if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
       cat $WORKT | $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
     else
       cat $WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
@@ -2022,7 +2206,7 @@ run_sql_code(){
       if [ $MODE -eq 2 ]; then
         PQUERY_MODE2_CLIENT_LOGGING="--log-all-queries --log-failed-queries"
       fi
-      if [ $PXC_MOD -eq 1 ]; then
+      if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
           $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
@@ -2042,7 +2226,7 @@ run_sql_code(){
     else
       if [ "$CLI_MODE" == "" ]; then CLI_MODE=99; fi  # Leads to assert below
       CLIENT_SOCKET=
-      if [ $PXC_MOD -eq 1 ]; then
+      if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
         CLIENT_SOCKET=${node1}/node1_socket.sock
       else
         CLIENT_SOCKET=$WORKD/socket.sock 
@@ -2091,7 +2275,7 @@ cleanup_and_save(){
       TS_init_all_sql_files
     fi
   else
-    if [ $PXC_MOD -eq 1 ]; then
+    if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
       (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       sleep 2; sync
     fi
@@ -2103,6 +2287,7 @@ cleanup_and_save(){
     fi
     cp -f $WORKT $WORKO
     cp -f $WORKO $WORK_OUT
+    sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
     # Save a tarball of full self-contained testcase on each successful reduction
     BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
     rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
@@ -2204,15 +2389,21 @@ process_outcome(){
   elif [ $MODE -eq 3 ]; then
     M3_ISSUE_FOUND=0
     ERRORLOG=
-    if [ $PXC_MOD -eq 1 ]; then
+    if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
       ERRORLOG=$WORKD/*/error.log
       sudo chmod 777 $ERRORLOG
     else
       ERRORLOG=$WORKD/error.log.out
     fi
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
       # A glibc crash looks similar to: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
       if egrep -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
+        if egrep -iq "$TEXT" /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
+          M3_ISSUE_FOUND=1
+        fi
+      fi
+      # Stack smashing looks similar to: *** stack smashing detected ***: /sda/Percona-Server-5.7.13-6-Linux.x86_64.ssl101/bin/mysqld terminated
+      if egrep -iq '*** stack smashing' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
         if egrep -iq "$TEXT" /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
           M3_ISSUE_FOUND=1
         fi
@@ -2260,17 +2451,31 @@ process_outcome(){
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 3 ]; then
         if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
+    elif [ $GRP_RPL_MOD -eq 1 ]; then
+      if [ $GRP_RPL_ISSUE_NODE -eq 0 -o $GRP_RPL_ISSUE_NODE -eq 1 ]; then
+        if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node1}/node1_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
+      fi
+      if [ $GRP_RPL_ISSUE_NODE -eq 0 -o $GRP_RPL_ISSUE_NODE -eq 2 ]; then
+        if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node2}/node2_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
+      fi
+      if [ $GRP_RPL_ISSUE_NODE -eq 0 -o $GRP_RPL_ISSUE_NODE -eq 3 ]; then
+        if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
+      fi
     else
-      if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+      if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
         # A glibc crash looks similar to: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
         if egrep -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
+          M4_ISSUE_FOUND=1
+        fi
+        # Stack smashing looks similar to: *** stack smashing detected ***: /sda/Percona-Server-5.7.13-6-Linux.x86_64.ssl101/bin/mysqld terminated
+        if egrep -iq '*** stack smashing' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
           M4_ISSUE_FOUND=1
         fi
       else
         if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
     fi
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
       M4_OUTPUT_TEXT="GlibcCrash"
     else
       M4_OUTPUT_TEXT="Crash"
@@ -2414,11 +2619,13 @@ process_outcome(){
 }
 
 stop_mysqld_or_pxc(){
-  if [ $PXC_MOD -eq 1 ]; then
+  SHUTDOWN_TIME_START=$(date +'%s')
+  MODE0_MIN_SHUTDOWN_TIME=$[ $TIMEOUT_CHECK + 10 ]
+  if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
     (ps -ef | grep 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   else
-    if [ ${FORCE_KILL} -eq 1 ]; then
+    if [ ${FORCE_KILL} -eq 1 -a ${MODE} -ne 0 ]; then  # In MODE=0 we may be checking for shutdown hang issues, so do not kill mysqld
       while :; do
         if kill -0 $PIDV > /dev/null 2>&1; then
           sleep 1
@@ -2430,20 +2637,33 @@ stop_mysqld_or_pxc(){
     else
       # RV-15/09/14 Added timeout due to bug http://bugs.mysql.com/bug.php?id=73914
       # RV-02/12/14 We do not want too fast a shutdown either; quite a few bugs happen when mysqld is being shutdown
-      timeout -k40 -s9 40s $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
-      if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
+      # RV-22/03/17 To check for shutdown hangs, need to make sure that timeout of mysqladmin is longer then TIMEOUT_CHECK seconds + 10 seconds safety margin
+      if [ $MODE -eq 0 ]; then
+        timeout -k${MODE0_MIN_SHUTDOWN_TIME} -s9 ${MODE0_MIN_SHUTDOWN_TIME}s $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1
+      else
+        timeout -k40 -s9 40s $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1  # Note it is myqladmin being terminated with -9, not mysqld !
+      fi
+      if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
   
+      # Try various things now to bring server down, upto kill -9
       while :; do
         sleep 1
         if kill -0 $PIDV > /dev/null 2>&1; then 
-          if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
-          if kill -0 $PIDV > /dev/null 2>&1; then $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi
-          if [ $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 8; else sleep 4; fi
+          if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
+          if kill -0 $PIDV > /dev/null 2>&1; then $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi  # Retry shutdown one more time
+          if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
           if kill -0 $PIDV > /dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
           sleep 5
           if [ $MODE -ne 1 -a $MODE -ne 6 ]; then
+            if [ $MODE -eq 0 ]; then
+              if [ $[ $(date +'%s') - ${SHUTDOWN_TIME_START} ] -lt $MODE0_MIN_SHUTDOWN_TIME ]; then
+                continue  # Do not proceed to kill -9 if server is hanging and reducer is checking for the same (i.e. MODE=0) untill we've passed $TIMEOUT_CHECK + 10 second safety margin
+              fi
+            fi
             if kill -0 $PIDV > /dev/null 2>&1; then 
-              echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld"
+              if [ $MODE -ne 0 ]; then  # For MODE=0, the following is not a WARNING but fairly normal
+                echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld"
+              fi
               kill -9 $PIDV
             else 
               break
@@ -2456,6 +2676,7 @@ stop_mysqld_or_pxc(){
     fi
     PIDV=""
   fi
+  RUN_TIME=$[ ${RUN_TIME} + $(date +'%s') - ${SHUTDOWN_TIME_START} ]  # Add shutdown runtime to overall runtime which is later checked against TIMEOUT_CHECK
 }
 
 finish(){
@@ -2463,6 +2684,12 @@ finish(){
     if [ ${STAGE} -eq 8 ]; then
       if [ "${CHK_ROCKSDB}" == "1" ];then
         MYEXTRA="$MYEXTRA ${MYROCKS}"
+      fi
+      if [ "${CHK_LOGBIN}" == "1" ];then
+        MYEXTRA="$MYEXTRA --server-id=100"
+      fi
+      if [ "${CHK_TOKUDB}" == "1" ];then
+        MYEXTRA="$MYEXTRA --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
       fi
       if [ ${STAGE8_CHK} -eq 0 ]; then
         export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
@@ -2476,10 +2703,10 @@ finish(){
   echo_out "[Finish] Reducer log                       : $WORKD/reducer.log"
   if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
     cp -f $WORKO $WORK_OUT
-    echo_out "[Finish] Final testcase                    : $WORKO"
+    echo_out "[Finish] Final testcase                    : $WORKO ($(wc -l $WORKO | awk '{print $1}') lines)"
   else
     cp $INPUTFILE $WORK_OUT
-    echo_out "[Finish] Final testcase                    : $INPUTFILE (= input file, no optimizations were successful)"
+    echo_out "[Finish] Final testcase                    : $INPUTFILE (= input file, no optimizations were successful. $(wc -l $WORKO | awk '{print $1}') lines)"
   fi
   BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
   rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
@@ -2517,11 +2744,12 @@ finish(){
 }
 
 copy_workdir_to_tmp(){
+  WORKDIR_COPY_SUCCESS=0
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
       echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$EPOCH also"
-      if [ $PXC_MOD -eq 1 ]; then
+      if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
         sudo cp -a $WORKD /tmp/$EPOCH
         sudo chown -R `whoami`:`whoami` /tmp/$EPOCH
         cp $0 /tmp/$EPOCH  # Copy this reducer script
@@ -2534,6 +2762,7 @@ copy_workdir_to_tmp(){
       SPACE_WORKD=$(du -s $WORKD 2>/dev/null | sed 's|[ \t].*||')
       SPACE_TMPCP=$(du -s /tmp/$EPOCH 2>/dev/null | sed 's|[ \t].*||')
       if [ -d /tmp/$EPOCH -a ${SPACE_TMPCP} -gt ${SPACE_WORKD} ]; then
+        WORKDIR_COPY_SUCCESS=1
         echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$EPOCH now deleting temporary work directory $WORKD"
         rm -Rf $WORKD
       else 
@@ -2578,26 +2807,32 @@ verify_not_found(){
   fi
   echo_out "$ATLEASTONCE [Stage $STAGE] Initial verify of the issue: fail. Bug/issue is not present. Terminating."
   echo_out "[Finish] Verification failed. It may help to check the following files to get an idea as to why this run did not reproduce the issue (if these files do not give any further hints, please check variable/initialization differences, enviroment differences etc.):"
+  WORKDIR_COPY_SUCCESS=0  # Defensive programming, not required (as copy_workdir_to_tmp sets it)
+  copy_workdir_to_tmp
+  if [ $WORKDIR_COPY_SUCCESS -eq 0 ]; then 
+    PRINTWORKD="$WORKD"
+  else
+    PRINTWORKD="/tmp/${EPOCH}"
+  fi
   if [ $MODE -ge 6 ]; then
     if [ $TS_DBG_CLI_OUTPUT -eq 1 ]; then
-      echo_out "[Finish] mysql CLI client output : $WORKD/${EXTRA_PATH}mysql<threadid>.out   (Look for clear signs of non-replay or a terminated connection)"
+      echo_out "[Finish] mysql CLI client output : ${PRINTWORKD}/${EXTRA_PATH}mysql<threadid>.out   (Look for clear signs of non-replay or a terminated connection)"
     else
       echo_out "[Finish] mysql CLI client output : not recorded                 (You may want to *TEMPORARY* turn on TS_DBG_CLI_OUTPUT to debug. Ensure to turn it back off before re-testing if the issue exists as it will likely not show with debug on if this is a multi-threaded issue)"
      fi
   else
     if [ $PQUERY_MOD -eq 1 ]; then
-      echo_out "[Finish] pquery client output    : $WORKD/${EXTRA_PATH}pquery_thread-0.out   (Look for clear signs of non-replay or a terminated connection"
-    else
-      echo_out "[Finish] mysql CLI client output : $WORKD/${EXTRA_PATH}mysql.out             (Look for clear signs of non-replay or a terminated connection"
+      echo_out "[Finish] pquery client output    : ${PRINTWORKD}/{EXTRA_PATH}default.node.tld_thread-0.sql  (Look for clear signs of non-replay or a terminated connection)"
+    elset
+      echo_out "[Finish] mysql CLI client output : ${PRINTWORKD}/${EXTRA_PATH}mysql.out             (Look for clear signs of non-replay or a terminated connection)"
     fi
   fi
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
-    echo_out "[Finish] Valgrind output         : $WORKD/${EXTRA_PATH}valgrind.out          (Check if there are really 0 errors)"
+    echo_out "[Finish] Valgrind output         : ${PRINTWORKD}/${EXTRA_PATH}valgrind.out          (Check if there are really 0 errors)"
   fi
-  echo_out "[Finish] mysqld error log output : $WORKD/${EXTRA_PATH}error.log(.out)       (Check if the mysqld server output looks normal. ".out" = last startup)"
-  echo_out "[Finish] initialization output   : $WORKD/${EXTRA_PATH}init.log              (Check if the inital server initalization happened correctly)"
-  echo_out "[Finish] time init output        : $WORKD/${EXTRA_PATH}timezone.init         (Check if the timezone information was installed correctly)"
-  copy_workdir_to_tmp
+  echo_out "[Finish] mysqld error log output : ${PRINTWORKD}/${EXTRA_PATH}error.log(.out)       (Check if the mysqld server output looks normal. ".out" = last startup)"
+  echo_out "[Finish] initialization output   : ${PRINTWORKD}/${EXTRA_PATH}init.log              (Check if the inital server initalization happened correctly)"
+  echo_out "[Finish] time init output        : ${PRINTWORKD}/${EXTRA_PATH}timezone.init         (Check if the timezone information was installed correctly)"
   exit 1
 }
 
@@ -2825,15 +3060,15 @@ verify(){
     if [ "$MODE5_ADDITIONAL_TEXT" != "" -a $MODE5_ADDITIONAL_COUNTTEXT -ge 1 ]; then 
                            echo_out "[Init] Looking additionally for "$MODE5_ADDITIONAL_COUNTTEXT"x this string: '$MODE5_ADDITIONAL_TEXT' in mysql CLI verbose output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi; fi
   if [ $MODE -eq 4 ]; then 
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
                            echo_out "[Init] Run mode: MODE=4: GLIBC crash"
                            echo_out "[Init] Looking for any GLIBC crash"; 
     else
                            echo_out "[Init] Run mode: MODE=4: Crash"
                            echo_out "[Init] Looking for any mysqld crash"; fi; fi
   if [ $MODE -eq 3 ]; then
-    if [ $REDUCE_GLIBC_CRASHES -gt 0 ]; then
-                           echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_CRASHES=1: console typscript log"
+    if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
+                           echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_OR_SS_CRASHES=1: console typscript log"
                            echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)";
     elif [ $USE_TEXT_STRING -gt 0 ]; then
                            echo_out "[Init] Run mode: MODE=3 with USE_TEXT_STRING=1: text_string.sh against mysqld error log"   
@@ -2844,7 +3079,7 @@ verify(){
   if [ $MODE -eq 2 ]; then 
     if [ $PQUERY_MOD -eq 1 ]; then 
                            echo_out "[Init] Run mode: MODE=2: pquery client output"
-                           echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/pquery_thread-0.out when MULTI mode is not active)";
+                           echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/default.node.tld_thread-0.sql when MULTI mode is not active)";
     else
                            echo_out "[Init] Run mode: MODE=2: mysql CLI output"
                            echo_out "[Init] Looking for this string: '$TEXT' in mysql CLI output (@ $WORKD/mysql.out when MULTI mode is not active)"; fi; fi 
@@ -2973,13 +3208,13 @@ if [ $SKIPSTAGEBELOW -lt 1 -a $SKIPSTAGEABOVE -gt 1 ]; then
   NEXTACTION="& try removing next random line(set)"
   STAGE=1
   TRIAL=1
-  if [ $LINECOUNTF -ge $STAGE1_LINES -o $PQUERY_MULTI -gt 0 -o $FORCE_SKIPV -gt 0 -o $REDUCE_GLIBC_CRASHES -gt 0 ]; then
+  if [ $LINECOUNTF -ge $STAGE1_LINES -o $PQUERY_MULTI -gt 0 -o $FORCE_SKIPV -gt 0 -o $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE (duration depends on initial input file size)"
     while [ $LINECOUNTF -ge $STAGE1_LINES ]; do 
       if [ $LINECOUNTF -eq $STAGE1_LINES  ]; then NEXTACTION="& Progress to the next stage"; fi
       if [ $TRIAL -gt 1 ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining number of lines in input file: $LINECOUNTF"; fi 
-      if [ "$MULTI_REDUCER" != "1" -a $SPORADIC -eq 1 -a $REDUCE_GLIBC_CRASHES -le 0 ]; then  
-        # This is the parent/main reducer AND the issue is sporadic (so; need to use multiple threads). Disabled for REDUCE_GLIBC_CRASHES as it is always single-threaded
+      if [ "$MULTI_REDUCER" != "1" -a $SPORADIC -eq 1 -a $REDUCE_GLIBC_OR_SS_CRASHES -le 0 ]; then  
+        # This is the parent/main reducer AND the issue is sporadic (so; need to use multiple threads). Disabled for REDUCE_GLIBC_OR_SS_CRASHES as it is always single-threaded
         multi_reducer $WORKF  # $WORKT is not used by the main reducer in this case. The subreducer uses $WORKT it's own session however (in the else below) 
       else
         determine_chunk
@@ -3659,7 +3894,8 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 146 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 147 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 148 ]; then egrep --binary-files=text -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 149 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 149 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 150 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
@@ -3706,12 +3942,38 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
 
   myextra_check
 
+  #RocksDB startup option check
   rocksdb_startup_chk(){
    if echo "${MYEXTRA}" | grep '\--rocksdb\|--default-storage-engine=RocksDB\|--skip-innodb\|--default-tmp-storage-engine=MyISAM'; then
      MYEXTRA=$(echo $MYEXTRA | sed 's|--default-storage-engine=RocksDB||;s|--skip-innodb ||;s|--default-tmp-storage-engine=MyISAM||;s|--rocksdb ||')
      CHK_ROCKSDB=1
      ECHO_ROCKSDB=": RocksDB run, server startup will use following mysqld options - $MYROCKS"
    fi
+  }
+
+  #binary log server-id startup option check with 5.7 version
+  logbin_startup_chk(){
+    if [[ ! "$(${BASEDIR}/bin/mysqld --version | egrep -oe '5\.[567]|8\.[0]' | head -n1)" =~ ^5.[56]$ ]]; then
+      if echo "${MYEXTRA}" | grep '\--log-bin'; then
+        if ! echo "${MYEXTRA}" | grep '\--server-id'; then
+          CHK_LOGBIN=1
+        else
+          CHK_LOGBIN=0
+        fi
+      fi
+    else
+      CHK_LOGBIN=0
+    fi
+  }
+  
+  #TokuDB startup option check
+  tokudb_startup_chk(){
+    if echo "${MYEXTRA}" | grep -q 'tokudb'; then
+      MYEXTRA=$(echo $MYEXTRA | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g;s|--plugin-load=tokudb=ha_tokudb.so||g;s|--tokudb-check-jemalloc=0||g');
+      CHK_TOKUDB=1
+    else
+      CHK_TOKUDB=0
+    fi
   }
 
   myextra_reduction(){
@@ -3728,6 +3990,9 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       STAGE8_CHK=0
       COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA $ECHO_ROCKSDB";
+      rocksdb_startup_chk
+      logbin_startup_chk
+      tokudb_startup_chk
       run_and_check
       TRIAL=$[$TRIAL+1]
       STAGE8_OPT=$line
@@ -3744,6 +4009,8 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
         fi
         MYEXTRA=$(cat $FILE1 | tr -s "\n" " ")
         rocksdb_startup_chk
+        logbin_startup_chk
+        tokudb_startup_chk
         COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
         if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
           echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
@@ -3761,6 +4028,8 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
           fi
           MYEXTRA=$(cat $FILE2 | tr -s "\n" " ")
           rocksdb_startup_chk
+          logbin_startup_chk
+          tokudb_startup_chk
           COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
           if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
             echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA $ECHO_ROCKSDB"
