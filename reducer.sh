@@ -3900,7 +3900,6 @@ fi
 
 #STAGE8: Execute mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
 if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
-  PGA=0
   STAGE=8
   TRIAL=1
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
