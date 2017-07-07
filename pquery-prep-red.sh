@@ -192,6 +192,13 @@ add_select_ones_to_trace(){  # Improve issue reproducibility by adding 3x SELECT
   echo "  > 'SELECT 1;' query added 3x to the SQL trace"
 }
 
+remove_non_sql_from_trace(){
+  echo "* Removing any non-SQL lines (diagnostic output from pquery) to improve issue reproducibility"
+  mv ${INPUTFILE} ${INPUTFILE}.filter1
+  grep -v "Last [0-9]\+ consecutive queries all failed" ${INPUTFILE}.filter1 > ${INPUTFILE}
+  rm ${INPUTFILE}.filter1
+}
+
 auto_interleave_failing_sql(){
   # sql interleave function based on actual input file size
   INPUTLINECOUNT=`cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup | wc -l`
@@ -462,6 +469,7 @@ if [ ${QC} -eq 0 ]; then
           fi
         fi
         add_select_ones_to_trace
+        remove_non_sql_from_trace
         TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
         echo "* TEXT variable set to: \"${TEXT}\""
         if [ "${MULTI}" == "1" ]; then
@@ -534,6 +542,7 @@ if [ ${QC} -eq 0 ]; then
           exit 1
         fi
         add_select_ones_to_trace
+        remove_non_sql_from_trace
         VALGRIND_CHECK=0
         VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
         if [ -r ./${TRIAL}/VALGRIND -a ${VALGRIND_OVERRIDE} -ne 1 ]; then

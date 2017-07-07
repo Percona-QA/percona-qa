@@ -47,9 +47,9 @@ read -p "Hit enter or CTRL-C now:"
 # EPEL
 if [ -z "$(yum list | grep 'epel-release.noarch')" ]; then
   if (uname -a | grep -q "el7"); then
-    sudo su -c 'rpm -Uvh http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-5.noarch.rpm'
+    sudo su -c 'rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm'
   elif (uname -a | grep -q "el6"); then
-    sudo su -c 'rpm -Uvh http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm'
+    sudo su -c 'rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm'
   fi
 fi
 
