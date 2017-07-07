@@ -106,7 +106,6 @@ TS_DBG_CLI_OUTPUT=0
 TS_DS_TIMEOUT=10
 TS_VARIABILITY_SLEEP=1
 
-
 # ======== Machine configurable variables section: DO NOT REMOVE THIS
 #VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
 # === Check TokuDB/RocksDB storage engine availability
@@ -2290,6 +2289,9 @@ cleanup_and_save(){
   if [ ${STAGE} -eq 8 ]; then
     STAGE8_CHK=1
   fi
+  if [ ${STAGE} -eq 9 ]; then
+    STAGE9_CHK=1
+  fi
   # VERFIED file creation + subreducer handling
   echo "TRIAL:$TRIAL" > $WORKD/VERIFIED
   echo "WORKO:$WORKO" >> $WORKD/VERIFIED
@@ -2712,6 +2714,15 @@ finish(){
   fi
   echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
+    if [[ ! -z $TOKUDB ]] || [[ ! -z $ROCKSDB ]];then
+	  echo_out "[Finish] storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB"
+	  if [ -r $WORK_OUT ]; then
+        sed -i "1 i\# storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB" $WORK_OUT
+      fi
+      if [ -r $WORKO ]; then
+        sed -i "1 i\# storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB" $WORKO
+      fi
+	fi
     if [ "" != "$MYEXTRA" ]; then
       echo_out "[Finish] mysqld options required for replay: $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
       if [ -r $WORK_OUT ]; then
@@ -3999,6 +4010,38 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   else
     echo_out "$ATLEASTONCE [Stage 8] Skipping this stage as it does not contain extra mysqld options." 
   fi
+fi
+
+#STAGE9: Execute storage engine option simplification.
+if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
+  STAGE=9
+  TRIAL=1
+  STAGE8_CHK=0
+  if [[ ! -z $TOKUDB ]] ;then
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup option"
+	SAFE_TOKUDB=$TOKUDB
+    TOKUDB="";
+    SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+	LOAD_INIT_FILE=""
+	run_and_check
+	if [ $STAGE8_CHK -eq 1 ];then
+      TOKUDB="$SAFE_TOKUDB"
+	  LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+    fi
+  fi
+  STAGE8_CHK=0
+  if [[ ! -z $ROCKSDB ]];then
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup option"
+    SAFE_ROCKSDB=$ROCKSDB
+    ROCKSDB="";
+    SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+	LOAD_INIT_FILE=""
+	run_and_check
+    if [ $STAGE8_CHK -eq 1 ];then
+      ROCKSDB="$SAFE_ROCKSDB"
+	  LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+    fi
+  fi 
 fi
 
 finish $INPUTFILE
