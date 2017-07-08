@@ -2308,6 +2308,7 @@ cleanup_and_save(){
 }
 
 process_outcome(){
+  if [ $NOISSUEFLOW -lt 0 ]; then NOISSUEFLOW=0; fi
   # MODE0: timeout/hang testing (SET TIMEOUT_CHECK)
   if [ $MODE -eq 0 ]; then
     if [ "${MYSQLD_START_TIME}" == '' ]; then
