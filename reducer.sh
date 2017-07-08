@@ -84,7 +84,7 @@ QUERYTIMEOUT=90                 # Query timeout in sec. Note: queries terminated
 LOAD_TIMEZONE_DATA=0            # On/Off (1/0) Enable loading Timezone data into the database (mainly applicable for RQG runs) (turned off by default=0 since 26.05.2016)
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
 SKIPSTAGEBELOW=0                # Usually not changed (default=0), skips stages below and including requested stage
-SKIPSTAGEABOVE=9                # Usually not changed (default=9), skips stages above and including requested stage
+SKIPSTAGEABOVE=10               # Usually not changed (default=10), skips stages above and including requested stage
 FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully kill mysqld instead of using mysqladmin shutdown etc. Auto-disabled for MODE=0.
 
 # === Percona XtraDB Cluster
@@ -4018,31 +4018,36 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
   STAGE=9
   TRIAL=1
   STAGE8_CHK=0
-  if [[ ! -z $TOKUDB ]] ;then
-    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup option"
-	SAFE_TOKUDB=$TOKUDB
-    TOKUDB="";
-    SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
-	LOAD_INIT_FILE=""
-	run_and_check
-	if [ $STAGE8_CHK -eq 1 ];then
-      TOKUDB="$SAFE_TOKUDB"
-	  LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+  if [[ -z $TOKUDB ]] && [[ -z $ROCKSDB ]]  ;then 
+   echo_out "$ATLEASTONCE [Stage $STAGE] skipped as no additional storage engines were detected"
+  else
+    if [[ ! -z $TOKUDB ]] ;then
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup option"
+	  SAFE_TOKUDB=$TOKUDB
+      TOKUDB="";
+      SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+	  LOAD_INIT_FILE=""
+      run_and_check
+      if [ $STAGE8_CHK -eq 1 ];then
+        TOKUDB="$SAFE_TOKUDB"
+	    LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+      fi
+	  TRIAL=$[$TRIAL+1]
+    fi
+    STAGE8_CHK=0
+    if [[ ! -z $ROCKSDB ]];then
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup option"
+      SAFE_ROCKSDB=$ROCKSDB
+      ROCKSDB="";
+      SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+	  LOAD_INIT_FILE=""
+	  run_and_check
+      if [ $STAGE8_CHK -eq 1 ];then
+        ROCKSDB="$SAFE_ROCKSDB"
+	    LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+      fi
     fi
   fi
-  STAGE8_CHK=0
-  if [[ ! -z $ROCKSDB ]];then
-    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup option"
-    SAFE_ROCKSDB=$ROCKSDB
-    ROCKSDB="";
-    SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
-	LOAD_INIT_FILE=""
-	run_and_check
-    if [ $STAGE8_CHK -eq 1 ];then
-      ROCKSDB="$SAFE_ROCKSDB"
-	  LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
-    fi
-  fi 
 fi
 
 finish $INPUTFILE
