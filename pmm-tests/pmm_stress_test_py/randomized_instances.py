@@ -270,15 +270,15 @@ def insert_blob(insert_count, i_type):
     else:
         return 0
 
-def insert_longtext(insert_count_tuple, i_type):
+def insert_longtext(i_type, insert_count, string_length):
     """
     Function to generate string length up to given number, as well as run insert statements up to given number.
     Using create_longtext.sh script here.
     """
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
-    bash_command = '{}/create_longtext.sh {} {}'
-    new_command = bash_command.format(dname[:-18], i_type, insert_count_tuple)
+    bash_command = '{}/create_longtext.sh {} {} {}'
+    new_command = bash_command.format(dname[:-18], i_type, insert_count, string_length)
     try:
         process = Popen(
                         split(new_command),
@@ -391,7 +391,7 @@ def run_all(threads, instance_type,
         if insert_blobs:
             insert_blob(insert_blobs, instance_type)
         if insert_longtexts:
-            insert_longtext(insert_longtexts, instance_type)
+            insert_longtext(instance_type, insert_longtexts[0], insert_longtexts[1])
 
 
 if __name__ == "__main__":
