@@ -51,7 +51,8 @@ def pmm_framework_wipe_client():
 def getting_instance_socket():
     # For obtaining socket file path for each added instances
     # Return: the list of sockets
-    command = "sudo pmm-admin list | grep 'mysql:metrics' | sed 's|.*(||;s|)||'"
+    #command = "sudo pmm-admin list | grep 'mysql:metrics' | sed 's|.*(||;s|)||'"
+    command = "sudo pmm-admin list | grep 'mysql:metrics[ \t]*PS_NODE' | awk -F[\(\)] '{print $2}'"
     prc = check_output(command, shell=True)
     return prc.split()
 
