@@ -85,7 +85,7 @@ def adding_instances(sock, threads=0):
         print(e)
     else:
         return 0
-        # Untill pmm-admin is not thread-safe there is no need to run with true multi-thread;
+        # Untill pmm-admin is thread-safe there is no need to run with true multi-thread;
         #process.communicate()
 
 def repeat_adding_instances(sock, threads, count, i, pmm_count):
