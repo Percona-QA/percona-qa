@@ -26,7 +26,7 @@ function random-string() {
 
 str=$(random-string ${STRING_LENGTH})
 
-for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
+for i in $(sudo pmm-admin list | grep 'mysql:metrics[ \t]*PS_NODE' | awk -F[\(\)] '{print $2}') ; do
 	MYSQL_SOCK=${i}
   echo "Create database using MYSQL_SOCK=${MYSQL_SOCK}"
   ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create database pmm_stress_longtext_test"

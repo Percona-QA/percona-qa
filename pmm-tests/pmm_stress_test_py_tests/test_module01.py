@@ -15,6 +15,7 @@ class TestPMMStress:
     def test_getting_instance_socket(self):
         """Checking return value type and value from function"""
         return_value = randomized_instances.getting_instance_socket()
+        print(return_value)
         assert isinstance(return_value, list)
         assert len(return_value) > 0
 
