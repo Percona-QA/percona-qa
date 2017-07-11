@@ -348,6 +348,12 @@ TS_VARIABILITY_SLEEP=1
 # WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
+# === Check TokuDB & RocksDB storage engine availability
+TOKUDB=
+ROCKSDB=
+if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so  ]; then TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"; fi
+if [ -r ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then ROCKSDB="--plugin-load-add=rocksdb=ha_rocksdb.so"; fi
+
 # For GLIBC crash reduction, we need to capture the output of the console from which reducer.sh is started. Currently only a SINGLE threaded solution using the 'scrip'
 # binary from the util-linux package was found. The script binary is able to capture the GLIC output from the main console. It may be interesting to review the source C
 # code for script, if available, to see how this is done. The following URL's may help with other possible solutions. However, LIBC_FATAL_STDERR_=1 has been found not to
