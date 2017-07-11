@@ -81,7 +81,6 @@ elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
 fi
 
 # Run SQL file from reducer<trial>.sh
-cd MY_BASE
 SERVER_COUNT=0
 for i in ${SERVER_THREADS[@]};do
   MYSQLD=()
