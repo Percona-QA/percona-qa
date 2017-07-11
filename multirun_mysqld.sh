@@ -19,11 +19,6 @@ DATADIR=`date +'%s'`
 # Reference functions
 echoit(){ echo "[$(date +'%T')] $1"; }
 
-if [ ${TOKUDB_REQUIRED} -ne 0 -a ${TOKUDB_REQUIRED} -ne 1 ]; then
-  echoit "Assert: TOKUDB_REQUIRED is set to ${TOKUDB_REQUIRED}, but that is not a valid option. Use 0 (TokuDB not required), or 1 (TokuDB required)"
-  exit 1
-fi
-
 if [ ! -r ${SQL_FILE} ]; then
   echoit "Assert: this script tried to read ${SQL_FILE} (as specified in the  \"User configurable variables\" at the top of/inside the script), but it could not."
   echoit "Please check if the file exists, if this script can read it, etc."
