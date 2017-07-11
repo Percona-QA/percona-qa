@@ -2277,9 +2277,9 @@ cleanup_and_save(){
       # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev"
     fi
-    cp -f $WORKT $WORKO
-    cp -f $WORKO $WORK_OUT
+    grep -v "^# mysqld options required for replay:" $WORKT > $WORK_OUT
     sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
+    cp -f $WORK_OUT $WORKO
     # Save a tarball of full self-contained testcase on each successful reduction
     BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
     rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
@@ -2713,12 +2713,6 @@ finish(){
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     if [ "" != "$MYEXTRA" ]; then
       echo_out "[Finish] mysqld options required for replay: $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
-      if [ -r $WORK_OUT ]; then
-        sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
-      fi
-      if [ -r $WORKO ]; then
-        sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORKO
-      fi
     fi
     if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
       echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
