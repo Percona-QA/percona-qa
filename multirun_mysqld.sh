@@ -90,8 +90,8 @@ for i in ${SERVER_THREADS[@]};do
     SERVER_COUNT=$[ ${SERVER_COUNT} + 1 ];
     echoit "Starting mysqld #${SERVER_COUNT}..."
     MYPORT=$[ ${MYPORT} + 1 ]
-    $INIT_TOOL ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data > ${WORKDIR}/${j}_mysql_install_db.out 2>&1
     mkdir ${WORKDIR}/${j} 2>/dev/null
+    $INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${WORKDIR}/${j} > ${WORKDIR}/${j}_mysql_install_db.out 2>&1
     CMD="bash -c \"set -o pipefail; ${BIN} ${MYEXTRA} ${START_OPT} --basedir=${PWD} --datadir=${WORKDIR}/${j} --port=${MYPORT}
          --pid-file=${WORKDIR}/${j}_pid.pid --log-error=${WORKDIR}/${j}_error.log.out --socket=${WORKDIR}/${j}_socket.sock --user=${MYUSER}\""
     eval $CMD > ${WORKDIR}/${j}_mysqld.out 2>&1 &
