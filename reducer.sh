@@ -4014,25 +4014,25 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
    echo_out "$ATLEASTONCE [Stage $STAGE] skipped as no additional storage engines were detected"
   else
     if [[ ! -z $TOKUDB ]] ;then
-      STAGE9_CHK=0
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup option"
+      STAGE9_CHK=0
       SAFE_TOKUDB=$TOKUDB
       TOKUDB="";
       STAGE9_NOT_STARTED_CORRECTLY=0
       run_and_check
-      if [ $STAGE9_CHK -eq 1 -a $STAGE9_NOT_STARTED_CORRECTLY -eq 0 ];then
+      if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
         TOKUDB="$SAFE_TOKUDB"
       fi
       TRIAL=$[$TRIAL+1]
     fi
     if [[ ! -z $ROCKSDB ]];then
-      STAGE9_CHK=0
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup option"
+      STAGE9_CHK=0
       SAFE_ROCKSDB=$ROCKSDB
       ROCKSDB="";
       STAGE9_NOT_STARTED_CORRECTLY=0
       run_and_check
-      if [ $STAGE9_CHK -eq 1 -a $STAGE9_NOT_STARTED_CORRECTLY -eq 0 ];then
+      if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
         ROCKSDB="$SAFE_ROCKSDB"
       fi
     fi
