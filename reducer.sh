@@ -32,7 +32,7 @@ TEXT="somebug"                  # The text string you want reducer to search for
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
-BASEDIR="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"              # Path to the MySQL BASE directory to be used
+BASEDIR="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"             # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
 SCRIPT_PWD=$(cd `dirname $0` && pwd) # script location to access storage engine plugin sql file. 
 
@@ -348,11 +348,18 @@ TS_VARIABILITY_SLEEP=1
 # WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
-# === Check TokuDB & RocksDB storage engine availability
+# === Check TokuDB & RocksDB storage engine availability, and cleanup MYEXTRA to remove the related options
+# SE Removal approach; 1) Engines are always loaded during stages 1-8 (using the TOKUDB and ROCKSDB variables, ref below) provided the matching .so file exists now
+#                      2) Testcase reduction removal of engines (one-by-one) is tested in STAGE9
 TOKUDB=
 ROCKSDB=
 if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so  ]; then TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"; fi
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g')
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load=tokudb=ha_tokudb.so||g')
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--tokudb-check-jemalloc=0||g')
 if [ -r ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then ROCKSDB="--plugin-load-add=rocksdb=ha_rocksdb.so"; fi
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load-add=rocksdb=ha_rocksdb.so||g')
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load=rocksdb=ha_rocksdb.so||g')
 
 # For GLIBC crash reduction, we need to capture the output of the console from which reducer.sh is started. Currently only a SINGLE threaded solution using the 'scrip'
 # binary from the util-linux package was found. The script binary is able to capture the GLIC output from the main console. It may be interesting to review the source C
@@ -2282,9 +2289,9 @@ cleanup_and_save(){
       # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev"
     fi
-    grep -v "^# mysqld options required for replay:" $WORKT > $WORK_OUT
-    sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
-    cp -f $WORK_OUT $WORKO
+    grep -v "^# mysqld options required for replay:" $WORKT > $WORKO
+    sed -i "1 i\# mysqld options required for replay: $MYEXTRA $TOKUDB $ROCKSDB" $WORKO
+    cp -f $WORKO $WORK_OUT
     # Save a tarball of full self-contained testcase on each successful reduction
     BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
     rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
@@ -2720,17 +2727,8 @@ finish(){
   fi
   echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
-    if [[ ! -z $TOKUDB ]] || [[ ! -z $ROCKSDB ]];then
-      echo_out "[Finish] storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB"
-      if [ -r $WORK_OUT ]; then
-        sed -i "1 i\# storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB" $WORK_OUT
-      fi
-      if [ -r $WORKO ]; then
-        sed -i "1 i\# storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB" $WORKO
-      fi
-    fi
-    if [ "" != "$MYEXTRA" ]; then
-      echo_out "[Finish] mysqld options required for replay: $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
+    if [ "$MYEXTRA" != "" -o "$TOKUDB" != "" -o "$ROCKSDB" != "" ]; then
+      echo_out "[Finish] mysqld options required for replay: $MYEXTRA $TOKUDB $ROCKSDB (the testcase will not reproduce the issue without these options passed to mysqld)"
     fi
     if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
       echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
