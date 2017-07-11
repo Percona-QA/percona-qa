@@ -2,7 +2,7 @@ from subprocess import check_output, Popen, PIPE
 from shlex import split
 from uuid import uuid4
 from random import randint
-import threading, click, os, math
+import threading, click, os, math, mysql.connector
 
 ###############################################################################
 # Main logic goes here, below
@@ -51,7 +51,8 @@ def pmm_framework_wipe_client():
 def getting_instance_socket():
     # For obtaining socket file path for each added instances
     # Return: the list of sockets
-    command = "sudo pmm-admin list | grep 'mysql:metrics' | sed 's|.*(||;s|)||'"
+    #command = "sudo pmm-admin list | grep 'mysql:metrics' | sed 's|.*(||;s|)||'"
+    command = "sudo pmm-admin list | grep 'mysql:metrics[ \t]*PS_NODE' | awk -F[\(\)] '{print $2}'"
     prc = check_output(command, shell=True)
     return prc.split()
 
@@ -85,7 +86,7 @@ def adding_instances(sock, threads=0):
         print(e)
     else:
         return 0
-        # Untill pmm-admin is not thread-safe there is no need to run with true multi-thread;
+        # Untill pmm-admin is thread-safe there is no need to run with true multi-thread;
         #process.communicate()
 
 def repeat_adding_instances(sock, threads, count, i, pmm_count):
@@ -174,26 +175,60 @@ def create_table(table_count, i_type):
     else:
         return 0
 
-def create_sleep_query(query_count, i_type):
+def creating_sleep_query(sock, i_type, query_count):
+
+    abspath = os.path.abspath(__file__)
+    dname = os.path.dirname(abspath)
+    bash_command = '{}/create_sleep_queries.sh {} {} {}'
+    new_command = bash_command.format(dname[:-18], i_type, query_count, sock)
+    try:
+         process = Popen(
+                         split(new_command),
+                         stdin=None,
+                         stdout=None,
+                         stderr=None)
+    except Exception as e:
+         print(e)
+
+    # try:
+    #     cnx = mysql.connector.connect(user='root', unix_socket=sock, host='localhost')
+    #     cursor = cnx.cursor()
+    #     cursor.execute("SELECT SLEEP(1000000000)")
+    # except Exception as ex:
+    #     print(ex)
+    # finally:
+    #     cursor.close()
+    #     cnx.close()
+
+def repeat_creating_sleep_query(sock, count, i, query_count, i_type):
+    for j in range(count):
+        # For eg, with --pmm_instance_count 20 --threads 10
+        # Here count = 2 from previous function
+        # 0 + 1 + 10 * 2 >= 20
+        # 1 + 1 + 10 * 2 >= 20
+        if j + i * count >= query_count:
+            break
+
+        creating_sleep_query(sock, i_type, query_count)
+
+def run_sleep_query(query_count, i_type, threads=10):
     """
     Function to create given amount of sleep() queries.
     Using create_sleep_queries.sh script here
     """
-    abspath = os.path.abspath(__file__)
-    dname = os.path.dirname(abspath)
-    bash_command = '{}/create_sleep_queries.sh {} {}'
-    new_command = bash_command.format(dname[:-18], i_type, query_count)
+    sockets = getting_instance_socket()
     try:
-        process = Popen(
-                        split(new_command),
-                        stdin=None,
-                        stdout=None,
-                        stderr=None)
+        for sock in sockets:
+
+            count = int(math.ceil(query_count/float(threads)))
+            workers = [threading.Thread(target=repeat_creating_sleep_query(sock, count, i, query_count, i_type), name="thread_"+str(i))
+                                for i in range(threads)]
+            [worker.start() for worker in workers]
+            [worker.join() for worker in workers]
     except Exception as e:
         print(e)
     else:
         return 0
-    #output, error = process.communicate()
 
 def create_unique_query(query_count, i_type):
     """
@@ -235,15 +270,15 @@ def insert_blob(insert_count, i_type):
     else:
         return 0
 
-def insert_longtext(insert_count_tuple, i_type):
+def insert_longtext(i_type, insert_count, string_length):
     """
     Function to generate string length up to given number, as well as run insert statements up to given number.
     Using create_longtext.sh script here.
     """
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
-    bash_command = '{}/create_longtext.sh {} {}'
-    new_command = bash_command.format(dname[:-18], i_type, insert_count_tuple)
+    bash_command = '{}/create_longtext.sh {} {} {}'
+    new_command = bash_command.format(dname[:-18], i_type, insert_count, string_length)
     try:
         process = Popen(
                         split(new_command),
@@ -311,10 +346,8 @@ def print_version(ctx, param, value):
     help="How many tables to create per added instance for stress test?")
 @click.option(
     "--create_sleep_queries",
-    type=int,
-    nargs=1,
-    default=0,
-    help="How many connections to open with 'select sleep()' per added instance for stress test?")
+    nargs=3,
+    help="How many 'select sleep()' queries to run? 1->query count, 2->instance type, 3->thread count")
 @click.option(
     "--create_unique_queries",
     type=int,
@@ -352,13 +385,13 @@ def run_all(threads, instance_type,
         if create_tables:
             create_table(create_tables, instance_type)
         if create_sleep_queries:
-            create_sleep_query(create_sleep_queries, instance_type)
+            run_sleep_query(int(create_sleep_queries[0]), str(create_sleep_queries[1]), int(create_sleep_queries[2]))
         if create_unique_queries:
             create_unique_query(create_unique_queries, instance_type)
         if insert_blobs:
             insert_blob(insert_blobs, instance_type)
         if insert_longtexts:
-            insert_longtext(insert_longtexts, instance_type)
+            insert_longtext(instance_type, insert_longtexts[0], insert_longtexts[1])
 
 
 if __name__ == "__main__":

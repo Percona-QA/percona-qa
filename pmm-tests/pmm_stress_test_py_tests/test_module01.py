@@ -9,12 +9,13 @@ class TestPMMStress:
     def test_pmm_framework_add_client(self):
         """Checking return value from function"""
         print("\nIn test_pmm_framework_add_client()...")
-        return_value = randomized_instances.pmm_framework_add_client("ps", 3)
+        return_value = randomized_instances.pmm_framework_add_client("ps", 2)
         assert return_value == 0
 
     def test_getting_instance_socket(self):
         """Checking return value type and value from function"""
         return_value = randomized_instances.getting_instance_socket()
+        print(return_value)
         assert isinstance(return_value, list)
         assert len(return_value) > 0
 
@@ -32,7 +33,7 @@ class TestPMMStress:
 
     def test_adding_instances(self):
         """Checking for return value from function"""
-        return_value = self.helper_function(10)
+        return_value = self.helper_function(1)
         assert return_value == 0
 
     def test_create_db(self):
@@ -45,9 +46,9 @@ class TestPMMStress:
         return_value = randomized_instances.create_table(10, "ps")
         assert return_value == 0
 
-    def test_create_sleep_query(self):
+    def test_run_sleep_query(self):
         """Checking for return value from function"""
-        return_value = randomized_instances.create_sleep_query(10, "ps")
+        return_value = randomized_instances.run_sleep_query(20, "ps", 10)
         assert return_value == 0
 
     def test_create_unique_query(self):
@@ -62,7 +63,7 @@ class TestPMMStress:
 
     def test_insert_longtext(self):
         """Checking for return value from function"""
-        return_value = randomized_instances.insert_longtext('2 999999999', "ps")
+        return_value = randomized_instances.insert_longtext('2 10000', "ps")
         assert return_value == 0
 
     def test_pmm_framework_wipe_client(self):

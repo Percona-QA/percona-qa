@@ -18,7 +18,7 @@ elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
   BASEDIR="$WORKDIR/$BASEDIR"
 fi
 
-for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
+for i in $(sudo pmm-admin list | grep 'mysql:metrics[ \t]*PS_NODE' | awk -F[\(\)] '{print $2}') ; do
 	MYSQL_SOCK=${i}
   echo "MYSQL_SOCK=${MYSQL_SOCK}"
   ${BASEDIR}/bin/mysqlslap --concurrency=1 \

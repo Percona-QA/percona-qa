@@ -1,6 +1,7 @@
 #!/bin/bash
 CLIENT_NAME=$1
 QUERY_COUNT=$2
+MYSQL_SOCK=$3
 WORKDIR="${PWD}"
 MYSQL_USER=root
 
@@ -18,10 +19,5 @@ elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
   BASEDIR="$WORKDIR/$BASEDIR"
 fi
 
-for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
-	MYSQL_SOCK=${i}
-  echo "Creating sleep() queries using MYSQL_SOCK=${MYSQL_SOCK}"
-  for num in $(seq 1 1 ${QUERY_COUNT}) ; do
-	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "select sleep(10000000)" &
-  done
-done
+echo "Creating sleep() queries using MYSQL_SOCK=${MYSQL_SOCK}"
+${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "select sleep(10000000)"

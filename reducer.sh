@@ -34,6 +34,7 @@ WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3,
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
 BASEDIR="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"              # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
+SCRIPT_PWD=$(cd `dirname $0` && pwd) # script location to access storage engine plugin sql file. 
 
 # === Sporadic testcases        # Used when testcases prove to be sporadic *and* fail to reduce using basic methods
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
@@ -83,7 +84,7 @@ QUERYTIMEOUT=90                 # Query timeout in sec. Note: queries terminated
 LOAD_TIMEZONE_DATA=0            # On/Off (1/0) Enable loading Timezone data into the database (mainly applicable for RQG runs) (turned off by default=0 since 26.05.2016)
 STAGE1_LINES=90                 # Proceed to stage 2 when the testcase is less then x lines (auto-reduced when FORCE_SPORADIC or FORCE_SKIPV are active)
 SKIPSTAGEBELOW=0                # Usually not changed (default=0), skips stages below and including requested stage
-SKIPSTAGEABOVE=9                # Usually not changed (default=9), skips stages above and including requested stage
+SKIPSTAGEABOVE=10               # Usually not changed (default=10), skips stages above and including requested stage
 FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully kill mysqld instead of using mysqladmin shutdown etc. Auto-disabled for MODE=0.
 
 # === Percona XtraDB Cluster
@@ -2289,6 +2290,9 @@ cleanup_and_save(){
   if [ ${STAGE} -eq 8 ]; then
     STAGE8_CHK=1
   fi
+  if [ ${STAGE} -eq 9 ]; then
+    STAGE9_CHK=1
+  fi
   # VERFIED file creation + subreducer handling
   echo "TRIAL:$TRIAL" > $WORKD/VERIFIED
   echo "WORKO:$WORKO" >> $WORKD/VERIFIED
@@ -2304,6 +2308,7 @@ cleanup_and_save(){
 }
 
 process_outcome(){
+  if [ $NOISSUEFLOW -lt 0 ]; then NOISSUEFLOW=0; fi
   # MODE0: timeout/hang testing (SET TIMEOUT_CHECK)
   if [ $MODE -eq 0 ]; then
     if [ "${MYSQLD_START_TIME}" == '' ]; then
@@ -2711,6 +2716,15 @@ finish(){
   fi
   echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
+    if [[ ! -z $TOKUDB ]] || [[ ! -z $ROCKSDB ]];then
+	  echo_out "[Finish] storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB"
+	  if [ -r $WORK_OUT ]; then
+        sed -i "1 i\# storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB" $WORK_OUT
+      fi
+      if [ -r $WORKO ]; then
+        sed -i "1 i\# storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB" $WORKO
+      fi
+	fi
     if [ "" != "$MYEXTRA" ]; then
       echo_out "[Finish] mysqld options required for replay: $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
     fi
@@ -3991,6 +4005,43 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
     fi
   else
     echo_out "$ATLEASTONCE [Stage 8] Skipping this stage as it does not contain extra mysqld options." 
+  fi
+fi
+
+#STAGE9: Execute storage engine option simplification.
+if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
+  STAGE=9
+  TRIAL=1
+  STAGE8_CHK=0
+  if [[ -z $TOKUDB ]] && [[ -z $ROCKSDB ]]  ;then 
+   echo_out "$ATLEASTONCE [Stage $STAGE] skipped as no additional storage engines were detected"
+  else
+    if [[ ! -z $TOKUDB ]] ;then
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup option"
+	  SAFE_TOKUDB=$TOKUDB
+      TOKUDB="";
+      SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+	  LOAD_INIT_FILE=""
+      run_and_check
+      if [ $STAGE8_CHK -eq 1 ];then
+        TOKUDB="$SAFE_TOKUDB"
+	    LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+      fi
+	  TRIAL=$[$TRIAL+1]
+    fi
+    STAGE8_CHK=0
+    if [[ ! -z $ROCKSDB ]];then
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup option"
+      SAFE_ROCKSDB=$ROCKSDB
+      ROCKSDB="";
+      SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+	  LOAD_INIT_FILE=""
+	  run_and_check
+      if [ $STAGE8_CHK -eq 1 ];then
+        ROCKSDB="$SAFE_ROCKSDB"
+	    LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+      fi
+    fi
   fi
 fi
 
