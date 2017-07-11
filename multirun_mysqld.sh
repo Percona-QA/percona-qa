@@ -10,13 +10,11 @@ MYEXTRA="--no-defaults --event-scheduler=ON"     ## MYEXTRA: Extra --options req
 SERVER_THREADS=(10 20 30 40)                     ## Number of server threads (x mysqld's). This is a sequence: (10 20) means: first 10, then 20 server if no crash was observed
 CLIENT_THREADS=1                                 ## Number of client threads (y threads) which will execute the SQLFILE input file against each mysqld
 AFTER_SHUTDOWN_DELAY=240                         ## Wait this many seconds for mysqld to shutdown properly. If it does not shutdown within the allotted time, an error shows
-TOKUDB_REQUIRED=0                                ## Set to 1 if TokuDB is required
 
 # Internal variables
 MYUSER=$(whoami)
 MYPORT=$[20000 + $RANDOM % 9999 + 1]
 DATADIR=`date +'%s'`
-SERVER_THREADS=(10 20 30)
 
 # Reference functions
 echoit(){ echo "[$(date +'%T')] $1"; }
@@ -58,20 +56,6 @@ else
   else
     echoit "Assert: there is no (script readable) mysqld binary at ${MYBASE}/bin/mysqld ?"
     exit 1
-  fi
-fi
-
-#Load jemalloc library for TokuDB engine
-if [ ${TOKUDB_REQUIRED} -eq 1 ]; then
-  if [ -r /usr/lib64/libjemalloc.so.1 ]; then
-    export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
-  elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then
-    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
-  elif [ -r ${PWD}/lib/mysql/libjemalloc.so.1 ]; then
-    export LD_PRELOAD=${PWD}/lib/mysql/libjemalloc.so.1
-  else
-    echoit 'Error: jemalloc not found, please install it first';
-    exit 1;
   fi
 fi
 
