@@ -4,7 +4,7 @@
 
 # User configurable variables
 WORKDIR="/dev/shm"                               ## Working directory ("/dev/shm" preferred)
-MYBASE="${PWD}"                                  ## mysqld Base Directory. If referencing this script from the base directory, use "${PWD}"
+MYBASE="${PWD}"                                  ## mysqld Base Directory. If starting this script from within the base directory, use "${PWD}"
 SQLFILE="./test.sql"                             ## SQL Input file
 MYEXTRA="--no-defaults --event-scheduler=ON"     ## MYEXTRA: Extra --options required for msyqld (may not be required)
 SERVER_THREADS=(10 20 30 40)                     ## Number of server threads (x mysqld's). This is a sequence: (10 20) means: first 10, then 20 server if no crash was observed
