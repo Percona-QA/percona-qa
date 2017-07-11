@@ -32,7 +32,7 @@ TEXT="somebug"                  # The text string you want reducer to search for
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
-BASEDIR="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"              # Path to the MySQL BASE directory to be used
+BASEDIR="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"             # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
 SCRIPT_PWD=$(cd `dirname $0` && pwd) # script location to access storage engine plugin sql file. 
 
@@ -109,20 +109,6 @@ TS_VARIABILITY_SLEEP=1
 
 # ======== Machine configurable variables section: DO NOT REMOVE THIS
 #VARMOD# < please do not remove this, it is here as a marker for other scripts (including reducer itself) to auto-insert settings
-# === Check TokuDB/RocksDB storage engine availability
-if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
-  TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
-else
-  TOKUDB=""
-fi
-if [ -r ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
-  ROCKSDB="--plugin-load-add=rocksdb=ha_rocksdb.so"
-else
-  ROCKSDB=""
-fi
-if [[ ! -z $TOKUDB ]] || [[ ! -z $ROCKSDB ]];then
-  LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
-fi
 
 # ==== MySQL command line (CLI) output TEXT search examples
 #TEXT=                       "\|      0 \|      7 \|"  # Example of how to set TEXT for MySQL CLI output (for MODE=2 or 5)
@@ -361,6 +347,19 @@ fi
 # $WORK_INIT, WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN, $WORK_RUN_PQUERY: Vars that point to various start/run scripts that get added to testcase working dir
 # WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
+
+# === Check TokuDB & RocksDB storage engine availability, and cleanup MYEXTRA to remove the related options
+# SE Removal approach; 1) Engines are always loaded during stages 1-8 (using the TOKUDB and ROCKSDB variables, ref below) provided the matching .so file exists now
+#                      2) Testcase reduction removal of engines (one-by-one) is tested in STAGE9
+TOKUDB=
+ROCKSDB=
+if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so  ]; then TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"; fi
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g')
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load=tokudb=ha_tokudb.so||g')
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--tokudb-check-jemalloc=0||g')
+if [ -r ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then ROCKSDB="--plugin-load-add=rocksdb=ha_rocksdb.so"; fi
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load-add=rocksdb=ha_rocksdb.so||g')
+MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load=rocksdb=ha_rocksdb.so||g')
 
 # For GLIBC crash reduction, we need to capture the output of the console from which reducer.sh is started. Currently only a SINGLE threaded solution using the 'scrip'
 # binary from the util-linux package was found. The script binary is able to capture the GLIC output from the main console. It may be interesting to review the source C
@@ -1587,17 +1586,29 @@ start_mysqld_or_valgrind_or_pxc(){
   elif [ $GRP_RPL_MOD -eq 1 ]; then
     gr_start_main
   else
+    # Pre-start cleanup
     if [ -f $WORKD/error.log.out ]; then mv -f $WORKD/error.log.out $WORKD/error.log.prev; fi                    # mysqld error log
     if [ -f $WORKD/mysqld.out ]; then mv -f $WORKD/mysqld.out $WORKD/mysqld.prev; fi                             # mysqld stdout & stderr output, as well as some mysqladmin output
     if [ -f $WORKD/mysql.out ]; then mv -f $WORKD/mysql.out $WORKD/mysql.prev; fi                                # mysql client output
     if [ -f $WORKD/default.node.tld_thread-0.out ]; then mv -f $WORKD/default.node.tld_thread-0.out $WORKD/default.node.tld_thread-0.prev; fi  # pquery client output
     if [ -f $WORKD/default.node.tld_thread-0.sql ]; then mv -f $WORKD/default.node.tld_thread-0.sql $WORKD/default.node.tld_thread-0.prevsql; fi
-    if [ $MODE -ne 1 -a $MODE -ne 6 ]; then start_mysqld_main; else start_valgrind_mysqld_main; fi
+    # Start
+    if [ $MODE -ne 1 -a $MODE -ne 6 ]; then 
+      start_mysqld_main
+    else 
+      start_valgrind_mysqld_main
+    fi
+    STAGE9_NOT_STARTED_CORRECTLY=0  # Defensive coding only, not strictly required
     if [ ${REDUCE_STARTUP_ISSUES} -le 0 ]; then
       if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
-        echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/init.log"
-        echo "Terminating now."
-        exit 1
+        if [ ${STAGE} -eq 9 ]; then
+          STAGE9_NOT_STARTED_CORRECTLY=1
+          echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, assuming this engine is required"
+        else
+          echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/init.log"
+          echo "Terminating now."
+          exit 1
+        fi
       fi
     fi
   fi
@@ -2278,9 +2289,9 @@ cleanup_and_save(){
       # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev"
     fi
-    cp -f $WORKT $WORKO
+    grep -v "^# mysqld options required for replay:" $WORKT > $WORKO
+    sed -i "1 i\# mysqld options required for replay: $MYEXTRA $TOKUDB $ROCKSDB" $WORKO
     cp -f $WORKO $WORK_OUT
-    sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
     # Save a tarball of full self-contained testcase on each successful reduction
     BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
     rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
@@ -2716,23 +2727,8 @@ finish(){
   fi
   echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
-    if [[ ! -z $TOKUDB ]] || [[ ! -z $ROCKSDB ]];then
-	  echo_out "[Finish] storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB"
-	  if [ -r $WORK_OUT ]; then
-        sed -i "1 i\# storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB" $WORK_OUT
-      fi
-      if [ -r $WORKO ]; then
-        sed -i "1 i\# storage engine required for replay: $TOKUDB $LOAD_INIT_FILE $ROCKSDB" $WORKO
-      fi
-	fi
-    if [ "" != "$MYEXTRA" ]; then
-      echo_out "[Finish] mysqld options required for replay: $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
-      if [ -r $WORK_OUT ]; then
-        sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORK_OUT
-      fi
-      if [ -r $WORKO ]; then
-        sed -i "1 i\# mysqld options required for replay: $MYEXTRA" $WORKO
-      fi
+    if [ "$MYEXTRA" != "" -o "$TOKUDB" != "" -o "$ROCKSDB" != "" ]; then
+      echo_out "[Finish] mysqld options required for replay: $MYEXTRA $TOKUDB $ROCKSDB (the testcase will not reproduce the issue without these options passed to mysqld)"
     fi
     if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
       echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
@@ -4016,36 +4012,32 @@ fi
 
 #STAGE9: Execute storage engine option simplification.
 if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
-  STAGE=9
   TRIAL=1
-  STAGE8_CHK=0
+  STAGE=9
   if [[ -z $TOKUDB ]] && [[ -z $ROCKSDB ]]  ;then 
    echo_out "$ATLEASTONCE [Stage $STAGE] skipped as no additional storage engines were detected"
   else
     if [[ ! -z $TOKUDB ]] ;then
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup option"
-	  SAFE_TOKUDB=$TOKUDB
+      STAGE9_CHK=0
+      SAFE_TOKUDB=$TOKUDB
       TOKUDB="";
-      SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
-	  LOAD_INIT_FILE=""
+      STAGE9_NOT_STARTED_CORRECTLY=0
       run_and_check
-      if [ $STAGE8_CHK -eq 1 ];then
+      if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
         TOKUDB="$SAFE_TOKUDB"
-	    LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
       fi
-	  TRIAL=$[$TRIAL+1]
+      TRIAL=$[$TRIAL+1]
     fi
-    STAGE8_CHK=0
     if [[ ! -z $ROCKSDB ]];then
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup option"
+      STAGE9_CHK=0
       SAFE_ROCKSDB=$ROCKSDB
       ROCKSDB="";
-      SAFE_LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
-	  LOAD_INIT_FILE=""
-	  run_and_check
-      if [ $STAGE8_CHK -eq 1 ];then
+      STAGE9_NOT_STARTED_CORRECTLY=0
+      run_and_check
+      if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
         ROCKSDB="$SAFE_ROCKSDB"
-	    LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
       fi
     fi
   fi
