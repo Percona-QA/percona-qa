@@ -58,7 +58,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,with-proxysql,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -169,6 +169,10 @@ do
     --dev )
     shift
     dev=1
+    ;;
+    --with-proxysql )
+    shift
+    with_proxysql=1
     ;;
     --pmm-server-username )
     pmm_server_username="$2"
@@ -693,7 +697,7 @@ add_clients(){
           else
             WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
           fi
-          MYEXTRA="--no-defaults $WSREP_CLUSTER_ADD --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 --max-connections=30000"
+          MYEXTRA="--no-defaults $WSREP_CLUSTER_ADD --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 --wsrep_sst_method=rsync --wsrep_sst_auth=root: --max-connections=30000"
         else
           MYEXTRA="--no-defaults --max-connections=30000"
         fi
@@ -736,6 +740,31 @@ add_clients(){
         fi
         sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
       done
+      pxc_proxysql_setup(){
+        if  [[ "${CLIENT_NAME}" == "pxc" ]]; then
+          if [[ ! -e $(which proxysql 2> /dev/null) ]] ;then
+            echo "The program 'proxysql' is currently not installed. Installing proxysql from percona repository"
+            if grep -iq "ubuntu"  /etc/os-release ; then
+              sudo apt install -y proxysql
+            fi
+            if grep -iq "centos"  /etc/os-release ; then
+              sudo yum install -y proxysql
+            fi
+            if [[ ! -e $(which proxysql 2> /dev/null) ]] ;then
+              echo "ERROR! Could not install proxysql on CentOS/Ubuntu machine. Terminating"
+              exit 1
+            fi
+          fi
+          PXC_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t]*PXC_NODE-1" | awk -F[\(\)] '{print $2}')
+          PXC_BASE_PORT=$(${BASEDIR}/bin/mysql -uroot --socket=$PXC_SOCKET -Bse"select @@port")
+          ${BASEDIR}/bin/mysql -uroot --socket=$PXC_SOCKET -e"grant all on *.* to admin@'%' identified by 'admin'"
+          sudo sed -i "s/3306/${PXC_BASE_PORT}/" /etc/proxysql-admin.cnf
+          sudo proxysql-admin -e > $WORKDIR/logs/proxysql-admin.log
+          sudo pmm-admin add proxysql:metrics
+        else
+          echo "Could not find PXC nodes. Skipping proxysql setup"
+        fi
+      }
     fi
   done
 }
@@ -918,6 +947,10 @@ fi
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
   sanity_check
   add_clients
+fi
+
+if [ ! -z $with_proxysql ]; then
+  pxc_proxysql_setup
 fi
 
 if [ ! -z $add_docker_client ]; then
