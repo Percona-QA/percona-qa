@@ -831,7 +831,7 @@ clean_clients(){
    exit 1
   fi
   #Shutdown all mysql client instances
-  for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t]*PS_NODE" | awk -F[\(\)] '{print $2}') ; do
+  for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE" | awk -F[\(\)] '{print $2}') ; do
     echo -e "Shutting down mysql instance (--socket=${i})"
     ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
