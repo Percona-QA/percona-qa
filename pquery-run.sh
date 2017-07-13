@@ -823,11 +823,11 @@ pquery_test(){
         echoit "Primary Server started ok. Client:   `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
         if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket2.sock ping > /dev/null 2>&1; then
           echoit "Secondary server started ok. Client:   `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
-          ${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/socket2.sock -e "CREATE DATABASE IF NOT EXISTS test" > /dev/null 2>&1
+          ${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/socket2.sock -e "CREATE DATABASE IF NOT EXISTS test;" > /dev/null 2>&1
         fi
       else
         echoit "Server started ok. Client:   `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
-        ${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test" > /dev/null 2>&1
+        ${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test;" > /dev/null 2>&1
       fi
       if [ $PMM -eq 1 ];then
         echoit "Adding Orchestrator user for MySQL replication topology management.."
