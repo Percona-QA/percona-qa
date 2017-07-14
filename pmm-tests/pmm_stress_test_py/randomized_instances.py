@@ -101,11 +101,12 @@ def repeat_adding_instances(sock, threads, count, i, pmm_count):
         adding_instances(sock, threads)
 
 
-def runner(pmm_count, i_name, i_count, threads=0):
+def runner(pmm_count, i_name, i_count, wipe_cln=False, threads=0):
     """
     Main runner function; using Threading;
     """
-    pmm_framework_wipe_client()
+    if wipe_cln:
+        pmm_framework_wipe_client()
     pmm_framework_add_client(i_name, i_count)
     sockets = getting_instance_socket()
     try:
@@ -369,17 +370,23 @@ def print_version(ctx, param, value):
     default=0,
     help="Multiple value option, 1->number of inserts, 2->the length of string to generate"
 )
+@click.option(
+    "--wipe_clients",
+    is_flag=True,
+    help="Remove/wipe pmm instances if specified"
+)
 
 def run_all(threads, instance_type,
             instance_count, pmm_instance_count,
             create_databases, create_tables,
             create_sleep_queries, create_unique_queries,
-            insert_blobs, insert_longtexts):
+            insert_blobs, insert_longtexts,
+            wipe_clients):
     if (not threads) and (not instance_type) and (not instance_count) and (not pmm_instance_count) and (not create_databases):
         print("ERROR: you must give an option, run with --help for available options")
     else:
         if instance_count > 0:
-            runner(pmm_instance_count, instance_type, instance_count, threads)
+            runner(pmm_instance_count, instance_type, instance_count, wipe_clients, threads)
         if create_databases:
             create_db(create_databases, instance_type)
         if create_tables:
