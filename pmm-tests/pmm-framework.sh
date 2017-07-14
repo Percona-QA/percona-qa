@@ -556,14 +556,17 @@ add_clients(){
       PORT_CHECK=101
       NODE_NAME="PS_NODE"
       get_basedir ps "[Pp]ercona-[Ss]erver-${ps_version}*" "Percona Server binary tar ball" ${ps_version}
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --log_output=file --slow_query_log=ON --long_query_time=0 --log_slow_rate_limit=100 --log_slow_rate_type=query --log_slow_verbosity=full --log_slow_admin_statements=ON --log_slow_slave_statements=ON --slow_query_log_always_write_time=1 --slow_query_log_use_global_control=all --innodb_monitor_enable=all --userstat=1"
     elif [[ "${CLIENT_NAME}" == "ms" ]]; then
       PORT_CHECK=201
       NODE_NAME="MS_NODE"
       get_basedir mysql "mysql-${ms_version}*" "MySQL Server binary tar ball" ${ms_version}
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --innodb_monitor_enable=all --performance_schema=ON"
     elif [[ "${CLIENT_NAME}" == "md" ]]; then
       PORT_CHECK=301
       NODE_NAME="MD_NODE"
       get_basedir mariadb "mariadb-${md_version}*" "MariaDB Server binary tar ball" ${md_version}
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql  --innodb_monitor_enable=all --performance_schema=ON"
     elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
       echo "[mysqld]" > my_pxc.cnf
       echo "innodb_autoinc_lock_mode=2" >> my_pxc.cnf
@@ -578,6 +581,7 @@ add_clients(){
       PORT_CHECK=401
       NODE_NAME="PXC_NODE"
       get_basedir pxc "Percona-XtraDB-Cluster-${pxc_version}*" "Percona XtraDB Cluster binary tar ball" ${pxc_version}
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --log_output=file --slow_query_log=ON --long_query_time=0 --log_slow_rate_limit=100 --log_slow_rate_type=query --log_slow_verbosity=full --log_slow_admin_statements=ON --log_slow_slave_statements=ON --slow_query_log_always_write_time=1 --slow_query_log_use_global_control=all --innodb_monitor_enable=all --userstat=1"
     elif [[ "${CLIENT_NAME}" == "mo" ]]; then
       get_basedir psmdb "percona-server-mongodb-${mo_version}*" "Percona Server Mongodb binary tar ball" ${mo_version}
     fi
@@ -697,16 +701,17 @@ add_clients(){
           else
             WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
           fi
-          MYEXTRA="--no-defaults $WSREP_CLUSTER_ADD --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 --wsrep_sst_method=rsync --wsrep_sst_auth=root: --max-connections=30000"
+          MYEXTRA="--no-defaults --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so $WSREP_CLUSTER_ADD --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 --wsrep_sst_method=rsync --wsrep_sst_auth=root: --max-connections=30000"
         else
           MYEXTRA="--no-defaults --max-connections=30000"
         fi
-        ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+        ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
           --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
         function startup_chk(){
           for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
             sleep 1
             if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+              ${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "SET GLOBAL query_response_time_stats=ON;" > /dev/null 2>&1
               check_user=`${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
               if [[ -z "$check_user" ]]; then
                 ${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
@@ -860,7 +865,7 @@ clean_clients(){
    exit 1
   fi
   #Shutdown all mysql client instances
-  for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE" | awk -F[\(\)] '{print $2}') ; do
+  for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
     echo -e "Shutting down mysql instance (--socket=${i})"
     ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
