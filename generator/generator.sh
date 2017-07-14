@@ -1,5 +1,6 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
+#echo "MyPID: $$"    # Debug
 
 # ====== User Variables
 OUTPUT_FILE=out      # Output file. Do NOT add .sql suffix, it will be automaticaly added

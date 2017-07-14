@@ -35,11 +35,11 @@ usage () {
     echo " --md-version                     Pass MariaDB Server version info"
     echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
     echo " --mo-version                     Pass MongoDB Server version info"
-    echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine" 
+    echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine"
 	echo " --replcount                      You can configure multiple mongodb replica sets with this oprion"
 	echo " --with-replica                   This will configure mongodb replica setup"
 	echo " --with-shrading                  This will configure mongodb shrading setup"
-    echo " --add-docker-client              Add docker pmm-clients with percona server to the currently live PMM server" 
+    echo " --add-docker-client              Add docker pmm-clients with percona server to the currently live PMM server"
     echo " --list                           List all client information as obtained from pmm-admin"
     echo " --wipe-clients                   This will stop all client instances and remove all clients from pmm-admin"
     echo " --wipe-docker-clients            This will stop all docker client instances and remove all clients from docker container"
@@ -52,13 +52,13 @@ usage () {
 	echo " --ami-image                      Pass PMM server ami image name"
     echo " --key-name                       Pass your aws access key file name"
 	echo " --ova-image                      Pass PMM server ova image name"
-    
+
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,with-proxysql,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -95,7 +95,7 @@ do
     ;;
     --pmm-server )
     pmm_server="$2"
-	shift 2	
+	shift 2
     if [ "$pmm_server" != "docker" ] && [ "$pmm_server" != "ami" ] && [ "$pmm_server" != "ova" ]; then
       echo "ERROR: Invalid --pmm-server passed:"
       echo "  Please choose any of these pmm-server options: 'docker', 'ami', or ova"
@@ -105,15 +105,15 @@ do
 	--ami-image )
     ami_image="$2"
     shift 2
-    ;;	
+    ;;
 	--key-name )
     key_name="$2"
     shift 2
-    ;;	
+    ;;
 	--ova-image )
     ova_image="$2"
     shift 2
-    ;;	
+    ;;
     --ps-version )
     ps_version="$2"
     shift 2
@@ -137,7 +137,7 @@ do
     --mongo-storage-engine )
     shift
     mongo_storage_engine="--storageEngine  $2"
-    ;;   
+    ;;
     --add-docker-client )
     shift
     add_docker_client=1
@@ -169,6 +169,10 @@ do
     --dev )
     shift
     dev=1
+    ;;
+    --with-proxysql )
+    shift
+    with_proxysql=1
     ;;
     --pmm-server-username )
     pmm_server_username="$2"
@@ -213,18 +217,18 @@ if [[ -z "$pmm_server" ]];then
   pmm_server="docker"
 elif [[ "$pmm_server" == "ami" ]];then
   if [[ "$setup" == "1" ]];then
-    if [[ -z "$ami_image" ]];then 
+    if [[ -z "$ami_image" ]];then
       echo "ERROR! You have not given AMI image name. Please use --ami-image to pass image name. Terminating"
       exit 1
     fi
-    if [[ -z "$key_name" ]];then 
+    if [[ -z "$key_name" ]];then
       echo "ERROR! You have not entered  aws key name. Please use --key-name to pass key name. Terminating"
       exit 1
-    fi 
+    fi
   fi
 elif [[ "$pmm_server" == "ova" ]];then
   if [[ "$setup" == "1" ]];then
-    if [[ -z "$ova_image" ]];then 
+    if [[ -z "$ova_image" ]];then
       echo "ERROR! You have not given OVA image name. Please use --ova-image to pass image name. Terminating"
       exit 1
     fi
@@ -255,7 +259,7 @@ sanity_check(){
 	  echo "ERROR! pmm-server ova instance is not runnning. Terminating"
       exit 1
 	fi
-  fi 
+  fi
 }
 
 if [[ -z "${ps_version}" ]]; then ps_version="5.7"; fi
@@ -349,16 +353,16 @@ setup(){
     --subnet-id subnet-4765a930 \
     --region us-east-1 \
     --key-name $key_name > $WORKDIR/aws_instance_config.txt 2> /dev/null
-	
+
 	INSTANCE_ID=$(cat $WORKDIR/aws_instance_config.txt | grep "InstanceId"  | awk -F[\"\"] '{print $4}')
 
 	aws ec2 create-tags  \
     --resources $INSTANCE_ID \
     --region us-east-1 \
     --tags Key=Name,Value=PMM_test_image 2> /dev/null
-	
+
 	sleep 30
-	
+
 	AWS_PUBLIC_IP=$(aws ec2 describe-instances --instance-ids  $INSTANCE_ID | grep "PublicIpAddress" | awk -F[\"\"] '{print $4}')
   elif [[ "$pmm_server" == "ova" ]] ; then
     if [[ ! -e $(which VBoxManage 2> /dev/null) ]] ;then
@@ -373,7 +377,7 @@ setup(){
       exit 1
 	fi
 	# import image
-	if [ ! -f $ova_image ] ;then 
+	if [ ! -f $ova_image ] ;then
 	  echo "Alert! ${ova_image} does not exist in $WORKDIR. Downloading ${ova_image} ..."
 	  wget https://s3.amazonaws.com/percona-vm/$ova_image
 	fi
@@ -388,7 +392,7 @@ setup(){
   fi
   #PMM configuration setup
   PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
-	
+
   echo "Initiating PMM client configuration"
   PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
   if [ -z $PMM_CLIENT_BASEDIR ]; then
@@ -552,14 +556,17 @@ add_clients(){
       PORT_CHECK=101
       NODE_NAME="PS_NODE"
       get_basedir ps "[Pp]ercona-[Ss]erver-${ps_version}*" "Percona Server binary tar ball" ${ps_version}
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --log_output=file --slow_query_log=ON --long_query_time=0 --log_slow_rate_limit=100 --log_slow_rate_type=query --log_slow_verbosity=full --log_slow_admin_statements=ON --log_slow_slave_statements=ON --slow_query_log_always_write_time=1 --slow_query_log_use_global_control=all --innodb_monitor_enable=all --userstat=1"
     elif [[ "${CLIENT_NAME}" == "ms" ]]; then
       PORT_CHECK=201
       NODE_NAME="MS_NODE"
       get_basedir mysql "mysql-${ms_version}*" "MySQL Server binary tar ball" ${ms_version}
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --innodb_monitor_enable=all --performance_schema=ON"
     elif [[ "${CLIENT_NAME}" == "md" ]]; then
       PORT_CHECK=301
       NODE_NAME="MD_NODE"
       get_basedir mariadb "mariadb-${md_version}*" "MariaDB Server binary tar ball" ${md_version}
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql  --innodb_monitor_enable=all --performance_schema=ON"
     elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
       echo "[mysqld]" > my_pxc.cnf
       echo "innodb_autoinc_lock_mode=2" >> my_pxc.cnf
@@ -574,6 +581,7 @@ add_clients(){
       PORT_CHECK=401
       NODE_NAME="PXC_NODE"
       get_basedir pxc "Percona-XtraDB-Cluster-${pxc_version}*" "Percona XtraDB Cluster binary tar ball" ${pxc_version}
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --log_output=file --slow_query_log=ON --long_query_time=0 --log_slow_rate_limit=100 --log_slow_rate_type=query --log_slow_verbosity=full --log_slow_admin_statements=ON --log_slow_slave_statements=ON --slow_query_log_always_write_time=1 --slow_query_log_use_global_control=all --innodb_monitor_enable=all --userstat=1"
     elif [[ "${CLIENT_NAME}" == "mo" ]]; then
       get_basedir psmdb "percona-server-mongodb-${mo_version}*" "Percona Server Mongodb binary tar ball" ${mo_version}
     fi
@@ -618,22 +626,22 @@ add_clients(){
           echo "  { _id:${i} , host:\"localhost:\"+port${i}}," >> /tmp/config_replset.js
         done
         echo "  ]" >> /tmp/config_replset.js
-        echo "};" >> /tmp/config_replset.js	
+        echo "};" >> /tmp/config_replset.js
 
-        echo "printjson(conf)" >> /tmp/config_replset.js	
-        echo "printjson(rs.initiate(conf));" >> /tmp/config_replset.js	
-		
+        echo "printjson(conf)" >> /tmp/config_replset.js
+        echo "printjson(rs.initiate(conf));" >> /tmp/config_replset.js
+
 	  }
 	  create_replset_js
       if [[ "$with_replica" == "1" ]]; then
         for k in `seq 1  ${REPLCOUNT}`;do
 	      n=$(( $k - 1 ))
 		  echo "Configuring replcaset"
-          sudo $BASEDIR/bin/mongo --quiet --port ${PSMDB_PORTS[$n]} --eval "var replSet='r${k}'" "/tmp/config_replset.js" 
+          sudo $BASEDIR/bin/mongo --quiet --port ${PSMDB_PORTS[$n]} --eval "var replSet='r${k}'" "/tmp/config_replset.js"
           sleep 5
 	    done
 	  fi
-	  
+
       if [[ "$with_shrading" == "1" ]]; then
     	#config
 	    CONFIG_MONGOD_PORT=$(( (RANDOM%21 + 10) * 1001 ))
@@ -646,14 +654,14 @@ add_clients(){
 		  sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
 		  MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
 		done
-		
+
 		echo "Configuring replcaset"
-        $BASEDIR/bin/mongo --quiet --port ${CONFIG_MONGOD_PORT} --eval "var replSet='config'" "/tmp/config_replset.js" 
+        $BASEDIR/bin/mongo --quiet --port ${CONFIG_MONGOD_PORT} --eval "var replSet='config'" "/tmp/config_replset.js"
         sleep 20
-	    
+
 		MONGOS_STARTUP_CMD="${MONGOS_STARTUP_CMD::-1}"
 		mkdir $BASEDIR/data/mongos
-		#Removing default mongodb socket file 
+		#Removing default mongodb socket file
 		sudo rm -rf /tmp/mongodb-27017.sock
 		$BASEDIR/bin/mongos --fork --logpath $BASEDIR/data/mongos/mongos.log --configdb config/$MONGOS_STARTUP_CMD  &
 		sleep 5
@@ -693,16 +701,17 @@ add_clients(){
           else
             WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
           fi
-          MYEXTRA="--no-defaults $WSREP_CLUSTER_ADD --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 --max-connections=30000"
+          MYEXTRA="--no-defaults --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so $WSREP_CLUSTER_ADD --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 --wsrep_sst_method=rsync --wsrep_sst_auth=root: --max-connections=30000"
         else
           MYEXTRA="--no-defaults --max-connections=30000"
         fi
-        ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+        ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
           --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
         function startup_chk(){
           for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
             sleep 1
             if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
+              ${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "SET GLOBAL query_response_time_stats=ON;" > /dev/null 2>&1
               check_user=`${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "SELECT user,host FROM mysql.user where user='$OUSER' and host='%';"`
               if [[ -z "$check_user" ]]; then
                 ${BASEDIR}/bin/mysql  -uroot -S/tmp/${NODE_NAME}_${j}.sock -e "CREATE USER '$OUSER'@'%' IDENTIFIED BY '$OPASS';GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$OUSER'@'%'"
@@ -736,6 +745,31 @@ add_clients(){
         fi
         sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
       done
+      pxc_proxysql_setup(){
+        if  [[ "${CLIENT_NAME}" == "pxc" ]]; then
+          if [[ ! -e $(which proxysql 2> /dev/null) ]] ;then
+            echo "The program 'proxysql' is currently not installed. Installing proxysql from percona repository"
+            if grep -iq "ubuntu"  /etc/os-release ; then
+              sudo apt install -y proxysql
+            fi
+            if grep -iq "centos"  /etc/os-release ; then
+              sudo yum install -y proxysql
+            fi
+            if [[ ! -e $(which proxysql 2> /dev/null) ]] ;then
+              echo "ERROR! Could not install proxysql on CentOS/Ubuntu machine. Terminating"
+              exit 1
+            fi
+          fi
+          PXC_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t]*PXC_NODE-1" | awk -F[\(\)] '{print $2}')
+          PXC_BASE_PORT=$(${BASEDIR}/bin/mysql -uroot --socket=$PXC_SOCKET -Bse"select @@port")
+          ${BASEDIR}/bin/mysql -uroot --socket=$PXC_SOCKET -e"grant all on *.* to admin@'%' identified by 'admin'"
+          sudo sed -i "s/3306/${PXC_BASE_PORT}/" /etc/proxysql-admin.cnf
+          sudo proxysql-admin -e > $WORKDIR/logs/proxysql-admin.log
+          sudo pmm-admin add proxysql:metrics
+        else
+          echo "Could not find PXC nodes. Skipping proxysql setup"
+        fi
+      }
     fi
   done
 }
@@ -765,13 +799,13 @@ pmm_docker_client_startup(){
     docker-compose up >/dev/null 2>&1 &
     BASE_DIR=$(basename "$PWD")
     BASE_DIR=${BASE_DIR//[^[:alnum:]]/}
-    while ! docker ps | grep ${BASE_DIR}_centos_ps_1 > /dev/null; do  
-      sleep 5 ; 
+    while ! docker ps | grep ${BASE_DIR}_centos_ps_1 > /dev/null; do
+      sleep 5 ;
     done
     DOCKER_CONTAINER_NAME=$(docker ps | grep ${BASE_DIR}_centos_ps | awk '{print $NF}')
     IP_ADD=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
     if [ ! -z $DOCKER_CONTAINER_NAME ]; then
-      echo -e "\nAdding pmm-client instance from CentOS docker container to the currently live PMM server" 
+      echo -e "\nAdding pmm-client instance from CentOS docker container to the currently live PMM server"
       IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin config --server $IP_ADD --bind-address $IP_DOCKER_ADD
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin add mysql
@@ -804,13 +838,13 @@ pmm_docker_client_startup(){
     docker-compose up >/dev/null 2>&1 &
     BASE_DIR=$(basename "$PWD")
     BASE_DIR=${BASE_DIR//[^[:alnum:]]/}
-    while ! docker ps | grep ${BASE_DIR}_ubuntu_ps_1 > /dev/null; do  
-      sleep 5 ; 
+    while ! docker ps | grep ${BASE_DIR}_ubuntu_ps_1 > /dev/null; do
+      sleep 5 ;
     done
     DOCKER_CONTAINER_NAME=$(docker ps | grep ${BASE_DIR}_ubuntu_ps | awk '{print $NF}')
     IP_ADD=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
     if [ ! -z $DOCKER_CONTAINER_NAME ]; then
-      echo -e "\nAdding pmm-client instance from Ubuntu docker container to the currently live PMM server" 
+      echo -e "\nAdding pmm-client instance from Ubuntu docker container to the currently live PMM server"
       IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin config --server $IP_ADD --bind-address $IP_DOCKER_ADD
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin add mysql
@@ -831,12 +865,12 @@ clean_clients(){
    exit 1
   fi
   #Shutdown all mysql client instances
-  for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||' | uniq) ; do
-    echo -e "Shutting down mysql instance (--socket=${i})" 
+  for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
+    echo -e "Shutting down mysql instance (--socket=${i})"
     ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
   done
-  #Kills mongodb processes 
+  #Kills mongodb processes
   sudo killall mongod 2> /dev/null
   sudo killall mongos 2> /dev/null
   sleep 5
@@ -844,7 +878,7 @@ clean_clients(){
     echo -e "No services under pmm monitoring"
   else
     #Remove all client instances
-    echo -e "Removing all local pmm client instances" 
+    echo -e "Removing all local pmm client instances"
     sudo pmm-admin remove --all 2&>/dev/null
   fi
 }
@@ -853,10 +887,10 @@ clean_docker_clients(){
   #Remove docker pmm-clients
   BASE_DIR=$(basename "$PWD")
   BASE_DIR=${BASE_DIR//[^[:alnum:]]/}
-  echo -e "Removing pmm-client instances from docker containers" 
+  echo -e "Removing pmm-client instances from docker containers"
   sudo docker exec -it ${BASE_DIR}_centos_ps_1  pmm-admin remove --all 2&> /dev/null
   sudo docker exec -it ${BASE_DIR}_ubuntu_ps_1  pmm-admin remove --all  2&> /dev/null
-  echo -e "Removing pmm-client docker containers" 
+  echo -e "Removing pmm-client docker containers"
   sudo docker stop ${BASE_DIR}_ubuntu_ps_1 ${BASE_DIR}_centos_ps_1  2&> /dev/null
   sudo docker rm ${BASE_DIR}_ubuntu_ps_1 ${BASE_DIR}_centos_ps_1  2&> /dev/null
 }
@@ -864,18 +898,18 @@ clean_docker_clients(){
 clean_server(){
   #Stop/Remove pmm-server docker/ami/ova instances
   if [[ "$pmm_server" == "docker" ]] ; then
-    echo -e "Removing pmm-server docker containers" 
+    echo -e "Removing pmm-server docker containers"
     sudo docker stop pmm-server  2&> /dev/null
     sudo docker rm pmm-server pmm-data  2&> /dev/null
   elif [[ "$pmm_server" == "ova" ]] ; then
 	VMBOX=$(vboxmanage list runningvms | grep "PMM-Server" | awk -F[\"\"] '{print $2}')
 	echo "Shutting down ova instance"
-	VBoxManage controlvm $VMBOX poweroff 
+	VBoxManage controlvm $VMBOX poweroff
 	echo "Unregistering ova instance"
 	VBoxManage unregistervm $VMBOX --delete
 	 VM_DISKS=($(vboxmanage list hdds | grep -B4 $VMBOX | grep UUID | grep -v 'Parent UUID:' | awk '{ print $2}'))
-	for i in ${VM_DISKS[@]}; do 
-	  VBoxManage closemedium disk $i --delete ; 
+	for i in ${VM_DISKS[@]}; do
+	  VBoxManage closemedium disk $i --delete ;
 	done
   elif [[ "$pmm_server" == "ami" ]] ; then
     if [ -f $WORKDIR/aws_instance_config.txt ]; then
@@ -885,8 +919,8 @@ clean_server(){
 	  exit 1
 	fi
     aws ec2 terminate-instances --instance-ids $INSTANCE_ID > $WORKDIR/aws_remove_instance.log
-  fi 
-  
+  fi
+
 }
 
 if [ ! -z $wipe_clients ]; then
@@ -918,6 +952,10 @@ fi
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
   sanity_check
   add_clients
+fi
+
+if [ ! -z $with_proxysql ]; then
+  pxc_proxysql_setup
 fi
 
 if [ ! -z $add_docker_client ]; then

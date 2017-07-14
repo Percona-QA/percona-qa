@@ -106,12 +106,12 @@ echo "$output"
 }
 
 
-@test "run pmm-admin --version" {
-run sudo pmm-admin --version
-echo "$output"
-	[ "$status" -eq 0 ]
-	echo "$output" | grep "1.1"
-}
+# @test "run pmm-admin --version" {
+# run sudo pmm-admin --version
+# echo "$output"
+# 	[ "$status" -eq 0 ]
+# 	echo "$output" | grep "1.1"
+# }
 
 
 @test "run pmm-admin start without service type" {
