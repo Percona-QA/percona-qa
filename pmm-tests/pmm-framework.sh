@@ -96,9 +96,9 @@ do
     --pmm-server )
     pmm_server="$2"
 	shift 2
-    if [ "$pmm_server" != "docker" ] && [ "$pmm_server" != "ami" ] && [ "$pmm_server" != "ova" ]; then
+    if [ "$pmm_server" != "docker" ] && [ "$pmm_server" != "ami" ] && [ "$pmm_server" != "ova" ] && [ "$pmm_server" != "custom" ]; then
       echo "ERROR: Invalid --pmm-server passed:"
-      echo "  Please choose any of these pmm-server options: 'docker', 'ami', or ova"
+      echo "  Please choose any of these pmm-server options: 'docker', 'ami', 'custom', or 'ova'"
       exit 1
     fi
     ;;
@@ -232,6 +232,11 @@ elif [[ "$pmm_server" == "ova" ]];then
       echo "ERROR! You have not given OVA image name. Please use --ova-image to pass image name. Terminating"
       exit 1
     fi
+  fi
+elif [[ "$pmm_server" == "custom" ]];then
+  if ! sudo pmm-admin ping | grep -q "OK, PMM server is alive"; then 
+    echo "ERROR! PMM Server is not running. Please check PMM server status. Terminating"
+    exit 1
   fi
 fi
 sanity_check(){
@@ -865,7 +870,7 @@ clean_clients(){
    exit 1
   fi
   #Shutdown all mysql client instances
-  for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
+  for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
     echo -e "Shutting down mysql instance (--socket=${i})"
     ${MYSQLADMIN_CLIENT} -uroot --socket=${i} shutdown
     sleep 2
@@ -950,7 +955,14 @@ if [ ! -z $setup ]; then
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
-  sanity_check
+  if [[ "$pmm_server" == "custom" ]];then
+    if ! sudo pmm-admin ping | grep -q "OK, PMM server is alive"; then 
+      echo "ERROR! PMM Server is not running. Please check PMM server status. Terminating"
+      exit 1
+    fi
+  else
+    sanity_check
+  fi
   add_clients
 fi
 
