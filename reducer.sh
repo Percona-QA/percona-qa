@@ -130,7 +130,7 @@ TS_VARIABILITY_SLEEP=1
 # - SKIPSTAGEBELOW: Stages up to and including this one are skipped (default=0).
 # - SKIPSTAGEABOVE: Stages above and including this one are skipped (default=9).
 # - TEXT: Text to look for in MODEs 1,2,3,5,6,7,8. Ignored in MODEs 4 and 9. 
-#   Can contain extended grep (i.e. grep -E or egrep)+regex syntax like "^ERROR|some_other_string". Remember this is regex: specify | as \| etc. 
+#   Can contain extended grep (i.e. grep -E --binary-files=text or egrep)+regex syntax like "^ERROR|some_other_string". Remember this is regex: specify | as \| etc. 
 #   For MODE5, you would use a mysql CLI to get the desired output "string" (see example given above) and then set MODE5_COUNTTEXT
 # - PQUERY_MOD: 1: use pquery, 0: use mysql CLI. Causes reducer.sh to use pquery instead of the mysql client for replays (default=0). Supported for MODE=1,3,4
 # - PQUERY_LOC: Location of the pquery binary (retrieve pquery like this; $ cd ~; bzr branch lp:percona-qa; # then ref ~/percona-qa/pquery/pquery[-ms])
@@ -201,7 +201,7 @@ TS_VARIABILITY_SLEEP=1
 #   and it is based on random replay. Likely this will be slow, but effective. Alpha quality. This option removes the --no-shuffle option for pquery (i.e. 
 #   random replay) and sets pquery options --threads=x (x=PQUERY_MULTI_CLIENT_THREADS) and --queries=5*testcase size. It also sets the number of subreducer
 #   threads to PQUERY_MULTI_THREADS. To track success/status, view reducer output and/or check error logs;
-#   $ grep -E "Assertion failure" /dev/shm/{reducer's epoch}/subreducer/*/error.log
+#   $ grep -E --binary-files=text "Assertion failure" /dev/shm/{reducer's epoch}/subreducer/*/error.log
 #   Note that, idem to when you use FORCE_SKIV and/or FORCE_SPORADIC, STAGE1_LINES is set to 3. Thus, reducer will likely never completely "finish" (3 line
 #   testases are somewhat rare), as it tries to continue to reduce the test to 3 lines. Just watch the output (reducer continually reports on remaining number
 #   of lines and/or filesize) and decide when you are happy with the lenght of any reduced testcase. Suggested for developer convenience; 5-10 lines or less.
@@ -253,9 +253,9 @@ TS_VARIABILITY_SLEEP=1
 #   - The subreducer directories $WORKD/subreducer/<nr>/ (ref above), provided reducer.sh is working in MULTI mode (even the standard VERIFY stage is [MULTI]) 
 #   - Or, they will be in the same aforementioned directory $WORKD (and the output files from the initial template creation will now have been overwritten, 
 #     though not the actual template), provided reducer.sh is working in single-threaded reduction mode (i.e. [MULTI] mode is not active).
-# - Never use grep, always use egrep. See the next line why. Remember also that [0-9]\+ (a regex valid for grep) is written as [0-9]+ when using egrep/grep -E.
-#   grep -E is the same as egrep. It is best to use grep -E because egrep will likely be deprecated from various OS'es at some point.
-# - When using grep -E, ALWAYS use --binary-files=text to avoid issues with hex characters causing non-reproducibility and/or grep playing up. If you see
+# - Never use grep, always use egrep. See the next line why. Remember also that [0-9]\+ (a regex valid for grep) is written as [0-9]+ when using egrep/grep -E --binary-files=text.
+#   grep -E --binary-files=text is the same as egrep. It is best to use grep -E --binary-files=text because egrep will likely be deprecated from various OS'es at some point.
+# - When using grep -E --binary-files=text, ALWAYS use --binary-files=text to avoid issues with hex characters causing non-reproducibility and/or grep playing up. If you see
 #   things like 'Binary file ... matches' as grep output it means you have executed grep against a file with binary chars, which is seen by the system as a
 #   binary file (even though it may be a flat sql text file with a few hex characters in it). Adding the --binary-files=text will correctly process the file.
 
@@ -317,7 +317,7 @@ TS_VARIABILITY_SLEEP=1
 #   Once found, abort all live subreducer threads and re-init with found _out file. Maybe a safety copy of original file should be used for running.
 # - MODE9 work left
 #   - When 2 threads are left (D+2T) then try MODE4 immediately instead of executing x TS_TE_ATTEMPTS attempts
-#   - In single thread replay it should always do grep -E -v "DEBUG_SYNC" as DEBUG_SYNC does not make sense there (cosmetic, would be filtered anyway)
+#   - In single thread replay it should always do grep -E --binary-files=text -v "DEBUG_SYNC" as DEBUG_SYNC does not make sense there (cosmetic, would be filtered anyway)
 #   - bash$ echo -ne "test\r"; echo "te2" > use this implementation for same-line writing of threa fork commands etc
 #   - TS_TRXS_SETS "greps" not fully corret yet: setting this to 10 lead to 2x main delay while it should have been 10. Works correctly when "1"
 #   - TS_TRXS_SETS processing can be automated - and this is the simplification: test last, test last+1, test last+2, untill crash. (or chuncks?)
@@ -415,17 +415,17 @@ ctrl_c(){
   echo_out "[Abort] End of dump stack"
   if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining PXC nodes are terminated and removed"
-    (ps -ef | grep -E 'node1_socket\|node2_socket\|node3_socket' | grep -E -v grep -E | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync 
   fi
   if [ $GRP_RPL_MOD -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining Group Replication nodes are terminated and removed"
-    (ps -ef | grep -E 'node1_socket\|node2_socket\|node3_socket' | grep -E -v grep -E | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync 
   fi
   echo_out "[Abort] Ensuring any remaining processes are terminated"
   if [ "$EPOCH" != "" ]; then  
-    PIDS_TO_TERMINATE=$(ps -ef | grep -E $WHOAMI | grep -E $EPOCH | grep -E -v "grep" | awk '{print $2}' | tr '\n' ' ')
+    PIDS_TO_TERMINATE=$(ps -ef | grep -E --binary-files=text $WHOAMI | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v "grep" | awk '{print $2}' | tr '\n' ' ')
   else
     echo_out "Assert: \$EPOCH is empty! in ctrl_c()!"
   fi
@@ -616,7 +616,7 @@ options_check(){
     fi
     TIMEOUT_COMMAND="timeout --signal=SIGKILL ${TIMEOUT_CHECK}s"  # TIMEOUT_COMMAND var is used (hack) instead of adding yet another MODE0 specific variable
   fi
-  if [ "${TIMEOUT_COMMAND}" != "" -a "$(timeout 2>&1 | grep -E -o 'information')" != "information" ]; then
+  if [ "${TIMEOUT_COMMAND}" != "" -a "$(timeout 2>&1 | grep -E --binary-files=text -o 'information')" != "information" ]; then
     echo "Error: TIMEOUT_COMMAND is set, yet the timeout command does not seem to be available"
     echo "Terminating now."
     exit 1
@@ -629,7 +629,7 @@ options_check(){
   fi 
   if [ $MODE -eq 2 ]; then
     if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run in MODE=2 - we need to make sure we have pquery client logging activated
-      if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -E -io "log-client-output")" != "log-client-output" ]; then
+      if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -E --binary-files=text -io "log-client-output")" != "log-client-output" ]; then
         echo "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain log-client-output, so not sure what file reducer.sh should check for TEXT occurence."
         exit 1
       fi
@@ -771,7 +771,7 @@ set_internal_options(){  # Internal options: do not modify!
   fi
   trap ctrl_c SIGINT  # Requires ${EPOCH} to be set already
   # Even if RQG is no longer used, the next line (i.e. including 'transforms') should NOT be modified. It provides backwards compatibility with RQG and it provides a long unique 
-  # string which is unlikely to be present in testcases (it's used in grep -E -v a few times below). "DROP DATABASE test;CREATE DATABASE test;USE test;" would be more/too? generic.
+  # string which is unlikely to be present in testcases (it's used in grep -E --binary-files=text -v a few times below). "DROP DATABASE test;CREATE DATABASE test;USE test;" would be more/too? generic.
   DROPC="DROP DATABASE transforms;CREATE DATABASE transforms;DROP DATABASE test;CREATE DATABASE test;USE test;"
   STARTUPCOUNT=0
   ATLEASTONCE="[]"
@@ -788,19 +788,19 @@ set_internal_options(){  # Internal options: do not modify!
 }
 
 kill_multi_reducer(){
-  if [ $(ps -ef | grep -E subreducer | grep -E $WHOAMI | grep -E $EPOCH | grep -E -v grep -E | awk '{print $2}' | wc -l) -ge 1 ]; then
-    PIDS_TO_TERMINATE=$(ps -ef | grep -E subreducer | grep -E $WHOAMI | grep -E $EPOCH | grep -E -v grep -E | awk '{print $2}' | sort -u | tr '\n' ' ')
+  if [ $(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text $WHOAMI | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | wc -l) -ge 1 ]; then
+    PIDS_TO_TERMINATE=$(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text $WHOAMI | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | sort -u | tr '\n' ' ')
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating these PID's: $PIDS_TO_TERMINATE"
-    while [ $(ps -ef | grep -E subreducer | grep -E `whoami` | grep -E $EPOCH | grep -E -v grep -E | awk '{print $2}' | wc -l) -ge 1 ]; do
-      for t in $(ps -ef | grep -E subreducer | grep -E `whoami` | grep -E $EPOCH | grep -E -v grep -E | awk '{print $2}' | sort -u); do
+    while [ $(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text `whoami` | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | wc -l) -ge 1 ]; do
+      for t in $(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text `whoami` | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | sort -u); do
         kill -9 $t 2>/dev/null
         wait $t 2>/dev/null  # Prevents "<process id> Killed" messages
       done
       sync; sleep 3
-      if [ $(ps -ef | grep -E subreducer | grep -E `whoami` | grep -E $EPOCH | grep -E -v grep -E | awk '{print $2}' | wc -l) -ge 1 ]; then
+      if [ $(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text `whoami` | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | wc -l) -ge 1 ]; then
         sync; sleep 20  # Extended wait for processes to terminate
-        if [ $(ps -ef | grep -E subreducer | grep -E `whoami` | grep -E $EPOCH | grep -E -v grep -E | awk '{print $2}' | wc -l) -ge 1 ]; then
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: $(ps -ef | grep -E subreducer | grep -E `whoami` | grep -E $EPOCH | grep -E -v grep -E | wc -l) subreducer processes still exists after they were killed, re-attempting kill"
+        if [ $(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text `whoami` | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | wc -l) -ge 1 ]; then
+          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] WARNING: $(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text `whoami` | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | wc -l) subreducer processes still exists after they were killed, re-attempting kill"
         fi
       fi
     done
@@ -842,7 +842,7 @@ multi_reducer(){
   # Choose a random port number in 40K range, check if free, increase if needbe
   MULTI_MYPORT=$[40000 + ( $RANDOM % ( $[ 9999 - 1 ] + 1 ) ) + 1 ] 
   while :; do
-    ISPORTFREE=$(netstat -an | grep -E $MULTI_MYPORT | wc -l | tr -d '[\t\n ]*')
+    ISPORTFREE=$(netstat -an | grep -E --binary-files=text $MULTI_MYPORT | wc -l | tr -d '[\t\n ]*')
     if [ $ISPORTFREE -ge 1 ]; then
       MULTI_MYPORT=$[$MULTI_MYPORT+100]  #+100 to avoid 'clusters of ports'
     else
@@ -884,7 +884,7 @@ multi_reducer(){
     # Take the following available port
     MULTI_MYPORT=$[$MULTI_MYPORT+1]
     while :; do
-      ISPORTFREE=$(netstat -an | grep -E $MULTI_MYPORT | wc -l | tr -d '[\t\n ]*')
+      ISPORTFREE=$(netstat -an | grep -E --binary-files=text $MULTI_MYPORT | wc -l | tr -d '[\t\n ]*')
       if [ $ISPORTFREE -ge 1 ]; then
         MULTI_MYPORT=$[$MULTI_MYPORT+100]  #+100 to avoid 'clusters of ports'
       else
@@ -941,7 +941,7 @@ multi_reducer(){
           done
           sleep 2
           echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... done"
-          cp -f $(cat $MULTI_WORKD/VERIFIED | grep -E "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
+          cp -f $(cat $MULTI_WORKD/VERIFIED | grep -E --binary-files=text "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
           if [ -r "$WORKO" ]; then  # First occurence: there is no $WORKO yet
             cp -f $WORKO ${WORKO}.prev
             # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
@@ -955,7 +955,7 @@ multi_reducer(){
         fi
         # Check if this subreducer ($MULTI_PID$t) is still running. For more info, see "However, ..." in few lines of comments above.
         PID_TO_CHECK=$(eval echo $(echo '$MULTI_PID'"$t"))
-        if [ "$(ps -p$PID_TO_CHECK | grep -E -o $PID_TO_CHECK)" != "$PID_TO_CHECK" ]; then
+        if [ "$(ps -p$PID_TO_CHECK | grep -E --binary-files=text -o $PID_TO_CHECK)" != "$PID_TO_CHECK" ]; then
           RESTART_WORKD=$(eval echo $(echo '$WORKD'"$t"))
           rm -Rf $RESTART_WORKD/[^s]*  # Remove all files, except for subreducer script
           $($RESTART_WORKD/subreducer $1 >/dev/null 2>/dev/null) >/dev/null 2>/dev/null &
@@ -1018,10 +1018,10 @@ multi_reducer_decide_input(){
   for t in $(eval echo {1..$MULTI_THREADS}); do
     export MULTI_WORKD=$(eval echo $(echo '$WORKD'"$t"))
     if [ -s $MULTI_WORKD/VERIFIED ]; then
-      TRIAL_LEVEL=$(cat $MULTI_WORKD/VERIFIED | grep -E "TRIAL" | sed -e 's/^.*://' -e 's/[ ]*//g')
+      TRIAL_LEVEL=$(cat $MULTI_WORKD/VERIFIED | grep -E --binary-files=text "TRIAL" | sed -e 's/^.*://' -e 's/[ ]*//g')
       if [ $TRIAL_LEVEL -eq 1 ]; then
         # Highest optimization possible, use file and exit
-        cp -f $(cat $MULTI_WORKD/VERIFIED | grep -E "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
+        cp -f $(cat $MULTI_WORKD/VERIFIED | grep -E --binary-files=text "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Found verified, maximum initial simplification file, at thread #$t: Using it as new input file"
         if [ -r $MULTI_WORKD/MYEXTRA ]; then
           MYEXTRA=$(cat $MULTI_WORKD/MYEXTRA)
@@ -1029,7 +1029,7 @@ multi_reducer_decide_input(){
         break
       elif [ $TRIAL_LEVEL -lt $LOWEST_TRIAL_LEVEL_SEEN ]; then
         LOWEST_TRIAL_LEVEL_SEEN=$TRIAL_LEVEL
-        cp -f $(cat $MULTI_WORKD/VERIFIED | grep -E "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
+        cp -f $(cat $MULTI_WORKD/VERIFIED | grep -E --binary-files=text "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
         echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Found verified, level $TRIAL_LEVEL simplification file, at thread #$t: Using it as new input file, unless better is found"
         if [ -r $MULTI_WORKD/MYEXTRA ]; then
           MYEXTRA=$(cat $MULTI_WORKD/MYEXTRA)
@@ -1088,7 +1088,7 @@ init_empty_port(){
   # Choose a random port number in 30K range, check if free, increase if needbe
   MYPORT=$[30000 + ( $RANDOM % ( $[ 9999 - 1 ] + 1 ) ) + 1 ] 
   while :; do
-    ISPORTFREE=$(netstat -an | grep -E $MYPORT | wc -l | tr -d '[\t\n ]*')
+    ISPORTFREE=$(netstat -an | grep -E --binary-files=text $MYPORT | wc -l | tr -d '[\t\n ]*')
     if [ $ISPORTFREE -ge 1 ]; then
       MYPORT=$[$MYPORT+100]  #+100 to avoid 'clusters of ports'
     else
@@ -1110,7 +1110,7 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      if [ $(df -k -P 2>&1 | grep -E -v "docker.devicemapper" | grep -E "$WORKDIR_M3_DIRECTORY" | awk '{print $4}') -lt 3500000 ]; then
+      if [ $(df -k -P 2>&1 | grep -E --binary-files=text -v "docker.devicemapper" | grep -E --binary-files=text "$WORKDIR_M3_DIRECTORY" | awk '{print $4}') -lt 3500000 ]; then
         echo "Error: $WORKDIR_M3_DIRECTORY does not have enough free space (3.5Gb free space required)"
         echo "Terminating now."
         exit 1
@@ -1124,7 +1124,7 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      if [ $(df -k -P 2>&1 | grep -E -v "docker/devicemapper.*Permission denied" | grep -E "/mnt/ram$" | awk '{print $4}' | grep -E -v 'docker.devicemapper') -lt 3500000 ]; then
+      if [ $(df -k -P 2>&1 | grep -E --binary-files=text -v "docker/devicemapper.*Permission denied" | grep -E --binary-files=text "/mnt/ram$" | awk '{print $4}' | grep -E --binary-files=text -v 'docker.devicemapper') -lt 3500000 ]; then
         echo 'Error: /mnt/ram/ does not have enough free space (3.5Gb free space required)'
         echo "Terminating now."
         exit 1
@@ -1137,7 +1137,7 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      if [ $(df -k -P 2>&1 | grep -E -v "docker/devicemapper.*Permission denied" | grep -E "/dev/shm$" | awk '{print $4}' | grep -E -v 'docker.devicemapper') -lt 3500000 ]; then
+      if [ $(df -k -P 2>&1 | grep -E --binary-files=text -v "docker/devicemapper.*Permission denied" | grep -E --binary-files=text "/dev/shm$" | awk '{print $4}' | grep -E --binary-files=text -v 'docker.devicemapper') -lt 3500000 ]; then
         echo 'Error: /dev/shm/ does not have enough free space (3.5Gb free space required)'
         echo "Terminating now."
         exit 1
@@ -1149,7 +1149,7 @@ init_workdir_and_files(){
         echo "Terminating now."
         exit 1
       fi
-      if [ $(df -k -P 2>&1 | grep -E -v "docker/devicemapper.*Permission denied" | grep -E "[ \t]/$" | awk '{print $4}' | grep -E -v 'docker.devicemapper') -lt 3500000 ]; then
+      if [ $(df -k -P 2>&1 | grep -E --binary-files=text -v "docker/devicemapper.*Permission denied" | grep -E --binary-files=text "[ \t]/$" | awk '{print $4}' | grep -E --binary-files=text -v 'docker.devicemapper') -lt 3500000 ]; then
         echo 'Error: The drive mounted as / does not have enough free space (3.5Gb free space required)'
         echo "Terminating now."
         exit 1
@@ -1356,7 +1356,7 @@ init_workdir_and_files(){
       START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
       INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
       INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
-      VERSION_INFO=$(${BIN} --version | grep -E -oe '[58]\.[01567]' | head -n1)
+      VERSION_INFO=$(${BIN} --version | grep -E --binary-files=text -oe '[58]\.[01567]' | head -n1)
       if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
         if [ "${MID}" == "" ]; then
           echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
@@ -1409,15 +1409,15 @@ init_workdir_and_files(){
       stop_mysqld_or_pxc
     elif [[ $PXC_MOD -eq 1 ]]; then
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
-      if [ "$(${BASEDIR}/bin/mysqld --version | grep -E -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+      if [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" == "5.7" ]; then
         MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
-      elif [ "$(${BASEDIR}/bin/mysqld --version | grep -E -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+      elif [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" == "5.6" ]; then
         MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
       fi
       node1="${WORKD}/node1"
       node2="${WORKD}/node2"
       node3="${WORKD}/node3"
-      if [ "$(${BASEDIR}/bin/mysqld --version | grep -E -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      if [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" != "5.7" ]; then
         mkdir -p $node1 $node2 $node3
       fi
       ${MID} --datadir=$node1  > ${WORKD}/startup_node1_error.log 2>&1 || exit 1;
@@ -1466,8 +1466,8 @@ generate_run_scripts(){
   echo -e "    if [ ! -h \${BASEDIR}/share/errmsg.sys -o ! -f \${BASEDIR}/share/errmsg.sys ]; then ln -s \${BASEDIR}/sql/share/english/errmsg.sys \${BASEDIR}/share/errmsg.sys ; fi;\n  fi\nelse" >> $WORK_INIT
   echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
   echo "MID=\`find \${BASEDIR} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
-  echo "if [ \"\`\$BIN --version | grep -E -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\`\$BIN --version | grep -E -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -E -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
-  echo "if [ \"\`\$BIN --version | grep -E -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
+  echo "if [ \"\`\$BIN --version | grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\`\$BIN --version | grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
+  echo "if [ \"\`\$BIN --version | grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
   echo "mkdir -p /dev/shm/${EPOCH}/data/test" >> $WORK_INIT
   if [ $MODE -ge 6 ]; then
     # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
@@ -1737,12 +1737,12 @@ start_pxc_main(){
 
   CLUSTER_UP=0
   if $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then
-    if [ `$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ `$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ `$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ `$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ `$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ `$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
   fi
 }
 
@@ -1759,12 +1759,12 @@ gr_start_main(){
 
   gr_startup_chk(){
     ERROR_LOG=$1
-    if grep -E -qi "ERROR. Aborting" $ERROR_LOG ; then
-      if grep -E -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
+    if grep -E --binary-files=text -qi "ERROR. Aborting" $ERROR_LOG ; then
+      if grep -E --binary-files=text -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
         echo "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
       else
         echo "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MYEXTRA (${MYEXTRA}) startup options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings."
-        grep -E "ERROR" $ERROR_LOG
+        grep -E --binary-files=text "ERROR" $ERROR_LOG
         exit 1
       fi
     fi
@@ -2077,7 +2077,7 @@ cut_threadsync_chunk(){
     export TS_WORKF=$(eval echo $(echo '$WORKF'"$t"))
     export TS_WORKT=$(eval echo $(echo '$WORKT'"$t"))
     if [ $TS_TRXS_SETS -gt 0 ]; then
-      FIRST_DS_OCCURENCE=$(tac $TS_WORKF | grep -E -v "^[\t ]*;[\t ]*$" | grep -E -m1 -n "SET DEBUG_SYNC" | awk -F":" '{print $1}'); 
+      FIRST_DS_OCCURENCE=$(tac $TS_WORKF | grep -E --binary-files=text -v "^[\t ]*;[\t ]*$" | grep -E --binary-files=text -m1 -n "SET DEBUG_SYNC" | awk -F":" '{print $1}'); 
       if grep -E --binary-files=text -qi "SIGNAL GO_T2" $TS_WORKF; then
         # Control thread
         LAST_LINE=$( \
@@ -2087,7 +2087,7 @@ cut_threadsync_chunk(){
           tac $TS_WORKF | awk '/now SIGNAL GO_T2/,/SET DEBUG_SYNC/ {print NR; i++; if (i>1+$TS_TRXS_SETS) nextfile}' | tail -n1; \
         fi)
         if [ $TS_VARIABILITY_SLEEP -gt 0 ]; then
-          tail -n$LAST_LINE $TS_WORKF | grep -E -v "^[\t ]*;[\t ]*$" | \
+          tail -n$LAST_LINE $TS_WORKF | grep -E --binary-files=text -v "^[\t ]*;[\t ]*$" | \
             sed -e "s/SET DEBUG_SYNC\(.*\)now SIGNAL GO_T2/SELECT SLEEP($TS_VARIABILITY_SLEEP);SET DEBUG_SYNC\1now SIGNAL GO_T2/" > $TS_WORKT
         else
           tail -n$LAST_LINE $TS_WORKF | grep -E --binary-files=text -v "^[\t ]*;[\t ]*$" > $TS_WORKT
@@ -2102,7 +2102,7 @@ cut_threadsync_chunk(){
         fi)
         if [ $TS_VARIABILITY_SLEEP -gt 0 ]; then
           TS_VARIABILITY_SLEEP_TENTH=$(echo "$TS_VARIABILITY_SLEEP / 10" | bc -l)
-          tail -n$LAST_LINE $TS_WORKF | grep -E -v "^[\t ]*;[\t ]*$" | \
+          tail -n$LAST_LINE $TS_WORKF | grep -E --binary-files=text -v "^[\t ]*;[\t ]*$" | \
             sed -e "s/SET DEBUG_SYNC/SELECT SLEEP($TS_VARIABILITY_SLEEP_TENTH);SET DEBUG_SYNC/" > $TS_WORKT
         else
           tail -n$LAST_LINE $TS_WORKF | grep -E --binary-files=text -v "^[\t ]*;[\t ]*$" > $TS_WORKT
@@ -2285,7 +2285,7 @@ cleanup_and_save(){
     fi
   else
     if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
-      (ps -ef | grep -E 'node1_socket\|node2_socket\|node3_socket' | grep -E -v grep -E | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+      (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       sleep 2; sync
     fi
     cp -f $WORKT $WORKF
@@ -2294,7 +2294,7 @@ cleanup_and_save(){
       # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev"
     fi
-    grep -E -v "^# mysqld options required for replay:" $WORKT > $WORKO
+    grep -E --binary-files=text -v "^# mysqld options required for replay:" $WORKT > $WORKO
     sed -i "1 i\# mysqld options required for replay: $TOKUDB $ROCKSDB $MYEXTRA" $WORKO
     sed -i "s|[ \t]\+| |g" $WORKO
     cp -f $WORKO $WORK_OUT
@@ -2382,9 +2382,9 @@ process_outcome(){
       FILETOCHECK=$WORKD/mysql.out
     fi
     NEWLINENUMBER=""
-    NEWLINENUMBER=$(grep -E "$QCTEXT" $FILETOCHECK2|grep -E -o "#[0-9]\+$"|sed 's/#//g')
+    NEWLINENUMBER=$(grep -E --binary-files=text "$QCTEXT" $FILETOCHECK2|grep -E --binary-files=text -o "#[0-9]\+$"|sed 's/#//g')
     # TODO: Add check if same query has same output multiple times (add variable for number of occurences)
-    if [ $(grep -E -c "$TEXT#$NEWLINENUMBER$" $FILETOCHECK) -gt 0 ]; then
+    if [ $(grep -E --binary-files=text -c "$TEXT#$NEWLINENUMBER$" $FILETOCHECK) -gt 0 ]; then
       if [ ! "$STAGE" = "V" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [*ClientOutputBug*] [$NOISSUEFLOW] Swapping files & saving last known good client output issue in $WORKO"
         control_backtrack_flow
@@ -2636,7 +2636,7 @@ stop_mysqld_or_pxc(){
   SHUTDOWN_TIME_START=$(date +'%s')
   MODE0_MIN_SHUTDOWN_TIME=$[ $TIMEOUT_CHECK + 10 ]
   if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
-    (ps -ef | grep -E 'node1_socket\|node2_socket\|node3_socket' | grep -E -v grep -E | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   else
     if [ ${FORCE_KILL} -eq 1 -a ${MODE} -ne 0 ]; then  # In MODE=0 we may be checking for shutdown hang issues, so do not kill mysqld
@@ -2848,7 +2848,7 @@ verify(){
   INITFILE=
   MYEXTRAWITHOUTINIT=
   if [[ "$MYEXTRA" == *"init_file"* || "$MYEXTRA" == *"init-file"* ]]; then
-    INITFILE=$(echo $MYEXTRA | grep -E -oE "\-\-init[-_]file=[^ ]+" | sed 's|\-\-init[-_]file=||')
+    INITFILE=$(echo $MYEXTRA | grep -E --binary-files=text -oE "\-\-init[-_]file=[^ ]+" | sed 's|\-\-init[-_]file=||')
     MYEXTRAWITHOUTINIT=$(echo $MYEXTRA | sed 's|\-\-init[-_]file=[^ ]\+||')
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer 
@@ -3137,7 +3137,7 @@ if [ $MODE -ge 6 ]; then
         # Single thread elimination (based on reverse order of TRIAL - control thread is normally first)
         export TS_WORKF=$(eval echo $(echo '$WORKF'"$TS_ELIMINATION_THREAD_ID"))
         export TS_WORKT=$(eval echo $(echo '$WORKT'"$TS_ELIMINATION_THREAD_ID"))
-        TS_T_THREAD=$(grep -E "DEBUG_SYNC.*SIGNAL" $TS_WORKF | sed -e 's/^.*SIGNAL[ ]*//;s/ .*$//g')
+        TS_T_THREAD=$(grep -E --binary-files=text "DEBUG_SYNC.*SIGNAL" $TS_WORKF | sed -e 's/^.*SIGNAL[ ]*//;s/ .*$//g')
         echo "" > $TS_WORKT
 
         # Update the control thread (remove DEBUG_SYNCs for thread in question)
@@ -3497,11 +3497,11 @@ if [ $SKIPSTAGEBELOW -lt 5 -a $SKIPSTAGEABOVE -gt 5 ]; then
   NEXTACTION="& try next testcase complexity reducing sed"
 
   # Change tablenames to tx
-  COUNTTABLES=$(grep -E "CREATE[\t ]*TABLE" $WORKF | wc -l)
+  COUNTTABLES=$(grep -E --binary-files=text "CREATE[\t ]*TABLE" $WORKF | wc -l)
   if [ $COUNTTABLES -gt 0 ]; then
     for i in $(eval echo {$COUNTTABLES..1}); do  # Reverse order
       # the '...\n/2' sed is a precaution against multiple CREATE TABLEs on one line (it replaces the second occurence)
-      TABLENAME=$(grep -E -m$i "CREATE[\t ]*TABLE" $WORKF | tail -n1 | sed -e 's/CREATE[\t ]*TABLE/\n/2' \
+      TABLENAME=$(grep -E --binary-files=text -m$i "CREATE[\t ]*TABLE" $WORKF | tail -n1 | sed -e 's/CREATE[\t ]*TABLE/\n/2' \
         | head -n1 | sed -e 's/CREATE[\t ]*TABLE[\t ]*\(.*\)[\t ]*(/\1/' -e 's/ .*//1' -e 's/(.*//1')
       sed -e "s/\([(. ]\)$TABLENAME\([ )]\)/\1 $TABLENAME \2/gi;s/ $TABLENAME / t$i /gi" $WORKF > $WORKT
       if [ "$TABLENAME" = "t$i" ]; then
@@ -3515,11 +3515,11 @@ if [ $SKIPSTAGEBELOW -lt 5 -a $SKIPSTAGEABOVE -gt 5 ]; then
   fi
 
   # Change viewnames to vx
-  COUNTVIEWS=$(grep -E "CREATE[\t ]*VIEW" $WORKF | wc -l)
+  COUNTVIEWS=$(grep -E --binary-files=text "CREATE[\t ]*VIEW" $WORKF | wc -l)
   if [ $COUNTVIEWS -gt 0 ]; then
     for i in $(eval echo {$COUNTVIEWS..1}); do  # Reverse order
       # the '...\n/2' sed is a precaution against multiple CREATE VIEWs on one line (it replaces the second occurence)
-      VIEWNAME=$(grep -E -m$i "CREATE[\t ]*VIEW" $WORKF | tail -n1 | sed -e 's/CREATE[\t ]*VIEW/\n/2' \
+      VIEWNAME=$(grep -E --binary-files=text -m$i "CREATE[\t ]*VIEW" $WORKF | tail -n1 | sed -e 's/CREATE[\t ]*VIEW/\n/2' \
         | head -n1 | sed -e 's/CREATE[\t ]*VIEW[\t ]*\(.*\)[\t ]*(/\1/' -e 's/ .*//1' -e 's/(.*//1')
       sed -e "s/\([(. ]\)$VIEWNAME\([ )]\)/\1 $VIEWNAME \2/gi;s/ $VIEWNAME / v$i /gi" $WORKF > $WORKT
       if [ "$VIEWNAME" = "v$i" ]; then
@@ -3551,10 +3551,10 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
   # <key def, one or more per line>
   # ) ENGINE=abc;
 
-  COUNTTABLES=$(grep -E "CREATE[\t ]*TABLE" $WORKF | wc -l)
+  COUNTTABLES=$(grep -E --binary-files=text "CREATE[\t ]*TABLE" $WORKF | wc -l)
   for t in $(eval echo {$COUNTTABLES..1}); do  # Reverse order process all tables
     # the '...\n/2' sed is a precaution against multiple CREATE TABLEs on one line (it replaces the second occurence)
-    TABLENAME=$(grep -E -m$t "CREATE[\t ]*TABLE" $WORKF | tail -n1 | sed -e 's/CREATE[\t ]*TABLE/\n/2' \
+    TABLENAME=$(grep -E --binary-files=text -m$t "CREATE[\t ]*TABLE" $WORKF | tail -n1 | sed -e 's/CREATE[\t ]*TABLE/\n/2' \
       | head -n1 | sed -e 's/CREATE[\t ]*TABLE[\t ]*\(.*\)[\t ]*(/\1/' -e 's/ .*//1' -e 's/(.*//1')
 
     # Check if this table ($TABLENAME) is references in aother INSERT..INTO..$TABLENAME2..SELECT..$TABLENAME line.
@@ -3594,7 +3594,7 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
       while grep -E --binary-files=text -qi "INSERT.*INTO.*$TEMPTABLENAME.*SELECT" $WORKF; do
         NUMOFINVOLVEDTABLES=$[$NUMOFINVOLVEDTABLES+1]
         # the '...\n/2' sed is a precaution against multiple INSERT INTOs on one line (it replaces the second occurence)
-        export TABLENAME$NUMOFINVOLVEDTABLES=$(grep -E "INSERT.*INTO.*$TEMPTABLENAME.*SELECT" $WORKF | tail -n1 | sed -e 's/INSERT.*INTO/\n/2' \
+        export TABLENAME$NUMOFINVOLVEDTABLES=$(grep -E --binary-files=text "INSERT.*INTO.*$TEMPTABLENAME.*SELECT" $WORKF | tail -n1 | sed -e 's/INSERT.*INTO/\n/2' \
           | head -n1 | sed -e "s/INSERT.*INTO.*$TEMPTABLENAME.*SELECT.*FROM[\t ]*\(.*\)/\1/" -e 's/ //g;s/;//g')
         TEMPTABLENAME=$(eval echo $(echo '$TABLENAME'"$NUMOFINVOLVEDTABLES"))
       done
@@ -3641,7 +3641,7 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
             TABLENAME=$(eval echo $(echo '$TABLENAME'"$c"))   # Replace TABLENAME with TABLENAMEx thereby eliminating all "chained" columns
             echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] INSERT..SELECT into this table from another one detected: removing corresponding column $COLUMN in table '$TABLENAME'"
             WORKT3=`echo $WORKT | sed 's/$/.3/'`
-            COL_LINE=$[$(cat $WORKT2 | grep -E -m1 -n "CREATE.*TABLE.*$TABLENAME" | awk -F":" '{print $1}') + $COLUMN]
+            COL_LINE=$[$(cat $WORKT2 | grep -E --binary-files=text -m1 -n "CREATE.*TABLE.*$TABLENAME" | awk -F":" '{print $1}') + $COLUMN]
             cat $WORKT2 | sed -e "${COL_LINE}d" > $WORKT3  # (*) Remove the column from the connected table defintion
             cp -f $WORKT3 $WORKT2
             rm $WORKT3
@@ -3933,8 +3933,8 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   #binary log server-id startup option check with 5.7 version
   logbin_startup_chk(){
     if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]|8\.[0]' | head -n1)" =~ ^5.[56]$ ]]; then
-      if echo "${MYEXTRA}" | grep -E '\--log-bin'; then
-        if ! echo "${MYEXTRA}" | grep -E '\--server-id'; then
+      if echo "${MYEXTRA}" | grep -E --binary-files=text '\--log-bin'; then
+        if ! echo "${MYEXTRA}" | grep -E --binary-files=text '\--server-id'; then
           CHK_LOGBIN=1
         else
           CHK_LOGBIN=0
