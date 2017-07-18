@@ -32,7 +32,6 @@ binlog_error_action=ABORT_SERVER
 binlog_format=ROW
 binlog_format=STATEMENT
 binlog_format=MIXED
-binlog_group_commit_sync_delay=DUMMY
 binlog_group_commit_sync_no_delay_count=DUMMY
 binlog_max_flush_queue_time=DUMMY
 binlog_order_commits=0
