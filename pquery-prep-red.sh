@@ -195,7 +195,7 @@ add_select_ones_to_trace(){  # Improve issue reproducibility by adding 3x SELECT
 remove_non_sql_from_trace(){
   echo "* Removing any non-SQL lines (diagnostic output from pquery) to improve issue reproducibility"
   mv ${INPUTFILE} ${INPUTFILE}.filter1
-  egrep --binary-files=text -v "Last [0-9]\+ consecutive queries all failed" ${INPUTFILE}.filter1 > ${INPUTFILE}
+  egrep --binary-files=text -v "Last [0-9]+ consecutive queries all failed" ${INPUTFILE}.filter1 > ${INPUTFILE}
   rm ${INPUTFILE}.filter1
 }
 
@@ -419,7 +419,7 @@ generate_reducer_script(){
 if [ ${QC} -eq 0 ]; then
   if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
     for TRIAL in $(ls ./*/node*/core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | uniq); do
-      for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d' | awk '{print $8}' | tr -dc '0-9\n' | sort`; do
+      for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep --binary-files=text '^d' | awk '{print $8}' | tr -dc '0-9\n' | sort`; do
         OUTFILE="${TRIAL}-${SUBDIR}"
         rm -Rf  ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
         touch ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
