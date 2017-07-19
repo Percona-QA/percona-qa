@@ -2763,7 +2763,7 @@ copy_workdir_to_tmp(){
       fi
       SPACE_WORKD=$(du -s $WORKD 2>/dev/null | sed 's|[ \t].*||')
       SPACE_TMPCP=$(du -s /tmp/$EPOCH 2>/dev/null | sed 's|[ \t].*||')
-      if [ -d /tmp/$EPOCH -a ${SPACE_TMPCP} -gt ${SPACE_WORKD} ]; then
+      if [ -d /tmp/$EPOCH ] && [ ${SPACE_TMPCP} -gt ${SPACE_WORKD} ]; then
         WORKDIR_COPY_SUCCESS=1
         echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$EPOCH now deleting temporary work directory $WORKD"
         rm -Rf $WORKD
