@@ -198,6 +198,8 @@
   time (echo "a";echo "a")   # CORRECT: this times both commands (without anything affecting time and without any sub-execution or variable assignment)
 # Obtain the primary IP address of this machine
   IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8); echo ${IP_ADDRESS}
+# Generate fake data
+  https://faker.readthedocs.io/en/latest/providers.html  # Faker for Python
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
