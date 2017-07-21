@@ -9,7 +9,7 @@ WORKDIR="/dev/shm"                               ## Working directory ("/dev/shm
 SQLFILE="./test.sql"                             ## SQL Input file
 MYEXTRA="--no-defaults --event-scheduler=ON"     ## MYEXTRA: Extra --options required for msyqld (may not be required)
 MYEXTRA=" --no-defaults --plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=/home/roel/percona-qa/plugins_57.sql --binlog-group-commit-sync-delay=2047 "
-SERVER_THREADS=(10 20 30 40 50)                  ## Number of server threads (x mysqld's). This is a sequence: (10 20) means: first 10, then 20 server if no crash was observed
+SERVER_THREADS=(2 10 20 30 40 50)                  ## Number of server threads (x mysqld's). This is a sequence: (10 20) means: first 10, then 20 server if no crash was observed
 CLIENT_THREADS=1                                 ## Number of client threads (y threads) which will execute the SQLFILE input file against each mysqld
 AFTER_SHUTDOWN_DELAY=60                          ## Wait this many seconds for mysqld to shutdown properly. If it does not shutdown within the allotted time, an error shows
 
@@ -97,8 +97,8 @@ for i in ${SERVER_THREADS[@]};do
          --pid-file=${WORKDIR}/${j}_pid.pid --log-error=${WORKDIR}/${j}_error.log.out --socket=${WORKDIR}/${j}_socket.sock --user=${MYUSER}\""
     eval $CMD > ${WORKDIR}/${j}_mysqld.out 2>&1 &
     PIDV="$!"
-    echoit "Started mysqld #${SERVER_COUNT} with PID ${PIDV}"
     MYSQLD+=(${PIDV})
+    echoit "Started mysqld #${SERVER_COUNT} with PID ${MYSQLD[j-1]}"
   done
   for j in `seq 1 ${i}`;do
     x=0
@@ -136,8 +136,7 @@ for i in ${SERVER_THREADS[@]};do
   # Check if mysql client finished
   for k in "${MYSQLC[@]}"; do
     while [[ ( -d /proc/$k ) && ( -z `grep zombie /proc/$k/status` ) ]]; do
-      sleep 1
-      # Check mysqld processes while waiting for client processes to finish
+      # Check mysqld processes are still alive while waiting for client processes to finish
       for j in `seq 1 ${i}`;do
         if ! ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
           echoit "[!] Server crash/shutdown found: Check ${WORKDIR}/${j}_error.log.out for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
@@ -146,7 +145,7 @@ for i in ${SERVER_THREADS[@]};do
       done
     done
   done
-  # Check mysqld processes after client processes are done
+  # Check mysqld processes are still alive after client processes are done
   for j in `seq 1 ${i}`;do
     if ! ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
       echoit "[!] Server crash/shutdown found: Check ${WORKDIR}/${j}_error.log.out for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
@@ -156,31 +155,42 @@ for i in ${SERVER_THREADS[@]};do
   # Shutdown mysqld processes
   for j in `seq 1 ${i}`;do
     echoit "Shutting down mysqld #${j}..."
-    timeout --signal=9 ${AFTER_SHUTDOWN_DELAY} ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock shutdown > /dev/null 2>&1 &
+    timeout --signal=9 ${AFTER_SHUTDOWN_DELAY}s ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock shutdown > /dev/null 2>&1
     if [ $? -eq 137 ]; then  # Timeout was activated after ${AFTER_SHUTDOWN_DELAY} seconds, highly likely indicating a hang
-      echoit "[!] Potential server hang found: mysqld #{j} has not shutdown in ${AFTER_SHUTDOWN_DELAY} seconds. Check gdb --pid=${MYSQLC[${i}]}. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      echoit "[!] Potential server hang found: mysqld #{j} has not shutdown in ${AFTER_SHUTDOWN_DELAY} seconds. Check gdb --pid=${MYSQLD[j-1]}. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
       exit 1
     fi
   done
   # Check for shutdown issues
   for j in `seq 1 ${i}`;do
-    if ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
-      echoit "[!] Server hang found: mysqld #{j} has not shutdown in ${AFTER_SHUTDOWN_DELAY} seconds. Check gdb --pid=${MYSQLC[${i}]} for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+    # Check for shutdown failure (mysqld still responding to mysqladmin pings)
+    PING=    
+    timeout --signal=9 10s ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1
+${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping
+    PING=$?
+echo $PING
+    if [ $PING -eq 137 ]; then
+      echoit "[!] Potential server hang found: a mysqladmin ping to mysqld #${j} did not complete in 10 sconds. Check gdb --pid=${MYSQLD[j-1]} for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      exit 1
+    elif [ $PING -eq 0 ]; then
+      echoit "[!] Server hang found: mysqld #${j} has not shutdown in 60 seconds and is still responding to mysqladmin ping. Check gdb --pid=${MYSQLD[j-1]} for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      exit 1
+    elif [ $PING -ne 1 ]; then
+      echoit "[!] Unknown issue detected: a mysqladmin ping to mysqld #${j} returned exit status $PING, which is unkwnon to this script. Please research this code $PING and the current status of mysqld with gdb --pid=${MYSQLD[j-1]} for more info, then please update this script so it can handle this state. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
       exit 1
     fi
+    # Check for core dump
     if [ $(ls ${WORKDIR}/${j}/*core* 2>/dev/null | grep -vi "no such file or directory" | wc -l) -gt 0 ]; then
-      echoit "[!] Server crash found: Check ${WORKDIR}/${j}_error.log.out and $(ls -l ${WORKDIR}/${j}/*core* | tr '\n' ' ') for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      echoit "[!] Server crash found: mysqld #${j} has generated a core dump. Check ${WORKDIR}/${j}_error.log.out and $(ls -l ${WORKDIR}/${j}/*core* | tr '\n' ' ') for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
       exit 1
     fi
   done
   for j in `seq 1 ${i}`;do
-    echo "Checking PID ${MYSQLC[${i}]}"
+    echo "Checking PID ${MYSQLD[${i}]}"
   done
+  kill -9 `printf '%s ' "${MYSQLD[@]}"` 2>/dev/null  # For safety, though processes should be gone. Redirected stderr to /dev/null as otherwise 'multirun_mysqld.sh: line ___: kill: (_____) - No such process' errors would show.
   if [ ${SERVER_THREADS[@]:(-1)} -ne ${i} ] ; then
    echoit "Did not find server crash with ${i} mysqld processes. Restarting crash test with next set of mysqld processes."
-   kill -9 `printf '%s ' "${MYSQLD[@]}"` 2>/dev/null  # For safety, though processes should be gone. Redirected stderr to /dev/null as otherwise 'multirun_mysqld.sh: line ___: kill: (_____) - No such process' errors would show.
    rm -Rf ${WORKDIR}/*
-  else
-   kill -9 `printf '%s ' "${MYSQLD[@]}"` 2>/dev/null  # Idem as above
   fi
 done
