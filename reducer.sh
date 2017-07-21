@@ -2627,7 +2627,7 @@ process_outcome(){
 
   # Invalid mode
   else
-    echoit "Assert: invalid MODE (MODE=${MODE}) discovered. Terminating."
+    echo_out "Assert: invalid MODE (MODE=${MODE}) discovered. Terminating."
     exit 1
   fi
 }
