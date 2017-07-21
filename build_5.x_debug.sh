@@ -2,7 +2,8 @@
 # Created by Roel Van de Paar, Percona LLC
 
 MAKE_THREADS=1      # Number of build threads. There may be a bug with >1 settings
-WITH_ROCKSDB=1      # 0 or 1
+WITH_ROCKSDB=1      # 0 or 1  # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
+                              # For daily builds (optimized and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
 
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
