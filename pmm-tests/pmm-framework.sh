@@ -52,13 +52,13 @@ usage () {
 	echo " --ami-image                      Pass PMM server ami image name"
     echo " --key-name                       Pass your aws access key file name"
 	echo " --ova-image                      Pass PMM server ova image name"
-
+    echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page" 
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,with-proxysql,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,with-proxysql,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -173,6 +173,10 @@ do
     --with-proxysql )
     shift
     with_proxysql=1
+    ;;
+    --compare-query-count )
+    shift
+    compare_query_count=1
     ;;
     --pmm-server-username )
     pmm_server_username="$2"
@@ -552,6 +556,48 @@ get_basedir(){
   fi
 }
 
+# Function to compare query count
+compare_query(){
+  insert_loop(){
+    NUM_START=$((NUM_START + 1))
+    NUM_END=$(shuf -i ${1} -n 1)
+	TOTAL_QUERY_COUNT_BEFORE_RUN=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT COUNT_STAR  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
+    for i in `seq $NUM_START $NUM_END`; do
+      ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "INSERT INTO test.t1 VALUES (${i})" > /dev/null 2>&1
+    done
+	TOTAL_QUERY_COUNT_AFTER_RUN=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT COUNT_STAR  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
+	CURRENT_QUERY_COUNT=$((TOTAL_QUERY_COUNT_AFTER_RUN - TOTAL_QUERY_COUNT_BEFORE_RUN))
+    START_TIME=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT FIRST_SEEN  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
+    END_TIME=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT LAST_SEEN  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
+  }
+
+  BASEDIR="/home/ramesh/pmmwork/ps57"
+  TEST_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}' | head -1)
+  if [ -z $TEST_SOCKET ];then
+    echo "ERROR! PMM client instance does not exist. Terminating"
+	exit 1
+  fi
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create table test.t1 (id int, primary key(id))" > /dev/null 2>&1
+
+  insert_loop 1000-5000
+  sleep 60
+  echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  insert_loop 5001-10000
+  sleep 60
+  echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  insert_loop 10001-15000
+  sleep 60
+  echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  insert_loop 15001-20000
+  sleep 60
+  echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  echo "Please compare these query count with QAN/Metrics webpage"
+}
+
 #Percona Server configuration.
 add_clients(){
   mkdir -p $WORKDIR/logs
@@ -777,6 +823,11 @@ add_clients(){
       }
     fi
   done
+  if [ ! -z $compare_query_count ]; then
+    compare_query
+	echo  "yesy"
+  fi
+  echo "**************"
 }
 
 pmm_docker_client_startup(){
