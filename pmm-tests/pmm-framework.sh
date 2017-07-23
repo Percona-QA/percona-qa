@@ -559,11 +559,12 @@ get_basedir(){
 # Function to compare query count
 compare_query(){
   insert_loop(){
-    NUM_START=$((NUM_START + 1))
+    NUM_START=$((CURRENT_QUERY_COUNT + 1))
     NUM_END=$(shuf -i ${1} -n 1)
 	TOTAL_QUERY_COUNT_BEFORE_RUN=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT COUNT_STAR  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
     for i in `seq $NUM_START $NUM_END`; do
-      ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "INSERT INTO test.t1 VALUES (${i})" > /dev/null 2>&1
+      STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+      ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "INSERT INTO test.t1 (str) VALUES ('${STRING}')" 
     done
 	TOTAL_QUERY_COUNT_AFTER_RUN=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT COUNT_STAR  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
 	CURRENT_QUERY_COUNT=$((TOTAL_QUERY_COUNT_AFTER_RUN - TOTAL_QUERY_COUNT_BEFORE_RUN))
@@ -578,21 +579,21 @@ compare_query(){
 	exit 1
   fi
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create database if not exists test;" > /dev/null 2>&1
-  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create table test.t1 (id int, primary key(id))" > /dev/null 2>&1
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create table test.t1 (id int auto_increment,str varchar(32), primary key(id))" > /dev/null 2>&1
 
-  insert_loop 1000-5000
+  insert_loop 100-500
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
-  insert_loop 5001-10000
+  insert_loop 501-1000
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
-  insert_loop 10001-15000
+  insert_loop 1001-1500
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
-  insert_loop 15001-20000
+  insert_loop 1501-2000
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
