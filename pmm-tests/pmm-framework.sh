@@ -577,6 +577,7 @@ compare_query(){
     echo "ERROR! PMM client instance does not exist. Terminating"
 	exit 1
   fi
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create database if not exists test;" > /dev/null 2>&1
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create table test.t1 (id int, primary key(id))" > /dev/null 2>&1
 
   insert_loop 1000-5000
@@ -825,9 +826,7 @@ add_clients(){
   done
   if [ ! -z $compare_query_count ]; then
     compare_query
-	echo  "yesy"
   fi
-  echo "**************"
 }
 
 pmm_docker_client_startup(){
