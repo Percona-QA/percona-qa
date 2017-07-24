@@ -1,6 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
+# This script may need a few improvements, alike to build_5.x_dbg.sh 
+
 # The first option is the bzr tree name on lp. If it is not passed, check if the local tree = a source tree ready for building
 if [ -z $1 ]; then
   if [ ! -r CMakeLists.txt ]; then 

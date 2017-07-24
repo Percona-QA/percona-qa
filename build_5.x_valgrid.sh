@@ -36,7 +36,7 @@ if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_valgrind_build  # Note that make_binary_distribution is created on-the-fly during the make compile
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_val=`ls -1 *.tar.gz | head -n1`
-if [ "${TAR_val}" != "" ]; then
+if [[ "${TAR_val}" == *".tar.gz"* ]]; then
   DIR_val=$(echo "${TAR_val}" | sed 's|.tar.gz||')
   TAR_val_new=$(echo "${PREFIX}-${TAR_val}" | sed 's|.tar.gz|-val.tar.gz|')
   DIR_val_new=$(echo "${TAR_val_new}" | sed 's|.tar.gz||')

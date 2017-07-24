@@ -63,7 +63,7 @@ fi
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_debug_build  # Note that make_binary_distribution is created on-the-fly during the make compile
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_dbg=`ls -1 *.tar.gz | head -n1`
-if [ "${TAR_dbg}" != "" ]; then
+if [[ "${TAR_dbg}" == *".tar.gz"* ]]; then
   DIR_dbg=$(echo "${TAR_dbg}" | sed 's|.tar.gz||')
   TAR_dbg_new=$(echo "${PREFIX}-${TAR_dbg}" | sed 's|.tar.gz|-debug.tar.gz|')
   DIR_dbg_new=$(echo "${TAR_dbg_new}" | sed 's|.tar.gz||')

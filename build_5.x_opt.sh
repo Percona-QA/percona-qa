@@ -47,7 +47,7 @@ fi
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_opt_build  # Note that make_binary_distribution is created on-the-fly during the make compile
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_opt=`ls -1 *.tar.gz | head -n1`
-if [ "${TAR_opt}" != "" ]; then
+if [[ "${TAR_opt}" == *".tar.gz"* ]]; then
   DIR_opt=$(echo "${TAR_opt}" | sed 's|.tar.gz||')
   TAR_opt_new=$(echo "${PREFIX}-${TAR_opt}" | sed 's|.tar.gz|-opt.tar.gz|')
   DIR_opt_new=$(echo "${TAR_opt_new}" | sed 's|.tar.gz||')
