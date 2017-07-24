@@ -244,7 +244,7 @@
   git config --global user.name "your name"
   git config --global user.email email@domain.com
 # Store git credentials, and turn off warnings for whitespace errors (with thanks, http://stackoverflow.com/a/12396793/1580826) - run from within clone directory
-  git config credential.helper store
+  git config credential.helper store  # After this, you only need to enter your password (or app token) once. It will then be saved for the future
   git config apply.whitespace nowarn
 # Diff ALL changes, including newly added (i.e. staged) files (with thanks, http://stackoverflow.com/a/27299842)
   git diff HEAD
