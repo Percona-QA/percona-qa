@@ -578,22 +578,30 @@ compare_query(){
     echo "ERROR! PMM client instance does not exist. Terminating"
 	exit 1
   fi
+  echo "Initializing query count testing"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create database if not exists test;"  2>&1
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create table test.t1 (id int auto_increment,str varchar(32), primary key(id))" 2>&1
-
+  echo "Running first set INSERT statement execution"
   insert_loop 1000-5000
+  echo "Sleeping 60 secs"
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  echo "Running second set INSERT statement execution"
   insert_loop 5001-10000
+  echo "Sleeping 60 secs"
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  echo "Running third set INSERT statement execution"
   insert_loop 10001-15000
+  echo "Sleeping 60 secs"
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  echo "Running fourth set INSERT statement execution"
   insert_loop 15001-20000
+  echo "Sleeping 60 secs"
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
