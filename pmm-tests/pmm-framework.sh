@@ -578,25 +578,28 @@ compare_query(){
     echo "ERROR! PMM client instance does not exist. Terminating"
 	exit 1
   fi
-  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create database if not exists test;" > /dev/null 2>&1
-  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create table test.t1 (id int auto_increment,str varchar(32), primary key(id))" > /dev/null 2>&1
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create database if not exists test;"  2>&1
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create table test.t1 (id int auto_increment,str varchar(32), primary key(id))" 2>&1
 
-  insert_loop 100-500
+  insert_loop 1000-5000
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
-  insert_loop 501-1000
+  insert_loop 5001-10000
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
-  insert_loop 1001-1500
+  insert_loop 10001-15000
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
-  insert_loop 1501-2000
+  insert_loop 15001-20000
   sleep 60
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  sleep 300
+  echo "INSERT INTO test.t1 .. query count from pmm-server container."
+  docker exec -it pmm-server mysql -e"select sum(query_count) total_query_count_from_QAN from pmm.query_class_metrics where query_class_id=(select query_class_id from pmm.query_classes where fingerprint like 'INSERT%');"
   echo "Please compare these query count with QAN/Metrics webpage"
 }
 
