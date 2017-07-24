@@ -11,6 +11,6 @@ else
     echo "Error: the directory /sda/$1 does not exist!"
     exit 1
   else
-    screen -admS pge$1 bash -c "cd /sda/$1;${SCRIPT_PWD}/pquery-go-expert.sh;bash"
+    screen -admS pge$1 bash -c "ulimit -u 10000;cd /sda/$1;${SCRIPT_PWD}/pquery-go-expert.sh;bash"
   fi
 fi
