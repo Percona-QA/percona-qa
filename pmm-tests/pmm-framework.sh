@@ -573,7 +573,9 @@ compare_query(){
   }
 
   BASEDIR="/home/ramesh/pmmwork/ps57"
-  TEST_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}' | head -1)
+  TEST_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1 | awk -F[\(\)] '{print $2}')
+  TEST_NODE_NAME=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1  | awk '{print $2}')
+  sudo pmm-admin add mysql --user=root --socket=$TEST_SOCKET SHADOW_NODE
   if [ -z $TEST_SOCKET ];then
     echo "ERROR! PMM client instance does not exist. Terminating"
 	exit 1
@@ -606,8 +608,10 @@ compare_query(){
   echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
   ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
   sleep 300
-  echo "INSERT INTO test.t1 .. query count from pmm-server container."
-  docker exec -it pmm-server mysql -e"select sum(query_count) total_query_count_from_QAN from pmm.query_class_metrics where query_class_id=(select query_class_id from pmm.query_classes where fingerprint like 'INSERT%');"
+  echo "INSERT INTO test.t1 .. query count from pmm client instance $TEST_NODE_NAME (Performance Schema)."
+  docker exec -it pmm-server mysql -e"select sum(query_count) from pmm.query_class_metrics where query_class_id in (select query_class_id from pmm.query_classes where fingerprint like 'INSERT%') and instance_id=(select instance_id from pmm.instances where name='$TEST_NODE_NAME');"
+  echo "INSERT INTO test.t1 .. query count from pmm client instance SHADOW_NODE (Slow log)."
+  docker exec -it pmm-server mysql -e"select sum(query_count) from pmm.query_class_metrics where query_class_id in (select query_class_id from pmm.query_classes where fingerprint like 'INSERT%') and instance_id=(select instance_id from pmm.instances where name='SHADOW_NODE');"
   echo "Please compare these query count with QAN/Metrics webpage"
 }
 
