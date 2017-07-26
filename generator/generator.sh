@@ -653,10 +653,11 @@ query(){
 }
 
 thread(){
+  declare -a ARRAY
   for i in `eval echo {1..${QUERIES_PER_THREAD}}`; do
-    echo "`query`;" >> ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
-    sync
+    ARRAY+=("`query`;")
   done
+  printf "%s\n" "${ARRAY[@]}" > ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
 }
 
 # ====== Main runtime
