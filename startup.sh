@@ -188,14 +188,14 @@ else
 fi
 
 if [ ! -z $TOKUDB ] ; then
-  LOAD_INIT_FILE="${SCRIPT_PWD}/TokuDB.sql"
+  LOAD_TOKUDB_INIT_FILE="${SCRIPT_PWD}/TokuDB.sql"
 else
-  LOAD_INIT_FILE=""
+  LOAD_TOKUDB_INIT_FILE=""
 fi
 if [ ! -z $ROCKSDB ];then
-  LOAD_INIT_FILE="$LOAD_INIT_FILE ${SCRIPT_PWD}/MyRocks.sql"
+  LOAD_ROCKSDB_INIT_FILE="${SCRIPT_PWD}/MyRocks.sql"
 else
-  LOAD_INIT_FILE="$LOAD_INIT_FILE"
+  LOAD_ROCKSDB_INIT_FILE=""
 fi
 
 echo 'MYEXTRA=" --no-defaults"' > start
@@ -221,11 +221,19 @@ tail -n1 start >> start_gypsy
 echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
 echo "./init;./start;sleep 5;./cl;./stop;tail log/master.err" > setup
-if [ -z $LOAD_INIT_FILE ];then
-  echo "echo \"ERROR!Does not exist TokuDB/RocksDB plugin. Terminating\"" > myrocks_tokudb_init
+if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
+  echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE}" > myrocks_tokudb_init
+  if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
+    echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> myrocks_tokudb_init
+  else
+    echo "./stop " >> myrocks_tokudb_init
+  fi
 else
-  echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_INIT_FILE} ; ./stop" > myrocks_tokudb_init
+  if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
+    echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop" > myrocks_tokudb_init
+  fi
 fi
+
 BINMODE=
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" ]; then
   BINMODE="--binary-mode "  # Leave trailing space
@@ -240,11 +248,22 @@ echo "./stop;./wipe;./start;sleep 3;./prepare;./run;./stop" > measure
 echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> wipe
 echo "if [ -r log/master.err.PREV ]; then rm -f log/master.err.PREV; fi" >> wipe
 echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" >> wipe
-if [ -z $LOAD_INIT_FILE ];then
-  echo "./start; sleep 10; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
+  echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
+  if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
+    echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> wipe
+  else
+    echo "./stop " >> wipe
+  fi
 else
-  echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+  if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
+    echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+  else
+    echo "./start; sleep 10; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+  fi
 fi
+
+
 echo 'sudo pmm-admin config --server $(ifconfig | grep -A1 "^en" | grep -v "^en" | sed "s|.*inet ||;s| .*||")' > pmm_os_agent
 echo 'sudo pmm-admin add mysql $(echo ${PWD} | sed "s|/|-|g;s|^-\+||") --socket=${PWD}/socket.sock --user=root --query-source=perfschema' > pmm_mysql_agent
 echo "./stop >/dev/null 2>&1" > init
@@ -258,7 +277,7 @@ echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
 if [[ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]] || [[ -r ${PWD}/lib/mysql/plugin/ha_rocksdb.so ]] ; then
-  echo "Enabling additional TokuDB/ROCKSDB engine plugin items"
+  echo "Enabling additional TokuDB/ROCKSDB engine plugin items if exists"
   ./myrocks_tokudb_init
 fi
 echo "Done! To get a fresh instance at any time, execute: ./all (executes: stop;wipe;start;sleep 5;cl)"
