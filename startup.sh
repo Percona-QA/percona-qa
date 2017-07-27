@@ -187,12 +187,12 @@ else
   ROCKSDB=""
 fi
 
-if [ ! -z $TOKUDB ] ; then
+if [[ ! -z $TOKUDB ]]; then
   LOAD_TOKUDB_INIT_FILE="${SCRIPT_PWD}/TokuDB.sql"
 else
   LOAD_TOKUDB_INIT_FILE=""
 fi
-if [ ! -z $ROCKSDB ];then
+if [[ ! -z $ROCKSDB ]];then
   LOAD_ROCKSDB_INIT_FILE="${SCRIPT_PWD}/MyRocks.sql"
 else
   LOAD_ROCKSDB_INIT_FILE=""
