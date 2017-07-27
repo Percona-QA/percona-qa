@@ -500,6 +500,7 @@ exec_method .= EXEC_MATERIALIZATION .* .exec_method == EXEC_MATERIALIZATION .* e
 #Failing assertion: (mode . .16384) == BTR_MODIFY_LEAF                         ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1224272 (dup of 1395579)
 #Failing assertion: purge_sys->state == PURGE_STATE_RUN                        ## Fixed ## http://bugs.launchpad.net/percona-server/+bug/1368552
 field_types == 0.*MYSQL_TYPE_GEOMETRY                                                   ## http://tokutek.atlassian.net/browse/DB-1019
+field_pos < field_count                                                                 ## https://jira.percona.com/browse/TDB-69
 fixed == 1                                                                              ## http://bugs.launchpad.net/percona-server/+bug/1381853
 ftnode->blocknum.b == blocknum.b                                                        ## http://tokutek.atlassian.net/browse/DB-852
 #from->len == to->len                                                          ## Fixed ## http://bugs.mysql.com/bug.php?id=76477

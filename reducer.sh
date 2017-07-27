@@ -943,7 +943,14 @@ multi_reducer(){
           done
           sleep 2
           echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... done"
-          cp -f $(cat $MULTI_WORKD/VERIFIED | grep -E --binary-files=text "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') $WORKF
+          # The subshell in the following line simply retrieves the WORKO output file from the subreducer
+          # Then, the grep -v removes any mysqld option line before copying the file to the new/next WORKF for the next trial
+          # If this step was not done, the new/next WORKF testcase would always be +1 line longer. The way this would show for
+          # example in SKIPV mode is that the main reducer would indicate that it had found a shorter testcase (-1 line for example)
+          # whereas the next trial would start with the same line number (as +1 line was re-added). This is not so clear when 
+          # large chunks are removed at the time, but it becomes very clear when only ~5-15 lines are left. This was fixed
+          # and the line below does not suffer from said problem
+          grep -E --binary-files=text -v "^# mysqld options required for replay:" $(cat $MULTI_WORKD/VERIFIED | grep -E --binary-files=text "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') > $WORKF
           if [ -r "$WORKO" ]; then  # First occurence: there is no $WORKO yet
             cp -f $WORKO ${WORKO}.prev
             # Save a testcase backup (this is useful if [oddly] the issue now fails to reproduce)
