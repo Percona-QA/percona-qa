@@ -12,5 +12,6 @@ else
     exit 1
   else
     screen -admS pge$1 bash -c "ulimit -u 10000;cd /sda/$1;${SCRIPT_PWD}/pquery-go-expert.sh;bash"
+    screen -d -r pge$1
   fi
 fi
