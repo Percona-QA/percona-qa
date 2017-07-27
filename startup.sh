@@ -187,11 +187,17 @@ else
   ROCKSDB=""
 fi
 
-if [[ ! -z $TOKUDB ]] || [[ ! -z $ROCKSDB ]];then
-  LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+if [ ! -z $TOKUDB ] ; then
+  LOAD_INIT_FILE="${SCRIPT_PWD}/TokuDB.sql"
 else
   LOAD_INIT_FILE=""
 fi
+if [ ! -z $ROCKSDB ];then
+  LOAD_INIT_FILE="$LOAD_INIT_FILE ${SCRIPT_PWD}/MyRocks.sql"
+else
+  LOAD_INIT_FILE="$LOAD_INIT_FILE"
+fi
+
 echo 'MYEXTRA=" --no-defaults"' > start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
@@ -216,7 +222,7 @@ echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
 echo "./init;./start;sleep 5;./cl;./stop;tail log/master.err" > setup
 if [ -z $LOAD_INIT_FILE ];then
-  echo "echo \"ERROR!Does not TokuDB/RocksDB plugin. Terminating\"" > myrocks_tokudb_init
+  echo "echo \"ERROR!Does not exist TokuDB/RocksDB plugin. Terminating\"" > myrocks_tokudb_init
 else
   echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_INIT_FILE} ; ./stop" > myrocks_tokudb_init
 fi
