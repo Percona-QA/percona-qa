@@ -17,12 +17,18 @@ cmake . -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=comm
 make -j5 | tee -a /tmp/5.7_debug_build
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_debug_build
 TAR_dbg=`ls -1 *.tar.gz | head -n1`
-TAR_dbg_new=$(echo "${1}-${TAR_dbg}" | sed 's|.tar.gz|-debug.tar.gz|')
-mv ${TAR_dbg} ../${TAR_dbg_new}
-cd ..
-tar -xf ${TAR_dbg_new}
-DIR_dbg=$(echo "${TAR_dbg}" | sed 's|.tar.gz||')
-DIR_dbg_new=$(echo "${TAR_dbg_new}" | sed 's|.tar.gz||')
-mv ${DIR_dbg} ${DIR_dbg_new}
-echo "mv ../${DIR_dbg_new} /sda"  # The script will end still in $PWD, hence we will need ../ (output only)
-rm -Rf ${CURPATH}_dbg
+if [[ "${TAR_dbg}" == *".tar.gz"* ]]; then
+  TAR_dbg_new=$(echo "${1}-${TAR_dbg}" | sed 's|.tar.gz|-debug.tar.gz|')
+  mv ${TAR_dbg} ../${TAR_dbg_new}
+  cd ..
+  tar -xf ${TAR_dbg_new}
+  DIR_dbg=$(echo "${TAR_dbg}" | sed 's|.tar.gz||')
+  DIR_dbg_new=$(echo "${TAR_dbg_new}" | sed 's|.tar.gz||')
+  mv ${DIR_dbg} ${DIR_dbg_new}
+  echo "mv ../${DIR_dbg_new} /sda"  # The script will end still in $PWD, hence we will need ../ (output only)
+  rm -Rf ${CURPATH}_dbg
+  exit 0
+else
+  echo "Build error! Nothing cleaned up. Have a nice day!"
+  exit 1
+fi 

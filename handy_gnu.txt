@@ -198,6 +198,8 @@
   time (echo "a";echo "a")   # CORRECT: this times both commands (without anything affecting time and without any sub-execution or variable assignment)
 # Obtain the primary IP address of this machine
   IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8); echo ${IP_ADDRESS}
+# Generate fake data
+  https://faker.readthedocs.io/en/latest/providers.html  # Faker for Python
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
@@ -242,7 +244,7 @@
   git config --global user.name "your name"
   git config --global user.email email@domain.com
 # Store git credentials, and turn off warnings for whitespace errors (with thanks, http://stackoverflow.com/a/12396793/1580826) - run from within clone directory
-  git config credential.helper store
+  git config credential.helper store  # After this, you only need to enter your password (or app token) once. It will then be saved for the future
   git config apply.whitespace nowarn
 # Diff ALL changes, including newly added (i.e. staged) files (with thanks, http://stackoverflow.com/a/27299842)
   git diff HEAD

@@ -1,0 +1,16 @@
+HOWTO: Create a flame graph for a script or program
+http://www.brendangregg.com/flamegraphs.html
+
+NOTE: Server should be idle before doing this, otherwise you might get mixed results.
+
+PREREQUISITES:
+sudo apt-get install linux-tools-generic linux-tools-<your_kernel_version>-generic
+
+STEPS:
+git clone https://github.com/brendangregg/FlameGraph
+cd FlameGraph
+sudo perf record -F 99 -a -g -- <your_script> <your_script_params>
+sudo perf script | ./stackcollapse-perf.pl > out.perf-folded
+./flamegraph.pl out.perf-folded > <your_final_graph_name>.svg
+
+load svg file inside google chrome

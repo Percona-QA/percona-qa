@@ -1,4 +1,3 @@
-CREATE DATABASE test;
 INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
 INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
 INSTALL PLUGIN validate_password SONAME 'validate_password.so';
@@ -21,6 +20,7 @@ INSTALL PLUGIN mysqlx SONAME 'mysqlx.so';
 #INSTALL PLUGIN QUERY_RESPONSE_TIME_AUDIT SONAME 'query_response_time.so';
 #INSTALL PLUGIN QUERY_RESPONSE_TIME_READ SONAME 'query_response_time.so';
 #INSTALL PLUGIN QUERY_RESPONSE_TIME_WRITE SONAME 'query_response_time.so';
+#Move these to the top later; TokuDB is more important to be loaded then others in case of error
 #INSTALL PLUGIN tokudb_file_map SONAME 'ha_tokudb.so';
 #INSTALL PLUGIN tokudb_fractal_tree_info SONAME 'ha_tokudb.so';
 #INSTALL PLUGIN tokudb_fractal_tree_block_map SONAME 'ha_tokudb.so';
@@ -29,13 +29,13 @@ INSTALL PLUGIN mysqlx SONAME 'mysqlx.so';
 #INSTALL PLUGIN tokudb_lock_waits SONAME 'ha_tokudb.so';
 #INSTALL PLUGIN tokudb_background_job_status SONAME 'ha_tokudb.so';
 #INSTALL PLUGIN audit_log SONAME 'audit_log.so';
-#SOURCE share/install_rewriter.sql  # Do not use: INSTALL PLUGIN rewriter SONAME 'rewriter.so' ref http://bugs.mysql.com/bug.php?id=83407
 #CREATE FUNCTION service_get_read_locks RETURNS INT SONAME 'locking_service.so';
 #CREATE FUNCTION fnv1a_64 RETURNS INTEGER SONAME 'libfnv1a_udf.so';
 #CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'libfnv_udf.so';
 #CREATE FUNCTION murmur_hash RETURNS INTEGER SONAME 'libmurmur_udf.so';
-# INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so';  # Disabled, because pquery-run.sh preloads this (it does so to enable TokuDB --options to be used with mysqld) (if set in MYEXTRA)
-# Do not use: INSTALL PLUGIN rewriter SONAME 'rewriter.so' ref http://bugs.mysql.com/bug.php?id=83407
+# SOURCE share/install_rewriter.sql;  # Regrettably, this does not work, ref https://bugs.mysql.com/bug.php?id=87143
+#   Do not use: SOURCE somesql.sql as SOURCE fails to work ([ERROR] 1064  You have an error in your SQL syntax)
+#   Do not use: INSTALL PLUGIN rewriter SONAME 'rewriter.so' ref http://bugs.mysql.com/bug.php?id=83407
 # INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so';  # Disabled, because pquery-run.sh preloads this (it does so to enable TokuDB --options to be used with mysqld) (if set in MYEXTRA) ([re]moved from above tokudb_file_map to here because;)
 # This file has odd syntax requirements, ref https://bugs.mysql.com/bug.php?id=86303
-# Do not have remark lines at the top or middle of this file, only at the end
+#   Do not have remark lines at the top or middle of this file, only at the end

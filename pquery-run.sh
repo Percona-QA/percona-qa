@@ -36,6 +36,9 @@ if [ "$(echo ${PQUERY_BIN} | sed 's|\(^/pquery\)|\1|')" == "/pquery" ]; then ech
 #export ASAN_OPTIONS=disable_core=0:abort_on_error=1:unmap_shadow_on_exit=1
 export ASAN_OPTIONS=disable_core=0:abort_on_error=1
 
+# Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
+ulimit -u 10000
+
 # Check input file
 if [ ! -r ${INFILE} ]; then echo "Assert! \$INFILE (${INFILE}) cannot be read? Check file existence and privileges!"; exit 1; fi
 

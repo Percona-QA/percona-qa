@@ -28,6 +28,10 @@ else
   QUERIES=$1
 fi
 
+if [ $QUERIES -lt $THREADS ]; then
+  THREADS=$QUERIES
+fi
+
 # ====== Check all needed data files are present
 if [ ! -r tables.txt ]; then echo "Assert: tables.txt not found!"; exit 1; fi
 if [ ! -r views.txt ]; then echo "Assert: views.txt not found!"; exit 1; fi
@@ -649,10 +653,11 @@ query(){
 }
 
 thread(){
+  declare -a ARRAY
   for i in `eval echo {1..${QUERIES_PER_THREAD}}`; do
-    echo "`query`;" >> ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
-    sync
+    ARRAY+=("`query`;")
   done
+  printf "%s\n" "${ARRAY[@]}" > ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
 }
 
 # ====== Main runtime

@@ -1,8 +1,9 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-MAKE_THREADS=1   # Number of build threads. There may be a bug with >1 settings
-WITH_ROCKSDB=1   # 0 or 1
+MAKE_THREADS=1      # Number of build threads. There may be a bug with >1 settings
+WITH_ROCKSDB=0      # 0 or 1  # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
+                              # For daily builds (optimized and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
 
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
@@ -17,13 +18,19 @@ fi
 DATE=$(date +'%d%m%y')
 PREFIX=
 MS=0
+FB=0
 
-VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
-if [ "${VERSION_EXTRA}" == "" -o "${VERSION_EXTRA}" == "-dmr" ]; then  # MS has no extra version number, or shows '-dmr' (exactly and only) in this place
-  MS=1
-  PREFIX="MS${DATE}"
+if [ -d rocksdb ]; then
+  PREFIX="FB${DATE}"
+  FB=1
 else
-  PREFIX="PS${DATE}"
+  VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
+  if [ "${VERSION_EXTRA}" == "" -o "${VERSION_EXTRA}" == "-dmr" ]; then  # MS has no extra version number, or shows '-dmr' (exactly and only) in this place
+    MS=1
+    PREFIX="MS${DATE}"
+  else
+    PREFIX="PS${DATE}"
+  fi
 fi
 
 CURPATH=$(echo $PWD | sed 's|.*/||')
@@ -37,7 +44,13 @@ cd ${CURPATH}_dbg
 ### TEMPORARY HACK TO AVOID COMPILING TB (WHICH IS NOT READY YET)
 rm -Rf ./plugin/tokudb-backup-plugin
 
-cmake . -DWITH_ZLIB=system -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DWITH_ROCKSDB=${WITH_ROCKSDB}  -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DWITH_SSL=system -DWITH_PAM=ON ${ASAN} | tee /tmp/5.7_debug_build
+if [ $FB -eq 0 ]; then
+  # PS,MS,PXC build
+  cmake . -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} | tee /tmp/5.7_debug_build
+else
+  # FB build
+  cmake . -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 -DCMAKE_CXX_FLAGS="-march=native" | tee /tmp/5.7_debug_build
+fi
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
   ASAN_OPTIONS="detect_leaks=0" make -j${MAKE_THREADS} | tee -a /tmp/5.7_debug_build  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)
@@ -50,7 +63,7 @@ fi
 ./scripts/make_binary_distribution | tee -a /tmp/5.7_debug_build  # Note that make_binary_distribution is created on-the-fly during the make compile
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_dbg=`ls -1 *.tar.gz | head -n1`
-if [ "$TAR_dbg}" != "" ]; then
+if [[ "${TAR_dbg}" == *".tar.gz"* ]]; then
   DIR_dbg=$(echo "${TAR_dbg}" | sed 's|.tar.gz||')
   TAR_dbg_new=$(echo "${PREFIX}-${TAR_dbg}" | sed 's|.tar.gz|-debug.tar.gz|')
   DIR_dbg_new=$(echo "${TAR_dbg_new}" | sed 's|.tar.gz||')

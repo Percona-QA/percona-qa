@@ -52,13 +52,13 @@ usage () {
 	echo " --ami-image                      Pass PMM server ami image name"
     echo " --key-name                       Pass your aws access key file name"
 	echo " --ova-image                      Pass PMM server ova image name"
-
+    echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page" 
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,with-proxysql,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,with-proxysql,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -96,9 +96,9 @@ do
     --pmm-server )
     pmm_server="$2"
 	shift 2
-    if [ "$pmm_server" != "docker" ] && [ "$pmm_server" != "ami" ] && [ "$pmm_server" != "ova" ]; then
+    if [ "$pmm_server" != "docker" ] && [ "$pmm_server" != "ami" ] && [ "$pmm_server" != "ova" ] && [ "$pmm_server" != "custom" ]; then
       echo "ERROR: Invalid --pmm-server passed:"
-      echo "  Please choose any of these pmm-server options: 'docker', 'ami', or ova"
+      echo "  Please choose any of these pmm-server options: 'docker', 'ami', 'custom', or 'ova'"
       exit 1
     fi
     ;;
@@ -174,6 +174,10 @@ do
     shift
     with_proxysql=1
     ;;
+    --compare-query-count )
+    shift
+    compare_query_count=1
+    ;;
     --pmm-server-username )
     pmm_server_username="$2"
     shift 2
@@ -232,6 +236,11 @@ elif [[ "$pmm_server" == "ova" ]];then
       echo "ERROR! You have not given OVA image name. Please use --ova-image to pass image name. Terminating"
       exit 1
     fi
+  fi
+elif [[ "$pmm_server" == "custom" ]];then
+  if ! sudo pmm-admin ping | grep -q "OK, PMM server is alive"; then 
+    echo "ERROR! PMM Server is not running. Please check PMM server status. Terminating"
+    exit 1
   fi
 fi
 sanity_check(){
@@ -547,6 +556,65 @@ get_basedir(){
   fi
 }
 
+# Function to compare query count
+compare_query(){
+  insert_loop(){
+    NUM_START=$((CURRENT_QUERY_COUNT + 1))
+    NUM_END=$(shuf -i ${1} -n 1)
+	TOTAL_QUERY_COUNT_BEFORE_RUN=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT COUNT_STAR  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
+    for i in `seq $NUM_START $NUM_END`; do
+      STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+      ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "INSERT INTO test.t1 (str) VALUES ('${STRING}')" 
+    done
+	TOTAL_QUERY_COUNT_AFTER_RUN=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT COUNT_STAR  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
+	CURRENT_QUERY_COUNT=$((TOTAL_QUERY_COUNT_AFTER_RUN - TOTAL_QUERY_COUNT_BEFORE_RUN))
+    START_TIME=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT FIRST_SEEN  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
+    END_TIME=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT LAST_SEEN  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
+  }
+
+  BASEDIR="/home/ramesh/pmmwork/ps57"
+  TEST_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1 | awk -F[\(\)] '{print $2}')
+  TEST_NODE_NAME=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1  | awk '{print $2}')
+  sudo pmm-admin add mysql --user=root --socket=$TEST_SOCKET SHADOW_NODE
+  if [ -z $TEST_SOCKET ];then
+    echo "ERROR! PMM client instance does not exist. Terminating"
+	exit 1
+  fi
+  echo "Initializing query count testing"
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create database if not exists test;"  2>&1
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "create table test.t1 (id int auto_increment,str varchar(32), primary key(id))" 2>&1
+  echo "Running first set INSERT statement execution"
+  insert_loop 1000-5000
+  echo "Sleeping 60 secs"
+  sleep 60
+  echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  echo "Running second set INSERT statement execution"
+  insert_loop 5001-10000
+  echo "Sleeping 60 secs"
+  sleep 60
+  echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  echo "Running third set INSERT statement execution"
+  insert_loop 10001-15000
+  echo "Sleeping 60 secs"
+  sleep 60
+  echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  echo "Running fourth set INSERT statement execution"
+  insert_loop 15001-20000
+  echo "Sleeping 60 secs"
+  sleep 60
+  echo "INSERT INTO test.t1 .. query count between ${START_TIME} and ${END_TIME}"
+  ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "SELECT DIGEST_TEXT QUERY,COUNT_STAR ALL_QUERY_COUNT,$CURRENT_QUERY_COUNT QUERY_COUNT_CURRENT_RUN FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';"
+  sleep 300
+  echo "INSERT INTO test.t1 .. query count from pmm client instance $TEST_NODE_NAME (Performance Schema)."
+  docker exec -it pmm-server mysql -e"select sum(query_count) from pmm.query_class_metrics where query_class_id in (select query_class_id from pmm.query_classes where fingerprint like 'INSERT%') and instance_id=(select instance_id from pmm.instances where name='$TEST_NODE_NAME');"
+  echo "INSERT INTO test.t1 .. query count from pmm client instance SHADOW_NODE (Slow log)."
+  docker exec -it pmm-server mysql -e"select sum(query_count) from pmm.query_class_metrics where query_class_id in (select query_class_id from pmm.query_classes where fingerprint like 'INSERT%') and instance_id=(select instance_id from pmm.instances where name='SHADOW_NODE');"
+  echo "Please compare these query count with QAN/Metrics webpage"
+}
+
 #Percona Server configuration.
 add_clients(){
   mkdir -p $WORKDIR/logs
@@ -772,6 +840,9 @@ add_clients(){
       }
     fi
   done
+  if [ ! -z $compare_query_count ]; then
+    compare_query
+  fi
 }
 
 pmm_docker_client_startup(){
@@ -950,7 +1021,14 @@ if [ ! -z $setup ]; then
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
-  sanity_check
+  if [[ "$pmm_server" == "custom" ]];then
+    if ! sudo pmm-admin ping | grep -q "OK, PMM server is alive"; then 
+      echo "ERROR! PMM Server is not running. Please check PMM server status. Terminating"
+      exit 1
+    fi
+  else
+    sanity_check
+  fi
   add_clients
 fi
 
