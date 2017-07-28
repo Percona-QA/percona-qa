@@ -966,13 +966,25 @@ multi_reducer(){
         PID_TO_CHECK=$(eval echo $(echo '$MULTI_PID'"$t"))
         if [ "$(ps -p$PID_TO_CHECK | grep -E --binary-files=text -o $PID_TO_CHECK)" != "$PID_TO_CHECK" ]; then
           RESTART_WORKD=$(eval echo $(echo '$WORKD'"$t"))
-          rm -Rf $RESTART_WORKD/[^s]*  # Remove all files, except for subreducer script
+          SUBR_SVR_START_FAILURE=0
+          if grep -E --binary-files=text ".ERROR. Failed to start mysqld server" $RESTART_WORKD/reducer.log; then  # Check if this was a subreducer who's mysqld failed to start
+            SUBR_SVR_START_FAILURE=1
+            TMP_RND_FILENAME="err_$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/').txt"  # Subshell creates random number with 6 digits
+            cp $RESTART_WORKD/error.log.out /tmp/${TMP_RND_FILENAME}  # Copy the mysqld error log from the subreducer run which had a failed startup to /tmp for research
+          fi
+          # Remove all files, except for subreducer script
+          rm -Rf $RESTART_WORKD/[^s]*
+          rm -Rf $RESTART_WORKD/socket*
           $($RESTART_WORKD/subreducer $1 >/dev/null 2>/dev/null) >/dev/null 2>/dev/null &
           export MULTI_PID$t=$!
           INIT_FILE_USED=
           if [[ "${MEXTRA}" == *"init[-_]file"* ]]; then INIT_FILE_USED="or any file(s) called using --init-file which is present in \$MYEXTRA, "; fi
-          # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
-          echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+          if [ ${SUBR_SVR_START_FAILURE} -eq 1 ]; then
+            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared due to a failed start of mysqld inside the subreducer thread, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen irregularly on busy servers. If the message is scrolling however, please investigate; reducer has copied the last mysqld error log to /tmp/$TMP_RND_FILENAME for review)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+          else
+            # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
+            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+          fi
         fi
         sleep 1  # Hasten slowly, server already busy with subreducers
       done
@@ -1397,7 +1409,7 @@ init_workdir_and_files(){
         if [ ${REDUCE_STARTUP_ISSUES} -eq 1 ]; then 
           echo_out "[Init] [NOTE] Failed to cleanly start mysqld server (This was the 1st startup attempt with all MYEXTRA options passed to mysqld). Normally this would cause reducer.sh to halt here (and advice you to check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/init.log, and maybe $WORKD/data/error.log + check that there is plenty of space on the device being used). However, because REDUCE_STARTUP_ISSUES is set to 1, we continue this reducer run. See above for more info on the REDUCE_STARTUP_ISSUES setting"
         else
-          echo_out "[Init] [ERROR] Failed to start mysqld server (This was the 1st startup attempt with all MYEXTRA options passed to mysqld), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/init.log, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"
+          echo_out "[Init] [ERROR] Failed to start mysqld server (This was the 1st startup attempt with all MYEXTRA options passed to mysqld), check $WORKD/error.log.out, $WORKD/mysqld.out, $WORKD/init.log, and maybe $WORKD/data/error.log. Also check that there is plenty of space on the device being used"  # Do not change the text '[ERROR] Failed to start mysqld server' without updating it everwhere else in this script, including the place where reducer checks whether subreducers having run into this error.
           echo_out "[Init] [INFO] If however you want to debug a mysqld startup issue, for example caused by a misbehaving --option to mysqld, set REDUCE_STARTUP_ISSUES=1 and restart reducer.sh"
           echo "Terminating now."
           exit 1
@@ -1962,7 +1974,7 @@ start_valgrind_mysqld_main(){
     sleep 1; if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then break; fi
   done
   if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
-    echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server under Valgrind, check $WORKD/error.log.out, $WORKD/valgrind.out and $WORKD/init.log"
+    echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server under Valgrind, check $WORKD/error.log.out, $WORKD/valgrind.out and $WORKD/init.log"  # Do not change the text '[ERROR] Failed to start mysqld server' without updating it everwhere else in this script, including the place where reducer checks whether subreducers having run into this error.
     echo "Terminating now."
     exit 1
   fi
@@ -2723,7 +2735,7 @@ finish(){
     echo_out "[Finish] Final testcase                    : $WORKO ($(wc -l $WORKO | awk '{print $1}') lines)"
   else
     cp $INPUTFILE $WORK_OUT
-    echo_out "[Finish] Final testcase                    : $INPUTFILE (= input file, no optimizations were successful. $(wc -l $WORKO | awk '{print $1}') lines)"
+    echo_out "[Finish] Final testcase                    : $INPUTFILE (= input file, no optimizations were successful. $(wc -l $INPUTFILE | awk '{print $1}') lines)"
   fi
   BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
   rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
