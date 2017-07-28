@@ -2841,7 +2841,7 @@ verify_not_found(){
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
     echo_out "[Finish] Valgrind output         : ${PRINTWORKD}/${EXTRA_PATH}valgrind.out          (Check if there are really 0 errors)"
   fi
-  echo_out "[Finish] mysqld error log output : ${PRINTWORKD}/${EXTRA_PATH}error.log(.out)       (Check if the mysqld server output looks normal. ".out" = last startup)"
+  echo_out "[Finish] mysqld error log output : ${PRINTWORKD}/${EXTRA_PATH}error.log(.out)       (Check if the mysqld server output looks normal. '.out' = last startup)"
   echo_out "[Finish] initialization output   : ${PRINTWORKD}/${EXTRA_PATH}init.log              (Check if the inital server initalization happened correctly)"
   echo_out "[Finish] time init output        : ${PRINTWORKD}/${EXTRA_PATH}timezone.init         (Check if the timezone information was installed correctly)"
   exit 1
