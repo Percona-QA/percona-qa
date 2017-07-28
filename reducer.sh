@@ -4021,7 +4021,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       myextra_reduction
     fi
   else
-    echo_out "$ATLEASTONCE [Stage 8] Skipping this stage as it does not contain extra mysqld options." 
+    echo_out "$ATLEASTONCE [Stage $STAGE] Skipping this stage as the testcase does not contain extraneous mysqld options" 
   fi
 fi
 
@@ -4030,7 +4030,7 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
   TRIAL=1
   STAGE=9
   if [[ -z $TOKUDB ]] && [[ -z $ROCKSDB ]]  ;then 
-   echo_out "$ATLEASTONCE [Stage $STAGE] skipped as no additional storage engines were detected"
+   echo_out "$ATLEASTONCE [Stage $STAGE] Skipping this stage as no extraneous storage engines were detected"
   else
     if [[ ! -z $TOKUDB ]] ;then
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup option"
@@ -4054,6 +4054,7 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
       if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
         ROCKSDB="$SAFE_ROCKSDB"
       fi
+      TRIAL=$[$TRIAL+1]
     fi
   fi
 fi
