@@ -463,6 +463,12 @@ unforeseen situations.
 script which displays process info for pid along with information on which
 signals are pending, blocked, ignored and caught by the process.
 
+## ps-async-repl-test.sh ##
+
+*Note:* Jenkins CI script
+
+This script will help us to test different asynchronous replication methods like master slave, master multi slave, master master, multi source replication, multi thread replication etc
+
 ## pxc56-mtr.sh ##
 
 This script is designed to run from the Percona Jenkins job
