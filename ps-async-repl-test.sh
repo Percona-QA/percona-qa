@@ -178,7 +178,8 @@ function async_rpl_test(){
   function run_pt_table_checksum(){
     DATABASES=$1
     LOG_FILE=$2
-    pt-table-checksum S=/tmp/ps1.sock,u=root -d $DATABASES --recursion-method hosts --no-check-binlog-format
+    SOCKET=$3
+    pt-table-checksum S=$SOCKET,u=root -d $DATABASES --recursion-method hosts --no-check-binlog-format
     check_cmd $?
   }
   
@@ -286,7 +287,7 @@ function async_rpl_test(){
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
     sleep 10
     echoit "1. PS master slave: Checksum result."
-    run_pt_table_checksum "sbtest_ps_master" "$WORKDIR/logs/master_slave_checksum.log"
+    run_pt_table_checksum "sbtest_ps_master" "$WORKDIR/logs/master_slave_checksum.log" "/tmp/ps1.sock"
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
@@ -325,7 +326,7 @@ function async_rpl_test(){
     slave_sync_check "/tmp/ps4.sock" "$WORKDIR/logs/slave_status_psnode4.log" "$WORKDIR/logs/psnode4.err"
     sleep 10
     echoit "2. PS master multi slave: Checksum result."
-    run_pt_table_checksum "sbtest_ps_master" "$WORKDIR/logs/master_multi_slave_checksum.log"
+    run_pt_table_checksum "sbtest_ps_master" "$WORKDIR/logs/master_multi_slave_checksum.log" "/tmp/ps1.sock"
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
@@ -360,7 +361,7 @@ function async_rpl_test(){
 
     sleep 10
     echoit "3. PS master master: Checksum result."
-    run_pt_table_checksum "sbtest_ps_master_1,sbtest_ps_master_2" "$WORKDIR/logs/master_multi_slave_checksum.log"
+    run_pt_table_checksum "sbtest_ps_master_1,sbtest_ps_master_2" "$WORKDIR/logs/master_multi_slave_checksum.log" "/tmp/ps1.sock"
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
@@ -428,7 +429,12 @@ function async_rpl_test(){
     done
     sleep 10
     echoit "4. multi source replication: Checksum result."
-    run_pt_table_checksum "msr_db_master1,msr_db_master2,msr_db_master3" "$WORKDIR/logs/msr_checksum.log"
+    echoit "Checksum for msr_db_master1 database"
+    run_pt_table_checksum "msr_db_master1" "$WORKDIR/logs/msr_db_master1_checksum.log" "/tmp/ps2.sock"
+    echoit "Checksum for msr_db_master2 database"
+    run_pt_table_checksum "msr_db_master2" "$WORKDIR/logs/msr_db_master2_checksum.log" "/tmp/ps3.sock"
+    echoit "Checksum for msr_db_master3 database"
+    run_pt_table_checksum "msr_db_master3" "$WORKDIR/logs/msr_db_master3_checksum.log" "/tmp/ps4.sock"
     #Shutdown PS servers for MSR test
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
@@ -534,7 +540,7 @@ function async_rpl_test(){
 
     sleep 10
     echoit "5. multi thread replication: Checksum result."
-    run_pt_table_checksum "mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5" "$WORKDIR/logs/mtr_checksum.log"
+    run_pt_table_checksum "mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5" "$WORKDIR/logs/mtr_checksum.log" "/tmp/ps1.sock"
     #Shutdown PS servers
     echoit "Shuttingdown PS servers"
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
