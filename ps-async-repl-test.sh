@@ -346,7 +346,7 @@ function async_rpl_test(){
     slave_startup_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
     
     ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e"drop database if exists sbtest_ps_master_1;create database sbtest_ps_master_1;"
-    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e"drop database if exists sbtest_ps_master_1;create database sbtest_ps_master_1;"
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e"drop database if exists sbtest_ps_master_2;create database sbtest_ps_master_2;"
 
     async_sysbench_load sbtest_ps_master_1 "/tmp/ps1.sock"
     async_sysbench_load sbtest_ps_master_2 "/tmp/ps2.sock"
@@ -360,7 +360,7 @@ function async_rpl_test(){
 
     sleep 10
     echoit "3. PS master master: Checksum result."
-    run_pt_table_checksum "sbtest_ps_master" "$WORKDIR/logs/master_multi_slave_checksum.log"
+    run_pt_table_checksum "sbtest_ps_master_1,sbtest_ps_master_2" "$WORKDIR/logs/master_multi_slave_checksum.log"
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
