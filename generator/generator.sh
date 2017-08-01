@@ -653,7 +653,7 @@ query(){
 }
 
 thread(){
-  declare -a ARRAY
+  local -a ARRAY
   for i in `eval echo {1..${QUERIES_PER_THREAD}}`; do
     ARRAY+=("`query`;")
   done

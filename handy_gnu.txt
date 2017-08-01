@@ -200,6 +200,9 @@
   IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8); echo ${IP_ADDRESS}
 # Generate fake data
   https://faker.readthedocs.io/en/latest/providers.html  # Faker for Python
+# When used in a function, the 'declare' command (for example DECLARE -a ARRAY) makes each variable local, as with the 'local' command, unless the '-g' option is used.
+  With thanks, https://unix.stackexchange.com/questions/136720/bash-array-declared-in-a-function-is-not-available-outside-the-function
+  It is thus likely best to use 'local' instead of 'declare' to remove any misunderstanding. This is also the default code syntax for percona-qa scripts
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
