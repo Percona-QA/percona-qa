@@ -1,5 +1,6 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
+#echo "MyPID: $$"    # Debug
 
 # ====== User Variables
 OUTPUT_FILE=out      # Output file. Do NOT add .sql suffix, it will be automaticaly added
@@ -25,6 +26,10 @@ if [ "" == "$1" -o "$2" != "" ]; then
   exit 1
 else
   QUERIES=$1
+fi
+
+if [ $QUERIES -lt $THREADS ]; then
+  THREADS=$QUERIES
 fi
 
 # ====== Check all needed data files are present
@@ -648,10 +653,11 @@ query(){
 }
 
 thread(){
+  local -a ARRAY
   for i in `eval echo {1..${QUERIES_PER_THREAD}}`; do
-    echo "`query`;" >> ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
-    sync
+    ARRAY+=("`query`;")
   done
+  printf "%s\n" "${ARRAY[@]}" > ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
 }
 
 # ====== Main runtime

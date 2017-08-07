@@ -36,8 +36,14 @@ if [ "$(echo ${PQUERY_BIN} | sed 's|\(^/pquery\)|\1|')" == "/pquery" ]; then ech
 #export ASAN_OPTIONS=disable_core=0:abort_on_error=1:unmap_shadow_on_exit=1
 export ASAN_OPTIONS=disable_core=0:abort_on_error=1
 
-# Check input file
-if [ ! -r ${INFILE} ]; then echo "Assert! \$INFILE (${INFILE}) cannot be read? Check file existence and privileges!"; exit 1; fi
+# Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
+ulimit -u 10000
+
+# Check input file (when generator is not used)
+if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -ne 1 -a ! -r ${INFILE} ]; then 
+  echo "Assert! \$INFILE (${INFILE}) cannot be read? Check file existence and privileges!"
+  exit 1
+fi
 
 # Output function
 echoit(){
@@ -823,9 +829,11 @@ pquery_test(){
         echoit "Primary Server started ok. Client:   `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
         if ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket2.sock ping > /dev/null 2>&1; then
           echoit "Secondary server started ok. Client:   `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
+          ${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/socket2.sock -e "CREATE DATABASE IF NOT EXISTS test;" > /dev/null 2>&1
         fi
       else
         echoit "Server started ok. Client:   `echo ${BIN} | sed 's|/mysqld|/mysql|'` -uroot -S${RUNDIR}/${TRIAL}/socket.sock"
+        ${BASEDIR}/bin/mysql -uroot -S${RUNDIR}/${TRIAL}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test;" > /dev/null 2>&1
       fi
       if [ $PMM -eq 1 ];then
         echoit "Adding Orchestrator user for MySQL replication topology management.."

@@ -41,7 +41,7 @@ else
 fi
 
 # Check if this is a query correctness run
-if [ $(ls */*.out */*.sql 2>/dev/null | egrep -oi "innodb|rocksdb|tokudb|myisam|memory|csv|ndb|merge" | wc -l) -gt 0 ]; then
+if [ $(ls */*.out */*.sql 2>/dev/null | egrep --binary-files=text -oi "innodb|rocksdb|tokudb|myisam|memory|csv|ndb|merge" | wc -l) -gt 0 ]; then
   if [ "$1" == "noqc" ]; then  # Even though query correctness trials were found, process this run as a crash/assert run only
     QC=0
   else
@@ -195,7 +195,7 @@ add_select_ones_to_trace(){  # Improve issue reproducibility by adding 3x SELECT
 remove_non_sql_from_trace(){
   echo "* Removing any non-SQL lines (diagnostic output from pquery) to improve issue reproducibility"
   mv ${INPUTFILE} ${INPUTFILE}.filter1
-  grep -v "Last [0-9]\+ consecutive queries all failed" ${INPUTFILE}.filter1 > ${INPUTFILE}
+  egrep --binary-files=text -v "Last [0-9]+ consecutive queries all failed" ${INPUTFILE}.filter1 > ${INPUTFILE}
   rm ${INPUTFILE}.filter1
 }
 
@@ -378,6 +378,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*MODE[ \t]*=.*$/s|^[ \t]*MODE[ \t]*=.*$|#MODE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$/s|^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$|#DISABLE_TOKUDB_AUTOLOAD=<set_below_in_machine_variables_section>|" \
+   | sed  "0,/^[ \t]*SCRIPT_PWD[ \t]*=.*$/s|^[ \t]*SCRIPT_PWD[ \t]*=.*$|SCRIPT_PWD=${SCRIPT_PWD}|" \
    | sed -e "${PQUERYOPT_CLEANUP}" \
    | sed -e "${MYEXTRA_CLEANUP}" \
    | sed -e "${WSREP_OPT_CLEANUP}" \
@@ -417,8 +418,8 @@ generate_reducer_script(){
 # Main pquery results processing
 if [ ${QC} -eq 0 ]; then
   if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
-    for TRIAL in $(ls ./*/node*/core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | uniq); do
-      for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep '^d'  | awk '{print $8}' | tr -dc '0-9\n' | sort`; do
+    for TRIAL in $(ls ./*/node*/core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | sort -u); do
+      for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep --binary-files=text '^d' | awk '{print $8}' | tr -dc '0-9\n' | sort`; do
         OUTFILE="${TRIAL}-${SUBDIR}"
         rm -Rf  ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
         touch ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
@@ -553,10 +554,10 @@ if [ ${QC} -eq 0 ]; then
           if [ ${VALGRIND_CHECK_1} -gt 0 ]; then
             VALGRIND_ERRORS_FOUND=1
           fi
-          if egrep -qi "^[ \t]*==[0-9]+[= \t]+[atby]+[ \t]*0x" ./${TRIAL}/log/master.err; then
+          if egrep --binary-files=text -qi "^[ \t]*==[0-9]+[= \t]+[atby]+[ \t]*0x" ./${TRIAL}/log/master.err; then
             VALGRIND_ERRORS_FOUND=1
           fi
-          if egrep -qi "==[0-9]+== ERROR SUMMARY: [1-9]" ./${TRIAL}/log/master.err; then
+          if egrep --binary-files=text -qi "==[0-9]+== ERROR SUMMARY: [1-9]" ./${TRIAL}/log/master.err; then
             VALGRIND_ERRORS_FOUND=1
           fi
           if [ ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then

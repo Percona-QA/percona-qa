@@ -1,0 +1,1 @@
+binlog_group_commit_sync_delay=DUMMY    # Causes hangs on PS 5.7, for example; --no-defaults --plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=/home/hrvoje/percona-qa/plugins_57.sql --binlog-group-commit-sync-delay=2047 | being discussed with LB/RV/HM

@@ -175,7 +175,7 @@ if [[ $GRP_RPL -eq 1 ]];then
   chmod +x ./start_group_replication
 fi
 
-mkdir -p data data/mysql data/test log
+mkdir -p data data/mysql log
 if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
   TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
 else
@@ -187,9 +187,17 @@ else
   ROCKSDB=""
 fi
 
-if [[ ! -z $TOKUDB ]] || [[ ! -z $ROCKSDB ]];then
-  LOAD_INIT_FILE="${SCRIPT_PWD}/MyRocks_TokuDB.sql"
+if [[ ! -z $TOKUDB ]]; then
+  LOAD_TOKUDB_INIT_FILE="${SCRIPT_PWD}/TokuDB.sql"
+else
+  LOAD_TOKUDB_INIT_FILE=""
 fi
+if [[ ! -z $ROCKSDB ]];then
+  LOAD_ROCKSDB_INIT_FILE="${SCRIPT_PWD}/MyRocks.sql"
+else
+  LOAD_ROCKSDB_INIT_FILE=""
+fi
+
 echo 'MYEXTRA=" --no-defaults"' > start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
@@ -199,6 +207,11 @@ echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; 
 cp start start_valgrind  # Idem for Valgrind
 cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
 echo "$BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start
+echo "sleep 10" >> start
+if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
+  echo "${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test;'" >> start
+fi
+
 echo "ps -ef | grep \"\$(whoami)\" | grep ${PORT} | grep -v grep | awk '{print \$2}' | xargs kill -9" > kill
 echo " valgrind --suppressions=${PWD}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err >>${PWD}/log/master.err 2>&1 &" >> start_valgrind
 echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_gypsy
@@ -208,7 +221,19 @@ tail -n1 start >> start_gypsy
 echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
 echo "./init;./start;sleep 5;./cl;./stop;tail log/master.err" > setup
-echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_INIT_FILE} ; ./stop" > myrocks_tokudb_init
+if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
+  echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE}" > myrocks_tokudb_init
+  if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
+    echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> myrocks_tokudb_init
+  else
+    echo "./stop " >> myrocks_tokudb_init
+  fi
+else
+  if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
+    echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop" > myrocks_tokudb_init
+  fi
+fi
+
 BINMODE=
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" ]; then
   BINMODE="--binary-mode "  # Leave trailing space
@@ -223,26 +248,36 @@ echo "./stop;./wipe;./start;sleep 3;./prepare;./run;./stop" > measure
 echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> wipe
 echo "if [ -r log/master.err.PREV ]; then rm -f log/master.err.PREV; fi" >> wipe
 echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" >> wipe
-if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
-  echo "mkdir ${PWD}/data/test" >> wipe
+if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
+  echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
+  if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
+    echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> wipe
+  else
+    echo "./stop " >> wipe
+  fi
+else
+  if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
+    echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+  else
+    echo "./start; sleep 10; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+  fi
 fi
-echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_INIT_FILE} ; ./stop" >> wipe
+
+
 echo 'sudo pmm-admin config --server $(ifconfig | grep -A1 "^en" | grep -v "^en" | sed "s|.*inet ||;s| .*||")' > pmm_os_agent
 echo 'sudo pmm-admin add mysql $(echo ${PWD} | sed "s|/|-|g;s|^-\+||") --socket=${PWD}/socket.sock --user=root --query-source=perfschema' > pmm_mysql_agent
 echo "./stop >/dev/null 2>&1" > init
 echo "rm -Rf ${PWD}/data" >> init
 echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> init
 echo "rm -f log/master.*" >> init
-if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
-  echo "mkdir ${PWD}/data/test" >> init
-fi
+
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5;./cl" > all
 chmod +x start start_valgrind start_gypsy stop setup cl test kill init wipe all prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
 if [[ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]] || [[ -r ${PWD}/lib/mysql/plugin/ha_rocksdb.so ]] ; then
-  echo "Enabling additional TokuDB/ROCKSDB engine plugin items"
+  echo "Enabling additional TokuDB/ROCKSDB engine plugin items if exists"
   ./myrocks_tokudb_init
 fi
 echo "Done! To get a fresh instance at any time, execute: ./all (executes: stop;wipe;start;sleep 5;cl)"

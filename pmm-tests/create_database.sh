@@ -18,7 +18,7 @@ elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
   BASEDIR="$WORKDIR/$BASEDIR"
 fi
 
-for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
+for i in $(sudo pmm-admin list | grep 'mysql:metrics[ \t]*PS_NODE' | awk -F[\(\)] '{print $2}') ; do
 	MYSQL_SOCK=${i}
   echo "Creating databases using MYSQL_SOCK=${MYSQL_SOCK}"
   for num in $(seq 1 1 ${DB_COUNT}) ; do

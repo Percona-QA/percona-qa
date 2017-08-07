@@ -2,29 +2,25 @@
 # Created by Ramesh Sivaraman, Percona LLC
 # Updated by Roel Van de Paar, Percona LLC
 
+# Start this script from within the base directory which contains ./bin/mysqld[-debug]
+
 # User configurable variables
 WORKDIR="/dev/shm"                               ## Working directory ("/dev/shm" preferred)
-MYBASE="${PWD}"                                  ## mysqld Base Directory. If referencing this script from the base directory, use "${PWD}"
 SQLFILE="./test.sql"                             ## SQL Input file
 MYEXTRA="--no-defaults --event-scheduler=ON"     ## MYEXTRA: Extra --options required for msyqld (may not be required)
-SERVER_THREADS=(10 20 30 40)                     ## Number of server threads (x mysqld's). This is a sequence: (10 20) means: first 10, then 20 server if no crash was observed
+MYEXTRA=" --no-defaults --plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=/home/roel/percona-qa/plugins_57.sql --binlog-group-commit-sync-delay=2047 "
+SERVER_THREADS=(2 10 20 30 40 50)                  ## Number of server threads (x mysqld's). This is a sequence: (10 20) means: first 10, then 20 server if no crash was observed
 CLIENT_THREADS=1                                 ## Number of client threads (y threads) which will execute the SQLFILE input file against each mysqld
-AFTER_SHUTDOWN_DELAY=240                         ## Wait this many seconds for mysqld to shutdown properly. If it does not shutdown within the allotted time, an error shows
-TOKUDB_REQUIRED=0                                ## Set to 1 if TokuDB is required
+AFTER_SHUTDOWN_DELAY=60                          ## Wait this many seconds for mysqld to shutdown properly. If it does not shutdown within the allotted time, an error shows
 
 # Internal variables
 MYUSER=$(whoami)
 MYPORT=$[20000 + $RANDOM % 9999 + 1]
 DATADIR=`date +'%s'`
-SERVER_THREADS=(10 20 30)
 
 # Reference functions
 echoit(){ echo "[$(date +'%T')] $1"; }
-
-if [ ${TOKUDB_REQUIRED} -ne 0 -a ${TOKUDB_REQUIRED} -ne 1 ]; then
-  echoit "Assert: TOKUDB_REQUIRED is set to ${TOKUDB_REQUIRED}, but that is not a valid option. Use 0 (TokuDB not required), or 1 (TokuDB required)"
-  exit 1
-fi
+echoito(){ echo -ne "[$(date +'%T')] $1\r"; }  # Used for on-screen updating of text
 
 if [ ! -r ${SQL_FILE} ]; then
   echoit "Assert: this script tried to read ${SQL_FILE} (as specified in the  \"User configurable variables\" at the top of/inside the script), but it could not."
@@ -44,34 +40,20 @@ else  # Workdir setup
   fi
 fi
 
-if [ -r ${MYBASE}/bin/mysqld ]; then
-  BIN=${MYBASE}/bin/mysqld
+if [ -r ${PWD}/bin/mysqld ]; then
+  BIN=${PWD}/bin/mysqld
 else
   # Check if this is a debug build by checking if debug string is present in dirname
-  if [[ ${MYBASE} = *debug* ]]; then
-    if [ -r ${MYBASE}/bin/mysqld-debug ]; then
-      BIN=${MYBASE}/bin/mysqld-debug
+  if [[ ${PWD} = *debug* ]]; then
+    if [ -r ${PWD}/bin/mysqld-debug ]; then
+      BIN=${PWD}/bin/mysqld-debug
     else
-      echoit "Assert: there is no (script readable) mysqld binary at ${MYBASE}/bin/mysqld[-debug] ?"
+      echoit "Assert: there is no (script readable) mysqld binary at ${PWD}/bin/mysqld[-debug] ?"
       exit 1
     fi
   else
-    echoit "Assert: there is no (script readable) mysqld binary at ${MYBASE}/bin/mysqld ?"
+    echoit "Assert: there is no (script readable) mysqld binary at ${PWD}/bin/mysqld ?"
     exit 1
-  fi
-fi
-
-#Load jemalloc library for TokuDB engine
-if [ ${TOKUDB_REQUIRED} -eq 1 ]; then
-  if [ -r /usr/lib64/libjemalloc.so.1 ]; then
-    export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
-  elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then
-    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
-  elif [ -r ${PWD}/lib/mysql/libjemalloc.so.1 ]; then
-    export LD_PRELOAD=${PWD}/lib/mysql/libjemalloc.so.1
-  else
-    echoit 'Error: jemalloc not found, please install it first';
-    exit 1;
   fi
 fi
 
@@ -101,31 +83,29 @@ elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
 fi
 
 # Run SQL file from reducer<trial>.sh
-SERVER_COUNT=0
 for i in ${SERVER_THREADS[@]};do
-  MYSQLD=()
-  MYSQLC=()
   # Start multiple mysqld service
+  SERVER_COUNT=0
+  MYSQLD=()
   for j in `seq 1 ${i}`;do
     SERVER_COUNT=$[ ${SERVER_COUNT} + 1 ];
-    echoit "Starting mysqld #${SERVER_COUNT}..."
+    echoito "Starting mysqld #${SERVER_COUNT}..."
     MYPORT=$[ ${MYPORT} + 1 ]
-    if [ "$(${BIN} --version | grep -oe '5\.[1567]' | head -n1)" != "5.7" ]; then  # For 5.7, the data directory should be empty
-      mkdir ${WORKDIR}/${j}
-    fi
-    $INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data > ${WORKDIR}/${j}_mysql_install_db.out 2>&1
-    CMD="bash -c \"set -o pipefail; ${BIN} ${MYEXTRA} ${START_OPT} --basedir=${MYBASE} --datadir=${WORKDIR}/${j} --port=${MYPORT}
+    mkdir ${WORKDIR}/${j} 2>/dev/null
+    $INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${WORKDIR}/${j} > ${WORKDIR}/${j}_mysql_install_db.out 2>&1
+    CMD="bash -c \"set -o pipefail; ${BIN} ${MYEXTRA} ${START_OPT} --basedir=${PWD} --datadir=${WORKDIR}/${j} --port=${MYPORT}
          --pid-file=${WORKDIR}/${j}_pid.pid --log-error=${WORKDIR}/${j}_error.log.out --socket=${WORKDIR}/${j}_socket.sock --user=${MYUSER}\""
     eval $CMD > ${WORKDIR}/${j}_mysqld.out 2>&1 &
     PIDV="$!"
     MYSQLD+=(${PIDV})
+    echoit "Started mysqld #${SERVER_COUNT} with PID ${MYSQLD[j-1]}"
   done
   for j in `seq 1 ${i}`;do
     x=0
-    ${MYBASE}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1
+    ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1
     CHECK=$?
     while [[ $CHECK != 0 ]]; do
-      ${MYBASE}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1
+      ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1
       CHECK=$?
       sleep 1
       if [ $x == 60 ];then
@@ -136,69 +116,81 @@ for i in ${SERVER_THREADS[@]};do
     done
   done
   # Start multiple mysql clients to test the SQL
+  MYSQLC=()
   for j in `seq 1 ${i}`;do
-    ## Below two lines is for pquery testing
-    #export LD_LIBRARY_PATH=${MYBASE}/lib
-    #$(cd `dirname $0` && pwd)/pquery/pquery --infile=${TRIAL}.out_out --database=test --threads=5 --user=root --socket=${WORKDIR}/${j}_socket.sock > ${WORKDIR}/script_sql_out_${j} 2>&1 &
-    echoit "Starting ${CLIENT_THREADS} client threads against mysqld # ${j}..."
+    echoit "Starting ${CLIENT_THREADS} client threads against mysqld #${j}..."
+    ## The following line is for pquery testing (and remark entire for_do_done loop)
+    #$(cd `dirname $0` && pwd)/pquery/pquery --infile=${TRIAL}.out_out --database=test --threads=${CLIENT_THREADS} --user=root --socket=${WORKDIR}/${j}_socket.sock > ${WORKDIR}/${j}_pquery.out 2>&1 &
     for (( thread=1; thread<=${CLIENT_THREADS}; thread++ )); do
-      ${MYBASE}/bin/mysql -uroot --socket=${WORKDIR}/${j}_socket.sock -f < ${SQLFILE} > multi.$thread 2>&1 &
+      ${PWD}/bin/mysql -uroot --socket=${WORKDIR}/${j}_socket.sock -f < ${SQLFILE} > ${WORKDIR}/${j}_client-$thread.out 2>&1 &
       PID="$!"
       MYSQLC+=($PID)
     done
     # Check if mysqld process crashed immediately
-    if ! ${MYBASE}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
-      echoit "[!] Server crash/shutdown found : Check ${WORKDIR}/${j}_error.log.out for more info"
+    if ! ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
+      echoit "[!] Server crash/shutdown found : Check ${WORKDIR}/${j}_error.log.out for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
       exit 1
     fi
   done
+  sleep 1  # Avoids last client not having started yet
   # Check if mysql client finished
   for k in "${MYSQLC[@]}"; do
     while [[ ( -d /proc/$k ) && ( -z `grep zombie /proc/$k/status` ) ]]; do
-      sleep 1
-      # Check mysqld processes while waiting for client processes to finish
-      TO_EXIT=0
+      # Check mysqld processes are still alive while waiting for client processes to finish
       for j in `seq 1 ${i}`;do
-        if ! ${MYBASE}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
-          echoit "[!] Server crash/shutdown found: Check ${WORKDIR}/${j}_error.log.out for more info"
-          TO_EXIT=1
+        if ! ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
+          echoit "[!] Server crash/shutdown found: Check ${WORKDIR}/${j}_error.log.out for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+          exit 1
         fi
       done
-      if [ ${TO_EXIT} -eq 1 ]; then exit 1; fi
     done
   done
-  # Check mysqld processes after client processes are done
-  TO_EXIT=0
+  # Check mysqld processes are still alive after client processes are done
   for j in `seq 1 ${i}`;do
-    if ! ${MYBASE}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
-      echoit "[!] Server crash/shutdown found: Check ${WORKDIR}/${j}_error.log.out for more info"
-      TO_EXIT=1
+    if ! ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
+      echoit "[!] Server crash/shutdown found: Check ${WORKDIR}/${j}_error.log.out for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      exit 1
     fi
   done
   # Shutdown mysqld processes
   for j in `seq 1 ${i}`;do
     echoit "Shutting down mysqld #${j}..."
-    ${MYBASE}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock shutdown > /dev/null 2>&1 &
+    timeout --signal=9 ${AFTER_SHUTDOWN_DELAY}s ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock shutdown > /dev/null 2>&1
+    if [ $? -eq 137 ]; then  # Timeout was activated after ${AFTER_SHUTDOWN_DELAY} seconds, highly likely indicating a hang
+      echoit "[!] Potential server hang found: mysqld #{j} has not shutdown in ${AFTER_SHUTDOWN_DELAY} seconds. Check gdb --pid=${MYSQLD[j-1]}. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      exit 1
+    fi
   done
-  sleep ${AFTER_SHUTDOWN_DELAY}
   # Check for shutdown issues
-  TO_EXIT=0
   for j in `seq 1 ${i}`;do
-    if ${MYBASE}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1; then
-      echoit "[!] Server hang found: mysqld #{j} has not shutdown in ${AFTER_SHUTDOWN_DELAY} seconds. Check ${WORKDIR}/${j}_error.log.out for more info"
-      TO_EXIT=1
+    # Check for shutdown failure (mysqld still responding to mysqladmin pings)
+    PING=    
+    timeout --signal=9 10s ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1
+${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping
+    PING=$?
+echo $PING
+    if [ $PING -eq 137 ]; then
+      echoit "[!] Potential server hang found: a mysqladmin ping to mysqld #${j} did not complete in 10 sconds. Check gdb --pid=${MYSQLD[j-1]} for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      exit 1
+    elif [ $PING -eq 0 ]; then
+      echoit "[!] Server hang found: mysqld #${j} has not shutdown in 60 seconds and is still responding to mysqladmin ping. Check gdb --pid=${MYSQLD[j-1]} for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      exit 1
+    elif [ $PING -ne 1 ]; then
+      echoit "[!] Unknown issue detected: a mysqladmin ping to mysqld #${j} returned exit status $PING, which is unkwnon to this script. Please research this code $PING and the current status of mysqld with gdb --pid=${MYSQLD[j-1]} for more info, then please update this script so it can handle this state. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      exit 1
     fi
+    # Check for core dump
     if [ $(ls ${WORKDIR}/${j}/*core* 2>/dev/null | grep -vi "no such file or directory" | wc -l) -gt 0 ]; then
-      echoit "[!] Server crash found: Check ${WORKDIR}/${j}_error.log.out and $(ls -l ${WORKDIR}/${j}/*core* | tr '\n' ' ') for more info"
-      TO_EXIT=1
+      echoit "[!] Server crash found: mysqld #${j} has generated a core dump. Check ${WORKDIR}/${j}_error.log.out and $(ls -l ${WORKDIR}/${j}/*core* | tr '\n' ' ') for more info. Leaving state as-is and terminating. Consider using percona-qa/kill_all_procs.sh to cleanup after your research is done."
+      exit 1
     fi
   done
-  if [ ${TO_EXIT} -eq 1 ]; then exit 1; fi
+  for j in `seq 1 ${i}`;do
+    echo "Checking PID ${MYSQLD[${i}]}"
+  done
+  kill -9 `printf '%s ' "${MYSQLD[@]}"` 2>/dev/null  # For safety, though processes should be gone. Redirected stderr to /dev/null as otherwise 'multirun_mysqld.sh: line ___: kill: (_____) - No such process' errors would show.
   if [ ${SERVER_THREADS[@]:(-1)} -ne ${i} ] ; then
    echoit "Did not find server crash with ${i} mysqld processes. Restarting crash test with next set of mysqld processes."
-   kill -9 `printf '%s ' "${MYSQLD[@]}"` 
    rm -Rf ${WORKDIR}/*
-  else
-   kill -9 `printf '%s ' "${MYSQLD[@]}"` 
   fi
 done
