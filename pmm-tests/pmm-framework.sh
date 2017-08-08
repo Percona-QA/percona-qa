@@ -572,7 +572,7 @@ compare_query(){
     END_TIME=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT LAST_SEEN  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
   }
 
-  BASEDIR="/home/ramesh/pmmwork/ps57"
+  #BASEDIR="/home/ramesh/pmmwork/ps57"
   TEST_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1 | awk -F[\(\)] '{print $2}')
   TEST_NODE_NAME=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1  | awk '{print $2}')
   sudo pmm-admin add mysql --user=root --socket=$TEST_SOCKET SHADOW_NODE
