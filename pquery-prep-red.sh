@@ -519,8 +519,8 @@ if [ ${QC} -eq 0 ]; then
         fi
         BIN=$(grep "\/mysqld" ./${TRIAL}/start | head -n1 | sed 's|mysqld .*|mysqld|;s|.* \(.*bin/mysqld\)|\1|') 
         if [ "${BIN}" == "" ]; then 
-          echo "Assert \$BIN is empty"
-          exit 1
+          echo "Assert \$BIN is empty for trial $TRIAL, please fix this trial manually"
+          continue
         fi
         if [ ! -r "${BIN}" ]; then
           echo "Assert! mysqld binary '${BIN}' could not be read"
