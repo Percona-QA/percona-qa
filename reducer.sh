@@ -2316,8 +2316,11 @@ cleanup_and_save(){
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev"
     fi
     grep -E --binary-files=text -v "^# mysqld options required for replay:" $WORKT > $WORKO
-    sed -i "1 i\# mysqld options required for replay: $TOKUDB $ROCKSDB $MYEXTRA" $WORKO
-    sed -i "s|[ \t]\+| |g" $WORKO
+    MYSQLD_OPTIONS_REQUIRED=$(echo "$TOKUDB $ROCKSDB $MYEXTRA" | sed "s|[ \t]\+| |g")
+    if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
+      sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+    fi
+    MYSQLD_OPTIONS_REQUIRED=
     cp -f $WORKO $WORK_OUT
     # Save a tarball of full self-contained testcase on each successful reduction
     BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
@@ -2754,9 +2757,11 @@ finish(){
   fi
   echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
-    if [ "$MYEXTRA" != "" -o "$TOKUDB" != "" -o "$ROCKSDB" != "" ]; then
+    MYSQLD_OPTIONS_REQUIRED=$(echo "$TOKUDB $ROCKSDB $MYEXTRA" | sed "s|[ \t]\+| |g")
+    if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then  
       echo_out "[Finish] mysqld options required for replay: $TOKUDB $ROCKSDB $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
     fi
+    MYSQLD_OPTIONS_REQUIRED=
     if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
       echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
     fi

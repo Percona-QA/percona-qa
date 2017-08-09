@@ -3,7 +3,7 @@
 # Additions by Roel Van de Paar, Percona LLC
 
 # PMM Framework
-# This script enables one to quickly setup a Percona Monitoring and Management environment. One can setup a PMM server and qucikyl add multiple clients
+# This script enables one to quickly setup a Percona Monitoring and Management environment. One can setup a PMM server and quickly add multiple clients
 # The intention of this script is to be robust from a quality assurance POV; it should handle many different server configurations accurately
 
 # Internal variables
@@ -572,7 +572,7 @@ compare_query(){
     END_TIME=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT LAST_SEEN  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
   }
 
-  BASEDIR="/home/ramesh/pmmwork/ps57"
+  #BASEDIR="/home/ramesh/pmmwork/ps57"
   TEST_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1 | awk -F[\(\)] '{print $2}')
   TEST_NODE_NAME=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1  | awk '{print $2}')
   sudo pmm-admin add mysql --user=root --socket=$TEST_SOCKET SHADOW_NODE

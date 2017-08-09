@@ -30,8 +30,6 @@
   RANDOM=`date +%s%N | cut -b14-19`; shuf --random-source=/dev/urandom inputfile > outputfile 
 # Delete all alpha chars from a string
   echo "string" | tr -d '[:alpha:]'
-# Sort unique vs uniq: sort -u sorts the input list and only leaves unique entries. uniq on the other hand does not sort and removes only adjoining same entries
-  cat need_sorted_file_with_unique_results_only.txt | sort -u; cat need_adjoining_same_entries_removed; | uniq; # cat need_all_duplicates_removed.txt | uniq -u
 # Re-use filename based output as input for a new command
   ls | xargs -I{} echo {}  # {} is the filename passed and has become a variable, echo is the example new command
 # Execute two (or more) commands from xargs, based on pipe input, and additionally use some variables from the parent shell in the subshell
@@ -203,6 +201,14 @@
 # When used in a function, the 'declare' command (for example DECLARE -a ARRAY) makes each variable local, as with the 'local' command, unless the '-g' option is used.
   With thanks, https://unix.stackexchange.com/questions/136720/bash-array-declared-in-a-function-is-not-available-outside-the-function
   It is thus likely best to use 'local' instead of 'declare' to remove any misunderstanding. This is also the default code syntax for percona-qa scripts
+# Gotcha: do not use:  some command | uniq  assuming you will get unique items only. uniq and uniq -u can produce very unexpected results. To see some examples, try these;
+  echo -e "1\n2\n2\n3\n2">test;echo "test:";cat test;echo "sort -u test:";sort -u test;echo "uniq test:";uniq test;echo "uniq -u test:";uniq -u test
+  echo -e "1\n2\n2\n3">test;echo "test:";cat test;echo "uniq -u test:";uniq -u test
+  With uniq -u it keeps any line which is truly unique, and this is why the first uniq, the first uniq -u and the second uniq -u results all so different
+  Thus; uniq is a versatile tool, but only if you are after very specific functionality. If not, always use short -u
+
+# Sort unique vs uniq: sort -u sorts the input list and only leaves unique entries. uniq on the other hand does not sort and removes only adjoining same entries
+  cat need_sorted_file_with_unique_results_only.txt | sort -u; cat need_adjoining_same_entries_removed; | uniq; # cat need_all_duplicates_removed.txt | uniq -u
 
 # ------ OS/Admin ------
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
