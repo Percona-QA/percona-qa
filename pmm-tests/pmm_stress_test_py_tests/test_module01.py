@@ -71,3 +71,9 @@ class TestPMMStress:
         print("\nIn test_pmm_framework_wipe_client()...")
         return_value = randomized_instances.pmm_framework_wipe_client()
         assert return_value == 0
+
+    def test_clean_env(self):
+        """Checking return value from function"""
+        print("\nIn test_clean_env...")
+        return_value = randomized_instances.clean_env("ps")
+        assert return_value == 0

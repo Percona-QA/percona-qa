@@ -291,6 +291,34 @@ def insert_longtext(i_type, insert_count, string_length):
     else:
         return 0
 
+def clean_env(i_type):
+    """
+    Function for removing test databases.
+    get_databases.sh and drop_databases.sh are used here.
+    """
+    sockets = getting_instance_socket()
+
+    abspath = os.path.abspath(__file__)
+    dname = os.path.dirname(abspath)
+    for sock in sockets:
+        get_databases = '{}/get_databases.sh {} {}'
+        get_db_list = get_databases.format(dname[:-18], i_type, sock)
+        try:
+            prc = check_output(get_db_list, shell=True)
+            result_databases = prc.split()[1:]
+            drop_databases = '{}/drop_databases.sh {} {} {}'
+            for database in result_databases:
+                drop_db = drop_databases.format(dname[:-18], i_type, sock, database)
+                process = Popen(
+                                split(drop_db),
+                                stdin=None,
+                                stdout=None,
+                                stderr=None)
+        except Exception as e:
+            print(e)
+
+    return 0
+
 ##############################################################################
 # Command line things are here, this is separate from main logic of script.
 def print_version(ctx, param, value):
@@ -375,16 +403,24 @@ def print_version(ctx, param, value):
     is_flag=True,
     help="Remove/wipe pmm instances if specified"
 )
+@click.option(
+    "--wipe_setup",
+    is_flag=True,
+    help="Remove test database and tables from physical instances"
+)
 
 def run_all(threads, instance_type,
             instance_count, pmm_instance_count,
             create_databases, create_tables,
             create_sleep_queries, create_unique_queries,
             insert_blobs, insert_longtexts,
-            wipe_clients):
+            wipe_clients, wipe_setup):
     if (not threads) and (not instance_type) and (not instance_count) and (not pmm_instance_count) and (not create_databases):
         print("ERROR: you must give an option, run with --help for available options")
     else:
+        if wipe_setup:
+            # Drop old test databases/tables here
+            clean_env(instance_type)
         if instance_count > 0:
             runner(pmm_instance_count, instance_type, instance_count, wipe_clients, threads)
         if create_databases:
@@ -399,6 +435,7 @@ def run_all(threads, instance_type,
             insert_blob(insert_blobs, instance_type)
         if insert_longtexts:
             insert_longtext(instance_type, insert_longtexts[0], insert_longtexts[1])
+
 
 
 if __name__ == "__main__":
