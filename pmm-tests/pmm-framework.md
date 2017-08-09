@@ -101,6 +101,67 @@ User 'admin' is already present in MySQL server. Please create Orchestrator user
 [mysql:queries] OK, now monitoring MySQL queries from perfschema using DSN root:***@unix(/tmp/MS_NODE_2.sock)
 ramesh@qaserver-03:~/pmmwork$
 ```
+__Compare query count__
+
+Using _--compare-query-count_ we can compare the query count between PMM client instance and PMM QAN/Metrics page. This option will compare query from both query sources performance schema and slowlog.
+
+```
+ramesh@qaserver-03:~/pmmwork$ ~/percona-qa/pmm-tests/pmm-framework.sh --addclient=ps,1 --compare-query-count
+WARNING! Another mysqld process using /tmp/PS_NODE_1.sock
+[linux:metrics] OK, now monitoring this system.
+[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+[mysql:queries] OK, now monitoring MySQL queries from perfschema using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+[linux:metrics] OK, already monitoring this system.
+[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+Initializing query count testing
+Running first set INSERT statement execution
+Sleeping 60 secs
+INSERT INTO test.t1 .. query count between 2017-08-09 04:21:52 and 2017-08-09 04:22:14
++-------------------------------------------------+-----------------+-------------------------+
+| QUERY                                           | ALL_QUERY_COUNT | QUERY_COUNT_CURRENT_RUN |
++-------------------------------------------------+-----------------+-------------------------+
+| INSERT INTO `test` . `t1` ( `str` ) VALUES (?)  |             464 |                     464 |
++-------------------------------------------------+-----------------+-------------------------+
+Running second set INSERT statement execution
+Sleeping 60 secs
+INSERT INTO test.t1 .. query count between 2017-08-09 04:21:52 and 2017-08-09 04:23:27
++-------------------------------------------------+-----------------+-------------------------+
+| QUERY                                           | ALL_QUERY_COUNT | QUERY_COUNT_CURRENT_RUN |
++-------------------------------------------------+-----------------+-------------------------+
+| INSERT INTO `test` . `t1` ( `str` ) VALUES (?)  |             734 |                     270 |
++-------------------------------------------------+-----------------+-------------------------+
+Running third set INSERT statement execution
+Sleeping 60 secs
+INSERT INTO test.t1 .. query count between 2017-08-09 04:21:52 and 2017-08-09 04:25:07
++-------------------------------------------------+-----------------+-------------------------+
+| QUERY                                           | ALL_QUERY_COUNT | QUERY_COUNT_CURRENT_RUN |
++-------------------------------------------------+-----------------+-------------------------+
+| INSERT INTO `test` . `t1` ( `str` ) VALUES (?)  |            1510 |                     776 |
++-------------------------------------------------+-----------------+-------------------------+
+Running fourth set INSERT statement execution
+Sleeping 60 secs
+INSERT INTO test.t1 .. query count between 2017-08-09 04:21:52 and 2017-08-09 04:26:45
++-------------------------------------------------+-----------------+-------------------------+
+| QUERY                                           | ALL_QUERY_COUNT | QUERY_COUNT_CURRENT_RUN |
++-------------------------------------------------+-----------------+-------------------------+
+| INSERT INTO `test` . `t1` ( `str` ) VALUES (?)  |            2301 |                     791 |
++-------------------------------------------------+-----------------+-------------------------+
+INSERT INTO test.t1 .. query count from pmm client instance PS_NODE-1 (Performance Schema).
++------------------+
+| sum(query_count) |
++------------------+
+|             2129 |
++------------------+
+INSERT INTO test.t1 .. query count from pmm client instance SHADOW_NODE (Slow log).
++------------------+
+| sum(query_count) |
++------------------+
+|             2700 |
++------------------+
+Please compare these query count with QAN/Metrics webpage
+ramesh@qaserver-03:~/pmmwork$
+```
 
 __Use _--list_ to view all PMM clients instance__
 
