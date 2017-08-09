@@ -3,7 +3,7 @@
 # Additions by Roel Van de Paar, Percona LLC
 
 # PMM Framework
-# This script enables one to quickly setup a Percona Monitoring and Management environment. One can setup a PMM server and qucikyl add multiple clients
+# This script enables one to quickly setup a Percona Monitoring and Management environment. One can setup a PMM server and quickly add multiple clients
 # The intention of this script is to be robust from a quality assurance POV; it should handle many different server configurations accurately
 
 # Internal variables
