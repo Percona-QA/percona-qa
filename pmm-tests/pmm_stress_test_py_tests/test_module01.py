@@ -63,7 +63,7 @@ class TestPMMStress:
 
     def test_insert_longtext(self):
         """Checking for return value from function"""
-        return_value = randomized_instances.insert_longtext('2 10000', "ps")
+        return_value = randomized_instances.insert_longtext("ps", 2, 10000)
         assert return_value == 0
 
     def test_pmm_framework_wipe_client(self):
