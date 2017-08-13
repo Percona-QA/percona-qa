@@ -63,11 +63,17 @@ class TestPMMStress:
 
     def test_insert_longtext(self):
         """Checking for return value from function"""
-        return_value = randomized_instances.insert_longtext('2 10000', "ps")
+        return_value = randomized_instances.insert_longtext("ps", 2, 10000)
         assert return_value == 0
 
     def test_pmm_framework_wipe_client(self):
         """Checking return value from function"""
         print("\nIn test_pmm_framework_wipe_client()...")
         return_value = randomized_instances.pmm_framework_wipe_client()
+        assert return_value == 0
+
+    def test_clean_env(self):
+        """Checking return value from function"""
+        print("\nIn test_clean_env...")
+        return_value = randomized_instances.clean_env("ps")
         assert return_value == 0

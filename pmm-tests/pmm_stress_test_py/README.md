@@ -63,6 +63,8 @@ Options:
   --insert_longtexts INTEGER...   Multiple value option, 1->number of inserts,
                                   2->the length of string to generate
   --wipe_clients                  Remove/wipe pmm instances if specified
+  --wipe_setup                    Remove test database and tables from
+                                  physical instances
   --help                          Show this message and exit.
 ```
 
@@ -77,13 +79,14 @@ This run is doing following things:
 * Creating 20 unique queries(-create_unique_queries 20) using mysqlslap and running it against each PS instance.
 * Creating raw image with and inserting it 2 times into table (--insert_blobs 2)
 * Creating string with given length(10000) and inserting it 2 times (--insert_longtexts 2 10000)
-* Wiping clients before each test run if specified(--wipe_clients)
+* Wiping clients before each test run if specified(--wipe_clients) == pmm-framework.sh --wipe-clients
+* Dropping test databases from physical instances(--wipe_setup)
 
 ```
 Percona_Servers]$ python ~/percona-qa/pmm-tests/pmm_stress_test_py/randomized_instances.py  \
 --instance_type ps --instance_count 2 --pmm_instance_count 10 --create_databases 10 \
 --create_tables 10 --create_sleep_queries 20 ps 10 --create_unique_queries 20 \
---insert_blobs 2 --insert_longtexts 2 10000 --wipe_clients
+--insert_blobs 2 --insert_longtexts 2 10000 --wipe_clients --wipe_setup
 No services under pmm monitoring
 Orchestrator username :  admin
 Orchestrator password :  passw0rd
