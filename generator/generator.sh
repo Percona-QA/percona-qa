@@ -13,7 +13,8 @@ SHEDULING_ENABLED=0  # On/Off (1/0). Enables/disables using mysql EVENTs .When u
 # * To debug the syntax of generated SQL, use a set of commands like these:
 #   $ ./bin/mysql -A -uroot -S${PWD}/socket.sock --force --binary-mode test < ~/percona-qa/generator/out.sql > ${PWD}/mysql.out 2>&1; grep "You have an error in your SQL syntax" mysql.out
 #   There may be other errors then the ones shown here (see full mysql.out output), but this will highlight the main SQL syntax errors
-#   The syntax failure raite should be well below 1 in 50 statements, and most of those should be due to semi-unfixable logic issues
+#   The syntax failure rate should be well below 1 in 50 statements, and most of those should be due to semi-unfixable logic issues
+#   Add things like; HEX(), UNCOMPRESSED_LENGTH() etc.
 
 # ====== Internal variables; do not modify
 START=`date +%s`
