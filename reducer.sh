@@ -754,8 +754,8 @@ options_check(){
 }
 
 set_internal_options(){  # Internal options: do not modify!
-  # Try and raise max user processes limit (please preset the soft/hard nproc settings in /etc/security/limits.conf (Centos), both to at least 20480 - see percona-qa/setup_server.sh for an example)
-  ulimit -u 10000
+  # Try and raise max user processes limit (please also preset the soft/hard nproc settings in /etc/security/limits.conf (Centos), both to at least 20480 - see percona-qa/setup_server.sh for an example)
+  ulimit -u 4000 2>/dev/null
   SEED=$(head -1 /dev/urandom | od -N 1 | awk '{print $2 }') 
   RANDOM=$SEED
   sleep 0.1$RANDOM  # Subreducer OS slicing?

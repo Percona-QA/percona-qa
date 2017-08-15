@@ -37,7 +37,7 @@ if [ "$(echo ${PQUERY_BIN} | sed 's|\(^/pquery\)|\1|')" == "/pquery" ]; then ech
 export ASAN_OPTIONS=disable_core=0:abort_on_error=1
 
 # Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
-ulimit -u 10000
+ulimit -u 7000 
 
 # Check input file (when generator is not used)
 if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -ne 1 -a ! -r ${INFILE} ]; then 
