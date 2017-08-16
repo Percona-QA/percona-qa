@@ -90,7 +90,7 @@ btr0cur.cc line 830                                      ## https://bugs.mysql.c
 #trx0trx.cc line 1270                           ## Fixed ## https://bugs.mysql.com/bug.php?id=75782                                                 (# after MS 5.7.8 merged)
 #btr0btr.ic line 126                            ## Fixed ## https://bugs.mysql.com/bug.php?id=75784 (Apparent dup of MS #74577)                     (# after MS 5.7.6 merged)
 btr0cur.cc line 1240                                     ## https://bugs.mysql.com/bug.php?id=74747 (Apparently does not exist in 5.7.6)
-fil0fil.cc line 6973                                     ## https://bugs.mysql.com/bug.php?id=82386
+#fil0fil.cc line 6973                           ## Fixed ## https://bugs.mysql.com/bug.php?id=82386 (Could not reproduce the issue)
 fsp0fsp.cc line 2023                                     ## https://bugs.mysql.com/bug.php?id=74343 (testcase from bug #74876 triggers this assertion also)
 #ZN16QEP_shared_owner4keysEv                    ## Fixed ## https://bugs.mysql.com/bug.php?id=75938
 #Z14fill_variablesP3THDP10TABLE_LISTP4Item      ## Fixed ## https://bugs.mysql.com/bug.php?id=75940 
@@ -130,7 +130,7 @@ handler0alter.cc line 5817                               ## https://bugs.mysql.c
 #explain_other .. unit->is_optimized            ## Fixed ## https://bugs.mysql.com/bug.php?id=76446
 
 ## =========== MS 5.7.7 RC ===========
-Z15ha_commit_transP3THDbb                                ## https://bugs.mysql.com/bug.php?id=77520
+#Z15ha_commit_transP3THDbb                      ## Fixed ## https://bugs.mysql.com/bug.php?id=77520 (Could not reproduce the issue with latest build)
 #trx0trx.cc line 1290                           ## Fixed ## https://bugs.mysql.com/bug.php?id=77521                                     (# after MS 5.7.9 merged)
 Z27fill_schema_user_privilegesP3THDP10TABLE_LISTP4Item   ## https://bugs.mysql.com/bug.php?id=77522
 Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## https://bugs.mysql.com/bug.php?id=77522 
@@ -165,7 +165,7 @@ ZN7SEL_ARG9store_minEjPPhj                               ## https://bugs.mysql.c
 
 ## =========== MS 5.7 GA ===========
 .xid->is_null                                            ## https://bugs.mysql.com/bug.php?id=80694
-row0quiesce.cc line 724          ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=80669 (Fixed in 5.7.13)
+#row0quiesce.cc line 724                        ## Fixed ## https://bugs.mysql.com/bug.php?id=80669
 ut0ut.cc line 921                                        ## https://bugs.mysql.com/bug.php?id=80695 PS
 ut0ut.cc line 936                                        ## https://bugs.mysql.com/bug.php?id=80668
 pfs_file .= __null                                       ## https://bugs.mysql.com/bug.php?id=79016
@@ -178,7 +178,7 @@ thd->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS      ## https://bugs.mysql.c
 thd->variables.gtid_next.type == AUTOMATIC_GROUP         ## https://bugs.mysql.com/bug.php?id=80670
 
 ## =========== MS 5.7 Group Replication ===========
-con->fd >= 0                                             ## https://bugs.mysql.com/bug.php?id=82584
+#con->fd >= 0                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=82584
 
 ## =========== PS 5.7 Beta & GA ===========
 buf0lru.cc line 2259                                     ## https://bugs.launchpad.net/percona-server/+bug/1553166
@@ -371,7 +371,7 @@ fil0fil.cc line 5594                                                            
 #fil0fil.cc line 5594                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=74422 MS
 #fil0fil.cc line 5649                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=74422 PS (with oldPS)
 #fil0fil.cc line 5663                                                                   ## https://bugs.mysql.com/bug.php?id=74422 PS
-fil0fil.cc line 5779                                                                    ## https://bugs.mysql.com/bug.php?id=82263,
+#fil0fil.cc line 5779                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=82263 (Could not reproduce the issue)
 fsp0fsp.cc line 1287                                                                    ## https://bugs.mysql.com/bug.php?id=77164 PS
 fsp0fsp.cc line 1319                                                                    ## https://bugs.mysql.com/bug.php?id=77164 MS
 fsp0fsp.cc line 1861                                                                    ## https://bugs.mysql.com/bug.php?id=74343 MS
@@ -432,7 +432,7 @@ os0file.cc line 2003                                                            
 os0file.cc line 2004                                                                    ## https://bugs.mysql.com/bug.php?id=74480 PS (with oldPS)
 os0file.cc line 2021                                                                    ## https://bugs.mysql.com/bug.php?id=74480 PS (recentPS) (duplicated by 78331)
 os0sync.cc line 339                                                                     ## https://bugs.mysql.com/bug.php?id=85067 (also see 77976)
-os0sync.cc line 419                                                                     ## https://bugs.mysql.com/bug.php?id=77976 (also see 85067)
+#os0sync.cc line 419                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=77976 (also see 85067)
 #os0sync.cc line 475                                                            ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1372210 (dup of 1368530)
 pars0pars.cc line 865                                                                   ## https://bugs.mysql.com/bug.php?id=68987
 que0que.cc line 1206                                                                    ## https://bugs.mysql.com/bug.php?id=74762 MS
@@ -733,7 +733,7 @@ ZN12ha_myisammrg5cloneEPKcP11st_mem_root                                        
 #ZN13Bounded_queueIPhS0_10Sort_paramE4pushES0_                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=74008 (fixed in 5.5.45, 5.6.26, 5.7.8, 8.0)
 #ZN13select_insert8send_eofEv                                                  ## Fixed ## https://tokutek.atlassian.net/browse/DB-806 (fixed in tokudb-7.5.6)
 ZN13st_join_table7cleanupEv                                                             ## https://bugs.mysql.com/bug.php?id=74628
-ZN13st_select_lex5printEP3THDP6String15enum_query_type                                  ## https://bugs.mysql.com/bug.php?id=78335
+#ZN13st_select_lex5printEP3THDP6String15enum_query_type                        ## Fixed ## https://bugs.mysql.com/bug.php?id=78335 (Could not reproduce the issue)
 ZN13Item_func_div10decimal_opEP10my_decimal                                             ## https://bugs.mysql.com/bug.php?id=74807 (Same gdb trace of Z14my_decimal_divjP10my_decimalPKS_S2_i)
 ZN13MYSQL_BIN_LOG33handle_binlog_flush_or_sync_errorEP3THDb                             ## https://bugs.mysql.com/bug.php?id=86256
 #ZN14Arg_comparator24cache_converted_constantEP3THDPP4ItemS4_11Item_result     ## Fixed ## https://bugs.mysql.com/bug.php?id=77991 (duplicate of 78188)
@@ -758,7 +758,7 @@ ZN18Locked_tables_list20unlock_locked_tablesEP3THD                              
 ZN20Field_iterator_table13end_of_fieldsEv                                               ## https://bugs.mysql.com/bug.php?id=75707
 ZN21Sql_cmd_handler_close7executeEP3THD                                                 ## https://bugs.mysql.com/bug.php?id=75721
 #ZN23Gcalc_operation_reducer10end_coupleEPNS_13active_threadES1_PKN10Gcalc_heap4InfoE ## Fixed ## https://bugs.mysql.com/bug.php?id=77580
-ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## https://bugs.mysql.com/bug.php?id=78201
+ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=78201 (Fixed in 5.7)
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=82967 (old PS #1622992)
 ZN4JOIN8optimizeEv                                                                      ## https://bugs.mysql.com/bug.php?id=74783
 #ZN4Item31tmp_table_field_from_field_typeEP5TABLEb                             ## Fixed ## https://bugs.mysql.com/bug.php?id=86254
