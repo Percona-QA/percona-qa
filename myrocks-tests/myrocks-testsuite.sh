@@ -15,17 +15,17 @@ function clone_and_build() {
 }
 
 function run_startup() {
-  cd $1/$2
+  cd $1
   ~/percona-qa/startup.sh
 }
 
 function start_server() {
-  $1/$2/start
+  $1/start
 }
 
 function execute_sql() {
   # General function to pass sql statement to mysql client
-   $1/$2/cl -e "$3"
+   $1/cl -e "$2"
 }
 
 # Run clone and build here
@@ -37,15 +37,15 @@ BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
 
 Run startup.sh here
 echo "Running startup.sh from percona-qa"
-run_startup ${WORKDIR} ${BASEDIR}
+run_startup ${BASEDIR}
 
 # Start server here
 echo "Starting Server!"
-start_server ${WORKDIR} ${BASEDIR}
+start_server ${BASEDIR}
 
 # Create sample database here
 DB="create database generated_columns_test"
-execute_sql ${WORKDIR} ${BASEDIR} ${DB}
+execute_sql ${BASEDIR} ${DB}
 
 # Create sample table here
 TABLE="CREATE TABLE generated_columns_test.sbtest1 (
@@ -55,8 +55,8 @@ TABLE="CREATE TABLE generated_columns_test.sbtest1 (
   pad char(60) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB"
-execute_sql ${WORKDIR} ${BASEDIR} ${TABLE}
+execute_sql ${BASEDIR} ${TABLE}
 
 # Altering table engine to MyRocks here
 ALTER="alter table generated_columns_test.sbtest1 engine=rocksdb"
-execute_sql ${WORKDIR} ${BASEDIR} ${ALTER}
+execute_sql ${BASEDIR} ${ALTER}
