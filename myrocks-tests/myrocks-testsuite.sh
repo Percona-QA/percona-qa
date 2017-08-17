@@ -32,7 +32,7 @@ function fresh_server() {
 function execute_sql() {
   # General function to pass sql statement to mysql client
     conn_string=$(cat $1/cl)
-    ${conn_string} -e ""$2""
+    ${conn_string} -e $2
 }
 
 
@@ -55,7 +55,7 @@ start_server ${BASEDIR}
 # Create sample database here
 echo "Creating sample database"
 DB="create database generated_columns_test"
-execute_sql ${BASEDIR} "${DB}"
+execute_sql ${BASEDIR} "'${DB}'"
 
 # Create sample table here
 echo "Creating sample table"
@@ -66,9 +66,9 @@ TABLE="CREATE TABLE generated_columns_test.sbtest1 (
   pad char(60) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB"
-execute_sql ${BASEDIR} "${TABLE}"
+execute_sql ${BASEDIR} "'${TABLE}'"
 
 # Altering table engine to MyRocks here
 echo "Altering table engine"
 ALTER="alter table generated_columns_test.sbtest1 engine=rocksdb"
-execute_sql ${BASEDIR} "${ALTER}"
+execute_sql ${BASEDIR} "'${ALTER}'"
