@@ -21,6 +21,8 @@ create_longtext.sh
 create_sleep_queries.sh
 create_table.sh
 create_unique_queries.sh
+get_databases.sh
+drop_databases.sh
 ```
 
 ## Installation
@@ -65,6 +67,7 @@ Options:
   --wipe_clients                  Remove/wipe pmm instances if specified
   --wipe_setup                    Remove test database and tables from
                                   physical instances
+  --cycle INTEGER                 Run tests in a cycle
   --help                          Show this message and exit.
 ```
 
@@ -81,176 +84,66 @@ This run is doing following things:
 * Creating string with given length(10000) and inserting it 2 times (--insert_longtexts 2 10000)
 * Wiping clients before each test run if specified(--wipe_clients) == pmm-framework.sh --wipe-clients
 * Dropping test databases from physical instances(--wipe_setup)
+* Running tests in a cycle(--cycle)
 
 ```
 Percona_Servers]$ python ~/percona-qa/pmm-tests/pmm_stress_test_py/randomized_instances.py  \
---instance_type ps --instance_count 2 --pmm_instance_count 10 --create_databases 10 \
+--instance_type ps --instance_count 1 --pmm_instance_count 2 --create_databases 10 \
 --create_tables 10 --create_sleep_queries 20 ps 10 --create_unique_queries 20 \
---insert_blobs 2 --insert_longtexts 2 10000 --wipe_clients --wipe_setup
-No services under pmm monitoring
-Orchestrator username :  admin
-Orchestrator password :  passw0rd
-[linux:metrics] OK, now monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from perfschema using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Orchestrator username :  admin
-Orchestrator password :  passw0rd
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from perfschema using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=43618 d4028fad-9bd6-4fe9-a840-f776879f6377
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=24022 7938d2f0-47fd-43e6-b403-67e3846ead6e
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=12447 ec1177a4-e07b-4308-a105-82b2617bc3f0
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=58882 970904bb-a6b0-4b32-a8bf-0522fb9f280d
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=56477 d490ba9d-1cb9-4531-849d-23c5d544a89f
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=53564 1b2012a4-452e-4345-9174-af5de585fee6
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=40146 8b527939-4d70-4096-905f-13af4617363b
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=29243 856aa850-be5e-495b-bc91-f41ba573c960
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=29192 462b1f31-9fc0-43c4-b164-2b5a525df65e
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=54043 c3f0b202-814a-433a-a34e-74bb8bd6dacc
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=33272 ab152916-36b3-48f7-856b-6df6e25e6050
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=31609 001c6af1-0dd6-44c5-8e63-1df8ca875382
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=23891 7594b8a2-ce4c-4188-9805-b9639718f28e
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=28666 be7caf06-471f-4a1a-a6a2-32cb2d7ffb8d
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=21119 ad1c2d3e-2412-4e76-96c2-1d99b65d1b91
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=26410 a764db12-be05-427d-a1e9-fb93f67128b9
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=57810 66250435-12af-4725-94e9-e46dec22020d
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=19745 84ffab0d-7dd1-4ad2-9ed5-a8c478f64de1
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=30116 eb6da508-7691-40ae-9526-2d5a07a77c98
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_2.sock --service-port=23497 e1177cba-91ab-476d-a83b-bc48c1fe6726
-[linux:metrics] OK, already monitoring this system.
-[mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-[mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_2.sock)
-Creating databases using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating databases using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating tables using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating tables using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-(py_2.7_pmm)[shahriyar.rzaev@qaserver-02 Percona_Servers]$ Create database using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Create database using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Create table using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Create table using MYSQL_SOCK=/tmp/PS_NODE_1.sock
-Inserting long text into table
-Inserting image into table
-Inserting long text into table
-Inserting image into table
-Create database using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Create database using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Create table using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Create table using MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Inserting image into table
-Inserting long text into table
-Inserting image into table
-Inserting long text into table
-Benchmark
-	Average number of seconds to run all queries: 2.443 seconds
-	Minimum number of seconds to run all queries: 2.443 seconds
-	Maximum number of seconds to run all queries: 2.443 seconds
-	Number of clients running queries: 1
-	Average number of queries per client: 20
+--insert_blobs 2 --insert_longtexts 2 10000 --cycle 4 \
+ --wipe_setup --wipe_clients
 
-MYSQL_SOCK=/tmp/PS_NODE_2.sock
-Benchmark
-	Average number of seconds to run all queries: 1.785 seconds
-	Minimum number of seconds to run all queries: 1.785 seconds
-	Maximum number of seconds to run all queries: 1.785 seconds
-	Number of clients running queries: 1
-	Average number of queries per client: 20
+ Removing all local pmm client instances
+ User 'admin' is already present in MySQL server. Please create Orchestrator user manually.
+ [linux:metrics] OK, now monitoring this system.
+ [mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+ [mysql:queries] OK, now monitoring MySQL queries from perfschema using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+ Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=36538 cea62db2-f26e-4bef-a864-d2c33f2cd8fc
+ [linux:metrics] OK, already monitoring this system.
+ [mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+ [mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+ Running -> sudo pmm-admin add mysql --user=root --socket=/tmp/PS_NODE_1.sock --service-port=22542 417738ec-cb5c-4539-9601-c6e4f47d0e65
+ [linux:metrics] OK, already monitoring this system.
+ [mysql:metrics] OK, now monitoring MySQL metrics using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+ [mysql:queries] OK, now monitoring MySQL queries from slowlog using DSN root:***@unix(/tmp/PS_NODE_1.sock)
+ Starting cycle 1
+ Creating databases using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating tables using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Creating sleep() queries using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Benchmark
+ 	Average number of seconds to run all queries: 0.526 seconds
+ 	Minimum number of seconds to run all queries: 0.526 seconds
+ 	Maximum number of seconds to run all queries: 0.526 seconds
+ 	Number of clients running queries: 1
+ 	Average number of queries per client: 20
+
+ Create database using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Create table using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Inserting image into table
+ Inserting image into table
+ Create database using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Create table using MYSQL_SOCK=/tmp/PS_NODE_1.sock
+ Inserting long text into table
+ Inserting long text into table
+ Cleaning cycle 1
 ```
