@@ -37,9 +37,9 @@ function execute_sql() {
 
 function run_generated_columns_test() {
   if [[ $tap == 1 ]] ; then
-    bats --tap $DIRNAME/generated_columns.bats $1
+    bats --tap $DIRNAME/generated_columns.bats
   else
-    bats $DIRNAME/generated_columns.bats $1
+    bats $DIRNAME/generated_columns.bats
   fi
 }
 
@@ -82,4 +82,4 @@ execute_sql ${BASEDIR} "${ALTER}"
 
 # Calling generated_columns.bats file here
 echo "Running generated_columns.bats"
-run_generated_columns_test ${BASEDIR}
+run_generated_columns_test
