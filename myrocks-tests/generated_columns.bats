@@ -6,15 +6,9 @@
 
 # Will be passed from myrocks-testsuite.sh
 
-WORKDIR="${PWD}"
-DIRNAME="$BATS_TEST_DIRNAME"
-DIRNAME=$(dirname "$0")
-
-BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
-
 function execute_sql() {
   # General function to pass sql statement to mysql client
-   ${BASEDIR}/cl -e "$1"
+   ./cl -e "$1"
 }
 
 @test "Adding virtual generated column" {
