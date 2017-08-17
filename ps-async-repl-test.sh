@@ -6,6 +6,7 @@
 SBENCH="sysbench"
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 WORKDIR=$1
+ENGINE=$2
 ROOT_FS=$WORKDIR
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 PS_START_TIMEOUT=60
@@ -35,6 +36,17 @@ fi
 
 if [ -z ${TCOUNT} ]; then
   TCOUNT=16
+fi
+
+if [ "$ENGINE" == "INNODB" ]; then
+  MYEXTRA_ENGINE="--default-storage-engine=INNODB"
+elif [ "$ENGINE" == "ROCKSDB" ]; then
+  MYEXTRA_ENGINE="--plugin-load-add=rocksdb=ha_rocksdb.so  --init-file=${SCRIPT_PWD}/MyRocks.sql --default-storage-engine=ROCKSDB "
+elif [ "$ENGINE" == "TOKUDB" ]; then
+  MYEXTRA_ENGINE=" --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/TokuDB.sql --default-storage-engine=TokuDB"
+else
+  MYEXTRA_ENGINE=""
+  ENGINE="INNODB"
 fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
@@ -90,13 +102,13 @@ sysbench_run(){
   DB="$2"
   if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
-      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-storage-engine=$ENGINE --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
     fi
   elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-storage-engine=$ENGINE --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
@@ -152,8 +164,8 @@ function async_rpl_test(){
       ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
   
       ${PS_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-       --basedir=${PS_BASEDIR} $STARTUP_OPTION --datadir=$node \
-       --innodb_file_per_table --default-storage-engine=InnoDB \
+       --basedir=${PS_BASEDIR} $STARTUP_OPTION $MYEXTRA_ENGINE --datadir=$node \
+       --innodb_file_per_table \
        --binlog-format=ROW --log-bin=mysql-bin --server-id=20${i} $MYEXTRA \
        --innodb_flush_method=O_DIRECT --core-file --loose-new \
        --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= \
