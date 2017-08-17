@@ -20,12 +20,14 @@ function run_startup() {
 }
 
 function start_server() {
-  $1/start
+  cd $1
+  start
 }
 
 function execute_sql() {
   # General function to pass sql statement to mysql client
-   $1/cl -e "$2"
+    conn_string=$(cat $1/cl)
+    ${conn_string} -e "$2"
 }
 
 # Run clone and build here
@@ -35,7 +37,7 @@ echo "Cloning and Building server from repo"
 # Get BASEDIR here
 BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
 
-Run startup.sh here
+# Run startup.sh here
 echo "Running startup.sh from percona-qa"
 run_startup ${BASEDIR}
 
@@ -44,10 +46,12 @@ echo "Starting Server!"
 start_server ${BASEDIR}
 
 # Create sample database here
+echo "Creating sample database"
 DB="create database generated_columns_test"
 execute_sql ${BASEDIR} ${DB}
 
 # Create sample table here
+echo "Creating sample table"
 TABLE="CREATE TABLE generated_columns_test.sbtest1 (
   id int(11) NOT NULL AUTO_INCREMENT,
   k int(11) NOT NULL DEFAULT '0',
@@ -58,5 +62,6 @@ TABLE="CREATE TABLE generated_columns_test.sbtest1 (
 execute_sql ${BASEDIR} ${TABLE}
 
 # Altering table engine to MyRocks here
+echo "Altering table engine"
 ALTER="alter table generated_columns_test.sbtest1 engine=rocksdb"
 execute_sql ${BASEDIR} ${ALTER}
