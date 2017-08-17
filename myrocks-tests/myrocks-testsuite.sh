@@ -5,7 +5,6 @@
 WORKDIR="${PWD}"
 DIRNAME="$BATS_TEST_DIRNAME"
 DIRNAME=$(dirname "$0")
-DIR2="$BATS_TEST_FILENAME"
 
 # Preparing test env
 
@@ -37,7 +36,7 @@ echo "Cloning and Building server from repo"
 BASEDIR=$(ls -1td PS* | grep -v ".tar" | grep PS[0-9])
 echo ${DIRNAME}
 echo ${BASEDIR}
-echo ${DIR2}
+echo ${DIRNAME}/${BASEDIR}
 
 # Run startup.sh here
 # echo "Running startup.sh from percona-qa"
