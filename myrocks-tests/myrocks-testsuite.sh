@@ -30,37 +30,33 @@ function execute_sql() {
 
 # Run clone and build here
 echo "Cloning and Building server from repo"
-#clone_and_build ${DIRNAME}
+#clone_and_build ${WORKDIR}
 
 # Get BASEDIR here
-BASEDIR=$(ls -1td PS* | grep -v ".tar" | grep PS[0-9])
-echo ${DIRNAME}
-echo ${BASEDIR}
-echo ${DIRNAME}/${BASEDIR}
-echo ${WORKDIR}
+BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
 
-# Run startup.sh here
-# echo "Running startup.sh from percona-qa"
-# run_startup ${DIRNAME} ${BASEDIR}
-#
-# # Start server here
-# echo "Starting Server!"
-# start_server ${DIRNAME} ${BASEDIR}
-#
-# # Create sample database here
-# DB="create database generated_columns_test"
-# execute_sql ${DIRNAME} ${BASEDIR} ${DB}
-#
-# # Create sample table here
-# TABLE="CREATE TABLE generated_columns_test.sbtest1 (
-#   id int(11) NOT NULL AUTO_INCREMENT,
-#   k int(11) NOT NULL DEFAULT '0',
-#   c char(120) NOT NULL DEFAULT '',
-#   pad char(60) NOT NULL DEFAULT '',
-#   PRIMARY KEY (`id`)
-# ) ENGINE=InnoDB"
-# execute_sql ${DIRNAME} ${BASEDIR} ${TABLE}
-#
-# # Altering table engine to MyRocks here
-# ALTER="alter table generated_columns_test.sbtest1 engine=rocksdb"
-# execute_sql ${DIRNAME} ${BASEDIR} ${ALTER}
+Run startup.sh here
+echo "Running startup.sh from percona-qa"
+run_startup ${WORKDIR} ${BASEDIR}
+
+# Start server here
+echo "Starting Server!"
+start_server ${WORKDIR} ${BASEDIR}
+
+# Create sample database here
+DB="create database generated_columns_test"
+execute_sql ${WORKDIR} ${BASEDIR} ${DB}
+
+# Create sample table here
+TABLE="CREATE TABLE generated_columns_test.sbtest1 (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  k int(11) NOT NULL DEFAULT '0',
+  c char(120) NOT NULL DEFAULT '',
+  pad char(60) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB"
+execute_sql ${WORKDIR} ${BASEDIR} ${TABLE}
+
+# Altering table engine to MyRocks here
+ALTER="alter table generated_columns_test.sbtest1 engine=rocksdb"
+execute_sql ${WORKDIR} ${BASEDIR} ${ALTER}
