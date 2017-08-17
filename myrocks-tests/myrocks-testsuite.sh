@@ -55,6 +55,7 @@ function run_json_test() {
 echo "Cloning and Building server from repo"
 if [[ $clone == 1 ]] ; then
   clone_and_build ${WORKDIR}
+fi
 
 # Get BASEDIR here
 BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
