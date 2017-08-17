@@ -10,11 +10,12 @@ DIRNAME=$(dirname "$0")
 
 function clone_and_build() {
   git clone --recursive --depth=1 https://github.com/percona/percona-server.git -b 5.7 PS-5.7-trunk
-  cd PS-5.7-trunk
+  cd ${DIRNAME}/PS-5.7-trunk
   ~/percona-qa/build_5.x_debug.sh
 }
 
 function startup() {
+  cd ${DIRNAME}/PS-5.7-trunk
   ~/percona-qa/startup.sh
 }
 
