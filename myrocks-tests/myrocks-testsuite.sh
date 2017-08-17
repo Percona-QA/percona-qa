@@ -24,11 +24,18 @@ function start_server() {
   ./start
 }
 
+function fresh_server() {
+  cd $1
+  ./all
+}
+
 function execute_sql() {
   # General function to pass sql statement to mysql client
     conn_string=$(cat $1/cl)
-    ${conn_string} -e "$2"
+    echo ${conn_string} -e "$2"
 }
+
+
 
 # Run clone and build here
 echo "Cloning and Building server from repo"
