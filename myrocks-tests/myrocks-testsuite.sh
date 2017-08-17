@@ -43,6 +43,13 @@ function run_generated_columns_test() {
   fi
 }
 
+function run_json_test() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/json.bats
+  else
+    bats $DIRNAME/json.bats
+  fi
+}
 
 # Run clone and build here
 echo "Cloning and Building server from repo"
@@ -83,3 +90,7 @@ execute_sql ${BASEDIR} "${ALTER}"
 # Calling generated_columns.bats file here
 echo "Running generated_columns.bats"
 run_generated_columns_test
+
+# Calling json.bats file here
+echo "Running json.bats"
+run_json_test
