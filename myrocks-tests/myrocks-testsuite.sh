@@ -35,12 +35,11 @@ function execute_sql() {
     ${conn_string} -e "$2"
 }
 
-function execute_bats() {
-  # General function to pass bats file name to run
+function run_generated_columns_test() {
   if [[ $tap == 1 ]] ; then
-    echo bats --tap $DIRNAME/$1 $2
+    bats --tap $DIRNAME/generated_columns.bats ${BASEDIR}
   else
-    echo bats $DIRNAME/$1 $2
+    bats $DIRNAME/generated_columns.bats ${BASEDIR}
   fi
 }
 
@@ -83,4 +82,4 @@ execute_sql ${BASEDIR} "${ALTER}"
 
 # Calling generated_columns.bats file here
 echo "Running generated_columns.bats"
-execute_bats generated_columns.bats ${BASEDIR}
+run_generated_columns_test
