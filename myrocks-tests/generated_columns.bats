@@ -5,6 +5,8 @@
 # Will be passed from myrocks-testsuite.sh
 BASEDIR=$1
 
+echo ${BASEDIR}
+
 function execute_sql() {
   # General function to pass sql statement to mysql client
    ${BASEDIR}/cl -e "$1"

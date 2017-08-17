@@ -38,9 +38,9 @@ function execute_sql() {
 function execute_bats() {
   # General function to pass bats file name to run
   if [[ $tap == 1 ]] ; then
-    bats --tap $DIRNAME/$1 $2
+    echo bats --tap $DIRNAME/$1 $2
   else
-    bats $DIRNAME/$1 $2
+    echo bats $DIRNAME/$1 $2
   fi
 }
 
