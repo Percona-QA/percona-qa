@@ -12,6 +12,6 @@ function execute_sql() {
 
 @test "Adding virtual generated column" {
   ALTER="alter table generated_columns_test.sbtest1 add column json_test_v json generated always as (json_array(k,c,pad)) virtual"
-  result=execute_sql "$ALTER"
+  execute_sql "$ALTER"
   echo $output
 }
