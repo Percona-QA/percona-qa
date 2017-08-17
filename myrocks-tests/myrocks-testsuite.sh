@@ -21,7 +21,7 @@ function run_startup() {
 
 function start_server() {
   cd $1
-  start
+  ./start
 }
 
 function execute_sql() {
