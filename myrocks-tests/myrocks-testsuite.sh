@@ -32,7 +32,7 @@ function fresh_server() {
 function execute_sql() {
   # General function to pass sql statement to mysql client
     conn_string=$(cat $1/cl)
-    echo ${conn_string} -e ""$2""
+    ${conn_string} -e ""$2""
 }
 
 
