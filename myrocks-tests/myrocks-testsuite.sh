@@ -64,7 +64,7 @@ TABLE="CREATE TABLE generated_columns_test.sbtest1 (
   k int(11) NOT NULL DEFAULT '0',
   c char(120) NOT NULL DEFAULT '',
   pad char(60) NOT NULL DEFAULT '',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (id)
 ) ENGINE=InnoDB"
 execute_sql ${BASEDIR} "${TABLE}"
 
