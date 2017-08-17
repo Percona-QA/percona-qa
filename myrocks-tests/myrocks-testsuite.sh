@@ -35,6 +35,14 @@ function execute_sql() {
     ${conn_string} -e "$2"
 }
 
+function execute_bats() {
+  # General function to pass bats file name to run
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/$1
+  else
+    bats $DIRNAME/$1
+  fi
+}
 
 
 # Run clone and build here
@@ -72,3 +80,7 @@ execute_sql ${BASEDIR} "${TABLE}"
 echo "Altering table engine"
 ALTER="alter table generated_columns_test.sbtest1 engine=rocksdb"
 execute_sql ${BASEDIR} "${ALTER}"
+
+# Calling generated_columns.bats file here
+echo "Running generated_columns.bats"
+execute_bats generated_columns.bats

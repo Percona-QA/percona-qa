@@ -3,14 +3,15 @@
 # Bats tests for generated columns with MyRocks.
 
 # Will be passed from myrocks-testsuite.sh
-DIRNAME=$1
-BASEDIR=$2
+BASEDIR=$1
 
 function execute_sql() {
   # General function to pass sql statement to mysql client
-   ${DIRNAME}/${BASEDIR}/cl -e "$1"
+   ${BASEDIR}/cl -e "$1"
 }
 
 @test "Adding virtual generated column" {
-  result=execute_sql "alter table generated_columns_test.sbtest1 add column json_test_v json generated always as (json_array(k,c,pad)) virtual;"
+  ALTER="alter table generated_columns_test.sbtest1 add column json_test_v json generated always as (json_array(k,c,pad)) virtual"
+  result=execute_sql "$ALTER"
+  echo $output
 }
