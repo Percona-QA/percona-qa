@@ -11,22 +11,19 @@ DIRNAME=$(dirname "$0")
 function clone_and_build() {
   git clone --recursive --depth=1 https://github.com/percona/percona-server.git -b 5.7 PS-5.7-trunk
   cd $1/PS-5.7-trunk
+  # from percona-qa repo
   ~/percona-qa/build_5.x_debug.sh
 }
 
 function run_startup() {
   cd $1
+  # from percona-qa repo
   ~/percona-qa/startup.sh
 }
 
 function start_server() {
   cd $1
   ./start
-}
-
-function fresh_server() {
-  cd $1
-  ./all
 }
 
 function execute_sql() {
@@ -52,9 +49,11 @@ function run_json_test() {
 }
 
 # Run clone and build here
-echo "Cloning and Building server from repo"
 if [[ $clone == 1 ]] ; then
+  echo "Clone and Build server from repo"
   clone_and_build ${WORKDIR}
+else
+  echo "Skipping Clone and Build"
 fi
 
 # Get BASEDIR here
