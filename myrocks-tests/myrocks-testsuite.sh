@@ -37,6 +37,7 @@ BASEDIR=$(ls -1td PS* | grep -v ".tar" | grep PS[0-9])
 echo ${DIRNAME}
 echo ${BASEDIR}
 echo ${DIRNAME}/${BASEDIR}
+echo ${WORKDIR}
 
 # Run startup.sh here
 # echo "Running startup.sh from percona-qa"
