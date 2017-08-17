@@ -246,6 +246,7 @@ def create_unique_query(query_count, i_type):
                         stdin=None,
                         stdout=None,
                         stderr=None)
+        output, error = process.communicate()
     except Exception as e:
         print(e)
     else:
@@ -266,6 +267,7 @@ def insert_blob(insert_count, i_type):
                         stdin=None,
                         stdout=None,
                         stderr=None)
+        output, error = process.communicate()
     except Exception as e:
         print(e)
     else:
@@ -286,6 +288,7 @@ def insert_longtext(i_type, insert_count, string_length):
                         stdin=None,
                         stdout=None,
                         stderr=None)
+        output, error = process.communicate()
     except Exception as e:
         print(e)
     else:
@@ -314,7 +317,7 @@ def clean_env(i_type):
                                 stdin=None,
                                 stdout=None,
                                 stderr=None)
-                output, error = process.communicate()                
+                output, error = process.communicate()
         except Exception as e:
             print(e)
 
@@ -409,13 +412,20 @@ def print_version(ctx, param, value):
     is_flag=True,
     help="Remove test database and tables from physical instances"
 )
+@click.option(
+    "--cycle",
+    type=int,
+    nargs=1,
+    default=1,
+    help="Run tests in a cycle"
+)
 
 def run_all(threads, instance_type,
             instance_count, pmm_instance_count,
             create_databases, create_tables,
             create_sleep_queries, create_unique_queries,
             insert_blobs, insert_longtexts,
-            wipe_clients, wipe_setup):
+            wipe_clients, wipe_setup, cycle):
     if (not threads) and (not instance_type) and (not instance_count) and (not pmm_instance_count) and (not create_databases):
         print("ERROR: you must give an option, run with --help for available options")
     else:
@@ -424,18 +434,23 @@ def run_all(threads, instance_type,
             clean_env(instance_type)
         if instance_count > 0:
             runner(pmm_instance_count, instance_type, instance_count, wipe_clients, threads)
-        if create_databases:
-            create_db(create_databases, instance_type)
-        if create_tables:
-            create_table(create_tables, instance_type)
-        if create_sleep_queries:
-            run_sleep_query(int(create_sleep_queries[0]), str(create_sleep_queries[1]), int(create_sleep_queries[2]))
-        if create_unique_queries:
-            create_unique_query(create_unique_queries, instance_type)
-        if insert_blobs:
-            insert_blob(insert_blobs, instance_type)
-        if insert_longtexts:
-            insert_longtext(instance_type, insert_longtexts[0], insert_longtexts[1])
+        if cycle > 0:
+            for i in range(1,cycle+1):
+                print("Starting cycle {}".format(i))
+                if create_databases:
+                    create_db(create_databases, instance_type)
+                if create_tables:
+                    create_table(create_tables, instance_type)
+                if create_sleep_queries:
+                    run_sleep_query(int(create_sleep_queries[0]), str(create_sleep_queries[1]), int(create_sleep_queries[2]))
+                if create_unique_queries:
+                    create_unique_query(create_unique_queries, instance_type)
+                if insert_blobs:
+                    insert_blob(insert_blobs, instance_type)
+                if insert_longtexts:
+                    insert_longtext(instance_type, insert_longtexts[0], insert_longtexts[1])
+                print("Cleaning cycle {}".format(i))
+                clean_env(instance_type)
 
 
 
