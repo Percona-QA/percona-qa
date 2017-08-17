@@ -6,13 +6,9 @@
 
 # Will be passed from myrocks-testsuite.sh
 
-function execute_sql() {
-  # General function to pass sql statement to mysql client
-   ./cl -e "$1"
-}
 
 @test "Adding virtual generated column" {
   ALTER="alter table generated_columns_test.sbtest1 add column json_test_v json generated always as (json_array(k,c,pad)) virtual"
-  execute_sql "$ALTER"
+  run ./cl -e ""$ALTER""
   echo $output
 }
