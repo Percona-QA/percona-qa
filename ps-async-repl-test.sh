@@ -406,7 +406,8 @@ function async_rpl_test(){
     sleep 10
     echoit "3. PS master master: Checksum result."
     if [ "$ENGINE" == "ROCKSDB" ]; then
-      run_mysqldbcompare "sbtest_ps_master_1:sbtest_ps_master_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "sbtest_ps_master_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "sbtest_ps_master_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
       run_pt_table_checksum "sbtest_ps_master_1,sbtest_ps_master_2" "/tmp/ps1.sock"
     fi
@@ -600,7 +601,16 @@ function async_rpl_test(){
     sleep 10
     echoit "5. multi thread replication: Checksum result."
     if [ "$ENGINE" == "ROCKSDB" ]; then
-      run_mysqldbcompare "mtr_db_ps1_1:mtr_db_ps1_2:mtr_db_ps1_3:mtr_db_ps1_4:mtr_db_ps1_5:mtr_db_ps2_1:mtr_db_ps2_2:mtr_db_ps2_3:mtr_db_ps2_4:mtr_db_ps2_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps1_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps1_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps1_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps1_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps1_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps2_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps2_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps3_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps4_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps5_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
       run_pt_table_checksum "mtr_db_ps1_1,mtr_db_ps1_2,mtr_db_ps1_3,mtr_db_ps1_4,mtr_db_ps1_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5"  "/tmp/ps1.sock"
     fi
