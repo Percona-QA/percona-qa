@@ -89,6 +89,22 @@ else
   export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
 fi
 
+#Check MySQL utilities binary tar ball
+MU_TAR=`ls -1td mysql-utilities* | grep ".tar" | head -n1`
+if [ ! -z $MU_TAR ];then
+  tar -xzf $MU_TAR
+  MUBASE=`ls -1td mysql-utilities* | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$MUBASE/bin:$PATH"
+else
+  wget https://dev.mysql.com/get/Downloads/MySQLGUITools/mysql-utilities-1.5.6.tar.gz
+  MU_TAR=`ls -1td mysql-utilities* | grep ".tar" | head -n1`
+  tar -xzf $MU_TAR
+  MUBASE=`ls -1td mysql-utilities* | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$MUBASE/bin:$PATH"
+fi
+
+https://dev.mysql.com/get/Downloads/MySQLGUITools/mysql-utilities-1.5.6.tar.gz
+
 #Check sysbench 
 if [[ ! -e `which sysbench` ]];then 
     echoit "Sysbench not found" 
@@ -189,9 +205,15 @@ function async_rpl_test(){
   
   function run_pt_table_checksum(){
     DATABASES=$1
-    LOG_FILE=$2
-    SOCKET=$3
+    SOCKET=$2
     pt-table-checksum S=$SOCKET,u=root -d $DATABASES --recursion-method hosts --no-check-binlog-format
+    check_cmd $?
+  }
+  function run_mysqldbcompare(){
+    DATABASES=$1
+    MASTER_SOCKET=$2
+    SLAVE_SOCKET=$3
+    mysqldbcompare --server1=root@localhost:$MASTER_SOCKET --server2=root@localhost:$SLAVE_SOCKET $DATABASES --changes-for=server2  --difftype=sql
     check_cmd $?
   }
   
@@ -299,7 +321,11 @@ function async_rpl_test(){
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
     sleep 10
     echoit "1. PS master slave: Checksum result."
-    run_pt_table_checksum "sbtest_ps_master" "$WORKDIR/logs/master_slave_checksum.log" "/tmp/ps1.sock"
+    if [ "$ENGINE" == "ROCKSDB" ]; then
+      run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps2.sock"
+    else
+      run_pt_table_checksum "sbtest_ps_master" "/tmp/ps1.sock"
+    fi
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
@@ -338,7 +364,13 @@ function async_rpl_test(){
     slave_sync_check "/tmp/ps4.sock" "$WORKDIR/logs/slave_status_psnode4.log" "$WORKDIR/logs/psnode4.err"
     sleep 10
     echoit "2. PS master multi slave: Checksum result."
-    run_pt_table_checksum "sbtest_ps_master" "$WORKDIR/logs/master_multi_slave_checksum.log" "/tmp/ps1.sock"
+    if [ "$ENGINE" == "ROCKSDB" ]; then
+      run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps3.sock"
+      run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps4.sock"
+    else
+      run_pt_table_checksum "sbtest_ps_master" "/tmp/ps1.sock"
+    fi
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
@@ -373,7 +405,11 @@ function async_rpl_test(){
 
     sleep 10
     echoit "3. PS master master: Checksum result."
-    run_pt_table_checksum "sbtest_ps_master_1,sbtest_ps_master_2" "$WORKDIR/logs/master_multi_slave_checksum.log" "/tmp/ps1.sock"
+    if [ "$ENGINE" == "ROCKSDB" ]; then
+      run_mysqldbcompare "sbtest_ps_master_1:sbtest_ps_master_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
+    else
+      run_pt_table_checksum "sbtest_ps_master_1,sbtest_ps_master_2" "/tmp/ps1.sock"
+    fi
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
@@ -441,12 +477,23 @@ function async_rpl_test(){
     done
     sleep 10
     echoit "4. multi source replication: Checksum result."
-    echoit "Checksum for msr_db_master1 database"
-    run_pt_table_checksum "msr_db_master1" "$WORKDIR/logs/msr_db_master1_checksum.log" "/tmp/ps2.sock"
-    echoit "Checksum for msr_db_master2 database"
-    run_pt_table_checksum "msr_db_master2" "$WORKDIR/logs/msr_db_master2_checksum.log" "/tmp/ps3.sock"
-    echoit "Checksum for msr_db_master3 database"
-    run_pt_table_checksum "msr_db_master3" "$WORKDIR/logs/msr_db_master3_checksum.log" "/tmp/ps4.sock"
+
+    if [ "$ENGINE" == "ROCKSDB" ]; then
+      echoit "Checksum for msr_db_master1 database"
+      run_mysqldbcompare "sbtest_ps_master_1" "/tmp/ps2.sock" "/tmp/ps1.sock"
+      echoit "Checksum for msr_db_master2 database"
+      run_mysqldbcompare "sbtest_ps_master_2" "/tmp/ps3.sock" "/tmp/ps1.sock"
+      echoit "Checksum for msr_db_master3 database"
+      run_mysqldbcompare "sbtest_ps_master_3" "/tmp/ps4.sock" "/tmp/ps1.sock"
+    else
+      echoit "Checksum for msr_db_master1 database"
+      run_pt_table_checksum "msr_db_master1" "/tmp/ps2.sock"
+      echoit "Checksum for msr_db_master2 database"
+      run_pt_table_checksum "msr_db_master2" "/tmp/ps3.sock"
+      echoit "Checksum for msr_db_master3 database"
+      run_pt_table_checksum "msr_db_master3" "/tmp/ps4.sock"
+    fi
+
     #Shutdown PS servers for MSR test
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
@@ -552,7 +599,12 @@ function async_rpl_test(){
 
     sleep 10
     echoit "5. multi thread replication: Checksum result."
-    run_pt_table_checksum "mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5" "$WORKDIR/logs/mtr_checksum.log" "/tmp/ps1.sock"
+    if [ "$ENGINE" == "ROCKSDB" ]; then
+      run_mysqldbcompare "mtr_db_ps1_1:mtr_db_ps1_2:mtr_db_ps1_3:mtr_db_ps1_4:mtr_db_ps1_5:mtr_db_ps2_1:mtr_db_ps2_2:mtr_db_ps2_3:mtr_db_ps2_4:mtr_db_ps2_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
+    else
+      run_pt_table_checksum "mtr_db_ps1_1,mtr_db_ps1_2,mtr_db_ps1_3,mtr_db_ps1_4,mtr_db_ps1_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5"  "/tmp/ps1.sock"
+    fi
+
     #Shutdown PS servers
     echoit "Shuttingdown PS servers"
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
