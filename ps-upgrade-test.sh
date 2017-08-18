@@ -169,9 +169,6 @@ perl mysql-test-run.pl \
 set -e
 popd
 
-#Install TokuDB plugin
-echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock 
-$PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/TokuDB.sql
 echoit "Sysbench Run: Prepare stage"
 sysbench_run innodb test
 $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_lower.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
@@ -194,19 +191,6 @@ create_emp_db employee_3 myisam employees.sql
 echoit "Loading employees partitioned database with myisam engine.."
 create_emp_db employee_4 myisam employees_partitioned.sql
 
-echoit "Drop foreign keys for changing storage engine"
-$PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root -Bse "SELECT CONCAT('ALTER TABlE ',TABLE_SCHEMA,'.',TABLE_NAME,' DROP FOREIGN KEY ',CONSTRAINT_NAME) as a FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_TYPE='FOREIGN KEY' AND TABLE_SCHEMA NOT IN('mysql','information_schema','performance_schema','sys')" | while read drop_key ; do
-  echoit "Executing : $drop_key"
-  echo "$drop_key" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root
-done
-
-echoit "Altering tables to TokuDB.."
-
-$PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root -Bse "select concat('ALTER TABLE ',table_schema,'.',table_name,' ENGINE=TokuDB') as a from information_schema.tables where table_schema not in('mysql','information_schema','performance_schema','sys') and table_type='BASE TABLE'" | while read alter_tbl ; do
-  echoit "Executing : $alter_tbl"
-  echo "$alter_tbl" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root || true  
-done
-
 echoit "Sysbench Run: Creating MyISAM tables"
 echo "CREATE DATABASE sysbench_myisam_db;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root || true
 sysbench_run myisam sysbench_myisam_db
@@ -218,23 +202,29 @@ SBTABLE_LIST=`$PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u roo
 
 $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root sysbench_myisam_db -e"ALTER TABLE sbtest_mrg UNION=($SBTABLE_LIST), ENGINE=MRG_MYISAM" || true
 
-echoit "Loading employees database with tokudb engine for upgrade testing.."
-create_emp_db employee_5 tokudb employees.sql
+if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
+  #Install TokuDB plugin
+  echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock 
+  $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/TokuDB.sql
+  
+  echoit "Loading employees database with tokudb engine for upgrade testing.."
+  create_emp_db employee_5 tokudb employees.sql
 
-echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
-create_emp_db employee_6 tokudb employees_partitioned.sql
+  echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
+  create_emp_db employee_6 tokudb employees_partitioned.sql
+fi
 
-echoit "Loading employees database with innodb engine for upgrade testing.."
-create_emp_db employee_7 innodb employees.sql
+if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
+  #Install TokuDB plugin
+  echo "INSTALL PLUGIN rocksdb SONAME 'ha_rocksdb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock 
+  $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/MyRocks.sql
 
-echoit "Loading employees partitioned database with innodb engine for upgrade testing.."
-create_emp_db employee_8 innodb employees_partitioned.sql
+  echoit "Loading employees database with rocksdb engine for upgrade testing.."
+  create_emp_db employee_7 rocksdb employees.sql
 
-echoit "Loading employees database with myisam engine for upgrade testing.."
-create_emp_db employee_9 myisam employees.sql
-
-echoit "Loading employees partitioned database with myisam engine for upgrade testing.."
-create_emp_db employee_10 myisam employees_partitioned.sql
+  echoit "Loading employees partitioned database with rocksdb engine for upgrade testing.."
+  create_emp_db employee_8 rocksdb employees_partitioned.sql
+fi
 
 #Partition testing with sysbench data
 echo "ALTER TABLE test.sbtest1 PARTITION BY HASH(id) PARTITIONS 8;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root || true
@@ -283,7 +273,7 @@ $PS_UPPER_BASEDIR/bin/mysql -S $WORKDIR/ps_upper.sock  -u root -e "show global v
 echoit "Downgrade testing with mysqlddump and reload.."
 $PS_UPPER_BASEDIR/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=$WORKDIR/ps_upper.sock -uroot --databases `$PS_UPPER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
 
-psdatadir="${MYSQL_VARDIR}/ps56_down"
+psdatadir="${MYSQL_VARDIR}/ps_lower_down"
 PORT1=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 
 pushd ${PS_LOWER_BASEDIR}/mysql-test/
@@ -305,7 +295,7 @@ perl mysql-test-run.pl \
   --mysqld=--core-file \
   --mysqld=--secure-file-priv= \
   --mysqld=--skip-name-resolve \
-  --mysqld=--log-error=$WORKDIR/logs/ps56_down.err \
+  --mysqld=--log-error=$WORKDIR/logs/ps_lower_down.err \
   --mysqld=--socket=$WORKDIR/ps_lower_down.sock \
   --mysqld=--log-output=none \
 1st
@@ -320,7 +310,7 @@ echoit "Checking table status..."
 ${PS_LOWER_BASEDIR}/bin/mysqlcheck -uroot --socket=$WORKDIR/ps_lower_down.sock --check-upgrade --databases $CHECK_DBS 2>&1
 
 ${PS_LOWER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_lower_down.sock shutdown
-$PS_UPPER_BASEDIR/bin/mysqladmin  -S $WORKDIR/ps_upper.sock  -u root shutdown
+${PS_UPPER_BASEDIR}/bin/mysqladmin  -S $WORKDIR/ps_upper.sock  -u root shutdown
 
 
 function startup_check(){
@@ -406,7 +396,7 @@ function rpl_test(){
   fi
   echoit "Replication status : Slave_IO_Running=$SLAVE_IO_STATUS - Slave_SQL_Running=$SLAVE_SQL_STATUS"
 
-  #Upgrade PS 5.6 slave to 5.7 for replication test
+  #Upgrade PS $PS_LOWER_VERSION slave to $PS_UPPER_VERSION for replication test
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_slave.sock -u root shutdown
 
@@ -423,7 +413,7 @@ function rpl_test(){
   sysbench_run innodb test
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_master.sock prepare  2>&1 | tee $WORKDIR/logs/rpl_sysbench_prepare.txt
 
-  #Upgrade PS 5.6 master
+  #Upgrade PS $PS_LOWER_VERSION master
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
 
