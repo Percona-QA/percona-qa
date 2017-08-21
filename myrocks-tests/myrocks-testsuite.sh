@@ -126,7 +126,7 @@ execute_sql ${BASEDIR} "${MYSQLX}"
 
 # Creating user for X Plugin tests
 echo "Creating sample user"
-USER="create user bakux@localhost identified by 'Baku12345#' account unlock"
+USER="create user bakux@localhost identified by 'Baku12345'"
 execute_sql ${BASEDIR} "${USER}"
 
 # Giving "all" grants for new user

@@ -6,7 +6,7 @@ session = mysqlx.get_session({
     'host': 'localhost',
     'port': 33060,
     'user': 'bakux',
-    'password': 'Baku12345#',
+    'password': 'Baku12345',
     'ssl-mode': mysqlx.SSLMode.DISABLED
 })
 
