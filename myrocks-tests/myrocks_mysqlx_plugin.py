@@ -36,5 +36,5 @@ try:
     sql = session.sql("alter table generated_columns_test.my_collection engine=rocksdb")
     sql.execute()
 except mysqlx.errors.OperationalError as exception:
-    print "Checking assert(exception == 'Specified storage engine' is not supported for generated columns.)")
+    print "Checking assert(exception == 'Specified storage engine' is not supported for generated columns.)"
     assert(exception == "'Specified storage engine' is not supported for generated columns.")
