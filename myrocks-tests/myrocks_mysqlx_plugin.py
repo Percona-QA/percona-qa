@@ -1,12 +1,15 @@
 # Connecting to MySQL and working with a Session
 import mysqlx
 
+mysqlx.ssl
+
 # Connect to a dedicated MySQL server
 session = mysqlx.get_session({
     'host': 'localhost',
     'port': 33060,
     'user': 'bakux',
-    'password': 'Baku12345#'
+    'password': 'Baku12345#',
+    'ssl-mode': 'disabled'
 })
 
 schema = session.get_schema('generated_columns_test')

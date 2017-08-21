@@ -124,7 +124,7 @@ MYSQLX="INSTALL PLUGIN mysqlx SONAME 'mysqlx.so'"
 execute_sql ${BASEDIR} "${MYSQLX}"
 
 # Creating user for X Plugin tests
-USER="create user bakux@localhost mysql_native_password AS 'Baku12345#' account unlock"
+USER="create user bakux@localhost identified by 'Baku12345#' account unlock"
 execute_sql ${BASEDIR} "${USER}"
 
 # Giving "all" grants for new user
