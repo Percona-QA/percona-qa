@@ -18,7 +18,7 @@ schema.create_collection('my_collection')
 
 # Get 'my_collection' from schema
 collection = schema.get_collection('my_collection')
-print "assert(True == collection.exists_in_database())"
+print "Checking assert(True == collection.exists_in_database())"
 assert(True == collection.exists_in_database())
 
 # You can also add multiple documents at once
@@ -28,9 +28,13 @@ collection.add({'_id': '2', 'name': 'Sakila', 'age': 15},
             {'_id': '4', 'name': 'Clare', 'age': 37}).execute()
 
 collection.remove('_id = 1').execute()
-print "assert(3 == collection.count())"
+print "Checking assert(3 == collection.count())"
 assert(3 == collection.count())
 
-print "Altering default collection engine from InnoDB to MyRocks"
-sql = session.sql("alter table generated_columns_test.my_collection engine=rocksdb")
-sql.execute()
+print "Altering default collection engine from InnoDB to MyRocks [Should raise an OperationalError]"
+try:
+    sql = session.sql("alter table generated_columns_test.my_collection engine=rocksdb")
+    sql.execute()
+except mysqlx.errors.OperationalError as exception:
+    print "Checking assert(exception == 'Specified storage engine' is not supported for generated columns.)")
+    assert(exception == "'Specified storage engine' is not supported for generated columns.")
