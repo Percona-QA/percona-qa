@@ -15,10 +15,10 @@ schema = session.get_schema('generated_columns_test')
 # Create 'my_collection' in schema
 schema.create_collection('my_collection')
 
-assert(True == collection.exists_in_database())
-
 # Get 'my_collection' from schema
 collection = schema.get_collection('my_collection')
+
+assert(True == collection.exists_in_database())
 
 # You can also add multiple documents at once
 collection.add({'_id': '2', 'name': 'Sakila', 'age': 15},
