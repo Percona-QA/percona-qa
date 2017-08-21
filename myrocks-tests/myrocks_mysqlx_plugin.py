@@ -1,8 +1,6 @@
 # Connecting to MySQL and working with a Session
 import mysqlx
 
-mysqlx.ssl
-
 # Connect to a dedicated MySQL server
 session = mysqlx.get_session({
     'host': 'localhost',
