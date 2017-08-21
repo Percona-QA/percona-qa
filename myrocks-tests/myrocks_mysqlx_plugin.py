@@ -32,5 +32,5 @@ print "assert(3 == collection.count())"
 assert(3 == collection.count())
 
 print "Altering default collection engine from InnoDB to MyRocks"
-sql = mysqlx.SqlStatement(session, "alter table generated_columns_test.my_collection engine=rocksdb")
+sql = session.sql("alter table generated_columns_test.my_collection engine=rocksdb")
 sql.execute()
