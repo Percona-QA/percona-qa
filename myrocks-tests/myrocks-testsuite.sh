@@ -120,16 +120,20 @@ echo "Installing mysql-connector-python"
 install_mysql_connector
 
 # Installing mysqlx plugin
+echo "Installing mysqlx plugin"
 MYSQLX="INSTALL PLUGIN mysqlx SONAME 'mysqlx.so'"
 execute_sql ${BASEDIR} "${MYSQLX}"
 
 # Creating user for X Plugin tests
+echo "Creating sample user"
 USER="create user bakux@localhost identified by 'Baku12345#' account unlock"
 execute_sql ${BASEDIR} "${USER}"
 
 # Giving "all" grants for new user
+echo "Granting sample user"
 GRANT="grant all on *.* to bakux@localhost"
 execute_sql ${BASEDIR} "${GRANT}"
 
 # Calling myrocks_mysqlx_plugin.py file here
+echo "Running X Plugin test"
 run_mysqlx_plugin_test

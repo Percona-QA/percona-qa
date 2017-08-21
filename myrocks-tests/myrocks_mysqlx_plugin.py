@@ -7,7 +7,7 @@ session = mysqlx.get_session({
     'port': 33060,
     'user': 'bakux',
     'password': 'Baku12345#',
-    'ssl-mode': 'disabled'
+    'ssl-mode': mysqlx.SSLMode.DISABLED
 })
 
 schema = session.get_schema('generated_columns_test')
