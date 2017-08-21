@@ -35,5 +35,5 @@ print "Altering default collection engine from InnoDB to MyRocks [Should raise a
 try:
     sql = session.sql("alter table generated_columns_test.my_collection engine=rocksdb")
     sql.execute()
-except mysqlx.errors.OperationalError as exception:
-    print exception + " -> OK"
+except mysqlx.errors.OperationalError as e:
+    print e
