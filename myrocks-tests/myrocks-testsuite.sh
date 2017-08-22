@@ -135,5 +135,5 @@ GRANT="grant all on *.* to bakux@localhost"
 execute_sql ${BASEDIR} "${GRANT}"
 
 # Calling myrocks_mysqlx_plugin.py file here
-echo "Running X Plugin test"
+echo "#Running X Plugin tests#"
 run_mysqlx_plugin_test
