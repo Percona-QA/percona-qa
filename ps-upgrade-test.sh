@@ -215,16 +215,25 @@ if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
 fi
 
 if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
-  #Install TokuDB plugin
+  #Install RocksDB plugin
   echo "INSTALL PLUGIN rocksdb SONAME 'ha_rocksdb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock 
   $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/MyRocks.sql
-
-  echoit "Loading employees database with rocksdb engine for upgrade testing.."
-  create_emp_db employee_7 rocksdb employees.sql
-
-  echoit "Loading employees partitioned database with rocksdb engine for upgrade testing.."
-  create_emp_db employee_8 rocksdb employees_partitioned.sql
+ 
+  echo "DROP DATABASE IF EXISTS rocksdb_test;CREATE DATABASE IF NOT EXISTS rocksdb_test; set global default_storage_engine = ROCKSDB " | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
+  for i in `seq 1 10`; do
+    ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "create table rocksdb_test.t${i} (id int auto_increment,str varchar(32),year_col int, primary key(id,year_col)) PARTITION BY RANGE (year_col) ( PARTITION p0 VALUES LESS THAN (1991), PARTITION p1 VALUES LESS THAN (1995),PARTITION p2 VALUES LESS THAN (1999))" 2>&1
+  done
+  ARR_YEAR=( 1985 1986 1987 1988 1989 1990 1991 1992 1993 1994 1995 1996 1997 1998 1999 )
+  for i in `seq 1 1000`; do
+    for j in `seq 1 10`; do
+      rand=$[$RANDOM % 15]
+      STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+      ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "INSERT INTO rocksdb_test.t${j} (str,year_col) VALUES ('${STRING}',${ARR_YEAR[$rand]})" 
+    done
+  done
 fi
+
+read
 
 #Partition testing with sysbench data
 echo "ALTER TABLE test.sbtest1 PARTITION BY HASH(id) PARTITIONS 8;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root || true
