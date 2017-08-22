@@ -714,7 +714,7 @@ ZN7MDL_map6removeEP8MDL_lock                                                    
 #ZN9ha_myisam5extraE17ha_extra_function                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=76946
 ZN9ha_myisam9write_rowEPh                                                               ## https://bugs.mysql.com/bug.php?id=75083
 ZN9PROFILING13status_changeEPKcS1_S1_j                                                  ## https://bugs.mysql.com/bug.php?id=84826
-ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                                     ## https://bugs.mysql.com/bug.php?id=74953 (Duplicate of internal Bug#17846865)
+#ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74953 (Duplicate of internal Bug#17846865)
 #ZN10Item_fieldC2EP5Field                                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=74628
 #ZN10Item_param22safe_charset_converterEPK15charset_info_st                    ## Fixed ## https://bugs.mysql.com/bug.php?id=76039 (Fixed in 5.5.49, 5.6.30, 5.7.12, 5.8.0)
 #ZN10my_decimalaSERKS_                                                         ## Fixed ## https://bugs.mysql.com/bug.php?id=80438 (Fixed in 5.6.32, 5.7.14)
