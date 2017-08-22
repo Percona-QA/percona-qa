@@ -43,8 +43,8 @@ print "Altering default collection to drop generated column"
 try:
     sql = session.sql("alter table generated_columns_test.my_collection drop column `_id`")
     sql.execute()
-except mysqlx.errors as e:
-    print e
+except Exception as e:
+    raise
 
 print "Altering default collection engine from InnoDB to MyRocks [Should NOT raise an OperationalError]"
 try:
