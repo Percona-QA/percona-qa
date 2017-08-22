@@ -220,6 +220,12 @@ if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
   $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/MyRocks.sql
  
   echo "DROP DATABASE IF EXISTS rocksdb_test;CREATE DATABASE IF NOT EXISTS rocksdb_test; set global default_storage_engine = ROCKSDB " | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
+  
+  echoit "Sysbench rocksdb data load"
+  sysbench_run rocksdb rocksdb_test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_lower.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_rocksdb_prepare.txt
+
+  echoit "Creating rocksdb partitioned tables"
   for i in `seq 1 10`; do
     ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "create table rocksdb_test.t${i} (id int auto_increment,str varchar(32),year_col int, primary key(id,year_col)) PARTITION BY RANGE (year_col) ( PARTITION p0 VALUES LESS THAN (1991), PARTITION p1 VALUES LESS THAN (1995),PARTITION p2 VALUES LESS THAN (1999))" 2>&1
   done
@@ -232,8 +238,6 @@ if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
     done
   done
 fi
-
-read
 
 #Partition testing with sysbench data
 echo "ALTER TABLE test.sbtest1 PARTITION BY HASH(id) PARTITIONS 8;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root || true
