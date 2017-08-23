@@ -505,7 +505,7 @@ bitmap_is_subset.*m_part_info->lock_partitions, .*m_locked_partitions           
 comma_length > 0                                                                        ## https://bugs.mysql.com/bug.php?id=74603 (old LP #1384625)
 cur_shape .= Gcalc_function..shape_point                                                ## https://bugs.mysql.com/bug.php?id=83739 and 84075
 ZN23Gcalc_operation_reducer15get_line_resultEPNS_9res_pointEP21Gcalc_result_receiver    ## https://bugs.mysql.com/bug.php?id=84075
-data_offset == ..null_count                                                             ## https://bugs.mysql.com/bug.php?id=74677
+#data_offset == ..null_count                                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74677
 db_length == copy->db_length                                                            ## https://bugs.mysql.com/bug.php?id=74604 (old LP #1384621)
 decimals_arg <= 30                                                                      ## https://bugs.mysql.com/bug.php?id=83437
 #db_txn_struct_i.txn->parent                                                   ## Fixed ## https://tokutek.atlassian.net/browse/DB-761 (fixed in 5.6.23/Tk7.5.6)
