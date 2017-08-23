@@ -65,8 +65,7 @@ print "Checking assert('my_collection' == table.get_name())"
 assert("my_collection" == table.get_name())
 
 print "Checking assert('generated_columns_test' == table.get_schema())"
-print table.get_schema()
-#assert("generated_columns_test" == table.get_schema())
+assert("generated_columns_test" == table.get_schema().get_name())
 
 print "Checking assert(False == table.is_view())"
 assert(False == table.is_view())
