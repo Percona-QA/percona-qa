@@ -52,3 +52,27 @@ try:
     sql.execute()
 except mysqlx.errors.OperationalError as e:
     print e
+
+print "Trying to access collection using mysqlx.Table"
+table = mysqlx.Table(schema, 'my_collection')
+print "Checking assert(True == table.exists_in_database())"
+assert(True == table.exists_in_database())
+
+print "Checking assert(3 == table.count())"
+assert(3 == table.count())
+
+print "Checking assert('my_collection' == table.get_name())"
+assert("my_collection" == table.get_name())
+
+print "Checking assert('generated_columns_test' == table.get_schema())"
+assert("generated_columns_test" == table.get_schema().get_name())
+
+print "Checking assert(False == table.is_view())"
+assert(False == table.is_view())
+
+print "Trying to create view based on MyRocks collection"
+try:
+    sql = session.sql("create view generated_columns_test.my_collection_view as select * from generated_columns_test.my_collection")
+    sql.execute()
+except Exception as e:
+    raise
