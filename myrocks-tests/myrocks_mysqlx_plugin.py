@@ -54,5 +54,5 @@ except mysqlx.errors.OperationalError as e:
     print e
 
 print "Trying to access collection using mysqlx.Table"
-table = mysqlx.Table(schema, collection)
+table = mysqlx.Table(schema, 'my_collection')
 assert(True == table.exists_in_database())
