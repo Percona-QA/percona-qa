@@ -59,10 +59,9 @@ class TestXPlugin:
         return_value = return_plugin_obj.create_view_from_collection("my_collection_view")
 
     def test_select_from_view(self, return_plugin_obj):
-        return_plugin_obj.select_from_view("my_collection_view")
-        # with pytest.raises(Exception) as er:
-        #     return_plugin_obj.select_from_view("my_collection_view")
-        # print er
+        with pytest.raises(OperationalError) as er:
+             return_plugin_obj.select_from_view("my_collection_view")
+        print er
 
     def test_select_from_table(self, return_plugin_obj):
         with pytest.raises(OperationalError) as er:
