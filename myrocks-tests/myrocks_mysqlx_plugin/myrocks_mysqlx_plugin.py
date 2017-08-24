@@ -15,7 +15,7 @@ class MyXPlugin:
         self.schema_name = schema_name
         self.collection_name = collection_name
 
-        self.schema = session.get_schema(self.schema_name)
+        self.schema = self.session.get_schema(self.schema_name)
         self.schema.create_collection(self.collection_name)
         self.collection_obj = self.schema.get_collection(self.collection_name)
 
