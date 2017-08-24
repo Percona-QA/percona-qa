@@ -1,14 +1,16 @@
-from myrocks_mysqlx_plugin.myrocks_mysqlx_plugin import MyXPlugin
 import pytest
 
 class TestXPlugin:
     """
     Tests for XPlugin + MyRocks
     """
-    def __init__(self):
+    @pytest.fixture(scope="module")
+    def return_plugin_obj():
         # schema_name = "generated_columns_test"
         # collection_name = "my_collection"
-        self.plugin_obj = MyXPlugin("generated_columns_test", "my_collection")
+        from myrocks_mysqlx_plugin.myrocks_mysqlx_plugin import MyXPlugin
+        plugin_obj = MyXPlugin("generated_columns_test", "my_collection")
+        return plugin_obj
 
     def test_check_if_collection_exists(self):
         assert self.plugin_obj.collection_obj.exists_in_database() == True
