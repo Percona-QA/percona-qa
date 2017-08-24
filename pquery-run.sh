@@ -1467,7 +1467,7 @@ pquery_test(){
 if [[ "${INFILE}" == *".tar."* ]]; then
   echoit "The input file is a compressed tarball. This script will untar the file in the same location as the tarball. Please note this overwrites any existing files with the same names as those in the tarball, if any. If the sql input file needs patching (and is part of the github repo), please remember to update the tarball with the new file."
   STORECURPWD=${PWD}
-  cd $(echo ${INFILE} | sed 's|/[^/]\+\.tar\.gz|/|')  # Change to the directory containing the input file
+  cd $(echo ${INFILE} | sed 's|/[^/]\+\.tar\..*|/|')  # Change to the directory containing the input file
   tar -xf ${INFILE}
   cd ${STORECURPWD}
   INFILE=$(echo ${INFILE} | sed 's|\.tar\.gz||')
