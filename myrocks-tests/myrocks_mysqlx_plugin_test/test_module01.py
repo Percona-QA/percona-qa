@@ -4,12 +4,13 @@ class TestXPlugin:
     """
     Tests for XPlugin + MyRocks
     """
+    from myrocks_mysqlx_plugin.myrocks_mysqlx_plugin import MyXPlugin
+    plugin_obj = MyXPlugin("generated_columns_test", "my_collection")
+
     @pytest.fixture(scope="module")
     def return_plugin_obj(self):
         # schema_name = "generated_columns_test"
         # collection_name = "my_collection"
-        from myrocks_mysqlx_plugin.myrocks_mysqlx_plugin import MyXPlugin
-        plugin_obj = MyXPlugin("generated_columns_test", "my_collection")
         return plugin_obj
 
     def test_check_if_collection_exists(self):
