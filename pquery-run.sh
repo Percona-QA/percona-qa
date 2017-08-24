@@ -1470,7 +1470,7 @@ if [[ "${INFILE}" == *".tar."* ]]; then
   cd $(echo ${INFILE} | sed 's|/[^/]\+\.tar\..*|/|')  # Change to the directory containing the input file
   tar -xf ${INFILE}
   cd ${STORECURPWD}
-  INFILE=$(echo ${INFILE} | sed 's|\.tar\.gz||')
+  INFILE=$(echo ${INFILE} | sed 's|\.tar\..*||')
 fi
 rm -Rf ${WORKDIR} ${RUNDIR}
 mkdir ${WORKDIR} ${WORKDIR}/log ${RUNDIR}
