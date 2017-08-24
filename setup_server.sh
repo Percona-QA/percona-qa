@@ -63,7 +63,7 @@ sudo yum install kernel-devel wget patch make cmake automake autoconf bzr git ht
      valgrind perl-DBD-mysql perl-Time-HiRes cpan bzip2 valgrind-devel svn strace screen \
      hdparm pam-devel openssl openssl-devel gtest zlib zlib-devel zlib-static tree vim libasan \
      yum-utils jemalloc-debuginfo readline-devel lshw lscpu iotop pymongo bats lzma lzma \
-     bzip2-devel snappy-dev boost-devel lz4-devel gflags-devel
+     bzip2-devel snappy-dev boost-devel lz4-devel gflags-devel xz
 
 sudo yum remove abrt  # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
 sudo yum remove pulseaudio*  # Only do this on servers, to avoid writing of pulse* files into /dev/shm. Best to leave on workstations (for audio)
