@@ -5,5 +5,5 @@ import pytest
 plugin_obj = MyXPlugin("generated_columns_test", "my_collection")
 
 @pytest.fixture(scope="module")
-def return_plugin_obj(self):
+def return_plugin_obj():
     return plugin_obj
