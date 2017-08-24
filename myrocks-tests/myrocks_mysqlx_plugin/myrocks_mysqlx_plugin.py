@@ -48,7 +48,8 @@ class MyXPlugin:
     def alter_table_engine(self):
         print "Altering default collection engine from InnoDB to MyRocks [Should raise an OperationalError]"
         try:
-            sql = self.session.sql("alter table generated_columns_test.my_collection engine=rocksdb")
+            command = "alter table {}.{} engine=rocksdb".format(self.schema_name, self.collection_name)
+            sql = self.session.sql(command)
             sql.execute()
         except Exception as e:
             raise mysqlx.errors.OperationalError("Could not alter engine of table here!")
@@ -58,7 +59,8 @@ class MyXPlugin:
     def alter_table_drop_column(self):
         print "Altering default collection to drop generated column"
         try:
-            sql = self.session.sql("alter table generated_columns_test.my_collection drop column `_id`")
+            command = "alter table {}.{} drop column `_id`".format(self.schema_name, self.collection_name)
+            sql = self.session.sql(command)
             sql.execute()
         except Exception as e:
             raise
@@ -71,9 +73,9 @@ class MyXPlugin:
     #     sql.execute()
     # except mysqlx.errors.OperationalError as e:
     #     print e
-    def return_table_obj(self, dbname, collection_name):
+    def return_table_obj(self):
         print "Trying to access collection using mysqlx.Table"
-        table = mysqlx.Table(dbname, collection_name)
+        table = mysqlx.Table(self.schema_name, self.collection_name)
         return table
 # print "Checking assert(True == table.exists_in_database())"
 # assert(True == table.exists_in_database())
@@ -89,20 +91,22 @@ class MyXPlugin:
 #
 # print "Checking assert(False == table.is_view())"
 # assert(False == table.is_view())
-    def create_view_from_collection(self):
+    def create_view_from_collection(self, view_name):
         print "Trying to create view based on MyRocks collection"
         try:
-            sql = self.session.sql("create view generated_columns_test.my_collection_view as select * from generated_columns_test.my_collection")
+            command = "create view {}.{} as select * from {}.{}".format(self.schema_name, view_name, self.schema_name, self.collection_name)
+            sql = self.session.sql(command)
             sql.execute()
         except Exception as e:
             raise
         else:
             return 0
 
-    def select_from_view(self):
+    def select_from_view(self, view_name):
         print "Trying to select from view [Should raise an OperationalError]"
         try:
-            sql = self.session.sql("select * from generated_columns_test.my_collection_view")
+            command = "select * from {}.{}".format(self.schema_name, view_name)
+            sql = self.session.sql(command)
             sql.execute()
         except Exception as e:
             raise

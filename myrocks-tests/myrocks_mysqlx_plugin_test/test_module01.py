@@ -1,4 +1,5 @@
 import pytest
+from mysqlx.errors import OperationalError
 
 @pytest.mark.usefixtures("return_plugin_obj")
 class TestXPlugin:
