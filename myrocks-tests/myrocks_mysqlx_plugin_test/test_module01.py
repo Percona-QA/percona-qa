@@ -63,3 +63,6 @@ class TestXPlugin:
         # with pytest.raises(Exception) as er:
         #     return_plugin_obj.select_from_view("my_collection_view")
         # print er
+
+    def test_select_from_table(self, return_plugin_obj):
+        return_plugin_obj.select_from_table()
