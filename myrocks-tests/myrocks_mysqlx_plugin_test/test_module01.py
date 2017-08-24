@@ -7,27 +7,27 @@ class TestXPlugin:
     """
 
     def test_check_if_collection_exists(self):
-        assert plugin_obj.collection_obj.exists_in_database() == True
+        assert self.plugin_obj.collection_obj.exists_in_database() == True
 
     def test_check_collection_count(self):
-        assert plugin_obj.collection_obj.count() == 3
+        assert self.plugin_obj.collection_obj.count() == 3
 
     def test_alter_table_engine_raises(self):
         # Should raise error here
         with pytest.raises(OperationalError) as er:
-            plugin_obj.alter_table_engine()
+            self.plugin_obj.alter_table_engine()
         print er
 
     def test_alter_table_drop_column(self):
-        return_value = plugin_obj.alter_table_drop_column()
+        return_value = self.plugin_obj.alter_table_drop_column()
         assert return_value == 0
 
     def test_alter_table_engine(self):
-        return_value = plugin_obj.alter_table_engine()
+        return_value = self.plugin_obj.alter_table_engine()
         assert return_value == 0
 
     def helper_function(self):
-        table_obj = plugin_obj.return_table_obj()
+        table_obj = self.plugin_obj.return_table_obj()
         return table_obj
 
     def test_check_if_table_exists(self):
@@ -46,4 +46,4 @@ class TestXPlugin:
         assert self.helper_function().is_view() == False
 
     def test_create_view_from_collection(self):
-        return_value = plugin_obj.create_view_from_collection()
+        return_value = self.plugin_obj.create_view_from_collection()
