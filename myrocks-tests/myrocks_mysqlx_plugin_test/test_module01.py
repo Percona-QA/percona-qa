@@ -45,5 +45,5 @@ class TestXPlugin:
     def test_check_if_table_is_view(self):
         assert self.helper_function().is_view() == False
 
-    def test_create_view_from_collection(self):
+    def test_create_view_from_collection(self, return_plugin_obj):
         return_value = return_plugin_obj.create_view_from_collection()
