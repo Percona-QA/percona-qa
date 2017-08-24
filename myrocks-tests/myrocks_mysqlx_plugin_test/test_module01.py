@@ -6,27 +6,27 @@ class TestXPlugin:
     Tests for XPlugin + MyRocks
     """
 
-    def test_check_if_collection_exists(self):
+    def test_check_if_collection_exists(self, return_plugin_obj):
         assert return_plugin_obj.collection_obj.exists_in_database() == True
 
-    def test_check_collection_count(self):
+    def test_check_collection_count(self, return_plugin_obj):
         assert return_plugin_obj.collection_obj.count() == 3
 
-    def test_alter_table_engine_raises(self):
+    def test_alter_table_engine_raises(self, return_plugin_obj):
         # Should raise error here
         with pytest.raises(OperationalError) as er:
             return_plugin_obj.alter_table_engine()
         print er
 
-    def test_alter_table_drop_column(self):
+    def test_alter_table_drop_column(self, return_plugin_obj):
         return_value = return_plugin_obj.alter_table_drop_column()
         assert return_value == 0
 
-    def test_alter_table_engine(self):
+    def test_alter_table_engine(self, return_plugin_obj):
         return_value = return_plugin_obj.alter_table_engine()
         assert return_value == 0
 
-    def helper_function(self):
+    def helper_function(self, return_plugin_obj):
         table_obj = return_plugin_obj.return_table_obj()
         return table_obj
 
