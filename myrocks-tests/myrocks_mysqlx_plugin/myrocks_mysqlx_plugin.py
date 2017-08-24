@@ -1,3 +1,5 @@
+# Created by Shahriyar Rzayev from Percona
+
 # Connecting to MySQL and working with a Session
 import mysqlx
 
@@ -12,26 +14,17 @@ class MyXPlugin:
             'password': 'Baku12345',
             'ssl-mode': mysqlx.SSLMode.DISABLED
         })
+
         self.schema_name = schema_name
         self.collection_name = collection_name
 
+        # Getting schema object
         self.schema = self.session.get_schema(self.schema_name)
+        # Creating collection
         self.schema.create_collection(self.collection_name)
+        # Getting collection object
         self.collection_obj = self.schema.get_collection(self.collection_name)
 
-    # def create_collection(self, collection_name):
-    #     # Create 'my_collection' in schema
-    #     print "Creating collection"
-    #     self.schema.create_collection(collection_name)
-    #
-    # def return_collection_obj(self, collection_name):
-    #     collection_obj = schema.get_collection(collection_name)
-    #     return collection_obj
-
-    # # Get 'my_collection' from schema
-    #
-    # print "Checking assert(True == collection.exists_in_database())"
-    # assert(True == collection.exists_in_database())
 
     def insert_into_collection(self):
         # You can also add multiple documents at once
@@ -41,12 +34,12 @@ class MyXPlugin:
                     {'_id': '4', 'name': 'Clare', 'age': 37}).execute()
 
     def remove_from_collection(self):
+        # Removing non-existing _id
         self.collection_obj.remove('_id = 1').execute()
 
-# print "Checking assert(3 == collection.count())"
-# assert(3 == collection.count())
+
     def alter_table_engine(self):
-        print "Altering default collection engine from InnoDB to MyRocks [Should raise an OperationalError]"
+        # Altering table engine to rocksdb; Should raise an error
         try:
             command = "alter table {}.{} engine=rocksdb".format(self.schema_name, self.collection_name)
             sql = self.session.sql(command)
@@ -57,6 +50,7 @@ class MyXPlugin:
             return 0
 
     def alter_table_drop_column(self):
+        # Dropping generated column
         print "Altering default collection to drop generated column"
         try:
             command = "alter table {}.{} drop column `_id`".format(self.schema_name, self.collection_name)
@@ -67,31 +61,13 @@ class MyXPlugin:
         else:
             return 0
 
-    # print "Altering default collection engine from InnoDB to MyRocks [Should NOT raise an OperationalError]"
-    # try:
-    #     sql = session.sql("alter table generated_columns_test.my_collection engine=rocksdb")
-    #     sql.execute()
-    # except mysqlx.errors.OperationalError as e:
-    #     print e
     def return_table_obj(self):
-        print "Trying to access collection using mysqlx.Table"
+        # Returning Table object
         table = mysqlx.Table(self.schema, self.collection_name)
         return table
-# print "Checking assert(True == table.exists_in_database())"
-# assert(True == table.exists_in_database())
-#
-# print "Checking assert(3 == table.count())"
-# assert(3 == table.count())
-#
-# print "Checking assert('my_collection' == table.get_name())"
-# assert("my_collection" == table.get_name())
-#
-# print "Checking assert('generated_columns_test' == table.get_schema())"
-# assert("generated_columns_test" == table.get_schema().get_name())
-#
-# print "Checking assert(False == table.is_view())"
-# assert(False == table.is_view())
+
     def create_view_from_collection(self, view_name):
+        # Creating view from collection
         print "Trying to create view based on MyRocks collection"
         try:
             command = "create view {}.{} as select * from {}.{}".format(self.schema_name, view_name, self.schema_name, self.collection_name)
@@ -103,12 +79,13 @@ class MyXPlugin:
             return 0
 
     def select_from_view(self, view_name):
+        # Running select; Should raise an error
         print "Trying to select from view [Should raise an OperationalError]"
         try:
             command = "select * from {}.{}".format(self.schema_name, view_name)
             sql = self.session.sql(command)
             sql.execute()
         except Exception as e:
-            raise
+            raise mysqlx.errors.OperationalError("The JSON binary value contains invalid data")
         else:
             return 0
