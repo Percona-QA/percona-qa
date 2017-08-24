@@ -75,7 +75,7 @@ class MyXPlugin:
     #     print e
     def return_table_obj(self):
         print "Trying to access collection using mysqlx.Table"
-        table = mysqlx.Table(self.schema_name, self.collection_name)
+        table = mysqlx.Table(self.schema, self.collection_name)
         return table
 # print "Checking assert(True == table.exists_in_database())"
 # assert(True == table.exists_in_database())

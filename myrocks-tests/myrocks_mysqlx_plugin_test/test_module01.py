@@ -32,7 +32,7 @@ class TestXPlugin:
         return table_obj
 
     def test_check_if_table_exists(self, return_plugin_obj):
-        assert return_plugin_obj.return_table_obj().exists_in_database() == True
+        assert self.helper_function(return_plugin_obj).exists_in_database() == True
 
     def test_check_table_count(self, return_plugin_obj):
         assert self.helper_function(return_plugin_obj).count() == 3
