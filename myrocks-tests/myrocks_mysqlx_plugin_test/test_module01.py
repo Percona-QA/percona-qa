@@ -30,20 +30,20 @@ class TestXPlugin:
         table_obj = return_plugin_obj.return_table_obj()
         return table_obj
 
-    def test_check_if_table_exists(self):
-        assert self.helper_function().exists_in_database() == True
+    def test_check_if_table_exists(self, return_plugin_obj):
+        assert self.helper_function(return_plugin_obj).exists_in_database() == True
 
-    def test_check_table_count(self):
-        assert self.helper_function().count() == 3
+    def test_check_table_count(self, return_plugin_obj):
+        assert self.helper_function(return_plugin_obj).count() == 3
 
-    def test_check_table_name(self):
-        assert self.helper_function().get_name() == "my_collection"
+    def test_check_table_name(self, return_plugin_obj):
+        assert self.helper_function(return_plugin_obj).get_name() == "my_collection"
 
-    def test_check_schema_name(self):
-        assert self.helper_function().get_schema().get_name() == "generated_columns_test"
+    def test_check_schema_name(self, return_plugin_obj):
+        assert self.helper_function(return_plugin_obj).get_schema().get_name() == "generated_columns_test"
 
-    def test_check_if_table_is_view(self):
-        assert self.helper_function().is_view() == False
+    def test_check_if_table_is_view(self, return_plugin_obj):
+        assert self.helper_function(return_plugin_obj).is_view() == False
 
     def test_create_view_from_collection(self, return_plugin_obj):
         return_value = return_plugin_obj.create_view_from_collection()
