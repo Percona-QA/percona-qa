@@ -64,7 +64,7 @@ function install_mysql_connector() {
 }
 
 function run_mysqlx_plugin_test() {
-  python -m pytest -vvv $DIRNAME/myrocks_mysqlx_plugin_test/test_module01.py
+  python $DIRNAME/myrocks_mysqlx_plugin.py
 }
 
 # Run clone and build here
