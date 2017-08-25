@@ -2787,14 +2787,19 @@ copy_workdir_to_tmp(){
         cp $0 /tmp/$EPOCH  # Copy this reducer script
         cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
       fi
-      SPACE_WORKD=$(du -s $WORKD 2>/dev/null | sed 's|[ \t].*||')
-      SPACE_TMPCP=$(du -s /tmp/$EPOCH 2>/dev/null | sed 's|[ \t].*||')
-      if [ -d /tmp/$EPOCH ] && [ ${SPACE_TMPCP} -gt ${SPACE_WORKD} ]; then
+      # Check if the copy of directories (excluding the socket file,this reducer script,the original input file,and the current still-being-written-to log) is indentical (i.e. no output shown for the diff command)
+      DIFF_WORKDIR_COPY="not_empty"
+      if [ -d /tmp/$EPOCH ]; then 
+        DIFF_WORKDIR_COPY="$(diff -qr $WORKD /tmp/$EPOCH | grep -vE "is a socket|Only in.*tmp.*$0|Only in.*tmp.*$INPUTFILE|Files.*dev.*shm.*reducer\.log.*tmp.*reducer\.log differ")"
+      fi
+      if [ "$DIFF_WORKDIR_COPY" == "" ] then
         WORKDIR_COPY_SUCCESS=1
         echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$EPOCH now deleting temporary work directory $WORKD"
         rm -Rf $WORKD
       else 
-        echo_out "[Non-fatal Error] Reducer tried saving a copy of $WORKD, $INPUTFILE and $0 in /tmp/$EPOCH, but on checkup after the copy, either the target directory /tmp/$EPOCH was not found, or it's size was not larger then the original work directory $WORKD (which should not be the case, as $INPUTFILE and $0 were added unto it). Please check that the filesystem on which /tmp is stored is not full, and that this script has write rights to /tmp. Note this error is non-fatal, the original work directory $WORKD was left, and $INPUTFILE and $0, if necessary, can still be accessed from their original location."
+        echo_out "[Non-fatal Error] Reducer tried saving a copy of the working directory ($WORKD), the input file ($INPUTFILE), and this reducer ($0) in /tmp/$EPOCH, but on checkup after the copy, differences were found. The diff output was:"
+        echo_out "$DIFF_WORKDIR_COPY"
+        echo_out "Please check the diff output, and if necessary that the filesystem on which /tmp is stored is not full and that this script has write rights to /tmp. Note this error is non-fatal; the original work directory ($WORKD) was left, and the inputfile ($INPUTFILE) and this reducer ($0), if necessary, can still be accessed from their original location."
       fi
     fi
   fi
