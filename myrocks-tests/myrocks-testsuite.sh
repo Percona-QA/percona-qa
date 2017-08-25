@@ -1,9 +1,8 @@
-#!/usr/bin/env bats
+#!/bin/bash
 
 # Created by Shahriyar Rzayev from Percona
 
 WORKDIR="${PWD}"
-DIRNAME="$BATS_TEST_DIRNAME"
 DIRNAME=$(dirname "$0")
 
 # Preparing test env
