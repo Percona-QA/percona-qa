@@ -239,7 +239,7 @@ if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" ]; then
   BINMODE="--binary-mode "  # Leave trailing space
 fi
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force --prompt=\"\$(${PWD}/bin/mysqld --version | grep -o 'Ver [\\.0-9]\\+' | sed 's|[^\\.0-9]*||')>\" ${BINMODE}test" > cl
-echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force --version | grep -o 'Ver [\\.0-9]\\+' | sed 's|[^\\.0-9]*||')>\" ${BINMODE}test" > cl_noprompt
+echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test" > cl_noprompt
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < ${PWD}/in.sql > ${PWD}/mysql.out 2>&1" > test
 echo "./stop >/dev/null 2>&1" > wipe
 echo "if [ -d ${PWD}/data.PREV ]; then rm -Rf ${PWD}/data.PREV.older; mv ${PWD}/data.PREV ${PWD}/data.PREV.older; fi; mv ${PWD}/data ${PWD}/data.PREV" >> wipe
