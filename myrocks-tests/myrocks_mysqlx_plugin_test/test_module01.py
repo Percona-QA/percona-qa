@@ -68,3 +68,6 @@ class TestXPlugin:
         # with pytest.raises(OperationalError) as er:
         #     return_plugin_obj.select_from_table()
         # print er
+
+    def test_select_from_table_dummy(self, return_plugin_obj):
+        return_plugin_obj.select_from_table_dummy()
