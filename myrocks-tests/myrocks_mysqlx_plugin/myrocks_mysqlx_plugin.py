@@ -98,6 +98,7 @@ class MyXPlugin:
             sql = self.session.sql(command)
             sql.execute()
         except Exception as e:
-            raise mysqlx.errors.OperationalError("The JSON binary value contains invalid data")
+            #raise mysqlx.errors.OperationalError("The JSON binary value contains invalid data")
+            raise
         else:
             return 0
