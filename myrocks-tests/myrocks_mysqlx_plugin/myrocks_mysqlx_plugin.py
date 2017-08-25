@@ -99,6 +99,6 @@ class MyXPlugin:
             sql.execute()
         except Exception as e:
             #raise mysqlx.errors.OperationalError("The JSON binary value contains invalid data")
-            raise
+            print e
         else:
             return 0
