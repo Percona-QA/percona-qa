@@ -21,7 +21,7 @@ class MyXPlugin:
         # Getting schema object
         self.schema = self.session.get_schema(self.schema_name)
         # Creating collection
-        self.schema.create_collection(self.collection_name)
+        self.schema.create_collection(self.collection_name, reuse=True)
         # Getting collection object
         self.collection_obj = self.schema.get_collection(self.collection_name)
 
@@ -84,7 +84,8 @@ class MyXPlugin:
         try:
             command = "select * from {}.{}".format(self.schema_name, view_name)
             sql = self.session.sql(command)
-            sql.execute()
+            cursor = sql.execute()
+            cursor.fetch_all()
         except Exception as e:
             raise mysqlx.errors.OperationalError("The JSON binary value contains invalid data")
         else:
@@ -96,7 +97,8 @@ class MyXPlugin:
         try:
             command = "select * from {}.{}".format(self.schema_name, self.collection_name)
             sql = self.session.sql(command)
-            sql.execute()
+            cursor = sql.execute()
+            cursor.fetch_all()
         except Exception as e:
             raise mysqlx.errors.OperationalError("The JSON binary value contains invalid data")
         else:
