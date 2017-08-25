@@ -105,11 +105,12 @@ class MyXPlugin:
 
     def select_from_table_dummy(self):
         # Running select; Should raise an error
-        print "Trying to select from view [Should raise an OperationalError]"
+        print "Trying to select from table [Should raise an OperationalError]"
         try:
             command = "select * from {}.{}".format(self.schema_name, self.collection_name)
             sql = self.session.sql(command)
-            sql.execute()
+            cursor = sql.execute()
+            cursor.fetch_all()
         except Exception as e:
             #raise mysqlx.errors.OperationalError("The JSON binary value contains invalid data")
             raise
