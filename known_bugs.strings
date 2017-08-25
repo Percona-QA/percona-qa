@@ -133,15 +133,15 @@ handler0alter.cc line 5817                               ## https://bugs.mysql.c
 #Z15ha_commit_transP3THDbb                      ## Fixed ## https://bugs.mysql.com/bug.php?id=77520 (Could not reproduce the issue with latest build)
 #trx0trx.cc line 1290                           ## Fixed ## https://bugs.mysql.com/bug.php?id=77521                                     (# after MS 5.7.9 merged)
 #Z27fill_schema_user_privilegesP3THDP10TABLE_LISTP4Item   ## Fixed ## https://bugs.mysql.com/bug.php?id=77522
-#Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## Fixed ## https://bugs.mysql.com/bug.php?id=77522 
-#Z16acl_authenticateP3THDm                                ## Fixed ## https://bugs.mysql.com/bug.php?id=77522
-#Z11acl_getrootP16Security_contextPcS1_S1_PKc             ## Fixed ## https://bugs.mysql.com/bug.php?id=77522
-Z28acl_check_proxy_grant_accessP3THDPKcS2_b              ## https://bugs.mysql.com/bug.php?id=77523
-Z7acl_getPKcS0_S0_S0_c                                   ## https://bugs.mysql.com/bug.php?id=77523
-ZN14Rpl_info_tableC1EjPKcS1_                             ## https://bugs.mysql.com/bug.php?id=77524
+#Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## Fixed ## https://bugs.mysql.com/bug.php?id=77522 (ref above)
+#Z16acl_authenticateP3THDm                      ## Fixed ## https://bugs.mysql.com/bug.php?id=77522 (ref above)
+#Z11acl_getrootP16Security_contextPcS1_S1_PKc   ## Fixed ## https://bugs.mysql.com/bug.php?id=77522 (ref above)
+#Z28acl_check_proxy_grant_accessP3THDPKcS2_b    ## Fixed ## https://bugs.mysql.com/bug.php?id=77523
+#Z7acl_getPKcS0_S0_S0_c                         ## Fixed ## https://bugs.mysql.com/bug.php?id=77523
+#ZN14Rpl_info_tableC1EjPKcS1_                   ## Fixed ## https://bugs.mysql.com/bug.php?id=77524
 #Z16name_hash_searchP7st_hashPKcS2_S2_S2_S2_bb  ## Fixed ## https://bugs.mysql.com/bug.php?id=77525                                     (# after MS 5.7.9 merged)
-dict0mem.cc line 110                                     ## https://bugs.mysql.com/bug.php?id=77526
-Z15acl_update_userPKcS0_8SSL_typeS0_S0_S0_P14user_resourcesmRK25st_mysql_const_lex_stringS6_13st_mysql_time12st_lex_alter  ## https://bugs.mysql.com/bug.php?id=77527
+#dict0mem.cc line 110                           ## Fixed ## https://bugs.mysql.com/bug.php?id=77526
+#Z15acl_update_userPKcS0_8SSL_typeS0_S0_S0_P14user_resourcesmRK25st_mysql_const_lex_stringS6_13st_mysql_time12st_lex_alter ## Fixed ## https://bugs.mysql.com/bug.php?id=77527
 ## 5.7.8 RC2 Test
 #Z18get_interval_valueP4Item13interval_typeP6StringP8Interval  ## Fixed ## https://bugs.mysql.com/bug.php?id=75943 and http://bugs.mysql.com/bug.php?id=78187
 #Z17test_quick_selectP3THD6BitmapILj64EEyybN8st_order10enum_orderEPK16QEP_shared_ownerP4ItemPS2_PP14QUICK_SELECT_I ## Fixed ## https://bugs.mysql.com/bug.php?id=78188
