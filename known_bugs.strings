@@ -132,10 +132,10 @@ handler0alter.cc line 5817                               ## https://bugs.mysql.c
 ## =========== MS 5.7.7 RC ===========
 #Z15ha_commit_transP3THDbb                      ## Fixed ## https://bugs.mysql.com/bug.php?id=77520 (Could not reproduce the issue with latest build)
 #trx0trx.cc line 1290                           ## Fixed ## https://bugs.mysql.com/bug.php?id=77521                                     (# after MS 5.7.9 merged)
-Z27fill_schema_user_privilegesP3THDP10TABLE_LISTP4Item   ## https://bugs.mysql.com/bug.php?id=77522
-Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## https://bugs.mysql.com/bug.php?id=77522 
-Z16acl_authenticateP3THDm                                ## https://bugs.mysql.com/bug.php?id=77522
-Z11acl_getrootP16Security_contextPcS1_S1_PKc             ## https://bugs.mysql.com/bug.php?id=77522
+#Z27fill_schema_user_privilegesP3THDP10TABLE_LISTP4Item   ## Fixed ## https://bugs.mysql.com/bug.php?id=77522
+#Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## Fixed ## https://bugs.mysql.com/bug.php?id=77522 
+#Z16acl_authenticateP3THDm                                ## Fixed ## https://bugs.mysql.com/bug.php?id=77522
+#Z11acl_getrootP16Security_contextPcS1_S1_PKc             ## Fixed ## https://bugs.mysql.com/bug.php?id=77522
 Z28acl_check_proxy_grant_accessP3THDPKcS2_b              ## https://bugs.mysql.com/bug.php?id=77523
 Z7acl_getPKcS0_S0_S0_c                                   ## https://bugs.mysql.com/bug.php?id=77523
 ZN14Rpl_info_tableC1EjPKcS1_                             ## https://bugs.mysql.com/bug.php?id=77524
