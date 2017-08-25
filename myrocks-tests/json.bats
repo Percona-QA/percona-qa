@@ -4,7 +4,7 @@
 
 # JSON tests for MyRocks table
 
-CONN=$(cat cl)
+CONN=$(cat cl_noprompt)
 
 @test "Adding json column" {
   run ${CONN} -e "alter table generated_columns_test.sbtest1 add column json_test json"
