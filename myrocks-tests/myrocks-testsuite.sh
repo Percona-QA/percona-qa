@@ -1,9 +1,8 @@
-#!/usr/bin/env bats
+#!/bin/bash
 
 # Created by Shahriyar Rzayev from Percona
 
 WORKDIR="${PWD}"
-DIRNAME="$BATS_TEST_DIRNAME"
 DIRNAME=$(dirname "$0")
 
 # Preparing test env
@@ -28,7 +27,7 @@ function start_server() {
 
 function execute_sql() {
   # General function to pass sql statement to mysql client
-    conn_string=$(cat $1/cl)
+    conn_string="$(cat $1/cl_noprompt)"
     ${conn_string} -e "$2"
 }
 

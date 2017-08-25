@@ -6,7 +6,7 @@
 
 # Will be passed from myrocks-testsuite.sh
 
-CONN=$(cat cl)
+CONN=$(cat cl_noprompt)
 
 @test "Adding virtual generated json type column" {
   #ALTER="alter table generated_columns_test.sbtest1 add column json_test_v json generated always as (json_array(k,c,pad)) virtual"
