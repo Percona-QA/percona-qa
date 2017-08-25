@@ -107,7 +107,7 @@ class MyXPlugin:
         # Running select; Should raise an error
         print "Trying to select from view [Should raise an OperationalError]"
         try:
-            command = "select * from jsdgfjsdhgf"
+            command = "select * from {}.jsdgfjsdhgf".format(self.schema_name)
             sql = self.session.sql(command)
             sql.execute()
         except Exception as e:
