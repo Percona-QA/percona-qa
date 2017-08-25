@@ -66,6 +66,16 @@ function run_mysqlx_plugin_test() {
   python -m pytest -vvv $DIRNAME/myrocks_mysqlx_plugin_test/test_module01.py
 }
 
+function run_pytests_bats() {
+  # Calling bats file
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/pytests.bats
+  else
+    bats $DIRNAME/pytests.bats
+  fi
+}
+
+
 # Run clone and build here
 if [[ $clone == 1 ]] ; then
   echo "Clone and Build server from repo"
@@ -135,4 +145,4 @@ execute_sql ${BASEDIR} "${GRANT}"
 
 # Calling myrocks_mysqlx_plugin.py file here
 echo "#Running X Plugin tests#"
-run_mysqlx_plugin_test
+run_pytests_bats
