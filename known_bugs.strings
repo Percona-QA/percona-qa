@@ -661,10 +661,10 @@ Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                 
 Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm                         ## https://bugs.launchpad.net/percona-server/+bug/1631555
 #Z19close_thread_tablesP3THD                                                   ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1392924 (dup of 1387951)
 #Z19mysql_unlock_tablesP3THDP13st_mysql_lock                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=75234 (dup of 74583)
-Z19mysql_unlock_tablesP3THDP13st_mysql_lock                                             ## https://bugs.mysql.com/bug.php?id=83899 MS/PS 5.6
-ZN10Sort_param17init_for_filesortEjP5TABLEmyb                                           ## https://bugs.mysql.com/bug.php?id=87231
-ZN11ha_innobase9write_rowEPh                                                            ## https://bugs.mysql.com/bug.php?id=83899 PS 5.7
-ZN11ha_innobase5closeEv                                                                 ## https://bugs.mysql.com/bug.php?id=83899 MS 5.7 (on shutdown)
+#ZN10Sort_param17init_for_filesortEjP5TABLEmyb                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=87231
+#Z19mysql_unlock_tablesP3THDP13st_mysql_lock                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=83899 MS/PS 5.6
+#ZN11ha_innobase9write_rowEPh                                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=83899 PS 5.7
+#ZN11ha_innobase5closeEv                                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=83899 MS 5.7 (on shutdown)
 Z19toku_drd_unsafe_setIhEvPT_S0_                                                        ## https://tokutek.atlassian.net/browse/DB-852
 Z20get_parts_for_updatePKhPhS0_P14partition_infoPjS4_Px                                 ## https://bugs.mysql.com/bug.php?id=74856
 #Z20ha_release_savepointP3THDP12st_savepoint                                   ## Fixed ## https://tokutek.atlassian.net/browse/DB-765 (fixed in 5.6.23/Tk7.5.6)
