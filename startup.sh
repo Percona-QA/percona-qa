@@ -239,6 +239,7 @@ if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" ]; then
   BINMODE="--binary-mode "  # Leave trailing space
 fi
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force --prompt=\"\$(${PWD}/bin/mysqld --version | grep -o 'Ver [\\.0-9]\\+' | sed 's|[^\\.0-9]*||')>\" ${BINMODE}test" > cl
+echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force --version | grep -o 'Ver [\\.0-9]\\+' | sed 's|[^\\.0-9]*||')>\" ${BINMODE}test" > cl_noprompt
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < ${PWD}/in.sql > ${PWD}/mysql.out 2>&1" > test
 echo "./stop >/dev/null 2>&1" > wipe
 echo "if [ -d ${PWD}/data.PREV ]; then rm -Rf ${PWD}/data.PREV.older; mv ${PWD}/data.PREV ${PWD}/data.PREV.older; fi; mv ${PWD}/data ${PWD}/data.PREV" >> wipe
@@ -272,7 +273,7 @@ echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/dat
 echo "rm -f log/master.*" >> init
 
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5;./cl" > all
-chmod +x start start_valgrind start_gypsy stop setup cl test kill init wipe all prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
+chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt test kill init wipe all prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
