@@ -2792,9 +2792,9 @@ copy_workdir_to_tmp(){
       if [ -d /tmp/$EPOCH ]; then 
         DIFF_WORKDIR_COPY="$(diff -qr $WORKD /tmp/$EPOCH | grep -vE "is a socket|Only in.*tmp.*$0|Only in.*tmp.*$INPUTFILE|Files.*dev.*shm.*reducer\.log.*tmp.*reducer\.log differ")"
       fi
-      if [ "$DIFF_WORKDIR_COPY" == "" ] then
+      if [ "$DIFF_WORKDIR_COPY" == "" ]; then
         WORKDIR_COPY_SUCCESS=1
-        echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$EPOCH now deleting temporary work directory $WORKD"
+        echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$EPOCH (including the input file $INPUTFILE, this reducer $0, and the reducer log /tmp/$EPOCH/reducer.log), now deleting temporary work directory $WORKD"
         rm -Rf $WORKD
       else 
         echo_out "[Non-fatal Error] Reducer tried saving a copy of the working directory ($WORKD), the input file ($INPUTFILE), and this reducer ($0) in /tmp/$EPOCH, but on checkup after the copy, differences were found. The diff output was:"
