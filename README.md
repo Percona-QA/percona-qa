@@ -617,48 +617,6 @@ run).  This script is provided AS-IS with no warranty of any kind.  Do NOT run
 on production machines.  This script lowers the servers security.  Use at own
 risk.
 
-### Initial Setup Reminders (based on Centos minimal cd install): ###
-
-Reminder  | Notes
-:---------|:--------------------------------------------------------------------
-Syntax:   | {variable} needs replacing with your specific configuration, for 
-          | example {your_port} becomes 22
-SSHD:     | follow http://www.cyberciti.biz/faq/centos-ssh/ except;
-          | Set port to new number in sshd_config and add this line instead in
-          | iptables (adjust port, and adjust your subnet if needed); | -A INPUT
-          | -s 192.168.0.0/24 -m state --state NEW -m tcp -p tcp --dport
-          | {your_port} -j ACCEPT |Note there is likely a similar line there
-          | already that needs removing
-User:     | useradd {username} -m -U; su passwd {username}
-Disk:     | use parted for partition management, fdisk -l for partition list
-Net:      | set ONBOOT=yes and BOOTPROTO=dhcp in 
-          | /etc/sysconfig/network-scripts/ifcfg-eth0 if using Centos minimal 
-          | install CD
-          | also set NETWORKING=yes /etc/sysconfig/network and set a 
-          | HOSTNAME={your_host_name}.{your_domain_name} in 
-          | /etc/sysconfig/network
-Sudo:     | # visudo (or sudo visudo), then add this line:
-          |  {username}            ALL=(ALL)       NOPASSWD: ALL
-fstab:    | /dev/sdd     /ssd    /ext4    noatime,nodiratime,discard,errors=remount-ro   0 2      # use fdisk -l | mkfs.ext4
-Bzr:      | to get this script to continue setting up a server once this initial setup is done, use:
-          | sudo yum install bzr; cd ~; bzr branch lp:percona-qa; cd percona-qa; ./setup_server.sh
-Bzr setup:| [Optional] to configure bzr for uploading code, follow this;
-          |  bzr whoami '{yourname} <{your.email@somedomain.com}>'
-          |  bzr whoami  # verify it worked
-          |  bzr launchpad-login {your_launchpad_id}
-          |  vi ~/.ssh/id_rsa.pub      # copy this onto one line and paste in \
-          |    at: https://launchpad.net/~{your_launchpad_id}/+editsshkeys
-          |  Alternatively (alternative to the last line), copy in the 
-          |  existing & correct ssh key into ~/.ssh
-          |  To fix privileges use;  cd ~; chmod 755 .ssh; cd .ssh; \
-          |  chmod 600 id_rsa; chmod 644 id_rsa.pub; chmod 644 known_hosts
-          |  Some launchpad push examples:
-          |  bzr push bzr+ssh://bazaar.launchpad.net/~randgen/randgen/rqg2/ --remember  # for RQG + save location
-          |  bzr push lp:percona-qa --remember                                          # for percona-qa + save location
-          |  bzr push :parent                                                           # for any downloaded R/W branch (handy shortcut), may fail
-Bzr repo: | Setting up a local repo ensures that broken downloads (removed with rm -Rf {download_dir_name}) can be resumed (a must for PS)
-          | cd /;sudo mkdir bzr;sudo chown -R {username}:{username} bzr;sudo chmod -R 777 bzr;cd bzr;bzr init-repo .
-
 ## sequence_match.pl ##
 
 This script will search through the standard input for a sequence of lines
