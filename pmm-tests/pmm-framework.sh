@@ -58,7 +58,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-username:,pmm-server-password::,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,with-proxysql,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,with-proxysql,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -101,6 +101,11 @@ do
       echo "  Please choose any of these pmm-server options: 'docker', 'ami', 'custom', or 'ova'"
       exit 1
     fi
+    ;;
+  --pmm-server-version )
+    pmm_server_version="$2"
+    PMM_VERSION=$pmm_server_version
+    shift 2
     ;;
 	--ami-image )
     ami_image="$2"
@@ -307,10 +312,12 @@ setup(){
   IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
   if [[ "$pmm_server" == "docker" ]];then
     #PMM configuration setup
-    if [ -z $dev ]; then
-      PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
-    else
-      PMM_VERSION=$(lynx --dump https://hub.docker.com/r/perconalab/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+    if [ -z $pmm_server_version ]; then
+      if [ -z $dev ]; then
+        PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+      else
+        PMM_VERSION=$(lynx --dump https://hub.docker.com/r/perconalab/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+      fi
     fi
     #PMM sanity check
 	aws ec2 describe-instance-status --instance-ids  $INSTANCE_ID | grep "Code" | sed 's/[^0-9]//g'
@@ -400,8 +407,11 @@ setup(){
 	OVA_PUBLIC_IP=$(grep 'Percona Monitoring and Management' $WORKDIR/pmm-server-console.log | awk -F[\/\/] '{print $3}')
   fi
   #PMM configuration setup
-  PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
-
+  if [ -z $pmm_server_version ]; then
+    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+  else 
+    PMM_VERSION=$pmm_server_version
+  fi
   echo "Initiating PMM client configuration"
   PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
   if [ -z $PMM_CLIENT_BASEDIR ]; then
