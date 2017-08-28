@@ -1518,7 +1518,7 @@ echoit "Making a copy of this script (${SCRIPT}) to ${WORKDIR}/ for reference & 
 cp ${SCRIPT_AND_PATH} ${WORKDIR}/pquery-${SCRIPT}
 echoit "Making a copy of the configuration file (${CONFIGURATION_FILE}) to ${WORKDIR}/ for reference & adding a pquery- prefix (this avoids pquery-prep-run not finding the script)..."  # pquery- prefix avoids pquer-prep-red.sh script-locating issues if this script had been renamed to a name without 'pquery' in it.
 SHORT_CONFIGURATION_FILE=$(echo ${CONFIGURATION_FILE} | sed 's|.*/[\.]*||')
-cp ${CONFIGURATION_FILE} ${WORKDIR}/pquery-${SHORT_CONFIGURATION_FILE}
+cp ${SCRIPT_PWD}/${CONFIGURATION_FILE} ${WORKDIR}/pquery-${SHORT_CONFIGURATION_FILE}
 if [ ${STORE_COPY_OF_INFILE} -eq 1 ]; then
   echoit "Making a copy of the SQL input file used (${INFILE}) to ${WORKDIR}/ for reference..."
   cp ${INFILE} ${WORKDIR}
