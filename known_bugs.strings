@@ -106,6 +106,7 @@ t1->result_range                                         ## https://bugs.mysql.c
 m_db.length == copy->m_db.length                         ## https://bugs.mysql.com/bug.php?id=74604 (5.7 version thereof)
 m_index_scan_type .= partition_index_last                ## https://bugs.mysql.com/bug.php?id=85537
 #trx0trx.h line 1410                            ## Fixed ## https://bugs.mysql.com/bug.php?id=76415
+thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  ## https://bugs.mysql.com/bug.php?id=87572
 #thd->variables.gtid_next.type == ANONYMOUS_GROUP ## Fixed ## https://bugs.mysql.com/bug.php?id=76416                                               (# after MS 5.7.8 merged)
 #thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  ## Fixed ## https://bugs.mysql.com/bug.php?id=86250
 #db_return_                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=76417 (dup of 76154)
@@ -364,6 +365,8 @@ dict0dict.ic line 787                                                           
 dict0dict.cc line 2332                                                                  ## https://bugs.mysql.com/bug.php?id=85060
 dict0dict.cc line 2342                                                                  ## https://bugs.mysql.com/bug.php?id=85060
 fsp0fsp.ic line 172                                                                     ## https://bugs.mysql.com/bug.php?id=73926, MS 5.7.16
+fil0fil.cc line 2099                                                                    ## https://bugs.mysql.com/bug.php?id=87573, PS 5.7.19
+fil0fil.cc line 2074                                                                    ## https://bugs.mysql.com/bug.php?id=87573, MS 5.7.19
 fil0fil.cc line 3412                                                                    ## https://bugs.mysql.com/bug.php?id=74873, older build
 fil0fil.cc line 3485                                                                    ## https://bugs.mysql.com/bug.php?id=74873 PS (5.6 only)
 fil0fil.cc line 3438                                                                    ## https://bugs.mysql.com/bug.php?id=74873 MS (5.6 only)
