@@ -501,6 +501,7 @@ allocated_status_memory .= __null                                               
 args.0.->fixed                                                  ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74695 (Fixed in 5.7.8)
 auto_increment_value                                                                    ## https://bugs.mysql.com/bug.php?id=75057 (old LP #1384684)
 bitmap_is_set.*m_part_info->read_partitions, m_part_spec.start_part                     ## https://bugs.mysql.com/bug.php?id=74779 (old PS #1384591)
+bitmap_is_clear_all..table->tmp_set                                                     ## https://bugs.mysql.com/bug.php?id=87576
 bitmap_is_set_all...table->s->all_set                                                   ## https://bugs.mysql.com/bug.php?id=75003
 bitmap_is_subset.*m_part_info->lock_partitions, .*m_locked_partitions                   ## https://bugs.mysql.com/bug.php?id=74777
 #bit < map->n_bits                                                             ## Fixed ## https://bugs.mysql.com/bug.php?id=74491 (Fixed in 5.6.24)
