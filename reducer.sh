@@ -1900,8 +1900,8 @@ start_mysqld_main(){
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_LOGBIN}" == "1" ];then
-      CMD="${CMD} --server-id=100"
-      sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
+      CMD="${CMD} --server-id=1"
+      sed -i "s|--no-defaults|--no-defaults --server-id=1|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -1914,8 +1914,8 @@ start_mysqld_main(){
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_LOGBIN}" == "1" ];then
-      CMD="${CMD} --server-id=100"
-      sed -i "s|--no-defaults|--no-defaults --server-id=100|" $WORK_START
+      CMD="${CMD} --server-id=1"
+      sed -i "s|--no-defaults|--no-defaults --server-id=1|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
@@ -2318,7 +2318,11 @@ cleanup_and_save(){
     grep -E --binary-files=text -v "^# mysqld options required for replay:" $WORKT > $WORKO
     MYSQLD_OPTIONS_REQUIRED=$(echo "$TOKUDB $ROCKSDB $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
-      sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+      if [ "${CHK_LOGBIN}" == "1" ];then
+        sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED --server-id=1" $WORKO
+      else
+        sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+      fi
     fi
     MYSQLD_OPTIONS_REQUIRED=
     cp -f $WORKO $WORK_OUT
@@ -2719,9 +2723,9 @@ stop_mysqld_or_pxc(){
 
 finish(){
   if [ "${STAGE}" != "" -a "${STAGE8_CHK}" != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
-    if [ ${STAGE} -eq 8 ]; then
+    if [ ${STAGE} -gt 8 ]; then
       if [ "${CHK_LOGBIN}" == "1" ];then
-        MYEXTRA="$MYEXTRA --server-id=100"
+        MYEXTRA="$MYEXTRA --server-id=1"
       fi
       if [ ${STAGE8_CHK} -eq 0 ]; then
         export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
