@@ -106,6 +106,7 @@ t1->result_range                                         ## https://bugs.mysql.c
 m_db.length == copy->m_db.length                         ## https://bugs.mysql.com/bug.php?id=74604 (5.7 version thereof)
 m_index_scan_type .= partition_index_last                ## https://bugs.mysql.com/bug.php?id=85537
 #trx0trx.h line 1410                            ## Fixed ## https://bugs.mysql.com/bug.php?id=76415
+thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  ## https://bugs.mysql.com/bug.php?id=87572
 #thd->variables.gtid_next.type == ANONYMOUS_GROUP ## Fixed ## https://bugs.mysql.com/bug.php?id=76416                                               (# after MS 5.7.8 merged)
 #thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  ## Fixed ## https://bugs.mysql.com/bug.php?id=86250
 #db_return_                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=76417 (dup of 76154)
@@ -364,6 +365,8 @@ dict0dict.ic line 787                                                           
 dict0dict.cc line 2332                                                                  ## https://bugs.mysql.com/bug.php?id=85060
 dict0dict.cc line 2342                                                                  ## https://bugs.mysql.com/bug.php?id=85060
 fsp0fsp.ic line 172                                                                     ## https://bugs.mysql.com/bug.php?id=73926, MS 5.7.16
+fil0fil.cc line 2099                                                                    ## https://bugs.mysql.com/bug.php?id=87573, PS 5.7.19
+fil0fil.cc line 2074                                                                    ## https://bugs.mysql.com/bug.php?id=87573, MS 5.7.19
 fil0fil.cc line 3412                                                                    ## https://bugs.mysql.com/bug.php?id=74873, older build
 fil0fil.cc line 3485                                                                    ## https://bugs.mysql.com/bug.php?id=74873 PS (5.6 only)
 fil0fil.cc line 3438                                                                    ## https://bugs.mysql.com/bug.php?id=74873 MS (5.6 only)
@@ -598,7 +601,7 @@ thd->is_error                                                                   
 .thd->lex->context_analysis_only                                ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74668 (Fixed in 5.7.6)
 thd->transaction.stmt.is_empty                                                          ## https://bugs.mysql.com/bug.php?id=74606 (old LP #1384620)
 thd == _current_thd                                                                     ## https://bugs.launchpad.net/percona-server/+bug/1633988
-#this_type .= Json_dom..J_ERROR                                                ## Fixed ## https://bugs.mysql.com/bug.php?id=86470
+this_type .= Json_dom..J_ERROR                                  ## Still present in 5.7 ## https://bugs.mysql.com/bug.php?id=86470 (fixed in 8.0.1)
 #timer == __null                                                               ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1370002
 .no_data.nbytes                                                                         ## https://bugs.mysql.com/bug.php?id=86471
 .tlen % 2                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (2nd comment)
@@ -787,7 +790,7 @@ ZN8Protocol13end_statementEv                                                    
 ZN9READ_INFO10read_fieldEv                                                              ## https://bugs.mysql.com/bug.php?id=77993 
 ZNK10MDL_ticket26has_stronger_or_equal_typeE13enum_mdl_type                             ## https://bugs.launchpad.net/percona-server/+bug/1444706
 ZNK10MDL_ticket28has_pending_conflicting_lockEv                                         ## https://bugs.launchpad.net/percona-server/+bug/1384570 and #74584 ?
-#ZNK12Json_wrapper9to_stringEP6StringbPKc                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=86472
+ZNK12Json_wrapper9to_stringEP6StringbPKc                        ## Still present in 5.7 ## https://bugs.mysql.com/bug.php?id=86472 (fixed in 8.0.1)
 ZNK5Field7is_nullEx                                                                     ## https://bugs.launchpad.net/percona-server/+bug/1445833 - now DB-838
 ZNK5Field13column_formatEv                                                              ## https://bugs.launchpad.net/percona-server/+bug/1662055
 #ZNK6String7charsetEv                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=74578
