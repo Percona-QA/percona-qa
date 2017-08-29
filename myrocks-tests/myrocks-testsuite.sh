@@ -62,6 +62,19 @@ function install_mysql_connector() {
   fi
 }
 
+function install_mysql_shell() {
+  # Downloading rpm package for CentOS 7
+  IF_INSTALLED=$(rpm -qa | grep mysql-shell-8.0)
+  if [ -z $IF_INSTALLED ] ; then
+    wget https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell-8.0.0-0.1.dmr.el7.x86_64.rpm
+    sudo yum install mysql-shell-8.0.0-0.1.dmr.el7.x86_64.rpm
+  else
+    echo "Already Installed"
+  fi
+
+}
+
+
 function run_mysqlx_plugin_test() {
   python -m pytest -vvv $DIRNAME/myrocks_mysqlx_plugin_test/test_module01.py
 }
@@ -127,6 +140,9 @@ run_json_test
 # Installing mysql-connector-python
 echo "Installing mysql-connector-python"
 install_mysql_connector
+
+# Installing mysql-shell
+install_mysql_shell
 
 # Installing mysqlx plugin
 echo "Installing mysqlx plugin"
