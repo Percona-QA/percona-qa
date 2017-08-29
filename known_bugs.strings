@@ -590,6 +590,7 @@ tab->ref.use_count                                                              
 tab->select->quick->index==.uint                                                        ## https://bugs.mysql.com/bug.php?id=74505
 #thd->get_stmt_da()->is_eof()                                                 ## Fixed? ## https://bugs.mysql.com/bug.php?id=73868 Log new bug if new occurence+testcase found
 thd->killed .= THD.*KILL_BAD_DATA .* error > 0                                          ## https://bugs.mysql.com/bug.php?id=75227
+thd->lex->sql_command == SQLCOM_XA_COMMIT                                               ## https://jira.percona.com/browse/MYR-172
 .field->orig_table->const_table                                                         ## https://bugs.launchpad.net/percona-server/+bug/1662091
 #. thd->in_sub_stmt                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74665 
 . thd->in_sub_stmt                                                                      ## https://bugs.mysql.com/bug.php?id=84828 (See also 74665) (Still present in MS 5.6.35)
@@ -851,3 +852,5 @@ TEXT=.\.shutdown_in_progress.$                                                  
 TEXT=.tab->ref.$                                                                        ## https://bugs.mysql.com/bug.php?id=74780 (duplicated by 83541)
 #TEXT=.false.$                                                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83120 (Fixed as part of internal bug#23295423)
 #TEXT=.part_rec_buf_ptr.$                                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=86255
+TEXT=.err == 0.$                                                                        ## https://jira.percona.com/browse/MYR-171
+TEXT=.cmp .= 0.$                                                                        ## https://jira.percona.com/browse/MYR-173
