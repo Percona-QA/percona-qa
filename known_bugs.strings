@@ -74,7 +74,6 @@ zip_dict_name.str == 0 .. column_format                           ## https://bug
 #ha_innodb.cc line 15747                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1415357 (2nd addition - ref comment #6) (# after next bzr pull)
 #row0quiesce.cc line 692                        ## Fixed ## https://bugs.mysql.com/?id=75398 (dup of http://bugs.mysql.com/bug.php?id=74346)        (# after MS 5.7.6 merged)
 #.first_qep_tab..table                          ## Fixed ## https://bugs.mysql.com/bug.php?id=75688
-#inited == INDEX                                ## Fixed ## https://bugs.mysql.com/bug.php?id=75690 (No longer repeatable)
 #btr0bulk.cc line 948                           ## Fixed ## https://bugs.mysql.com/bug.php?id=75692 (Apparent dup of MS #74422)                     (# after MS 5.7.6 merged)
 #select_lex->having_cond                        ## Fixed ## https://bugs.mysql.com/bug.php?id=75693                                                 (# after MS 5.7.6 merged)
 #ha_innodb.cc line 17780                        ## Fixed ## https://bugs.mysql.com/bug.php?id=75736 PS
@@ -474,6 +473,7 @@ srv0srv.cc line 3058                                                            
 srv0srv.cc line 3356                                                                    ## Also 73913 PS 5.6.36
 srv0srv.cc line 3074                                                                    ## Also 73913 PS 5.7.18
 srv0srv.cc line 3070                                                                    ## Also 73913 PS 5.7.17
+srv0srv.cc line 3084                                                                    ## Also 73913 PS 5.7.19
 sync0sync.ic line 307                                                                   ## https://bugs.launchpad.net/percona-server/+bug/1435678
 sync0sync.cc line 1318                                                                  ## https://bugs.mysql.com/bug.php?id=75640 MS
 sync0sync.cc line 1432                                                                  ## https://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
@@ -534,6 +534,8 @@ head->variables.gtid_next.type == ANONYMOUS_GROUP                               
 #hash_not_ok == 0                                                              ## Fixed ## https://bugs.mysql.com/bug.php?id=74852
 host_length <= 60                                                                       ## https://bugs.mysql.com/bug.php?id=74678
 inited == NONE                                                                          ## https://bugs.mysql.com/bug.php?id=74650
+#inited == INDEX                                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75690 (No longer repeatable)
+inited == INDEX                                                                         ## https://bugs.launchpad.net/percona-server/+bug/1713700
 #item_in->left_expr->cols  ## Get better or different 5.6 testcase ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74357 (was 80440) (Fixed in 5.7.6) Mailed Umesh for 5.6
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## https://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## https://bugs.mysql.com/bug.php?id=74646
@@ -550,6 +552,7 @@ map->bitmap .* map2->bitmap .* map->n_bits==map2->n_bits                        
 #maxcount.=0                                                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74898 (Fixed as part of internal bug)
 multi_range_length > 0                                                                  ## https://bugs.mysql.com/bug.php?id=81410
 #mi_cmp_dynamic_unique                                                                  ## https://bugs.launchpad.net/percona-server/+bug/1486849 (Remarked to get more testcases)
+m_lock_type == 2                                                                        ## https://jira.percona.com/browse/MYR-174
 #m_lock .= __null .* thd->mdl_context.is_lock_owner.m_namespace, .*, MDL_SHARED ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1377093
 #m_lock_type == 2                                                              ## Fixed ## https://bugs.mysql.com/bug.php?id=74291 (duplicated by 74436) (Originally PS Bug #1382749)
 #m_prot_lock .= __null .* thd->mdl_context.is_lock_owner.m_namespace, .*, .*, MDL_INTENTION_EXCLUSIVE ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1393682
@@ -765,7 +768,7 @@ ZN18Locked_tables_list20unlock_locked_tablesEP3THD                              
 ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=78201 (Fixed in 5.7)
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=82967 (old PS #1622992)
 #ZN4JOIN8optimizeEv                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74783
-#ZN4Item31tmp_table_field_from_field_typeEP5TABLEb                             ## Fixed ## https://bugs.mysql.com/bug.php?id=86254
+ZN4Item31tmp_table_field_from_field_typeEP5TABLEb               ## Still present in 5.7 ## https://bugs.mysql.com/bug.php?id=86254 (also bug 87577)
 ZN5TABLE11set_keyreadEb                                                                 ## https://bugs.mysql.com/bug.php?id=84755 (Won't fix)
 ZN5QueueI16PROF_MEASUREMENTE3popEv                                                      ## https://bugs.launchpad.net/percona-server/+bug/1441139
 Z21find_or_create_digestP10PFS_threadPK18sql_digest_storagePKcj                         ## https://bugs.launchpad.net/percona-server/+bug/1441139
