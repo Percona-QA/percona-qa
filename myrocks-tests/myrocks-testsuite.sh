@@ -56,7 +56,7 @@ function install_mysql_connector() {
   IF_INSTALLED=$(rpm -qa | grep mysql-connector-python-8.0)
   if [ -z $IF_INSTALLED ] ; then
     wget https://dev.mysql.com/get/Downloads/Connector-Python/mysql-connector-python-8.0.4-0.1.dmr.el7.x86_64.rpm
-    sudo yum install mysql-connector-python-8.0.4-0.1.dmr.el7.x86_64.rpm
+    sudo yum install -y mysql-connector-python-8.0.4-0.1.dmr.el7.x86_64.rpm
   else
     echo "Already Installed"
   fi
@@ -67,7 +67,7 @@ function install_mysql_shell() {
   IF_INSTALLED=$(rpm -qa | grep mysql-shell-8.0)
   if [ -z $IF_INSTALLED ] ; then
     wget https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell-8.0.0-0.1.dmr.el7.x86_64.rpm
-    sudo yum install mysql-shell-8.0.0-0.1.dmr.el7.x86_64.rpm
+    sudo yum install -y mysql-shell-8.0.0-0.1.dmr.el7.x86_64.rpm
   else
     echo "Already Installed"
   fi
@@ -142,6 +142,7 @@ echo "Installing mysql-connector-python"
 install_mysql_connector
 
 # Installing mysql-shell
+echo "Installing mysql-shell"
 install_mysql_shell
 
 # Installing mysqlx plugin
