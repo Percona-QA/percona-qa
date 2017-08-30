@@ -11,8 +11,9 @@ def mysqlsh_db_get_collections(user, passw, port):
     new_command = command.format(user, passw, port)
     try:
         prc = check_output(new_command, shell=True)
+        print prc
         returned_list = re.findall(r"(?<=\<).*?(?=\>)", prc)
-        return returned_list
+        print returned_list
     except Exception as e:
         print(e)
     else:
