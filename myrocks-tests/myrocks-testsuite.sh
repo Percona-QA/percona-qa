@@ -56,13 +56,27 @@ function install_mysql_connector() {
   IF_INSTALLED=$(rpm -qa | grep mysql-connector-python-8.0)
   if [ -z $IF_INSTALLED ] ; then
     wget https://dev.mysql.com/get/Downloads/Connector-Python/mysql-connector-python-8.0.4-0.1.dmr.el7.x86_64.rpm
-    sudo yum install mysql-connector-python-8.0.4-0.1.dmr.el7.x86_64.rpm
+    sudo yum install -y mysql-connector-python-8.0.4-0.1.dmr.el7.x86_64.rpm
   else
     echo "Already Installed"
   fi
 }
 
+function install_mysql_shell() {
+  # Downloading rpm package for CentOS 7
+  IF_INSTALLED=$(rpm -qa | grep mysql-shell-8.0)
+  if [ -z $IF_INSTALLED ] ; then
+    wget https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell-8.0.0-0.1.dmr.el7.x86_64.rpm
+    sudo yum install -y mysql-shell-8.0.0-0.1.dmr.el7.x86_64.rpm
+  else
+    echo "Already Installed"
+  fi
+
+}
+
+
 function run_mysqlx_plugin_test() {
+  # not used
   python -m pytest -vvv $DIRNAME/myrocks_mysqlx_plugin_test/test_module01.py
 }
 
@@ -75,6 +89,14 @@ function run_pytests_bats() {
   fi
 }
 
+function run_mysqlsh_bats() {
+  # Calling bats file
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/mysqlsh.bats
+  else
+    bats $DIRNAME/mysqlsh.bats
+  fi
+}
 
 # Run clone and build here
 if [[ $clone == 1 ]] ; then
@@ -128,6 +150,10 @@ run_json_test
 echo "Installing mysql-connector-python"
 install_mysql_connector
 
+# Installing mysql-shell
+echo "Installing mysql-shell"
+install_mysql_shell
+
 # Installing mysqlx plugin
 echo "Installing mysqlx plugin"
 MYSQLX="INSTALL PLUGIN mysqlx SONAME 'mysqlx.so'"
@@ -146,4 +172,7 @@ execute_sql ${BASEDIR} "${GRANT}"
 # Calling myrocks_mysqlx_plugin.py file here
 echo "#Running X Plugin tests#"
 run_pytests_bats
+
+echo "#Running mysqlsh tests#"
+run_mysqlsh_bats
 #run_mysqlx_plugin_test
