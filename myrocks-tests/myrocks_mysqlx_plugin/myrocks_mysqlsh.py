@@ -3,6 +3,7 @@
 # MySQL X Shell tests
 
 from subprocess import Popen
+from shlex import split
 
 def mysqlsh_db_get_collections(user, passw, port):
     command = "mysqlsh {}:{}@localhost/generated_columns_test --port={} --py --interactive --execute 'db.get_collections()'"
