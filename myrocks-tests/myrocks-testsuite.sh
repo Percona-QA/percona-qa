@@ -172,4 +172,5 @@ execute_sql ${BASEDIR} "${GRANT}"
 # Calling myrocks_mysqlx_plugin.py file here
 echo "#Running X Plugin tests#"
 run_pytests_bats
+run_mysqlsh_bats
 #run_mysqlx_plugin_test
