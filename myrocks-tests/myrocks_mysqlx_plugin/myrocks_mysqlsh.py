@@ -2,18 +2,20 @@
 
 # MySQL X Shell tests
 
-from subprocess import Popen
+from subprocess import Popen, check_output
 from shlex import split
 
 def mysqlsh_db_get_collections(user, passw, port):
     command = "mysqlsh {}:{}@localhost/generated_columns_test --port={} --py --interactive --execute 'db.get_collections()'"
     new_command = command.format(user, passw, port)
     try:
-        process = Popen(
-                    split(new_command))
-        output, error = process.communicate()
-        print "The output:"
-        print output
+        # process = Popen(
+        #             split(new_command))
+        # output, error = process.communicate()
+        # print "The output:"
+        # print output
+        prc = check_output(new_command, shell=True)
+        print prc.split()
     except Exception as e:
         print(e)
     else:
