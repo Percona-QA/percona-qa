@@ -4,20 +4,15 @@
 
 from subprocess import Popen, check_output, PIPE
 from shlex import split
+import re
 
 def mysqlsh_db_get_collections(user, passw, port):
     command = "mysqlsh {}:{}@localhost/generated_columns_test --port={} --py --interactive --execute 'db.get_collections()'"
     new_command = command.format(user, passw, port)
     try:
-        # process = Popen(
-        #             split(new_command), stdout=PIPE)
-        # output, error = process.communicate()
-        # print "The output:"
-        # print output.split()
         prc = check_output(new_command, shell=True)
-        print prc
-        #output_list = prc.split()
-        #print output_list[-1]
+        returned_list = re.findall(r"(?<=\<).*?(?=\>)", prc)
+        return returned_list
     except Exception as e:
         print(e)
     else:
