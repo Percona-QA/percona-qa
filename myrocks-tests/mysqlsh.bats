@@ -4,10 +4,10 @@
 
 # MySQL X Shell tests
 
-# TODO: create single test to get the empty list from MySQL-Shell
-# $ mysqlsh root:@localhost/generated_columns_test --py --interactive --execute "db.get_collections()"
-# Creating a Session to 'root@localhost/generated_columns_test'
-# Your MySQL connection id is 29 (X protocol)
-# Server version: 5.7.19-17-debug MySQL Community Server (GPL)
-# Default schema `generated_columns_test` accessible through db.
-# []
+DIRNAME=$BATS_TEST_DIRNAME
+
+@test "Running mysqlsh_db_get_collections" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module02.py::TestMySQLShell::test_mysqlsh_db_get_collections
+  echo $output
+  [ $status -eq 0 ]
+}

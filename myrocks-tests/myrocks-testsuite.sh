@@ -76,6 +76,7 @@ function install_mysql_shell() {
 
 
 function run_mysqlx_plugin_test() {
+  # not used
   python -m pytest -vvv $DIRNAME/myrocks_mysqlx_plugin_test/test_module01.py
 }
 
@@ -88,6 +89,14 @@ function run_pytests_bats() {
   fi
 }
 
+function run_mysqlsh_bats() {
+  # Calling bats file
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/mysqlsh.bats
+  else
+    bats $DIRNAME/mysqlsh.bats
+  fi
+}
 
 # Run clone and build here
 if [[ $clone == 1 ]] ; then
