@@ -15,6 +15,7 @@ def mysqlsh_db_get_collections(user, passw, port):
                     stdout=None,
                     stderr=None)
         output, error = process.communicate()
+        print "The output:"
         print output
     except Exception as e:
         print(e)
