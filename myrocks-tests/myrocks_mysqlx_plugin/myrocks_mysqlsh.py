@@ -13,7 +13,7 @@ def mysqlsh_db_get_collections(user, passw, port):
                     split(new_command), stdout=PIPE)
         output, error = process.communicate()
         print "The output:"
-        print output
+        print output.split()
         # prc = check_output(new_command, shell=True)
         # print prc.split()
     except Exception as e:
