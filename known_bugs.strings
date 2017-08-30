@@ -853,5 +853,5 @@ TEXT=.\.shutdown_in_progress.$                                                  
 TEXT=.tab->ref.$                                                                        ## https://bugs.mysql.com/bug.php?id=74780 (duplicated by 83541)
 #TEXT=.false.$                                                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83120 (Fixed as part of internal bug#23295423)
 #TEXT=.part_rec_buf_ptr.$                                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=86255
-TEXT=.err == 0.$                                                                        ## https://jira.percona.com/browse/MYR-171
+#TEXT=.err == 0.$                                                                        ## https://jira.percona.com/browse/MYR-171 #disabling for now
 TEXT=.cmp .= 0.$                                                                        ## https://jira.percona.com/browse/MYR-173
