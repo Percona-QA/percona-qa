@@ -10,10 +10,7 @@ def mysqlsh_db_get_collections(user, passw, port):
     new_command = command.format(user, passw, port)
     try:
         process = Popen(
-                    split(new_command),
-                    stdin=None,
-                    stdout=None,
-                    stderr=None)
+                    split(new_command))
         output, error = process.communicate()
         print "The output:"
         print output
