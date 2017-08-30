@@ -15,7 +15,7 @@ def mysqlsh_db_get_collections(user, passw, port):
         # print "The output:"
         # print output.split()
         prc = check_output(new_command, shell=True)
-        print prc[-1]
+        print prc[-2]
         #output_list = prc.split()
         #print output_list[-1]
     except Exception as e:
