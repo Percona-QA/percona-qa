@@ -28,8 +28,20 @@ DIRNAME=$BATS_TEST_DIRNAME
   [ $status -eq 0 ]
 }
 
-@test "Running test_run_update_statement" {
+@test "Running test_run_update_statement[Should ignore lock in share mode]" {
   run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_update_statement
+  echo $output
+  [ $status -eq 0 ]
+}
+
+@test "Running test_run_for_update[FOR UPDATE]" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update
+  echo $output
+  [ $status -eq 0 ]
+}
+
+@test "Running test_run_for_update2[FOR UPDATE][Should raise an Errpr]" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update2
   echo $output
   [ $status -eq 0 ]
 }
