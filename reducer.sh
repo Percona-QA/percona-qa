@@ -1900,7 +1900,7 @@ start_mysqld_main(){
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_LOGBIN}" == "1" ];then
-      CMD="${CMD} --server-id=1"
+      CMD=$(echo $CMD | sed   "s|--no-defaults|--no-defaults --server-id=1|")
       sed -i "s|--no-defaults|--no-defaults --server-id=1|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
@@ -1914,7 +1914,7 @@ start_mysqld_main(){
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
                          --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     if [ "${CHK_LOGBIN}" == "1" ];then
-      CMD="${CMD} --server-id=1"
+      CMD=$(echo $CMD | sed   "s|--no-defaults|--no-defaults --server-id=1|")
       sed -i "s|--no-defaults|--no-defaults --server-id=1|" $WORK_START
     fi
     MYSQLD_START_TIME=$(date +'%s')
@@ -2725,11 +2725,18 @@ finish(){
   if [ "${STAGE}" != "" -a "${STAGE8_CHK}" != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
     if [ ${STAGE} -gt 8 ]; then
       if [ "${CHK_LOGBIN}" == "1" ];then
-        MYEXTRA="$MYEXTRA --server-id=1"
+        if echo ${STAGE8_OPT} | grep -q "\--server.id" ; then
+          MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
+          sed -i "s/--server-id=1/${STAGE8_OPT}/g" $WORK_START
+        else
+          MYEXTRA="$MYEXTRA --server-id=1"
+        fi
       fi
       if [ ${STAGE8_CHK} -eq 0 ]; then
-        export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
-        sed -i "s|error.log.out|error.log.out $MYEXTRA |" $WORK_START
+        if ! echo ${STAGE8_OPT} | grep -q "\--server.id" ; then
+          export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
+        fi
+        #sed -i "s|error.log.out|error.log.out $MYEXTRA |" $WORK_START
       fi
     fi
   fi
