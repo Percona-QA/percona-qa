@@ -35,7 +35,7 @@ class MyXPluginLocks:
 
     def insert_dummy_data_into_table(self, schema_name, table_name, value_id, value_name):
         try:
-            command = "insert into {}.{}(id, name) values({},{})"
+            command = "insert into {}.{}(id, name) values({},'{}')"
             sql = self.session.sql(command.format(schema_name, table_name, value_id, value_name))
             sql.execute()
         except Exception as e:
