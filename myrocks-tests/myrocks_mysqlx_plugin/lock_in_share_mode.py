@@ -25,7 +25,7 @@ class MyXPluginLocks:
 
     def create_table(self, schema_name, table_name):
         try:
-            command = "create table {}.{}(id int, name varchar(25) engine=rocksdb)"
+            command = "create table {}.{}(id int, name varchar(25))  engine=rocksdb"
             sql = self.session.sql(command.format(schema_name, table_name))
             sql.execute()
         except Exception as e:
