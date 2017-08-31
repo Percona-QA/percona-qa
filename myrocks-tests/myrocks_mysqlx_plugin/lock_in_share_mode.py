@@ -4,7 +4,7 @@ import mysqlx
 
 class MyXPluginLocks:
     # The Class for using X Plugin to run SQL statements
-    def __init__(self, schema_name, table_name):
+    def __init__(self):
         # Connect to a dedicated MySQL server
         self.session = mysqlx.get_session({
             'host': 'localhost',
