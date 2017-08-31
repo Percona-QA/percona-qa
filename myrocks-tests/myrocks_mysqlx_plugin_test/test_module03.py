@@ -15,3 +15,16 @@ class TestLocks:
     @pytest.mark.usefixtures("return_lock_object1")
     def test_create_table(self, return_lock_object1, schema_name="locks", table_name="t1"):
         assert return_lock_object1.create_table(schema_name, table_name) == 0
+
+    @pytest.mark.usefixtures("return_lock_object1")
+    def test_insert_dummy_data_into_table(self, return_lock_object1,
+                                                schema_name="locks",
+                                                table_name="t1",
+                                                value_id=994,
+                                                value_name="Baku"):
+        assert return_lock_object1.insert_dummy_data_into_table(schema_name, table_name, value_id, value_name)
+
+    @pytest.mark.usefixtures("return_lock_object1")
+    def test_run_lock_in_share_select(self, return_lock_object1, schema_name="locks", table_name="t1", value_id=994):
+        return_lock_object1.start_transaction()
+        assert return_lock_object1.run_lock_in_share_select(schema_name, table_name, value_id) == 0

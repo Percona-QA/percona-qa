@@ -15,3 +15,15 @@ DIRNAME=$BATS_TEST_DIRNAME
   echo $output
   [ $status -eq 0 ]
 }
+
+@test "Running test_insert_dummy_data_into_table" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_insert_dummy_data_into_table
+  echo $output
+  [ $status -eq 0 ]
+}
+
+@test "Running test_run_lock_in_share_select" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_lock_in_share_select
+  echo $output
+  [ $status -eq 0 ]
+}
