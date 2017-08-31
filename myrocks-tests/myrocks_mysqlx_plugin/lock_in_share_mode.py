@@ -25,7 +25,7 @@ class MyXPluginLocks:
 
     def create_table(self, schema_name, table_name):
         try:
-            command = "create table {}.{}(id int, name varchar(25))"
+            command = "create table {}.{}(id int, name varchar(25) engine=rocksdb)"
             sql = self.session.sql(command.format(schema_name, table_name))
             sql.execute()
         except Exception as e:
@@ -58,6 +58,7 @@ class MyXPluginLocks:
             command = "select * from {}.{} where id={} FOR UPDATE"
             sql = self.session.sql(command.format(schema_name, table_name, value_id))
             sql.execute()
+            cursor.fetch_all()
         except Exception as e:
             raise
         else:
