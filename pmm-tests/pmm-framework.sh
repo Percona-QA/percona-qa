@@ -318,22 +318,25 @@ setup(){
       else
         PMM_VERSION=$(lynx --dump https://hub.docker.com/r/perconalab/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
       fi
-    fi
+    
     #PMM sanity check
-	aws ec2 describe-instance-status --instance-ids  $INSTANCE_ID | grep "Code" | sed 's/[^0-9]//g'
-    if ! pgrep docker > /dev/null ; then
-      echo "ERROR! docker service is not running. Terminating"
-      exit 1
-    fi
-    if sudo docker ps | grep 'pmm-server' > /dev/null ; then
-      echo "ERROR! pmm-server docker container is already runnning. Terminating"
-      exit 1
-    elif  sudo docker ps -a | grep 'pmm-server' > /dev/null ; then
-      CONTAINER_NAME=$(sudo docker ps -a | grep 'pmm-server' | grep $PMM_VERSION | grep -v pmm-data | awk '{ print $1}')
-      echo "ERROR! The name 'pmm-server' is already in use by container $CONTAINER_NAME"
-      exit 1
+      if ! pgrep docker > /dev/null ; then
+        echo "ERROR! docker service is not running. Terminating"
+        exit 1
+      fi
+      if sudo docker ps | grep 'pmm-server' > /dev/null ; then
+        echo "ERROR! pmm-server docker container is already runnning. Terminating"
+        exit 1
+      elif  sudo docker ps -a | grep 'pmm-server' > /dev/null ; then
+        CONTAINER_NAME=$(sudo docker ps -a | grep 'pmm-server' | grep $PMM_VERSION | grep -v pmm-data | awk '{ print $1}')
+        echo "ERROR! The name 'pmm-server' is already in use by container $CONTAINER_NAME"
+        exit 1
+      fi
     fi
 
+    if [[ "$pmm_server" == "aws" ]];then 
+	    aws ec2 describe-instance-status --instance-ids  $INSTANCE_ID | grep "Code" | sed 's/[^0-9]//g'
+    fi
     echo "Initiating PMM configuration"
     if [ -z $dev ]; then
       sudo docker create -v /opt/prometheus/data -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
@@ -411,6 +414,7 @@ setup(){
     PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
   else 
     PMM_VERSION=$pmm_server_version
+    echo "PMM version is ====== $PMM_VERSION"
   fi
   echo "Initiating PMM client configuration"
   PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
