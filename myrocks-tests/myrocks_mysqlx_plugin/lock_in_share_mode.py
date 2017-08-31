@@ -55,7 +55,7 @@ class MyXPluginLocks:
 
     def run_update_statement(self, schema_name, table_name, value_id, value_name):
         try:
-            command = "update {}.{} set name={} where id={}"
+            command = "update {}.{} set name='{}' where id={}"
             sql = self.session.sql(command.format(schema_name, table_name, value_name, value_id))
             sql.execute()
         except Exception as e:
