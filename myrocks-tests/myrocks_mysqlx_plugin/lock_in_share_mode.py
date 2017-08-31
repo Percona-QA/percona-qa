@@ -1,3 +1,5 @@
+# Created by Shahriyar Rzayev from Percona
+
 import mysqlx
 
 class MyXPluginLocks:
@@ -18,8 +20,8 @@ class MyXPluginLocks:
 
     def create_schema(self, schema_name):
         # Creating schema
-        self.db_obj = self.session.create_schema(schema_name)
-        return self.db_obj.get_name()
+        db_obj = self.session.create_schema(schema_name)
+        return db_obj.get_name()
 
     def create_table(self, schema_name, table_name):
         try:
