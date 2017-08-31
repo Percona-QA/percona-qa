@@ -16,3 +16,8 @@ lock_object1 = MyXPluginLocks()
 @pytest.fixture()
 def return_lock_object1():
     return lock_object1
+
+lock_object2 = MyXPluginLocks()
+@pytest.fixture()
+def return_lock_object1():
+    return lock_object1
