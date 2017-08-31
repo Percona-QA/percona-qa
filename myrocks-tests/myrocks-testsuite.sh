@@ -98,6 +98,15 @@ function run_mysqlsh_bats() {
   fi
 }
 
+function run_lock_in_share_bats() {
+  # Calling bats file
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/lock_in_share.bats
+  else
+    bats $DIRNAME/lock_in_share.bats
+  fi
+}
+
 # Run clone and build here
 if [[ $clone == 1 ]] ; then
   echo "Clone and Build server from repo"
@@ -176,3 +185,6 @@ run_pytests_bats
 echo "#Running mysqlsh tests#"
 run_mysqlsh_bats
 #run_mysqlx_plugin_test
+
+echo "#Running lock in share mode tests#"
+run_lock_in_share_bats
