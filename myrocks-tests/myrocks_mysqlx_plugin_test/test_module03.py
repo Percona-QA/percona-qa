@@ -41,18 +41,18 @@ class TestLocks:
         return_lock_object2.start_transaction()
         with pytest.raises(OperationalError) as er:
             return_lock_object2.run_update_statement(schema_name, table_name, value_id, value_name)
-        print e
+        print er
 
     @pytest.mark.usefixtures("return_lock_object1")
     def test_run_for_update(self, return_lock_object1, schema_name="locks", table_name="t1", value_id=994):
         return_lock_object1.start_transaction()
         with pytest.raises(OperationalError) as er:
             return_lock_object1.run_for_update(schema_name, table_name, value_id)
-        print e
+        print er
 
     @pytest.mark.usefixtures("return_lock_object2")
     def test_run_for_update2(self, return_lock_object2, schema_name="locks", table_name="t1", value_id=994):
         return_lock_object2.start_transaction()
         with pytest.raises(OperationalError) as er:
             return_lock_object2.run_for_update(schema_name, table_name, value_id)
-        print e
+        print er
