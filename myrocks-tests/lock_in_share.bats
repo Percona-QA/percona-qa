@@ -45,3 +45,9 @@ DIRNAME=$BATS_TEST_DIRNAME
   echo $output
   [ $status -eq 0 ]
 }
+
+@test "Running test_run_alter_add_primary_key" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_alter_add_primary_key
+  echo $output
+  [ $status -eq 0 ]
+}

@@ -56,3 +56,7 @@ class TestLocks:
         with pytest.raises(OperationalError) as er:
             return_lock_object2.run_for_update(schema_name, table_name, value_id)
         print er
+
+    @pytest.mark.usefixtures("return_lock_object1")
+    def test_run_alter_add_primary_key(self, return_lock_object1, schema_name="locks", table_name="t1"):
+        assert return_lock_object1.run_alter_add_primary_key(schema_name, table_name) == 0
