@@ -472,11 +472,11 @@ function async_rpl_test(){
 
     if [ "$ENGINE" == "ROCKSDB" ]; then
       echoit "Checksum for msr_db_master1 database"
-      run_mysqldbcompare "sbtest_ps_master_1" "/tmp/ps2.sock" "/tmp/ps1.sock"
+      run_mysqldbcompare "msr_db_master1" "/tmp/ps2.sock" "/tmp/ps1.sock"
       echoit "Checksum for msr_db_master2 database"
-      run_mysqldbcompare "sbtest_ps_master_2" "/tmp/ps3.sock" "/tmp/ps1.sock"
+      run_mysqldbcompare "msr_db_master2" "/tmp/ps3.sock" "/tmp/ps1.sock"
       echoit "Checksum for msr_db_master3 database"
-      run_mysqldbcompare "sbtest_ps_master_3" "/tmp/ps4.sock" "/tmp/ps1.sock"
+      run_mysqldbcompare "msr_db_master3" "/tmp/ps4.sock" "/tmp/ps1.sock"
     else
       echoit "Checksum for msr_db_master1 database"
       run_pt_table_checksum "msr_db_master1" "/tmp/ps2.sock"
