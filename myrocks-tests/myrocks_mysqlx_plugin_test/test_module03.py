@@ -64,18 +64,21 @@ class TestLocks:
         assert return_lock_object1.run_alter_add_primary_key(schema_name, table_name) == 0
 
 
-    @pytest.mark.usefixtures("return_lock_object1")
-    def test_run_lock_in_share_select(self, return_lock_object1, schema_name="locks", table_name="t1", value_id=994):
-        return_lock_object1.start_transaction()
-        assert return_lock_object1.run_lock_in_share_select(schema_name, table_name, value_id) == 0
+    # @pytest.mark.usefixtures("return_lock_object1")
+    # def test_run_lock_in_share_select(self, return_lock_object1, schema_name="locks", table_name="t1", value_id=994):
+    #     return_lock_object1.start_transaction()
+    #     assert return_lock_object1.run_lock_in_share_select(schema_name, table_name, value_id) == 0
 
 
-    @pytest.mark.usefixtures("return_lock_object2")
+    @pytest.mark.usefixtures("return_lock_object2", "return_lock_object1")
     def test_run_update_statement(self, return_lock_object2,
+                                        return_lock_object1
                                         schema_name="locks",
                                         table_name="t1",
                                         value_id=994,
                                         value_name="Azerbaijan"):
+        return_lock_object1.start_transaction()
+        return_lock_object1.run_lock_in_share_select(schema_name, table_name, value_id)
         return_lock_object2.start_transaction()
         with pytest.raises(OperationalError) as er:
             return_lock_object2.run_update_statement(schema_name, table_name, value_id, value_name)
