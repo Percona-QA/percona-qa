@@ -1,6 +1,7 @@
 # Created by Shahriyar Rzayev from Percona
 
 import mysqlx
+import pytest
 
 class MyXPluginLocks:
     # The Class for using X Plugin to run SQL statements
@@ -74,7 +75,7 @@ class MyXPluginLocks:
             sql = self.session.sql(command.format(schema_name, table_name, value_name, value_id))
             sql.execute()
         except mysqlx.errors.OperationalError as e:
-            raise mysqlx.errors.OperationalError("GAP Locks detection!")    
+            raise mysqlx.errors.OperationalError("GAP Locks detection!")
         except Exception as e:
             raise
         else:
