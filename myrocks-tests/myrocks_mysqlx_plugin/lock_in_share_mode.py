@@ -83,7 +83,7 @@ class MyXPluginLocks:
 
     def run_alter_add_primary_key(self, schema_name, table_name):
         try:
-            command = "alter table {}.{} add primary key id"
+            command = "alter table {}.{} add primary key(id)"
             sql = self.session.sql(command.format(schema_name, table_name))
             sql.execute()
         except Exception as e:
