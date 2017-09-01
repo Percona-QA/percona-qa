@@ -184,7 +184,7 @@ function async_rpl_test(){
       ${PS_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
        --basedir=${PS_BASEDIR} $STARTUP_OPTION $MYEXTRA_ENGINE $SE_STARTUP --datadir=$node \
        --innodb_file_per_table \
-       --binlog-format=ROW --log-bin= --server-id=20${i} $MYEXTRA \
+       --binlog-format=ROW --server-id=20${i} $MYEXTRA \
        --innodb_flush_method=O_DIRECT --core-file --loose-new \
        --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= \
        --log-error=$WORKDIR/logs/psnode${i}.err --report-host=$ADDR --report-port=$RBASE1 \
