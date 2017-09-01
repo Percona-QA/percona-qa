@@ -1,6 +1,7 @@
 # Created by Shahriyar Rzayev from Percona
 
 from myrocks_mysqlx_plugin.lock_in_share_mode import MyXPluginLocks
+from mysqlx.errors import OperationalError
 import pytest
 
 class TestLocks:
