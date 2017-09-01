@@ -60,7 +60,7 @@ class MyXPluginLocks:
         try:
             command = "select * from {}.{} where id={} FOR UPDATE"
             sql = self.session.sql(command.format(schema_name, table_name, value_id))
-            sql.execute()
+            cursor = sql.execute()
             cursor.fetch_all()
         except mysqlx.errors.OperationalError as e:
             raise mysqlx.errors.OperationalError("GAP Locks detection!")
