@@ -49,6 +49,7 @@ class TestLocks:
         with pytest.raises(OperationalError) as er:
             return_lock_object1.run_for_update(schema_name, table_name, value_id)
         print er
+        return_lock_object1.commit_transaction()
 
     @pytest.mark.usefixtures("return_lock_object2")
     def test_run_for_update2_gap_lock(self, return_lock_object2, schema_name="locks", table_name="t1", value_id=994):
@@ -56,6 +57,7 @@ class TestLocks:
         with pytest.raises(OperationalError) as er:
             return_lock_object2.run_for_update(schema_name, table_name, value_id)
         print er
+        return_lock_object2.commit_transaction()
 
     @pytest.mark.usefixtures("return_lock_object1")
     def test_run_alter_add_primary_key(self, return_lock_object1, schema_name="locks", table_name="t1"):
