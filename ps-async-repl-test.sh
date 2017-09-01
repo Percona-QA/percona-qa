@@ -149,9 +149,9 @@ check_cmd(){
 function async_rpl_test(){
   MYEXTRA_CHECK=$1
   if [ "$MYEXTRA_CHECK" == "GTID" ]; then
-    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --gtid_mode=ON --enforce_gtid_consistency=ON --slave_gtid_mode=ON --sync-binlog=0  --binlog-stmt-cache-size=1M"
+    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --gtid_mode=ON --enforce_gtid_consistency=ON  --sync-binlog=0  --binlog-stmt-cache-size=1M"
   else
-    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --relay_log_info_repository=TABLE --sync-binlog=0 --rocksdb-flush-log-at-trx-commit=2 --rocksdb-wal-recovery-mode=2 --binlog-stmt-cache-size=1M"
+    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --sync-binlog=0  --binlog-stmt-cache-size=1M"
   fi
   function ps_start(){
     INTANCES="$1"
