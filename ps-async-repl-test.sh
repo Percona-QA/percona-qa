@@ -599,9 +599,9 @@ function async_rpl_test(){
       run_mysqldbcompare "mtr_db_ps1_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqldbcompare "mtr_db_ps2_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqldbcompare "mtr_db_ps2_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps3_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps4_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps5_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps2_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps2_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps2_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
       run_pt_table_checksum "mtr_db_ps1_1,mtr_db_ps1_2,mtr_db_ps1_3,mtr_db_ps1_4,mtr_db_ps1_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5"  "/tmp/ps1.sock"
     fi
