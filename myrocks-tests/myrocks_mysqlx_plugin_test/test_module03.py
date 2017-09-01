@@ -72,7 +72,7 @@ class TestLocks:
 
     @pytest.mark.usefixtures("return_lock_object2", "return_lock_object1")
     def test_run_update_statement(self, return_lock_object2,
-                                        return_lock_object1
+                                        return_lock_object1,
                                         schema_name="locks",
                                         table_name="t1",
                                         value_id=994,
