@@ -50,7 +50,10 @@ class MyXPluginLocks:
             sql = self.session.sql(command.format(schema_name, table_name, value_id))
             sql.execute()
         except mysqlx.errors.OperationalError as e:
-            raise mysqlx.errors.OperationalError("GAP Locks detection!")
+            if 'Gap Lock' in e:
+                raise mysqlx.errors.OperationalError("GAP Locks detection!")
+            elif 'Lock wait timeout exceeded' in e:
+                raise mysqlx.errors.OperationalError("Lock wait timeout exceeded; try restarting transaction")
         except Exception as e:
             raise
         else:
@@ -63,7 +66,10 @@ class MyXPluginLocks:
             cursor = sql.execute()
             cursor.fetch_all()
         except mysqlx.errors.OperationalError as e:
-            raise mysqlx.errors.OperationalError("GAP Locks detection!")
+            if 'Gap Lock' in e:
+                raise mysqlx.errors.OperationalError("GAP Locks detection!")
+            elif 'Lock wait timeout exceeded' in e:
+                raise mysqlx.errors.OperationalError("Lock wait timeout exceeded; try restarting transaction")
         except Exception as e:
             raise
         else:
@@ -75,7 +81,10 @@ class MyXPluginLocks:
             sql = self.session.sql(command.format(schema_name, table_name, value_name, value_id))
             sql.execute()
         except mysqlx.errors.OperationalError as e:
-            raise mysqlx.errors.OperationalError("GAP Locks detection!")
+            if 'Gap Lock' in e:
+                raise mysqlx.errors.OperationalError("GAP Locks detection!")
+            elif 'Lock wait timeout exceeded' in e:
+                raise mysqlx.errors.OperationalError("Lock wait timeout exceeded; try restarting transaction") 
         except Exception as e:
             raise
         else:
