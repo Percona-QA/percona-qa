@@ -27,7 +27,7 @@ if [ -z ${SST_METHOD} ]; then
 fi
 
 if [ -z ${TSIZE} ]; then
-  TSIZE=5000
+  TSIZE=500
 fi
 
 if [ -z ${NUMT} ]; then
@@ -44,6 +44,11 @@ if [ "$ENGINE" == "INNODB" ]; then
 elif [ "$ENGINE" == "ROCKSDB" ]; then
   MYEXTRA_ENGINE="--plugin-load-add=rocksdb=ha_rocksdb.so  --init-file=${SCRIPT_PWD}/MyRocks.sql --default-storage-engine=ROCKSDB "
   SE_STARTUP="--rocksdb-flush-log-at-trx-commit=2 --rocksdb-wal-recovery-mode=2"
+  #Check MySQL utilities
+  if [[ ! -e $(which mysqldbcompare 2> /dev/null) ]] ;then
+    echo "ERROR! mysql utilities are currently not installed. Please install mysql utilities. Terminating"
+    exit 1
+  fi
 elif [ "$ENGINE" == "TOKUDB" ]; then
   MYEXTRA_ENGINE=" --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/TokuDB.sql --default-storage-engine=TokuDB"
   SE_STARTUP=""
@@ -91,22 +96,6 @@ else
   PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
   export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
 fi
-
-#Check MySQL utilities binary tar ball
-MU_TAR=`ls -1td mysql-utilities* | grep ".tar" | head -n1`
-if [ ! -z $MU_TAR ];then
-  tar -xzf $MU_TAR
-  MUBASE=`ls -1td mysql-utilities* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$MUBASE/bin:$PATH"
-else
-  wget https://dev.mysql.com/get/Downloads/MySQLGUITools/mysql-utilities-1.5.6.tar.gz
-  MU_TAR=`ls -1td mysql-utilities* | grep ".tar" | head -n1`
-  tar -xzf $MU_TAR
-  MUBASE=`ls -1td mysql-utilities* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$MUBASE/bin:$PATH"
-fi
-
-https://dev.mysql.com/get/Downloads/MySQLGUITools/mysql-utilities-1.5.6.tar.gz
 
 #Check sysbench 
 if [[ ! -e `which sysbench` ]];then 
