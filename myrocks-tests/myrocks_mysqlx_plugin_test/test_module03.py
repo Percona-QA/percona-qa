@@ -77,7 +77,10 @@ class TestLocks:
                                         value_id=994,
                                         value_name="Azerbaijan"):
         return_lock_object2.start_transaction()
-        assert return_lock_object2.run_update_statement(schema_name, table_name, value_id, value_name) == 0
+        with pytest.raises(OperationalError) as er:
+            return_lock_object2.run_update_statement(schema_name, table_name, value_id, value_name)
+        print er
+
 
 
     @pytest.mark.usefixtures("return_lock_object1")
