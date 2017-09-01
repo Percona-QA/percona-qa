@@ -6,12 +6,18 @@ These tests are designed to run against MyRocks tables.
 The project structure:
 
 ```
-myrocks_mysqlx_plugin/myrocks_mysqlx_plugin.py  -> The main Python workiing code
-myrocks_mysqlx_plugin_test/test_module01.py     -> PyTest unit tests.
+myrocks_mysqlx_plugin/myrocks_mysqlx_plugin.py  -> The main Python working code for X Plugin tests.
+myrocks_mysqlx_plugin_test/test_module01.py     -> PyTest unit tests for myrocks_mysqlx_plugin.py.
+myrocks_mysqlx_plugin/myrocks_mysqlsh.py        -> The main Python working code for MySQL XShell tests.  
+myrocks_mysqlx_plugin_test/test_module02.py     -> Pytest unit tests for myrocks_mysqlsh.py.
+myrocks_mysqlx_plugin/lock_in_share_mode.py     -> The main Python working code for Lock in share mode etc. tests.
+myrocks_mysqlx_plugin_test/test_module02.py     -> Pytest unit tests for lock_in_share_mode.py.
 myrocks-testsuite.sh                            -> Main bash file.
 generated_columns.bats                          -> Testing generated columns.
 json.bats                                       -> Testing json things here.
 pytest.bats                                     -> The bats run for calling Pytest tests for X Plugin.
+mysqlsh.bats                                    -> The bats run for calling Pytest tests for MySQL XShell.
+lock_in_share.bats                              -> The bats run for calling Pytest tests for Lock in share mode etc.
 ```
 
 Sample run:
@@ -25,13 +31,13 @@ Skipping Clone and Build
 Running startup.sh from percona-qa
 Adding scripts: start | start_group_replication | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | myrocks_tokudb_init
 Setting up server with default directories
-2017-08-25T13:37:37.263907Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
-2017-08-25T13:37:38.508926Z 0 [Warning] InnoDB: New log files created, LSN=45790
-2017-08-25T13:37:38.990588Z 0 [Warning] InnoDB: Creating foreign key constraint system tables.
-2017-08-25T13:37:39.238217Z 0 [Warning] No existing UUID has been found, so we assume that this is the first time that this server has been started. Generating a new UUID: 90062c03-899a-11e7-ab80-002590e9b448.
-2017-08-25T13:37:39.261483Z 0 [Warning] Gtid table is not ready to be used. Table 'mysql.gtid_executed' cannot be opened.
-2017-08-25T13:37:39.516377Z 0 [Warning] CA certificate ca.pem is self signed.
-2017-08-25T13:37:39.654756Z 1 [Warning] root@localhost is created with an empty password ! Please consider switching off the --initialize-insecure option.
+2017-09-01T13:13:49.670695Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2017-09-01T13:13:51.048699Z 0 [Warning] InnoDB: New log files created, LSN=45790
+2017-09-01T13:13:51.479585Z 0 [Warning] InnoDB: Creating foreign key constraint system tables.
+2017-09-01T13:13:51.703933Z 0 [Warning] No existing UUID has been found, so we assume that this is the first time that this server has been started. Generating a new UUID: 6609fa0a-8f17-11e7-9021-002590e9b448.
+2017-09-01T13:13:51.735827Z 0 [Warning] Gtid table is not ready to be used. Table 'mysql.gtid_executed' cannot be opened.
+2017-09-01T13:13:52.142617Z 0 [Warning] CA certificate ca.pem is self signed.
+2017-09-01T13:13:52.185010Z 1 [Warning] root@localhost is created with an empty password ! Please consider switching off the --initialize-insecure option.
 Enabling additional TokuDB/ROCKSDB engine plugin items if exists
 Server socket: /home/shahriyar.rzaev/MYROCKS/PS250817-percona-server-5.7.19-17-linux-x86_64-debug/socket.sock with datadir: /home/shahriyar.rzaev/MYROCKS/PS250817-percona-server-5.7.19-17-linux-x86_64-debug/data
 Server on socket /home/shahriyar.rzaev/MYROCKS/PS250817-percona-server-5.7.19-17-linux-x86_64-debug/socket.sock with datadir /home/shahriyar.rzaev/MYROCKS/PS250817-percona-server-5.7.19-17-linux-x86_64-debug/data halted
@@ -53,6 +59,8 @@ Running json.bats
 1 test, 0 failures
 Installing mysql-connector-python
 Already Installed
+Installing mysql-shell
+Already Installed
 Installing mysqlx plugin
 Creating sample user
 Granting sample user
@@ -72,4 +80,21 @@ Granting sample user
  ✓ Running test_select_from_view
 
 13 tests, 0 failures
+#Running mysqlsh tests#
+ ✓ Running mysqlsh_db_get_collections
+
+1 test, 0 failures
+#Running lock in share mode, Gap locks detection etc. tests#
+ ✓ Running test_create_schema
+ ✓ Running test_create_table
+ ✓ Running test_insert_dummy_data_into_table
+ ✓ Running test_run_lock_in_share_select[Should raise OperationalError, GAP locks detection]
+ ✓ Running test_run_update_statement[Should raise OperationalError, GAP locks detection]
+ ✓ Running test_run_for_update[FOR UPDATE][Should raise OperationalError, GAP locks detection]
+ ✓ Running test_run_for_update2[FOR UPDATE][Should raise OperationalError, GAP locks detection]
+ ✓ Running test_run_alter_add_primary_key
+ ✓ Running test_run_update_statement[Should raise an OperationalError; Lock wait timeout exceeded]
+ ✓ Running test_run_for_update2[FOR UPDATE][Should raise an OperationalError; Lock wait timeout exceeded]
+
+10 tests, 0 failures
 ```
