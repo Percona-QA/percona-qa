@@ -186,5 +186,5 @@ echo "#Running mysqlsh tests#"
 run_mysqlsh_bats
 #run_mysqlx_plugin_test
 
-echo "#Running lock in share mode tests#"
+echo "#Running lock in share mode, Gap locks detection etc. tests#"
 run_lock_in_share_bats
