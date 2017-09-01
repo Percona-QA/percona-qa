@@ -48,6 +48,8 @@ class MyXPluginLocks:
             command = "select name from {}.{} where id={} LOCK IN SHARE MODE"
             sql = self.session.sql(command.format(schema_name, table_name, value_id))
             sql.execute()
+        except mysqlx.errors.OperationalError as e:
+            raise mysqlx.errors.OperationalError("GAP Locks detection!")
         except Exception as e:
             raise
         else:
@@ -59,6 +61,8 @@ class MyXPluginLocks:
             sql = self.session.sql(command.format(schema_name, table_name, value_id))
             sql.execute()
             cursor.fetch_all()
+        except mysqlx.errors.OperationalError as e:
+            raise mysqlx.errors.OperationalError("GAP Locks detection!")
         except Exception as e:
             raise
         else:
@@ -69,6 +73,8 @@ class MyXPluginLocks:
             command = "update {}.{} set name='{}' where id={}"
             sql = self.session.sql(command.format(schema_name, table_name, value_name, value_id))
             sql.execute()
+        except mysqlx.errors.OperationalError as e:
+            raise mysqlx.errors.OperationalError("GAP Locks detection!")    
         except Exception as e:
             raise
         else:
