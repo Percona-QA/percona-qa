@@ -65,11 +65,11 @@ DIRNAME=$BATS_TEST_DIRNAME
   [ $status -eq 0 ]
 }
 
-@test "Running test_run_for_update[FOR UPDATE]" {
-  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update
-  echo $output
-  [ $status -eq 0 ]
-}
+# @test "Running test_run_for_update[FOR UPDATE]" {
+#   run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update
+#   echo $output
+#   [ $status -eq 0 ]
+# }
 
 @test "Running test_run_for_update2[FOR UPDATE][Should raise an OperationalError; Lock wait timeout exceeded]" {
   run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update2
