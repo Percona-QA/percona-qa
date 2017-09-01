@@ -16,8 +16,8 @@ class MyXPluginLocks:
         })
 
 
-    def __del__(self):
-        self.session.close()
+    # def __del__(self):
+    #     self.session.close()
 
     def create_schema(self, schema_name):
         # Creating schema
