@@ -23,25 +23,25 @@ DIRNAME=$BATS_TEST_DIRNAME
 }
 
 @test "Running test_run_lock_in_share_select[Should raise OperationalError, GAPs locks detection]" {
-  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_lock_in_share_select
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_lock_in_share_select_gap_lock
   echo $output
   [ $status -eq 0 ]
 }
 
 @test "Running test_run_update_statement[Should raise OperationalError, GAPs locks detection]" {
-  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_update_statement
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_update_statement_gap_lock
   echo $output
   [ $status -eq 0 ]
 }
 
 @test "Running test_run_for_update[FOR UPDATE][Should raise OperationalError, GAPs locks detection]" {
-  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update_gap_lock
   echo $output
   [ $status -eq 0 ]
 }
 
 @test "Running test_run_for_update2[FOR UPDATE][Should raise OperationalError, GAPs locks detection]" {
-  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update2
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update2_gap_lock
   echo $output
   [ $status -eq 0 ]
 }
