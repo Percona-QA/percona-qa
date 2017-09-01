@@ -51,3 +51,28 @@ DIRNAME=$BATS_TEST_DIRNAME
   echo $output
   [ $status -eq 0 ]
 }
+
+
+@test "Running test_run_lock_in_share_select" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_lock_in_share_select
+  echo $output
+  [ $status -eq 0 ]
+}
+
+@test "Running test_run_update_statement" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_update_statement
+  echo $output
+  [ $status -eq 0 ]
+}
+
+@test "Running test_run_for_update[FOR UPDATE]" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update
+  echo $output
+  [ $status -eq 0 ]
+}
+
+@test "Running test_run_for_update2[FOR UPDATE]" {
+  run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module03.py::TestLocks::test_run_for_update2
+  echo $output
+  [ $status -eq 0 ]
+}
