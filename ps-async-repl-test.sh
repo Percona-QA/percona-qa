@@ -149,9 +149,9 @@ check_cmd(){
 function async_rpl_test(){
   MYEXTRA_CHECK=$1
   if [ "$MYEXTRA_CHECK" == "GTID" ]; then
-    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --gtid_mode=ON --enforce_gtid_consistency=ON --slave_gtid_mode=ON --sync-binlog=0  --binlog-stmt-cache-size=1M"
+    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --gtid_mode=ON --enforce_gtid_consistency=ON  --sync-binlog=0  --binlog-stmt-cache-size=1M"
   else
-    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --relay_log_info_repository=TABLE --sync-binlog=0 --rocksdb-flush-log-at-trx-commit=2 --rocksdb-wal-recovery-mode=2 --binlog-stmt-cache-size=1M"
+    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --sync-binlog=0  --binlog-stmt-cache-size=1M"
   fi
   function ps_start(){
     INTANCES="$1"
@@ -472,11 +472,11 @@ function async_rpl_test(){
 
     if [ "$ENGINE" == "ROCKSDB" ]; then
       echoit "Checksum for msr_db_master1 database"
-      run_mysqldbcompare "sbtest_ps_master_1" "/tmp/ps2.sock" "/tmp/ps1.sock"
+      run_mysqldbcompare "msr_db_master1" "/tmp/ps2.sock" "/tmp/ps1.sock"
       echoit "Checksum for msr_db_master2 database"
-      run_mysqldbcompare "sbtest_ps_master_2" "/tmp/ps3.sock" "/tmp/ps1.sock"
+      run_mysqldbcompare "msr_db_master2" "/tmp/ps3.sock" "/tmp/ps1.sock"
       echoit "Checksum for msr_db_master3 database"
-      run_mysqldbcompare "sbtest_ps_master_3" "/tmp/ps4.sock" "/tmp/ps1.sock"
+      run_mysqldbcompare "msr_db_master3" "/tmp/ps4.sock" "/tmp/ps1.sock"
     else
       echoit "Checksum for msr_db_master1 database"
       run_pt_table_checksum "msr_db_master1" "/tmp/ps2.sock"
@@ -599,9 +599,9 @@ function async_rpl_test(){
       run_mysqldbcompare "mtr_db_ps1_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqldbcompare "mtr_db_ps2_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqldbcompare "mtr_db_ps2_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps3_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps4_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps5_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps2_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps2_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "mtr_db_ps2_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
       run_pt_table_checksum "mtr_db_ps1_1,mtr_db_ps1_2,mtr_db_ps1_3,mtr_db_ps1_4,mtr_db_ps1_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5"  "/tmp/ps1.sock"
     fi
