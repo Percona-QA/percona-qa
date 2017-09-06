@@ -1,1 +1,1 @@
-tar -Jzhcf bug.tar.gz *
+tar -Jhcf bug.tar.xz *
