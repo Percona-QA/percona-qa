@@ -956,7 +956,6 @@ pquery_test(){
           echo 'CREATE DATABASE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         fi
         echo 'USE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
-        echo 'SET SESSION DEBUG="+d,myrocks_enable_blob_fix";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql  # Fix for https://github.com/facebook/mysql-5.6/issues/251
         shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         awk -v seed=$RANDOM 'BEGIN{srand();} {ORS="#@"int(999999999*rand())"\n"} {print $0}' ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.new
         rm -f ${RUNDIR}/${TRIAL}/${TRIAL}.sql && mv ${RUNDIR}/${TRIAL}/${TRIAL}.new ${RUNDIR}/${TRIAL}/${TRIAL}.sql
@@ -967,6 +966,7 @@ pquery_test(){
            sed 's|UNIQUE[ \t]\+KEY||i' | \
            sed 's|FOREIGN[ \t]\+KEY||i' | \
            sed 's|FULLTEXT||i' | \
+           sed 's|VIRTUAL||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
            sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            grep -vi "variables" | \
@@ -975,6 +975,7 @@ pquery_test(){
            grep -viE "analyze[ \t]+" | \
            grep -viE "optimize[ \t]+" | \
            grep -vi "information_schema" | \
+           grep -vi "performance_schema" | \
            grep -viE "check[ \t]+" | \
            grep -viE "repair[ \t]+" | \
            grep -viE "explain[ \t]+" | \
@@ -1003,7 +1004,10 @@ pquery_test(){
            grep -vi 'set .*serializable' | \
            grep -vi 'max_join_size' | \
            grep -vi "^create table.*unicode" | \
+           grep -vi "^create table.*column_format.*compressed" | \
            grep -vi "^create table.*/tmp/not-existing" | \
+           grep -vi "^select.* sys\." | \
+           grep -vi "^call.* sys\." | \
            grep -vi "^use " | \
            grep -vi "password[ \t]*(.*)" | \
            grep -vi "old_password[ \t]*(.*)" | \
