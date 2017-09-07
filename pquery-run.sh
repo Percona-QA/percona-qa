@@ -1004,6 +1004,7 @@ pquery_test(){
            grep -vi 'set .*serializable' | \
            grep -vi 'max_join_size' | \
            grep -vi "^create table.*unicode" | \
+           grep -vi "^create table.*tablespace" | \
            grep -vi "^create table.*column_format.*compressed" | \
            grep -vi "^create table.*/tmp/not-existing" | \
            grep -vi "^select.* sys\." | \
