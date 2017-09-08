@@ -969,7 +969,7 @@ pquery_test(){
            sed 's|VIRTUAL||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
            sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
-           sed -E 's/row_format.*=.*(;| )+//i' \
+           sed -E 's/row_format.*=.*(;| )+//i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
            grep -viE "show[ \t]+" | \
