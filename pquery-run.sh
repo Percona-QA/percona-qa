@@ -969,6 +969,7 @@ pquery_test(){
            sed 's|VIRTUAL||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
            sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
+           sed -E 's/row_format.*=.*(;| )+//i' \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
            grep -viE "show[ \t]+" | \
@@ -1006,6 +1007,7 @@ pquery_test(){
            grep -vi "^create table.*unicode" | \
            grep -vi "^create table.*tablespace" | \
            grep -vi "^create table.*column_format.*compressed" | \
+           grep -vi "^create table.*generated" | \
            grep -vi "^create table.*/tmp/not-existing" | \
            grep -vi "^select.* sys\." | \
            grep -vi "^call.* sys\." | \
@@ -1014,6 +1016,7 @@ pquery_test(){
            grep -vi "old_password[ \t]*(.*)" | \
            grep -vi "row_count[ \t]*(.*)" | \
            grep -vi "^handler" | \
+           grep -vi "^uninstall.*plugin" | \
            grep -vi "^alter table.*algorithm.*inplace" | \
            grep -vi "^alter table.*discard tablespace" | \
            grep -vi "select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(" | \
