@@ -30,6 +30,7 @@ usage () {
     echo " --addclient=ps,2                 Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
     echo "                                  You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
     echo " --download                       This will help us to download pmm client binary tar balls"
+    echo " --pmm-server-version Pass PMM version"
     echo " --ps-version                     Pass Percona Server version info"
     echo " --ms-version                     Pass MySQL Server version info"
     echo " --md-version                     Pass MariaDB Server version info"
