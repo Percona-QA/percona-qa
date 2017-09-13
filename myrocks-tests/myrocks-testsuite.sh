@@ -111,6 +111,11 @@ function clone_the_test_db() {
   git clone https://github.com/datacharmer/test_db.git
 }
 
+function import_test_db() {
+  conn_string="$(cat $1/cl_noprompt)"
+  ${conn_string} < $1/test_db/employees.sql
+}
+
 # Run clone and build here
 if [[ $clone == 1 ]] ; then
   echo "Clone and Build server from repo"
@@ -195,3 +200,6 @@ run_lock_in_share_bats
 
 echo "Getting sample test db repo"
 clone_the_test_db
+
+echo "Importing sample test db"
+import_test_db
