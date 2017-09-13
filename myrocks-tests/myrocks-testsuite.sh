@@ -202,4 +202,4 @@ echo "Getting sample test db repo"
 clone_the_test_db
 
 echo "Importing sample test db"
-import_test_db
+import_test_db ${BASEDIR}
