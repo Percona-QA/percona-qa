@@ -113,7 +113,9 @@ function clone_the_test_db() {
 
 function import_test_db() {
   conn_string="$(cat $1/cl_noprompt)"
-  ${conn_string} < $1/test_db/employees.sql
+  cd $1/test_db
+  ${conn_string} < employees.sql
+  cd $1
 }
 
 # Run clone and build here
