@@ -107,6 +107,10 @@ function run_lock_in_share_bats() {
   fi
 }
 
+function clone_the_test_db() {
+  git clone https://github.com/datacharmer/test_db.git
+}
+
 # Run clone and build here
 if [[ $clone == 1 ]] ; then
   echo "Clone and Build server from repo"
@@ -188,3 +192,6 @@ run_mysqlsh_bats
 
 echo "#Running lock in share mode, Gap locks detection etc. tests#"
 run_lock_in_share_bats
+
+echo "Getting sample test db repo"
+clone_the_test_db
