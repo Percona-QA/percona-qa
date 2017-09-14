@@ -47,4 +47,4 @@ class TestBulk:
         # Selecting the count from table
         obj = return_bulk_object.run_select_statement(schema_name="employees", table_name="salaries2")
         for i in obj:
-            assert i == 0
+            assert i == 1
