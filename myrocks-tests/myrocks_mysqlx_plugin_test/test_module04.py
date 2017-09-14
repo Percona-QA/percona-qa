@@ -22,8 +22,9 @@ class TestBulk:
         # Enabling bulk load
         return_bulk_object.run_set_rocksdb_bulk_load(1)
         # Altering table engine to rocksdb
-        return_bulk_object.run_alter_storage_engine(schema_name="employees", table_name="salaries", engine="rocksdb") == 0
+        value = return_bulk_object.run_alter_storage_engine(schema_name="employees", table_name="salaries", engine="rocksdb")
         # Disabling bulk load
         return_bulk_object.run_set_rocksdb_bulk_load(0)
         # Enabling bin log
         return_bulk_object.run_set_sql_log_bin(1)
+        assert value == 0
