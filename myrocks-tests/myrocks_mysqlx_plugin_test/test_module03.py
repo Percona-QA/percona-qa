@@ -1,4 +1,5 @@
 # Created by Shahriyar Rzayev from Percona
+# Test module for testing lock_in_share_mode.py
 
 from myrocks_mysqlx_plugin.lock_in_share_mode import MyXPluginLocks
 from mysqlx.errors import OperationalError

@@ -1,3 +1,6 @@
+# Created by Shahriyar Rzayev from Percona
+# Test module for myrocks_mysqlsh.py
+
 from myrocks_mysqlx_plugin import myrocks_mysqlsh
 import pytest
 
