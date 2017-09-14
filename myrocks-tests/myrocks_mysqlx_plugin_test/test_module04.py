@@ -28,3 +28,23 @@ class TestBulk:
         # Enabling bin log
         return_bulk_object.run_set_sql_log_bin(1)
         assert value == 0
+
+    @pytest.mark.usefixtures("return_bulk_object")
+    def test_select_enabled_bulk_load(self, return_bulk_object):
+        # Enabling bulk load
+        return_bulk_object.run_set_rocksdb_bulk_load(1)
+
+        # Creating table
+        return_bulk_object.run_create_table(schema_name="employees", table_name="salaries2",
+                                            from_schema_name="employees", from_table_name="salaries")
+
+        # Inserting data into new table
+        return_bulk_object.run_insert_statement(schema_name="employees", table_name="salaries2",
+                                                emp_no=11111, from_date="1998-12-24")
+
+        return_bulk_object.run_insert_statement(schema_name="employees", table_name="salaries2",
+                                                emp_no=11110, from_date="1989-11-13")
+        # Selecting the count from table
+        obj = return_bulk_object.run_select_statement(schema_name="employees", table_name="salaries2")
+        for i in obj:
+            assert i == 0

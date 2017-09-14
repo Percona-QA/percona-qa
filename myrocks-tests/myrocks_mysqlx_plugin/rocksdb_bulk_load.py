@@ -59,3 +59,33 @@ class RocksBulk:
             raise
         else:
             return 0
+
+    def run_create_table(self, schema_name, table_name, from_schema_name, from_table_name):
+        try:
+            command = "create table {}.{} like {}.{}"
+            sql = self.session.sql(command.format(schema_name, table_name, from_schema_name, from_table_name))
+            sql.execute()
+        except Exception as e:
+            raise
+        else:
+            return 0
+
+    def run_insert_statement(self, schema_name, table_name, emp_no, from_date):
+        try:
+            command = "insert into {}.{} select * from salaries where emp_no={} and from_date='{}'"
+            sql = self.session.sql(command.format(schema_name, table_name, emp_no, from_date))
+            sql.execute()
+        except Exception as e:
+            raise
+        else:
+            return 0
+
+    def run_select_statement(self, schema_name, table_name):
+        try:
+            command = "select count(*) from {}.{}"
+            sql = self.session.sql(command.format(schema_name, table_name))
+            cursor = sql.execute()
+        except Exception as e:
+            raise
+        else:
+            return cursor
