@@ -1,6 +1,8 @@
 # Created by Shahriyar Rzayev from Percona
 # Test module for testing rocksdb_bulk_load.py
 
+import pytest
+
 class TestBulk:
     '''
         Testing ROCKSDB BULK LOAD
