@@ -160,7 +160,11 @@ function async_rpl_test(){
     fi
     for i in `seq 1 $INTANCES`;do
       STARTUP_OPTION="$2"
-      RBASE1="$(( (RPORT + ( 100 * $i )) + $i ))"
+      RBASE1="$((RPORT + ( 100 * $i )))"
+      if ps -ef | grep  "\--port=${RBASE1}"  | grep -qv grep  ; then 
+        echoit "INFO! Another mysqld server running on port: ${RBASE1}. Using different port"
+        RBASE1="$(( (RPORT + ( 100 * $i )) + 10 ))"
+      fi
       echoit "Starting independent PS node${i}.."
       node="${WORKDIR}/psnode${i}"
       rm -rf $node

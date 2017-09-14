@@ -1003,13 +1003,18 @@ pquery_test(){
            grep -vi 'limit rows examined' | \
            grep -vi 'set .*read[ -]uncommitted' | \
            grep -vi 'set .*serializable' | \
+           grep -vi 'set .*binlog_format' | \
            grep -vi 'max_join_size' | \
            grep -vi "^create table.*unicode" | \
            grep -vi "^create table.*tablespace" | \
-           grep -vi "^create table.*column_format.*compressed" | \
+           grep -viE "^(create table|alter table).*column_format.*compressed" | \
            grep -vi "^create table.*generated" | \
            grep -vi "^create table.*/tmp/not-existing" | \
+           grep -vi "^create table.*compression" | \
+           grep -vi "^create table.*key_block_size" | \
+           grep -vi "^create table.*encryption" | \
            grep -vi "^select.* sys\." | \
+           grep -vi "^select.* mysql\." | \
            grep -vi "^call.* sys\." | \
            grep -vi "^use " | \
            grep -vi "password[ \t]*(.*)" | \
