@@ -112,7 +112,7 @@ function clone_the_test_db() {
 }
 
 function import_test_db() {
-  conn_string="$(cat $1/cl_noprompt)"
+  conn_string="$(cat $1/cl_noprompt_nobinary)"
   cd $1/test_db
   ${conn_string} < employees.sql
   cd $1
