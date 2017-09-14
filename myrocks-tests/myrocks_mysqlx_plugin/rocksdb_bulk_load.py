@@ -72,8 +72,8 @@ class RocksBulk:
 
     def run_insert_statement(self, schema_name, table_name, emp_no, from_date):
         try:
-            command = "insert into {}.{} select * from salaries where emp_no={} and from_date='{}'"
-            sql = self.session.sql(command.format(schema_name, table_name, emp_no, from_date))
+            command = "insert into {}.{} select * from {}.salaries where emp_no={} and from_date='{}'"
+            sql = self.session.sql(command.format(schema_name, table_name, schema_name, emp_no, from_date))
             sql.execute()
         except Exception as e:
             raise
