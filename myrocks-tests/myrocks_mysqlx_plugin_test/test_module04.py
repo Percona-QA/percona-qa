@@ -11,8 +11,8 @@ class TestBulk:
     @pytest.mark.usefixtures("return_bulk_object")
     def test_alter_table_engine_bulk(self, return_bulk_object):
         # Altering table engine to rocksdb using bulk load from large myisam table
-        # Starting transaction
-        return_bulk_object.start_transaction()
+        # # Starting transaction
+        # return_bulk_object.start_transaction()
         # Disabling bin log
         return_bulk_object.run_set_sql_log_bin(0)
         # Dropping foreign key
