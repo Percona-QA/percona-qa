@@ -107,6 +107,14 @@ function run_lock_in_share_bats() {
   fi
 }
 
+function run_rocksdb_bulk_load_bats() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/rocksdb_bulk_load.bats
+  else
+    bats $DIRNAME/rocksdb_bulk_load.bats
+  fi
+}
+
 function clone_the_test_db() {
   git clone https://github.com/datacharmer/test_db.git
 }
@@ -205,3 +213,6 @@ clone_the_test_db
 
 echo "Importing sample test db"
 import_test_db ${BASEDIR}
+
+echo "#Running bulk load tests#"
+run_rocksdb_bulk_load_bats
