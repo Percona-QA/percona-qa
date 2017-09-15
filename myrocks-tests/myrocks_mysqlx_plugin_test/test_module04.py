@@ -48,6 +48,7 @@ class TestBulk:
         obj = return_bulk_object.run_select_statement(schema_name="employees", table_name="salaries2")
         for i in obj.fetch_all():
             print i
+            print dir(i)
             assert i == 0
 
         return_bulk_object.run_set_rocksdb_bulk_load(0)
