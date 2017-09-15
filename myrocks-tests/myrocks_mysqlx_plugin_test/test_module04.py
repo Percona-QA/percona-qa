@@ -53,12 +53,10 @@ class TestBulk:
 
 
     @pytest.mark.usefixtures("return_bulk_object")
-    def test_select_enabled_bulk_load(self, return_bulk_object):
+    def test_select_disabled_bulk_load(self, return_bulk_object):
         return_bulk_object.run_set_rocksdb_bulk_load(0)
 
         # Selecting the count from table
         obj = return_bulk_object.run_select_statement(schema_name="employees", table_name="salaries2")
         for i in obj.fetch_all():
             assert i == 2
-
-        
