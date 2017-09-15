@@ -1,4 +1,5 @@
 # Created by Shahriyar Rzayev from Percona
+# Test module for myrocks_mysqlx_plugin.py
 
 import pytest
 from mysqlx.errors import OperationalError

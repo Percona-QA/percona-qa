@@ -2,6 +2,7 @@
 
 from myrocks_mysqlx_plugin.myrocks_mysqlx_plugin import MyXPlugin
 from myrocks_mysqlx_plugin.lock_in_share_mode import MyXPluginLocks
+from myrocks_mysqlx_plugin.rocksdb_bulk_load import RocksBulk
 import pytest
 # schema_name = "generated_columns_test"
 # collection_name = "my_collection"
@@ -22,3 +23,9 @@ lock_object2 = MyXPluginLocks()
 @pytest.fixture()
 def return_lock_object2():
     return lock_object2
+
+rocks_bulk = RocksBulk()
+
+@pytest.fixture()
+def return_bulk_object():
+    return rocks_bulk
