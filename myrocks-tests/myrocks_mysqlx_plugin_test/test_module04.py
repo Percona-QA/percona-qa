@@ -47,7 +47,7 @@ class TestBulk:
         # Selecting the count from table
         obj = return_bulk_object.run_select_statement(schema_name="employees", table_name="salaries2")
         for i in obj.fetch_all():
-            assert i.get_string("count(*)") == 0
+            assert int(i.get_string("count(*)")) == 0
 
         return_bulk_object.run_set_rocksdb_bulk_load(0)
 
@@ -59,4 +59,4 @@ class TestBulk:
         # Selecting the count from table
         obj = return_bulk_object.run_select_statement(schema_name="employees", table_name="salaries2")
         for i in obj.fetch_all():
-            assert i.get_string("count(*)") == 0
+            assert int(i.get_string("count(*)")) == 2
