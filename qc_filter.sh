@@ -38,6 +38,10 @@ move
 DIRLIST=$(grep -i "ERROR: 1105 - Using Gap Lock" */pquery_thread-0.RocksDB.sql|awk -F '/' '{print $1}'|sort -u)
 move
 
+# MyRocks doesn't support native partitioning
+DIRLIST=$(grep -i "Please use native partitioning instead." */pquery_thread-0.RocksDB.out|awk -F '/' '{print $1}'|sort -u)
+move
+
 # Filter where in the output storage engine name was mentioned
 DIRLIST=$(grep -i "Rocks" */pquery_thread-0.*.out|awk -F '/' '{print $1}'|sort -u)
 move
