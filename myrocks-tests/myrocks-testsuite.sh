@@ -80,12 +80,12 @@ function run_mysqlx_plugin_test() {
   python -m pytest -vvv $DIRNAME/myrocks_mysqlx_plugin_test/test_module01.py
 }
 
-function run_pytests_bats() {
+function run_x_plugin_bats() {
   # Calling bats file
   if [[ $tap == 1 ]] ; then
-    bats --tap $DIRNAME/pytests.bats
+    bats --tap $DIRNAME/x_plugin.bats
   else
-    bats $DIRNAME/pytests.bats
+    bats $DIRNAME/x_plugin.bats
   fi
 }
 
@@ -199,7 +199,7 @@ execute_sql ${BASEDIR} "${GRANT}"
 
 # Calling myrocks_mysqlx_plugin.py file here
 echo "#Running X Plugin tests#"
-run_pytests_bats
+run_x_plugin_bats
 
 echo "#Running mysqlsh tests#"
 run_mysqlsh_bats
