@@ -70,13 +70,13 @@ DIRNAME=$BATS_TEST_DIRNAME
   [ $status -eq 0 ]
 }
 
-@test "Running test_select_from_table" {
+@test "Running test_select_from_table [Should raise an OperationalError]" {
   run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module01.py::TestXPlugin::test_select_from_table
   echo $output
   [ $status -eq 0 ]
 }
 
-@test "Running test_select_from_view" {
+@test "Running test_select_from_view [Should raise an OperationalError]" {
   run python -m pytest -vv ${DIRNAME}/myrocks_mysqlx_plugin_test/test_module01.py::TestXPlugin::test_select_from_view
   echo $output
   [ $status -eq 0 ]
