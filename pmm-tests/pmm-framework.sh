@@ -53,13 +53,14 @@ usage () {
 	echo " --ami-image                      Pass PMM server ami image name"
     echo " --key-name                       Pass your aws access key file name"
 	echo " --ova-image                      Pass PMM server ova image name"
+    echo " --upgrade 			    When this option is specified, PMM framework will be updated to specified version"
     echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page" 
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,wipe,dev,with-proxysql,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -144,6 +145,10 @@ do
     shift
     mongo_storage_engine="--storageEngine  $2"
     ;;
+    --myrocks-storage-engine )
+    shift
+    myrocke_storage_engine="--storageEngine  $2"
+    ;;
     --add-docker-client )
     shift
     add_docker_client=1
@@ -183,6 +188,10 @@ do
     --compare-query-count )
     shift
     compare_query_count=1
+    ;;
+    --upgrade )
+    upgrade=1
+    shift
     ;;
     --pmm-server-username )
     pmm_server_username="$2"
@@ -253,7 +262,7 @@ sanity_check(){
   if [[ "$pmm_server" == "docker" ]];then
     if ! sudo docker ps | grep 'pmm-server' > /dev/null ; then
       echo "ERROR! pmm-server docker container is not runnning. Terminating"
-      exit 1
+      #exit 1
     fi
   elif [[ "$pmm_server" == "ami" ]];then
     if [ -f $WORKDIR/aws_instance_config.txt ]; then
@@ -640,6 +649,11 @@ add_clients(){
       NODE_NAME="PS_NODE"
       get_basedir ps "[Pp]ercona-[Ss]erver-${ps_version}*" "Percona Server binary tar ball" ${ps_version}
       MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --log_output=file --slow_query_log=ON --long_query_time=0 --log_slow_rate_limit=100 --log_slow_rate_type=query --log_slow_verbosity=full --log_slow_admin_statements=ON --log_slow_slave_statements=ON --slow_query_log_always_write_time=1 --slow_query_log_use_global_control=all --innodb_monitor_enable=all --userstat=1"
+    elif [[ "${CLIENT_NAME}" == "psmyr" ]]; then
+      PORT_CHECK=601
+      NODE_NAME="PSMR_NODE"
+      get_basedir ps "[Pp]ercona-[Ss]erver-${ps_version}*" "Percona Server binary tar ball" ${ps_version}
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --log_output=file --slow_query_log=ON --long_query_time=0 --log_slow_rate_limit=100 --log_slow_rate_type=query --log_slow_verbosity=full --log_slow_admin_statements=ON --log_slow_slave_statements=ON --slow_query_log_always_write_time=1 --slow_query_log_use_global_control=all --innodb_monitor_enable=all --userstat=1 default-storage-engine=rocksdb"
     elif [[ "${CLIENT_NAME}" == "ms" ]]; then
       PORT_CHECK=201
       NODE_NAME="MS_NODE"
