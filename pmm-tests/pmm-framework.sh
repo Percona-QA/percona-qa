@@ -26,35 +26,35 @@ IS_BATS_RUN=0
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-    echo " --setup                          This will setup and configure a PMM server"
-    echo " --addclient=ps,2                 Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
-    echo "                                  You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
-    echo " --download                       This will help us to download pmm client binary tar balls"
-    echo " --pmm-server-version Pass PMM version"
-    echo " --ps-version                     Pass Percona Server version info"
-    echo " --ms-version                     Pass MySQL Server version info"
-    echo " --md-version                     Pass MariaDB Server version info"
-    echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
-    echo " --mo-version                     Pass MongoDB Server version info"
-    echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine"
-	echo " --replcount                      You can configure multiple mongodb replica sets with this oprion"
-	echo " --with-replica                   This will configure mongodb replica setup"
-	echo " --with-shrading                  This will configure mongodb shrading setup"
-    echo " --add-docker-client              Add docker pmm-clients with percona server to the currently live PMM server"
-    echo " --list                           List all client information as obtained from pmm-admin"
-    echo " --wipe-clients                   This will stop all client instances and remove all clients from pmm-admin"
-    echo " --wipe-docker-clients            This will stop all docker client instances and remove all clients from docker container"
-    echo " --wipe-server                    This will stop pmm-server container and remove all pmm containers"
-    echo " --wipe                           This will wipe all pmm configuration"
-    echo " --dev                            When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
-    echo " --pmm-server-username            User name to access the PMM Server web interface"
-    echo " --pmm-server-password            Password to access the PMM Server web interface"
-	echo " --pmm-server=[docker|ami|ova]    Choose PMM server appliance, default pmm server appliance is docker"
-	echo " --ami-image                      Pass PMM server ami image name"
-    echo " --key-name                       Pass your aws access key file name"
-	echo " --ova-image                      Pass PMM server ova image name"
-    echo " --upgrade 			    When this option is specified, PMM framework will be updated to specified version"
-    echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page" 
+  echo " --setup                          This will setup and configure a PMM server"
+  echo " --addclient=ps,2                 Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
+  echo "                                  You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
+  echo " --download                       This will help us to download pmm client binary tar balls"
+  echo " --pmm-server-version Pass PMM version"
+  echo " --ps-version                     Pass Percona Server version info"
+  echo " --ms-version                     Pass MySQL Server version info"
+  echo " --md-version                     Pass MariaDB Server version info"
+  echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
+  echo " --mo-version                     Pass MongoDB Server version info"
+  echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine"
+  echo " --replcount                      You can configure multiple mongodb replica sets with this oprion"
+  echo " --with-replica                   This will configure mongodb replica setup"
+  echo " --with-shrading                  This will configure mongodb shrading setup"
+  echo " --add-docker-client              Add docker pmm-clients with percona server to the currently live PMM server"
+  echo " --list                           List all client information as obtained from pmm-admin"
+  echo " --wipe-clients                   This will stop all client instances and remove all clients from pmm-admin"
+  echo " --wipe-docker-clients            This will stop all docker client instances and remove all clients from docker container"
+  echo " --wipe-server                    This will stop pmm-server container and remove all pmm containers"
+  echo " --wipe                           This will wipe all pmm configuration"
+  echo " --dev                            When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
+  echo " --pmm-server-username            User name to access the PMM Server web interface"
+  echo " --pmm-server-password            Password to access the PMM Server web interface"
+  echo " --pmm-server=[docker|ami|ova]    Choose PMM server appliance, default pmm server appliance is docker"
+  echo " --ami-image                      Pass PMM server ami image name"
+  echo " --key-name                       Pass your aws access key file name"
+  echo " --ova-image                      Pass PMM server ova image name"
+  echo " --upgrade 			    When this option is specified, PMM framework will be updated to specified version"
+  echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page" 
 }
 
 # Check if we have a functional getopt(1)
@@ -144,10 +144,6 @@ do
     --mongo-storage-engine )
     shift
     mongo_storage_engine="--storageEngine  $2"
-    ;;
-    --myrocks-storage-engine )
-    shift
-    myrocke_storage_engine="--storageEngine  $2"
     ;;
     --add-docker-client )
     shift
@@ -1023,6 +1019,13 @@ clean_server(){
 
 }
 
+upgrade_server(){
+  #Stop/Remove pmm-server
+}
+
+upgrade_client(){
+
+}
 if [ ! -z $wipe_clients ]; then
   clean_clients
 fi
@@ -1047,6 +1050,11 @@ fi
 
 if [ ! -z $setup ]; then
   setup
+fi
+
+if [ ! -z $upgrade ]; then
+  upgrade_server
+  upgrade_client
 fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
