@@ -1021,6 +1021,18 @@ clean_server(){
 
 upgrade_server(){
   #Stop/Remove pmm-server
+  if [[ "$pmm_server" == "docker" ]] ; then
+    SERVER_USER=$(sudo pmm-admin show-passwords| grep 'User'|awk '{print $3}')
+    SERVER_PASSWORD=$(sudo pmm-admin show-passwords| grep 'Password'|awk '{print $3}')
+    IS_SSL=$(sudo pmm-admin info |grep 'SSL')
+    echo -e "Removing pmm-server docker containers"
+    sudo docker stop pmm-server  2&> /dev/null
+    sudo docker rm pmm-server 2&> /dev/null
+  elif
+    echo "AMI/OVA images upgrade is not implemented yet"
+    exit 1
+  fi
+
 }
 
 upgrade_client(){
