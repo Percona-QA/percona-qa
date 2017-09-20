@@ -20,7 +20,7 @@ WORKDIR="${PWD}"
 }
 
 @test "Running test to search ORDER BY clause in dump file" {
-  result="$(cat dump.sql | grep ORDER | wc -l)"
+  result="$(cat dump2.sql | grep ORDER | wc -l)"
   echo $output
   [ $result -eq 3 ]
 }
