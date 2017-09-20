@@ -267,5 +267,9 @@ result=$(generate_mysqldump_command ${BASEDIR})
 MYSQLDUMP="$result employees salaries salaries2 salaries3"
 $(${MYSQLDUMP} > ${WORKDIR}/dump1.sql)
 
+# Changing dir
+cd ${WORKDIR}
+#
+
 echo "Running mysqldump.bats"
 run_mysqldump_bats
