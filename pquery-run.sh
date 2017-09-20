@@ -1011,6 +1011,7 @@ pquery_test(){
            grep -vi "current_time" | \
            grep -vi "curtime" | \
            grep -vi "timestamp" | \
+           grep -vi "connection_id" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
            grep -vi "flush.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
