@@ -115,6 +115,14 @@ function run_rocksdb_bulk_load_bats() {
   fi
 }
 
+function run_mysqldump_bats() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/mysqldump.bats
+  else
+    bats $DIRNAME/mysqldump.bats
+  fi
+}
+
 function clone_the_test_db() {
   git clone https://github.com/datacharmer/test_db.git
 }
@@ -133,6 +141,13 @@ if [[ $clone == 1 ]] ; then
 else
   echo "Skipping Clone and Build"
 fi
+
+function create_mysqldump_command() {
+  source ${DIRNAME}/mysqldump.sh ${BASEDIR}
+  result=$(generate_mysqldump_command ${BASEDIR})
+  MYSQLDUMP="$result employees salaries salaries2 salaries3"
+  echo ${MYSQLDUMP}
+}
 
 # Get BASEDIR here
 BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
@@ -216,3 +231,61 @@ import_test_db ${BASEDIR}
 
 echo "#Running bulk load tests#"
 run_rocksdb_bulk_load_bats
+
+echo "################################################################"
+echo "Actions to test mysqldump"
+echo "Altering employees.salaries engine to innodb"
+ALTER_SALARIES="alter table employees.salaries engine=innodb"
+execute_sql ${BASEDIR} "${ALTER_SALARIES}"
+
+echo "Running DROP TABLE IF EXISTS"
+DROP="drop table if exists employees.salaries2"
+DROP2="drop table if exists employees.salaries3"
+execute_sql ${BASEDIR} "${DROP}"
+execute_sql ${BASEDIR} "${DROP2}"
+
+echo "Creating salaries2 from salaries"
+CREATE_SALARIES2="create table employees.salaries2 like employees.salaries"
+execute_sql ${BASEDIR} "${CREATE_SALARIES2}"
+
+echo "Creating salaries3 from salaries"
+CREATE_SALARIES3="create table employees.salaries3 like employees.salaries"
+execute_sql ${BASEDIR} "${CREATE_SALARIES3}"
+
+echo "Altering engine employees.salaries2 to RocksDB"
+ALTER_ENG_ROCKS="alter table employees.salaries2 engine=rocksdb"
+execute_sql ${BASEDIR} "${ALTER_ENG_ROCKS}"
+
+echo "Altering engine employees.salaries3 to TokuDB"
+ALTER_ENG_TOKU="alter table employees.salaries3 engine=rocksdb"
+execute_sql ${BASEDIR} "${ALTER_ENG_TOKU}"
+
+echo "Inserting data to employees.salaries2"
+INSERT="insert into employees.salaries2 select * from employees.salaries where emp_no < 11000"
+execute_sql ${BASEDIR} "${INSERT}"
+
+echo "Inserting data to employees.salaries3"
+INSERT2="insert into employees.salaries3 select * from employees.salaries where emp_no < 11000"
+execute_sql ${BASEDIR} "${INSERT2}"
+
+echo "Taking backup using mysqldump without any option"
+# Call create_mysqldump_command function here
+CMD=$(create_mysqldump_command)
+$(${CMD} > ${WORKDIR}/dump1.sql)
+# source ${DIRNAME}/mysqldump.sh ${BASEDIR}
+# result=$(generate_mysqldump_command ${BASEDIR})
+# MYSQLDUMP="$result employees salaries salaries2 salaries3"
+# $(${MYSQLDUMP} > ${WORKDIR}/dump1.sql)
+
+echo "Taking backup using mysqldump with --order-by-primary-desc=true"
+# source ${DIRNAME}/mysqldump.sh ${BASEDIR}
+# result=$(generate_mysqldump_command ${BASEDIR})
+# MYSQLDUMP="$result employees salaries salaries2 salaries3"
+$(${CMD} --order-by-primary-desc=true > ${WORKDIR}/dump2.sql)
+
+# Changing dir
+cd ${WORKDIR}
+#
+
+echo "Running mysqldump.bats"
+run_mysqldump_bats
