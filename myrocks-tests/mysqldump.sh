@@ -2,10 +2,8 @@
 
 # Created by Shahriyar Rzayev from Percona
 
-#WORKDIR="${PWD}"
-#DIRNAME=$(dirname "$0")
+# General script for extracting and preparing mysqldump command
 
-#BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
 BASEDIR=$1
 
 function extract_user() {

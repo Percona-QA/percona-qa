@@ -115,6 +115,14 @@ function run_rocksdb_bulk_load_bats() {
   fi
 }
 
+function run_mysqldump_bats() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/mysqldump.bats
+  else
+    bats $DIRNAME/mysqldump.bats
+  fi
+}
+
 function clone_the_test_db() {
   git clone https://github.com/datacharmer/test_db.git
 }
@@ -256,7 +264,8 @@ execute_sql ${BASEDIR} "${INSERT2}"
 echo "Taking backup using mysqldump"
 source ${DIRNAME}/mysqldump.sh ${BASEDIR}
 result=$(generate_mysqldump_command ${BASEDIR})
-echo ${result}
 MYSQLDUMP="$result employees salaries salaries2 salaries3"
-echo ${MYSQLDUMP}
 $(${MYSQLDUMP} > ${WORKDIR}/dump1.sql)
+
+echo "Running mysqldump.bats"
+run_mysqldump_bats
