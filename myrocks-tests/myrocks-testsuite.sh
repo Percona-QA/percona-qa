@@ -223,6 +223,12 @@ echo "Altering employees.salaries engine to innodb"
 ALTER_SALARIES="alter table employees.salaries engine=innodb"
 execute_sql ${BASEDIR} "${ALTER_SALARIES}"
 
+echo "Running DROP TABLE IF EXISTS"
+DROP="drop table employees.salaries2 if exists"
+DROP2="drop table employees.salaries3 if exists"
+execute_sql ${BASEDIR} "${DROP}"
+execute_sql ${BASEDIR} "${DROP2}"
+
 echo "Creating salaries2 from salaries"
 CREATE_SALARIES2="create table employees.salaries2 like employees.salaries"
 execute_sql ${BASEDIR} "${CREATE_SALARIES2}"
@@ -240,15 +246,15 @@ ALTER_ENG_TOKU="alter table employees.salaries3 engine=rocksdb"
 execute_sql ${BASEDIR} "${ALTER_ENG_TOKU}"
 
 echo "Inserting data to employees.salaries2"
-INSERT="insert into employees.salaries2 select * from salaries where emp_no < 11000"
+INSERT="insert into employees.salaries2 select * from employees.salaries where emp_no < 11000"
 execute_sql ${BASEDIR} "${INSERT}"
 
 echo "Inserting data to employees.salaries3"
-INSERT2="insert into employees.salaries3 select * from salaries where emp_no < 11000"
+INSERT2="insert into employees.salaries3 select * from employees.salaries where emp_no < 11000"
 execute_sql ${BASEDIR} "${INSERT2}"
 
 echo "Taking backup using mysqldump"
 source ${WORKDIR}/mysqldump.sh
 result=generate_mysqldump_command ${BASEDIR}
 MYSQLDUMP="$result employees salaries salaries2 salaries3 > ${WORKDIR}/dump1.sql"
-${MYSQLDUMP}
+$(${MYSQLDUMP})

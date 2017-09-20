@@ -24,6 +24,6 @@ SOCK_NAME=$(extract_socket $BASEDIR)
 
 function generate_mysqldump_command() {
   # Function to generate mysqldump command
-  backup_command="$1/mysqldump ${USER_NAME} ${SOCK_NAME}"
+  backup_command="$1/bin/mysqldump ${USER_NAME} ${SOCK_NAME}"
   echo ${backup_command}
 }
