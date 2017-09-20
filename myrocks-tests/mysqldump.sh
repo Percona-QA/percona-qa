@@ -2,10 +2,11 @@
 
 # Created by Shahriyar Rzayev from Percona
 
-WORKDIR="${PWD}"
-DIRNAME=$(dirname "$0")
+#WORKDIR="${PWD}"
+#DIRNAME=$(dirname "$0")
 
-BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
+#BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
+BASEDIR=$1
 
 function extract_user() {
   # Function to extract mysql user
