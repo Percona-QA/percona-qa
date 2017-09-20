@@ -19,7 +19,7 @@ WORKDIR="${PWD}"
   [[ $result = "/*!50112 SET @disable_bulk_load = IF (@is_rocksdb_supported, 'SET SESSION rocksdb_bulk_load = @old_rocksdb_bulk_load', 'SET @dummy_rocksdb_bulk_load = 0') */;" ]]
 }
 
-@test "Running test to search ORDER BY clause in dump file" {
+@test "Running test search ORDER BY clause in dump file" {
   result="$(cat dump2.sql | grep ORDER | wc -l)"
   echo $output
   [ $result -eq 3 ]
