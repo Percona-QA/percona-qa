@@ -1,0 +1,93 @@
+#!/bin/bash
+# This script will assist with configuring Percona Server with ProxySQL
+# Version 1.0
+########################################################################
+
+# User Configurable Variables
+PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
+WORKDIR=$1
+INTANCES=$2
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
+PS_START_TIMEOUT=60
+
+if ! pidof proxysql >/dev/null ; then
+  echo "ProxySQL is not running, please check the error log at /var/lib/proxysql/proxysql.log"
+  exit 1
+fi
+
+#Kill existing mysqld process
+ps -ef | grep 'ps[0-9].sock' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+
+cd $WORKDIR
+
+#Check PS binary tar ball
+PS_TAR=`ls -1td ?ercona-?erver* | grep ".tar" | head -n1`
+if [ ! -z $PS_TAR ];then
+  tar -xzf $PS_TAR
+  PSBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
+  export PATH="$WORKDIR/$PSBASE/bin:$PATH"
+fi
+PS_BASEDIR="${WORKDIR}/$PSBASE"
+mkdir -p $WORKDIR/logs
+ADDR="127.0.0.1"
+RPORT=$(( (RANDOM%21 + 10)*1000 ))
+
+#mysql install db check
+if [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR}"
+elif [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+  MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
+fi
+
+function proxysql_setup(){
+  STARTUP_OPTION=$1
+  ${PS_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "DELETE FROM mysql_servers WHERE hostgroup_id=100; DELETE FROM mysql_users WHERE default_hostgroup=100;"
+  if [ -z $INTANCES ];then
+    INTANCES=1
+  fi
+  for i in `seq 1 $INTANCES`;do
+    STARTUP_OPTION="$2"
+    RBASE1="$((RPORT + ( 100 * $i )))"
+    if ps -ef | grep  "\--port=${RBASE1}"  | grep -qv grep  ; then 
+      echo "INFO! Another mysqld server running on port: ${RBASE1}. Using different port"
+      RBASE1="$(( (RPORT + ( 100 * $i )) + 10 ))"
+    fi
+    echo "Starting independent PS node${i}.."
+    node="${WORKDIR}/psnode${i}"
+    rm -rf $node
+    if [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      mkdir -p $node
+    fi
+
+    ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+    ${PS_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
+       --basedir=${PS_BASEDIR} $STARTUP_OPTION --datadir=$node \
+       --innodb_file_per_table \
+       --binlog-format=ROW --server-id=20${i} $MYEXTRA \
+       --innodb_flush_method=O_DIRECT --core-file --loose-new \
+       --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= \
+       --log-error=$WORKDIR/logs/psnode${i}.err --report-host=$ADDR --report-port=$RBASE1 \
+       --socket=/tmp/ps${i}.sock  --log-output=none \
+       --port=$RBASE1 --master-info-repository=TABLE --relay-log-info-repository=TABLE > $WORKDIR/logs/psnode${i}.err 2>&1 &
+       
+    for X in $(seq 0 ${PS_START_TIMEOUT}); do
+      sleep 1
+      if ${PS_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps${i}.sock ping > /dev/null 2>&1; then
+        break
+      fi
+      if [ $X -eq ${PS_START_TIMEOUT} ]; then
+        echo "PS startup failed.."
+        grep "ERROR" ${WORKDIR}/logs/psnode${i}.err
+        exit 1
+        fi
+    done
+    ${PS_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight) VALUES ('$ADDR',100,$RBASE1,100000);"
+    ${PS_BASEDIR}/bin/mysql -uroot  -S/tmp/ps${i}.sock -e "GRANT USAGE ON *.* TO monitor@'%' IDENTIFIED  BY 'monitor';"
+  done
+  ${PS_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "update global_variables set variable_value='monitor' where variable_name='mysql-monitor_username'; update global_variables set variable_value='monitor' where variable_name='mysql-monitor_password';LOAD MYSQL VARIABLES TO RUNTIME;SAVE MYSQL VARIABLES TO DISK;"
+  ${PS_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "INSERT INTO mysql_users (username,active,default_hostgroup) values ('root',1,100);LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS FROM RUNTIME;SAVE MYSQL USERS TO DISK;LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;"
+  echo "You can use the following login credentials to connect Percona Server through ProxySQL"
+  echo "ProxySQL connection mysql --user=root --host=localhost --port=6033 --protocol=tcp"
+}
+
+proxysql_setup

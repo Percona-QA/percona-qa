@@ -130,7 +130,7 @@ elif [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" 
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
 fi
 
-echoit "Setting PXC/PS Port"
+echoit "Setting PS Port"
 ADDR="127.0.0.1"
 RPORT=$(( (RANDOM%21 + 10)*1000 ))
 LADDR="$ADDR:$(( RPORT + 8 ))"
