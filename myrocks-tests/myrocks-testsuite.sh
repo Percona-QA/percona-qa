@@ -254,7 +254,7 @@ INSERT2="insert into employees.salaries3 select * from employees.salaries where 
 execute_sql ${BASEDIR} "${INSERT2}"
 
 echo "Taking backup using mysqldump"
-source ${WORKDIR}/mysqldump.sh
+source ${DIRNAME}/mysqldump.sh
 result=generate_mysqldump_command ${BASEDIR}
 MYSQLDUMP="$result employees salaries salaries2 salaries3 > ${WORKDIR}/dump1.sql"
 $(${MYSQLDUMP})
