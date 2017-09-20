@@ -257,7 +257,6 @@ echo "Taking backup using mysqldump"
 source ${DIRNAME}/mysqldump.sh ${BASEDIR}
 result=$(generate_mysqldump_command ${BASEDIR})
 echo ${result}
-MYSQLDUMP="$result employees salaries salaries2 salaries3 > ${WORKDIR}/dump1.sql"
+MYSQLDUMP="$result employees salaries salaries2 salaries3"
 echo ${MYSQLDUMP}
-
-$(${MYSQLDUMP})
+$(${MYSQLDUMP} > ${WORKDIR}/dump1.sql)
