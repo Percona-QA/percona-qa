@@ -1231,6 +1231,10 @@ init_workdir_and_files(){
     echo_out "[Init] Input file: $INPUTFILE"
     # Initial INPUTFILE to WORKF copy
     (echo "$DROPC"; (cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")) > $WORKF
+    # If QC we don't need queries after first difference found
+    if [ ! -z "$QCTEXT" ]; then
+      sed -i "/$QCTEXT/q" $WORKF
+    fi
   fi
   if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
@@ -2410,7 +2414,7 @@ process_outcome(){
       FILETOCHECK=$WORKD/mysql.out
     fi
     NEWLINENUMBER=""
-    NEWLINENUMBER=$(grep -E --binary-files=text "$QCTEXT" $FILETOCHECK2|grep -E --binary-files=text -o "#[0-9]\+$"|sed 's/#//g')
+    NEWLINENUMBER=$(grep -E --binary-files=text "$QCTEXT" $FILETOCHECK2|grep -E --binary-files=text -o "#[0-9]+$"|sed 's/#//g')
     # TODO: Add check if same query has same output multiple times (add variable for number of occurences)
     if [ $(grep -E --binary-files=text -c "$TEXT#$NEWLINENUMBER$" $FILETOCHECK) -gt 0 ]; then
       if [ ! "$STAGE" = "V" ]; then
@@ -2920,6 +2924,11 @@ verify(){
     done
   else  # This is a subreducer: go through normal verification stages
     while :; do
+      if [ ! -z "$QCTEXT" ]; then
+        REMOVESUFFIX="s/#[NOERROR|ERROR].*//i"
+      else
+        REMOVESUFFIX="s/;[\t ]*#.*/;/i"
+      fi
       if   [ $TRIAL -eq 1 ]; then
         if [ $MODE -ge 6 ]; then
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #1: Maximum initial simplification & DEBUG_SYNC disabled and removed (DEBUG_SYNC may not be necessary)"
@@ -2937,7 +2946,7 @@ verify(){
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #1: Maximum initial simplification & cleanup"
           grep -E --binary-files=text -v "^#|^$|DEBUG_SYNC|^\-\-| \[Note\] |====|  WARNING: |^Hope that|^Logging: |\++++| exit with exit status |Lost connection to | valgrind |Using [MSI]|Using dynamic|MySQL Version|\------|TIME \(ms\)$|Skipping ndb|Setting mysqld |Binaries are debug |Killing Possible Leftover|Removing Stale Files|Creating Directories|Installing Master Database|Servers started, |Try: yum|Missing separate debug|SOURCE|CURRENT_TEST|\[ERROR\]|with SSL|_root_|connect to MySQL|No such file|is deprecated at|just omit the defined" $WORKF \
-            | sed -e 's/;[\t ]*#.*/;/i' \
+            | sed -e "$REMOVESUFFIX" \
             | sed -e 's/[\t ]\+/ /g' \
             | sed -e 's/Query ([0-9a-fA-F]): \(.*\)/\1;/g' \
             | sed -e "s/[ ]*)[ ]*,[ ]*([ ]*/),\n(/g" \
@@ -2965,7 +2974,7 @@ verify(){
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #2: High initial simplification & cleanup (no RQG log text removal)"
           grep -E --binary-files=text -v "^#|^$|DEBUG_SYNC|^\-\-" $WORKF \
-            | sed -e 's/;[\t ]*#.*/;/i' \
+            | sed -e "$REMOVESUFFIX" \
             | sed -e 's/[\t ]\+/ /g' \
             | sed -e "s/[ ]*)[ ]*,[ ]*([ ]*/),\n(/g" \
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
@@ -2997,7 +3006,7 @@ verify(){
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #3: High initial simplification (no RQG text removal & less cleanup)"
           grep -E --binary-files=text -v "^#|^$|DEBUG_SYNC|^\-\-" $WORKF \
-            | sed -e 's/;[\t ]*#.*/;/i' \
+            | sed -e "$REMOVESUFFIX" \
             | sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" \
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" \
@@ -3022,7 +3031,7 @@ verify(){
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #4: Medium initial simplification (CREATE+INSERT lines split & remove # comments)"
           sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $WORKF \
-            | sed -e 's/;[\t ]*#.*/;/i' \
+            | sed -e "$REMOVESUFFIX" \
             | sed -e "s/;\(.*CREATE.*TABLE\)/;\n\1/g" \
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
@@ -3045,7 +3054,7 @@ verify(){
           # If the testcase then works fine withouth the 'b' elemeneted inserted, it has become simpler. Consider large inserts (100's of rows) and how complexity can be reduced.
           echo_out "$ATLEASTONCE [Stage $STAGE] Verify attempt #5: Low initial simplification (only main data INSERT lines split & remove # comments)"
           sed -e "s/[\t ]*)[\t ]*,[\t ]*([\t ]*/),\n(/g" $WORKF \
-            | sed -e 's/;[\t ]*#.*/;/i' > $WORKT
+            | sed -e "$REMOVESUFFIX" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
