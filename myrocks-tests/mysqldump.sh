@@ -20,8 +20,8 @@ function extract_socket() {
   echo ${socket_conn}
 }
 
-USER_NAME=$(extract_user $BASEDIR)
-SOCK_NAME=$(extract_socket $BASEDIR)
+USER_NAME=$(extract_user ${BASEDIR})
+SOCK_NAME=$(extract_socket ${BASEDIR})
 
 function generate_mysqldump_command() {
   # Function to generate mysqldump command
