@@ -224,8 +224,8 @@ ALTER_SALARIES="alter table employees.salaries engine=innodb"
 execute_sql ${BASEDIR} "${ALTER_SALARIES}"
 
 echo "Running DROP TABLE IF EXISTS"
-DROP="drop table employees.salaries2 if exists"
-DROP2="drop table employees.salaries3 if exists"
+DROP="drop table if exists employees.salaries2"
+DROP2="drop table if exists employees.salaries3"
 execute_sql ${BASEDIR} "${DROP}"
 execute_sql ${BASEDIR} "${DROP2}"
 
