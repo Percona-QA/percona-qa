@@ -649,7 +649,7 @@ add_clients(){
       PORT_CHECK=601
       NODE_NAME="PSMR_NODE"
       get_basedir ps "[Pp]ercona-[Ss]erver-${ps_version}*" "Percona Server binary tar ball" ${ps_version}
-      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --log_output=file --slow_query_log=ON --long_query_time=0 --log_slow_rate_limit=100 --log_slow_rate_type=query --log_slow_verbosity=full --log_slow_admin_statements=ON --log_slow_slave_statements=ON --slow_query_log_always_write_time=1 --slow_query_log_use_global_control=all --innodb_monitor_enable=all --userstat=1 default-storage-engine=rocksdb"
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --log_output=file --slow_query_log=ON --long_query_time=0 --log_slow_rate_limit=100 --log_slow_rate_type=query --log_slow_verbosity=full --log_slow_admin_statements=ON --log_slow_slave_statements=ON --slow_query_log_always_write_time=1 --slow_query_log_use_global_control=all --innodb_monitor_enable=all --userstat=1 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
     elif [[ "${CLIENT_NAME}" == "ms" ]]; then
       PORT_CHECK=201
       NODE_NAME="MS_NODE"
@@ -1028,7 +1028,7 @@ upgrade_server(){
     echo -e "Removing pmm-server docker containers"
     sudo docker stop pmm-server  2&> /dev/null
     sudo docker rm pmm-server 2&> /dev/null
-  elif
+  else
     echo "AMI/OVA images upgrade is not implemented yet"
     exit 1
   fi
@@ -1036,8 +1036,10 @@ upgrade_server(){
 }
 
 upgrade_client(){
-
+  #Install new pmm-client
+  echo "Installing new pmm-client..."
 }
+
 if [ ! -z $wipe_clients ]; then
   clean_clients
 fi
