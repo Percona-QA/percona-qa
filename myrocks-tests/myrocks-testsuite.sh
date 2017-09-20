@@ -142,6 +142,13 @@ else
   echo "Skipping Clone and Build"
 fi
 
+function create_mysqldump_command() {
+  source ${DIRNAME}/mysqldump.sh ${BASEDIR}
+  result=$(generate_mysqldump_command ${BASEDIR})
+  MYSQLDUMP="$result employees salaries salaries2 salaries3"
+  echo ${MYSQLDUMP}
+}
+
 # Get BASEDIR here
 BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
 
@@ -261,11 +268,20 @@ echo "Inserting data to employees.salaries3"
 INSERT2="insert into employees.salaries3 select * from employees.salaries where emp_no < 11000"
 execute_sql ${BASEDIR} "${INSERT2}"
 
-echo "Taking backup using mysqldump"
-source ${DIRNAME}/mysqldump.sh ${BASEDIR}
-result=$(generate_mysqldump_command ${BASEDIR})
-MYSQLDUMP="$result employees salaries salaries2 salaries3"
-$(${MYSQLDUMP} > ${WORKDIR}/dump1.sql)
+echo "Taking backup using mysqldump without any option"
+# Call create_mysqldump_command function here
+CMD=$(create_mysqldump_command)
+$(${CMD} > ${WORKDIR}/dump1.sql)
+# source ${DIRNAME}/mysqldump.sh ${BASEDIR}
+# result=$(generate_mysqldump_command ${BASEDIR})
+# MYSQLDUMP="$result employees salaries salaries2 salaries3"
+# $(${MYSQLDUMP} > ${WORKDIR}/dump1.sql)
+
+echo "Taking backup using mysqldump with --order-by-primary-desc=true"
+# source ${DIRNAME}/mysqldump.sh ${BASEDIR}
+# result=$(generate_mysqldump_command ${BASEDIR})
+# MYSQLDUMP="$result employees salaries salaries2 salaries3"
+$(${CMD} --order-by-primary-desc=true > ${WORKDIR}/dump2.sql)
 
 # Changing dir
 cd ${WORKDIR}
