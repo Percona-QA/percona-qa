@@ -268,7 +268,7 @@ execute_sql ${BASEDIR} "${ALTER_ENG_TOKU}"
 
 echo "Inserting data to employees.salaries1"
 INSERT1="insert into employees.salaries1 select * from employees.salaries where emp_no < 11000"
-execute_sql ${BASEDIR} "${INSERT}"
+execute_sql ${BASEDIR} "${INSERT1}"
 
 echo "Inserting data to employees.salaries2"
 INSERT2="insert into employees.salaries2 select * from employees.salaries where emp_no < 11000"
