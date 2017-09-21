@@ -145,7 +145,7 @@ fi
 function create_mysqldump_command() {
   source ${DIRNAME}/mysqldump.sh ${BASEDIR}
   result=$(generate_mysqldump_command ${BASEDIR})
-  MYSQLDUMP="$result employees salaries salaries2 salaries3"
+  MYSQLDUMP="$result employees salaries1 salaries2 salaries3"
   echo ${MYSQLDUMP}
 }
 
@@ -239,10 +239,16 @@ ALTER_SALARIES="alter table employees.salaries engine=innodb"
 execute_sql ${BASEDIR} "${ALTER_SALARIES}"
 
 echo "Running DROP TABLE IF EXISTS"
-DROP="drop table if exists employees.salaries2"
-DROP2="drop table if exists employees.salaries3"
-execute_sql ${BASEDIR} "${DROP}"
+DROP1="drop table if exists employees.salaries1"
+DROP2="drop table if exists employees.salaries2"
+DROP3="drop table if exists employees.salaries3"
+execute_sql ${BASEDIR} "${DROP1}"
 execute_sql ${BASEDIR} "${DROP2}"
+execute_sql ${BASEDIR} "${DROP3}"
+
+echo "Creating salaries1 from salaries"
+CREATE_SALARIES1="create table employees.salaries1 like employees.salaries"
+execute_sql ${BASEDIR} "${CREATE_SALARIES1}"
 
 echo "Creating salaries2 from salaries"
 CREATE_SALARIES2="create table employees.salaries2 like employees.salaries"
@@ -257,35 +263,36 @@ ALTER_ENG_ROCKS="alter table employees.salaries2 engine=rocksdb"
 execute_sql ${BASEDIR} "${ALTER_ENG_ROCKS}"
 
 echo "Altering engine employees.salaries3 to TokuDB"
-ALTER_ENG_TOKU="alter table employees.salaries3 engine=rocksdb"
+ALTER_ENG_TOKU="alter table employees.salaries3 engine=tokudb"
 execute_sql ${BASEDIR} "${ALTER_ENG_TOKU}"
 
+echo "Inserting data to employees.salaries1"
+INSERT1="insert into employees.salaries1 select * from employees.salaries where emp_no < 11000"
+execute_sql ${BASEDIR} "${INSERT1}"
+
 echo "Inserting data to employees.salaries2"
-INSERT="insert into employees.salaries2 select * from employees.salaries where emp_no < 11000"
-execute_sql ${BASEDIR} "${INSERT}"
+INSERT2="insert into employees.salaries2 select * from employees.salaries where emp_no < 11000"
+execute_sql ${BASEDIR} "${INSERT2}"
 
 echo "Inserting data to employees.salaries3"
-INSERT2="insert into employees.salaries3 select * from employees.salaries where emp_no < 11000"
-execute_sql ${BASEDIR} "${INSERT2}"
+INSERT3="insert into employees.salaries3 select * from employees.salaries where emp_no < 11000"
+execute_sql ${BASEDIR} "${INSERT3}"
 
 echo "Taking backup using mysqldump without any option"
 # Call create_mysqldump_command function here
 CMD=$(create_mysqldump_command)
 $(${CMD} > ${WORKDIR}/dump1.sql)
-# source ${DIRNAME}/mysqldump.sh ${BASEDIR}
-# result=$(generate_mysqldump_command ${BASEDIR})
-# MYSQLDUMP="$result employees salaries salaries2 salaries3"
-# $(${MYSQLDUMP} > ${WORKDIR}/dump1.sql)
 
 echo "Taking backup using mysqldump with --order-by-primary-desc=true"
-# source ${DIRNAME}/mysqldump.sh ${BASEDIR}
-# result=$(generate_mysqldump_command ${BASEDIR})
-# MYSQLDUMP="$result employees salaries salaries2 salaries3"
 $(${CMD} --order-by-primary-desc=true > ${WORKDIR}/dump2.sql)
 
 # Changing dir
 cd ${WORKDIR}
-#
+
+# Importing dump here
+echo "Importing dump2.sql here"
+conn_string="$(cat ${BASEDIR}/cl_noprompt_nobinary)"
+$(${conn_string} < ${WORKDIR}/dump2.sql)
 
 echo "Running mysqldump.bats"
 run_mysqldump_bats
