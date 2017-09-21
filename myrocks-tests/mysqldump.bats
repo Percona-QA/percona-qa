@@ -34,7 +34,7 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   #SELECT1="select count(*) from employees.salaries1"
   #result="$(${CONN} -e ${SELECT1})"
   echo $output
-  echo ${lines[0]}
-  [ "${lines[0]}" -eq 1 ]
+  echo ${lines[1]}
+  [ "${lines[1]}" -eq 1 ]
   #[ $result -eq 9481 ]
 }
