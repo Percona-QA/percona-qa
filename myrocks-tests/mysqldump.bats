@@ -24,3 +24,12 @@ WORKDIR="${PWD}"
   echo $output
   [ $result -eq 3 ]
 }
+
+BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
+CONN=$(cat ${BASEDIR}/cl_noprompt)
+
+@test "Checking salaries1 row count" {
+  SELECT1="select count(*) from employees.salaries1"
+  result="$(${CONN} -e ${SELECT1})"
+  [ $result -eq 9481 ]
+}
