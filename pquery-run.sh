@@ -1030,14 +1030,17 @@ pquery_test(){
            grep -vi "^create table.*compression" | \
            grep -vi "^create table.*key_block_size" | \
            grep -vi "^create table.*encryption" | \
+           grep -viE "^(create table|alter table).*comment.*__system__" | \
            grep -vi "^select.* sys\." | \
            grep -vi "^select.* mysql\." | \
            grep -vi "^call.* sys\." | \
            grep -vi "^use " | \
+           grep -vi "^describe" | \
            grep -vi "password[ \t]*(.*)" | \
            grep -vi "old_password[ \t]*(.*)" | \
            grep -vi "row_count[ \t]*(.*)" | \
            grep -vi "^handler" | \
+           grep -vi "^lock.*for backup" | \
            grep -vi "^uninstall.*plugin" | \
            grep -vi "^alter table.*algorithm.*inplace" | \
            grep -vi "^alter table.*discard tablespace" | \
