@@ -288,12 +288,11 @@ $(${CMD} --order-by-primary-desc=true > ${WORKDIR}/dump2.sql)
 
 # Changing dir
 cd ${WORKDIR}
-#
-
-echo "Running mysqldump.bats"
-run_mysqldump_bats
 
 # Importing dump here
 echo "Importing dump2.sql here"
 conn_string="$(cat ${BASEDIR}/cl_noprompt_nobinary)"
 $(${conn_string} < ${WORKDIR}/dump2.sql)
+
+echo "Running mysqldump.bats"
+run_mysqldump_bats
