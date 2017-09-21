@@ -145,7 +145,7 @@ fi
 function create_mysqldump_command() {
   source ${DIRNAME}/mysqldump.sh ${BASEDIR}
   result=$(generate_mysqldump_command ${BASEDIR})
-  MYSQLDUMP="$result employees salaries salaries2 salaries3"
+  MYSQLDUMP="$result employees salaries1 salaries2 salaries3"
   echo ${MYSQLDUMP}
 }
 
@@ -239,10 +239,16 @@ ALTER_SALARIES="alter table employees.salaries engine=innodb"
 execute_sql ${BASEDIR} "${ALTER_SALARIES}"
 
 echo "Running DROP TABLE IF EXISTS"
-DROP="drop table if exists employees.salaries2"
-DROP2="drop table if exists employees.salaries3"
-execute_sql ${BASEDIR} "${DROP}"
+DROP1="drop table if exists employees.salaries1"
+DROP2="drop table if exists employees.salaries2"
+DROP3="drop table if exists employees.salaries3"
+execute_sql ${BASEDIR} "${DROP1}"
 execute_sql ${BASEDIR} "${DROP2}"
+execute_sql ${BASEDIR} "${DROP3}"
+
+echo "Creating salaries1 from salaries"
+CREATE_SALARIES1="create table employees.salaries1 like employees.salaries"
+execute_sql ${BASEDIR} "${CREATE_SALARIES1}"
 
 echo "Creating salaries2 from salaries"
 CREATE_SALARIES2="create table employees.salaries2 like employees.salaries"
