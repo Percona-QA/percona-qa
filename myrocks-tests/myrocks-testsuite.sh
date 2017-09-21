@@ -263,16 +263,20 @@ ALTER_ENG_ROCKS="alter table employees.salaries2 engine=rocksdb"
 execute_sql ${BASEDIR} "${ALTER_ENG_ROCKS}"
 
 echo "Altering engine employees.salaries3 to TokuDB"
-ALTER_ENG_TOKU="alter table employees.salaries3 engine=rocksdb"
+ALTER_ENG_TOKU="alter table employees.salaries3 engine=tokudb"
 execute_sql ${BASEDIR} "${ALTER_ENG_TOKU}"
 
-echo "Inserting data to employees.salaries2"
-INSERT="insert into employees.salaries2 select * from employees.salaries where emp_no < 11000"
+echo "Inserting data to employees.salaries1"
+INSERT1="insert into employees.salaries1 select * from employees.salaries where emp_no < 11000"
 execute_sql ${BASEDIR} "${INSERT}"
 
-echo "Inserting data to employees.salaries3"
-INSERT2="insert into employees.salaries3 select * from employees.salaries where emp_no < 11000"
+echo "Inserting data to employees.salaries2"
+INSERT2="insert into employees.salaries2 select * from employees.salaries where emp_no < 11000"
 execute_sql ${BASEDIR} "${INSERT2}"
+
+echo "Inserting data to employees.salaries3"
+INSERT3="insert into employees.salaries3 select * from employees.salaries where emp_no < 11000"
+execute_sql ${BASEDIR} "${INSERT3}"
 
 echo "Taking backup using mysqldump without any option"
 # Call create_mysqldump_command function here
