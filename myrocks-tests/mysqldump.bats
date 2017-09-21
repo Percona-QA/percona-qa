@@ -31,10 +31,18 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
 
 @test "Checking salaries1 row count" {
   run ${CONN} -e "select count(*) from employees.salaries1"
-  #SELECT1="select count(*) from employees.salaries1"
-  #result="$(${CONN} -e ${SELECT1})"
   echo $output
-  echo ${lines[1]}
-  [ "${lines[1]}" -eq 1 ]
-  #[ $result -eq 9481 ]
+  [ "${lines[1]}" -eq 9481 ]
+}
+
+@test "Checking salaries2 row count" {
+  run ${CONN} -e "select count(*) from employees.salaries2"
+  echo $output
+  [ "${lines[1]}" -eq 9481 ]
+}
+
+@test "Checking salaries3 row count" {
+  run ${CONN} -e "select count(*) from employees.salaries3"
+  echo $output
+  [ "${lines[1]}" -eq 9481 ]
 }
