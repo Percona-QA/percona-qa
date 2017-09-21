@@ -272,15 +272,8 @@ echo "Taking backup using mysqldump without any option"
 # Call create_mysqldump_command function here
 CMD=$(create_mysqldump_command)
 $(${CMD} > ${WORKDIR}/dump1.sql)
-# source ${DIRNAME}/mysqldump.sh ${BASEDIR}
-# result=$(generate_mysqldump_command ${BASEDIR})
-# MYSQLDUMP="$result employees salaries salaries2 salaries3"
-# $(${MYSQLDUMP} > ${WORKDIR}/dump1.sql)
 
 echo "Taking backup using mysqldump with --order-by-primary-desc=true"
-# source ${DIRNAME}/mysqldump.sh ${BASEDIR}
-# result=$(generate_mysqldump_command ${BASEDIR})
-# MYSQLDUMP="$result employees salaries salaries2 salaries3"
 $(${CMD} --order-by-primary-desc=true > ${WORKDIR}/dump2.sql)
 
 # Changing dir
@@ -289,3 +282,8 @@ cd ${WORKDIR}
 
 echo "Running mysqldump.bats"
 run_mysqldump_bats
+
+# Importing dump here
+echo "Importing dump2.sql here"
+conn_string="$(cat ${BASEDIR}/cl_noprompt_nobinary)"
+$(${conn_string} < ${WORKDIR}/dump2.sql)
