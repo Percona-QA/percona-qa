@@ -318,7 +318,6 @@ def clean_env(i_type):
                                 stdout=None,
                                 stderr=None)
                 output, error = process.communicate()
-                print output
         except Exception as e:
             print(e)
 
