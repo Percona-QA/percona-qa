@@ -19,7 +19,4 @@ elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
   BASEDIR="$WORKDIR/$BASEDIR"
 fi
 
-echo ${WORKDIR}
-echo ${BASEDIR}
-
 ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "select schema_name from information_schema.schemata where schema_name not in ('mysql', 'information_schema', 'performance_schema', 'sys')"
