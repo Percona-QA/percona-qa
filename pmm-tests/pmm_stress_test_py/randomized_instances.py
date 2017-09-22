@@ -380,7 +380,7 @@ def print_version(ctx, param, value):
     help="How many tables to create per added instance for stress test?")
 @click.option(
     "--create_sleep_queries",
-    nargs=3,
+    nargs=2,
     help="How many 'select sleep()' queries to run? 1->query count, 2->instance type, 3->thread count")
 @click.option(
     "--create_unique_queries",
@@ -443,7 +443,7 @@ def run_all(threads, instance_type,
                 if create_tables:
                     create_table(create_tables, instance_type)
                 if create_sleep_queries:
-                    run_sleep_query(int(create_sleep_queries[0]), str(create_sleep_queries[1]), int(create_sleep_queries[2]))
+                    run_sleep_query(int(create_sleep_queries[0]), instance_type, int(create_sleep_queries[2]))
                 if create_unique_queries:
                     create_unique_query(create_unique_queries, instance_type)
                 if insert_blobs:
