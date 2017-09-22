@@ -180,8 +180,9 @@ def creating_sleep_query(sock, i_type, query_count):
 
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
-    bash_command = '{}/create_sleep_queries.sh {} {} {}'
+    bash_command = '{}create_sleep_queries.sh {} {} {}'
     new_command = bash_command.format(dname[:-18], i_type, query_count, sock)
+    print new_command
     try:
          process = Popen(
                          split(new_command),
