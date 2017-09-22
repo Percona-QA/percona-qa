@@ -304,9 +304,9 @@ def clean_env(i_type):
     abspath = os.path.abspath(__file__)
     dname = os.path.dirname(abspath)
     for sock in sockets:
-        get_databases = '{}/get_databases.sh {} {}'
-        get_db_list = get_databases.format(dname[:-18], i_type, sock)
         try:
+            get_databases = '{}/get_databases.sh {} {}'
+            get_db_list = get_databases.format(dname[:-18], i_type, sock)
             prc = check_output(get_db_list, shell=True)
             result_databases = prc.split()[1:]
             drop_databases = '{}/drop_databases.sh {} {} {}'
