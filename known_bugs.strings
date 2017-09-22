@@ -580,6 +580,7 @@ size > 0                                                                        
 sl->join == 0                                                                           ## https://bugs.launchpad.net/percona-server/+bug/1392375
 #.snapshot_lock_acquired                                                       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1425480
 sort_field->length >= length                                                            ## https://bugs.mysql.com/bug.php?id=74260, both buils (mailed Umesh on 14 Aug 2017)
+status.ok                                                                               ## https://jira.percona.com/browse/MYR-187
 .str .... str .= Ptr                                                                    ## https://bugs.launchpad.net/percona-server/5.6/+bug/1429039
 #table.*file.*inited.*handler.*NONE                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74584 (others below with same nr) (dup of 74583)
 #.table->file .... table->file->inited == handler....NONE                      ## Fixed ## This is the same as the one above, de-regexed (MS Bug #74584)
