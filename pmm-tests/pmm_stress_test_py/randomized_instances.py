@@ -310,9 +310,11 @@ def clean_env(i_type):
             print get_db_list
             prc = check_output(get_db_list, shell=True)
             result_databases = prc.split()[1:]
+            print result_databases
             drop_databases = '{}drop_databases.sh {} {} {}'
             for database in result_databases:
                 drop_db = drop_databases.format(dname[:-18], i_type, sock, database)
+                print drop_db
                 process = Popen(
                                 split(drop_db),
                                 stdin=None,
