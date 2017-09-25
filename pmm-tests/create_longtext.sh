@@ -46,7 +46,7 @@ if [[ "${CLIENT_NAME}" == "pxc" ]]; then
   ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create table pmm_stress_longtext_test.t_longtext(id int not null, ltext longtext, primary key(id))"
   for num in $(seq 1 1 ${INSERT_COUNT}) ; do
       echo "Inserting long text into table"
-	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "insert into pmm_stress_longtext_test.t_longtext(id, ltext) values(1, '${str}')"
+	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "insert into pmm_stress_longtext_test.t_longtext(id, ltext) values(${num}, '${str}')"
   done
 else
   for i in $(sudo pmm-admin list | grep 'mysql:metrics[ \t].*_NODE-' | awk -F[\(\)] '{print $2}') ; do
@@ -57,7 +57,7 @@ else
     ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create table pmm_stress_longtext_test.t_longtext(id int not null, ltext longtext)"
     for num in $(seq 1 1 ${INSERT_COUNT}) ; do
         echo "Inserting long text into table"
-  	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "insert into pmm_stress_longtext_test.t_longtext(id, ltext) values(1, '${str}')"
+  	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "insert into pmm_stress_longtext_test.t_longtext(id, ltext) values(${num}, '${str}')"
     done
   done
 fi
