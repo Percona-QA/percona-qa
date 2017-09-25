@@ -22,14 +22,38 @@ fi
 fallocate -l 100M t_blob.img
 
 #for i in $(sudo pmm-admin list | grep "mysql:metrics" | sed 's|.*(||;s|)||') ; do
-for i in $(sudo pmm-admin list | grep 'mysql:metrics[ \t]*PS_NODE' | awk -F[\(\)] '{print $2}') ;  do
-	MYSQL_SOCK=${i}
+# for i in $(sudo pmm-admin list | grep 'mysql:metrics[ \t]*PS_NODE' | awk -F[\(\)] '{print $2}') ;  do
+# 	MYSQL_SOCK=${i}
+#   echo "Create database using MYSQL_SOCK=${MYSQL_SOCK}"
+#   ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create database pmm_stress_blob_test"
+#   echo "Create table using MYSQL_SOCK=${MYSQL_SOCK}"
+#   ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create table pmm_stress_blob_test.t_blob(id int not null, img longblob)"
+#   for num in $(seq 1 1 ${INSERT_COUNT}) ; do
+#       echo "Inserting image into table"
+# 	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "insert into pmm_stress_blob_test.t_blob(id, img) values(1, LOAD_FILE('${WORKDIR}/t_blob.img'))"
+#   done
+# done
+
+if [[ "${CLIENT_NAME}" == "pxc" ]]; then
+  MYSQL_SOCK=$(sudo pmm-admin list | grep 'mysql:metrics[ \t].*_NODE-' | awk -F[\(\)] '{print $2}' | head -n 1)
   echo "Create database using MYSQL_SOCK=${MYSQL_SOCK}"
   ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create database pmm_stress_blob_test"
   echo "Create table using MYSQL_SOCK=${MYSQL_SOCK}"
-  ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create table pmm_stress_blob_test.t_blob(id int not null, img longblob)"
+  ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create table pmm_stress_blob_test.t_blob(id int not null, img longblob, primary key(id))"
   for num in $(seq 1 1 ${INSERT_COUNT}) ; do
       echo "Inserting image into table"
-	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "insert into pmm_stress_blob_test.t_blob(id, img) values(1, LOAD_FILE('${WORKDIR}/t_blob.img'))"
+	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "insert into pmm_stress_blob_test.t_blob(id, img) values(${num}, LOAD_FILE('${WORKDIR}/t_blob.img'))"
   done
-done
+else
+  for i in $(sudo pmm-admin list | grep 'mysql:metrics[ \t].*_NODE-' | awk -F[\(\)] '{print $2}') ; do
+  	MYSQL_SOCK=${i}
+    echo "Create database using MYSQL_SOCK=${MYSQL_SOCK}"
+    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create database pmm_stress_blob_test"
+    echo "Create table using MYSQL_SOCK=${MYSQL_SOCK}"
+    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "create table pmm_stress_blob_test.t_blob(id int not null, img longblob, primary key(id))"
+    for num in $(seq 1 1 ${INSERT_COUNT}) ; do
+        echo "Inserting image into table"
+  	    ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "insert into pmm_stress_blob_test.t_blob(id, img) values(${num}, LOAD_FILE('${WORKDIR}/t_blob.img'))"
+    done
+  done
+fi
