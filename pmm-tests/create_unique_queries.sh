@@ -41,6 +41,7 @@ if [[ "${CLIENT_NAME}" == "pxc" ]]; then
   --number-char-cols=3 --auto-generate-sql \
   --socket=${MYSQL_SOCK} \
   --user=${MYSQL_USER} \
+  --auto-generate-sql-add-autoincrement \
   --auto-generate-sql-unique-query-number=${QR_COUNT} \
   --auto-generate-sql-execute-number=${QR_COUNT} \
   --auto-generate-sql-write-number=${QR_COUNT} \
@@ -54,6 +55,7 @@ else
     --number-char-cols=3 --auto-generate-sql \
     --socket=${MYSQL_SOCK} \
     --user=${MYSQL_USER} \
+    --auto-generate-sql-add-autoincrement \
     --auto-generate-sql-unique-query-number=${QR_COUNT} \
     --auto-generate-sql-execute-number=${QR_COUNT} \
     --auto-generate-sql-write-number=${QR_COUNT} \
