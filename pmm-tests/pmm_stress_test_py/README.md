@@ -78,7 +78,7 @@ This run is doing following things:
 * Generating 10 randomized instances(--pmm_instance_count 10) for each PS instances(for us 2) and adding them to PMM, totally 20 pmm instances
 * Creating 10 databases(--create_databases 10)
 * Creating 10 tables (--create_tables 10)
-* Creating 20 sleep queries for giving instance type(ps) and inserting them using 10 Python threads(--create_sleep_queries 20 ps 10)
+* Creating 20 sleep queries for giving instance type(ps) and running them using 10 Python threads(--create_sleep_queries 20 10)
 * Creating 20 unique queries(-create_unique_queries 20) using mysqlslap and running it against each PS instance.
 * Creating raw image with and inserting it 2 times into table (--insert_blobs 2)
 * Creating string with given length(10000) and inserting it 2 times (--insert_longtexts 2 10000)
@@ -89,7 +89,7 @@ This run is doing following things:
 ```
 Percona_Servers]$ python ~/percona-qa/pmm-tests/pmm_stress_test_py/randomized_instances.py  \
 --instance_type ps --instance_count 1 --pmm_instance_count 2 --create_databases 10 \
---create_tables 10 --create_sleep_queries 20 ps 10 --create_unique_queries 20 \
+--create_tables 10 --create_sleep_queries 20 10 --create_unique_queries 20 \
 --insert_blobs 2 --insert_longtexts 2 10000 --cycle 4 \
  --wipe_setup --wipe_clients
 
