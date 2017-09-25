@@ -20,4 +20,4 @@ elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
 fi
 
 echo "Creating sleep() queries using MYSQL_SOCK=${MYSQL_SOCK}"
-${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "select sleep(10000000)" 2> /dev/null
+${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "select sleep(10000000)" > /dev/null 2>&1
