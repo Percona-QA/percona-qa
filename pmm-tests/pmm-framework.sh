@@ -661,16 +661,6 @@ add_clients(){
       get_basedir mariadb "mariadb-${md_version}*" "MariaDB Server binary tar ball" ${md_version}
       MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql  --innodb_monitor_enable=all --performance_schema=ON"
     elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
-      echo "[mysqld]" > my_pxc.cnf
-      echo "innodb_autoinc_lock_mode=2" >> my_pxc.cnf
-      echo "innodb_locks_unsafe_for_binlog=1" >> my_pxc.cnf
-      echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> my_pxc.cnf
-      echo "wsrep_node_incoming_address=$ADDR" >> my_pxc.cnf
-      echo "wsrep_sst_method=rsync" >> my_pxc.cnf
-      echo "wsrep_sst_auth=$SUSER:$SPASS" >> my_pxc.cnf
-      echo "wsrep_node_address=$ADDR" >> my_pxc.cnf
-      echo "server-id=1" >> my_pxc.cnf
-      echo "wsrep_slave_threads=2" >> my_pxc.cnf
       PORT_CHECK=401
       NODE_NAME="PXC_NODE"
       get_basedir pxc "Percona-XtraDB-Cluster-${pxc_version}*" "Percona XtraDB Cluster binary tar ball" ${pxc_version}
@@ -799,7 +789,8 @@ add_clients(){
           MYEXTRA="--no-defaults --max-connections=30000"
         fi
         ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
-          --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
+          --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  --gtid-mode=ON --log-bin=mysql-bin --log-slave-updates \
+          --enforce-gtid-consistency --server-id=10${j} > $node/error.err 2>&1 &
         function startup_chk(){
           for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
             sleep 1
@@ -824,8 +815,9 @@ add_clients(){
           if grep -q "TCP/IP port: Address already in use" $node/error.err; then
             echo "TCP/IP port: Address already in use, restarting ${NODE_NAME}_${j} mysqld daemon with different port"
             RBASE1="$(( RBASE1 - 1 ))"
-            ${BASEDIR}/bin/mysqld $MYEXTRA --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
-               --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  > $node/error.err 2>&1 &
+            ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
+               --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  --gtid-mode=ON --log-bin=mysql-bin --log-slave-updates \
+               --enforce-gtid-consistency --server-id=10${j} > $node/error.err 2>&1 &
             startup_chk
             if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
               echo "ERROR! ${NODE_NAME} startup failed. Please check error log $node/error.err"

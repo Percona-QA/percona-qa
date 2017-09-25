@@ -20,7 +20,7 @@ export NODES=1
 if [ -z $2 ]; then
   echo "No valid parameter passed.  Need relative workdir (1st option) and relative basedir (2nd option) settings. Retry."
   echo "Usage example:"
-  echo "$./ps.multibench 10 Percona-Server-5.5.28-rel29.3-435.Linux.x86_64"
+  echo "$./pxc.performance-test.sh 10 Percona-XtraDB-Cluster-5.7.14-rel8-26.17.1.Linux.x86_64"
   echo "This would lead to $BIG_DIR/100 being created, in which testing takes place and"
   echo "$BIG_DIR/$1/Percona-Server-5.5.28-rel29.3-435.Linux.x86_64 would be used to test."
   exit 1
