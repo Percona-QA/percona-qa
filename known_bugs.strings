@@ -538,6 +538,7 @@ inited == NONE                                                                  
 #inited == INDEX                                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75690 (No longer repeatable)
 inited == INDEX                                                                         ## https://bugs.launchpad.net/percona-server/+bug/1713700
 #item_in->left_expr->cols  ## Get better or different 5.6 testcase ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74357 (was 80440) (Fixed in 5.7.6) Mailed Umesh for 5.6
+keys >= 0.0                                                                             ## https://jira.percona.com/browse/MYR-190
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## https://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## https://bugs.mysql.com/bug.php?id=74646
 .length % 4                                                                             ## https://bugs.mysql.com/bug.php?id=74220
@@ -575,6 +576,7 @@ precision > 0                                                                   
 #scale.*=.*precision                                                           ## FIxed ## https://bugs.mysql.com/bug.php?id=74859
 share->rows_recorded                                                                    ## https://bugs.mysql.com/bug.php?id=76307
 size > 0                                                                                ## https://bugs.launchpad.net/percona-server/+bug/1382408
+.rocksdb_db_options->allow_mmap_writes                                                  ## https://jira.percona.com/browse/MYR-192
 .slen % 2                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (original report)
 .slen % 4                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (4th comment)
 sl->join == 0                                                                           ## https://bugs.launchpad.net/percona-server/+bug/1392375
