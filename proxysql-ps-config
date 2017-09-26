@@ -48,7 +48,7 @@ function proxysql_setup(){
   for i in `seq 1 $INTANCES`;do
     STARTUP_OPTION="$2"
     RBASE1="$((RPORT + ( 100 * $i )))"
-    if ps -ef | grep  "\--port=${RBASE1}"  | grep -qv grep  ; then 
+    if ps -ef | grep  "\--port=${RBASE1}"  | grep -qv grep  ; then
       echo "INFO! Another mysqld server running on port: ${RBASE1}. Using different port"
       RBASE1="$(( (RPORT + ( 100 * $i )) + 10 ))"
     fi
@@ -69,7 +69,7 @@ function proxysql_setup(){
        --log-error=$WORKDIR/logs/psnode${i}.err --report-host=$ADDR --report-port=$RBASE1 \
        --socket=/tmp/ps${i}.sock  --log-output=none \
        --port=$RBASE1 --master-info-repository=TABLE --relay-log-info-repository=TABLE > $WORKDIR/logs/psnode${i}.err 2>&1 &
-       
+
     for X in $(seq 0 ${PS_START_TIMEOUT}); do
       sleep 1
       if ${PS_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps${i}.sock ping > /dev/null 2>&1; then
@@ -83,6 +83,7 @@ function proxysql_setup(){
     done
     ${PS_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight) VALUES ('$ADDR',100,$RBASE1,100000);"
     ${PS_BASEDIR}/bin/mysql -uroot  -S/tmp/ps${i}.sock -e "GRANT USAGE ON *.* TO monitor@'%' IDENTIFIED  BY 'monitor';"
+    echo "${PS_BASEDIR}/bin/mysql -uroot  -S/tmp/ps${i}.sock" > ${PS_BASEDIR}/cl_ps${i}
   done
   ${PS_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "update global_variables set variable_value='monitor' where variable_name='mysql-monitor_username'; update global_variables set variable_value='monitor' where variable_name='mysql-monitor_password';LOAD MYSQL VARIABLES TO RUNTIME;SAVE MYSQL VARIABLES TO DISK;"
   ${PS_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "INSERT INTO mysql_users (username,active,default_hostgroup) values ('root',1,100);LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS FROM RUNTIME;SAVE MYSQL USERS TO DISK;LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;"
