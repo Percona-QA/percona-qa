@@ -309,7 +309,7 @@ run_mysqldump_bats
 echo "################################################################"
 
 echo "Starting ProxySQL tests"
-start_proxysql_servers $WORKDIR
+start_proxysql_servers ${WORKDIR}
 
 PXCBASEDIR=$(ls -1td ${WORKDIR}/Percona-XtraDB* | grep -v ".tar")
 
