@@ -7,6 +7,7 @@
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 WORKDIR=$1
 INTANCES=$2
+STARTUP_OPTION=$3
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 PS_START_TIMEOUT=60
 
@@ -40,7 +41,6 @@ elif [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" 
 fi
 
 function proxysql_setup(){
-  STARTUP_OPTION=$1
   ${PS_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "DELETE FROM mysql_servers WHERE hostgroup_id=100; DELETE FROM mysql_users WHERE default_hostgroup=100;"
   if [ -z $INTANCES ];then
     INTANCES=1
