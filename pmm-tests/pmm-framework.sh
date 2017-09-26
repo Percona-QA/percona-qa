@@ -35,6 +35,7 @@ usage () {
   echo " --ms-version                     Pass MySQL Server version info"
   echo " --md-version                     Pass MariaDB Server version info"
   echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
+  echo " --with-proxysql                  This allow to install PXC with proxysql  "
   echo " --mo-version                     Pass MongoDB Server version info"
   echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine"
   echo " --replcount                      You can configure multiple mongodb replica sets with this oprion"
