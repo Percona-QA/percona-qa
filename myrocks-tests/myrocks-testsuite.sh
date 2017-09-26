@@ -25,6 +25,14 @@ function start_server() {
   ./start
 }
 
+function start_proxysql_servers() {
+  # using proxysql-ps-config tool here
+  # Copy MyRocks tarball
+  cp $1.tar.gz percona-server.tar.gz
+  ~/percona-qa/proxysql-ps-config $2 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+
+}
+
 function execute_sql() {
   # General function to pass sql statement to mysql client
     conn_string="$(cat $1/cl_noprompt)"
@@ -296,3 +304,8 @@ $(${conn_string} < ${WORKDIR}/dump2.sql)
 
 echo "Running mysqldump.bats"
 run_mysqldump_bats
+
+echo "################################################################"
+
+echo "Starting ProxySQL tests"
+start_proxysql_servers
