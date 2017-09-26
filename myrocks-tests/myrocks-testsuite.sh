@@ -308,4 +308,4 @@ run_mysqldump_bats
 echo "################################################################"
 
 echo "Starting ProxySQL tests"
-start_proxysql_servers
+start_proxysql_servers $BASEDIR $WORKDIR
