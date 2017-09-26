@@ -27,9 +27,10 @@ function start_server() {
 
 function start_proxysql_servers() {
   # using proxysql-ps-config tool here
-  # Copy MyRocks tarball
-  cp $1.tar.gz percona-server.tar.gz
-  ~/percona-qa/proxysql-ps-config $2 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+  # Download PXC tarball into WORKDIR
+  cd $1
+  wget https://www.percona.com/downloads/Percona-XtraDB-Cluster-LATEST/Percona-XtraDB-Cluster-5.7.19-29.22/binary/tarball/Percona-XtraDB-Cluster-5.7.19-rel17-29.22.1.Linux.x86_64.ssl101.tar.gz
+  ~/percona-qa/proxysql-ps-config $1 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
 
 }
 
