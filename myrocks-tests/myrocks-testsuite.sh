@@ -309,4 +309,21 @@ run_mysqldump_bats
 echo "################################################################"
 
 echo "Starting ProxySQL tests"
-start_proxysql_servers $BASEDIR $WORKDIR
+start_proxysql_servers $WORKDIR
+
+PXCBASEDIR=$(ls -1td ${WORKDIR}/Percona-XtraDB* | grep -v ".tar")
+
+echo "Creating test databse over ProxySQL"
+CRTDB="create database proxysql_test_db"
+mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${CRTDB}"
+
+echo "Creating dummy RocksDB table"
+CRTTBL="CREATE TABLE proxysql_test_db.sbtest1 (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  pad char(60) NOT NULL DEFAULT '',
+  PRIMARY KEY (id)
+) ENGINE=rocksdb"
+mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${CRTTBL}"
+
+echo "Inserting dummy data into this table"
+INSRT="insert into proxysql_test_db.sbtest1(id, pad) values('We are warriors of true!')"
