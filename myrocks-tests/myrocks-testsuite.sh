@@ -29,8 +29,13 @@ function start_proxysql_servers() {
   # using proxysql-ps-config tool here
   # Download PXC tarball into WORKDIR
   cd $1
-  wget https://www.percona.com/downloads/Percona-XtraDB-Cluster-LATEST/Percona-XtraDB-Cluster-5.7.19-29.22/binary/tarball/Percona-XtraDB-Cluster-5.7.19-rel17-29.22.1.Linux.x86_64.ssl101.tar.gz
-  ~/percona-qa/proxysql-ps-config $1 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+  FILE="Percona-Server-5.7.19-17-Linux.x86_64.ssl101.tar.gz"
+  if [ -f $FILE ]; then
+    ~/percona-qa/proxysql-ps-config $1 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+  else
+    wget https://www.percona.com/downloads/Percona-Server-LATEST/Percona-Server-5.7.19-17/binary/tarball/Percona-Server-5.7.19-17-Linux.x86_64.ssl101.tar.gz
+    ~/percona-qa/proxysql-ps-config $1 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+  fi
 
 }
 
@@ -310,8 +315,6 @@ echo "################################################################"
 
 echo "Starting ProxySQL tests"
 start_proxysql_servers ${WORKDIR}
-
-PXCBASEDIR=$(ls -1td ${WORKDIR}/Percona-XtraDB* | grep -v ".tar")
 
 echo "Creating test databse over ProxySQL"
 CRTDB="create database proxysql_test_db"
