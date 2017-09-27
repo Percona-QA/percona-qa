@@ -4083,6 +4083,7 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
       run_and_check
       if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
         TOKUDB="$SAFE_TOKUDB"
+        sed -i "s|--no-defaults|--no-defaults $TOKUDB|" $WORK_START
       fi
       TRIAL=$[$TRIAL+1]
     fi
@@ -4095,6 +4096,7 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
       run_and_check
       if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
         ROCKSDB="$SAFE_ROCKSDB"
+        sed -i "s|--no-defaults|--no-defaults $ROCKSDB|" $WORK_START
       fi
       TRIAL=$[$TRIAL+1]
     fi
