@@ -25,6 +25,20 @@ function start_server() {
   ./start
 }
 
+function start_proxysql_servers() {
+  # using proxysql-ps-config tool here
+  cd $1
+  FILE="percona-server.tar.gz"
+  if [ -f $FILE ]; then
+    # Starting 3 PS servers with configured ProxySQL
+    ~/percona-qa/proxysql-ps-config $1 1 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+  else
+    cp $2.tar.gz percona-server.tar.gz
+    ~/percona-qa/proxysql-ps-config $1 1 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+  fi
+
+}
+
 function execute_sql() {
   # General function to pass sql statement to mysql client
     conn_string="$(cat $1/cl_noprompt)"
@@ -120,6 +134,14 @@ function run_mysqldump_bats() {
     bats --tap $DIRNAME/mysqldump.bats
   else
     bats $DIRNAME/mysqldump.bats
+  fi
+}
+
+function run_proxysql_bats() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/proxysql.bats
+  else
+    bats $DIRNAME/proxysql.bats
   fi
 }
 
@@ -296,3 +318,27 @@ $(${conn_string} < ${WORKDIR}/dump2.sql)
 
 echo "Running mysqldump.bats"
 run_mysqldump_bats
+
+echo "################################################################"
+
+echo "Starting ProxySQL tests"
+start_proxysql_servers ${WORKDIR} ${BASEDIR}
+
+echo "Creating test database over ProxySQL"
+CRTDB="create database proxysql_test_db"
+mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${CRTDB}"
+
+echo "Creating dummy RocksDB table over ProxySQL"
+CRTTBL="CREATE TABLE proxysql_test_db.sbtest1 (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  pad char(60) NOT NULL DEFAULT '',
+  PRIMARY KEY (id)
+) ENGINE=rocksdb"
+mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${CRTTBL}"
+
+echo "Inserting dummy data into this table over ProxySQL"
+INSRT="insert into proxysql_test_db.sbtest1(pad) values('We are the warriors of true!')"
+mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${INSRT}"
+
+echo "Running proxysql.bats"
+run_proxysql_bats
