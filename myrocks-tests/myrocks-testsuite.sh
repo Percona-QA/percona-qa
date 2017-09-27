@@ -27,13 +27,12 @@ function start_server() {
 
 function start_proxysql_servers() {
   # using proxysql-ps-config tool here
-  # Download PXC tarball into WORKDIR
   cd $1
-  FILE="Percona-Server-5.7.19-17-Linux.x86_64.ssl101.tar.gz"
+  FILE="percona-server.tar.gz"
   if [ -f $FILE ]; then
     ~/percona-qa/proxysql-ps-config $1 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
   else
-    wget https://www.percona.com/downloads/Percona-Server-LATEST/Percona-Server-5.7.19-17/binary/tarball/Percona-Server-5.7.19-17-Linux.x86_64.ssl101.tar.gz
+    cp $2.tar.gz percona-server.tar.gz
     ~/percona-qa/proxysql-ps-config $1 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
   fi
 
@@ -314,7 +313,7 @@ run_mysqldump_bats
 echo "################################################################"
 
 echo "Starting ProxySQL tests"
-start_proxysql_servers ${WORKDIR}
+start_proxysql_servers ${WORKDIR} ${BASEDIR}
 
 echo "Creating test databse over ProxySQL"
 CRTDB="create database proxysql_test_db"
