@@ -12,7 +12,7 @@ CONN1=$(cat ${WORKDIR}/${BASEDIR}/cl_ps1)
 #CONN3=$(cat ${WORKDIR}/${BASEDIR}/cl_ps3)
 
 @test "Running select on PS1" {
-  result="$(${CONN1} -e 'select pad from proxysql_test_db.sbtest1')"
+  result="$(${CONN1} -e 'select pad from proxysql_test_db.sbtest1' | tail -n1)"
   echo $output
   [[ $result = "We are the warriors of true!" ]]
 }
