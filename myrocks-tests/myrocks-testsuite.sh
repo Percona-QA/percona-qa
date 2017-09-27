@@ -137,6 +137,14 @@ function run_mysqldump_bats() {
   fi
 }
 
+function run_proxysql_bats() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/proxysql.bats
+  else
+    bats $DIRNAME/proxysql.bats
+  fi
+}
+
 function clone_the_test_db() {
   git clone https://github.com/datacharmer/test_db.git
 }
@@ -330,3 +338,6 @@ mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${CRTTBL}"
 
 echo "Inserting dummy data into this table over ProxySQL"
 INSRT="insert into proxysql_test_db.sbtest1(id, pad) values('We are the warriors of true!')"
+
+echo "Running proxysql.bats"
+run_proxysql_bats
