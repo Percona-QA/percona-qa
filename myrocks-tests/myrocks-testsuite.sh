@@ -30,6 +30,7 @@ function start_proxysql_servers() {
   cd $1
   FILE="percona-server.tar.gz"
   if [ -f $FILE ]; then
+    # Starting 3 PS servers with configured ProxySQL
     ~/percona-qa/proxysql-ps-config $1 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
   else
     cp $2.tar.gz percona-server.tar.gz
@@ -319,7 +320,7 @@ echo "Creating test databse over ProxySQL"
 CRTDB="create database proxysql_test_db"
 mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${CRTDB}"
 
-echo "Creating dummy RocksDB table"
+echo "Creating dummy RocksDB table over ProxySQL"
 CRTTBL="CREATE TABLE proxysql_test_db.sbtest1 (
   id int(11) NOT NULL AUTO_INCREMENT,
   pad char(60) NOT NULL DEFAULT '',
@@ -327,5 +328,5 @@ CRTTBL="CREATE TABLE proxysql_test_db.sbtest1 (
 ) ENGINE=rocksdb"
 mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${CRTTBL}"
 
-echo "Inserting dummy data into this table"
-INSRT="insert into proxysql_test_db.sbtest1(id, pad) values('We are warriors of true!')"
+echo "Inserting dummy data into this table over ProxySQL"
+INSRT="insert into proxysql_test_db.sbtest1(id, pad) values('We are the warriors of true!')"

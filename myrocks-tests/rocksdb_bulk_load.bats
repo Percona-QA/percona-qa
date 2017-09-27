@@ -1,3 +1,7 @@
+#!/usr/bin/env bats
+
+# Created by Shahriyar Rzayev from Percona
+
 DIRNAME=$BATS_TEST_DIRNAME
 
 @test "Running test_alter_table_engine_bulk" {

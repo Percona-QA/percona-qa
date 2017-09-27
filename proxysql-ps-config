@@ -58,7 +58,6 @@ function proxysql_setup(){
     if [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
       mkdir -p $node
     fi
-    echo ${STARTUP_OPTION}
 
     ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
     ${PS_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
