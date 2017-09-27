@@ -338,6 +338,7 @@ mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${CRTTBL}"
 
 echo "Inserting dummy data into this table over ProxySQL"
 INSRT="insert into proxysql_test_db.sbtest1(id, pad) values('We are the warriors of true!')"
+mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${INSRT}"
 
 echo "Running proxysql.bats"
 run_proxysql_bats
