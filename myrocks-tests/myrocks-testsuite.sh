@@ -31,10 +31,10 @@ function start_proxysql_servers() {
   FILE="percona-server.tar.gz"
   if [ -f $FILE ]; then
     # Starting 3 PS servers with configured ProxySQL
-    ~/percona-qa/proxysql-ps-config $1 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+    ~/percona-qa/proxysql-ps-config $1 1 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
   else
     cp $2.tar.gz percona-server.tar.gz
-    ~/percona-qa/proxysql-ps-config $1 3 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+    ~/percona-qa/proxysql-ps-config $1 1 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
   fi
 
 }
@@ -324,7 +324,7 @@ echo "################################################################"
 echo "Starting ProxySQL tests"
 start_proxysql_servers ${WORKDIR} ${BASEDIR}
 
-echo "Creating test databse over ProxySQL"
+echo "Creating test database over ProxySQL"
 CRTDB="create database proxysql_test_db"
 mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${CRTDB}"
 
