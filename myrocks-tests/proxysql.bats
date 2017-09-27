@@ -16,3 +16,15 @@ CONN3=$(cat ${WORKDIR}/${BASEDIR}/cl_ps3)
   echo $output
   [[ $result = "We are the warriors of true!" ]]
 }
+
+@test "Running select on PS2" {
+  result="$(${CONN2} -e 'select pad from proxysql_test_db.sbtest1')"
+  echo $output
+  [[ $result = "We are the warriors of true!" ]]
+}
+
+@test "Running select on PS3" {
+  result="$(${CONN3} -e 'select pad from proxysql_test_db.sbtest1')"
+  echo $output
+  [[ $result = "We are the warriors of true!" ]]
+}
