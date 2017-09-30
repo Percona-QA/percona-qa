@@ -19,4 +19,8 @@ elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
   BASEDIR="$WORKDIR/$BASEDIR"
 fi
 
-${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "select schema_name from information_schema.schemata where schema_name not in ('mysql', 'information_schema', 'performance_schema', 'sys')"
+if [ -z $BASEDIR ]; then
+  echo "Started fresh run!"
+else
+  ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "select schema_name from information_schema.schemata where schema_name not in ('mysql', 'information_schema', 'performance_schema', 'sys')"
+fi  
