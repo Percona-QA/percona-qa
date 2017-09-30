@@ -32,7 +32,7 @@ elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
 fi
 
 if [[ -z "$BASEDIR" ]]; then
-  echo "Started fresh run!"
+  echo "*"
 else
   ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "drop database $DATABASE"
 fi
