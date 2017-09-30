@@ -30,9 +30,6 @@ elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
   fi
 fi
 
-echo "echoing basedir"
-echo "${BASEDIR}"
-
 if [[ -z "$BASEDIR" ]]; then
   echo "Started fresh run!"
 else
