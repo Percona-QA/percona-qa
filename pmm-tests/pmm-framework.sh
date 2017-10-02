@@ -50,6 +50,7 @@ usage () {
   echo " --dev                            When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
   echo " --pmm-server-username            User name to access the PMM Server web interface"
   echo " --pmm-server-password            Password to access the PMM Server web interface"
+  echo " --pmm-server-memory              Set METRICS_MEMORY option to PMM server"
   echo " --pmm-server=[docker|ami|ova]    Choose PMM server appliance, default pmm server appliance is docker"
   echo " --ami-image                      Pass PMM server ami image name"
   echo " --key-name                       Pass your aws access key file name"
@@ -61,7 +62,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -110,7 +111,11 @@ do
     PMM_VERSION=$pmm_server_version
     shift 2
     ;;
-	--ami-image )
+  --pmm-server-memory )
+    METRICS_MEMORY="$2"
+    shift 2
+    ;;
+        --ami-image )
     ami_image="$2"
     shift 2
     ;;
