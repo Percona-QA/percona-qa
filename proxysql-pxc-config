@@ -46,7 +46,7 @@ function proxysql_setup(){
     INTANCES=1
   fi
   for i in `seq 1 $INTANCES`;do
-    STARTUP_OPTION="$2"
+    #STARTUP_OPTION="$2"
     RBASE1="$((RPORT + ( 100 * $i )))"
     LADDR1="$ADDR:$(( RBASE1 + 8 ))"
     WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
