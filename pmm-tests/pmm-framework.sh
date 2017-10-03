@@ -30,7 +30,7 @@ usage () {
   echo " --addclient=ps,2                 Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
   echo "                                  You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
   echo " --download                       This will help us to download pmm client binary tar balls"
-  echo " --pmm-server-version Pass PMM version"
+  echo " --pmm-server-version             Pass PMM version"
   echo " --ps-version                     Pass Percona Server version info"
   echo " --ms-version                     Pass MySQL Server version info"
   echo " --md-version                     Pass MariaDB Server version info"
@@ -112,7 +112,7 @@ do
     shift 2
     ;;
   --pmm-server-memory )
-    METRICS_MEMORY="$2"
+    MEMORY="$2"
     shift 2
     ;;
         --ami-image )
@@ -294,6 +294,7 @@ if [[ -z "${ms_version}" ]]; then ms_version="5.7"; fi
 if [[ -z "${md_version}" ]]; then md_version="10.1"; fi
 if [[ -z "${mo_version}" ]]; then mo_version="3.4"; fi
 if [[ -z "${REPLCOUNT}" ]]; then REPLCOUNT="1"; fi
+if [[ ! -z "${MEMORY}" ]]; then MEMORY="-e METRICS_MEMORY=${MEMORY}"; fi
 
 setup(){
   if [ $IS_BATS_RUN -eq 0 ];then
@@ -357,15 +358,15 @@ setup(){
     fi
     if [ -z $dev ]; then
       if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p 443:443 $METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       else
-       sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p 80:80 $METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     else
       if [ "$IS_SSL" == "Yes" ];then
-       sudo docker run -d -p 443:443 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p 443:443 $METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       else
-       sudo docker run -d -p 80:80 -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p 80:80 $METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     fi
   elif [[ "$pmm_server" == "ami" ]] ; then
