@@ -39,6 +39,18 @@ function start_proxysql_servers() {
 
 }
 
+function start_proxysql_servers_pxc() {
+  cd $1
+  FILE="Percona-XtraDB-Cluster-5.7.19-rel17-29.22.1.Linux.x86_64.ssl101.tar.gz"
+  if [ -f $FILE ]; then
+    # Starting 3 PS servers with configured ProxySQL
+    ~/percona-qa/proxysql-pxc-config $1 1 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+  else
+    wget https://www.percona.com/downloads/Percona-XtraDB-Cluster-LATEST/Percona-XtraDB-Cluster-5.7.19-29.22/binary/tarball/Percona-XtraDB-Cluster-5.7.19-rel17-29.22.1.Linux.x86_64.ssl101.tar.gz
+    ~/percona-qa/proxysql-pxc-config $1 1 "--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --default-storage-engine=rocksdb"
+  fi
+}
+
 function execute_sql() {
   # General function to pass sql statement to mysql client
     conn_string="$(cat $1/cl_noprompt)"
@@ -321,7 +333,7 @@ run_mysqldump_bats
 
 echo "################################################################"
 
-echo "Starting ProxySQL tests"
+echo "Starting ProxySQL tests with PS"
 start_proxysql_servers ${WORKDIR} ${BASEDIR}
 
 echo "Creating test database over ProxySQL"
@@ -342,3 +354,6 @@ mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${INSRT}"
 
 echo "Running proxysql.bats"
 run_proxysql_bats
+
+echo "Starting ProxySQL tests with PXC"
+start_proxysql_servers_pxc ${WORKDIR}

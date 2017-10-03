@@ -17,6 +17,8 @@ CONN1=$(cat ${WORKDIR}/${BASEDIR}/cl_ps1)
   [[ $result = "We are the warriors of true!" ]]
 }
 
+BASEDIR=$(ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1)
+
 # @test "Running select on PS2" {
 #   result="$(${CONN2} -e 'select pad from proxysql_test_db.sbtest1')"
 #   echo $output
