@@ -1,0 +1,105 @@
+#!/bin/bash
+# This script will assist with configuring Percona Server with ProxySQL
+# Version 1.0
+########################################################################
+
+# User Configurable Variables
+PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
+WORKDIR=$1
+INTANCES=$2
+STARTUP_OPTION=$3
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
+PXC_START_TIMEOUT=60
+
+if ! pidof proxysql >/dev/null ; then
+  echo "ProxySQL is not running, please check the error log at /var/lib/proxysql/proxysql.log"
+  exit 1
+fi
+
+#Kill existing mysqld process
+ps -ef | grep 'pxcnode[0-9].sock' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+
+cd $WORKDIR
+
+#Check PXC binary tar ball
+PXC_TAR=`ls -1td ?ercona-?tra??-?luster* | grep ".tar" | head -n1`
+if [ ! -z $PXC_TAR ];then
+  tar -xzf $PXC_TAR
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* | grep -v ".tar" | head -n1`
+  export PATH="$WORKDIR/$PXCBASE/bin:$PATH"
+fi
+PXC_BASEDIR="${WORKDIR}/$PXCBASE"
+mkdir -p $WORKDIR/logs
+ADDR="127.0.0.1"
+RPORT=$(( (RANDOM%21 + 10)*1000 ))
+
+#mysql install db check
+if [ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+  MID="${PXC_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PXC_BASEDIR}"
+elif [ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+  MID="${PXC_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PXC_BASEDIR}"
+fi
+
+function proxysql_setup(){
+  ${PXC_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "DELETE FROM mysql_servers WHERE hostgroup_id=100; DELETE FROM mysql_users WHERE default_hostgroup=100;"
+  if [ -z $INTANCES ];then
+    INTANCES=1
+  fi
+  for i in `seq 1 $INTANCES`;do
+    STARTUP_OPTION="$2"
+    RBASE1="$((RPORT + ( 100 * $i )))"
+    LADDR1="$ADDR:$(( RBASE1 + 8 ))"
+    WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
+    if ps -ef | grep  "\--port=${RBASE1}"  | grep -qv grep  ; then 
+      echo "INFO! Another mysqld server running on port: ${RBASE1}. Using different port"
+      RBASE1="$(( (RPORT + ( 100 * $i )) + 10 ))"
+      LADDR1="$ADDR:$(( RBASE1 + 8 ))"
+    fi
+    echo "Starting independent PXC node${i}.."
+    node="${WORKDIR}/pxcnode${i}"
+    rm -rf $node
+    if [ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      mkdir -p $node
+    fi
+    if [ $i -eq 1 ]; then
+      WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm:// "
+    else
+      WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
+    fi
+    ${MID} --datadir=$node  > ${WORKDIR}/logs/pxcnode${i}.err 2>&1 || exit 1;
+    ${PXC_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
+       --basedir=${PXC_BASEDIR} $STARTUP_OPTION --datadir=$node \
+       --innodb_file_per_table \
+       --binlog-format=ROW --server-id=20${i} $MYEXTRA \
+       --wsrep-provider=${PXC_BASEDIR}/lib/libgalera_smm.so \
+       $WSREP_CLUSTER_ADD --wsrep_node_incoming_address=$ADDR \
+       --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+       --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
+       --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
+       --core-file --loose-new --sql-mode=no_engine_substitution \
+       --loose-innodb --secure-file-priv= \
+       --log-error=$WORKDIR/logs/pxcnode${i}.err --report-host=$ADDR --report-port=$RBASE1 \
+       --socket=/tmp/pxcnode${i}.sock  --log-output=none \
+       --port=$RBASE1 --master-info-repository=TABLE --relay-log-info-repository=TABLE > $WORKDIR/logs/pxcnode${i}.err 2>&1 &
+       
+    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
+      sleep 1
+      if ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxcnode${i}.sock ping > /dev/null 2>&1; then
+        break
+      fi
+      if [ $X -eq ${PXC_START_TIMEOUT} ]; then
+        echo "PXC startup failed.."
+        grep "ERROR" ${WORKDIR}/logs/pxcnode${i}.err
+        exit 1
+        fi
+    done
+    ${PXC_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight) VALUES ('$ADDR',100,$RBASE1,100000);"
+  done
+  ${PXC_BASEDIR}/bin/mysql -uroot  -S/tmp/pxcnode${i}.sock -e "GRANT USAGE ON *.* TO monitor@'%' IDENTIFIED  BY 'monitor';"
+  ${PXC_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "update global_variables set variable_value='monitor' where variable_name='mysql-monitor_username'; update global_variables set variable_value='monitor' where variable_name='mysql-monitor_password';LOAD MYSQL VARIABLES TO RUNTIME;SAVE MYSQL VARIABLES TO DISK;"
+  ${PXC_BASEDIR}/bin/mysql -uadmin -padmin -hlocalhost -P6032 --protocol=tcp -e "INSERT INTO mysql_users (username,active,default_hostgroup) values ('root',1,100);LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS FROM RUNTIME;SAVE MYSQL USERS TO DISK;LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;"
+  echo "You can use the following login credentials to connect Percona Server through ProxySQL"
+  echo "ProxySQL connection mysql --user=root --host=localhost --port=6033 --protocol=tcp"
+}
+
+proxysql_setup
