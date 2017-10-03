@@ -9,14 +9,14 @@ MYSQL_USER=root
 if [[ "${CLIENT_NAME}" == "ps" ]]; then
   BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
   if [[ -z "$BASEDIR" ]]; then
-    echo "Started fresh run!"
+    :
   else
     BASEDIR="$WORKDIR/$BASEDIR"
   fi
 elif [[ "${CLIENT_NAME}" == "ms" ]]; then
   BASEDIR=$(ls -1td mysql-5.* | grep -v ".tar" | head -n1)
   if [[ -z "$BASEDIR" ]]; then
-    echo "Started fresh run!"
+    :
   else
     BASEDIR="$WORKDIR/$BASEDIR"
   fi
@@ -24,14 +24,14 @@ elif [[ "${CLIENT_NAME}" == "ms" ]]; then
 elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
   BASEDIR=$(ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1)
   if [[ -z "$BASEDIR" ]]; then
-    echo "Started fresh run!"
+    :
   else
     BASEDIR="$WORKDIR/$BASEDIR"
   fi
 fi
 
 if [[ -z "$BASEDIR" ]]; then
-  echo "Started fresh run!"
+  :
 else
   ${BASEDIR}/bin/mysql --user=${MYSQL_USER} --socket=${MYSQL_SOCK} -e "select schema_name from information_schema.schemata where schema_name not in ('mysql', 'information_schema', 'performance_schema', 'sys')"
 fi
