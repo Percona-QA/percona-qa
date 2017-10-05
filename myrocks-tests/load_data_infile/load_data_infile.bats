@@ -14,8 +14,9 @@ DIRNAME=$BATS_TEST_DIRNAME
 
 @test "create initial tables" {
   for storage in InnoDB RocksDB; do
-    run cat ${DIRNAME}/create_table.sql | sed "s/@@SE@@/${storage}/g" | ${CONNECTION}
+    result=$(cat ${DIRNAME}/create_table.sql | sed "s/@@SE@@/${storage}/g" | ${CONNECTION})
     echo $output
+    echo $result
     [ "$status" -eq 0 ]
   done
 }
