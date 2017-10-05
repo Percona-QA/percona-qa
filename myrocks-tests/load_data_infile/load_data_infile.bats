@@ -27,7 +27,7 @@ DIRNAME=$BATS_TEST_DIRNAME
     for table in t1 t2 t3; do
       run ${CONNECTION} --database=load_data_infile_test -e "LOAD DATA INFILE \"${DATADIR}/${table}.data\" INTO TABLE ${table}_${storage} FIELDS TERMINATED BY '\t';"
       echo $output
-      [ $? -eq 0 ]
+      [ "$status" -eq 0 ]
     done
   done
   $(rm -f ${DATADIR}/t*.data)
