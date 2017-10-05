@@ -1,12 +1,19 @@
 #!/usr/bin/env bats
+# Created by Tomislav Plavcic from Percona LLC
 # mysqld needs to be started with --secure-file-priv=datadir or --secure-file-priv=
-CONNECTION=${CONNECTION:---socket=/var/run/mysqld/mysqld.sock -uroot}
-MYSQL_BIN=${MYSQL_BIN:-/usr/bin/mysql}
-DATADIR=${DATADIR:-/var/lib/mysql}
+
+WORKDIR="${PWD}"
+BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
+DATADIR=${WORKDIR}/${BASEDIR}/data
+CONNECTION=$(cat ${WORKDIR}/${BASEDIR}/cl_noprompt_nobinary)
+
+#CONNECTION=${CONNECTION:---socket=/var/run/mysqld/mysqld.sock -uroot}
+#MYSQL_BIN=${MYSQL_BIN:-/usr/bin/mysql}
+#DATADIR=${DATADIR:-/var/lib/mysql}
 
 @test "create initial tables" {
   for storage in InnoDB RocksDB; do
-    cat create_table.sql | sed "s/@@SE@@/${storage}/g" | ${MYSQL_BIN} ${CONNECTION}
+    cat create_table.sql | sed "s/@@SE@@/${storage}/g" | ${CONNECTION}
     [ $? -eq 0 ]
   done
 }
@@ -15,7 +22,7 @@ DATADIR=${DATADIR:-/var/lib/mysql}
   cp t*.data ${DATADIR}
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
-      ${MYSQL_BIN} ${CONNECTION} --database=load_data_infile_test -e "LOAD DATA INFILE \"${DATADIR}/${table}.data\" INTO TABLE ${table}_${storage} FIELDS TERMINATED BY '\t';"
+      ${CONNECTION} --database=load_data_infile_test -e "LOAD DATA INFILE \"${DATADIR}/${table}.data\" INTO TABLE ${table}_${storage} FIELDS TERMINATED BY '\t';"
       [ $? -eq 0 ]
     done
   done
@@ -29,7 +36,7 @@ DATADIR=${DATADIR:-/var/lib/mysql}
       elif [ ${table} = "t2" ]; then checksum_initial="4192795574";
       else checksum_initial="1629576163";
       fi
-      checksum=$(${MYSQL_BIN} ${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE ${table}_${storage};" --skip-column-names -E|tail -n1)
+      checksum=$(${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE ${table}_${storage};" --skip-column-names -E|tail -n1)
       [ $? -eq 0 ]
       [ "${checksum_initial}" -eq "${checksum}" ]
     done
@@ -39,7 +46,7 @@ DATADIR=${DATADIR:-/var/lib/mysql}
 @test "select into outfile" {
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
-      ${MYSQL_BIN} ${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM ${table}_${storage};"
+      ${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM ${table}_${storage};"
       [ $? -eq 0 ]
     done
   done
@@ -49,6 +56,6 @@ DATADIR=${DATADIR:-/var/lib/mysql}
   for table in t1 t2 t3; do
     diff ${DATADIR}/${table}_InnoDB.data ${DATADIR}/${table}_RocksDB.data
     [ $? -eq 0 ]
-    rm -f ${DATADIR}/${table}_*.data 
+    rm -f ${DATADIR}/${table}_*.data
   done
 }
