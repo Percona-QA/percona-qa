@@ -64,9 +64,10 @@ DIRNAME=$BATS_TEST_DIRNAME
 
 @test "check file diff" {
   for table in t1 t2 t3; do
-    run diff ${DATADIR}/${table}_InnoDB.data ${DATADIR}/${table}_RocksDB.data
+    result=$(diff ${DATADIR}/${table}_InnoDB.data ${DATADIR}/${table}_RocksDB.data)
     echo $output
-    [ $status -eq 0 ]
+    echo $result
+    [ $status -eq 1 ]
     $(rm -f ${DATADIR}/${table}_*.data)
   done
 }
