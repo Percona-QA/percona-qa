@@ -42,7 +42,7 @@ DIRNAME=$BATS_TEST_DIRNAME
       else
         checksum_initial="1629576163";
       fi
-      checksum="$(${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE ${table}_${storage};" --skip-column-names -E|tail -n1)"
+      checksum="$(${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE load_data_infile_test.${table}_${storage};" --skip-column-names -E|tail -n1)"
       echo $output
       [ $? -eq 0 ]
       [ "${checksum_initial}" -eq "${checksum}" ]
@@ -53,7 +53,7 @@ DIRNAME=$BATS_TEST_DIRNAME
 @test "select into outfile" {
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
-      run ${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM ${table}_${storage};"
+      run ${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM load_data_infile_test.${table}_${storage};"
       echo $output
       [ $status -eq 0 ]
     done
