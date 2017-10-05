@@ -17,7 +17,6 @@ DIRNAME=$BATS_TEST_DIRNAME
     $(cat ${DIRNAME}/create_table.sql | sed "s/@@SE@@/${storage}/g" | ${CONNECTION})
     echo $output
     [ $? -eq 0 ]
-
   done
 }
 
@@ -56,7 +55,7 @@ DIRNAME=$BATS_TEST_DIRNAME
     for table in t1 t2 t3; do
       run ${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM ${table}_${storage};"
       echo $output
-      [ $? -eq 0 ]
+      [ $status -eq 0 ]
     done
   done
 }
