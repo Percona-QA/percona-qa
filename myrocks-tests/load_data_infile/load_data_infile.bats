@@ -24,7 +24,7 @@ DIRNAME=$BATS_TEST_DIRNAME
   $(cp ${DIRNAME}/t*.data ${DATADIR})
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
-      $(${CONNECTION} --database=load_data_infile_test -e "LOAD DATA INFILE \"${DATADIR}/${table}.data\" INTO TABLE ${table}_${storage} FIELDS TERMINATED BY '\t';")
+      $(${CONNECTION} --database=load_data_infile_test -e "LOAD DATA INFILE \"${DATADIR}/${table}.data\" INTO TABLE load_data_infile_test.${table}_${storage} FIELDS TERMINATED BY '\t';")
       echo $output
       [ $? -eq 0 ]
     done
