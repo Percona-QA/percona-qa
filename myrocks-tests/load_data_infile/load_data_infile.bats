@@ -4,7 +4,7 @@
 
 WORKDIR="${PWD}"
 BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
-DATADIR=${WORKDIR}/${BASEDIR}/data
+DATADIR=${BASEDIR}/data
 CONNECTION=$(cat ${BASEDIR}/cl_noprompt_nobinary)
 DIRNAME=$BATS_TEST_DIRNAME
 
@@ -14,7 +14,7 @@ DIRNAME=$BATS_TEST_DIRNAME
 
 @test "create initial tables" {
   for storage in InnoDB RocksDB; do
-    $(cat create_table.sql | sed "s/@@SE@@/${storage}/g" | ${CONNECTION})
+    $(cat ${DIRNAME}/create_table.sql | sed "s/@@SE@@/${storage}/g" | ${CONNECTION})
     echo $output
     [ $status -eq 0 ]
   done
