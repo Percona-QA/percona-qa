@@ -5,7 +5,7 @@
 WORKDIR="${PWD}"
 BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
 DATADIR=${WORKDIR}/${BASEDIR}/data
-CONNECTION=$(cat ${WORKDIR}/${BASEDIR}/cl_noprompt_nobinary)
+CONNECTION=$(cat ${BASEDIR}/cl_noprompt_nobinary)
 
 #CONNECTION=${CONNECTION:---socket=/var/run/mysqld/mysqld.sock -uroot}
 #MYSQL_BIN=${MYSQL_BIN:-/usr/bin/mysql}
