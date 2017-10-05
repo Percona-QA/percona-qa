@@ -54,7 +54,7 @@ DIRNAME=$BATS_TEST_DIRNAME
 @test "select into outfile" {
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
-      $(${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM ${table}_${storage};")
+      run ${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM ${table}_${storage};"
       echo $output
       [ $? -eq 0 ]
     done
