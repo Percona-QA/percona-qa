@@ -16,7 +16,7 @@ DIRNAME=$BATS_TEST_DIRNAME
   for storage in InnoDB RocksDB; do
     $(cat ${DIRNAME}/create_table.sql | sed "s/@@SE@@/${storage}/g" | ${CONNECTION})
     echo $output
-    [ $status -eq 0 ]
+    [ "$status" -eq 0 ]
   done
 }
 
@@ -25,7 +25,7 @@ DIRNAME=$BATS_TEST_DIRNAME
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
       run ${CONNECTION} --database=load_data_infile_test -e "LOAD DATA INFILE \"${DATADIR}/${table}.data\" INTO TABLE ${table}_${storage} FIELDS TERMINATED BY '\t';"
-      [ $status -eq 0 ]
+      [ "$status" -eq 0 ]
     done
   done
   $(rm -f ${DATADIR}/t*.data)
@@ -39,7 +39,7 @@ DIRNAME=$BATS_TEST_DIRNAME
       else checksum_initial="1629576163";
       fi
       checksum=$(${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE ${table}_${storage};" --skip-column-names -E|tail -n1)
-      [ $status -eq 0 ]
+      [ "$status" -eq 0 ]
       [ "${checksum_initial}" -eq "${checksum}" ]
     done
   done
@@ -49,7 +49,7 @@ DIRNAME=$BATS_TEST_DIRNAME
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
       run ${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM ${table}_${storage};"
-      [ $status -eq 0 ]
+      [ "$status" -eq 0 ]
     done
   done
 }
