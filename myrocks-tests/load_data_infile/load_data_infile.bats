@@ -6,6 +6,7 @@ WORKDIR="${PWD}"
 BASEDIR=$(ls -1td ${WORKDIR}/PS* | grep -v ".tar" | grep PS[0-9])
 DATADIR=${WORKDIR}/${BASEDIR}/data
 CONNECTION=$(cat ${BASEDIR}/cl_noprompt_nobinary)
+DIRNAME=$BATS_TEST_DIRNAME
 
 #CONNECTION=${CONNECTION:---socket=/var/run/mysqld/mysqld.sock -uroot}
 #MYSQL_BIN=${MYSQL_BIN:-/usr/bin/mysql}
@@ -13,20 +14,21 @@ CONNECTION=$(cat ${BASEDIR}/cl_noprompt_nobinary)
 
 @test "create initial tables" {
   for storage in InnoDB RocksDB; do
-    cat create_table.sql | sed "s/@@SE@@/${storage}/g" | ${CONNECTION}
-    [ $? -eq 0 ]
+    $(cat create_table.sql | sed "s/@@SE@@/${storage}/g" | ${CONNECTION})
+    echo $output
+    [ $status -eq 0 ]
   done
 }
 
 @test "load initial data" {
-  cp t*.data ${DATADIR}
+  $(cp ${DIRNAME}/t*.data ${DATADIR})
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
-      ${CONNECTION} --database=load_data_infile_test -e "LOAD DATA INFILE \"${DATADIR}/${table}.data\" INTO TABLE ${table}_${storage} FIELDS TERMINATED BY '\t';"
-      [ $? -eq 0 ]
+      run ${CONNECTION} --database=load_data_infile_test -e "LOAD DATA INFILE \"${DATADIR}/${table}.data\" INTO TABLE ${table}_${storage} FIELDS TERMINATED BY '\t';"
+      [ $status -eq 0 ]
     done
   done
-  rm -f ${DATADIR}/t*.data
+  $(rm -f ${DATADIR}/t*.data)
 }
 
 @test "check table checksum" {
@@ -37,7 +39,7 @@ CONNECTION=$(cat ${BASEDIR}/cl_noprompt_nobinary)
       else checksum_initial="1629576163";
       fi
       checksum=$(${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE ${table}_${storage};" --skip-column-names -E|tail -n1)
-      [ $? -eq 0 ]
+      [ $status -eq 0 ]
       [ "${checksum_initial}" -eq "${checksum}" ]
     done
   done
@@ -46,16 +48,16 @@ CONNECTION=$(cat ${BASEDIR}/cl_noprompt_nobinary)
 @test "select into outfile" {
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
-      ${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM ${table}_${storage};"
-      [ $? -eq 0 ]
+      run ${CONNECTION} --database=load_data_infile_test -e "SELECT * INTO OUTFILE \"${DATADIR}/${table}_${storage}.data\" FIELDS TERMINATED BY ',' FROM ${table}_${storage};"
+      [ $status -eq 0 ]
     done
   done
 }
 
 @test "check file diff" {
   for table in t1 t2 t3; do
-    diff ${DATADIR}/${table}_InnoDB.data ${DATADIR}/${table}_RocksDB.data
-    [ $? -eq 0 ]
-    rm -f ${DATADIR}/${table}_*.data
+    run diff ${DATADIR}/${table}_InnoDB.data ${DATADIR}/${table}_RocksDB.data
+    [ $status -eq 0 ]
+    $(rm -f ${DATADIR}/${table}_*.data)
   done
 }
