@@ -36,11 +36,14 @@ DIRNAME=$BATS_TEST_DIRNAME
 @test "check table checksum" {
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
-      if [ ${table} = "t1" ]; then checksum_initial="2553511941";
-      elif [ ${table} = "t2" ]; then checksum_initial="4192795574";
-      else checksum_initial="1629576163";
+      if [ ${table} = "t1" ]; then
+        checksum_initial="2553511941";
+      elif [ ${table} = "t2" ]; then
+        checksum_initial="4192795574";
+      else
+        checksum_initial="1629576163";
       fi
-      checksum=$(${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE ${table}_${storage};" --skip-column-names -E|tail -n1)
+      checksum="$(${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE ${table}_${storage};" --skip-column-names -E|tail -n1)"
       echo $output
       [ $? -eq 0 ]
       [ "${checksum_initial}" -eq "${checksum}" ]
