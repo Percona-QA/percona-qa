@@ -30,7 +30,6 @@ DATADIR=${DATADIR:-/var/lib/mysql}
       else checksum_initial="1629576163";
       fi
       checksum=$(${MYSQL_BIN} ${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE ${table}_${storage};" --skip-column-names -E|tail -n1)
-      [ $? -eq 0 ]
       [ "${checksum_initial}" -eq "${checksum}" ]
     done
   done
