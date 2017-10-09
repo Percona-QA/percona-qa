@@ -1074,7 +1074,7 @@ pquery_test(){
            grep -vi "geometry" | \
            grep -vi "linestring" | \
            grep -vi "polygon" | \
-           grep -vi "unique" | \
+           #grep -vi "unique" | \
            grep -vi "rand" | \
            grep -vi "uuid" | \
            #grep -vi "charset" | \
