@@ -42,7 +42,8 @@ DIRNAME=$BATS_TEST_DIRNAME
       else
         checksum_initial="1629576163";
       fi
-      checksum="$(${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE load_data_infile_test.${table}_${storage};" --skip-column-names -E|tail -n1)"
+      #checksum="$(${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE load_data_infile_test.${table}_${storage};" --skip-column-names -E|tail -n1)"
+      checksum=$(${MYSQL_BIN} ${CONNECTION} --database=load_data_infile_test -e "CHECKSUM TABLE ${table}_${storage};" --skip-column-names -E|tail -n1)
       [ "${checksum_initial}" -eq "${checksum}" ]
     done
   done
