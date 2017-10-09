@@ -36,7 +36,7 @@ DIRNAME=$BATS_TEST_DIRNAME
   for storage in InnoDB RocksDB; do
     for table in t1 t2 t3; do
       if [ ${table} = "t1" ]; then
-        checksum_initial="2553511941";
+        checksum_initial="2814665489";
       elif [ ${table} = "t2" ]; then
         checksum_initial="4192795574";
       else
@@ -64,10 +64,10 @@ DIRNAME=$BATS_TEST_DIRNAME
 
 @test "check file diff" {
   for table in t1 t2 t3; do
-    result=$(diff ${DATADIR}/${table}_InnoDB.data ${DATADIR}/${table}_RocksDB.data)
+    run diff ${DATADIR}/${table}_InnoDB.data ${DATADIR}/${table}_RocksDB.data
     echo $output
     echo $result
-    [ $status -eq 1 ]
+    [ $status -eq 0 ]
     $(rm -f ${DATADIR}/${table}_*.data)
   done
 }
