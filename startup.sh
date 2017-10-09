@@ -6,7 +6,7 @@ MTRT=$[$RANDOM % 100 + 700]
 BUILD=$(pwd | sed 's|^.*/||')
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
-if find . -name group_replication.so | grep -q . ; then 
+if find . -name group_replication.so | grep -q . ; then
   GRP_RPL=1
 else
   echo "Warning! Group Replication plugin not found. Skipping Group Replication startup"
@@ -17,12 +17,12 @@ JE1="if [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/li
 JE2=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
 JE3=" elif [ -r /usr/local/lib/libjemalloc.so ]; then export LD_PRELOAD=/usr/local/lib/libjemalloc.so"
 JE4=" elif [ -r ${PWD}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=${PWD}/lib/mysql/libjemalloc.so.1"
-JE5=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi" 
+JE5=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi"
 
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   if [ "$(sudo apt-get -s install libaio1 | grep 'is already')" == "" ]; then
-    sudo apt-get install libaio1 
+    sudo apt-get install libaio1
   fi
   if [ "$(sudo apt-get -s install libjemalloc1 | grep 'is already')" == "" ]; then
     sudo apt-get install libjemalloc1
@@ -48,7 +48,7 @@ INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
 INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
 VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
 if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
-  if [ "${MID}" == "" ]; then 
+  if [ "${MID}" == "" ]; then
     echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
     exit 1
   fi
@@ -198,7 +198,7 @@ else
   LOAD_ROCKSDB_INIT_FILE=""
 fi
 
-echo 'MYEXTRA=" --no-defaults"' > start
+echo 'MYEXTRA=" --no-defaults --secure-file-priv="' > start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
 echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"' >> start
@@ -283,4 +283,4 @@ if [[ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]] || [[ -r ${PWD}/lib/mysql/plugi
   ./myrocks_tokudb_init
 fi
 echo "Done! To get a fresh instance at any time, execute: ./all (executes: stop;wipe;start;sleep 5;cl)"
-exit 0 
+exit 0

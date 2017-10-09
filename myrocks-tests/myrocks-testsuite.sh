@@ -137,6 +137,14 @@ function run_mysqldump_bats() {
   fi
 }
 
+function run_load_data_infile_bats() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/load_data_infile/load_data_infile.bats
+  else
+    bats $DIRNAME/load_data_infile/load_data_infile.bats
+  fi
+}
+
 function run_proxysql_bats() {
   if [[ $tap == 1 ]] ; then
     bats --tap $DIRNAME/proxysql.bats
@@ -342,3 +350,8 @@ mysql --user=root --host=localhost --port=6033 --protocol=tcp -e "${INSRT}"
 
 echo "Running proxysql.bats"
 run_proxysql_bats
+
+echo "################################################################"
+echo "Starting LOAD_DATA_INFILE tests"
+echo "Running load_data_infile.bats"
+run_load_data_infile_bats
