@@ -62,10 +62,10 @@ fi
 # Setup scritps
 if [[ $GRP_RPL -eq 1 ]];then
   echo "Adding scripts: start | start_group_replication | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | myrocks_tokudb_init"
-  rm -f start start_group_replication start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl wipe_group_replication
+  rm -f start start_group_replication start_valgrind start_gypsy stop setup cl test init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl wipe_group_replication
 else
   echo "Adding scripts: start | start_valgrind | start_gypsy | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | myrocks_tokudb_init"
-  rm -f start start_valgrind start_gypsy stop setup cl test init wipe all prepare run measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent
+  rm -f start start_valgrind start_gypsy stop setup cl test init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent
 fi
 
 #GR startup scripts
@@ -275,7 +275,7 @@ echo "rm -f log/master.*" >> init
 
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5;./cl" > all
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5" > all_no_cl
-chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
+chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
