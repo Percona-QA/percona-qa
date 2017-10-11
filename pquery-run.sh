@@ -1053,13 +1053,10 @@ pquery_test(){
         elif [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "tokudb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "tokudb" ]; then
           head -n3 ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}  # Setup testcase with DROP/CREATE/USE test db
           sed '1,3d' ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
-           #sed 's|UNIQUE[ \t]\+KEY||i' | \
            sed 's|FOREIGN[ \t]\+KEY||i' | \
            sed 's|FULLTEXT||i' | \
            sed 's|VIRTUAL||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
-           #sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
-           #sed -E 's/row_format.*=.*(;| )+//i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
            grep -viE "show[ \t]+" | \
@@ -1074,12 +1071,8 @@ pquery_test(){
            grep -vi "geometry" | \
            grep -vi "linestring" | \
            grep -vi "polygon" | \
-           #grep -vi "unique" | \
            grep -vi "rand" | \
            grep -vi "uuid" | \
-           #grep -vi "charset" | \
-           #grep -vi "character" | \
-           #grep -vi "collate" | \
            grep -vi "db_row_id" | \
            grep -vi "db_trx_id" | \
            grep -vi "gen_clust_index" | \
@@ -1089,23 +1082,15 @@ pquery_test(){
            grep -vi "connection_id" | \
            grep -vi "sysdate" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
-           #grep -vi "flush.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
-           #grep -vi 'start transaction .*with consistent snapshot' | \
            grep -vi 'limit rows examined' | \
-           #grep -vi 'set .*read[ -]uncommitted' | \
-           #grep -vi 'set .*serializable' | \
-           #grep -vi 'set .*binlog_format' | \
            grep -vi 'max_join_size' | \
-           #grep -vi "^create table.*unicode" | \
            grep -vi "^create table.*tablespace" | \
            grep -viE "^(create table|alter table).*column_format.*compressed" | \
-           #grep -vi "^create table.*generated" | \
            grep -vi "^create table.*/tmp/not-existing" | \
            grep -vi "^create table.*compression" | \
            grep -vi "^create table.*key_block_size" | \
            grep -vi "^create table.*encryption" | \
-           #grep -viE "^(create table|alter table).*comment.*__system__" | \
            grep -vi "^select.* sys\." | \
            grep -vi "^select.* mysql\." | \
            grep -vi "^call.* sys\." | \
@@ -1114,11 +1099,7 @@ pquery_test(){
            grep -vi "password[ \t]*(.*)" | \
            grep -vi "old_password[ \t]*(.*)" | \
            grep -vi "row_count[ \t]*(.*)" | \
-           #grep -vi "^handler" | \
-           #grep -vi "^lock.*for backup" | \
            grep -vi "^uninstall.*plugin" | \
-           #grep -vi "^alter table.*algorithm.*inplace" | \
-           #grep -vi "^alter table.*discard tablespace" | \
            grep -vi "select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(" | \
            grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
            grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
