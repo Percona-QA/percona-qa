@@ -1056,6 +1056,7 @@ pquery_test(){
            sed 's|FOREIGN[ \t]\+KEY||i' | \
            sed 's|FULLTEXT||i' | \
            sed 's|VIRTUAL||i' | \
+           sed 's|CLUSTERING||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
