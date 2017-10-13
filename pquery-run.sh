@@ -1016,12 +1016,12 @@ pquery_test(){
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
            grep -vi "flush.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
-           grep -vi 'start transaction .*with consistent snapshot' | \
-           grep -vi 'limit rows examined' | \
-           grep -vi 'set .*read[ -]uncommitted' | \
-           grep -vi 'set .*serializable' | \
-           grep -vi 'set .*binlog_format' | \
-           grep -vi 'max_join_size' | \
+           grep -vi "start transaction .*with consistent snapshot" | \
+           grep -vi "limit rows examined" | \
+           grep -vi "set .*read[ -]uncommitted" | \
+           grep -vi "set .*serializable" | \
+           grep -vi "set .*binlog_format" | \
+           grep -vi "max_join_size" | \
            grep -vi "^create table.*unicode" | \
            grep -vi "^create table.*tablespace" | \
            grep -viE "^(create table|alter table).*column_format.*compressed" | \
@@ -1043,12 +1043,7 @@ pquery_test(){
            grep -vi "^lock.*for backup" | \
            grep -vi "^uninstall.*plugin" | \
            grep -vi "^alter table.*algorithm.*inplace" | \
-           grep -vi "^alter table.*discard tablespace" | \
-           grep -vi "select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(.*select.*from.*t.*where.*in.*(" | \
-           grep -vi "from[ \t]*t1[ast1 \t]*,[ \t]*t1[ast \t]\+[2ab]\+[ \t]*,[ \t]*t1[ast \t]\+[3bc]\+" | \
-           grep -vi "from[ \t]*t1[ast1 \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[2ab]\+[using(a) ]*[ \t]*[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
-           grep -vi "from[ \t]*t1[inerjoin( \t]*t1[ast \t]\+[2ab]\+[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" | \
-           grep -vi "from[( \t]*t1[ast \t]\+[2ab]\+[leftrigh \t]*[join]\+[ \t]*t1[ast \t]\+[3bc]\+" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
+           grep -vi "^alter table.*discard tablespace" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         elif [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "tokudb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "tokudb" ]; then
           head -n3 ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}  # Setup testcase with DROP/CREATE/USE test db
@@ -1057,7 +1052,6 @@ pquery_test(){
            sed 's|FULLTEXT||i' | \
            sed 's|VIRTUAL||i' | \
            sed 's|CLUSTERING||i' | \
-           sed 's|[ \t]\+TEMPORARY||i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
            grep -viE "show[ \t]+" | \
@@ -1084,8 +1078,8 @@ pquery_test(){
            grep -vi "sysdate" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
            grep -vi "encrypt[ \t]*(.*)" | \
-           grep -vi 'limit rows examined' | \
-           grep -vi 'max_join_size' | \
+           grep -vi "limit rows examined" | \
+           grep -vi "max_join_size" | \
            grep -vi "^create table.*tablespace" | \
            grep -viE "^(create table|alter table).*column_format.*compressed" | \
            grep -vi "^create table.*/tmp/not-existing" | \
