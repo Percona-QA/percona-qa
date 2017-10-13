@@ -1052,6 +1052,7 @@ pquery_test(){
            sed 's|FULLTEXT||i' | \
            sed 's|VIRTUAL||i' | \
            sed 's|CLUSTERING||i' | \
+           sed -E 's/row_format.*=.*(;| )+//i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
            grep -viE "show[ \t]+" | \
@@ -1077,11 +1078,13 @@ pquery_test(){
            grep -vi "connection_id" | \
            grep -vi "sysdate" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
+           grep -vi "flush.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
            grep -vi "limit rows examined" | \
            grep -vi "max_join_size" | \
            grep -vi "^create table.*tablespace" | \
            grep -viE "^(create table|alter table).*column_format.*compressed" | \
+           grep -vi "^create table.*generated" | \
            grep -vi "^create table.*/tmp/not-existing" | \
            grep -vi "^create table.*compression" | \
            grep -vi "^create table.*key_block_size" | \
