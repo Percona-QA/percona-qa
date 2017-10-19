@@ -386,7 +386,7 @@ if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
   # Ensure the output of this console is logged. For this, reducer.sh is restarted with self-logging activated using script
   # With thanks, http://stackoverflow.com/a/26308092 from http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session
   if [ -z "$REDUCER_TYPESCRIPT" ]; then
-    TYPESCRIPT_UNIQUE_FILESUFFIX=$RANDOM
+    TYPESCRIPT_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
     exec $SCRIPT_LOC -q -f /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log -c "REDUCER_TYPESCRIPT=1 TYPESCRIPT_UNIQUE_FILESUFFIX=${TYPESCRIPT_UNIQUE_FILESUFFIX} $0 $@"
   fi
 fi
@@ -753,6 +753,33 @@ options_check(){
   export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|[ \t]*--no-defaults[ \t]*||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
 
+remove_dropc(){
+  if [ "$1" -eq "" ] then;
+    echo_out "Assert: no parameter was passed to the remove_dropc() function. This should not happen."
+    exit 1 
+  fi
+  # Loop through the top of the passed file (usually WORKT or WORKF) and remove one by one the DROPC individual lines
+  # Implenting things this way became necessary once individual lines were used for DROPC instead of just one long line
+  # which could be grepped out with grep -v. The reason for having to use individual lines for DROPC is that pquery
+  # will not process STATEMENT1;STATEMENT2; and this led to errors. This is only done for PQUERY_MOD=1 runs to ensure
+  # backwards compatibility (i.e. the mysql client will still use grep -v DROPC instead)
+  if [[ "$(cat $1 | head -n1)" == *"DROP DATABASE transforms;"* ]]; then
+    sed -i '1d' $1
+    if [[ "$(cat $1 | head -n1)" == *"CREATE DATABASE transforms;"* ]]; then
+      sed -i '1d' $1
+      if [[ "$(cat $1 | head -n1)" == *"DROP DATABASE test;"* ]]; then
+        sed -i '1d' $1
+        if [[ "$(cat $1 | head -n1)" == *"CREATE DATABASE test;"* ]]; then
+          sed -i '1d' $1
+          if [[ "$(cat $1 | head -n1)" == *"USE test;"* ]]; then
+            sed -i '1d' $1
+          fi
+        fi
+      fi
+    fi
+  fi
+}
+
 set_internal_options(){  # Internal options: do not modify!
   # Try and raise max user processes limit (please also preset the soft/hard nproc settings in /etc/security/limits.conf (Centos), both to at least 20480 - see percona-qa/setup_server.sh for an example)
   ulimit -u 4000 2>/dev/null
@@ -772,8 +799,7 @@ set_internal_options(){  # Internal options: do not modify!
     if [ "${MYUSER}" == "" ];   then echo "Assert: \$MYUSER is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"; exit 1; fi
   fi
   trap ctrl_c SIGINT  # Requires ${EPOCH} to be set already
-  # Even if RQG is no longer used, the next line (i.e. including 'transforms') should NOT be modified. It provides backwards compatibility with RQG and it provides a long unique 
-  # string which is unlikely to be present in testcases (it's used in grep -E --binary-files=text -v a few times below). "DROP DATABASE test;CREATE DATABASE test;USE test;" would be more/too? generic.
+  # Even if RQG is no longer used, the next line (i.e. including 'transforms') should NOT be modified. It provides backwards compatibility with RQG (given the 'transforms' database creation) 
   DROPC="DROP DATABASE transforms;CREATE DATABASE transforms;DROP DATABASE test;CREATE DATABASE test;USE test;"
   STARTUPCOUNT=0
   ATLEASTONCE="[]"
@@ -1125,6 +1151,12 @@ init_workdir_and_files(){
       WORKD=$(dirname $0)
       break
     fi
+    # Make sure that tmp has enough free space (some minor temporary files are stored there)
+    if [ $(df -k -P /tmp | grep -E --binary-files=text -v "Mounted" | awk '{print $4}') -lt 400000 ; then
+      echo 'Error: /tmp does not have enough free space (400Mb free space required for temporary files)'
+      echo "Terminating now."
+      exit 1
+    fi
     if [ $WORKDIR_LOCATION -eq 3 ]; then
       if ! [ -d "$WORKDIR_M3_DIRECTORY/" -a -x "$WORKDIR_M3_DIRECTORY/" ]; then
         echo 'Error: WORKDIR_LOCATION=3 (a specific storage location) is set, yet WORKDIR_M3_DIRECTORY (set to $WORKDIR_M3_DIRECTORY) does not exist, or could not be read.'
@@ -1230,7 +1262,18 @@ init_workdir_and_files(){
     fi
     echo_out "[Init] Input file: $INPUTFILE"
     # Initial INPUTFILE to WORKF copy
-    (echo "$DROPC"; (cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")) > $WORKF
+    if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+      echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+    else  # pquery is used; use a multi-line format for DROPC 
+      cp $INPUTFULE $WORKF
+      # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
+      remove_dropc $WORKF
+      # Re-setup DROPC using multiple lines (ref remove_dropc() for more information)
+      DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+      echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep -v "^$";cat $WORKF)" > /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp
+      rm -f $WORKF
+      mv /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKF
+    fi
     # If QC we don't need queries after first difference found
     if [ ! -z "$QCTEXT" ]; then
       sed -i "/$QCTEXT/q" $WORKF
@@ -1395,8 +1438,6 @@ init_workdir_and_files(){
       fi
       generate_run_scripts
       ${INIT_TOOL} ${INIT_OPT} --basedir=$BASEDIR --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/init.log 2>&1
-      # test db provisioning if not there already (needs to be done here & not earlier as mysql_install_db expects an empty data directory in 5.7)
-      mkdir $WORKD/data/test 2>/dev/null  
       if [ ! -d $WORKD/data ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] data directory at $WORKD/data does not exist... check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/init.log"
         echo "Terminating now."
@@ -1493,7 +1534,6 @@ generate_run_scripts(){
   echo "MID=\`find \${BASEDIR} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
   echo "if [ \"\`\$BIN --version | grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\`\$BIN --version | grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
   echo "if [ \"\`\$BIN --version | grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
-  echo "mkdir -p /dev/shm/${EPOCH}/data/test" >> $WORK_INIT
   if [ $MODE -ge 6 ]; then
     # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
     echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet"
@@ -1506,9 +1546,9 @@ generate_run_scripts(){
     echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld with socket /dev/shm/${EPOCH}/socket.sock using the mysql CLI client...\"" >> $WORK_RUN
     if [ "$CLI_MODE" == "" ]; then CLI_MODE=99; fi  # Leads to assert below
     case $CLI_MODE in
-      0) echo "cat ./${EPOCH}.sql | \${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test" >> $WORK_RUN ;;
-      1) echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --execute=\"SOURCE ./${EPOCH}.sql;\" --force test" >> $WORK_RUN ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
-      2) echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force test < ./${EPOCH}.sql" >> $WORK_RUN ;;
+      0) echo "cat ./${EPOCH}.sql | \${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force" >> $WORK_RUN ;;
+      1) echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --execute=\"SOURCE ./${EPOCH}.sql;\" --force" >> $WORK_RUN ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
+      2) echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock --binary-mode --force < ./${EPOCH}.sql" >> $WORK_RUN ;;
       *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in generate_run_scripts). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
     esac
     chmod +x $WORK_RUN
@@ -1521,10 +1561,10 @@ generate_run_scripts(){
         echo "export LD_LIBRARY_PATH=\${BASEDIR}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -ge 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH}/node1/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH}/node1/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -ge 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH}/node1/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH}/node1/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         fi
       else
         echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld with socket /dev/shm/${EPOCH}/socket.sock using pquery...\"" > $WORK_RUN_PQUERY
@@ -1533,10 +1573,10 @@ generate_run_scripts(){
         echo "export LD_LIBRARY_PATH=\${BASEDIR}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -ge 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH}/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH}/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -ge 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql --database=test $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH}/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
+          echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --infile=./${EPOCH}.sql $PQUERY_SHUFFLE --threads=1 --user=root --socket=/dev/shm/${EPOCH}/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         fi
       fi
       chmod +x $WORK_RUN_PQUERY
@@ -2072,7 +2112,6 @@ control_backtrack_flow(){
 
 cut_random_chunk(){
   RANDLINE=$[ ( $RANDOM % ( $[ $LINECOUNTF - $CHUNK - 1 ] + 1 ) ) + 1 ]
-  if [ $RANDLINE -eq 1 ]; then RANDLINE=2; fi  # Do not filter first line which contains DROP/CREATE/USE of test db
   if [ $CHUNK -eq 1 -a $TRIAL -gt 5 ]; then STUCKTRIAL=$[ $STUCKTRIAL + 1 ]; fi
   if [ $CHUNK -eq 1 -a $STUCKTRIAL -gt 5 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Now filtering line $RANDLINE (Current chunk size: stuck at 1)"
@@ -2185,19 +2224,20 @@ run_sql_code(){
   #read -p "Go! (run_sql_code break)"
   if   [ $MODE -ge 6 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [DATA] Loading datafile before SQL threads replay"
+    # Note that the two following grep -v solutions still work fine for DROPC removal as this is using the mysql cli which can handle multiple statements on one line and DROPC is NOT being changed into a multi-line statement. Search for 'DROPC' to learn more.
     if [ $TS_DBG_CLI_OUTPUT -eq 0 ]; then
-      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -E --binary-files=text -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null
+      echo "$(echo "$DROPC";cat $TS_DATAINPUTFILE | grep -E --binary-files=text -v "$DROPC")" | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force > /dev/null 2>/dev/null
     else
-      (echo "$DROPC"; (cat $TS_DATAINPUTFILE | grep -E --binary-files=text -v "$DROPC")) | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql_data.out 2>&1
+      echo "$(echo "$DROPC";cat $TS_DATAINPUTFILE | grep -E --binary-files=text -v "$DROPC")" | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv > $WORKD/mysql_data.out 2>&1
     fi
     TXT_OUT="$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] Forking SQL threads [PIDs]:"
     for t in $(eval echo {1..$TS_THREADS}); do 
       # Forking background threads by using bash fork implementation $() &
       export TS_WORKT=$(eval echo $(echo '$WORKT'"$t"))
       if [ $TS_DBG_CLI_OUTPUT -eq 0 ]; then
-        $(cat $TS_WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force      test > /dev/null 2>/dev/null  ) & 
+        $(cat $TS_WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force      > /dev/null 2>/dev/null  ) & 
       else
-        $(cat $TS_WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv test > $WORKD/mysql$t.out 2>&1 ) & 
+        $(cat $TS_WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force -vvv > $WORKD/mysql$t.out 2>&1 ) & 
       fi
       PID=$!
       export TS_THREAD_PID$t=$PID
@@ -2220,9 +2260,9 @@ run_sql_code(){
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] All SQL threads have finished/terminated"
   elif [ $MODE -eq 5 ]; then
     if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
-      cat $WORKT | $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
+      cat $WORKT | $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock -vvv --force > $WORKD/mysql.out 2>&1
     else
-      cat $WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock -vvv --force test > $WORKD/mysql.out 2>&1
+      cat $WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock -vvv --force > $WORKD/mysql.out 2>&1
     fi
   else
     # Some general information on MODE=2 replay using either the mysql CLI or pquery: When using the mysql cli, a single or double quote in and by itself
@@ -2243,18 +2283,18 @@ run_sql_code(){
       if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=1 $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         fi
       else
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          $PQUERY_LOC --infile=$WORKT --database=test $PQUERY_SHUFFLE --threads=1 $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=1 $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         fi
       fi
     else
@@ -2266,9 +2306,9 @@ run_sql_code(){
         CLIENT_SOCKET=$WORKD/socket.sock 
       fi
       case $CLI_MODE in
-        0) cat $WORKT | $BASEDIR/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test > $WORKD/mysql.out 2>&1 ;;
-        1) $BASEDIR/bin/mysql -uroot -S${CLIENT_SOCKET} --execute="SOURCE ${WORKT};" --force test > $WORKD/mysql.out 2>&1 ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
-        2) $BASEDIR/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force test < ${WORKT} > $WORKD/mysql.out 2>&1 ;;
+        0) cat $WORKT | $BASEDIR/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force > $WORKD/mysql.out 2>&1 ;;
+        1) $BASEDIR/bin/mysql -uroot -S${CLIENT_SOCKET} --execute="SOURCE ${WORKT};" --force > $WORKD/mysql.out 2>&1 ;;  # When http://bugs.mysql.com/bug.php?id=81782 is fixed, re-add --binary-mode to this command. Also note that due to http://bugs.mysql.com/bug.php?id=81784, the --force option has to be after the --execute option.
+        2) $BASEDIR/bin/mysql -uroot -S${CLIENT_SOCKET} --binary-mode --force < ${WORKT} > $WORKD/mysql.out 2>&1 ;;
         *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in run_sql_code). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
       esac
     fi
@@ -2956,7 +2996,17 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            else  # pquery is used; use a multi-line format for DROPC 
+              # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
+              remove_dropc $WORKT
+              # Re-setup DROPC using multiple lines (ref remove_dropc() for more information) and add the INITFILE
+              DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+              echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep -v "^$";cat $INITFILE;cat $WORKT)" > /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp
+              rm -f $WORKT
+              mv /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKT
+            fi
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -2983,7 +3033,17 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            else  # pquery is used; use a multi-line format for DROPC 
+              # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
+              remove_dropc $WORKT
+              # Re-setup DROPC using multiple lines (ref remove_dropc() for more information) and add the INITFILE
+              DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+              echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep -v "^$";cat $INITFILE;cat $WORKT)" > /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp
+              rm -f $WORKT
+              mv /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKT
+            fi
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -3013,7 +3073,17 @@ verify(){
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            else  # pquery is used; use a multi-line format for DROPC 
+              # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
+              remove_dropc $WORKT
+              # Re-setup DROPC using multiple lines (ref remove_dropc() for more information) and add the INITFILE
+              DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+              echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep -v "^$";cat $INITFILE;cat $WORKT)" > /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp
+              rm -f $WORKT
+              mv /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKT
+            fi
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -3036,7 +3106,17 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            else  # pquery is used; use a multi-line format for DROPC 
+              # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
+              remove_dropc $WORKT
+              # Re-setup DROPC using multiple lines (ref remove_dropc() for more information) and add the INITFILE
+              DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+              echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep -v "^$";cat $INITFILE;cat $WORKT)" > /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp
+              rm -f $WORKT
+              mv /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKT
+            fi
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -3057,7 +3137,17 @@ verify(){
             | sed -e "$REMOVESUFFIX" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+            else  # pquery is used; use a multi-line format for DROPC 
+              # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
+              remove_dropc $WORKT
+              # Re-setup DROPC using multiple lines (ref remove_dropc() for more information) and add the INITFILE
+              DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+              echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep -v "^$";cat $INITFILE;cat $WORKT)" > /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp
+              rm -f $WORKT
+              mv /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKT
+            fi
             MYEXTRA=$MYEXTRAWITHOUTINIT
             echo $MYEXTRA > $WORKD/MYEXTRA
           fi
@@ -3289,8 +3379,8 @@ if [ $SKIPSTAGEBELOW -lt 2 -a $SKIPSTAGEABOVE -gt 2 ]; then
   TRIAL=1
   NOISSUEFLOW=0
   LINES=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-  CURRENTLINE=2 # Do not filter first line which contains DROP/CREATE/USE of test db
-  REALLINE=2
+  CURRENTLINE=1
+  REALLINE=1
   echo_out "$ATLEASTONCE [Stage $STAGE] Now executing first trial in stage $STAGE"
   while [ $LINES -ge $REALLINE ]; do
     if [ $LINES -eq $REALLINE  ]; then NEXTACTION="& progress to the next stage"; fi
