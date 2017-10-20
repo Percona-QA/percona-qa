@@ -242,7 +242,8 @@ echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force --prompt=\"\$(${PW
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test" > cl_noprompt
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force test" > cl_noprompt_nobinary
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < ${PWD}/in.sql > ${PWD}/mysql.out 2>&1" > test
-echo "./stop >/dev/null 2>&1" > wipe
+echo "MYEXTRA_OPT=$1" > wipe
+echo "./stop >/dev/null 2>&1" >> wipe
 echo "if [ -d ${PWD}/data.PREV ]; then rm -Rf ${PWD}/data.PREV.older; mv ${PWD}/data.PREV ${PWD}/data.PREV.older; fi; mv ${PWD}/data ${PWD}/data.PREV" >> wipe
 echo "sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-auto-inc=off --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp_table_size=1000000 --oltp_tables_count=1 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${PWD}/socket.sock prepare" > prepare
 echo "sysbench --report-interval=10 --oltp-auto-inc=off --max-time=50 --max-requests=0 --mysql-engine-trx=yes --test=/usr/share/doc/sysbench/tests/db/oltp.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=1 --num-threads=4 --oltp_table_size=1000000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${PWD}/socket.sock run" > run
