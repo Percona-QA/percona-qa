@@ -754,7 +754,7 @@ options_check(){
 }
 
 remove_dropc(){
-  if [ "$1" -eq "" ] then;
+  if [ "$1" == "" ]; then
     echo_out "Assert: no parameter was passed to the remove_dropc() function. This should not happen."
     exit 1 
   fi
@@ -1152,7 +1152,7 @@ init_workdir_and_files(){
       break
     fi
     # Make sure that tmp has enough free space (some minor temporary files are stored there)
-    if [ $(df -k -P /tmp | grep -E --binary-files=text -v "Mounted" | awk '{print $4}') -lt 400000 ; then
+    if [ $(df -k -P /tmp | grep -E --binary-files=text -v "Mounted" | awk '{print $4}') -lt 400000 ]; then
       echo 'Error: /tmp does not have enough free space (400Mb free space required for temporary files)'
       echo "Terminating now."
       exit 1
@@ -1265,7 +1265,7 @@ init_workdir_and_files(){
     if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
       echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
     else  # pquery is used; use a multi-line format for DROPC 
-      cp $INPUTFULE $WORKF
+      cp $INPUTFILE $WORKF
       # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
       remove_dropc $WORKF
       # Re-setup DROPC using multiple lines (ref remove_dropc() for more information)
@@ -2198,9 +2198,6 @@ run_and_check(){
 }
 
 run_sql_code(){
-  if [ $PXC_MOD -eq 0 ]; then
-    mkdir $WORKD/data/test > /dev/null 2>&1 # Ensuring reducer can connect to the test database
-  fi
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then 
     # Setting up query timeouts using the MySQL Event Scheduler
     # Place event into the mysql db, not test db as the test db is dropped immediately
