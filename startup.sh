@@ -253,17 +253,17 @@ echo "$INIT_TOOL --no-defaults ${INIT_OPT} \${MYEXTRA_OPT} --basedir=${PWD} --da
 echo "if [ -r log/master.err.PREV ]; then rm -f log/master.err.PREV; fi" >> wipe
 echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" >> wipe
 if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
-  echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
+  echo "./start \${MYEXTRA_OPT}; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
   if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
     echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> wipe
   else
-    echo "./stop " >> wipe
+    echo "./stop" >> wipe
   fi
 else
   if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
-    echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+    echo "./start \${MYEXTRA_OPT}; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
   else
-    echo "./start; sleep 10; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+    echo "./start \${MYEXTRA_OPT}; sleep 10; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
   fi
 fi
 
