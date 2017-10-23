@@ -758,26 +758,37 @@ remove_dropc(){
     echo_out "Assert: no parameter was passed to the remove_dropc() function. This should not happen."
     exit 1 
   fi
-  # Loop through the top of the passed file (usually WORKT or WORKF) and remove one by one the DROPC individual lines
+  # Loop through the top of the passed file (usually WORKT or WORKF) and remove all seen individual DROPC lines
   # Implenting things this way became necessary once individual lines were used for DROPC instead of just one long line
   # which could be grepped out with grep -v. The reason for having to use individual lines for DROPC is that pquery
   # will not process STATEMENT1;STATEMENT2; and this led to errors. This is only done for PQUERY_MOD=1 runs to ensure
   # backwards compatibility (i.e. the mysql client will still use grep -v DROPC instead)
-  if [[ "$(cat $1 | head -n1)" == *"DROP DATABASE transforms;"* ]]; then
-    sed -i '1d' $1
+  while :; do
+    DROPC_LINE_REMOVED=0
+    if [[ "$(cat $1 | head -n1)" == *"DROP DATABASE transforms;"* ]]; then
+      sed -i '1d' $1
+      DROPC_LINE_REMOVED=1
+    fi
     if [[ "$(cat $1 | head -n1)" == *"CREATE DATABASE transforms;"* ]]; then
       sed -i '1d' $1
-      if [[ "$(cat $1 | head -n1)" == *"DROP DATABASE test;"* ]]; then
-        sed -i '1d' $1
-        if [[ "$(cat $1 | head -n1)" == *"CREATE DATABASE test;"* ]]; then
-          sed -i '1d' $1
-          if [[ "$(cat $1 | head -n1)" == *"USE test;"* ]]; then
-            sed -i '1d' $1
-          fi
-        fi
-      fi
+      DROPC_LINE_REMOVED=1
     fi
-  fi
+    if [[ "$(cat $1 | head -n1)" == *"DROP DATABASE test;"* ]]; then
+      sed -i '1d' $1
+      DROPC_LINE_REMOVED=1
+    fi
+    if [[ "$(cat $1 | head -n1)" == *"CREATE DATABASE test;"* ]]; then
+      sed -i '1d' $1
+      DROPC_LINE_REMOVED=1
+    fi
+    if [[ "$(cat $1 | head -n1)" == *"USE test;"* ]]; then
+      sed -i '1d' $1
+      DROPC_LINE_REMOVED=1
+    fi
+    if [ $DROPC_LINE_REMOVED -eq 0 ]; then
+      break
+    fi
+  done
 }
 
 set_internal_options(){  # Internal options: do not modify!
