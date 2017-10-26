@@ -198,7 +198,7 @@ else
   LOAD_ROCKSDB_INIT_FILE=""
 fi
 
-echo "MYEXTRA_OPT=\$1" > start
+echo "MYEXTRA_OPT=\"\$*\"" > start
 echo 'MYEXTRA=" --no-defaults --secure-file-priv="' >> start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
@@ -207,7 +207,7 @@ echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer
 echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start
 cp start start_valgrind  # Idem for Valgrind
 cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
-echo "$BIN \${MYEXTRA_OPT} \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start
+echo "$BIN  \${MYEXTRA} \${MYEXTRA_OPT} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start
 echo "sleep 10" >> start
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
   echo "${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test;'" >> start
@@ -243,7 +243,7 @@ echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force --prompt=\"\$(${PW
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test" > cl_noprompt
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force test" > cl_noprompt_nobinary
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < ${PWD}/in.sql > ${PWD}/mysql.out 2>&1" > test
-echo "MYEXTRA_OPT=\$1" > wipe
+echo "MYEXTRA_OPT=\"\$*\"" > wipe
 echo "./stop >/dev/null 2>&1" >> wipe
 echo "if [ -d ${PWD}/data.PREV ]; then rm -Rf ${PWD}/data.PREV.older; mv ${PWD}/data.PREV ${PWD}/data.PREV.older; fi; mv ${PWD}/data ${PWD}/data.PREV" >> wipe
 echo "sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-auto-inc=off --mysql-engine-trx=yes --mysql-table-engine=innodb --oltp_table_size=1000000 --oltp_tables_count=1 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${PWD}/socket.sock prepare" > prepare
@@ -253,17 +253,17 @@ echo "$INIT_TOOL --no-defaults ${INIT_OPT} \${MYEXTRA_OPT} --basedir=${PWD} --da
 echo "if [ -r log/master.err.PREV ]; then rm -f log/master.err.PREV; fi" >> wipe
 echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" >> wipe
 if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
-  echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
+  echo "./start \${MYEXTRA_OPT}; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
   if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
     echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> wipe
   else
-    echo "./stop " >> wipe
+    echo "./stop" >> wipe
   fi
 else
   if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
-    echo "./start; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+    echo "./start \${MYEXTRA_OPT}; sleep 10; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
   else
-    echo "./start; sleep 10; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+    echo "./start \${MYEXTRA_OPT}; sleep 10; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
   fi
 fi
 
@@ -276,7 +276,7 @@ echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/dat
 echo "rm -f log/master.*" >> init
 
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5;./cl" > all
-echo "MYEXTRA_OPT=\$1" > all_no_cl
+echo "MYEXTRA_OPT=\"\$*\"" > all_no_cl
 echo "./stop >/dev/null 2>&1;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};sleep 5" >> all_no_cl
 chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
 echo "Setting up server with default directories"
