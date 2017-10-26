@@ -199,16 +199,25 @@ else
 fi
 
 echo "MYEXTRA_OPT=\"\$*\"" > start
+echo "MYEXTRA_OPT=\"\$*\"" > start_dynamic
 echo 'MYEXTRA=" --no-defaults --secure-file-priv="' >> start
+echo 'MYEXTRA=" --no-defaults --secure-file-priv="' >> start_dynamic
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
+echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start_dynamic
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
+echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start_dynamic
 echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"' >> start
+echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"' >> start_dynamic
 echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> start
+echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> start_dynamic
 echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start
+echo $JE1 >> start_dynamic; echo $JE2 >> start_dynamic; echo $JE3 >> start_dynamic; echo $JE4 >> start_dynamic; echo $JE5 >> start_dynamic
 cp start start_valgrind  # Idem for Valgrind
 cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
 echo "$BIN  \${MYEXTRA} \${MYEXTRA_OPT} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start
+echo "$BIN  \${MYEXTRA} \${MYEXTRA_OPT} ${START_OPT} --basedir=${PWD} ${TOKUDB} ${ROCKSDB} 2>&1 &" >> start_dynamic
 echo "sleep 10" >> start
+echo "sleep 10" >> start_dynamic
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
   echo "${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test;'" >> start
 fi
