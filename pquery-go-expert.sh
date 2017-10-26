@@ -97,14 +97,14 @@ while(true); do
     background_sed_loop &                           # Start background_sed_loop in a background thread, it will patch reducer<nr>.sh scripts
     PID=$!                                          # Capture the PID of the background_sed_loop so we can kill -9 it once pquery-prep-red.sh is complete
     ${SCRIPT_PWD}/pquery-prep-red.sh                # Execute pquery-prep.red generating reducer<nr>.sh scripts, auto-updated by the background thread
-    while [ -r ${MUTEX} ]; do sleep 1; done         # Ensure kill of background_sed_loop only happens when background process has just started sleeping
-    kill -9 ${PID} >/dev/null 2>&1                  # Kill the background_sed_loop
     ${SCRIPT_PWD}/pquery-clean-known.sh             # Clean known issues
     ${SCRIPT_PWD}/pquery-eliminate-dups.sh          # Eliminate dups, leaving at least 10 trials for issues where the number of trials >=10 and leaving all other (<10) trials
   fi
   if [ $(ls reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then  # If reducers are available after cleanup
     ${SCRIPT_PWD}/pquery-results.sh                 # Report
   fi
+  while [ -r ${MUTEX} ]; do sleep 1; done           # Ensure kill of background_sed_loop only happens when background process has just started sleeping
+  kill -9 ${PID} >/dev/null 2>&1                    # Kill the background_sed_loop
   echo "Waiting for next round... Sleeping 300 seconds..."
   sleep 300                                         # Sleep 5 minutes
 done

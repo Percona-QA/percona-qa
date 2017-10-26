@@ -340,17 +340,17 @@ TS_VARIABILITY_SLEEP=1
 
 # ======== Internal variable Reference
 # $WORKD = Working directory (i.e. likely /tmp/<epoch>/ or /dev/shm/<epoch>)
-# $INPUTFILE = The original input file (the file to reduce). This file, and this variable, are never changed.
-# $WORKF = This is *originally* a copy of $INPUTFILE and hence the main input file in the working directory (i.e. $WORKD/in.sql). 
-#   work   From it are made chunk deletes etc. and the result is stored in the $WORKT file
-#   file   $WORKT overwrites $WORKF when a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT
-# $WORKT = The "reduced" version of $WORKF, also in the working directory as $WORKD/in.tmp
-#   temp   It may or may not cause the same issue like $WORKF can. This file is overwritten with a new "to be tested" version is being created
-#   file   $WORKT overwrites $WORKO when a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT
-# $WORKO = The "reduced" version of $WORKF, in the directory of the original input file as <name>_out
-#   outf   This file definitely causes the same issue as $WORKO can, while being smaller
-# $WORK_INIT, WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN, $WORK_RUN_PQUERY: Vars that point to various start/run scripts that get added to testcase working dir
-# WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
+# $INPUTFILE = The original input file (the file to reduce). This file, and this variable, are never changed (to protect the original file from being changed).
+# $WORKF = This is *originally* a copy of $INPUTFILE, seen in the working directory as $WORKD/in.sql
+#   work   From it are then made chunk deletes etc. and the result is stored in the $WORKT file. Then, $WORKT ovewrites $WORKF when
+#   file   a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT
+# $WORKT = A temporary "made smaller" (and thus changed) version of $WORKF, seen in the working directory as $WORKD/in.tmp
+#   temp   It may or may not cause the same issue like $WORKF can. This file is overwritten each time a new "to be tested" version is being created
+#   file   $WORKT overwrites $WORKF and $WORKO when a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT 
+# $WORKO = The reduced version of $WORKF, stored in the same directory of the original input file as <name>_out
+#   outf   This file definitely causes the same issue as $INPUTFILE can, while being smaller
+# $WORK_INIT, $WORK_START, $WORK_STOP, $WORK_CL, $WORK_RUN, $WORK_RUN_PQUERY: Vars that point to various start/run scripts that get added to testcase working dir
+# $WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
 # === Check TokuDB & RocksDB storage engine availability, and cleanup MYEXTRA to remove the related options
@@ -852,7 +852,7 @@ multi_reducer(){
   # function watching over multiple [seperately started] subreducer threads, each child containing the written MULTI_REDUCER=1 setting set in #VARMOD# - 
   # thereby telling reducer it is a child process)
   # This function does not need to know if reducer is reducing a single or multi-threaded testcase and what MODE is used as all these options are passed
-  # verbatim to the child ($1 to the program is $1 to the child, and all ather settings are copied into the child process below)
+  # verbatim to the child (all settings are copied into the child process below)
   if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
     echo_out "ASSERT: REDUCE_GLIBC_OR_SS_CRASHES is active, and we ended up in multi_reducer() function. This should not be possible as REDUCE_GLIBC_OR_SS_CRASHES uses a single thread only."
   fi
@@ -1273,17 +1273,21 @@ init_workdir_and_files(){
     fi
     echo_out "[Init] Input file: $INPUTFILE"
     # Initial INPUTFILE to WORKF copy
-    if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
-      echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
-    else  # pquery is used; use a multi-line format for DROPC 
+    if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
+      if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+        echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+      else  # pquery is used; use a multi-line format for DROPC 
+        cp $INPUTFILE $WORKF
+        # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
+        remove_dropc $WORKF
+        # Re-setup DROPC using multiple lines (ref remove_dropc() for more information)
+        DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+        echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep -v "^$";cat $WORKF)" > /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp
+        rm -f $WORKF
+        mv /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKF
+      fi
+    else  # This is a subreducer, or a normal run with FORCE_SKIPV=0, thus do not remove/add dropc again (i.e. do not modify what the main reducer has passed)
       cp $INPUTFILE $WORKF
-      # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
-      remove_dropc $WORKF
-      # Re-setup DROPC using multiple lines (ref remove_dropc() for more information)
-      DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
-      echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep -v "^$";cat $WORKF)" > /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp
-      rm -f $WORKF
-      mv /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKF
     fi
     # If QC we don't need queries after first difference found
     if [ ! -z "$QCTEXT" ]; then
@@ -2406,6 +2410,7 @@ cleanup_and_save(){
 
 process_outcome(){
   if [ $NOISSUEFLOW -lt 0 ]; then NOISSUEFLOW=0; fi
+
   # MODE0: timeout/hang testing (SET TIMEOUT_CHECK)
   if [ $MODE -eq 0 ]; then
     if [ "${MYSQLD_START_TIME}" == '' ]; then
@@ -2947,7 +2952,7 @@ verify(){
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer 
     while :; do
-      multi_reducer $1
+      multi_reducer $1  # For the verify stage we should always pass the original input file (ref also dropc init_workdir_and_files())
       if [ "$?" -ge "1" ]; then  # Verify success.
         if [ $MODE -lt 6 ]; then
           # At the moment, MODE6+ does not use initial simplification yet. And, since MODE6+ swaps to MODE1+ after succesfull thread elimination,
@@ -3366,7 +3371,7 @@ if [ $SKIPSTAGEBELOW -lt 1 -a $SKIPSTAGEABOVE -gt 1 ]; then
       if [ $TRIAL -gt 1 ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining number of lines in input file: $LINECOUNTF"; fi 
       if [ "$MULTI_REDUCER" != "1" -a $SPORADIC -eq 1 -a $REDUCE_GLIBC_OR_SS_CRASHES -le 0 ]; then  
         # This is the parent/main reducer AND the issue is sporadic (so; need to use multiple threads). Disabled for REDUCE_GLIBC_OR_SS_CRASHES as it is always single-threaded
-        multi_reducer $WORKF  # $WORKT is not used by the main reducer in this case. The subreducer uses $WORKT it's own session however (in the else below) 
+        multi_reducer $WORKF  # $WORKT is not used by the main reducer in this case. The subreducer uses $WORKT it's own session however (in the else below). Also note that the use of $WORKF is necessary due to the dropc code in init_workdir_and_files() - i.e. we need the modified WORKF file, not the original INPUTFILE. 
       else
         determine_chunk
         cut_random_chunk
