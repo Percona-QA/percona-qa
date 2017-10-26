@@ -287,7 +287,7 @@ echo "rm -f log/master.*" >> init
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5;./cl" > all
 echo "MYEXTRA_OPT=\"\$*\"" > all_no_cl
 echo "./stop >/dev/null 2>&1;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};sleep 5" >> all_no_cl
-chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
+chmod +x start start_dynamic start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
