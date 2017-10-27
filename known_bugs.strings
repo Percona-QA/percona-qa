@@ -24,6 +24,8 @@ rc == TYPE_OK                                            ## https://bugs.mysql.c
 sym_node->table .= NULL                                  ## https://bugs.mysql.com/bug.php?id=86293
 thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., tablespace_name, MDL_INTENTION_EXCLUSIVE  ## https://bugs.mysql.com/bug.php?id=86297
 row_drop_table_for_mysql                                 ## https://bugs.mysql.com/bug.php?id=88161
+m_thd->get_transaction                                   ## https://bugs.mysql.com/bug.php?id=88255
+#max_length >= length                                    ## https://bugs.mysql.com/bug.php?id=88256 < still adding testcases, hence disabled
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684

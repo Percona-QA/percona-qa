@@ -794,8 +794,13 @@ remove_dropc(){
 set_internal_options(){  # Internal options: do not modify!
   # Try and raise max user processes limit (please also preset the soft/hard nproc settings in /etc/security/limits.conf (Centos), both to at least 20480 - see percona-qa/setup_server.sh for an example)
   ulimit -u 4000 2>/dev/null
-  # Try and disable OS-originating core dumps for this session (should not affect --core-file option to mysqld, if passed). This avoids /dev/shm running out of space
-  ulimit -c 0 >/dev/null
+  # Unless core files are specifically requested (--core-file or --core option passed to mysqld via MYEXTRA), disable all core file generation (OS+mysqld)
+  # It would be good if we could disable OS core file generation without disabling mysqld core file generation, but for the moment it looks like 
+  # ulimit -c 0 disables ALL core file generation, both OS and mysqld, so instead, ftm, reducer checks for "CORE" in MYEXTRA (uppercase-ed via ^^) 
+  # and if present reducer does not disable core file generation (OS nor mysqld)
+  if [[ "${MYEXTRA^^}" != *"CORE"* ]]; then 
+    ulimit -c 0 >/dev/null
+  fi
   SEED=$(head -1 /dev/urandom | od -N 1 | awk '{print $2 }') 
   RANDOM=$SEED
   sleep 0.1$RANDOM  # Subreducer OS slicing?
