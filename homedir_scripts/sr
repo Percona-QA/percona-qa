@@ -1,2 +1,2 @@
-screen -admS sr$1 bash -c "ulimit -u 10000;./reducer$1.sh;bash"
-screen -d -r sr$1
+screen -admS s$1 bash -c "ulimit -u 10000;./reducer$1.sh;bash"
+screen -d -r s$1

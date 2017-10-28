@@ -16,7 +16,7 @@
 ## [ERROR] Got error 155 when reading table                 ## Read from table after ALTER TABLE x DISCARD TABLESPACE  | MS 75911
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
-## =========== MS/PS 8.0
+## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
 maybe_null                                               ## https://bugs.mysql.com/bug.php?id=83115
 #MDL_checker..is_read_locked.m_thd, .object     ## Fixed ## https://bugs.mysql.com/bug.php?id=83117
@@ -25,7 +25,28 @@ sym_node->table .= NULL                                  ## https://bugs.mysql.c
 thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., tablespace_name, MDL_INTENTION_EXCLUSIVE  ## https://bugs.mysql.com/bug.php?id=86297
 row_drop_table_for_mysql                                 ## https://bugs.mysql.com/bug.php?id=88161
 m_thd->get_transaction                                   ## https://bugs.mysql.com/bug.php?id=88255
-#max_length >= length                                    ## https://bugs.mysql.com/bug.php?id=88256 < still adding testcases, hence disabled
+max_length >= length                                     ## https://bugs.mysql.com/bug.php?id=88256
+TEXT=.String\.\.ptr.$                                    ## https://bugs.mysql.com/bug.php?id=88257
+trans_table .. .changed .. thd->get_transaction          ## https://bugs.mysql.com/bug.php?id=88258
+TEXT=.mon > 0 \.\. mon < 13.$                            ## https://bugs.mysql.com/bug.php?id=88259
+trn_ctx->is_active.Transaction_ctx..SESSION              ## https://bugs.mysql.com/bug.php?id=88260
+TEXT=.type.$                                             ## https://bugs.mysql.com/bug.php?id=88261
+MYSQL_BIN_LOG..new_file_impl                             ## https://bugs.mysql.com/bug.php?id=88262
+recv_recovery_is_on.. .. Log_DDL..is_in_recovery..       ## https://bugs.mysql.com/bug.php?id=88263
+has_prelocking_list .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLE, rt->db  ## https://bugs.mysql.com/bug.php?id=88264
+sys_var_pluginvar..global_update                         ## https://bugs.mysql.com/bug.php?id=88265
+ticket->m_lock->m_obtrusive_locks_granted_waiting_count .= 0  ## https://bugs.mysql.com/bug.php?id=88266
+val <= 4294967295u                                       ## https://bugs.mysql.com/bug.php?id=88267
+Sql_cmd_call..prepare_inner                              ## https://bugs.mysql.com/bug.php?id=88268
+.field->prefix_len .. field->fixed_len == field->prefix_len  ## https://bugs.mysql.com/bug.php?id=88269
+TEXT=.length == 3.$                                      ## https://bugs.mysql.com/bug.php?id=88270
+TEXT=.new_table \.= nullptr.$                            ## https://bugs.mysql.com/bug.php?id=88271
+new_value >= 0                                           ## https://bugs.mysql.com/bug.php?id=88272
+has_error == thd->get_stmt_da                            ## https://bugs.mysql.com/bug.php?id=88273
+.table->in_use->is_error                                 ## https://bugs.mysql.com/bug.php?id=88274
+next_insert_id == 0                                      ## https://bugs.mysql.com/bug.php?id=88276
+thd->is_system_thread                                    ## https://bugs.mysql.com/bug.php?id=88277
+num_codepoints >= scanner.get_char_index                 ## https://bugs.mysql.com/bug.php?id=88278
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
@@ -260,6 +281,7 @@ fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above
 
 ## =========== Special: OOM issues ===========
 ut0ut.cc line 932                                ##DONOTREMOVE## OOM: InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
+.m_fatal                                         ##DONOTREMOVE## OOM ^IDEM (PS/MS 8.0.3)
 ha_innodb.cc line 3495                           ##DONOTREMOVE## OOM ^IDEM (PS 5.6.32-78.0)
 ha_innodb.cc line 19339                          ##DONOTREMOVE## OOM: Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
 ha_innodb.cc line 19411                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.33)
@@ -864,5 +886,5 @@ TEXT=.\.shutdown_in_progress.$                                                  
 TEXT=.tab->ref.$                                                                        ## https://bugs.mysql.com/bug.php?id=74780 (duplicated by 83541)
 #TEXT=.false.$                                                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83120 (Fixed as part of internal bug#23295423)
 #TEXT=.part_rec_buf_ptr.$                                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=86255
-#TEXT=.err == 0.$                                                                        ## https://jira.percona.com/browse/MYR-171 #disabling for now
+#TEXT=.err == 0.$                                                                       ## https://jira.percona.com/browse/MYR-171 #disabling for now
 TEXT=.cmp .= 0.$                                                                        ## https://jira.percona.com/browse/MYR-173
