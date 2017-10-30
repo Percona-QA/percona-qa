@@ -47,6 +47,11 @@ has_error == thd->get_stmt_da                            ## https://bugs.mysql.c
 next_insert_id == 0                                      ## https://bugs.mysql.com/bug.php?id=88276
 thd->is_system_thread                                    ## https://bugs.mysql.com/bug.php?id=88277
 num_codepoints >= scanner.get_char_index                 ## https://bugs.mysql.com/bug.php?id=88278
+len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. .col->len == 0 .. col->mtype == 1.  ## https://bugs.mysql.com/bug.php?id=88279
+dict_sdi_set                                             ## https://bugs.mysql.com/bug.php?id=88280
+ha_myisammrg..detach_children                            ## https://bugs.mysql.com/bug.php?id=88281
+dict0dict.cc.6216                                        ## https://bugs.mysql.com/bug.php?id=88282
+prebuilt->mysql_prefix_len <= record_buffer->record_size..  ## https://bugs.mysql.com/bug.php?id=88283
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
