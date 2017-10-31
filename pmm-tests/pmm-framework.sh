@@ -19,6 +19,7 @@ OPASS="passw0rd"
 ADDR="127.0.0.1"
 download_link=0
 
+mkdir -p $WORKDIR/logs
 # User configurable variables
 IS_BATS_RUN=0
 
@@ -35,7 +36,9 @@ usage () {
   echo " --ms-version                     Pass MySQL Server version info"
   echo " --md-version                     Pass MariaDB Server version info"
   echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
-  echo " --with-proxysql                  This allow to install PXC with proxysql  "
+  echo " --with-proxysql                  This allow to install PXC with proxysql"
+  echo " --sysbench-data-load             This will initiate sysbench data load on mysql instances"
+  echo " --sysbench-oltp-run              This will initiate sysbench oltp run on mysql instances"
   echo " --mo-version                     Pass MongoDB Server version info"
   echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine"
   echo " --replcount                      You can configure multiple mongodb replica sets with this oprion"
@@ -62,7 +65,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -187,6 +190,14 @@ do
     shift
     with_proxysql=1
     ;;
+    --sysbench-data-load )
+    shift
+    sysbench_data_load=1
+    ;;
+    --sysbench-oltp-run )
+    shift
+    sysbench_oltp_run=1
+    ;;
     --compare-query-count )
     shift
     compare_query_count=1
@@ -223,6 +234,12 @@ do
     ;;
   esac
 done
+
+check_script(){
+  MPID=$1
+  ERROR_MSG=$2
+  if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID}. Terminating!"; exit 1; fi
+}
 
 if [[ "$with_shrading" == "1" ]];then
   with_replica=1
@@ -1038,6 +1055,34 @@ upgrade_client(){
   echo "Installing new pmm-client..."
 }
 
+sysbench_prepare(){
+  if [[ ! -e $(which mysql 2> /dev/null) ]] ;then
+    MYSQL_CLIENT=$(find . -name mysql | head -n1)
+  else
+    MYSQL_CLIENT=$(which mysql)
+  fi
+  if [[ -z "$MYSQL_CLIENT" ]];then
+   echo "ERROR! 'mysql' is currently not installed. Please install mysql. Terminating."
+   exit 1
+  fi
+  #Initiate sysbench data load on all mysql client instances
+  for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
+    DB_NAME=$(echo ${i}  | awk -F[\/\.] '{print $3}')
+    $MYSQL_CLIENT --user=root --socket=${i} -e "drop database if exists ${DB_NAME};create database ${DB_NAME};" 
+    sysbench /usr/share/sysbench/oltp_insert.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root  --threads=16 --db-driver=mysql --mysql-socket=${i} prepare  > $WORKDIR/logs/sysbench_prepare_${DB_NAME}.txt 2>&1 
+    check_script $? "Failed to run sysbench dataload"
+  done
+}
+
+sysbench_run(){
+  #Initiate sysbench oltp run on all mysql client instances
+  for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
+    DB_NAME=$(echo ${i}  | awk -F[\/\.] '{print $3}')
+    sysbench /usr/share/sysbench/oltp_read_write.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root  --threads=16 --time=1200 --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable --mysql-socket=${i} run  > $WORKDIR/logs/sysbench_run_${DB_NAME}.txt 2>&1 &
+    check_script $? "Failed to run sysbench oltp"
+  done
+}
+
 if [ ! -z $wipe_clients ]; then
   clean_clients
 fi
@@ -1083,6 +1128,14 @@ fi
 
 if [ ! -z $with_proxysql ]; then
   pxc_proxysql_setup
+fi
+
+if [ ! -z $sysbench_data_load ]; then
+  sysbench_prepare
+fi
+
+if [ ! -z $sysbench_oltp_run ]; then
+  sysbench_run
 fi
 
 if [ ! -z $add_docker_client ]; then
