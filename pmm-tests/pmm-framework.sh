@@ -39,6 +39,7 @@ usage () {
   echo " --with-proxysql                  This allow to install PXC with proxysql"
   echo " --sysbench-data-load             This will initiate sysbench data load on mysql instances"
   echo " --sysbench-oltp-run              This will initiate sysbench oltp run on mysql instances"
+  echo " --storage-engine                 This will create sysbench tables with specific storage engine"
   echo " --mo-version                     Pass MongoDB Server version info"
   echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine"
   echo " --replcount                      You can configure multiple mongodb replica sets with this oprion"
@@ -65,7 +66,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -198,6 +199,10 @@ do
     shift
     sysbench_oltp_run=1
     ;;
+    --storage-engine )
+    storage_engine="$2"
+    shift 2
+    ;;
     --compare-query-count )
     shift
     compare_query_count=1
@@ -240,6 +245,10 @@ check_script(){
   ERROR_MSG=$2
   if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID}. Terminating!"; exit 1; fi
 }
+
+if [[ -z "$storage_engine" ]];then
+  storage_engine=INNODB
+fi
 
 if [[ "$with_shrading" == "1" ]];then
   with_replica=1
@@ -1081,7 +1090,7 @@ sysbench_prepare(){
   for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
     DB_NAME=$(echo ${i}  | awk -F[\/\.] '{print $3}')
     $MYSQL_CLIENT --user=root --socket=${i} -e "drop database if exists ${DB_NAME};create database ${DB_NAME};" 
-    sysbench /usr/share/sysbench/oltp_insert.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root  --threads=16 --db-driver=mysql --mysql-socket=${i} prepare  > $WORKDIR/logs/sysbench_prepare_${DB_NAME}.txt 2>&1 
+    sysbench /usr/share/sysbench/oltp_insert.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root --mysql-storage-engine=$storage_engine  --threads=16 --db-driver=mysql --mysql-socket=${i} prepare  > $WORKDIR/logs/sysbench_prepare_${DB_NAME}.txt 2>&1 
     check_script $? "Failed to run sysbench dataload"
   done
 }
@@ -1090,7 +1099,7 @@ sysbench_run(){
   #Initiate sysbench oltp run on all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
     DB_NAME=$(echo ${i}  | awk -F[\/\.] '{print $3}')
-    sysbench /usr/share/sysbench/oltp_read_write.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root  --threads=16 --time=1200 --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable --mysql-socket=${i} run  > $WORKDIR/logs/sysbench_run_${DB_NAME}.txt 2>&1 &
+    sysbench /usr/share/sysbench/oltp_read_write.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root  --mysql-storage-engine=$storage_engine --threads=16 --time=1200 --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable --mysql-socket=${i} run  > $WORKDIR/logs/sysbench_run_${DB_NAME}.txt 2>&1 &
     check_script $? "Failed to run sysbench oltp"
   done
 }
