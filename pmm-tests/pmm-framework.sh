@@ -781,6 +781,16 @@ add_clients(){
         done
 	  fi
     else
+      if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
+        TOKUDB_STARTUP="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
+      else
+        TOKUDB_STARTUP=""
+      fi
+      if [ -r ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
+        ROCKSDB_STARTUP="--plugin-load-add=rocksdb=ha_rocksdb.so"
+      else
+        ROCKSDB_STARTUP=""
+      fi
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
         RBASE1="$(( RBASE + ( $PORT_CHECK * $j ) ))"
         LADDR1="$ADDR:$(( RBASE1 + 8 ))"
@@ -811,8 +821,9 @@ add_clients(){
         else
           MYEXTRA="--no-defaults --max-connections=30000"
         fi
-        ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
-          --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  --gtid-mode=ON --log-bin=mysql-bin --log-slave-updates \
+        ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG $TOKUDB_STARTUP $ROCKSDB_STARTUP --basedir=${BASEDIR} \
+          --datadir=$node --log-error=$node/error.err --log-bin=mysql-bin \
+          --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  --gtid-mode=ON --log-slave-updates \
           --enforce-gtid-consistency --server-id=10${j} > $node/error.err 2>&1 &
         function startup_chk(){
           for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
@@ -838,8 +849,9 @@ add_clients(){
           if grep -q "TCP/IP port: Address already in use" $node/error.err; then
             echo "TCP/IP port: Address already in use, restarting ${NODE_NAME}_${j} mysqld daemon with different port"
             RBASE1="$(( RBASE1 - 1 ))"
-            ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG --basedir=${BASEDIR} --datadir=$node --log-error=$node/error.err \
-               --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  --gtid-mode=ON --log-bin=mysql-bin --log-slave-updates \
+            ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG $TOKUDB_STARTUP $ROCKSDB_STARTUP --basedir=${BASEDIR} \
+               --datadir=$node --log-error=$node/error.err --log-bin=mysql-bin \
+               --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  --gtid-mode=ON --log-slave-updates \
                --enforce-gtid-consistency --server-id=10${j} > $node/error.err 2>&1 &
             startup_chk
             if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
