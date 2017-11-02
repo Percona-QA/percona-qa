@@ -52,6 +52,8 @@ dict_sdi_set                                             ## https://bugs.mysql.c
 ha_myisammrg..detach_children                            ## https://bugs.mysql.com/bug.php?id=88281
 dict0dict.cc.6216                                        ## https://bugs.mysql.com/bug.php?id=88282
 prebuilt->mysql_prefix_len <= record_buffer->record_size..  ## https://bugs.mysql.com/bug.php?id=88283
+Item_direct_view_ref..fix_fields                         ## https://bugs.mysql.com/bug.php?id=88323
+ha_innobase..update_thd                                  ## https://bugs.mysql.com/bug.php?id=88324
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
