@@ -1,1 +1,5 @@
-~/percona-qa/text_string.sh $1
+if [ "$1" == "" -a -r ./log/master.err ]; then
+  ~/percona-qa/text_string.sh ./log/master.err
+else
+  ~/percona-qa/text_string.sh $1
+fi
