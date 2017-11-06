@@ -60,6 +60,7 @@ TEXT=.null_value.$                                       ## https://bugs.mysql.c
 m_prebuilt->magic_n == 78540783                          ## https://bugs.mysql.com/bug.php?id=88353
 ailure. api0api.cc.3706..sdi_delete_failed               ## https://bugs.mysql.com/bug.php?id=88354
 err == DB_SUCCESS .. err == DB_DUPLICATE_KEY             ## https://bugs.mysql.com/bug.php?id=88355
+TEXT=.table2 == NULL.$                                   ## https://bugs.mysql.com/bug.php?id=88356
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684

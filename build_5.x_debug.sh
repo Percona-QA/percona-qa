@@ -2,6 +2,7 @@
 # Created by Roel Van de Paar, Percona LLC
 
 MAKE_THREADS=1      # Number of build threads. There may be a bug with >1 settings
+USE_CLANG=1         # Use the clang compiler instead of gcc
 WITH_ROCKSDB=1      # 0 or 1  # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
                               # For daily builds (optimized and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
 
@@ -13,6 +14,12 @@ ASAN=
 if [ "${1}" != "" ]; then
   echo "Building with ASAN enabled"
   ASAN="-DWITH_ASAN=ON"
+fi
+
+if [ $USE_CLANG -eq 1 ]; then
+  CLANG="-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+else
+  CLANG=""
 fi
 
 DATE=$(date +'%d%m%y')
@@ -46,10 +53,10 @@ rm -Rf ./plugin/tokudb-backup-plugin
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build
-  cmake . -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} | tee /tmp/5.7_debug_build
+  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} | tee /tmp/5.7_debug_build
 else
   # FB build
-  cmake . -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 -DCMAKE_CXX_FLAGS="-march=native" | tee /tmp/5.7_debug_build
+  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 -DCMAKE_CXX_FLAGS="-march=native" | tee /tmp/5.7_debug_build
 fi
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
