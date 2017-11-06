@@ -52,12 +52,12 @@ if [ $FB -eq 1 ]; then
   FLAGS='-DCMAKE_CXX_FLAGS="-march=native"'  # Default for FB tree
 fi
 if [ $USE_CLANG -eq 1 ]; then
-  CLANG="-DCMAKE_C_COMPILER=\"$CLANG_LOCATION\" -DCMAKE_CXX_COMPILER=\"$CLANGPP_LOCATION\""
+  CLANG="-DCMAKE_C_COMPILER=$CLANG_LOCATION -DCMAKE_CXX_COMPILER=$CLANGPP_LOCATION"
   if [ $USE_FUZZER -eq 1 ]; then
     if [ $FB -eq 1 ]; then
-      FLAGS='-DCMAKE_C_FLAGS="-fsanitize" -DCMAKE_CXX_FLAGS="-fsanitize -march=native"'
+      FLAGS="-DCMAKE_C_FLAGS='-fsanitize=fuzzer-no-link' -DCMAKE_CXX_FLAGS='-fsanitize=fuzzer-no-link -march=native'"
     else
-      FLAGS='-DCMAKE_C_FLAGS="-fsanitize" -DCMAKE_CXX_FLAGS="-fsanitize"'
+      FLAGS="-DCMAKE_C_FLAGS='-fsanitize=fuzzer-no-link' -DCMAKE_CXX_FLAGS='-fsanitize=fuzzer-no-link'"
     fi
   fi
 fi
@@ -72,6 +72,9 @@ cd ${CURPATH}_dbg
 
 ### TEMPORARY HACK TO AVOID COMPILING TB (WHICH IS NOT READY YET)
 rm -Rf ./plugin/tokudb-backup-plugin
+
+# Avoid previously downloaded boost's from creating problems
+rm -Rf /tmp/boost*
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build
