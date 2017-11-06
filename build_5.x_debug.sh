@@ -4,8 +4,19 @@
 MAKE_THREADS=1      # Number of build threads. There may be a bug with >1 settings
 WITH_ROCKSDB=1      # 0 or 1  # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
                               # For daily builds (optimized and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
-USE_CLANG=1         # Use the clang compiler instead of gcc
-USE_FUZZER=1        # Use the Google OSS Fuzzer
+USE_CLANG=0         # Use the clang compiler instead of gcc
+USE_FUZZER=1        # Use the Google OSS Fuzzer (automatically ignored if CLANG=0)
+CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"
+CLANGPP_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang++"
+
+# To install the latest clang from Chromium devs;
+# sudo yum remove clang    # Or sudo apt-get remove clang
+# cd ~
+# mkdir TMP_CLANG
+# cd TMP_CLANG
+# git clone https://chromium.googlesource.com/chromium/src/tools/clang
+# cd ..
+# TMP_CLANG/clang/scripts/update.py
 
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
@@ -41,12 +52,12 @@ if [ $FB -eq 1 ]; then
   FLAGS='-DCMAKE_CXX_FLAGS="-march=native"'  # Default for FB tree
 fi
 if [ $USE_CLANG -eq 1 ]; then
-  CLANG="-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+  CLANG="-DCMAKE_C_COMPILER=\"$CLANG_LOCATION\" -DCMAKE_CXX_COMPILER=\"$CLANGPP_LOCATION\""
   if [ $USE_FUZZER -eq 1 ]; then
     if [ $FB -eq 1 ]; then
-      FLAGS='DCMAKE_C_FLAGS="-fsanitize" -DCMAKE_CXX_FLAGS="-fsanitize -march=native"'
+      FLAGS='-DCMAKE_C_FLAGS="-fsanitize" -DCMAKE_CXX_FLAGS="-fsanitize -march=native"'
     else
-      FLAGS='DCMAKE_C_FLAGS="-fsanitize" -DCMAKE_CXX_FLAGS="-fsanitize"'
+      FLAGS='-DCMAKE_C_FLAGS="-fsanitize" -DCMAKE_CXX_FLAGS="-fsanitize"'
     fi
   fi
 fi
