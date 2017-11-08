@@ -200,7 +200,7 @@ fi
 
 echo "MYEXTRA_OPT=\"\$*\"" > start
 echo "MYEXTRA_OPT=\"\$*\"" > start_dynamic
-echo 'MYEXTRA=" --no-defaults --secure-file-priv="' >> start
+echo 'MYEXTRA=" --no-defaults"' >> start
 echo 'MYEXTRA=" --no-defaults --secure-file-priv="' >> start_dynamic
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start_dynamic
