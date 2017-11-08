@@ -22,7 +22,7 @@ function run_startup() {
 
 function start_server() {
   cd $1
-  ./start
+  ./start --secure-file-priv=
 }
 
 function start_proxysql_servers() {
