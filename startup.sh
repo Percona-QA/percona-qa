@@ -21,10 +21,10 @@ JE5=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi
 
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
-  if [ "$(sudo apt-get -s install libaio1 | grep 'is already')" == "" ]; then
+  if [ $(dpkg -l|grep -c libaio1) -eq 0 ]; then
     sudo apt-get install libaio1
   fi
-  if [ "$(sudo apt-get -s install libjemalloc1 | grep 'is already')" == "" ]; then
+  if [ $(dpkg -l|grep -c libjemalloc1) -eq 0 ]; then
     sudo apt-get install libjemalloc1
   fi
   if [ ! -r /lib/x86_64-linux-gnu/libssl.so.6 ]; then
