@@ -5,6 +5,7 @@ PORT=$[$RANDOM % 10000 + 10000]
 MTRT=$[$RANDOM % 100 + 700]
 BUILD=$(pwd | sed 's|^.*/||')
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
+ADDR="127.0.0.1"
 
 if find . -name group_replication.so | grep -q . ; then
   GRP_RPL=1
@@ -21,10 +22,10 @@ JE5=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi
 
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
-  if [ "$(sudo apt-get -s install libaio1 | grep 'is already')" == "" ]; then
+  if [ $(dpkg -l|grep -c libaio1) -eq 0 ]; then
     sudo apt-get install libaio1
   fi
-  if [ "$(sudo apt-get -s install libjemalloc1 | grep 'is already')" == "" ]; then
+  if [ $(dpkg -l|grep -c libjemalloc1) -eq 0 ]; then
     sudo apt-get install libjemalloc1
   fi
   if [ ! -r /lib/x86_64-linux-gnu/libssl.so.6 ]; then
@@ -200,10 +201,12 @@ fi
 
 echo "MYEXTRA_OPT=\"\$*\"" > start
 echo "MYEXTRA_OPT=\"\$*\"" > start_dynamic
-echo 'MYEXTRA=" --no-defaults --secure-file-priv="' >> start
+echo 'MYEXTRA=" --no-defaults "' >> start
 echo 'MYEXTRA=" --no-defaults --secure-file-priv="' >> start_dynamic
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start_dynamic
+echo '#MYEXTRA=" --no-defaults --gtid_mode=ON --enforce_gtid_consistency=ON --log_slave_updates=ON --log_bin=binlog --binlog_format=ROW"' >> start
+echo '#MYEXTRA=" --no-defaults --gtid_mode=ON --enforce_gtid_consistency=ON --log_slave_updates=ON --log_bin=binlog --binlog_format=ROW"' >> start_dynamic
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start_dynamic
 echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"' >> start
@@ -214,13 +217,40 @@ echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; 
 echo $JE1 >> start_dynamic; echo $JE2 >> start_dynamic; echo $JE3 >> start_dynamic; echo $JE4 >> start_dynamic; echo $JE5 >> start_dynamic
 cp start start_valgrind  # Idem for Valgrind
 cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
-echo "$BIN  \${MYEXTRA} \${MYEXTRA_OPT} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start
-echo "$BIN  \${MYEXTRA} \${MYEXTRA_OPT} ${START_OPT} --basedir=${PWD} ${TOKUDB} ${ROCKSDB} 2>&1 &" >> start_dynamic
+echo "$BIN  \${MYEXTRA} \${MYEXTRA_OPT} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err --server-id=100 2>&1 &" >> start
+echo "$BIN  \${MYEXTRA} \${MYEXTRA_OPT} ${START_OPT} --basedir=${PWD} ${TOKUDB} ${ROCKSDB}  --server-id=100 2>&1 &" >> start_dynamic
 echo "sleep 10" >> start
 echo "sleep 10" >> start_dynamic
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
   echo "${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test;'" >> start
 fi
+
+echo "NODES=\$1" > slave_setup
+echo 'MYEXTRA=" --no-defaults --gtid_mode=ON --enforce_gtid_consistency=ON --log_slave_updates=ON --log_bin=binlog --binlog_format=ROW"' >> slave_setup
+echo "RPORT=$[$RANDOM % 10000 + 10000]"  >> slave_setup
+echo "echo \"\" > stop_slave" >> slave_setup
+echo "if ${PWD}/bin/mysqladmin -uroot -S$PWD/socket.sock ping > /dev/null 2>&1; then" >> slave_setup
+echo "  ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock  -Bse\"grant all on *.* to repl@'%' identified by 'repl';flush privileges;\"" >> slave_setup
+echo "  MASTER_PORT=\$(\${PWD}/bin/mysql -A -uroot -S\${PWD}/socket.sock  -Bse\"select @@port\")" >> slave_setup
+echo "else" >> slave_setup
+echo "  echo \"ERROR! Master server is not started. Make sure to start master with GTID enabled. Terminating!\"" >> slave_setup
+echo "  exit 1" >> slave_setup
+echo "fi" >> slave_setup
+echo "for i in \`seq 1 \$NODES\`;do" >> slave_setup
+echo "  RBASE=\"\$(( RPORT + \$i ))\"" >> slave_setup
+echo "  node=\"${PWD}/slavenode\$i\"" >> slave_setup
+echo "  if [ ! -d \$node ]; then" >> slave_setup
+echo "    $INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=\${node} > ${PWD}/startup_node\$i.err 2>&1 || exit 1;" >> slave_setup
+echo "  fi" >> slave_setup
+echo "  $BIN  \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=\${node} --datadir=\${node} ${TOKUDB} ${ROCKSDB} --socket=\$node/socket.sock --port=\$RBASE --report-host=$ADDR --report-port=\$RBASE  --server-id=10\$i --log-error=\$node/mysql.err 2>&1 &" >> slave_setup
+echo "  sleep 10" >> slave_setup
+
+echo "  echo -e \"${PWD}/bin/mysql -A -uroot -S\$node/socket.sock --prompt \\\"slavenode\$i> \\\"\" > ${PWD}/\${i}_slave_cl "  >> slave_setup
+echo "  echo \"${PWD}/bin/mysqladmin -uroot -S\$node/socket.sock shutdown\" >> stop_slave" >> slave_setup
+echo "  echo \"echo 'Server on socket \$node/socket.sock with datadir \$node halted'\" >> stop_slave" >> slave_setup
+echo "  ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1;START SLAVE;\"" >> slave_setup
+echo "done" >> slave_setup
+echo "chmod +x  ./*slave_cl stop_slave" >> slave_setup
 
 echo "ps -ef | grep \"\$(whoami)\" | grep ${PORT} | grep -v grep | awk '{print \$2}' | xargs kill -9" > kill
 echo " valgrind --suppressions=${PWD}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err >>${PWD}/log/master.err 2>&1 &" >> start_valgrind
@@ -287,7 +317,7 @@ echo "rm -f log/master.*" >> init
 echo "./stop >/dev/null 2>&1;./wipe;./start;sleep 5;./cl" > all
 echo "MYEXTRA_OPT=\"\$*\"" > all_no_cl
 echo "./stop >/dev/null 2>&1;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};sleep 5" >> all_no_cl
-chmod +x start start_dynamic start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent 2>/dev/null
+chmod +x start start_dynamic start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm-mysql-agent slave_setup 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
