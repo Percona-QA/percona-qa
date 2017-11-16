@@ -133,7 +133,7 @@ fsp0fsp.cc line 2023                                     ## https://bugs.mysql.c
 #Z14fill_variablesP3THDP10TABLE_LISTP4Item      ## Fixed ## https://bugs.mysql.com/bug.php?id=75940 
 #Z18create_ref_for_keyP4JOINP8JOIN_TABP7Key_usey ## Fixed ## https://bugs.mysql.com/bug.php?id=75944 (Marked dup of 74559)                          (# after MS 5.7.7 merged)
 #t1->result_range                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75946                                                 (# after MS 5.7.7 merged)
-t1->result_range                                         ## https://bugs.mysql.com/bug.php?id=83737 (but seen again in 5.6.34, on only 1 specific statement, tested many times)
+#t1->result_range                                        ## https://bugs.mysql.com/bug.php?id=83737 (but seen again in 5.6.34, on only 1 specific statement, tested many times). Refer to bug report (marked as can't repeat) - check if other testcases and/or other versions are seen for this assert
 #old_value >= 1                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=76406                                                 (# after MS 5.7.8 merged)
 #Z18replace_user_tableP3THDP5TABLEP11st_lex_usermbbb ## Fixed ## https://bugs.mysql.com/bug.php?id=75947                                            (# after MS 5.7.6 merged)
 # ZN28Item_func_latlongfromgeohash14decode_geohashEP6StringddddPdS2_  ## Fixed ## Fixed in 5.7.6-m16 (no bug report logged, seen afterwards)
