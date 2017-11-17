@@ -136,6 +136,8 @@
   grep -R --include=* -n "search string"  # From the highest directory
 # Generate a random string  # With thanks, https://gist.github.com/earthgecko/3089509
   cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-32} | head -n 1
+# Redirect multiple files into mapfile or other commands  # With thanks, https://unix.stackexchange.com/questions/238967/controlling-the-order-in-which-files-are-put-into-an-array
+  mapfile -t arrayname < <(cat a b)  # where a and b are input file[s][names]
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging

@@ -39,6 +39,7 @@ if [ ! -r views.txt ]; then echo "Assert: views.txt not found!"; exit 1; fi
 if [ ! -r pk.txt ]; then echo "Assert: pk.txt not found!"; exit 1; fi
 if [ ! -r types.txt ]; then echo "Assert: types.txt not found!"; exit 1; fi
 if [ ! -r data.txt ]; then echo "Assert: data.txt not found!"; exit 1; fi
+if [ ! -r blns/blns2.txt ]; then echo "Assert: blns/blns2.txt not found!"; exit 1; fi  # A shortened version of blns.txt from https://github.com/minimaxir/big-list-of-naughty-strings
 if [ ! -r engines.txt ]; then echo "Assert: engines.txt not found!"; exit 1; fi
 if [ ! -r a-z.txt ]; then echo "Assert: a-z.txt not found!"; exit 1; fi
 if [ ! -r 0-6.txt ]; then echo "Assert: 0-6.txt not found!"; exit 1; fi
@@ -84,7 +85,7 @@ mapfile -t tables    < tables.txt       ; TABLES=${#tables[*]}                  
 mapfile -t views     < views.txt        ; VIEWS=${#views[*]}                    ; view()       { echo "${views[$[$RANDOM % $VIEWS]]}"; }
 mapfile -t pk        < pk.txt           ; PK=${#pk[*]}                          ; pk()         { echo "${pk[$[$RANDOM % $PK]]}"; }
 mapfile -t types     < types.txt        ; TYPES=${#types[*]}                    ; ctype()      { echo "${types[$[$RANDOM % $TYPES]]}"; }
-mapfile -t datafile  < data.txt         ; DATAFILE=${#datafile[*]}              ; datafile()   { echo "${datafile[$[$RANDOM % $DATAFILE]]}"; }
+mapfile -t datafile  < <(cat data.txt blns/blns2.txt); DATAFILE=${#datafile[*]} ; datafile()   { echo "${datafile[$[$RANDOM % $DATAFILE]]}"; }
 mapfile -t engines   < engines.txt      ; ENGINES=${#engines[*]}                ; engine()     { echo "${engines[$[$RANDOM % $ENGINES]]}"; }
 mapfile -t az        < a-z.txt          ; AZ=${#az[*]}                          ; az()         { echo "${az[$[$RANDOM % $AZ]]}"; }
 mapfile -t n9        < 0-9.txt          ; N9=${#n9[*]}                          ; n9()         { echo "${n9[$[$RANDOM % $N9]]}"; }
