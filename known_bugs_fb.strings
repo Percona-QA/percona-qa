@@ -1,0 +1,31 @@
+## =========== fb-mysql ===========
+## These are all disabled (and removed) from known_bugs.strings for two reasons;
+## Firstly, these bugs may be/have been present in fb-mysql but that does not mean they are in PS once MyRocks was included in PS as well
+## On 17 Nov 2017, text_string.sh was changed to cater for ha_rocksdb.so stack trace string handling, so these may no longer be correct
+#DISABLE#v->cfd_->internal_comparator                             ## https://github.com/facebook/mysql-5.6/issues/131
+#DISABLE#Z18table_stats_deletePKc                                 ## https://github.com/facebook/mysql-5.6/issues/132
+#DISABLE#ZN7rocksdb10TableCache9FindTableERKNS_10EnvOptionsERKNS_21InternalKeyComparatorERKNS_14FileDescriptorEPPNS_5Cache6HandleEbbPNS_13HistogramImplE  ## https://github.com/facebook/mysql-5.6/issues/133
+#DISABLE#block_restart_interval_ >= 1                             ## https://github.com/facebook/mysql-5.6/issues/134
+#DISABLE#ZNK8Item_ref11used_tablesEv                              ## https://github.com/facebook/mysql-5.6/issues/139
+#DISABLE#ZN9__gnu_cxx13new_allocatorImE8allocateEmPKv             ## https://github.com/facebook/mysql-5.6/issues/140
+#DISABLE#Z19fill_table_stats_cbPKcS0_bP17my_io_perf_structS2_S2_S2_S2_P17page_stats_structP17comp_stats_structiiS0_  ## https://github.com/facebook/mysql-5.6/issues/141
+#DISABLE#Z12mysql_deleteP3THDP10TABLE_LISTP4ItemP10SQL_I_ListI8st_orderEyy  ## https://github.com/facebook/mysql-5.6/issues/142
+#DISABLE#ZNKSt6vectorISsSaISsEE14_M_range_checkEm                 ## https://github.com/facebook/mysql-5.6/issues/218
+#DISABLE#ha_innodb.cc line 11527                                  ## https://github.com/facebook/mysql-5.6/issues/170
+#DISABLE#ha_innodb.cc line 11540                                  ## https://github.com/facebook/mysql-5.6/issues/170
+#DISABLE#ut0mem.cc line 105                                       ## https://github.com/facebook/mysql-5.6/issues/171
+#DISABLE#rate_ bytes_per_sec > 0                                  ## https://github.com/facebook/mysql-5.6/issues/172
+#DISABLE#ZNKSt6vectorIbSaIbEE12_M_check_lenEmPKc                  ## https://github.com/facebook/mysql-5.6/issues/173
+#DISABLE#ZN7rocksdb10ThreadPool11PthreadCallEPKci                 ## https://github.com/facebook/mysql-5.6/issues/175
+#DISABLE#ZN15RDBSE_TABLE_DEF8put_dictEP12Dict_managerPN7rocksdb10WriteBatchEPhm     ## https://github.com/facebook/mysql-5.6/issues/176
+#DISABLE#BaseValid                                                ## https://github.com/facebook/mysql-5.6/issues/185
+#DISABLE#ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm     ## https://github.com/facebook/mysql-5.6/issues/202
+#DISABLE#os0sync.cc line 490                                      ## https://github.com/facebook/mysql-5.6/issues/190
+#DISABLE#trx->has_snapshot                                        ## https://github.com/facebook/mysql-5.6/issues/211
+#DISABLE#Z10key_unpackP6StringP5TABLEP6st_key                     ## https://github.com/facebook/mysql-5.6/issues/213
+#DISABLE#ZN10Field_long3cmpEPKhS1_                                ## https://github.com/facebook/mysql-5.6/issues/214
+#DISABLE#ZN7myrocks15RDBSE_TABLE_DEF8put_dictEPNS_12Dict_managerEPN7rocksdb10WriteBatchEPhm  ## https://github.com/facebook/mysql-5.6/issues/219 (also seen as an empty text string sig11)
+#DISABLE#ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm  ## https://github.com/facebook/mysql-5.6/issues/220
+#DISABLE#Z17build_equal_itemsP3THDP4ItemP10COND_EQUALbP4ListI10TABLE_LISTEPS4_  ## Another --query-alloc-block-size=-[small or large negative value], ignore for the moment
+#DISABLE#options.use_os_buffer                                    ## https://github.com/facebook/mysql-5.6/issues/221
+#prebuilt->trx->error_key_num < ha_alter_info->key_count ## NEEDS BUG NUMBER - MAY NOT BE FIXED YET - REMARKED FTM SO WE CAN GET BUG NR

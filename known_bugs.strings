@@ -76,35 +76,6 @@ ha_innodb.cc line 4182                                            ## SET DEBUG='
 row0log.ic line 40                                                ## https://bugs.launchpad.net/percona-server/+bug/1630500
 zip_dict_name.str == 0 .. column_format                           ## https://bugs.launchpad.net/percona-server/+bug/1633957
 
-## =========== fb-mysql ===========
-#TEMP_DISABLE#v->cfd_->internal_comparator                             ## https://github.com/facebook/mysql-5.6/issues/131
-#TEMP_DISABLE#Z18table_stats_deletePKc                                 ## https://github.com/facebook/mysql-5.6/issues/132
-#TEMP_DISABLE#ZN7rocksdb10TableCache9FindTableERKNS_10EnvOptionsERKNS_21InternalKeyComparatorERKNS_14FileDescriptorEPPNS_5Cache6HandleEbbPNS_13HistogramImplE  ## https://github.com/facebook/mysql-5.6/issues/133
-#TEMP_DISABLE#block_restart_interval_ >= 1                             ## https://github.com/facebook/mysql-5.6/issues/134
-#TEMP_DISABLE#ZNK8Item_ref11used_tablesEv                              ## https://github.com/facebook/mysql-5.6/issues/139
-#TEMP_DISABLE#ZN9__gnu_cxx13new_allocatorImE8allocateEmPKv             ## https://github.com/facebook/mysql-5.6/issues/140
-#TEMP_DISABLE#Z19fill_table_stats_cbPKcS0_bP17my_io_perf_structS2_S2_S2_S2_P17page_stats_structP17comp_stats_structiiS0_  ## https://github.com/facebook/mysql-5.6/issues/141
-#TEMP_DISABLE#Z12mysql_deleteP3THDP10TABLE_LISTP4ItemP10SQL_I_ListI8st_orderEyy  ## https://github.com/facebook/mysql-5.6/issues/142
-#TEMP_DISABLE#ZNKSt6vectorISsSaISsEE14_M_range_checkEm                 ## https://github.com/facebook/mysql-5.6/issues/218
-#TEMP_DISABLE#ha_innodb.cc line 11527                                  ## https://github.com/facebook/mysql-5.6/issues/170
-#TEMP_DISABLE#ha_innodb.cc line 11540                                  ## https://github.com/facebook/mysql-5.6/issues/170
-#TEMP_DISABLE#ut0mem.cc line 105                                       ## https://github.com/facebook/mysql-5.6/issues/171
-#TEMP_DISABLE#rate_ bytes_per_sec > 0                                  ## https://github.com/facebook/mysql-5.6/issues/172
-#TEMP_DISABLE#ZNKSt6vectorIbSaIbEE12_M_check_lenEmPKc                  ## https://github.com/facebook/mysql-5.6/issues/173
-#TEMP_DISABLE#ZN7rocksdb10ThreadPool11PthreadCallEPKci                 ## https://github.com/facebook/mysql-5.6/issues/175
-#TEMP_DISABLE#ZN15RDBSE_TABLE_DEF8put_dictEP12Dict_managerPN7rocksdb10WriteBatchEPhm     ## https://github.com/facebook/mysql-5.6/issues/176
-#TEMP_DISABLE#BaseValid                                                ## https://github.com/facebook/mysql-5.6/issues/185
-#TEMP_DISABLE#ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm     ## https://github.com/facebook/mysql-5.6/issues/202
-#TEMP_DISABLE#os0sync.cc line 490                                      ## https://github.com/facebook/mysql-5.6/issues/190
-#TEMP_DISABLE#trx->has_snapshot                                        ## https://github.com/facebook/mysql-5.6/issues/211
-#TEMP_DISABLE#Z10key_unpackP6StringP5TABLEP6st_key                     ## https://github.com/facebook/mysql-5.6/issues/213
-#TEMP_DISABLE#ZN10Field_long3cmpEPKhS1_                                ## https://github.com/facebook/mysql-5.6/issues/214
-#TEMP_DISABLE#ZN7myrocks15RDBSE_TABLE_DEF8put_dictEPNS_12Dict_managerEPN7rocksdb10WriteBatchEPhm  ## https://github.com/facebook/mysql-5.6/issues/219 (also seen as an empty text string sig11)
-#TEMP_DISABLE#ZN7rocksdb28NewReadaheadRandomAccessFileEOSt10unique_ptrINS_16RandomAccessFileESt14default_deleteIS1_EEm  ## https://github.com/facebook/mysql-5.6/issues/220
-#TEMP_DISABLE#Z17build_equal_itemsP3THDP4ItemP10COND_EQUALbP4ListI10TABLE_LISTEPS4_  ## Another --query-alloc-block-size=-[small or large negative value], ignore for the moment
-#TEMP_DISABLE#options.use_os_buffer                                    ## https://github.com/facebook/mysql-5.6/issues/221
-#prebuilt->trx->error_key_num < ha_alter_info->key_count ## NEEDS BUG NUMBER - MAY NOT BE FIXED YET - REMARKED FTM SO WE CAN GET BUG NR
-
 ## =========== Early 5.7 Prepatory Work ===========
 #buf0flu.cc line 2807                                    ## https://bugs.mysql.com/bug.php?id=85585 (not verified yet, so this line is remarked ftm)
 #sync0debug.cc line 299                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
