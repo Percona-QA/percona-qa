@@ -244,13 +244,17 @@
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax
   sudo yum install cabal-install; cabal update; cabal install shellcheck; ~/.cabal/bin/shellcheck
-# git: git checkout (checkout a branch), git branch [-a] [-r] (show current branch, -a is all branches local and remote, -r is remote branches only)
 
 # ------ Shortcuts ------
 # Pquery, single-threaded run, mysqld pre-started, socket, testcase and ./lib/ in this directory, percona-qa bzr tree pulled to ~/percona-qa/
   export LD_LIBRARY_PATH=${PWD}/lib;~/percona-qa/pquery/pquery --infile=./testc.sql --database=test --threads=1 --no-shuffle --user=root --socket=./socket.sock
 
 # ------ Git ------
+# git: git checkout (checkout a branch), git branch [-a] [-r] (show current branch, -a is all branches local and remote, -r is remote branches only)
+# Undo last commit, leaving everything else as-is (for example to change commit message)  # With thanks, https://stackoverflow.com/questions/2845731/how-to-uncommit-my-last-commit-in-git
+  git reset --soft HEAD^         # Undoes commit
+  git reset HEAD^                # Undoes commit AND everything staged (i.e. new files added)
+  clean_tree.sh (in percona-qa)  # Resets tree completely to last online commit
 # Register author details
   git config --global user.name "your name"
   git config --global user.email email@domain.com
