@@ -709,7 +709,7 @@ Z23well_formed_copy_ncharsPK15charset_info_stPcjS1_PKcjjPS4_S5_S5_              
 Z23well_formed_copy_ncharsPK15charset_info_stPcmS1_PKcmmPS4_S5_S5_                      ## https://bugs.mysql.com/bug.php?id=85065
 ZN23Gcalc_operation_reducer11free_resultEPNS_9res_pointE                                ## https://bugs.mysql.com/bug.php?id=84834 (duplicated by 85070)
 Z24get_schema_tables_resultP4JOIN23enum_                                                ## Another i-s-temp-tables bug (based on crashing query) (see comment)
-Z24ha_initialize_handlertonP13st_plugin_int                                             ## https://jira.percona.com/browse/MYR-195
+#Z24ha_initialize_handlertonP13st_plugin_int                                   ## Fixed ## https://jira.percona.com/browse/MYR-195
 Z24plugin_foreach_with_maskP3THDPFcS0_PP13st_plugin_intPvEijS4_                         ## https://bugs.launchpad.net/percona-server/+bug/1688176 (also listed elsewhere)
 #Z24make_used_partitions_strP14partition_infoP4ListIKcE                        ## Fixed ## https://bugs.mysql.com/bug.php?id=74746 (fixed in 5.6.24)
 #Z24mark_tmp_table_for_reuseP5TABLE                                            ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1417533 (dup of 1387951)
