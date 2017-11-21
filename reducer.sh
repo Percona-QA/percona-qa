@@ -407,7 +407,7 @@ echo_out_overwrite(){
 ctrl_c(){
   echo_out "[Abort] CTRL+C Was pressed. Dumping variable stack"
   echo_out "[Abort] WORKD: $WORKD (reducer log @ $WORKD/reducer.log) | EPOCH: $EPOCH"
-  if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
+  if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
     echo_out "[Abort] Best testcase thus far: $WORKO"
   else
     echo_out "[Abort] Best testcase thus far: $INPUTFILE (= input file, no optimizations were successful)"
@@ -558,8 +558,8 @@ options_check(){
         echo "Terminating now."
         exit 1
     fi
-    if [ ! -s "$1" ]; then
-      if [ ! -s $INPUTFILE ]; then
+    if [ ! -r "$1" ]; then
+      if [ ! -r $INPUTFILE ]; then
         if [ "$INPUTFILE" == "" -a "$1" == "" ]; then
           echo 'Error: No input file was given.'
         else
@@ -626,7 +626,7 @@ options_check(){
     exit 1
   fi
   if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
-    if [ ! -s "$TEXT_STRING_LOC" ] ; then
+    if [ ! -r "$TEXT_STRING_LOC" ] ; then
       echo "Assert: MODE=3 and USE_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this file was either not found, or is not script readable"
       exit
     fi
@@ -2812,7 +2812,7 @@ finish(){
   echo_out "[Finish] Number of server startups         : $STARTUPCOUNT (not counting subreducers)"
   echo_out "[Finish] Working directory was             : $WORKD"
   echo_out "[Finish] Reducer log                       : $WORKD/reducer.log"
-  if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
+  if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
     cp -f $WORKO $WORK_OUT
     echo_out "[Finish] Final testcase                    : $WORKO ($(wc -l $WORKO | awk '{print $1}') lines)"
   else
@@ -2841,7 +2841,7 @@ finish(){
       echo_out "[Finish] mysqld options required for replay: $TOKUDB $ROCKSDB $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
     fi
     MYSQLD_OPTIONS_REQUIRED=
-    if [ -s $WORKO ]; then  # If there were no issues found, $WORKO was never written
+    if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
       echo_out "[Finish] Final testcase size              : $SIZEF bytes ($LINECOUNTF lines)"
     fi
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
@@ -4056,13 +4056,14 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 141 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
     elif [ $TRIAL -eq 142 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
     elif [ $TRIAL -eq 143 ]; then sed -e "s/;.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 144 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 145 ]; then sed "s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 146 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 147 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 148 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 149 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 150 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 144 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT  # NOSKIP as lenght of 'TokuDB' is same as 'InnoDB'
+    elif [ $TRIAL -eq 145 ]; then sed -e "s/RocksDB/InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 146 ]; then sed "s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 147 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 148 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 149 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 150 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 151 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`

@@ -733,6 +733,7 @@ Z9os_mallocm                                                                    
 #ZN7handler8ha_checkEP3THDP15st_ha_check_opt                                   ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1433197
 ZN7MDL_map6removeEP8MDL_lock                                                            ## https://bugs.launchpad.net/percona-server/+bug/1417116
 #ZN7set_var5checkEP3THD                                                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1417028 (dup of 1387951)
+#ZN7ha_heap9write_rowEPh                                                       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1731343
 #ZN8MDL_lock11Ticket_list13remove_ticketEP10MDL_ticket                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1403373 (dup of 1393682)
 #ZN9ha_myisam5extraE17ha_extra_function                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=76946
 ZN9ha_myisam9write_rowEPh                                                               ## https://bugs.mysql.com/bug.php?id=75083
@@ -820,6 +821,7 @@ ZNK8Item_row4typeEv                                                             
 #Z14get_all_tablesP3THDP10TABLE_LISTP4Item                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=81412
 #is_last_prefix <= 0                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=81412
 #Z34set_field_to_null_with_conversionsP5Fieldb                                 ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1582055 and MS Bug 81446 below
+Z34set_field_to_null_with_conversionsP5Fieldb                                           ## https://bugs.mysql.com/bug.php?id=88571
 #Z17store_create_infoP3THDP10TABLE_LISTP6StringP24st_ha_create_informationb    ## Fixed ## https://bugs.mysql.com/bug.php?id=81446 (ref above)
 #Z19create_schema_tableP3THDP10TABLE_LIST                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=81446
 #ZN10Item_field13save_in_fieldEP5Fieldb                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=81446
