@@ -565,7 +565,7 @@ map->bitmap .* map2->bitmap .* map->n_bits==map2->n_bits                        
 #maxcount.=0                                                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74898 (Fixed as part of internal bug)
 multi_range_length > 0                                                                  ## https://bugs.mysql.com/bug.php?id=81410
 #mi_cmp_dynamic_unique                                                                  ## https://bugs.launchpad.net/percona-server/+bug/1486849 (Remarked to get more testcases)
-m_lock_type == 2                                                                        ## https://jira.percona.com/browse/MYR-174
+m_lock_type == 2                                                                        ## https://bugs.launchpad.net/percona-server/+bug/1733781 (also ref MYR-174)
 #m_lock .= __null .* thd->mdl_context.is_lock_owner.m_namespace, .*, MDL_SHARED ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1377093
 #m_lock_type == 2                                                              ## Fixed ## https://bugs.mysql.com/bug.php?id=74291 (duplicated by 74436) (Originally PS Bug #1382749)
 #m_prot_lock .= __null .* thd->mdl_context.is_lock_owner.m_namespace, .*, .*, MDL_INTENTION_EXCLUSIVE ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1393682

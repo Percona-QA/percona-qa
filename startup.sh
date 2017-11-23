@@ -81,10 +81,10 @@ if [[ $GRP_RPL -eq 1 ]];then
   echo -e "BUILD=\$(pwd)\n" >> ./start_group_replication
   echo -e "touch ./stop_group_replication " >> ./start_group_replication
   echo -e "if [ -z \$NODES ]; then" >> ./start_group_replication
-  echo -e "  echo \"No valid parameter is passed. Need to pass how many nodes to start. Retry.\"" >> ./start_group_replication
+  echo -e "  echo \"No valid parameter is passed. Please indicate how many nodes to start. Please retry.\"" >> ./start_group_replication
   echo -e "  echo \"Usage example:\"" >> ./start_group_replication
   echo -e "  echo \"   $./start_group_replication 2\"" >> ./start_group_replication
-  echo -e "  echo \"   This would start a 2 node Group Replication cluster.\"" >> ./start_group_replication
+  echo -e "  echo \"   Will start a 2 node Group Replication cluster.\"" >> ./start_group_replication
   echo -e "  exit 1" >> ./start_group_replication
   echo -e "else" >> ./start_group_replication
   echo -e "  echo \"Starting \$NODES node Group Replication, please wait...\"" >> ./start_group_replication
@@ -357,7 +357,7 @@ echo "$INIT_TOOL --no-defaults ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/dat
 echo "rm -f log/master.*" >> init
 
 echo 'MYEXTRA_OPT="$*"' > all
-echo "./stop >/dev/null 2>&1;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};./cl" >> all
+echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};./cl" >> all
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
 echo "./stop >/dev/null 2>&1;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
 chmod +x start start_dynamic start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure gdb myrocks_tokudb_init pmm_os_agent pmm-mysql-agent repl_setup 2>/dev/null
