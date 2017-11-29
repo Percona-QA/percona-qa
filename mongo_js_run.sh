@@ -1,8 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-# To get a better idea on the working of this script, see the header comments in single_test_mongo.sh. Basically mongo_js_run.sh is an intelligent wrapper
-# around single_test_mongo.sh. It analyzes output of single_test_mongo.sh &  reports on the same. It also stores interesting results to a ${RESULTSDIR} dir.
+# To get a better idea on the working of this script, see the header comments in mongo_single_test.sh. Basically mongo_js_run.sh is an intelligent wrapper
+# around mongo_single_test.sh. It analyzes output of mongo_single_test.sh &  reports on the same. It also stores interesting results to a ${RESULTSDIR} dir.
 
 # User configurable variables
 MONGODIR="/sdc/percona-server-mongodb-3.0.7-1.0"    # Where mongo/mongod lives (with ./mongod and ./jstests both present!)
@@ -80,10 +80,10 @@ loop(){  # $1 to this function is the JS TEST_TO_RUN
     exit 1
   fi
 
-  cp ${SCRIPT_PWD}/single_test_mongo.sh ${WORKDIR}/single_test_mongo.sh
-  sed -i "s|^[ \t]*TEST_TO_RUN=.*|TEST_TO_RUN=${1}|;s|^[ \t]*DEBUG=.*|DEBUG=0|" ${WORKDIR}/single_test_mongo.sh
-  sed -i "s|^[ \t]*PRI_ENGINE=.*|PRI_ENGINE=${PRI_ENGINE}|;s|^[ \t]*SEC_ENGINE=.*|SEC_ENGINE=${SEC_ENGINE}|" ${WORKDIR}/single_test_mongo.sh
-  timeout --signal=9 ${TIMEOUT}s ${WORKDIR}/single_test_mongo.sh ${WORKDIR} ${MONGODIR}
+  cp ${SCRIPT_PWD}/mongo_single_test.sh ${WORKDIR}/mongo_single_test.sh
+  sed -i "s|^[ \t]*TEST_TO_RUN=.*|TEST_TO_RUN=${1}|;s|^[ \t]*DEBUG=.*|DEBUG=0|" ${WORKDIR}/mongo_single_test.sh
+  sed -i "s|^[ \t]*PRI_ENGINE=.*|PRI_ENGINE=${PRI_ENGINE}|;s|^[ \t]*SEC_ENGINE=.*|SEC_ENGINE=${SEC_ENGINE}|" ${WORKDIR}/mongo_single_test.sh
+  timeout --signal=9 ${TIMEOUT}s ${WORKDIR}/mongo_single_test.sh ${WORKDIR} ${MONGODIR}
   RESULT=$?  # 0: Both engines succeeded | 1: PRI engine failed only | 2: SEC engine failed only | 3: Both engines failed | 4: Unknown issue (should not happen) | 137: timeout
 
   if [ ${RESULT} -eq 0 ]; then
@@ -126,7 +126,7 @@ loop(){  # $1 to this function is the JS TEST_TO_RUN
     fi
     echo "Trial ${1} was interrupted as it went over the ${TIMEOUT}s timeout!" > ${RESULTSDIR}_TIMEOUT/${RANDOMD}/this_trial_was_interrupted.txt
   elif [ ${RESULT} -ge 4 -o ${RESULT} -lt 0 ]; then
-    echoit "Assert: single_test_mongo.sh returned exit code ${RESULT} for test ${1}, this should not happen! Terminating run..."
+    echoit "Assert: mongo_single_test.sh returned exit code ${RESULT} for test ${1}, this should not happen! Terminating run..."
     exit 1
   fi
 }
@@ -192,7 +192,7 @@ echoit "Making a copy of ${WORKDIR}/mongo_js_run.sh to ${RESULTSDIR} for later r
 cp ${SCRIPT_PWD}/mongo_js_run.sh ${RESULTSDIR}
 
 echoit "Terminating all owned mongod instances..."
-${SCRIPT_PWD}/kill_mongo_procs_safe.sh
+${SCRIPT_PWD}/mongo_kill_procs_safe.sh
 
 echoit "Attempting to increase/set ulimit -n to ${FILES_ULIMIT}..."
 ulimit -n ${FILES_ULIMIT} 2>/dev/null

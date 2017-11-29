@@ -16,7 +16,7 @@ if [ ! -r mongod -o ! -r mongo -o ! -r mongos ]; then
 fi
 
 echoit "Terminating all owned mongod instances..."
-${SCRIPT_PWD}/kill_mongo_procs.sh
+${SCRIPT_PWD}/mongo_kill_procs.sh
 
 IFS=""
 # Test suites
@@ -45,4 +45,4 @@ echoit "List of sessions active:"
 screen -ls
 
 #echoit "Terminating all owned mongod instances..."
-#${SCRIPT_PWD}/kill_mongo_procs.sh
+#${SCRIPT_PWD}/mongo_kill_procs.sh

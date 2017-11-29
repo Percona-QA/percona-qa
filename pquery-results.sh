@@ -89,10 +89,18 @@ else
     fi
   done
   if [ $COUNT -gt 0 ]; then
-    STRING_OUT=`echo "* TRIALS TO CHECK MANUALLY (NO TEXT SET: MODE=4) *" | awk -F "\n" '{printf "%-55s",$1}'`
+    STRING_OUT=`echo "* TRIALS TO CHECK MANUALLY (NO TEXT SET; MODE=4) *" | awk -F "\n" '{printf "%-55s",$1}'`
     COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
     echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS[@]})"
   fi
+fi
+
+# mysqld shutdown timeout issue trials
+if [ $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | wc -l) -gt 0 ]; then 
+  COUNT=$(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | wc -l)
+  STRING_OUT=`echo "* SHUTDOWN TIMEOUT >90 SEC (NO TEXT SET, MODE=0) *" | awk -F "\n" '{printf "%-55s",$1}'`
+  COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
+  echo -e "${STRING_OUT}${COUNT_OUT}$(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | sed 's|/.*||' | sort -un | tr '\n' ',' | sed 's|,$||'))"
 fi
 
 # 'MySQL server has gone away' seen >= 200 times + timeout was not reached
@@ -112,16 +120,9 @@ fi
 # ASAN errors
 if [ $(grep -l "ERROR:" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then 
   echo "--------------"
-  echo "ASAN trials (or other 'ERROR:' issues) found and the issues seen:"
+  echo "ASAN trials (or other 'ERROR:' issues) found. Issues seen:"
   grep "ERROR:" */log/master.err 2>/dev/null | sed 's|/log/master.err||'
-  echo "(> ASAN trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='ERROR: <copy some limited detail from line above but NOT the addresses>' in their reducer<trialnr>.sh files. Then, simply reduce as normal.)"
-fi
-
-# mysqld shutdown issue trials
-if [ $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | wc -l) -gt 0 ]; then 
-  echo "--------------"
-  echo "'mysqld shutdown issue' trials found: $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | sed 's|/.*||' | sort -un | tr '\n' ',' | sed 's|,$||')"
-  echo "(> The trials failed to shutdown properly within a timeframe of 90 seconds in the original run. Reduce as shutdown problems, unless a crash was found during the same trial also (i.e. it is listed above in the normal crash trials list also. Also see https://bugs.mysql.com/bug.php?id=73914 as a possible reason)"
+  echo "(> ASAN trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='ERROR: <copy some limited detail from line above but NOT the addresses>' in their reducer<trialnr>.sh files. Then, simply reduce as normal. For ERROR issues, simply set TEXT to the ERROR seen.)"
 fi
 
 # MODE 2 TRIALS (Query correctness trials)
@@ -139,8 +140,7 @@ if [ $COUNT -gt 0 ]; then
     echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS[@]})"
   done
 fi
-echo "================"
-echo -n "Coredumps found in trials: "
+echo "================ Coredumps found in trials: "
 find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -un | tr '\n' ' ' | sed 's|$|\n|'
 echo "================"
 if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | wc -l` -gt 0 ]; then

@@ -18,7 +18,7 @@ if [ ! -r mongod -o ! -r mongo -o ! -r mongos ]; then
 fi
 
 echoit "Terminating all owned mongod instances..."
-${SCRIPT_PWD}/kill_mongo_procs.sh
+${SCRIPT_PWD}/mongo_kill_procs.sh
 
 echoit "Setting up work directory [/dev/shm/${RANDOMD}]..."
 WORKDIR="/dev/shm/${RANDOMD}"
@@ -34,5 +34,5 @@ echoit "Running test suite ${TEST_SUITE}..."
 buildscripts/smoke.py --mode=suite --port=$PORT --with-cleanbb --report-file=${WORKDIR}/smoke.py.log --smoke-db-prefix ${WORKDIR} --storageEngine=tokuft jsCore
 
 echoit "Terminating all owned mongod instances..."
-${SCRIPT_PWD}/kill_mongo_procs.sh
+${SCRIPT_PWD}/mongo_kill_procs.sh
 
