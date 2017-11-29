@@ -211,13 +211,9 @@ echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --s
 echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> start
 echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start
 cp start start_valgrind  # Idem for Valgrind
-cp start start_dynamic   # Option --secure-file-priv added for RocksDB testing
 cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
-sed -i '2i MYEXTRA=\" --no-defaults --secure-file-priv=\"' start_dynamic
 echo "$BIN  \${MYEXTRA} \${MYEXTRA_OPT} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err --server-id=100 2>&1 &" >> start
-echo "$BIN  \${MYEXTRA} \${MYEXTRA_OPT} ${START_OPT} --basedir=${PWD} ${TOKUDB} ${ROCKSDB}  --server-id=100 2>&1 &" >> start_dynamic
 echo "for X in \$(seq 0 1200); do if ${PWD}/bin/mysqladmin ping -uroot -S${PWD}/socket.sock > /dev/null 2>&1; then break; fi; sleep 0.25; done" >> start
-echo "for X in \$(seq 0 1200); do if ${PWD}/bin/mysqladmin ping -uroot -S${PWD}/socket.sock > /dev/null 2>&1; then break; fi; sleep 0.25; done" >> start_dynamic
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
   echo "${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test;'" >> start
 fi
@@ -360,7 +356,7 @@ echo 'MYEXTRA_OPT="$*"' > all
 echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};./cl" >> all
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
 echo "./stop >/dev/null 2>&1;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
-chmod +x start start_dynamic start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure gdb myrocks_tokudb_init pmm_os_agent pmm-mysql-agent repl_setup 2>/dev/null
+chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure gdb myrocks_tokudb_init pmm_os_agent pmm-mysql-agent repl_setup 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
