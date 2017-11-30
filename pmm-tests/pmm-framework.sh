@@ -466,7 +466,8 @@ setup(){
       popd > /dev/null
     else
       if [ ! -z $dev ]; then
-        PMM_CLIENT_TAR=$(lynx --dump https://www.percona.com/downloads/TESTING/pmm/ | grep -o pmm-client.*.tar.gz   | head -n1)
+        PMM_CLIENT_TAR=$(lynx --dump https://www.percona.com/downloads/TESTING/pmm/ | grep -o pmm-client-$PMM_VERSION.tar.gz   | head -n1)
+        echo "PMM client tar $PMM_CLIENT_TAR"
         wget https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
         tar -xzf $PMM_CLIENT_TAR
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
@@ -474,8 +475,9 @@ setup(){
         sudo ./install
         popd > /dev/null
       else
-        PMM_CLIENT_TAR=$(lynx --dump  https://www.percona.com/downloads/pmm-client/pmm-client-$PMM_VERSION/binary/tarball | grep -o pmm-client.*.tar.gz | head -n1)
-        wget https://www.percona.com/downloads/pmm-client/pmm-client-$PMM_VERSION/binary/tarball/$PMM_CLIENT_TAR
+        PMM_CLIENT_TAR=$(lynx --dump  https://www.percona.com/downloads/pmm-client/$PMM_VERSION/binary/tarball/ | grep -o pmm-client.*.tar.gz | head -n1)
+        echo "PMM client tar 2 $PMM_CLIENT_TAR"
+        wget https://www.percona.com/downloads/pmm-client/$PMM_VERSION/binary/tarball/$PMM_CLIENT_TAR
         tar -xzf $PMM_CLIENT_TAR
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
@@ -721,7 +723,7 @@ add_clients(){
         for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
           PORT=$(( $PSMDB_PORT + $j - 1 ))
           mkdir -p ${BASEDIR}/data/rpldb${k}_${j}
-          $BASEDIR/bin/mongod $mongo_storage_engine  --replSet r${k} --dbpath=$BASEDIR/data/rpldb${k}_${j} --logpath=$BASEDIR/data/rpldb${k}_${j}/mongod.log --port=$PORT --logappend --fork &
+          $BASEDIR/bin/mongod --profile 2 --slowms 1  $mongo_storage_engine  --replSet r${k} --dbpath=$BASEDIR/data/rpldb${k}_${j} --logpath=$BASEDIR/data/rpldb${k}_${j}/mongod.log --port=$PORT --logappend --fork &
 		  sleep 10
           sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
         done
@@ -764,7 +766,7 @@ add_clients(){
 		for m in `seq 1 ${ADDCLIENTS_COUNT}`;do
 		  PORT=$(( $CONFIG_MONGOD_PORT + $m - 1 ))
 		  mkdir -p $BASEDIR/data/confdb${m}
-          $BASEDIR/bin/mongod --fork --logpath $BASEDIR/data/confdb${m}/config_mongo.log --dbpath=$BASEDIR/data/confdb${m} --port $PORT --configsvr --replSet config &
+          $BASEDIR/bin/mongod --profile 2 --slowms 1 --fork --logpath $BASEDIR/data/confdb${m}/config_mongo.log --dbpath=$BASEDIR/data/confdb${m} --port $PORT --configsvr --replSet config &
 		  sleep 10
 		  sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
 		  MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
