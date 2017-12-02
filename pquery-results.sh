@@ -96,6 +96,15 @@ else
 fi
 
 # mysqld shutdown timeout issue trials
+# Semi-false positives; (Though the issues below refer to reducer.sh, they apply similarly to the original trials which failed due to the same circumstances)
+# * Where a shutdown issue testcase reduces to something like: SET PASSWORD=PASSWORD('somepass'); it is a false positive.
+#   > reducer.sh in MODE=0 (which auto sets FORCE_KILL=0) will reduce on this SQL as mysqladmin shutdown will loose user access
+# * Where a shutdown issue testcase reduces to something like (with matching mysqld otions):
+#   SET GLOBAL rpl_semi_sync_master_timeout=600000;
+#   SET GLOBAL rpl_semi_sync_master_enabled=1;
+#   GRANT ALL ON *.* TO user3_mysqlx@localhost;
+#   > Here a timeout was set (and reached) of 10 minutes which was <=600 seconds configured in reducer.sh
+#   > To avoid the more common 600 second (10 minutes) timeouts, reducer was changed to 780 seconds default (=13 minutes)
 if [ $(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | wc -l) -gt 0 ]; then 
   COUNT=$(ls */SHUTDOWN_TIMEOUT_ISSUE 2>/dev/null | wc -l)
   STRING_OUT=`echo "* SHUTDOWN TIMEOUT >90 SEC (NO TEXT SET, MODE=0) *" | awk -F "\n" '{printf "%-55s",$1}'`

@@ -81,6 +81,7 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
           sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${REDUCER}
           sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${REDUCER}
           sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=13|" ${REDUCER}
+          sed -i "s|^FORCE_KILL=[0-9]\+|FORCE_KILL=1|" ${REDUCER}
           echo '#DONEDONE' >> ${REDUCER}
         fi
       fi
