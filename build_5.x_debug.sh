@@ -18,6 +18,16 @@ CLANGPP_LOCATION="${CLANG_LOCATION}++"
 # cd ..
 # TMP_CLANG/clang/scripts/update.py
 
+# TODO
+if [ "$(ps -ef | grep build_5.x_debug.sh | grep -v grep)" != "" ]; then 
+  echo "This script is already building a tree elsewhere..."
+  echo "This script currently supports one simultaneous build per system only."
+  echo "Feel free to improve it; the issue is that it uses 'rm -Rf /tmp/boost*' and then '-DWITH_BOOST=/tmp'"
+  echo "Thus, with two scripts running, there is a race condition like issue."
+  echo "Fix is not too complicated; generate random number or use epoch, store in var and use something like /tmp${VAR}"
+  exit 1
+fi
+
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
 fi

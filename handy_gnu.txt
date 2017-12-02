@@ -240,6 +240,8 @@
   sudo apt-get purge someprog; sudo apt-get autoclean; sudo apt-get clean; sudo apt-get update; sudo apt-get install someprog; [optional:] sudo apt-get install -f someprog 
 # Get the IP address of the host (hostname --ip-address may produce 127.0.0.1 which is not usefull if you need the network interface IP)
   ip route get 1 | awk '{print $NF;exit}'  # With thanks, https://stackoverflow.com/questions/13322485/how-to-i-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x
+# Raise the priority of a certain process  # With thanks, https://serverfault.com/a/228632
+  sudo renice -10 -p ${PROCESSID}  # Where ${PROCESSID} is the ID of the process to raise priority for 
 
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax
