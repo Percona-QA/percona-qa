@@ -18,15 +18,7 @@ CLANGPP_LOCATION="${CLANG_LOCATION}++"
 # cd ..
 # TMP_CLANG/clang/scripts/update.py
 
-# TODO
-if [ "$(ps -ef | grep build_5.x_debug.sh | grep -v grep)" != "" ]; then 
-  echo "This script is already building a tree elsewhere..."
-  echo "This script currently supports one simultaneous build per system only."
-  echo "Feel free to improve it; the issue is that it uses 'rm -Rf /tmp/boost*' and then '-DWITH_BOOST=/tmp'"
-  echo "Thus, with two scripts running, there is a race condition like issue."
-  echo "Fix is not too complicated; generate random number or use epoch, store in var and use something like /tmp${VAR}"
-  exit 1
-fi
+RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random 6 digit for tmp directory name
 
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
@@ -77,7 +69,7 @@ CURPATH=$(echo $PWD | sed 's|.*/||')
 
 cd ..
 rm -Rf ${CURPATH}_dbg
-rm -f /tmp/5.x_debug_build
+rm -f /tmp/5.x_debug_build_${RANDOMD}
 cp -R ${CURPATH} ${CURPATH}_dbg
 cd ${CURPATH}_dbg
 
@@ -85,25 +77,26 @@ cd ${CURPATH}_dbg
 rm -Rf ./plugin/tokudb-backup-plugin
 
 # Avoid previously downloaded boost's from creating problems
-rm -Rf /tmp/boost*
+rm -Rf /tmp/boost_${RANDOMD}
+mkdir /tmp/boost_${RANDOMD}
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build
-  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build
+  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp/boost_${RANDOMD} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
 else
   # FB build
-  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build
+  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp/boost_${RANDOMD} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
 fi
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
-  ASAN_OPTIONS="detect_leaks=0" make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)
+  ASAN_OPTIONS="detect_leaks=0" make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 else
-  make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build
+  make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 fi
 
-./scripts/make_binary_distribution | tee -a /tmp/5.x_debug_build  # Note that make_binary_distribution is created on-the-fly during the make compile
+./scripts/make_binary_distribution | tee -a /tmp/5.x_debug_build_${RANDOMD}  # Note that make_binary_distribution is created on-the-fly during the make compile
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_dbg=`ls -1 *.tar.gz | head -n1`
 if [[ "${TAR_dbg}" == *".tar.gz"* ]]; then

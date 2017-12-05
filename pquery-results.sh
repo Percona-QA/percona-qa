@@ -1,11 +1,21 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
+
 # Usage example"
 #  For normal output            : $./pquery-results.sh
 #  For Valgrind + normal output : $./pquery-results.sh valgrind
+#  For known bugs scanning      : $./pquery-results.sh scan
 
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
+VALGRINDOUTPUT=0
+SCANBUGS=0
+if [ "$1" == "valgrind" ]; then
+  VALGRINDOUTPUT=1
+fi
+if [ "$1" == "scan" ]; then
+  SCANBUGS=1
+fi
 
 # Check if this is a pxc run
 if [ "$(grep 'PXC Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Mode[: \t]*||' )" == "TRUE" ]; then
@@ -36,20 +46,46 @@ TRIALS_EXECUTED=$(cat pquery-run.log 2>/dev/null | grep -o "==.*TRIAL.*==" | tai
 echo "================ [Run: $(echo ${PWD} | sed 's|.*/||')] Sorted unique issue strings (${TRIALS_EXECUTED} trials executed, `ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l` remaining reducer scripts)"
 ORIG_IFS=$IFS; IFS=$'\n'  # Use newline seperator instead of space seperator in the for loop
 if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
-  for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*:||;s|"|.|g' | sort -u`; do
+  for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT=.||;s|.[ \t]*$||' | sort -u`; do
     MATCHING_TRIALS=()
     for MATCHING_TRIAL in `grep -H "${STRING}" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
       MATCHING_TRIAL=$(echo ${MATCHING_TRIAL} | sed 's|.*TEXT=.||;s|\.[ \t]*$||')
       MATCHING_TRIALS+=($MATCHING_TRIAL)
     done
-    STRING=$(echo ${STRING} | sed 's|.*TEXT=.||;s|\.[ \t]*$||')
     COUNT=`grep "   TEXT=" reducer* 2>/dev/null | sed 's|reducer\([0-9]\).sh:|reducer\1.sh:  |;s|reducer\([0-9][0-9]\).sh:|reducer\1.sh: |;s|  TEXT|TEXT|' | grep "${STRING}" | wc -l`
     STRING_OUT=`echo $STRING | awk -F "\n" '{printf "%-55s",$1}'`
     COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
     echo -e "${STRING_OUT}${COUNT_OUT}$(echo ${MATCHING_TRIALS[@]}|sed 's| |,|g'))"
+    if [ ${SCANBUGS} -eq 1 ]; then
+      # Look for exact match (except for allowing both .c and .cc to be used)
+      SCANSTRING=$(echo ${STRING} | sed 's|\.c[c]*|.c[c]|')
+      SCANOUTPUT=$(grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /')
+      if [ "$(echo ${SCANOUTPUT} | sed 's|[ \t]\+||g')" != "" ]; then
+        # Note you cannot just echo ${SCANOUTPUT} here without processing; it does not contain newlines. If multiple matches are found, it will condense them into one line
+        grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /'
+      else
+        # Look for a more generic string. Allow things like "line 1000" to match for "line 2100" (first digit match + neighbour numbers)
+        SCANSTRING=$(echo ${STRING} | sed 's|\.c[c]*|.c[c]|;s|\( line [0-9]\)[0-9]\+|\1|')
+        SCANSTRINGLASTNR=$(echo ${SCANSTRING} | sed 's|.*\(.\)$|\1|' | sed 's|[^0-9]||')
+        if [ "${SCANSTRINGLASTNR}" == "" -o "${SCANSTRINGLASTNR}" == "0" ]; then  # The last character was not a digit, or a 0 
+          grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
+        else
+          # Scan all nearest neighbours
+          SCANSTRING=$(echo ${SCANSTRING}|sed 's|.$||')  # Remove last character (the number)
+          # Scan with the original string number
+          grep "${SCANSTRING}${SCANSTRINGLASTNR}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
+          # Scan with the original string number -1 (0 is not fine; already handled above)
+          SCANSTRINGLASTNR=$[ ${SCANSTRINGLASTNR} - 1 ]
+          grep "${SCANSTRING}${SCANSTRINGLASTNR}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
+          # Scan with the original string number +1 (9 is fine; this becomes 10 and that would be the next upper neighbour)
+          SCANSTRINGLASTNR=$[ ${SCANSTRINGLASTNR} + 2 ]
+          grep "${SCANSTRING}${SCANSTRINGLASTNR}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
+        fi
+      fi
+    fi
   done
 else
-  for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT="||;s|"$||' | sort -u`; do
+  for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT=.||;s|.[ \t]*$||' | sort -u`; do
     MATCHING_TRIALS=()
     for TRIAL in `grep -H "${STRING}" reducer* 2>/dev/null | awk '{print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | sort -un` ; do
       MATCHING_TRIAL=`grep -H "   TEXT=" reducer${TRIAL}-* 2>/dev/null | sed 's|reducer\([0-9]\).sh:|reducer\1.sh:  |;s|reducer\([0-9][0-9]\).sh:|reducer\1.sh: |;s|  TEXT|TEXT|' | grep "${STRING}" | sed "s|.sh.*||;s|reducer${TRIAL}-||" | tr '\n' ',' | sed 's|,$||' | xargs -I {} echo "[${TRIAL}-{}] "`
@@ -59,6 +95,33 @@ else
     STRING_OUT=`echo $STRING | awk -F "\n" '{printf "%-55s",$1}'`
     COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
     echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS[@]})"
+    if [ ${SCANBUGS} -eq 1 ]; then
+      # Look for exact match (except for allowing both .c and .cc to be used)
+      SCANSTRING=$(echo ${STRING} | sed 's|\.c[c]*|.c[c]|')
+      SCANOUTPUT=$(grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /')
+      if [ "$(echo ${SCANOUTPUT} | sed 's|[ \t]\+||g')" != "" ]; then
+        # Note you cannot just echo ${SCANOUTPUT} here without processing; it does not contain newlines. If multiple matches are found, it will condense them into one line
+        grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /'
+      else
+        # Look for a more generic string. Allow things like "line 1000" to match for "line 2100" (first digit match + neighbour numbers)
+        SCANSTRING=$(echo ${STRING} | sed 's|\.c[c]*|.c[c]|;s|\( line [0-9]\)[0-9]\+|\1|')
+        SCANSTRINGLASTNR=$(echo ${SCANSTRING} | sed 's|.*\(.\)$|\1|' | sed 's|[^0-9]||')
+        if [ "${SCANSTRINGLASTNR}" == "" -o "${SCANSTRINGLASTNR}" == "0" ]; then  # The last character was not a digit, or a 0 
+          grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
+        else
+          # Scan all nearest neighbours
+          SCANSTRING=$(echo ${SCANSTRING}|sed 's|.$||')  # Remove last character (the number)
+          # Scan with the original string number
+          grep "${SCANSTRING}${SCANSTRINGLASTNR}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
+          # Scan with the original string number -1 (0 is not fine; already handled above)
+          SCANSTRINGLASTNR=$[ ${SCANSTRINGLASTNR} - 1 ]
+          grep "${SCANSTRING}${SCANSTRINGLASTNR}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
+          # Scan with the original string number +1 (9 is fine; this becomes 10 and that would be the next upper neighbour)
+          SCANSTRINGLASTNR=$[ ${SCANSTRINGLASTNR} + 2 ]
+          grep "${SCANSTRING}${SCANSTRINGLASTNR}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
+        fi
+      fi
+    fi
   done
 fi
 IFS=$ORIG_IFS
@@ -164,6 +227,6 @@ extract_valgrind_error(){
   done
 }
 
-if [ ! -z $1 ]; then
+if [ ${VALGRINDOUTPUT} -eq 1 ]; then
   extract_valgrind_error
 fi

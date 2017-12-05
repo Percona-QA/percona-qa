@@ -87,12 +87,14 @@ zip_dict_name.str == 0 .. column_format                           ## https://bug
 #select_lex->having_cond                        ## Fixed ## https://bugs.mysql.com/bug.php?id=75693                                                 (# after MS 5.7.6 merged)
 #ha_innodb.cc line 17780                        ## Fixed ## https://bugs.mysql.com/bug.php?id=75736 PS
 #ha_innodb.cc line 17770                        ## Fixed ## https://bugs.mysql.com/bug.php?id=75736 MS
-#ha_innodb.cc line 17770                        ## FIxed ## https://bugs.mysql.com/bug.php?id=75736 MS
+#ha_innodb.cc line 17770                        ## Fixed ## https://bugs.mysql.com/bug.php?id=75736 MS
+btr0pcur.c line 237                                      ## https://bugs.mysql.com/bug.php?id=88750 MS
+btr0pcur.c line 241                                      ## https://bugs.mysql.com/bug.php?id=88750 PS
 btr0cur.cc line 830                                      ## https://bugs.mysql.com/bug.php?id=86051  
-#btr0cur.c line 871                              ## FIxed ## https://bugs.mysql.com/bug.php?id=84753 (2nd testcase, MS 5.5.52) (Duplicate of 84485)
-#btr0cur.c line 959                              ## FIxed ## https://bugs.mysql.com/bug.php?id=84753 (2nd testcase, PS 5.5.54) (Duplicate of 84485)
-#trx0trx.cc line 1257                            ## FIxed ## https://bugs.mysql.com/bug.php?id=84753 (1st testcase, MS 5.7.16) (Duplicate of 84485)
-#trx0trx.cc line 1292                            ## FIxed ## https://bugs.mysql.com/bug.php?id=84753 (1st testcase, PS 5.7.16) (Duplicate of 84485)
+#btr0cur.c line 871                             ## Fixed ## https://bugs.mysql.com/bug.php?id=84753 (2nd testcase, MS 5.5.52) (Duplicate of 84485)
+#btr0cur.c line 959                             ## Fixed ## https://bugs.mysql.com/bug.php?id=84753 (2nd testcase, PS 5.5.54) (Duplicate of 84485)
+#trx0trx.cc line 1257                           ## Fixed ## https://bugs.mysql.com/bug.php?id=84753 (1st testcase, MS 5.7.16) (Duplicate of 84485)
+#trx0trx.cc line 1292                           ## Fixed ## https://bugs.mysql.com/bug.php?id=84753 (1st testcase, PS 5.7.16) (Duplicate of 84485)
 #btr0cur.cc line 2208                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74747 MS                                       (# after MS 5.7.6 merged)
 #btr0cur.cc line 2204                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74747 PS                                       (# after MS 5.7.6 merged)
 #trx0trx.cc line 1270                           ## Fixed ## https://bugs.mysql.com/bug.php?id=75782                                                 (# after MS 5.7.8 merged)
@@ -257,6 +259,7 @@ ha_innodb.cc line 3469                           ##DONOTREMOVE## https://bugs.la
 ha_innodb.cc line 2797                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.5.53
 ha_innodb.cc line 3512                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.35
 ha_innodb.cc line 3521                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.36
+ha_innodb.cc line 3539                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.38
 btr0cur.c line 3918                              ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
 handler0alter.cc line 5083                       ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread 
 handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
@@ -271,6 +274,7 @@ ha_innodb.cc line 3495                           ##DONOTREMOVE## OOM ^IDEM (PS 5
 ha_innodb.cc line 19339                          ##DONOTREMOVE## OOM: Sig6 due to [ERROR] InnoDB:  InnoDB: Unable to allocate memory of size 1125899906843256.
 ha_innodb.cc line 19411                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.33)
 ha_innodb.cc line 19384                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.35)
+ha_innodb.cc line 19475                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.38)
 
 ## =========== Special: set global innodb_saved_page_number_debug=x ===========
 # Mailed Umesh on 14 Aug 2017 to re-open bug 74481 as one testcase still crashes ref [13 Aug 23:29] Roel Van de Paar
@@ -309,6 +313,8 @@ Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxPK5TABLEP5
 #ha_innodb.cc line 1803                          ## https://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and 5.6) 
 #ha_innodb.cc line 1128                          ## https://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and 5.6) line 1128=MS5.5
 #ha_innodb.cc line 1401                          ## https://bugs.mysql.com/bug.php?id=78732 (fixed in 5.7.10+ but still present in 5.5 and 5.6) line 1401=PS5.5
+ha_innodb.cc line 1401                           ## https://bugs.mysql.com/bug.php?id=88753 (PS 5.5.58) (possible dup of above)
+ha_innodb.cc line 1128                           ## https://bugs.mysql.com/bug.php?id=88753 (MS 5.5.58) (possible dup of above)
 #ha_innodb.cc line 1725                          ## https://bugs.mysql.com/bug.php?id=84825 (MS 5.6, alike to 78732) 
 #ha_innodb.cc line 2085                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732)
 #ha_innodb.cc line 2102                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732) 
@@ -415,6 +421,8 @@ ha_innodb.cc line 18962                                                         
 ut0ut.cc line 935                                                                       ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc line 936                                                                       ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 mem0dbg.c line 684                                                                      ## https://bugs.mysql.com/bug.php?id=86234 PS 5.5.55, MS 5.5.54
+handler0alter.cc line 787                                                               ## https://bugs.mysql.com/bug.php?id=88747 MS
+handler0alter.cc line 798                                                               ## https://bugs.mysql.com/bug.php?id=88747 PS
 handler0alter.cc line 5680                                                              ## https://bugs.mysql.com/bug.php?id=74363 MS
 handler0alter.cc line 5694                                                              ## https://bugs.mysql.com/bug.php?id=74363 PS (with oldPS)
 handler0alter.cc line 5708                                                              ## https://bugs.mysql.com/bug.php?id=74363 PS
@@ -495,6 +503,7 @@ sync0rw.cc line 929                                                             
 #trx0roll.cc line 275                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=74671 MS (fixed in 5.6.23)
 #trx0trx.cc line 1257                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=82024 MS 5.7.13 (duplicate of 84485)
 #trx0trx.cc line 1292                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=82024 PS 5.7.13 (duplicate of 84485)
+trx0trx.c line 1344                                                                     ## https://bugs.mysql.com/bug.php?id=88748
 trx0trx.cc line 1365                                                                    ## https://bugs.mysql.com/bug.php?id=76844 MS
 trx0trx.cc line 1578                                                                    ## https://bugs.mysql.com/bug.php?id=76844 PS
 #trx0trx.cc line 1689                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=74671 MS (duplicated by 74791)
@@ -584,7 +593,7 @@ part_func_value > part_end_val ? .loc_part_id == max_partition .* .part_info->de
 pending.*.ttp->thd                                                                      ## https://bugs.launchpad.net/percona-server/+bug/1427526
 #pfs->m_processlist_id .= 0                                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=78292
 precision > 0                                                                           ## https://bugs.mysql.com/bug.php?id=83433
-#scale.*=.*precision                                                           ## FIxed ## https://bugs.mysql.com/bug.php?id=74859
+#scale.*=.*precision                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74859
 share->rows_recorded                                                                    ## https://bugs.mysql.com/bug.php?id=76307
 size > 0                                                                                ## https://bugs.launchpad.net/percona-server/+bug/1382408
 .rocksdb_db_options->allow_mmap_writes                                                  ## https://jira.percona.com/browse/MYR-192
@@ -743,6 +752,7 @@ ZN9PROFILING13status_changeEPKcS1_S1_j                                          
 #ZN10Item_param22safe_charset_converterEPK15charset_info_st                    ## Fixed ## https://bugs.mysql.com/bug.php?id=76039 (Fixed in 5.5.49, 5.6.30, 5.7.12, 5.8.0)
 #ZN10my_decimalaSERKS_                                                         ## Fixed ## https://bugs.mysql.com/bug.php?id=80438 (Fixed in 5.6.32, 5.7.14)
 #ZN11Query_cache13end_of_resultEP3THD                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=83188 (duplicate of 47378)
+ZN11Query_cache13end_of_resultEP3THD                                                    ## https://bugs.mysql.com/bug.php?id=88751 (likely dup of 47378 but still in 5.5)
 ZN11MDL_context11find_ticketEP11MDL_requestP17enum_mdl_duration                         ## https://bugs.launchpad.net/percona-server/+bug/1403446
 #ZN11MDL_request4initEN7MDL_key18enum_mdl_namespaceEPKcS3_13enum_mdl_type17enum_mdl_duration ## Fixed ## https://bugs.mysql.com/bug.php?id=74499 (fixed in 5.5.43)
 ZN11Table_cache12remove_tableEP5TABLE                                                   ## https://bugs.launchpad.net/percona-server/+bug/1444642   
@@ -876,3 +886,4 @@ TEXT=.tab->ref.$                                                                
 #TEXT=.err == 0.$                                                                       ## https://jira.percona.com/browse/MYR-171 #disabling for now
 TEXT=.cmp .= 0.$                                                                        ## https://jira.percona.com/browse/MYR-173
 TEXT=.ha_initialize_handlerton.$                                                        ## https://jira.percona.com/browse/MYR-204
+TEXT=.item->type.$                                                                      ## https://bugs.mysql.com/bug.php?id=88749
