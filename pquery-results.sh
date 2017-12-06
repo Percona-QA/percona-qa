@@ -58,20 +58,20 @@ if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
     echo -e "${STRING_OUT}${COUNT_OUT}$(echo ${MATCHING_TRIALS[@]}|sed 's| |,|g'))"
     if [ ${SCANBUGS} -eq 1 ]; then
       # Look for exact match (except for allowing both .c and .cc to be used)
-      SCANSTRING=$(echo ${STRING} | sed 's|\.c[c]*|.c[c]|')
+      SCANSTRING=$(echo "${STRING}" | sed 's|\.c[c]*|.c[c]*|')
       SCANOUTPUT=$(grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /')
-      if [ "$(echo ${SCANOUTPUT} | sed 's|[ \t]\+||g')" != "" ]; then
+      if [ "$(echo "${SCANOUTPUT}" | sed 's|[ \t]\+||g')" != "" ]; then
         # Note you cannot just echo ${SCANOUTPUT} here without processing; it does not contain newlines. If multiple matches are found, it will condense them into one line
         grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /'
       else
         # Look for a more generic string. Allow things like "line 1000" to match for "line 2100" (first digit match + neighbour numbers)
-        SCANSTRING=$(echo ${STRING} | sed 's|\.c[c]*|.c[c]|;s|\( line [0-9]\)[0-9]\+|\1|')
-        SCANSTRINGLASTNR=$(echo ${SCANSTRING} | sed 's|.*\(.\)$|\1|' | sed 's|[^0-9]||')
+        SCANSTRING=$(echo "${STRING}" | sed 's|\.c[c]*|.c[c]*|;s|\( line [0-9]\)[0-9]\+|\1|')
+        SCANSTRINGLASTNR=$(echo "${SCANSTRING}" | sed 's|.*\(.\)$|\1|' | sed 's|[^0-9]||')
         if [ "${SCANSTRINGLASTNR}" == "" -o "${SCANSTRINGLASTNR}" == "0" ]; then  # The last character was not a digit, or a 0 
           grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
         else
           # Scan all nearest neighbours
-          SCANSTRING=$(echo ${SCANSTRING}|sed 's|.$||')  # Remove last character (the number)
+          SCANSTRING=$(echo "${SCANSTRING}" | sed 's|.$||')  # Remove last character (the number)
           # Scan with the original string number
           grep "${SCANSTRING}${SCANSTRINGLASTNR}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
           # Scan with the original string number -1 (0 is not fine; already handled above)
@@ -97,20 +97,20 @@ else
     echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS[@]})"
     if [ ${SCANBUGS} -eq 1 ]; then
       # Look for exact match (except for allowing both .c and .cc to be used)
-      SCANSTRING=$(echo ${STRING} | sed 's|\.c[c]*|.c[c]|')
+      SCANSTRING=$(echo "${STRING}" | sed 's|\.c[c]*|.c[c]*|')
       SCANOUTPUT=$(grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /')
-      if [ "$(echo ${SCANOUTPUT} | sed 's|[ \t]\+||g')" != "" ]; then
+      if [ "$(echo "${SCANOUTPUT}" | sed 's|[ \t]\+||g')" != "" ]; then
         # Note you cannot just echo ${SCANOUTPUT} here without processing; it does not contain newlines. If multiple matches are found, it will condense them into one line
         grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /'
       else
         # Look for a more generic string. Allow things like "line 1000" to match for "line 2100" (first digit match + neighbour numbers)
-        SCANSTRING=$(echo ${STRING} | sed 's|\.c[c]*|.c[c]|;s|\( line [0-9]\)[0-9]\+|\1|')
-        SCANSTRINGLASTNR=$(echo ${SCANSTRING} | sed 's|.*\(.\)$|\1|' | sed 's|[^0-9]||')
+        SCANSTRING=$(echo "${STRING}" | sed 's|\.c[c]*|.c[c]*|;s|\( line [0-9]\)[0-9]\+|\1|')
+        SCANSTRINGLASTNR=$(echo "${SCANSTRING}" | sed 's|.*\(.\)$|\1|' | sed 's|[^0-9]||')
         if [ "${SCANSTRINGLASTNR}" == "" -o "${SCANSTRINGLASTNR}" == "0" ]; then  # The last character was not a digit, or a 0 
           grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
         else
           # Scan all nearest neighbours
-          SCANSTRING=$(echo ${SCANSTRING}|sed 's|.$||')  # Remove last character (the number)
+          SCANSTRING=$(echo "${SCANSTRING}" | sed 's|.$||')  # Remove last character (the number)
           # Scan with the original string number
           grep "${SCANSTRING}${SCANSTRINGLASTNR}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /' | sort -u
           # Scan with the original string number -1 (0 is not fine; already handled above)
