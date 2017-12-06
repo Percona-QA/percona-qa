@@ -511,7 +511,7 @@ setup(){
 	  echo "Alert! Password protection is not enabled in ova image, Please configure it manually"
 	  SERVER_IP=$OVA_PUBLIC_IP
     else
-      sudo pmm-admin config --server $IP_ADDRESS --server-user="$pmm_server_username" --server-password="$pmm_server_password" $PMM_MYEXTRA
+      sudo pmm-admin config --server $IP_ADDRESS --server-user=$pmm_server_username --server-password=$pmm_server_password $PMM_MYEXTRA
 	  SERVER_IP=$IP_ADDRESS
     fi
   fi
@@ -1066,6 +1066,20 @@ upgrade_server(){
     echo -e "Removing pmm-server docker containers"
     sudo docker stop pmm-server  2&> /dev/null
     sudo docker rm pmm-server 2&> /dev/null
+    if [ -z $dev ]; then
+      if [ "$IS_SSL" == "Yes" ];then
+        sudo docker run -d -p 443:443 -e METRICS_MEMORY=$MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+      else
+        sudo docker run -d -p 80:80 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+      fi
+    else
+      if [ "$IS_SSL" == "Yes" ];then
+        sudo docker run -d -p 443:443 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+      else
+        sudo docker run -d -p 80:80 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+      fi
+    fi
+
   else
     echo "AMI/OVA images upgrade is not implemented yet"
     exit 1
