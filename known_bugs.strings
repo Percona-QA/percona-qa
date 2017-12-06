@@ -474,6 +474,7 @@ row0merge.cc line 2698                                                          
 #row0mysql.cc line 688                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (with oldPS) (dup of 1410410)
 #row0mysql.cc line 689                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (dup of 1410410)
 #row0quiesce.cc line 683                                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=75398 (fixed in 5.6.23) Duplicate MS#74346
+row0sel.c line 3791                                                                     ## https://bugs.mysql.com/bug.php?id=88782
 row0sel.cc line 3932                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1395249
 #row0sel.cc line 4017                                                                   ## https://bugs.mysql.com/bug.php?id=59513 Not fixed, but needs better testcase
 row0sel.cc line 4071                                                                    ## https://bugs.launchpad.net/bugs/1402999
@@ -654,6 +655,7 @@ Z10read_tokenPK18sql_digest_storagejPj                                          
 Z10open_tableP3THDP10TABLE_LISTP18Open_table_context                                    ## https://bugs.launchpad.net/percona-server/+bug/1384583
 #Z11alloc_queryP3THDPKcj                                                       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1387951
 #Z11lock_tablesP3THDP10TABLE_LISTjj                                            ## Fixed ## https://tokutek.atlassian.net/browse/DB-767 (Fixed tokudb-7.5.4)
+Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                          ## https://bugs.mysql.com/bug.php?id=88781
 #Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                ## Fixed ## https://bugs.mysql.com/bug.php?id=74615 (old LP #1384566) (fixed in 5.6.24)
 #Z17mysql_create_userP3THDR4ListI11st_lex_userE                                ## Fixed ## https://bugs.mysql.com/bug.php?id=74615 (old LP #1384651) (fixed in 5.6.24)
 #Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb ## Fixed ## https://bugs.mysql.com/bug.php?id=74615 (fixed in 5.6.24)
@@ -857,6 +859,7 @@ ZN15Event_scheduler5startEPi                                                    
 
 ## =========== pquery reducer scripts TEXT based (for short strings that may be part of other assertion messages. End with $ EOL char and add . before and after text) ===========
 #TEXT=.is_started.$                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=76425
+TEXT=.is_started                                                                        ## https://bugs.mysql.com/bug.php?id=88780 (5.5 only)
 #TEXT=.r == 0.$                                                                         ## PS Bug #1511969 (verified), also see https://tokutek.atlassian.net/browse/DB-933 / DB-737
 TEXT=.r == 0.$                                                                          ## https://tokutek.atlassian.net/browse/DB-1039
 #TEXT=.r == 0.$                                                                         ## https://tokutek.atlassian.net/browse/FT-723 also see DB-737 (fixed in 5.6.23/Tk7.5.6) 

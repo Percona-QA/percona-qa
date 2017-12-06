@@ -9,6 +9,7 @@
 # MULTI_THREADS_INCREASE is set to 3
 # MULTI_THREADS_MAX is set to 9
 # STAGE1_LINES is set to 13
+# FORCE_KILL is set to 1
 # The effect of FORCE_SKIPV=1 is that reducer will skip the verify stage, start reduction immediately, using 3 threads (MULTI_THREADS=3), and never increases the set amount of 
 # threads (result of using FORCE_SKIPV=1). Note that MULTI_THREADS_INCREASE is only relevant for non-FORCE_SKIPV runs, more on why this is changed then below. 
 # In short, the big benefit of making these settings is that (assuming you are doing a standard single (client) threaded run) you can easily start 10-20 reducers, as each of 
