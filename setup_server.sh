@@ -63,16 +63,16 @@ sudo yum install kernel-devel wget patch make cmake automake autoconf bzr git ht
      valgrind perl-DBD-mysql perl-Time-HiRes cpan bzip2 valgrind-devel svn strace screen \
      hdparm pam-devel openssl openssl-devel gtest zlib zlib-devel zlib-static tree vim libasan \
      yum-utils jemalloc-debuginfo readline-devel lshw lscpu iotop pymongo bats lzma lzma \
-     bzip2-devel snappy-dev boost-devel lz4-devel gflags-devel xz
+     bzip2-devel snappy-dev boost-devel lz4-devel gflags-devel xz libcurl-devel
 
 sudo yum remove abrt  # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
 sudo yum remove pulseaudio*  # Only do this on servers, to avoid writing of pulse* files into /dev/shm. Best to leave on workstations (for audio)
 
 # Apt-get equivalent
 # Ubuntu 16.10
-#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ ncurses-dev libncurses-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libtime-hires-perl libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline6 libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libbz2-dev libsnappy-dev libboost-all-dev liblz4-dev libgflags-dev
+#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ ncurses-dev libncurses-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libtime-hires-perl libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline6 libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libbz2-dev libsnappy-dev libboost-all-dev liblz4-dev libgflags-dev libcurl4-openssl-dev
 # Ubuntu 17.04
-#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libperl5.24 libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline-dev libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev
+#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libperl5.24 libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline-dev libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev
 
 # Facebook MTR test support (https://github.com/facebook/mysql-5.6/wiki/Build-Steps)
 #sudo apt-get install -y python python-mysqldb

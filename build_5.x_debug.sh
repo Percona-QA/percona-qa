@@ -3,10 +3,11 @@
 
 MAKE_THREADS=1      # Number of build threads. There may be a bug with >1 settings
 WITH_ROCKSDB=1      # 0 or 1  # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
-                              # For daily builds (optimized and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
+                              # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
+                              # This is also auto-turned off for all 5.5 and 5.6 builds 
 USE_CLANG=0         # Use the clang compiler instead of gcc
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"
-CLANGPP_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang++"
+CLANGPP_LOCATION="${CLANG_LOCATION}++"
 
 # To install the latest clang from Chromium devs;
 # sudo yum remove clang    # Or sudo apt-get remove clang
@@ -17,8 +18,18 @@ CLANGPP_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang++"
 # cd ..
 # TMP_CLANG/clang/scripts/update.py
 
+RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random 6 digit for tmp directory name
+
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
+fi
+
+MYSQL_VERSION_MAJOR=$(grep "MYSQL_VERSION_MAJOR" VERSION | sed 's|.*=||')
+MYSQL_VERSION_MINOR=$(grep "MYSQL_VERSION_MINOR" VERSION | sed 's|.*=||')
+if [ "$MYSQL_VERSION_MAJOR" == "5" ]; then
+  if [ "$MYSQL_VERSION_MINOR" == "5" -o "$MYSQL_VERSION_MINOR" == "6" ]; then
+    WITH_ROCKSDB=0  # This works fine for MS and PS but is not tested for MD
+  fi
 fi
 
 ASAN=
@@ -32,10 +43,7 @@ PREFIX=
 MS=0
 FB=0
 
-if [ -d rocksdb ]; then
-  PREFIX="FB${DATE}"
-  FB=1
-else
+if [ ! -d rocksdb ]; then  # MS, PS
   VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
   if [ "${VERSION_EXTRA}" == "" -o "${VERSION_EXTRA}" == "-dmr" ]; then  # MS has no extra version number, or shows '-dmr' (exactly and only) in this place
     MS=1
@@ -43,6 +51,9 @@ else
   else
     PREFIX="PS${DATE}"
   fi
+else
+  PREFIX="FB${DATE}"
+  FB=1
 fi
 
 CLANG=
@@ -58,7 +69,7 @@ CURPATH=$(echo $PWD | sed 's|.*/||')
 
 cd ..
 rm -Rf ${CURPATH}_dbg
-rm -f /tmp/5.7_debug_build
+rm -f /tmp/5.x_debug_build_${RANDOMD}
 cp -R ${CURPATH} ${CURPATH}_dbg
 cd ${CURPATH}_dbg
 
@@ -66,25 +77,26 @@ cd ${CURPATH}_dbg
 rm -Rf ./plugin/tokudb-backup-plugin
 
 # Avoid previously downloaded boost's from creating problems
-rm -Rf /tmp/boost*
+rm -Rf /tmp/boost_${RANDOMD}
+mkdir /tmp/boost_${RANDOMD}
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build
-  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.7_debug_build
+  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp/boost_${RANDOMD} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
 else
   # FB build
-  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.7_debug_build
+  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp/boost_${RANDOMD} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
 fi
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
-  ASAN_OPTIONS="detect_leaks=0" make -j${MAKE_THREADS} | tee -a /tmp/5.7_debug_build  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)
+  ASAN_OPTIONS="detect_leaks=0" make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 else
-  make -j${MAKE_THREADS} | tee -a /tmp/5.7_debug_build
+  make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 fi
 
-./scripts/make_binary_distribution | tee -a /tmp/5.7_debug_build  # Note that make_binary_distribution is created on-the-fly during the make compile
+./scripts/make_binary_distribution | tee -a /tmp/5.x_debug_build_${RANDOMD}  # Note that make_binary_distribution is created on-the-fly during the make compile
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 TAR_dbg=`ls -1 *.tar.gz | head -n1`
 if [[ "${TAR_dbg}" == *".tar.gz"* ]]; then

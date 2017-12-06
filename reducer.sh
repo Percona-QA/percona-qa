@@ -568,7 +568,8 @@ options_check(){
         echo 'Please specify a single SQL file to reduce.'
         echo 'Example: ./reducer ~/1.sql     --> to process ~/1.sql'
         echo 'Also, please ensure input file name only contains [0-9a-zA-Z_-] characters'
-        echo "Terminating now."
+        echo "For reference, this message was produced by $0"
+        echo 'Terminating now.'
         exit 1
       fi
     else
