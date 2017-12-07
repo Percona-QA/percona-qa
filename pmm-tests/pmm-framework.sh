@@ -832,10 +832,15 @@ add_clients(){
         else
           MYEXTRA="--no-defaults --max-connections=30000"
         fi
+        if [[ "${CLIENT_NAME}" == "md" ]]; then
+          MYEXTRA+=" --gtid-strict-mode=ON "
+        else
+          MYEXTRA+=" --gtid-mode=ON --enforce-gtid-consistency "
+        fi
         ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG $TOKUDB_STARTUP $ROCKSDB_STARTUP --basedir=${BASEDIR} \
           --datadir=$node --log-error=$node/error.err --log-bin=mysql-bin \
-          --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  --gtid-mode=ON --log-slave-updates \
-          --enforce-gtid-consistency --server-id=10${j} > $node/error.err 2>&1 &
+          --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1 --log-slave-updates \
+          --server-id=10${j} > $node/error.err 2>&1 &
         function startup_chk(){
           for X in $(seq 0 ${SERVER_START_TIMEOUT}); do
             sleep 1
@@ -862,8 +867,8 @@ add_clients(){
             RBASE1="$(( RBASE1 - 1 ))"
             ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG $TOKUDB_STARTUP $ROCKSDB_STARTUP --basedir=${BASEDIR} \
                --datadir=$node --log-error=$node/error.err --log-bin=mysql-bin \
-               --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1  --gtid-mode=ON --log-slave-updates \
-               --enforce-gtid-consistency --server-id=10${j} > $node/error.err 2>&1 &
+               --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1 --log-slave-updates \
+               --server-id=10${j} > $node/error.err 2>&1 &
             startup_chk
             if ! ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
               echo "ERROR! ${NODE_NAME} startup failed. Please check error log $node/error.err"
