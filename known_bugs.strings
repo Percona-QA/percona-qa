@@ -236,6 +236,7 @@ type...!                                                 ## MS5.7 # https://bugs
 #log0log.cc line 1256                                    ## Fixed ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1597143
 log0log.cc line 562                                               ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1660760
 log0log.cc line 556                                               ## ^ .18 # https://bugs.launchpad.net/percona-server/+bug/1660760
+log0log.cc line 2199                                              ## https://jira.percona.com/browse/TDB-88
 Handlerton. share->file == NULL                                   ## PS5.7 # https://tokutek.atlassian.net/browse/FT-725
 ZN6tokudb6memory4freeEPv                                          ## PS5.7 $ https://tokutek.atlassian.net/browse/FT-727
 
@@ -266,6 +267,9 @@ handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 
 rem0rec.c line 738                               ##DONOTREMOVE## --innodb-fake-changes=1 will crash PS 5.5 (ref https://bugs.launchpad.net/bugs/1629220)
 #fil0fil.cc line 3499                            ##DONOTREMOVE## SET SESSION debug="+d,dict_tf_to_fsp_flags_failure" > Failing assertion: fsp_flags_is_valid(flags) in PS 5.7.16 (Not a bug. This assertion is by design)
 fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above, for MS 5.7.16 (also logged as https://bugs.mysql.com/bug.php?id=84593 Also see #73926, #74873)
+
+## =========== Special: OOS issues ===========
+#row0mysql.cc line 4950                           ##DONOTREMOVE## Scan error log for 'Out of disk space', likely cause of this assertion. Would be good to report at some point to upstream. Remarking for the moment until logged as bug
 
 ## =========== Special: OOM issues ===========
 ut0ut.cc line 932                                ##DONOTREMOVE## OOM: InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
@@ -524,6 +528,7 @@ user_stats->concurrent_connections > 0                                          
 allocated_status_memory .= __null                                                       ## https://bugs.mysql.com/bug.php?id=83797 (as subsequent testcase)
 #1 == num_erased                                                                        ## https://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
 .tables .. thd->lex->is_query_tables_locked                                             ## https://tokutek.atlassian.net/browse/DB-1027
+.bytes_read == .data_written - ..old_pre_checksum_fd .. .description_event->checksum_alg == BINLOG_CHECKSUM_ALG_OFF  ## https://bugs.launchpad.net/percona-server/+bug/1737023
 .auto_increment_lock.*.auto_increment_safe_stmt_log_lock                                ## https://bugs.mysql.com/bug.php?id=76542
 args.0.->fixed                                                  ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74695 (Fixed in 5.7.8)
 auto_increment_value                                                                    ## https://bugs.mysql.com/bug.php?id=75057 (old LP #1384684)
