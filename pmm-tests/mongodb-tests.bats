@@ -21,7 +21,7 @@ echo "$output"
 
 @test "run pmm-admin add mongodb based on running instances" {
 	COUNTER=0
-  for i in $(sudo pmm-admin list | grep "mongo" | awk '{print $5}' | grep -v '-') ; do
+  for i in $(sudo pmm-admin list | grep "mongodb:queries" | awk '{print $5}' | grep -v '-'| sort -u) ; do
 		let COUNTER=COUNTER+1
 		URI=${i}
 	  run sudo pmm-admin add mongodb --uri ${URI} mongodb_instance_${COUNTER}
@@ -32,7 +32,7 @@ echo "$output"
 
 @test "run pmm-admin add mongodb again based on running instances" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "mongodb_instance_" | awk '{print $5}' | grep -v '-') ; do
+	for i in $(sudo pmm-admin list | grep "mongodb:queries" | awk '{print $5}' | grep -v '-'| sort -u) ; do
 		let COUNTER=COUNTER+1
 		URI=${i}
 		run sudo pmm-admin add mongodb --uri ${URI} mongodb_instance_${COUNTER}
@@ -57,10 +57,11 @@ echo "$output"
 
 @test "run pmm-admin rm mongodb" {
 COUNTER=0
-for i in $(sudo pmm-admin list | grep "mongodb_instance_" | awk '{print $5}' | grep -v '-') ; do
+for i in $(sudo pmm-admin list | grep "mongodb_instance_" | awk '{print $5}' | grep -v '-'|sort -u) ; do
 	let COUNTER=COUNTER+1
 	run sudo pmm-admin rm mongodb mongodb_instance_${COUNTER}
   [ "$status" -eq 0 ]
+  echo "${lines[1]}" 
   echo "${lines[1]}" | grep "OK, removed"
 done
 }
@@ -77,7 +78,7 @@ done
   for i in $(sudo pmm-admin list | grep "mongo" | awk '{print $5}' | grep -v '-') ; do
 		let COUNTER=COUNTER+1
 		URI=${i}
-	  run sudo pmm-admin add mongodb:queries --uri ${URI}  mongo_queries_${COUNTER} --dev-enable
+	  run sudo pmm-admin add mongodb:queries --uri ${URI}  mongo_queries_${COUNTER} 
 	  [ "$status" -eq 0 ]
 	  echo "${lines[0]}" | grep "OK, now monitoring"
   done
@@ -88,7 +89,7 @@ done
   for i in $(sudo pmm-admin list | grep "mongo_queries_" | awk '{print $5}' | grep -v '-') ; do
 		let COUNTER=COUNTER+1
 		URI=${i}
-	  run sudo pmm-admin rm mongodb:queries mongo_queries_${COUNTER} --dev-enable
+	  run sudo pmm-admin rm mongodb:queries mongo_queries_${COUNTER} 
 	  [ "$status" -eq 0 ]
 	  echo "${lines[0]}" | grep "OK, removed"
   done
