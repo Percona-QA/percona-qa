@@ -152,7 +152,7 @@ start_replicaset(){
     echo "${cmd}" >> ${RSDIR}/start_rs.sh
   done
   echo "#!/usr/bin/env bash" > ${RSDIR}/cl_primary.sh
-  echo "PRIMARY=\$(${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary')" >> ${RSDIR}/cl_primary.sh
+  echo "PRIMARY=\$(${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/cl_primary.sh
   echo "${BINDIR}/mongo \${PRIMARY} \$@" >> ${RSDIR}/cl_primary.sh
   chmod +x ${RSDIR}/init_rs.sh
   chmod +x ${RSDIR}/start_rs.sh
