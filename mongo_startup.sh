@@ -4,9 +4,12 @@
 BASEDIR=""
 LAYOUT=""
 STORAGE_ENGINE="wiredTiger"
+MONGOD_EXTRA=""
+MONGOS_EXTRA=""
+CONFIG_EXTRA=""
 
 if [ -z $1 ]; then
-  echo "You need to specify at least one of the options for layout: --single, --rs, --sh!"
+  echo "You need to specify at least one of the options for layout: --single, --rSet, --sCluster or use --help!"
   exit 1
 fi
 
@@ -14,7 +17,7 @@ fi
 if ! getopt --test
 then
     go_out="$(getopt --options=mrshe:b: \
-        --longoptions=single,rs,sh,help,storageEngine:,bindir: \
+        --longoptions=single,replicaSet,shardedCluster,help,storageEngine:,bindir:,mongodExtra:,mongosExtra:,configExtra: \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
@@ -28,11 +31,11 @@ do
     shift
     LAYOUT="single"
     ;;
-  -r | --rs )
+  -r | --rSet )
     shift
     LAYOUT="rs"
     ;;
-  -s | --sh )
+  -s | --sCluster )
     shift
     LAYOUT="sh"
     ;;
@@ -42,17 +45,35 @@ do
     echo -e "By default it should be run from mongodb/psmdb base directory."
     echo -e "Setup is located in the \"nodes\" subdirectory.\n"
     echo -e "Options:"
-    echo -e "-m, --single\t\t run single instance"
-    echo -e "-r, --rs\t\t run replica set (3 nodes)"
-    echo -e "-s, --sh\t\t run sharding cluster (2 replica sets with 3 nodes each)"
-    echo -e "-e, --storageEngine\t specify storage engine for data nodes (wiredTiger, rocksdb, mmapv1)"
-    echo -e "-b, --bindir\t\t specify binary directory if running from some other location (this should end with /bin)"
-    echo -e "-h, --help\t\t this help"
+    echo -e "-m, --single\t\t\t run single instance"
+    echo -e "-r, --rSet\t\t\t run replica set (3 nodes)"
+    echo -e "-s, --sCluster\t\t\t run sharding cluster (2 replica sets with 3 nodes each)"
+    echo -e "-e<se>, --storageEngine=<se>\t specify storage engine for data nodes (wiredTiger, rocksdb, mmapv1)"
+    echo -e "-b<path>, --bindir<path>\t specify binary directory if running from some other location (this should end with /bin)"
+    echo -e "--mongodExtra=\"...\"\t\t specify extra options to pass to mongod"
+    echo -e "--mongosExtra=\"...\"\t\t specify extra options to pass to mongos"
+    echo -e "--configExtra=\"...\"\t\t specify extra options to pass to config server"
+    echo -e "-h, --help\t\t\t this help"
     exit 0
     ;;
   -e | --storageEngine )
     shift
     STORAGE_ENGINE="$1"
+    shift
+    ;;
+  --mongodExtra )
+    shift
+    MONGOD_EXTRA="$1"
+    shift
+    ;;
+  --mongosExtra )
+    shift
+    MONGOS_EXTRA="$1"
+    shift
+    ;;
+  --configExtra )
+    shift
+    CONFIG_EXTRA="$1"
     shift
     ;;
   -b | --bindir )
@@ -99,9 +120,10 @@ start_mongod(){
   fi
   if [ "${SE}" == "wiredTiger" ]; then
     EXTRA="${EXTRA} --wiredTigerCacheSizeGB 1"
-  elif [ "${SE}" == "wiredTiger" ]; then
+  elif [ "${SE}" == "rocksdb" ]; then
     EXTRA="${EXTRA} --rocksdbCacheSizeGB 1"
   fi
+
   mkdir -p ${NDIR}/db
   echo "#!/usr/bin/env bash" > ${NDIR}/start.sh
   echo "echo \"Starting mongod on port: ${PORT} storage engine: ${SE} replica set: ${RS#nors}\"" >> ${NDIR}/start.sh
@@ -163,12 +185,12 @@ start_replicaset(){
 
 if [ "${LAYOUT}" == "single" ]; then
   mkdir -p "${NODESDIR}"
-  start_mongod "${NODESDIR}" "nors" "27017" "${STORAGE_ENGINE}"
+  start_mongod "${NODESDIR}" "nors" "27017" "${STORAGE_ENGINE}" "${MONGOD_EXTRA}"
 fi
 
 if [ "${LAYOUT}" == "rs" ]; then
   mkdir -p "${NODESDIR}"
-  start_replicaset "${NODESDIR}" "rs1" "27017"
+  start_replicaset "${NODESDIR}" "rs1" "27017" "${MONGOD_EXTRA}"
 fi
 
 if [ "${LAYOUT}" == "sh" ]; then
@@ -188,16 +210,16 @@ if [ "${LAYOUT}" == "sh" ]; then
   echo "=== Configuring sharding cluster: ${SHNAME} ==="
   # setup config replicaset (1 node)
   echo "=== Starting config server replica set: ${CFGRSNAME} ==="
-  start_mongod "${NODESDIR}/${CFGRSNAME}" "config" "${CFGPORT}" "wiredTiger" "--configsvr"
+  start_mongod "${NODESDIR}/${CFGRSNAME}" "config" "${CFGPORT}" "wiredTiger" "--configsvr ${CONFIG_EXTRA}"
   echo "Initializing config server replica set: ${CFGRSNAME}"
   ${BINDIR}/mongo localhost:${CFGPORT} --quiet --eval "rs.initiate({_id:\"${CFGRSNAME}\", members: [{_id:1, \"host\":\"localhost:${CFGPORT}\"}]})"
   # setup 2 data replica sets
-  start_replicaset "${NODESDIR}/${RS1NAME}" "${RS1NAME}" "${RS1PORT}" "--shardsvr"
-  start_replicaset "${NODESDIR}/${RS2NAME}" "${RS2NAME}" "${RS2PORT}" "--shardsvr"
+  start_replicaset "${NODESDIR}/${RS1NAME}" "${RS1NAME}" "${RS1PORT}" "--shardsvr ${MONGOD_EXTRA}"
+  start_replicaset "${NODESDIR}/${RS2NAME}" "${RS2NAME}" "${RS2PORT}" "--shardsvr ${MONGOD_EXTRA}"
   # create managing scripts
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/start_mongos.sh
   echo "echo \"=== Starting sharding server: ${SHNAME} on port ${SHPORT} ===\"" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
-  echo "${BINDIR}/mongos --port ${SHPORT} --configdb ${CFGRSNAME}/localhost:${CFGPORT} --logpath ${NODESDIR}/${SHNAME}/mongos.log --fork >/dev/null" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
+  echo "${BINDIR}/mongos --port ${SHPORT} --configdb ${CFGRSNAME}/localhost:${CFGPORT} --logpath ${NODESDIR}/${SHNAME}/mongos.log --fork "$MONGOS_EXTRA" >/dev/null" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/cl_mongos.sh
   echo "${BINDIR}/mongo localhost:${SHPORT} \$@" >> ${NODESDIR}/${SHNAME}/cl_mongos.sh
   ln -s ${NODESDIR}/${SHNAME}/cl_mongos.sh ${NODESDIR}/cl_mongos.sh
