@@ -17,7 +17,7 @@ fi
 if ! getopt --test
 then
     go_out="$(getopt --options=mrshe:b: \
-        --longoptions=single,replicaSet,shardedCluster,help,storageEngine:,bindir:,mongodExtra:,mongosExtra:,configExtra: \
+        --longoptions=single,rSet,sCluster,help,storageEngine:,bindir:,mongodExtra:,mongosExtra:,configExtra: \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
