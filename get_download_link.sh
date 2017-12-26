@@ -289,6 +289,7 @@ get_link(){
     fi # version_full
 
   elif [[ "${PRODUCT}" = "proxysql" ]]; then
+    if [[ "${DISTRIBUTION}" = "ubuntu" ]]; then DISTRIBUTION="xenial"; fi
     BASE_LINK="https://www.percona.com/downloads/proxysql/"
     if [[ -z ${VERSION_FULL} ]]; then
         VERSION=$(wget -qO- ${BASE_LINK}|grep -o "proxysql-[0-9]*.[0-9]*.[0-9]*"|head -n1|sed 's/^.*-//')
