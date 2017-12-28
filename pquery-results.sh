@@ -225,8 +225,11 @@ if [ "$(echo "${OOS}" | sed "s| ||g")" != "" ]; then
 fi
 
 # Coredumps overview (for comparison)
-echo "================ Coredumps found in trials:"
-find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -un | tr '\n' ' ' | sed 's|$|\n|'
+COREDUMPS="$(find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -un | tr '\n' ' ' | sed 's|$|\n|')"
+if [ "$(echo "${COREDUMPS}" | sed 's| \+||g')" != "" ]; then
+  echo "================ Coredumps found in trials:"
+  find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -un | tr '\n' ' ' | sed 's|$|\n|'
+fi
 echo "================"
 if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | wc -l` -gt 0 ]; then
   echo "Detected one or more empty (0 byte) reducer script(s): `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | tr '\n' ' '`- you may want to check what's causing this (possibly a bug in pquery-prep-red.sh, or did you simply run out of space while running pquery-prep-red.sh?) and do the analysis for these trial numbers manually, or free some space, delete the reducer*.sh scripts and re-run pquery-prep-red.sh"
