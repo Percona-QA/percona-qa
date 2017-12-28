@@ -2738,9 +2738,9 @@ stop_mysqld_or_pxc(){
   else
     if [ ${FORCE_KILL} -eq 1 -a ${MODE} -ne 0 ]; then  # In MODE=0 we may be checking for shutdown hang issues, so do not kill mysqld
       while :; do
-        if kill -0 $PIDV > /dev/null 2>&1; then
+        if kill -0 $PIDV >/dev/null 2>&1; then
           sleep 1
-          kill -9 $PIDV
+          kill -9 $PIDV >/dev/null 2>&1
         else
           break
         fi
@@ -2759,11 +2759,11 @@ stop_mysqld_or_pxc(){
       # Try various things now to bring server down, upto kill -9
       while :; do
         sleep 1
-        if kill -0 $PIDV > /dev/null 2>&1; then 
+        if kill -0 $PIDV >/dev/null 2>&1; then 
           if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
-          if kill -0 $PIDV > /dev/null 2>&1; then $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi  # Retry shutdown one more time
+          if kill -0 $PIDV >/dev/null 2>&1; then $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/mysqld.out 2>&1; else break; fi  # Retry shutdown one more time
           if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
-          if kill -0 $PIDV > /dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
+          if kill -0 $PIDV >/dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
           sleep 5
           if [ $MODE -ne 1 -a $MODE -ne 6 ]; then
             if [ $MODE -eq 0 ]; then
@@ -2771,11 +2771,11 @@ stop_mysqld_or_pxc(){
                 continue  # Do not proceed to kill -9 if server is hanging and reducer is checking for the same (i.e. MODE=0) untill we've passed $TIMEOUT_CHECK + 10 second safety margin
               fi
             fi
-            if kill -0 $PIDV > /dev/null 2>&1; then 
+            if kill -0 $PIDV >/dev/null 2>&1; then 
               if [ $MODE -ne 0 ]; then  # For MODE=0, the following is not a WARNING but fairly normal
                 echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed. Now forcing kill of mysqld"
               fi
-              kill -9 $PIDV
+              kill -9 $PIDV >/dev/null 2>&1
             else 
               break
             fi
