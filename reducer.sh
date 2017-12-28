@@ -844,8 +844,8 @@ kill_multi_reducer(){
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating these PID's: $PIDS_TO_TERMINATE"
     while [ $(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text `whoami` | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | wc -l) -ge 1 ]; do
       for t in $(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text `whoami` | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | sort -u); do
-        kill -9 $t 2>/dev/null
-        wait $t 2>/dev/null  # Prevents "<process id> Killed" messages
+        (sleep 0.01; kill -9 $t >/dev/null 2>&1; timeout -k4 -s9 4s wait $t >/dev/null 2>&1) &
+        timeout -k5 -s9 5s wait $t >/dev/null 2>&1
       done
       sync; sleep 3
       if [ $(ps -ef | grep -E --binary-files=text subreducer | grep -E --binary-files=text `whoami` | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | wc -l) -ge 1 ]; then
@@ -980,15 +980,15 @@ multi_reducer(){
           echo_out_overwrite "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... "
           for i in $(eval echo {1..$MULTI_THREADS}); do
             PID_TO_KILL=$(eval echo $(echo '$MULTI_PID'"$i"))
-            kill -9 $PID_TO_KILL 2>/dev/null
-            wait $PID_TO_KILL 2>/dev/null  # Prevents "<process id> Killed" messages
+            (sleep 0.01; kill -9 $PID_TO_KILL >/dev/null 2>&1; timeout -k4 -s9 4s wait $PID_TO_KILL >/dev/null 2>&1) &
+            timeout -k5 -s9 5s wait $PID_TO_KILL >/dev/null 2>&1
           done
           sleep 4  # Make sure disk based activity is finished
           # Make sure all subprocessed are gone
           for i in $(eval echo {1..$MULTI_THREADS}); do
             PID_TO_KILL=$(eval echo $(echo '$MULTI_PID'"$i"))
-            kill -9 $PID_TO_KILL 2>/dev/null
-            wait $PID_TO_KILL 2>/dev/null  # Prevents "<process id> Killed" messages
+            (sleep 0.01; kill -9 $PID_TO_KILL >/dev/null 2>&1; timeout -k4 -s9 4s wait $PID_TO_KILL >/dev/null 2>&1) &
+            timeout -k5 -s9 5s wait $PID_TO_KILL >/dev/null 2>&1
           done
           sleep 2
           echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... done"
