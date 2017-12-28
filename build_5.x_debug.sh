@@ -8,6 +8,8 @@ WITH_ROCKSDB=1      # 0 or 1  # Please note when building the facebook-mysql-5.6
 USE_CLANG=0         # Use the clang compiler instead of gcc
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"
 CLANGPP_LOCATION="${CLANG_LOCATION}++"
+USE_BOOST_LOCATION=1
+BOOST_LOCATION=/git/PS-5.7-trunk/boost_1_59_0.tar.gz
 
 # To install the latest clang from Chromium devs;
 # sudo yum remove clang    # Or sudo apt-get remove clang
@@ -76,16 +78,27 @@ cd ${CURPATH}_dbg
 ### TEMPORARY HACK TO AVOID COMPILING TB (WHICH IS NOT READY YET)
 rm -Rf ./plugin/tokudb-backup-plugin
 
-# Avoid previously downloaded boost's from creating problems
-rm -Rf /tmp/boost_${RANDOMD}
-mkdir /tmp/boost_${RANDOMD}
+BOOST=
+if [ ${USE_BOOST_LOCATION} -eq 1 ]; then
+  if [ ! -r ${BOOST_LOCATION} ]; then
+    echo "Assert; USE_BOOST_LOCATION was set to 1, but the file at BOOST_LOCATION (${BOOST_LOCATION} cannot be read!"
+    exit 1
+  else
+    BOOST="-DDOWNLOAD_BOOST=0 -DWITH_BOOST=${BOOST_LOCATION}"
+  fi
+else
+  # Avoid previously downloaded boost's from creating problems
+  rm -Rf /tmp/boost_${RANDOMD}
+  mkdir /tmp/boost_${RANDOMD}
+  BOOST="-DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp/boost_${RANDOMD}"
+fi
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build
-  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp/boost_${RANDOMD} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
 else
   # FB build
-  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp/boost_${RANDOMD} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  cmake . $CLANG -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
 fi
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected!"; exit 1; fi
 if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
