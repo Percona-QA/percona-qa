@@ -212,7 +212,20 @@ if [ $COUNT -gt 0 ]; then
     echo -e "${STRING_OUT}${COUNT_OUT}${MATCHING_TRIALS[@]})"
   done
 fi
-echo "================ Coredumps found in trials: "
+
+# Likely out of disk space trials
+OOS1=$(grep "Out of disk space" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
+OOS2=$(grep "InnoDB: Error while writing" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
+OOS3=$(grep "bytes should have been written" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
+OOS4=$(grep "Operating system error number 28" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
+OOS="$(echo "${OOS1} ${OOS2} ${OOS3} ${OOS4}" | sed "s|  | |g")"
+if [ "$(echo "${OOS}" | sed "s| ||g")" != "" ]; then
+  echo "================ Likely out of disk space trials:"
+  echo "$(echo "${OOS}" | tr ' ' '\n' | sort -u |  tr '\n' ' ' | sed 's|$|\n|;s|^ \+||')"
+fi
+
+# Coredumps overview (for comparison)
+echo "================ Coredumps found in trials:"
 find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -un | tr '\n' ' ' | sed 's|$|\n|'
 echo "================"
 if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | wc -l` -gt 0 ]; then

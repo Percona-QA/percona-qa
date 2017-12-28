@@ -269,7 +269,9 @@ rem0rec.c line 738                               ##DONOTREMOVE## --innodb-fake-c
 fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above, for MS 5.7.16 (also logged as https://bugs.mysql.com/bug.php?id=84593 Also see #73926, #74873)
 
 ## =========== Special: OOS issues ===========
-#row0mysql.cc line 4950                           ##DONOTREMOVE## Scan error log for 'Out of disk space', likely cause of this assertion. Would be good to report at some point to upstream. Remarking for the moment until logged as bug
+#row0mysql.cc line 4950                           ##DONOTREMOVE## Scan error log for 'Out of disk space', 'InnoDB: Error while writing', 'bytes should have been written', and 'Operating system error number 28', or a 0 byte core dump, OOS is the likely cause of this assertion. Would be good to report at some point to upstream. Remarking for the moment until logged as bug
+#row0mysql.cc line 5376                           ##DONOTREMOVE## Scan error log for 'Out of disk space', 'InnoDB: Error while writing', 'bytes should have been written', and 'Operating system error number 28', or a 0 byte core dump, OOS is the likely cause of this assertion. Would be good to report at some point to upstream. Remarking for the moment until logged as bug
+#os0file.cc line 2357                             ##DONOTREMOVE## Check if the core dump file is 0 bytes large. If so, this is likely caused by out of disk space. Would be good to report at some point to upstream. Remarking for the moment until logged as bug
 
 ## =========== Special: OOM issues ===========
 ut0ut.cc line 932                                ##DONOTREMOVE## OOM: InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
@@ -504,6 +506,7 @@ srv0srv.cc line 3366                                                            
 srv0srv.cc line 3074                                                                    ## Also 73913 PS 5.7.18
 srv0srv.cc line 3070                                                                    ## Also 73913 PS 5.7.17
 srv0srv.cc line 3084                                                                    ## Also 73913 PS 5.7.19
+srv0srv.cc line 3094                                                                    ## Also 73913 PS 5.7.20
 sync0sync.ic line 307                                                                   ## https://bugs.launchpad.net/percona-server/+bug/1435678
 sync0sync.cc line 1318                                                                  ## https://bugs.mysql.com/bug.php?id=75640 MS
 sync0sync.cc line 1432                                                                  ## https://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
