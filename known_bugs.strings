@@ -269,8 +269,11 @@ rem0rec.c line 738                               ##DONOTREMOVE## --innodb-fake-c
 fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above, for MS 5.7.16 (also logged as https://bugs.mysql.com/bug.php?id=84593 Also see #73926, #74873)
 
 ## =========== Special: OOS issues ===========
-#row0mysql.cc line 4950                           ##DONOTREMOVE## Scan error log for 'Out of disk space', 'InnoDB: Error while writing', 'bytes should have been written', and 'Operating system error number 28', or a 0 byte core dump, OOS is the likely cause of this assertion. Would be good to report at some point to upstream. Remarking for the moment until logged as bug
-#row0mysql.cc line 5376                           ##DONOTREMOVE## Scan error log for 'Out of disk space', 'InnoDB: Error while writing', 'bytes should have been written', and 'Operating system error number 28', or a 0 byte core dump, OOS is the likely cause of this assertion. Would be good to report at some point to upstream. Remarking for the moment until logged as bug
+#row0mysql.cc line 4950                           ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh for 'Likely out of disk space trials'. Perhaps report at some point to upstream; remarking ftm. Also, filtering this bug may cause other bug masking.
+#row0mysql.cc line 5376                           ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh for 'Likely out of disk space trials'. Perhaps report at some point to upstream; remarking ftm. Also, filtering this bug may cause other bug masking.
+#btr0btr.cc line 896                              ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh for 'Likely out of disk space trials'. Perhaps report at some point to upstream; remarking ftm. Also, filtering this bug may cause other bug masking.
+#mem0mem.ic line 157                              ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh for 'Likely out of disk space trials'. Perhaps report at some point to upstream; remarking ftm. Also, filtering this bug may cause other bug masking.
+#Z22dict_create_index_stepP9que_thr_t             ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh for 'Likely out of disk space trials'. Perhaps report at some point to upstream; remarking ftm. Also, filtering this bug may cause other bug masking.
 #os0file.cc line 2357                             ##DONOTREMOVE## Check if the core dump file is 0 bytes large. If so, this is likely caused by out of disk space. Would be good to report at some point to upstream. Remarking for the moment until logged as bug
 
 ## =========== Special: OOM issues ===========

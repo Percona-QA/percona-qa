@@ -604,9 +604,8 @@ pquery_test(){
   echoit "====== TRIAL #${TRIAL} ======"
   echoit "Ensuring there are no relevant servers running..."
   KILLPID=$(ps -ef | grep "${RUNDIR}" | grep -v grep | awk '{print $2}' | tr '\n' ' ')
-  (sleep 0.2; kill -9 $KILLPID >/dev/null 2>&1; wait $KILLPID >/dev/null 2>&1) &
-  wait $KILLDPID >/dev/null 2>&1  # The sleep 0.2 + subsequent wait (cought before the kill) avoids the annoying 'Killed' message 
-                                  # from being displayed in the output. Thank you to user 'Foonly' @ forums.whirlpool.net.au
+  (sleep 0.2; kill -9 $KILLPID >/dev/null 2>&1; timeout -k4 -s9 4s wait $KILLPID >/dev/null 2>&1) &
+  timeout -k5 -s9 5s wait $KILLDPID >/dev/null 2>&1  # The sleep 0.2 + subsequent wait (cought before the kill) avoids the annoying 'Killed' message from being displayed in the output. Thank you to user 'Foonly' @ forums.whirlpool.net.au
   echoit "Clearing rundir..."
   rm -Rf ${RUNDIR}/*
   if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -eq 1 ]; then
@@ -1290,13 +1289,13 @@ pquery_test(){
     if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
         echoit "Either the Primary server (PID: ${MPID} | Socket: ${RUNDIR}/${TRIAL}/socket.sock), or the Secondary server (PID: ${MPID2} | Socket: ${RUNDIR}/${TRIAL}/socket2.sock) failed to start after ${MYSQLD_START_TIMEOUT} seconds. Will issue extra kill -9 to ensure it's gone..."
-        (sleep 0.2; kill -9 ${MPID2} >/dev/null 2>&1; wait ${MPID2} >/dev/null 2>&1) &
-        wait ${MPID2} >/dev/null 2>&1
+        (sleep 0.2; kill -9 ${MPID2} >/dev/null 2>&1; timeout -k4 -s9 4s wait ${MPID2} >/dev/null 2>&1) &
+        timeout -k5 -s9 5s wait ${MPID2} >/dev/null 2>&1
       else
         echoit "Server (PID: ${MPID} | Socket: ${RUNDIR}/${TRIAL}/socket.sock) failed to start after ${MYSQLD_START_TIMEOUT} seconds. Will issue extra kill -9 to ensure it's gone..."
       fi
-      (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; wait ${MPID} >/dev/null 2>&1) &
-      wait ${MPID} >/dev/null 2>&1
+      (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; timeout -k4 -s9 4s wait ${MPID} >/dev/null 2>&1) &
+      timeout -k5 -s9 5s wait ${MPID} >/dev/null 2>&1
       sleep 2; sync
     elif [[ ${PXC} -eq 1 ]]; then
       echoit "3 Node PXC Cluster failed to start after ${PXC_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
@@ -1376,11 +1375,11 @@ pquery_test(){
         sleep 2
       fi
     fi
-    (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; wait ${MPID} >/dev/null 2>&1) &  # Terminate mysqld
-    (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time, also see NOTE** above)
+    (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; timeout -k5 -s9 5s wait ${MPID} >/dev/null 2>&1) &  # Terminate mysqld
+    (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; timeout -k5 -s9 5s wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time, also see NOTE** above)
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
-      (sleep 0.2; kill -9 ${MPID2} >/dev/null 2>&1; wait ${MPID2} >/dev/null 2>&1) &  # Terminate mysqld
-      (sleep 0.2; kill -9 ${PQPID2} >/dev/null 2>&1; wait ${PQPID2} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time, also see NOTE** above)
+      (sleep 0.2; kill -9 ${MPID2} >/dev/null 2>&1; timeout -k5 -s9 5s wait ${MPID2} >/dev/null 2>&1) &  # Terminate mysqld
+      (sleep 0.2; kill -9 ${PQPID2} >/dev/null 2>&1; timeout -k5 -s9 5s wait ${PQPID2} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time, also see NOTE** above)
     fi
     sleep 1  # <^ Make sure all is gone
   elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
@@ -1432,7 +1431,7 @@ pquery_test(){
       fi
     fi
     (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
-    (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
+    (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; timeout -k5 -s9 5s wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
     sleep 2; sync
   fi
   if [ ${ISSTARTED} -eq 1 -a ${TRIAL_SAVED} -ne 1 ]; then  # Do not try and print pquery log for a failed mysqld start
@@ -1669,7 +1668,7 @@ if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
 
     # Terminate mysqld
     timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/data.template/socket.sock shutdown > /dev/null 2>&1
-    (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; wait ${MPID} >/dev/null 2>&1) &  # Terminate mysqld
+    (sleep 0.2; kill -9 ${MPID} >/dev/null 2>&1; timeout -k5 -s9 5s wait ${MPID} >/dev/null 2>&1) &  # Terminate mysqld
   fi
   echo "${MYEXTRA}${MYSAFE}" | if grep -qi "innodb[_-]log[_-]checksum[_-]algorithm"; then
     # Ensure that if MID created log files with the standard checksum algo, whilst we start the server with another one, that log files are re-created by mysqld
