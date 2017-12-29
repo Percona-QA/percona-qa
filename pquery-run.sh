@@ -657,7 +657,7 @@ pquery_test(){
       echoit "Note that this is can be caused by not having perl-Data-Dumper installed (sudo yum install perl-Data-Dumper), which is required for mysql_install_db."
       exit 1
     fi
-    cp -R ${WORKDIR}/data.template/* ${RUNDIR}/${TRIAL}/data
+    cp -R ${WORKDIR}/data.template/* ${RUNDIR}/${TRIAL}/data 2>&1
     MYEXTRA_SAVE_IT=${MYEXTRA}
     if [ ${ADD_RANDOM_OPTIONS} -eq 1 ]; then  # Add random mysqld --options to MYEXTRA
       OPTIONS_TO_ADD=
@@ -730,7 +730,7 @@ pquery_test(){
       echoit "Starting Secondary mysqld. Error log is stored at ${RUNDIR}/${TRIAL}/log2/master.err"
       mkdir -p ${RUNDIR}/${TRIAL}/data2/test ${RUNDIR}/${TRIAL}/data2/mysql ${RUNDIR}/${TRIAL}/tmp2 ${RUNDIR}/${TRIAL}/log2
       echoit "Copying datadir from template for Secondary mysqld..."
-      cp -R ${WORKDIR}/data.template/* ${RUNDIR}/${TRIAL}/data2
+      cp -R ${WORKDIR}/data.template/* ${RUNDIR}/${TRIAL}/data2 2>&1
       PORT2=$[ $PORT + 1 ]
       if [ ${VALGRIND_RUN} -eq 0 ]; then
         CMD2="${BIN} ${MYSAFE} ${MYEXTRA2} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data2 --tmpdir=${RUNDIR}/${TRIAL}/tmp2 \
@@ -864,9 +864,9 @@ pquery_test(){
     fi
   elif [[ ${PXC} -eq 1 ]]; then
     mkdir -p ${RUNDIR}/${TRIAL}/
-    cp -R ${WORKDIR}/node1.template ${RUNDIR}/${TRIAL}/node1
-    cp -R ${WORKDIR}/node2.template ${RUNDIR}/${TRIAL}/node2
-    cp -R ${WORKDIR}/node3.template ${RUNDIR}/${TRIAL}/node3
+    cp -R ${WORKDIR}/node1.template ${RUNDIR}/${TRIAL}/node1 2>&1
+    cp -R ${WORKDIR}/node2.template ${RUNDIR}/${TRIAL}/node2 2>&1
+    cp -R ${WORKDIR}/node3.template ${RUNDIR}/${TRIAL}/node3 2>&1
 
     PXC_MYEXTRA=
     # === PXC Options Stage 1: Add random mysqld options to PXC_MYEXTRA 
@@ -938,9 +938,9 @@ pquery_test(){
     done
   elif [[ ${GRP_RPL} -eq 1 ]];then
     mkdir -p ${RUNDIR}/${TRIAL}/
-    cp -R ${WORKDIR}/node1.template ${RUNDIR}/${TRIAL}/node1
-    cp -R ${WORKDIR}/node2.template ${RUNDIR}/${TRIAL}/node2
-    cp -R ${WORKDIR}/node3.template ${RUNDIR}/${TRIAL}/node3
+    cp -R ${WORKDIR}/node1.template ${RUNDIR}/${TRIAL}/node1 2>&1
+    cp -R ${WORKDIR}/node2.template ${RUNDIR}/${TRIAL}/node2 2>&1
+    cp -R ${WORKDIR}/node3.template ${RUNDIR}/${TRIAL}/node3 2>&1
     gr_startup
 
     CLUSTER_UP=0;
