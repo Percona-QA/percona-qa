@@ -237,7 +237,8 @@ type...!                                                 ## MS5.7 # https://bugs
 #log0log.cc line 1256                                    ## Fixed ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1597143
 log0log.cc line 562                                               ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1660760
 log0log.cc line 556                                               ## ^ .18 # https://bugs.launchpad.net/percona-server/+bug/1660760
-log0log.cc line 2199                                              ## https://jira.percona.com/browse/TDB-88
+log0log.cc line 1839                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
+log0log.cc line 2199                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 Handlerton. share->file == NULL                                   ## PS5.7 # https://tokutek.atlassian.net/browse/FT-725
 ZN6tokudb6memory4freeEPv                                          ## PS5.7 $ https://tokutek.atlassian.net/browse/FT-727
 
@@ -276,7 +277,7 @@ fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above
 #mem0mem.ic line 157                              ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
 #Z22dict_create_index_stepP9que_thr_t             ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
 #os0file.cc line 2357                             ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
-#info->end_of_file == inline_mysql_file_tell<MORE>##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
+#info->end_of_file == inline_mysql_file_tell      ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
 
 ## =========== Special: OOM issues ===========
 ut0ut.cc line 932                                ##DONOTREMOVE## OOM: InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory

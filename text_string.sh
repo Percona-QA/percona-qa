@@ -58,4 +58,7 @@ if [ $(echo ${STRING} | wc -l) -gt 1 ]; then
   exit 1
 fi
 
+# Fixup an assert which had a path specifier in it
+STRING=$(echo ${STRING} | sed 's|info->end_of_file == inline_mysql_file_tell.*|info->end_of_file == inline_mysql_file_tel|')
+
 echo ${STRING}
