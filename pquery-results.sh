@@ -48,7 +48,7 @@ ORIG_IFS=$IFS; IFS=$'\n'  # Use newline seperator instead of space seperator in 
 if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
   for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT=.||;s|.[ \t]*$||' | sort -u`; do
     MATCHING_TRIALS=()
-    for MATCHING_TRIAL in `grep -H "${STRING}" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
+    for MATCHING_TRIAL in `grep -H "TEXT=.${STRING}." reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
       MATCHING_TRIAL=$(echo ${MATCHING_TRIAL} | sed 's|.*TEXT=.||;s|\.[ \t]*$||')
       MATCHING_TRIALS+=($MATCHING_TRIAL)
     done
