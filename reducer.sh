@@ -4088,7 +4088,6 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   COUNT_MYEXTRA=`echo ${MYEXTRA} | wc -w`
   FILE1="$WORKD/file1"
   FILE2="$WORKD/file2"
-  MYROCKS="--default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB"
   myextra_check(){
     count_mysqld_opt=`cat $WORKD/mysqld_opt.out | wc -l`
     head -n $((count_mysqld_opt/2)) $WORKD/mysqld_opt.out > $FILE1
