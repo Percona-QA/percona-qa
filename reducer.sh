@@ -354,17 +354,71 @@ TS_VARIABILITY_SLEEP=1
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
 # === Check TokuDB & RocksDB storage engine availability, and cleanup MYEXTRA to remove the related options
-# SE Removal approach; 1) Engines are always loaded during stages 1-8 (using the TOKUDB and ROCKSDB variables, ref below) provided the matching .so file exists now
-#                      2) Testcase reduction removal of engines (one-by-one) is tested in STAGE9
+# SE Removal approach; 1) If the engine is referred to by .so reference in MYEXTRA, reducer.sh uses it, but reducer.sh ensure the engine .so file exists
+#                      2) Any reference to the engine is removed from MYEXTRA and stored in two variables TOKUDB/ROCKSDB to allow more control/testcase reducability
+#                      3) Testcase reduction removal of engines (one-by-one) is tested in STAGE9
 TOKUDB=
 ROCKSDB=
-if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so  ]; then TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"; fi
-MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load-add=tokudb=ha_tokudb.so||g')
-MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load=tokudb=ha_tokudb.so||g')
-MYEXTRA=$(echo ${MYEXTRA} | sed 's|--tokudb-check-jemalloc=0||g')
-if [ -r ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then ROCKSDB="--plugin-load-add=rocksdb=ha_rocksdb.so"; fi
-MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load-add=rocksdb=ha_rocksdb.so||g')
-MYEXTRA=$(echo ${MYEXTRA} | sed 's|--plugin-load=rocksdb=ha_rocksdb.so||g')
+if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
+  if [ -r ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
+    ROCKSDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin-[^ ]\+ha_rocksdb.so")"  # Grep all text after '--plugin-' upto the last 'ha_rocksdb.so' followed by a space
+    MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${ROCKSDB}||g")"
+    # The below issues should never happen in the Percona pquery framework as we simply use;
+    # --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --init-file=/home/roel/percona-qa/plugins_57.sql
+    # And the init-file loads any other required plugins using the same .so file. These options (in MYEXTRA) are not complex and easy too parse as per below -
+    # and this is handled fine by the code here. It would only happen if someone used a complex string like the one shown in https://jira.percona.com/browse/DOC-444
+    if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
+      echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
+      echo "Please simplify it, or improve the code in reducer.sh which handles this (search for this text)."
+      echo "Terminating now."
+      exit 1
+    elif [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
+      echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
+      echo "It looks like the ha_tokudb.so plugin load call was nested inside the --plugin-load[-add]=...ha_rocksdb.so plugin load call."
+      echo "Please simplify it by using a separate --plugin-load-add for each engine, or improve the code in reducer.sh which handles this (search for this text) to extract the TokuDB load code into the TOKUDB variable at this point in the code (complex)."
+      echo "Terminating now."
+      exit 1
+    fi
+  else
+    echo "Error: MYEXTRA contains ha_rocksdb.so, yet ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so des not exist."
+    echo "Terminating now."
+    exit 1
+  fi
+fi
+if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
+  if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
+    TOKUDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin-[^ ]\+ha_tokudb.so")"  # Grep all text after '--plugin-' upto the last 'ha_tokudb.so' followed by a space
+    MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDB}||g")"
+    if [[ "${MYEXTRA}" == *"--tokudb-check-jemalloc"* ]]; then
+      TOKUDBCJ=
+      TOKUDBCJ="$(echo "${MYEXTRA}" | grep -o "\-\-tokudb-check-jemalloc[^ ]\+")"  # Grep all text after '--tokudb-check-jemalloc' upto the first space
+      TOKUDB="$(echo "${TOKUDB} ${TOKUDBCJ}")"
+      MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDBCJ}||g")"
+    fi
+    # The below issues should never happen in the Percona pquery framework; ref info above in ha_rocksdb.so section
+    if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
+      echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
+      echo "Please simplify it, or improve the code in reducer.sh which handles this (search for this text)."
+      echo "Terminating now."
+      exit 1
+    elif [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
+      echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
+      echo "It looks like the ha_rocksdb.so plugin load call was nested inside the --plugin-load[-add]=...ha_tokudb.so plugin load call."
+      echo "Please simplify it by using a separate --plugin-load-add for each engine, or improve the code in reducer.sh which handles this (search for this text) to extract the RocksDB load code into the ROCKSDB variable at this point in the code (complex)."
+      echo "Terminating now."
+      exit 1
+    fi
+  else
+    echo "Error: MYEXTRA contains ha_tokudb.so, yet ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so des not exist."
+    echo "Terminating now."
+    exit 1
+  fi
+fi
+if [[ "${MYEXTRA}" == *"--tokudb-check-jemalloc"* ]]; then
+  echo "Error: MYEXTRA contains --tokudb-check-jemalloc, yet ha_tokudb.so is not present in the MYEXTRA string."
+  echo "Terminating now."
+  exit 1
+fi
 
 # For GLIBC crash reduction, we need to capture the output of the console from which reducer.sh is started. Currently only a SINGLE threaded solution using the 'scrip'
 # binary from the util-linux package was found. The script binary is able to capture the GLIC output from the main console. It may be interesting to review the source C
@@ -1695,7 +1749,6 @@ start_mysqld_or_valgrind_or_pxc(){
     else 
       start_valgrind_mysqld_main
     fi
-    STAGE9_NOT_STARTED_CORRECTLY=0  # Defensive coding only, not strictly required
     if [ ${REDUCE_STARTUP_ISSUES} -le 0 ]; then
       if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
         if [ ${STAGE} -eq 9 ]; then
@@ -4199,9 +4252,9 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
     if [[ ! -z $TOKUDB ]] ;then
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup option"
       STAGE9_CHK=0
+      STAGE9_NOT_STARTED_CORRECTLY=0
       SAFE_TOKUDB=$TOKUDB
       TOKUDB="";
-      STAGE9_NOT_STARTED_CORRECTLY=0
       run_and_check
       if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
         TOKUDB="$SAFE_TOKUDB"
@@ -4212,9 +4265,9 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
     if [[ ! -z $ROCKSDB ]];then
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup option"
       STAGE9_CHK=0
+      STAGE9_NOT_STARTED_CORRECTLY=0
       SAFE_ROCKSDB=$ROCKSDB
       ROCKSDB="";
-      STAGE9_NOT_STARTED_CORRECTLY=0
       run_and_check
       if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
         ROCKSDB="$SAFE_ROCKSDB"
