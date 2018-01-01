@@ -271,13 +271,14 @@ rem0rec.c line 738                               ##DONOTREMOVE## --innodb-fake-c
 fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above, for MS 5.7.16 (also logged as https://bugs.mysql.com/bug.php?id=84593 Also see #73926, #74873)
 
 ## =========== Special: OOS issues ===========
-#row0mysql.cc line 4950                           ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
-#row0mysql.cc line 5376                           ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
-#btr0btr.cc line 896                              ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
-#mem0mem.ic line 157                              ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
-#Z22dict_create_index_stepP9que_thr_t             ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
-#os0file.cc line 2357                             ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
-#info->end_of_file == inline_mysql_file_tell      ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering all OOS bugs may cause other bug masking!
+#row0mysql.cc line 4950                           ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
+#row0mysql.cc line 5376                           ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
+#btr0btr.cc line 896                              ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
+#mem0mem.ic line 157                              ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
+#Z22dict_create_index_stepP9que_thr_t             ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
+#os0file.cc line 2357                             ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
+#info->end_of_file == inline_mysql_file_tell      ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
+#sz == write_size                                 ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream (MyRocks); remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
 
 ## =========== Special: OOM issues ===========
 ut0ut.cc line 932                                ##DONOTREMOVE## OOM: InnoDB: Failing assertion: !m_fatal InnoDB: Cannot allocate 2251799813701656 bytes of memory
@@ -590,7 +591,8 @@ length > 0 .. keyparts .= 0                                                     
 length <= max_data_length                                                               ## https://bugs.mysql.com/bug.php?id=75648
 lex.sphead == __null                                                                    ## https://bugs.mysql.com/bug.php?id=74537
 lock_type >= TL_READ                                               ## Still present ftm ## https://bugs.mysql.com/bug.php?id=74740 (fixed in 5.8.0) (also see near end of file 74740)
-log.getting_synced                                                                      ## https://jira.percona.com/browse/MYR-196
+log.getting_synced                                                                      ## https://github.com/facebook/mysql-5.6/issues/778 (previouly MYR-196)
+ZN7myrocks19rdb_handle_io_errorEN7rocksdb6StatusENS_17RDB_IO_ERROR_TYPEE                ##  https://github.com/facebook/mysql-5.6/issues/778 (previouly MYR-196)
 reginfo.lock_type >= TL_READ                                       ## Still present ftm ## https://bugs.mysql.com/bug.php?id=74740 (old PS #1384679) (also see near end of file 74740)
 .mysql_bin_log.is_open                                                                  ## https://bugs.mysql.com/bug.php?id=76614
 m_owner .= __null                                                                       ## https://tokutek.atlassian.net/browse/DB-1017
@@ -780,6 +782,7 @@ ZN7ha_heap10delete_rowEPKh                                                      
 #ZN9ha_myisam5extraE17ha_extra_function                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=76946
 ZN9ha_myisam9write_rowEPh                                                               ## https://bugs.mysql.com/bug.php?id=75083
 ZN9PROFILING13status_changeEPKcS1_S1_j                                                  ## https://bugs.mysql.com/bug.php?id=84826
+ZNK7myrocks16Rdb_dict_manager9get_valueERKN7rocksdb5SliceEPSs                           ## https://jira.percona.com/browse/MYR-221
 ZNK13QUERY_PROFILE13get_profilingEv                                                     ## https://bugs.mysql.com/bug.php?id=84826
 #ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74953 (Duplicate of internal Bug#17846865)
 #ZN10Item_fieldC2EP5Field                                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=74628

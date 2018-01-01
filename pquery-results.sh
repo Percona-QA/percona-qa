@@ -218,7 +218,7 @@ OOS1=$(grep "Out of disk space" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
 OOS2=$(grep "InnoDB: Error while writing" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
 OOS3=$(grep "bytes should have been written" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
 OOS4=$(grep "Operating system error number 28" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
-OOS5=$(ls -s */data/core* | grep -o "^ *0 [^/]\+" | awk '{print $2}' | tr '\n' ' ')
+OOS5=$(ls -s */data/core* 2>/dev/null | grep -o "^ *0 [^/]\+" | awk '{print $2}' | tr '\n' ' ')
 OOS="$(echo "${OOS1} ${OOS2} ${OOS3} ${OOS4} ${OOS5}" | sed "s|  | |g")"
 if [ "$(echo "${OOS}" | sed "s| ||g")" != "" ]; then
   echo "================ Likely out of disk space trials:"
