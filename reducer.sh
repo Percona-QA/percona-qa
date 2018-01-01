@@ -3966,8 +3966,8 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
          # TODO: add situation where PRIMARY KEY is last column (i.e. remove comma on preceding line)
     elif [ $TRIAL -eq 51  ]; then sed -e "s/PRIMARY[ ]*KEY[ ]*(\(.*\))/KEY (\1)/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 52  ]; then sed -e "s/KEY[ ]*(\(.*\),.*)/KEY(\1)/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 53  ]; then sed -e "s/ ENGINE=MEMORY/ENGINE=InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 54  ]; then sed -e "s/ ENGINE=MyISAM/ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 53  ]; then sed -e "s/INNR/I/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 54  ]; then sed -e "s/OUTR/O/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 55  ]; then sed -e "s/,LOAD_FILE('[A-Za-z0-9\/.]*'),/,'',/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 56  ]; then sed -e "s/_tinyint/ti/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 57  ]; then sed -e "s/_smallint/si/g" $WORKF > $WORKT
@@ -4051,20 +4051,27 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 135 ]; then sed -e "s/set[ ]*('','','','',/SET('',/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 136 ]; then sed -e "s/set[ ]*('','','',/SET('',/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 137 ]; then sed -e "s/set[ ]*('','',/SET('',/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 138 ]; then sed -e "s/INNR/I/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 139 ]; then sed -e "s/OUTR/O/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 140 ]; then sed -e 's/[\t ]\+/ /g' -e 's/ \([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
-    elif [ $TRIAL -eq 141 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 142 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 143 ]; then sed -e "s/;.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 144 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT  # NOSKIP as lenght of 'TokuDB' is same as 'InnoDB'
-    elif [ $TRIAL -eq 145 ]; then sed -e "s/RocksDB/InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 146 ]; then sed "s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 147 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 148 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 149 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 150 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 151 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 138 ]; then sed -e "s/ ENGINE=MEMORY/ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 139 ]; then sed -e "s/ ENGINE=MyISAM/ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 140 ]; then sed -e "s/ ENGINE=CSV/ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 141 ]; then sed -e "s/ ENGINE=TokuDB/ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 142 ]; then sed -e "s/ ENGINE=RocksDB/ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 143 ]; then sed -e "s/ ENGINE=RocksDB/ENGINE=None/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 144 ]; then sed -e "s/ ENGINE=[A-Za-z_-]\+/ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 145 ]; then sed -e "s/ ENGINE=[A-Za-z_-]\+//gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 146 ]; then sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 147 ]; then sed -e "s/RocksDB/InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 148 ]; then sed -e 's/[\t ]\+/ /g' -e 's/ \([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 149 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 150 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 151 ]; then sed -e "s/;.*/;/" $WORKF > $WORKT
+    elif [ $TRIAL -eq 152 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT  # NOSKIP as lenght of 'TokuDB' is same as 'InnoDB'
+    elif [ $TRIAL -eq 153 ]; then sed "s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 154 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 155 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 156 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 157 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 158 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`

@@ -735,6 +735,7 @@ Z20get_parts_for_updatePKhPhS0_P14partition_infoPjS4_Px                         
 Z20sp_revoke_privilegesP3THDPKcS2_b                                                     ## https://bugs.launchpad.net/percona-server/+bug/1403833
 #Z21convert_error_messagePcjPK15charset_info_stPKcjS2_Pj                       ## Fixed ## https://bugs.launchpad.net/percona-server/5.6/+bug/1394987 (dup of 1387951)
 #Z20ha_release_savepointP3THDP12st_savepoint                                   ## Fixed ## https://tokutek.atlassian.net/browse/DB-765 (fixed in 5.6.23/Tk7.5.6)
+ZN10Table_nodeC2EPK5TABLE                                                               ## https://jira.percona.com/browse/PS-290
 Z21handle_alter_part_endP18st_lock_param_typeb                                          ## https://bugs.mysql.com/bug.php?id=78496
 #Z20toku_env_is_panickedP13__toku_db_env                                       ## Fixed ftm ## https://tokutek.atlassian.net/browse/DB-821 (fixed in tokudb-7.5.6)
 Z21convert_error_messagePcjPK15charset_info_stPKcjS2_Pj                                 ## https://bugs.launchpad.net/percona-server/5.6/+bug/1394987
