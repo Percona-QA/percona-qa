@@ -42,6 +42,10 @@ However, for issues that fail to reproduce, try these things (in this order):
   to use the resulting (doubled up) file as the new testcase & restart reducer. Example: one issue failed to reproduce, but using 3x original testcase cat into
   one file worked. The testcase was still reduced to normal size.
 
+* If you ever run into a situation where reducer happily reduces from many (10-30k) lines to ~30 lines and then gets completely stuck, just re-start the
+  reduction altogether. The random chunk selection may make the issue more/less reproducible/pronounced. Note; this happens only infrequently (that it 
+  gets stuck in such a solid way) - usually with a few tweaks further reduction is possible.
+
 * Is the issue a failing shutdown, server hang, or runaway query? Use the new MODE=0 in reducer.sh if the issue does not produce any specific output. If the
   issue does produce specific output, and there is still a time-delay of any sort which highlights the issue, use TIMEOUT_COMMAND instead (with any mode)
 

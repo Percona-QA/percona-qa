@@ -203,6 +203,7 @@ rem0rec.cc line 872                                      ## MS5.7 # https://bugs
 trx0trx.cc line 1297                                     ## beta  # https://bugs.mysql.com/bug.php?id=79349
 trx0trx.cc line 1262                                     ## MS5.7 # https://bugs.mysql.com/bug.php?id=79349 (same bug as trx0trx.cc line 1297 on PS)
 #thd->get_transaction                           ## Fixed ## beta  # https://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)  ## Fixed in PS 5.7.10-rc1
+thd->get_transaction                                              # https://jira.percona.com/browse/PS-291 (5.7.20)
 #sync0policy.ic line 63                                  ## MS5.7 # https://bugs.mysql.com/bug.php?id=79391 (MS version of PS #1519201) (remarked to not miss anything in PS)
 #buf0buf.ic line 230                                     ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519201 (PS version of MS #79391)  ## Fixed in PS 5.7.10-rc1
 #ha_innodb.cc line 18605                                 ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519204 (duplicate of 1368552) ## Fixed in PS 5.7.10-rc2
@@ -221,6 +222,7 @@ get_state                                                ## MS5.7 # https://bugs
 #ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=86249
 ha_innodb.cc line 8210                                       ## MS5.7 # https://bugs.mysql.com/bug.php?id=79821 (debug)
 ha_innodb.cc line 8621                                       ## ^     # https://bugs.mysql.com/bug.php?id=79821 (PS 5.7, debug)
+ha_innodb.cc line 9408                                       ## ^     # https://bugs.mysql.com/bug.php?id=79821 (PS 5.7.20, debug)
 Z18row_search_no_mvccPh15page_cur_mode_tP14row_prebuilt_tmm  ## ^     # https://bugs.mysql.com/bug.php?id=79821 (PS 5.7, opt)
 #strlen.m_ptr                                   ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=79905  
 ZN17sys_var_pluginvar14session_updateEP3THDP7set_var     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1532635
@@ -583,10 +585,12 @@ inited == NONE                                                                  
 inited == INDEX                                                                         ## https://bugs.launchpad.net/percona-server/+bug/1713700
 #item_in->left_expr->cols  ## Get better or different 5.6 testcase ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74357 (was 80440) (Fixed in 5.7.6) Mailed Umesh for 5.6
 keys >= 0.0                                                                             ## https://jira.percona.com/browse/MYR-190
+key->flags . 1                                                                          ## https://bugs.mysql.com/bug.php?id=89087
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## https://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## https://bugs.mysql.com/bug.php?id=74646
 .length % 4                                                                             ## https://bugs.mysql.com/bug.php?id=74220
-#length > 0                                                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=85059
+#length > 0                                                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=85059 (fixed in 8.0 only, ref bug below)
+length > 0                                                                              ## https://bugs.mysql.com/bug.php?id=89088 (5.7 request for 85059 backport)
 length > 0 .. keyparts .= 0                                                             ## https://bugs.mysql.com/bug.php?id=76604
 length <= max_data_length                                                               ## https://bugs.mysql.com/bug.php?id=75648
 lex.sphead == __null                                                                    ## https://bugs.mysql.com/bug.php?id=74537

@@ -353,7 +353,7 @@ TS_VARIABILITY_SLEEP=1
 # $WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
-# === Check TokuDB & RocksDB storage engine availability, and cleanup MYEXTRA to remove the related options
+# === Check TokuDB & RocksDB storage engine options, .so availability, split options into ROCKSDB and TOKUDB variables, and cleanup MYEXTRA to remove the related options
 # SE Removal approach; 1) If the engine is referred to by .so reference in MYEXTRA, reducer.sh uses it, but reducer.sh ensure the engine .so file exists
 #                      2) Any reference to the engine is removed from MYEXTRA and stored in two variables TOKUDB/ROCKSDB to allow more control/testcase reducability
 #                      3) Testcase reduction removal of engines (one-by-one) is tested in STAGE9
@@ -361,7 +361,7 @@ TOKUDB=
 ROCKSDB=
 if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
   if [ -r ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
-    ROCKSDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin-[^ ]\+ha_rocksdb.so")"  # Grep all text after '--plugin-' upto the last 'ha_rocksdb.so' followed by a space
+    ROCKSDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin[-_][^ ]\+ha_rocksdb.so")"  # Grep all text including and after ' --plugin[-_]' (upto any space as a new option starts there) upto and including the last 'ha_rocksdb.so' for that option
     MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${ROCKSDB}||g")"
     # The below issues should never happen in the Percona pquery framework as we simply use;
     # --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --init-file=/home/roel/percona-qa/plugins_57.sql
@@ -372,7 +372,7 @@ if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
       echo "Please simplify it, or improve the code in reducer.sh which handles this (search for this text)."
       echo "Terminating now."
       exit 1
-    elif [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
+    elif [[ "${ROCKSDB}" == *"ha_tokudb.so"* ]]; then
       echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
       echo "It looks like the ha_tokudb.so plugin load call was nested inside the --plugin-load[-add]=...ha_rocksdb.so plugin load call."
       echo "Please simplify it by using a separate --plugin-load-add for each engine, or improve the code in reducer.sh which handles this (search for this text) to extract the TokuDB load code into the TOKUDB variable at this point in the code (complex)."
@@ -387,11 +387,11 @@ if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
 fi
 if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
   if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
-    TOKUDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin-[^ ]\+ha_tokudb.so")"  # Grep all text after '--plugin-' upto the last 'ha_tokudb.so' followed by a space
+    TOKUDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin[-_][^ ]\+ha_tokudb.so")"  # Grep all text including and after '--plugin[-_]' (upto any space as a new option starts there) upto and including the last 'ha_tokudb.so' for that option
     MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDB}||g")"
-    if [[ "${MYEXTRA}" == *"--tokudb-check-jemalloc"* ]]; then
-      TOKUDBCJ=
-      TOKUDBCJ="$(echo "${MYEXTRA}" | grep -o "\-\-tokudb-check-jemalloc[^ ]\+")"  # Grep all text after '--tokudb-check-jemalloc' upto the first space
+    if [[ "${MYEXTRA}" == *"--tokudb[-_]check[-_]jemalloc"* ]]; then
+      TOKUDBJC=      
+      TOKUDBJC="$(echo "${MYEXTRA}" | grep -o "\-\-tokudb[-_]check[-_]jemalloc[^ ]\+")"  # Grep all text including and after '--tokudb[-_]check[-_]jemalloc' upto the first space
       TOKUDB="$(echo "${TOKUDB} ${TOKUDBCJ}")"
       MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDBCJ}||g")"
     fi
@@ -401,7 +401,7 @@ if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
       echo "Please simplify it, or improve the code in reducer.sh which handles this (search for this text)."
       echo "Terminating now."
       exit 1
-    elif [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
+    elif [[ "${TOKUDB}" == *"ha_rocksdb.so"* ]]; then
       echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
       echo "It looks like the ha_rocksdb.so plugin load call was nested inside the --plugin-load[-add]=...ha_tokudb.so plugin load call."
       echo "Please simplify it by using a separate --plugin-load-add for each engine, or improve the code in reducer.sh which handles this (search for this text) to extract the RocksDB load code into the ROCKSDB variable at this point in the code (complex)."
@@ -414,10 +414,42 @@ if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
     exit 1
   fi
 fi
-if [[ "${MYEXTRA}" == *"--tokudb-check-jemalloc"* ]]; then
+if [[ "${MYEXTRA}" == *"--tokudb[-_]check[-_]jemalloc"* ]]; then
   echo "Error: MYEXTRA contains --tokudb-check-jemalloc, yet ha_tokudb.so is not present in the MYEXTRA string."
   echo "Terminating now."
   exit 1
+fi
+
+# === Check Binary logging options, split it into a BINLOG variable, and cleanup MYEXTRA to remove the related options
+if [[ "${MYEXTRA}" == *"server[-_]id"* ]]; then
+  if [[ ! "${MYEXTRA}" == *"log[-_]bin"* ]]; then
+    echo "Error: --server-id is present in MYEXTRA whereas --log-bin is not. Please fix this."
+    echo "Terminating now."
+    exit 1
+  fi
+fi
+BINLOG=
+if [[ "${MYEXTRA}" == *"log[-_]bin"* ]]; then
+  if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[1567]|8\.[0]' | head -n1)" =~ "^5.[156]$" ]]; then  # version is 5.7 or 8.0 and NOT 5.1, 5.5 or 5.6, i.e. --server-id is required
+    if [[ ! "${MYEXTRA}" == *"server[-_]id"* ]]; then
+      echo "Error: The version of mysqld is 5.7 or 8.0 and a --bin-log option was passed in MYEXTRA, yet no --server-id option was found whereas this is required for 5.7 and 8.0."
+      echo "Terminating now."
+      exit 1
+    fi
+  fi
+  BINLOG="$(echo "${MYEXTRA}" | grep -o "\-\-log[-_]bin[^ ]")"  # Grep all text including and after '--log[-_]bin' upto a space
+  MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${BINLOG}||g")"
+  if [[ "${MYEXTRA}" == *"--server[-_]id"* ]]; then
+    BINLOGSI=
+    BINLOGSI="$(echo "${MYEXTRA}" | grep -o "\-\-server[-_]id[^ ]\+")"  # Grep all text including and after '--tokudb[-_]check[-_]jemalloc' upto the first space 
+    BINLOG="$(echo "${BINLOG} ${BINLOGSI}")" 
+    MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${BINLOGSI}||g")"
+  fi
+  if [[ ! "${MYEXTRA}" == *"server[-_]id"* ]]; then
+    echo "Error: --server-id seems to be present twice in MYEXTRA. Please remove at least one instance."
+    echo "Terminating now."
+    exit 1
+  fi
 fi
 
 # For GLIBC crash reduction, we need to capture the output of the console from which reducer.sh is started. Currently only a SINGLE threaded solution using the 'scrip'
@@ -1449,7 +1481,7 @@ init_workdir_and_files(){
   else
     echo_out "[Init] Using the pquery client for SQL replay"
   fi
-  if [ -n "$MYEXTRA" ]; then echo_out "[Init] Passing the following additional options to mysqld: $MYEXTRA"; fi
+  if [ -n "$MYEXTRA" -o -n "$TOKUDB" -o -n "$ROCKSDB" ]; then echo_out "[Init] Passing the following additional options to mysqld: $TOKUDB $ROCKSDB $BINLOG $MYEXTRA"; fi
   if [ $MODE -ge 6 ]; then 
     if [ $TS_TRXS_SETS -eq 1 ]; then echo_out "[Init] ThreadSync: using last transaction set (accross threads) only"; fi
     if [ $TS_TRXS_SETS -gt 1 ]; then echo_out "[Init] ThreadSync: using last $TS_TRXS_SETS transaction sets (accross threads) only"; fi
@@ -2005,7 +2037,7 @@ gr_start_main(){
 }
 
 start_mysqld_main(){
-  COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
+  COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} ${TOKUDB} ${ROCKSDB} | wc -w`
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH}/socket.sock)...\"" >> $WORK_START
@@ -2014,33 +2046,26 @@ start_mysqld_main(){
   echo "BIN=\`find \${BASEDIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
   SCHEDULER_OR_NOT=
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
+  ORIGINAL_MYEXTRA_FOR_WORK_START=$MYEXTRA  # This variable is used in finish() to remove the original then add the possibly-reduced (stage 8) one
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT $TOKUDB $ROCKSDB $BINLOG $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
-    if [ "${CHK_LOGBIN}" == "1" ];then
-      CMD=$(echo $CMD | sed   "s|--no-defaults|--no-defaults --server-id=1|")
-      sed -i "s|--no-defaults|--no-defaults --server-id=1|" $WORK_START
-    fi
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $TOKUDB $ROCKSDB $BINLOG $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
   else
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
-                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
+                         --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock $TOKUDB $ROCKSDB $BINLOG $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}\
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
-    if [ "${CHK_LOGBIN}" == "1" ];then
-      CMD=$(echo $CMD | sed   "s|--no-defaults|--no-defaults --server-id=1|")
-      sed -i "s|--no-defaults|--no-defaults --server-id=1|" $WORK_START
-    fi
+                         --user=$MYUSER $TOKUDB $ROCKSDB $BINLOG $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
@@ -2072,7 +2097,7 @@ start_valgrind_mysqld_main(){
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
   CMD="${TIMEOUT_COMMAND} valgrind --suppressions=$BASEDIR/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
               ${BIN} --basedir=${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
-                              --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $MYEXTRA $TOKUDB $ROCKSDB \
+                              --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock --user=$MYUSER $TOKUDB $ROCKSDB $BINLOG $MYEXTRA \
                               --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
                               # Workaround for BUG#12939557 (when old Valgrind version is used): --innodb_checksum_algorithm=none 
   MYSQLD_START_TIME=$(date +'%s')
@@ -2089,7 +2114,7 @@ start_valgrind_mysqld_main(){
   echo "valgrind --suppressions=\${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
        \$BIN --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
-       --socket=$WORKD/socket.sock $MYEXTRA $TOKUDB $ROCKSDB ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
+       --socket=$WORKD/socket.sock $TOKUDB $ROCKSDB $BINLOG $MYEXTRA ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START_VALGRIND
   sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START_VALGRIND
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START_VALGRIND
@@ -2437,13 +2462,9 @@ cleanup_and_save(){
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Previous good testcase backed up as $WORKO.prev"
     fi
     grep -E --binary-files=text -v "^# mysqld options required for replay:" $WORKT > $WORKO
-    MYSQLD_OPTIONS_REQUIRED=$(echo "$TOKUDB $ROCKSDB $MYEXTRA" | sed "s|[ \t]\+| |g")
+    MYSQLD_OPTIONS_REQUIRED=$(echo "$TOKUDB $ROCKSDB $BINLOG $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
-      if [ "${CHK_LOGBIN}" == "1" ];then
-        sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED --server-id=1" $WORKO
-      else
-        sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
-      fi
+      sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
     fi
     MYSQLD_OPTIONS_REQUIRED=
     cp -f $WORKO $WORK_OUT
@@ -2844,22 +2865,14 @@ stop_mysqld_or_pxc(){
 }
 
 finish(){
-  if [ "${STAGE}" != "" -a "${STAGE8_CHK}" != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
-    if [ ${STAGE} -gt 8 ]; then
-      if [ "${CHK_LOGBIN}" == "1" ];then
-        if echo ${STAGE8_OPT} | grep -q "\--server.id" ; then
-          MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
-          sed -i "s/--server-id=1/${STAGE8_OPT}/g" $WORK_START
-        else
-          MYEXTRA="$MYEXTRA --server-id=1"
-        fi
-      fi
-      if [ ${STAGE8_CHK} -eq 0 ]; then
-        if ! echo ${STAGE8_OPT} | grep -q "\--server.id" ; then
+  if [ "${STAGE}" != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
+    if [ ${STAGE} -ge 8 ]; then
+      if [ "${STAGE8_CHK}" != "" ]; then  
+        if [ ${STAGE8_CHK} -eq 0 ]; then
           export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
         fi
-        #sed -i "s|error.log.out|error.log.out $MYEXTRA |" $WORK_START
       fi
+      sed -i "s|$ORIGINAL_MYEXTRA_FOR_WORK_START|$MYEXTRA|" $WORK_START
     fi
   fi
   echo_out "[Finish] Finalized reducing SQL input file ($INPUTFILE)"
@@ -2890,9 +2903,9 @@ finish(){
   fi
   echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
-    MYSQLD_OPTIONS_REQUIRED=$(echo "$TOKUDB $ROCKSDB $MYEXTRA" | sed "s|[ \t]\+| |g")
+    MYSQLD_OPTIONS_REQUIRED=$(echo "$TOKUDB $ROCKSDB $BINLOG $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then  
-      echo_out "[Finish] mysqld options required for replay: $TOKUDB $ROCKSDB $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
+      echo_out "[Finish] mysqld options required for replay: $TOKUDB $ROCKSDB $BINLOG $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
     fi
     MYSQLD_OPTIONS_REQUIRED=
     if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
@@ -4144,6 +4157,7 @@ fi
 if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   STAGE=8
   TRIAL=1
+  STAGE8_CHK=0
   echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
   COUNT_MYEXTRA=`echo ${MYEXTRA} | wc -w`
   FILE1="$WORKD/file1"
@@ -4155,21 +4169,6 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   }
 
   myextra_check
-
-  #binary log server-id startup option check with 5.7 version
-  logbin_startup_chk(){
-    if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]|8\.[0]' | head -n1)" =~ ^5.[56]$ ]]; then
-      if echo "${MYEXTRA}" | grep -E --binary-files=text '\--log-bin'; then
-        if ! echo "${MYEXTRA}" | grep -E --binary-files=text '\--server-id'; then
-          CHK_LOGBIN=1
-        else
-          CHK_LOGBIN=0
-        fi
-      fi
-    else
-      CHK_LOGBIN=0
-    fi
-  }
 
   myextra_reduction(){
     while read line; do
@@ -4242,39 +4241,49 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   fi
 fi
 
-#STAGE9: Execute storage engine option simplification.
+#STAGE9: Execute storage engine and binlogging options simplification.
 if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
   TRIAL=1
-  STAGE=9
-  if [[ -z $TOKUDB ]] && [[ -z $ROCKSDB ]]  ;then 
-   echo_out "$ATLEASTONCE [Stage $STAGE] Skipping this stage as no extraneous storage engines were detected"
-  else
-    if [[ ! -z $TOKUDB ]] ;then
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup option"
-      STAGE9_CHK=0
-      STAGE9_NOT_STARTED_CORRECTLY=0
-      SAFE_TOKUDB=$TOKUDB
-      TOKUDB="";
-      run_and_check
-      if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
-        TOKUDB="$SAFE_TOKUDB"
-        sed -i "s|--no-defaults|--no-defaults $TOKUDB|" $WORK_START
-      fi
-      TRIAL=$[$TRIAL+1]
+  STAGE=9 
+  STAGE9_NOT_STARTED_CORRECTLY=0
+  if [[ ! -z $TOKUDB ]] ;then
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup options"
+    STAGE9_CHK=0
+    STAGE9_NOT_STARTED_CORRECTLY=0
+    SAFE_TOKUDB=$TOKUDB
+    TOKUDB="";
+    run_and_check
+    if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
+      TOKUDB="$SAFE_TOKUDB"
+      sed -i "s|--no-defaults|--no-defaults $TOKUDB|" $WORK_START
     fi
-    if [[ ! -z $ROCKSDB ]];then
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup option"
-      STAGE9_CHK=0
-      STAGE9_NOT_STARTED_CORRECTLY=0
-      SAFE_ROCKSDB=$ROCKSDB
-      ROCKSDB="";
-      run_and_check
-      if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
-        ROCKSDB="$SAFE_ROCKSDB"
-        sed -i "s|--no-defaults|--no-defaults $ROCKSDB|" $WORK_START
-      fi
-      TRIAL=$[$TRIAL+1]
+    TRIAL=$[$TRIAL+1]
+  fi
+  if [[ ! -z $ROCKSDB ]];then
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup options"
+    STAGE9_CHK=0
+    STAGE9_NOT_STARTED_CORRECTLY=0
+    SAFE_ROCKSDB=$ROCKSDB
+    ROCKSDB="";
+    run_and_check
+    if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
+      ROCKSDB="$SAFE_ROCKSDB"
+      sed -i "s|--no-defaults|--no-defaults $ROCKSDB|" $WORK_START
     fi
+    TRIAL=$[$TRIAL+1]
+  fi
+  if [[ ! -z $BINLOG ]];then
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing Binary logging from startup options"
+    STAGE9_CHK=0
+    STAGE9_NOT_STARTED_CORRECTLY=0
+    SAFE_BINLOG=$BINLOG
+    BINLOG="";
+    run_and_check
+    if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then
+      BINLOG="$SAFE_BINLOG"
+      sed -i "s|--no-defaults|--no-defaults $BINLOG|" $WORK_START
+    fi
+    TRIAL=$[$TRIAL+1]
   fi
 fi
 
