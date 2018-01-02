@@ -894,6 +894,8 @@ ZN18st_select_lex_unit4execEv                                                   
 ZN8Item_row7val_strEP6String                                                            ## https://bugs.mysql.com/bug.php?id=57552 and 76468
 ZNK4Item10field_typeEv                                                                  ## https://bugs.mysql.com/bug.php?id=81532
 ZN15Event_scheduler5startEPi                                                            ## https://bugs.launchpad.net/percona-server/+bug/1587195
+ZN7keyring10Vault_curl8read_keyERKNS_9Vault_keyEPNSt7__cxx1112basic_stringIcSt11char_traitsIcENS_16Secure_allocatorIcEEEE  ## https://jira.percona.com/browse/PS-264
+Z24plugin_foreach_with_maskP3THDPPFcS0_PP13st_plugin_intPvEijS4_                                                           ## https://jira.percona.com/browse/PS-264
 
 ## =========== Error log crashing query based ===========
 ^Query ([0-9a-f]\+): SELECT.*FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG$                  ## https://bugs.launchpad.net/percona-server/+bug/1375153
