@@ -195,50 +195,50 @@ thd->variables.gtid_next.type == AUTOMATIC_GROUP         ## https://bugs.mysql.c
 
 ## =========== PS 5.7 Beta & GA ===========
 buf0lru.cc line 2259                                     ## https://bugs.launchpad.net/percona-server/+bug/1553166
-#ZN8Item_row7val_strEP6String                   ## Fixed ## alpha # https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
-#btr0cur.cc line 830                            ## Fixed ## beta  # https://bugs.launchpad.net/percona-server/+bug/1517757  ## Fixed in PS 5.7.10-2rc2
+#ZN8Item_row7val_strEP6String                   ## Fixed ## alpha ## https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
+#btr0cur.cc line 830                            ## Fixed ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1517757  ## Fixed in PS 5.7.10-2rc2
 row0ins.cc line 282                                      ## https://bugs.launchpad.net/percona-server/+bug/1553883
-rem0rec.cc line 886                                      ## MS5.7 # https://bugs.mysql.com/bug.php?id=80681
-rem0rec.cc line 872                                      ## MS5.7 # https://bugs.mysql.com/bug.php?id=79794
-trx0trx.cc line 1297                                     ## beta  # https://bugs.mysql.com/bug.php?id=79349
-trx0trx.cc line 1262                                     ## MS5.7 # https://bugs.mysql.com/bug.php?id=79349 (same bug as trx0trx.cc line 1297 on PS)
-#thd->get_transaction                           ## Fixed ## beta  # https://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)  ## Fixed in PS 5.7.10-rc1
-thd->get_transaction                                              # https://jira.percona.com/browse/PS-291 (5.7.20)
-#sync0policy.ic line 63                                  ## MS5.7 # https://bugs.mysql.com/bug.php?id=79391 (MS version of PS #1519201) (remarked to not miss anything in PS)
-#buf0buf.ic line 230                                     ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519201 (PS version of MS #79391)  ## Fixed in PS 5.7.10-rc1
-#ha_innodb.cc line 18605                                 ## beta  # https://bugs.launchpad.net/percona-server/+bug/1519204 (duplicate of 1368552) ## Fixed in PS 5.7.10-rc2
-ZN12ha_myisammrg15detach_childrenEv                      ## MS5.7 # https://bugs.mysql.com/bug.php?id=79392
-#trx0sys.cc line 1265                           ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=79416 (same line for PS&MS)
-#ha_innodb.cc line 2653                         ## Fixed ## beta  # https://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on PS)
-#ha_innodb.cc line 2444                         ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on MS)
-ZN13st_select_lex19make_active_optionsEyy                ## MS5.7 # https://bugs.mysql.com/bug.php?id=79417
+rem0rec.cc line 886                                      ## MS5.7 ## https://bugs.mysql.com/bug.php?id=80681
+rem0rec.cc line 872                                      ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79794
+trx0trx.cc line 1297                                     ## beta  ## https://bugs.mysql.com/bug.php?id=79349
+trx0trx.cc line 1262                                     ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79349 (same bug as trx0trx.cc line 1297 on PS)
+#thd->get_transaction                           ## Fixed ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)  ## Fixed in PS 5.7.10-rc1
+thd->get_transaction                                              ## https://jira.percona.com/browse/PS-291 (5.7.20)
+#sync0policy.ic line 63                                  ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79391 (MS version of PS #1519201) (remarked to not miss anything in PS)
+#buf0buf.ic line 230                                     ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1519201 (PS version of MS #79391)  ## Fixed in PS 5.7.10-rc1
+#ha_innodb.cc line 18605                                 ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1519204 (duplicate of 1368552) ## Fixed in PS 5.7.10-rc2
+ZN12ha_myisammrg15detach_childrenEv                      ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79392
+#trx0sys.cc line 1265                           ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79416 (same line for PS&MS)
+#ha_innodb.cc line 2653                         ## Fixed ## beta  ## https://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on PS)
+#ha_innodb.cc line 2444                         ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on MS)
+ZN13st_select_lex19make_active_optionsEyy                ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79417
 # m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespace, .., .., MDL_INTENTION_EXCLUSIVE ## beta # https://bugs.launchpad.net/percona-server/+bug/1520401  # No longer present? Ref bug report
 thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE ## MS5.7 # https://bugs.mysql.com/bug.php?id=79820
-#.old_mh->m_key == key                                   ## beta  # https://bugs.launchpad.net/percona-server/+bug/1534874  ## Fixed in PS 5.7.10-2rc2  
-#..HA_ATTACHABLE_TRX_COMPATIBLE is not set.              ## beta  # https://bugs.launchpad.net/percona-server/+bug/1520403 (duplicate of 1488055) ## Fixed in PS 5.7.10-rc1
-#fsp0fsp.cc line 766                                     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1529555  ## Fixed in PS 5.7.10-2rc2
-get_state                                                ## MS5.7 # https://bugs.mysql.com/bug.php?id=80168
-#ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=79801 (Fixed in 5.8 only, ref 86249)
-#ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=86249
-ha_innodb.cc line 8210                                       ## MS5.7 # https://bugs.mysql.com/bug.php?id=79821 (debug)
-ha_innodb.cc line 8621                                       ## ^     # https://bugs.mysql.com/bug.php?id=79821 (PS 5.7, debug)
-ha_innodb.cc line 9408                                       ## ^     # https://bugs.mysql.com/bug.php?id=79821 (PS 5.7.20, debug)
-Z18row_search_no_mvccPh15page_cur_mode_tP14row_prebuilt_tmm  ## ^     # https://bugs.mysql.com/bug.php?id=79821 (PS 5.7, opt)
-#strlen.m_ptr                                   ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=79905  
-ZN17sys_var_pluginvar14session_updateEP3THDP7set_var     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1532635
-length == 0 .. json_binary..parse_binary.ptr, length     ## RC1   # https://bugs.launchpad.net/percona-server/+bug/1536469
-trx->undo_no == 0                                        ## MS5.7 # https://bugs.mysql.com/bug.php?id=74876 (duplicated by 80062(74363))
-type...!                                                 ## MS5.7 # https://bugs.mysql.com/bug.php?id=80094
+#.old_mh->m_key == key                                   ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1534874  ## Fixed in PS 5.7.10-2rc2  
+#..HA_ATTACHABLE_TRX_COMPATIBLE is not set.              ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1520403 (duplicate of 1488055) ## Fixed in PS 5.7.10-rc1
+#fsp0fsp.cc line 766                                     ## RC1   ## https://bugs.launchpad.net/percona-server/+bug/1529555  ## Fixed in PS 5.7.10-2rc2
+get_state                                                ## MS5.7 ## https://bugs.mysql.com/bug.php?id=80168
+#ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79801 (Fixed in 5.8 only, ref 86249)
+#ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=86249
+ha_innodb.cc line 8210                                   ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79821 (debug)
+ha_innodb.cc line 8621                                       ## ^ ## https://bugs.mysql.com/bug.php?id=79821 (PS 5.7, debug)
+ha_innodb.cc line 9408                                       ## ^ ## https://bugs.mysql.com/bug.php?id=79821 (PS 5.7.20, debug)
+Z18row_search_no_mvccPh15page_cur_mode_tP14row_prebuilt_tmm  ## ^ ## https://bugs.mysql.com/bug.php?id=79821 (PS 5.7, opt)
+#strlen.m_ptr                                   ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79905  
+ZN17sys_var_pluginvar14session_updateEP3THDP7set_var     ## RC1   ## https://bugs.launchpad.net/percona-server/+bug/1532635
+length == 0 .. json_binary..parse_binary.ptr, length     ## RC1   ## https://bugs.launchpad.net/percona-server/+bug/1536469
+trx->undo_no == 0                                        ## MS5.7 ## https://bugs.mysql.com/bug.php?id=74876 (duplicated by 80062(74363))
+type...!                                                 ## MS5.7 ## https://bugs.mysql.com/bug.php?id=80094
 #Z18mysql_audit_notifyP3THDjjz                                    ## Fixed ## PS5.6 # https://bugs.launchpad.net/percona-server/+bug/1538019
 #Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## Fixed ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1538019
 #Z18mysql_audit_notifyP3THD30mysql_event_general_subclass_tiPKcm  ## Fixed ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1544398 (Valgrind builds only)
-#ZN17sys_var_pluginvar13global_updateEP3THDP7set_var     ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=80152
-#Z15error_log_print8loglevelPKcP13__va_list_tag          ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=80153
-#ZN6UniqueD1Ev                                           ## Fixed ## MS5.7 # https://bugs.mysql.com/bug.php?id=80134 (Fixed in 5.5.50, 5.6.31, 5.7.13, 5.8.0 )
-#log0log.cc line 1251                                    ## Fixed ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1597143
-#log0log.cc line 1256                                    ## Fixed ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1597143
-log0log.cc line 562                                               ## PS5.7 # https://bugs.launchpad.net/percona-server/+bug/1660760
-log0log.cc line 556                                               ## ^ .18 # https://bugs.launchpad.net/percona-server/+bug/1660760
+#ZN17sys_var_pluginvar13global_updateEP3THDP7set_var     ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=80152
+#Z15error_log_print8loglevelPKcP13__va_list_tag          ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=80153
+#ZN6UniqueD1Ev                                           ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=80134 (Fixed in 5.5.50, 5.6.31, 5.7.13, 5.8.0 )
+#log0log.cc line 1251                                    ## Fixed ## PS5.7 ## https://bugs.launchpad.net/percona-server/+bug/1597143
+#log0log.cc line 1256                                    ## Fixed ## PS5.7 ## https://bugs.launchpad.net/percona-server/+bug/1597143
+log0log.cc line 562                                               ## PS5.7 ## https://bugs.launchpad.net/percona-server/+bug/1660760
+log0log.cc line 556                                               ## ^ .18 ## https://bugs.launchpad.net/percona-server/+bug/1660760
 log0log.cc line 1839                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 log0log.cc line 2199                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 Handlerton. share->file == NULL                                   ## PS5.7 # https://tokutek.atlassian.net/browse/FT-725
@@ -933,3 +933,4 @@ TEXT=.tab->ref.$                                                                
 TEXT=.cmp .= 0.$                                                                        ## https://jira.percona.com/browse/MYR-173
 TEXT=.ha_initialize_handlerton.$                                                        ## https://jira.percona.com/browse/MYR-204
 TEXT=.item->type.$                                                                      ## https://bugs.mysql.com/bug.php?id=88749
+TEXT=.plugin.                                                                           ## https://jira.percona.com/browse/MYR-222
