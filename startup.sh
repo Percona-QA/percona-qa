@@ -218,7 +218,8 @@ if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO
   echo "${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test;'" >> start
 fi
 
-echo "REPL_TYPE=\$1" > repl_setup
+echo '#!/usr/bin/env bash' > repl_setup
+echo "REPL_TYPE=\$1" >> repl_setup
 echo "if [[ \"\$REPL_TYPE\" = \"MSR\" ]]; then" >> repl_setup
 echo "  NODES=2" >> repl_setup
 echo "else" >> repl_setup
