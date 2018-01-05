@@ -46,11 +46,12 @@ read -p "Hit enter or CTRL-C now:"
 
 # EPEL
 if [ -z "$(yum list | grep 'epel-release.noarch')" ]; then
-  if (uname -a | grep -q "el7"); then
-    sudo su -c 'rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm'
-  elif (uname -a | grep -q "el6"); then
-    sudo su -c 'rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm'
-  fi
+  sudo yum install epel-release
+  #if (uname -a | grep -q "el7"); then
+  #  sudo su -c 'rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm'
+  #elif (uname -a | grep -q "el6"); then
+  #  sudo su -c 'rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm'
+  #fi
 fi
 
 # EPEL - Debuginfo packages enable (gives lots of output, but basically just sets 'enabled=1' in /etc/yum.repos.d/epel.repo for [epel-debuginfo] section
@@ -59,11 +60,11 @@ sudo yum-config-manager --enable epel-debuginfo
 # Software
 # Temporary removed sysbench from the list as it causes issues on Centos7 - see https://bugs.launchpad.net/sysbench/+bug/1340092
 sudo yum install kernel-devel wget patch make cmake automake autoconf bzr git htop man lsof gdb \
-     gcc gcc-c++ ncurses-devel ncurses-devel-5* libtool libaio libaio-devel bison jemalloc \
+     gcc gcc-c++ ncurses-devel ncurses-devel-5* libtool libaio libaio-devel bison libcurl-devel \
      valgrind perl-DBD-mysql perl-Time-HiRes cpan bzip2 valgrind-devel svn strace screen \
      hdparm pam-devel openssl openssl-devel gtest zlib zlib-devel zlib-static tree vim libasan \
-     yum-utils jemalloc-debuginfo readline-devel lshw lscpu iotop pymongo bats lzma lzma \
-     bzip2-devel snappy-dev boost-devel lz4-devel gflags-devel xz libcurl-devel
+     yum-utils readline-devel lshw lscpu iotop pymongo bats lzma lzma bzip2-devel snappy-dev \
+     boost-devel lz4-devel gflags-devel xz jemalloc jemalloc-devel jemalloc-debuginfo 
 
 sudo yum remove abrt  # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
 sudo yum remove pulseaudio*  # Only do this on servers, to avoid writing of pulse* files into /dev/shm. Best to leave on workstations (for audio)
