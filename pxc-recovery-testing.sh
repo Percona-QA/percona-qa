@@ -200,7 +200,7 @@ $SBENCH /usr/share/sysbench/oltp_insert.lua  --table-size=$TSIZE --tables=$TCOUN
 $SBENCH /usr/share/sysbench/oltp_read_write.lua  --table-size=$TSIZE --tables=$TCOUNT --mysql-db=test --mysql-user=root  --threads=$NUMT --db-driver=mysql --mysql-socket=/tmp/node1.sock --time=300 --events=1870000000 --db-ps-mode=disable run > $WORKDIR/logs/sysbench_read_write.txt 2>&1 &
 SPID="$!"
 sleep 10
-echo "Single node recovery test"
+echo "Starting single node recovery test"
 kill -9 ${MPID_ARRAY[2]}
 sleep 10
 kill -9 $SPID
@@ -209,5 +209,35 @@ $STARTUP_NODE3  > ${WORKDIR}/logs/node3.err 2>&1 &
 MPID="$!"
 MPID_ARRAY[2]=$MPID
 check_server_startup node3
+echo "Single node recovery test completed"
+
+sleep 10
+$SBENCH /usr/share/sysbench/oltp_read_write.lua  --table-size=$TSIZE --tables=$TCOUNT --mysql-db=test --mysql-user=root  --threads=$NUMT --db-driver=mysql --mysql-socket=/tmp/node1.sock --time=300 --events=1870000000 --db-ps-mode=disable run > $WORKDIR/logs/sysbench_read_write.txt 2>&1 &
+SPID="$!"
+sleep 20
+echo "Starting complete PXC recovery test"
+kill -9 ${MPID_ARRAY[0]} ${MPID_ARRAY[1]} ${MPID_ARRAY[2]}
+sleep 10
+kill -9 $SPID
+sed -i 's|safe_to_bootstrap: 0|safe_to_bootstrap: 1|' $node1/grastate.dat
+
+STARTUP_NODE1=$(cat $WORKDIR/node1_startup)
+$STARTUP_NODE1 --wsrep-new-cluster --tc-heuristic-recover=COMMIT > ${WORKDIR}/logs/node1.err 2>&1 &
+MPID="$!"
+MPID_ARRAY[0]=$MPID
+check_server_startup node1
+
+STARTUP_NODE2=$(cat $WORKDIR/node2_startup)
+$STARTUP_NODE2  > ${WORKDIR}/logs/node2.err 2>&1 &
+MPID="$!"
+MPID_ARRAY[1]=$MPID
+check_server_startup node2
+
+STARTUP_NODE3=$(cat $WORKDIR/node3_startup)
+$STARTUP_NODE3  > ${WORKDIR}/logs/node3.err 2>&1 &
+MPID="$!"
+MPID_ARRAY[2]=$MPID
+check_server_startup node3
+echo "Completed PXC recovery test"
 
 exit $EXTSTATUS
