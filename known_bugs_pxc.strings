@@ -1,6 +1,7 @@
 # ===== Known bugs  (https://jira.percona.com/browse/{MSE-nr}
 ## =========== Line number based ===========
 #ha_innodb.cc line 15656                                                         # Fixed ## https://jira.percona.com/browse/PXC-452
+ha_innodb.cc line 19502                                                                  ## https://jira.percona.com/browse/PXC-915
 ## =========== Assertion based ===========
 #.provider_resumed                                                               # Fixed ## https://jira.percona.com/browse/PXC-461
 #.strcmp.table_list->get_db_name                                                 # Fixed ## https://jira.percona.com/browse/PXC-453
@@ -57,6 +58,7 @@ pause_seqno_ .= .-1                                                             
 thd->enable_slow_log .. opt_slow_log                                                     ## http://bugs.mysql.com/bug.php?id=82899
 cnt <= keycache->blocks_used                                                             ## https://jira.percona.com/browse/PXC-733
 thd->security_context                                                                    ## https://github.com/codership/mysql-wsrep/issues/304
+thd->wsrep_trx_meta.gtid.seqno == .-1                                                    ## https://jira.percona.com/browse/PXC-914
 field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_LONGLONG                        ## https://jira.percona.com/browse/PXC-745
 trx0trx.cc line 697                                                                      ## https://jira.percona.com/browse/PXC-736
 pfs_mutex->m_class .= __null                                                             ## https://jira.percona.com/browse/PXC-746
