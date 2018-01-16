@@ -85,8 +85,9 @@ if [[ -z "$(which wget)" ]]; then
   exit 1
 fi
 
-if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" || "${PRODUCT}" = "mysql" ]]; then VERSION="5.7"; fi
-if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "mariadb" ]]; then VERSION="10.2"; fi
+if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" ]]; then VERSION="5.7"; fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "mysql" ]]; then VERSION="8.0"; fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.2"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="3.4"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then
   VERSION=$(wget -qO- https://www.mongodb.com/download-center\#community | grep -o -P "Current Stable Release \(.{3,10}\)" | grep -o -P "\(.{3,10}\)" | sed 's/(//' | sed 's/)//')
