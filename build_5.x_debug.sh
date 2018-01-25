@@ -1,17 +1,19 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-MAKE_THREADS=1      # Number of build threads. There may be a bug with >1 settings
-WITH_ROCKSDB=1      # 0 or 1  # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
-                              # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
-                              # This is also auto-turned off for all 5.5 and 5.6 builds 
-USE_CLANG=0         # Use the clang compiler instead of gcc
+MAKE_THREADS=1         # Number of build threads. There may be a bug with >1 settings
+WITH_ROCKSDB=1         # 0 or 1 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
+                                # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
+                                # This is also auto-turned off for all 5.5 and 5.6 builds 
+USE_CLANG=0            # 0 or 1 # Use the clang compiler instead of gcc
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"
 CLANGPP_LOCATION="${CLANG_LOCATION}++"
-USE_AFL=0           # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
+USE_AFL=0              # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
 AFL_LOCATION="/sda/afl/afl-2.52b"
-USE_BOOST_LOCATION=1
-BOOST_LOCATION=/git/PS-5.7-trunk/boost_1_59_0.tar.gz
+USE_BOOST_LOCATION=0   # 0 or 1 # Use a custom boost location to avoid boost re-download
+BOOST_LOCATION=/tmp/boost_074143/boost_1_65_0.tar.gz
+USE_CUSTOM_COMPILER=0  # 0 or 1 # Use a customer compiler
+CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
 
 # To install the latest clang from Chromium devs;
 # sudo yum remove clang    # Or sudo apt-get remove clang
@@ -66,8 +68,13 @@ else
   FB=1
 fi
 
+# Use CLANG compiler
 CLANG=
 if [ $USE_CLANG -eq 1 ]; then
+  if [ $USE_CUSTOM_COMPILER -eq 1 ]; then
+    echo "Both USE_CLANG and USE_CUSTOM_COMPILER are enabled, while they are mutually exclusive; this script can only one custom compiler! Terminating." 
+    exit 1
+  fi
   echo "======================================================"
   echo "Note: USE_CLANG is set to 1, using the clang compiler!"
   echo "======================================================"
@@ -75,16 +82,34 @@ if [ $USE_CLANG -eq 1 ]; then
   CLANG="-DCMAKE_C_COMPILER=$CLANG_LOCATION -DCMAKE_CXX_COMPILER=$CLANGPP_LOCATION"
 fi
 
+# Use AFL gcc/g++ wrapper as compiler
 AFL=
 if [ $USE_AFL -eq 1 ]; then
+  if [ $USE_CLANG -eq 1 ]; then
+    echo "Both USE_CLANG and USE_AFL are enabled, while they are mutually exclusive; this script can only one custom compiler! Terminating." 
+    exit 1
+  fi
+  if [ $USE_CUSTOM_COMPILER -eq 1 ]; then
+    echo "Both USE_AFL and USE_CUSTOM_COMPILER are enabled, while they are mutually exclusive; this script can only one custom compiler! Terminating." 
+    exit 1
+  fi
   echo "====================================================================="
   echo "Note: USE_AFL is set to 1, using the AFL gcc/g++ wrapper as compiler!"
   echo "====================================================================="
-  echo "Note: ftm, also excluding RocksDB and TokuDB"
+  echo "Note: ftm, AFL builds exclude RocksDB"
+  echo "====================================================================="
+  echo "Note: ftm, AFL builds require patching source code, ask Roel how to"
   echo "====================================================================="
   sleep 3
   WITH_ROCKSDB=0
-  AFL="-DWITH_TOKUDB=0 -DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
+  #AFL="-DWITH_TOKUDB=0 -DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
+  AFL="-DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
+fi
+
+# Use a custom compiler
+CUSTOM_COMPILER=
+if [ $USE_CUSTOM_COMPILER -eq 1 ]; then
+  CUSTOM_COMPILER="-DCMAKE_C_COMPILER=${CUSTOM_COMPILER_LOCATION}/gcc -DCMAKE_CXX_COMPILER=${CUSTOM_COMPILER_LOCATION}/g++"
 fi
 
 FLAGS=
@@ -93,15 +118,18 @@ FLAGS=
 # In the end, using -w (produce no warnings at all when AFL is used as warnings are treated as errors and this prevents afl-gcc/afl-g++ from completing)
 if [ $USE_AFL -eq 1 ]; then
   if [ $FB -eq 1 ]; then
-    FLAGS='-DCMAKE_C_FLAGS="-w" -DCMAKE_CXX_FLAGS="-w -march=native"'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
+    # The next line misses the -w but have not figured out a way to make the '-w' work in combination with '-march=native'
+    # Single quotes may work
+    FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
   else
-    FLAGS='-DCMAKE_C_FLAGS="-w" -DCMAKE_CXX_FLAGS="-w"'
+    FLAGS="-DCMAKE_CXX_FLAGS='-w'"
   fi
 else
   if [ $FB -eq 1 ]; then
-    FLAGS='-DCMAKE_CXX_FLAGS="-march=native"'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
+    FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
   fi
 fi
+FLAGS="-DCMAKE_CXX_FLAGS='-Wno-error'"
 
 CURPATH=$(echo $PWD | sed 's|.*/||')
 
@@ -131,11 +159,11 @@ fi
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build
-  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=1 -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
   # FB build
-  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=OFF -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=1 -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=1 -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 fi
 if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
