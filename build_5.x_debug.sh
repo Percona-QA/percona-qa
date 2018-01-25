@@ -10,7 +10,7 @@ CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"
 CLANGPP_LOCATION="${CLANG_LOCATION}++"
 USE_AFL=0              # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
 AFL_LOCATION="/sda/afl/afl-2.52b"
-USE_BOOST_LOCATION=0   # 0 or 1 # Use a custom boost location to avoid boost re-download
+USE_BOOST_LOCATION=1   # 0 or 1 # Use a custom boost location to avoid boost re-download
 BOOST_LOCATION=/tmp/boost_074143/boost_1_65_0.tar.gz
 USE_CUSTOM_COMPILER=0  # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
@@ -122,14 +122,13 @@ if [ $USE_AFL -eq 1 ]; then
     # Single quotes may work
     FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
   else
-    FLAGS="-DCMAKE_CXX_FLAGS='-w'"
+    FLAGS="-DCMAKE_CXX_FLAGS=-w"
   fi
 else
   if [ $FB -eq 1 ]; then
     FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
   fi
 fi
-FLAGS="-DCMAKE_CXX_FLAGS='-Wno-error'"
 
 CURPATH=$(echo $PWD | sed 's|.*/||')
 
