@@ -93,7 +93,16 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
   PID=
 }
 
-while(true); do
+while(true); do                                     # Main loop
+  while(true); do                                   # Prevent a bug when pquery-go-expert.sh is started and no trials are present yet
+    if [ "$(ls -d [0-9]* 2>/dev/null)" == "" ]; then
+      echo "Waiting for next round... Sleeping 300 seconds..."
+      sleep 300                                     # Sleep 5 minutes
+      continue
+    else
+      break
+    fi
+  done
   touch ${MUTEX}                                    # Create mutex (indicating that background_sed_loop is live)
   if [ `ls */*.sql 2>/dev/null | wc -l` -gt 0 ]; then  # If trials are available
     background_sed_loop &                           # Start background_sed_loop in a background thread, it will patch reducer<nr>.sh scripts

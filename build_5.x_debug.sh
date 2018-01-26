@@ -6,15 +6,14 @@ WITH_ROCKSDB=1          # 0 or 1 # Please note when building the facebook-mysql-
                                  # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
                                  # This is also auto-turned off for all 5.5 and 5.6 builds 
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
-WITH_LOCAL_INFILE=0     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was remoevd in 8.0?)
+WITH_LOCAL_INFILE=0     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
+ZLIB_MYSQL8_HACK=0      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
 USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re-download
 BOOST_LOCATION=/tmp/boost_074143/boost_1_65_0.tar.gz
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
-ZLIB_MYSQL8_HACK=0      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
 USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
-CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"
-CLANGPP_LOCATION="${CLANG_LOCATION}++"
+CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
 USE_AFL=0               # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
 AFL_LOCATION="/sda/afl/afl-2.52b"
 
@@ -55,12 +54,11 @@ fi
 
 DATE=$(date +'%d%m%y')
 PREFIX=
-MS=0
 FB=0
-
+MS=0
 if [ ! -d rocksdb ]; then  # MS, PS
   VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
-  if [ "${VERSION_EXTRA}" == "" -o "${VERSION_EXTRA}" == "-dmr" ]; then  # MS has no extra version number, or shows '-dmr' (exactly and only) in this place
+  if [ "${VERSION_EXTRA}" == "" -o "${VERSION_EXTRA}" == "-dmr" -o "${VERSION_EXTRA}" == "-rc" ]; then  # MS has no extra version number, or shows '-dmr' or '-rc' (both exactly and only) in this place
     MS=1
     PREFIX="MS${DATE}"
   else
@@ -88,7 +86,7 @@ if [ $USE_CLANG -eq 1 ]; then
   echo "Note: USE_CLANG is set to 1, using the clang compiler!"
   echo "======================================================"
   sleep 3
-  CLANG="-DCMAKE_C_COMPILER=$CLANG_LOCATION -DCMAKE_CXX_COMPILER=$CLANGPP_LOCATION"
+  CLANG="-DCMAKE_C_COMPILER=$CLANG_LOCATION -DCMAKE_CXX_COMPILER=${CLANG_LOCATION}++"  # clang++ location is assumed to be same with ++
 fi
 
 # Use AFL gcc/g++ wrapper as compiler
@@ -138,6 +136,8 @@ else
     FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
   fi
 fi
+# Also note that -k can be use for make to ignore any errors; if the build fails somewhere in the tests/unit tests then it matters 
+# little. Note that -k is not a compiler flag as -w is. It is a make option.
 
 CURPATH=$(echo $PWD | sed 's|.*/||')
 

@@ -54,6 +54,16 @@ if [ -z "$(yum list | grep 'epel-release.noarch')" ]; then
   #fi
 fi
 
+# SCLo SIG
+# https://wiki.centos.org/SpecialInterestGroup/SCLo
+# https://centos.pkgs.org/7/centos-sclo-rh/devtoolset-7-gcc-c++-7.2.1-1.el7.x86_64.rpm.html
+# https://github.com/sclorg/centos-release-scl
+# https://www.centos.org/keys/  # You can check the SIG key here
+if [ -z "$(yum list | grep 'centos-release-scl-rh')" ]; then
+  sudo yum install centos-release-scl-rh
+  # sudo yum install devtoolset-7-gcc-c++  - install gcc 7 and near-latest binutils
+fi
+
 # EPEL - Debuginfo packages enable (gives lots of output, but basically just sets 'enabled=1' in /etc/yum.repos.d/epel.repo for [epel-debuginfo] section
 sudo yum-config-manager --enable epel-debuginfo
 
