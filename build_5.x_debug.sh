@@ -7,15 +7,16 @@ WITH_ROCKSDB=1          # 0 or 1 # Please note when building the facebook-mysql-
                                  # This is also auto-turned off for all 5.5 and 5.6 builds 
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
 WITH_LOCAL_INFILE=0     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was remoevd in 8.0?)
+USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re-download
+BOOST_LOCATION=/tmp/boost_074143/boost_1_65_0.tar.gz
+USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
+CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
+ZLIB_MYSQL8_HACK=0      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
 USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"
 CLANGPP_LOCATION="${CLANG_LOCATION}++"
 USE_AFL=0               # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
 AFL_LOCATION="/sda/afl/afl-2.52b"
-USE_BOOST_LOCATION=1    # 0 or 1 # Use a custom boost location to avoid boost re-download
-BOOST_LOCATION=/tmp/boost_074143/boost_1_65_0.tar.gz
-USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
-CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
 
 # To install the latest clang from Chromium devs;
 # sudo yum remove clang    # Or sudo apt-get remove clang
@@ -68,6 +69,12 @@ if [ ! -d rocksdb ]; then  # MS, PS
 else
   PREFIX="FB${DATE}"
   FB=1
+fi
+
+# MySQL8 zlib Hack
+ZLIB="-DWITH_ZLIB=system"
+if [ $ZLIB_MYSQL8_HACK -eq 1 ]; then
+  ZLIB="-DWITH_ZLIB=bundled"
 fi
 
 # Use CLANG compiler
@@ -160,11 +167,11 @@ fi
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build
-  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=system -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
   # FB build
-  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 -DWITH_ZLIB=bundled -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 fi
 if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
