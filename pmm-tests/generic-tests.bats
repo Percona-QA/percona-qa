@@ -76,8 +76,11 @@ echo "$output"
     PMM_CLIENT="$(echo ${lines[6]} | grep -o '|.*+' | sed 's/^| //;s/:[^:]\++//')"
     #[[ "$NTP_SERVER" = "$PMM_CLIENT" ]]
     # For now checking only PMM_SERVER and PMM_CLIENT
-    [[ "$PMM_SERVER" = "$PMM_CLIENT" ]]
-		[[ "$NTP_SERVER" = "$PMM_SERVER" ]]
+    echo ${lines[7]} | grep "OK"
+    echo ${lines[8]} | grep "OK"
+    echo ${lines[9]} | grep "OK"
+    #[[ "$PMM_SERVER" = "$PMM_CLIENT" ]]
+		#[[ "$NTP_SERVER" = "$PMM_SERVER" ]]
 }
 
 
