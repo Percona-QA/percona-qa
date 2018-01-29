@@ -222,7 +222,19 @@ OOS5=$(ls -s */data/core* 2>/dev/null | grep -o "^ *0 [^/]\+" | awk '{print $2}'
 OOS="$(echo "${OOS1} ${OOS2} ${OOS3} ${OOS4} ${OOS5}" | sed "s|  | |g")"
 if [ "$(echo "${OOS}" | sed "s| ||g")" != "" ]; then
   echo "================ Likely out of disk space trials:"
-  echo "$(echo "${OOS}" | tr ' ' '\n' | sort -u |  tr '\n' ' ' | sed 's|$|\n|;s|^ \+||')"
+  echo "$(echo "${OOS}" | tr ' ' '\n' | sort -nu |  tr '\n' ' ' | sed 's|$|\n|;s|^ \+||')"
+fi
+
+# Likely result of 'RELEASE' command (client connection lost resulting in pquery seeing >200 x 'MySQL server has gone away'
+# For the moment, these can simply be deleted. In time, pquery itself should handle this better by reconnecting to mysqld
+# However, in such case reducer replay needs to be checked as well; does it continue replaying the SQL via a live client connection
+# when RELEASE was seen? Likely not for mysql cli mode, but for pquery (which is then updated to do so) it would be fine, and
+# many testcases would not end up with an eventual RELEASE so they would replay at the mysql cli just fine, or otherwise the
+# pquery replay method can be used in the replay only works via pquery (as usual).
+REL1=$(grep -m1 -B2 "MySQL server has gone away" */default.node.tld_thread-0.sql | grep -i "RELEASE[ \t]*;" | sed 's|/.*||' | sort -nu | tr '\n' ' ')
+if [ "$REL1" != "" ]; then
+  echo "================ Likely 'Server has gone away' 200x due to 'RELEASE' sql:"
+  echo "${REL1}"
 fi
 
 # Coredumps overview (for comparison)
