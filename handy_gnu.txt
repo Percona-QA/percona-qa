@@ -242,7 +242,15 @@
   ip route get 1 | awk '{print $NF;exit}'  # With thanks, https://stackoverflow.com/questions/13322485/how-to-i-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x
 # Raise the priority of a certain process  # With thanks, https://serverfault.com/a/228632
   sudo renice -10 -p ${PROCESSID}  # Where ${PROCESSID} is the ID of the process to raise priority for 
-
+# Clear OS cache
+  sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"
+# Use cgroups to limit application memory usage
+  sudo service cgconfig restart
+  sudo cgcreate -g memory:DBLimitedGroup
+  sudo sh -c "$(which echo) 32G > /cgroup/memory/DBLimitedGroup/memory.limit_in_bytes"
+  sudo sync;sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"
+  sudo cgclassify -g memory:DBLimitedGroup `pidof mysqld`
+  
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax
   sudo yum install cabal-install; cabal update; cabal install shellcheck; ~/.cabal/bin/shellcheck
