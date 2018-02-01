@@ -17,9 +17,9 @@ if [ $(ls -ld /dev/shm/* | wc -l) -eq 0 ]; then
 else
   for DIR in $(ls -ld /dev/shm/* | sed 's|^.*/dev/shm|/dev/shm|'); do
     if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
-      sleep 0.3  # Small wait, then recheck (to avoid missed ps output)
+      sync; sleep 0.3  # Small wait, then recheck (to avoid missed ps output)
       if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
-        sleep 0.3  # Small wait, then recheck (to avoid missed ps output)
+        sync; sleep 0.3  # Small wait, then recheck (to avoid missed ps output)
         if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
           AGEDIR=$[ $(date +%s) - $(stat -c %Z ${DIR}) ]  # Directory age in seconds
           if [ ${AGEDIR} -ge 90 ]; then  # Yet another safety, don't delete very recent directories
@@ -37,7 +37,7 @@ else
                 if [ ${SUBDIRCOUNT} -le 1 ]; then  # pquery-run.sh directories generally have 1 (or 0 when in between trials) subdirectories. Both 0 and 1 need to be covered
                   SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
                   if [ "${SUBDIR}" == "" ]; then  # Script may have caught a snapshot in-between pquery-run.sh trials
-                    sleep 3  # Delay (to provide pquery-run.sh (if running) time to generate new trial directory), then recheck
+                    sync; sleep 3  # Delay (to provide pquery-run.sh (if running) time to generate new trial directory), then recheck
                     SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
                   fi
                   AGESUBDIR=$[ $(date +%s) - $(stat -c %Z ${SUBDIR}) ]  # Current trial directory age in seconds
