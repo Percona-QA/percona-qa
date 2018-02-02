@@ -935,4 +935,4 @@ TEXT=.tab->ref.$                                                                
 TEXT=.cmp .= 0.$                                                                        ## https://jira.percona.com/browse/MYR-173
 TEXT=.ha_initialize_handlerton.$                                                        ## https://jira.percona.com/browse/MYR-204
 TEXT=.item->type.$                                                                      ## https://bugs.mysql.com/bug.php?id=88749
-TEXT=.plugin.                                                                           ## https://jira.percona.com/browse/MYR-222
+TEXT=.plugin.$                                                                          ## https://jira.percona.com/browse/MYR-222

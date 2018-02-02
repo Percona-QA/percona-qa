@@ -61,4 +61,23 @@ fi
 # Fixup an assert which had a path specifier in it
 STRING=$(echo ${STRING} | sed 's|info->end_of_file == inline_mysql_file_tell.*|info->end_of_file == inline_mysql_file_tel|')
 
+# Fixup a too common (".fail") text string (seen much in error logs, so reducer reduces to 0 lines instead of the bug)
+# (This was "!fail" in original log. "!" is normally changed to "." above to avoid special-char-meaning erros")
+if [ "${STRING}" == ".fail" ]; then 
+  if grep "Assertion.*dict0dd.cc:[0-9]\+:.fail" $1 2>/dev/null 1>&2; then 
+    STRING="dict0dd.cc:[0-9]\+:.fail"
+  fi
+fi
+
+# Fixup a too common (".all") text string (seen much in error logs, so reducer reduces to 0 lines instead of the bug)
+# (This was "!all" in original log. "!" is normally changed to "." above to avoid special-char-meaning erros")
+if [ "${STRING}" == ".all" ]; then 
+  if grep "MYSQL_BIN_LOG..rollback.THD.. bool.. Assertion ..all" $1 2>/dev/null 1>&2; then 
+    STRING="MYSQL_BIN_LOG..rollback.THD.. bool.. Assertion ..all"
+  fi
+fi
+
+#if [ "$STRING" == ".fail" -a grep -E "dict0dd.cc:[0-9]\+:.fail" $1 ]; then
+#  STRING="
+
 echo ${STRING}
