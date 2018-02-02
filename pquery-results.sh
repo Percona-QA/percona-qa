@@ -231,7 +231,7 @@ fi
 # when RELEASE was seen? Likely not for mysql cli mode, but for pquery (which is then updated to do so) it would be fine, and
 # many testcases would not end up with an eventual RELEASE so they would replay at the mysql cli just fine, or otherwise the
 # pquery replay method can be used in the replay only works via pquery (as usual).
-REL1=$(grep -m1 -B2 "MySQL server has gone away" */default.node.tld_thread-0.sql | grep -i "RELEASE[ \t]*;" | sed 's|/.*||' | sort -nu | tr '\n' ' ')
+REL1=$(grep -m1 -B2 "MySQL server has gone away" */default.node.tld_thread-0.sql 2>/dev/null | grep -i "RELEASE[ \t]*;" | sed 's|/.*||' | sort -nu | tr '\n' ' ')
 if [ "$REL1" != "" ]; then
   echo "================ Likely 'Server has gone away' 200x due to 'RELEASE' sql:"
   echo "${REL1}"
