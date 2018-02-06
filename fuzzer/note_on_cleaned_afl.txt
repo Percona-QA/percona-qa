@@ -1,0 +1,6 @@
+When downloading AFL online, and scanning it with virustotal.com, you will get 'viruses' listed. This is likely due to the included samples which trigger certain patterns. The tarbal in this directory (afl-2.52b_cleaned_2.tar.gz) is a cleaned up version. When adding a new version of AFL, please only copy in a cleaned up version. To cleanup, please delete these files;
+
+1) ffmpeg-h264-bad-ptr-800m.mp4  # Path to be added, use find ftm
+2) directory docs/vuln_samples
+
+Discussed with, and approved method by; DavidBu

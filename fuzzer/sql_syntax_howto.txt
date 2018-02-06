@@ -1,0 +1,41 @@
+# This file likely contains errors; there are two ways to generate a dictionary and this one mixes both
+# This file is a WIP. It should help you get it done, but this file needs cleanup/editing. Feel free to do so.
+
+copy sql/lex.h into this dir
+
+then;
+
+cat lex.h | grep -o "SYM(\"[^\"]*\"" | sed 's|SYM(||;s|"||g' > dictionary1.txt
+mkdir dict_dir; cat dictionary1.txt | xargs -I{} -i sh -c 'echo "{}" > "./dict_dir/{}"'
+
+rm dict_dir/SHUTDOWN 
+rm dict_dir/GRANT
+rm dict_dir/PASSWORD
+
+echo ";" > dict_dir/END1
+echo ";" > dict_dir/END2
+echo ";" > dict_dir/END3
+echo ";" > dict_dir/END4
+echo ";" > dict_dir/END5
+echo ";" > dict_dir/END6
+echo ";" > dict_dir/END7
+echo ";" > dict_dir/END8
+echo ";" > dict_dir/END9
+echo ";" > dict_dir/END0
+
+# Make sure to stop it after few seconds
+mkdir testc_dir; export n = 0; while read -r keyword; do echo -n "$keyword" > testc_dir/tc${n}; n=$((n+1)); done < ~/percona-qa/pquery/main-ms-ps-md.sql
+
+cp dictionary1.txt dictionary2.txt;sed -i "s|\(.*\)|kw_\1=\" \1\"|" dictionary2.txt
+vi dictionary2.txt 
+echo 'kw_RV1="(1)"' >> dictionary2.txt 
+echo 'kw_RV1="(0)"' >> dictionary2.txt 
+echo 'kw_RV1="(NULL)"' >> dictionary2.txt 
+echo 'kw_RV1="(NOW())"' >> dictionary2.txt 
+echo 'kw_RV1="()"' >> dictionary2.txt 
+echo 'kw_RV1="(1),(2)"' >> dictionary2.txt 
+echo 'kw_RV1="(1),(2),(3)"' >> dictionary2.txt 
+echo 'kw_RV1="('')"' >> dictionary2.txt 
+
+then edit the file to make it RV2,3,4,.... after RV1
+and edit the special chars (11 at top, one just above RV1) to something more generic like kw_1=,kw_2=,etc

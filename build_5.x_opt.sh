@@ -8,8 +8,8 @@ WITH_ROCKSDB=1      # 0 or 1  # Please note when building the facebook-mysql-5.6
 USE_CLANG=0         # Use the clang compiler instead of gcc
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"
 CLANGPP_LOCATION="${CLANG_LOCATION}++"
-USE_BOOST_LOCATION=0
-BOOST_LOCATION=/git/PS-5.7-trunk/boost_1_59_0.tar.gz
+USE_BOOST_LOCATION=1
+BOOST_LOCATION=/git/boost_1_59_0-debug
 
 # To install the latest clang from Chromium devs;
 # sudo yum remove clang    # Or sudo apt-get remove clang

@@ -7,9 +7,9 @@ WITH_ROCKSDB=1          # 0 or 1 # Please note when building the facebook-mysql-
                                  # This is also auto-turned off for all 5.5 and 5.6 builds 
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
 WITH_LOCAL_INFILE=0     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
-ZLIB_MYSQL8_HACK=0      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
+ZLIB_MYSQL8_HACK=1      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
 USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re-download
-BOOST_LOCATION=/tmp/boost_074143/boost_1_65_0.tar.gz
+BOOST_LOCATION=/git/boost_1_65_0.tar.gz
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
 USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
