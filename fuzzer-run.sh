@@ -14,7 +14,8 @@ DICTIONARY=${SCRIPT_PWD}/mysql-dictionary.fuzz
 BASE_BIN="$(echo "${BASEDIR}/bin/mysql_embedded")"  # Only use the embedded server, or a setup where client+server are integrated into one binary, compiled/instrumented with afl-gcc or afl-g++ (instrumentation wrappers for gcc/g++)
 
 exit_help(){
-  echo "This script expects one startup option: M or S (Master or Slaves) as the first option. Also remember to set BASEDIR etc. variables inside the script."
+  echo "This script expects one startup option: M or S (Master or Slaves) as the first option."
+  echo "Also remember to set BASEDIR etc. variables inside the script."
   echo "Note that it is recommended to run M (Master) in a seperate terminal from S (Slaves), allowing better output analysis."
   echo "Warning: running this script will remove ALL data directories in BASEDIR!"
   echo "Terminating."; exit 1
@@ -28,23 +29,32 @@ if [ "${1}" == "" ]; then
   exit_help
 elif [ "${1}" != "M" -a "${1}" != "S" ]; then
   exit_help
+elif [ "${1}" == "M" ]; then
+  cd /sys/devices/system/cpu
+  sudo echo performance | sudo tee cpu*/cpufreq/scaling_governor
 fi
 cd ${BASEDIR}
+if [ "${PWD}" != "${BASEDIR}" ]; then
+  echo 'Safety assert: $PWD!=$BASEDIR, please check your BASEDIR path. Tip; avoid double and traling slashe(s).'
+  echo "${PWD}!=${BASEDIR}"
+fi
 if [ ! -d in ]; then
   echo "Please create your in directory with a starting testcase, for example ./in/start.sql"
   echo "Terminating."; exit 1
 fi
 if [ ! -d out ]; then 
   mkdir out
-else
-  echo "Found existing 'out' directory - please ensure that this is what you want; re-use data from a previous run. Sleeping 5 seconds"
-  sleep 5
+elif [ "${1}" == "M" ]; then
+  echo "(!) Found existing 'out' directory - please ensure that this is what you want; re-use data from a previous run. Sleeping 10 seconds"
+  sleep 10
 fi
-killall afl-fuzz
-rm -Rf afldata* data_TEMPLATE data fuzzer*
-${SCRIPT_PWD}/startup.sh
-./all
-mv data data_TEMPLATE
+if [ "${1}" == "M" ]; then
+  killall afl-fuzz 2>/dev/null
+  rm -Rf afldata* data_TEMPLATE data fuzzer*
+  ${SCRIPT_PWD}/startup.sh
+  ./all_no_cl
+  mv data data_TEMPLATE
+fi
 
 # TERMINAL 1 (master)
 if [ "${1}" == "M" ]; then
@@ -64,7 +74,7 @@ if [ "${1}" == "S" ]; then
   done
   # Cleanup screen in background (can be done manually as well, all processes are in background
   clear; sleep 2; clear
-  $(sleep 60; echo "clear)" &
+  $(sleep 60; echo "clear)") &
   $(sleep 120; echo "clear") &
   $(sleep 180; echo "clear") &
   $(sleep 240; echo "clear") &
