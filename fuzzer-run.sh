@@ -73,11 +73,9 @@ if [ "${1}" == "S" ]; then
     sleep 1; AFL_NO_AFFINITY=1 ${AFL_BIN} -S fuzzer${FUZZER} -m 4000 -t 30000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data${FUZZER}\"" --server-arg="\"--datadir=${BASEDIR}/data${FUZZER}\"" -A --force -e"\"SOURCE @@\"" &
   done
   # Cleanup screen in background (can be done manually as well, all processes are in background
-  clear; sleep 2; clear
-  $(sleep 60; echo "clear)") &
-  $(sleep 120; echo "clear") &
-  $(sleep 180; echo "clear") &
-  $(sleep 240; echo "clear") &
-  $(sleep 300; echo "clear") &
+  while :; do
+    sleep 2
+    clear
+  done
 fi
 
