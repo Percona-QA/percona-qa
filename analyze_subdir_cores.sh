@@ -21,7 +21,8 @@ else
 fi
 
 for CORE in $(find . | grep "core") ; do
-  COREFILE=$(echo $CORE | sed 's|[^/]*/||;s|\([^/]*\)\(.*\)|\1_\2|;s|/.*/||')
+  #COREFILE=$(echo $CORE | sed 's|[^/]*/||;s|\([^/]*\)\(.*\)|\1_\2|;s|/.*/||')  # This is for the txt file name only
+  COREFILE=$(echo $CORE | sed 's|/|_|g;s|^[\._]\+||')  # This is for the txt file name only
   echoit "Now processing core ${COREFILE}..."
   # For debugging purposes, remove ">/dev/null 2>&1" on the next line and observe output
   gdb ${BIN} ${CORE} >/dev/null 2>&1 <<EOF
