@@ -6,7 +6,7 @@ SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 # User variables
 BASEDIR=/sda/PS130118-percona-server-5.7.20-19-linux-x86_64-debug  # Warning: running this script will remove ALL data directories in BASEDIR
-FUZZERS=256  # Number of sub fuzzers (the total number of fuzzers is one higher as there is a master fuzzer also)
+FUZZERS=192  # Number of sub fuzzers (the total number of fuzzers is one higher as there is a master fuzzer also)
 
 # Auto-created variables (can be changed if needed)
 AFL_BIN=${SCRIPT_PWD}/fuzzer/afl-2.52b/afl-fuzz
@@ -57,12 +57,16 @@ if [ "${1}" == "M" ]; then
   mv ./data ./data_TEMPLATE
 fi
 
+# For environment variables see:
+# https://github.com/rc0r/afl-fuzz/blob/master/docs/env_variables.txt
+# https://groups.google.com/forum/#!searchin/afl-users/AFL_NO_ARITH%7Csort:date/afl-users/1LKXY6u6QDk/KRXna2sPBAAJ
+
 # TERMINAL 1 (master)
 if [ "${1}" == "M" ]; then
   rm -Rf ./data0
   cp -r ./data_TEMPLATE ./data0
   echo "Starting master with id fuzzer0..."
-  AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -M fuzzer0 -m 4000 -t 30000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data0\"" --server-arg="\"--datadir=${BASEDIR}/data0\"" -A --force -e"\"SOURCE @@\"" &
+  AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -M fuzzer0 -m 5000 -t 60000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data0\"" --server-arg="\"--datadir=${BASEDIR}/data0\"" -A --force -e"\"SOURCE @@\"" &
 fi
 
 # TERMINAL 2 (after master is up) (subfuzzers)
@@ -71,7 +75,7 @@ if [ "${1}" == "S" ]; then
     rm -Rf ./data${FUZZER}
     cp -r ./data_TEMPLATE ./data${FUZZER}
     echo "Starting slave with id fuzzer${FUZZER}..."
-    AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -S fuzzer${FUZZER} -m 4000 -t 30000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data${FUZZER}\"" --server-arg="\"--datadir=${BASEDIR}/data${FUZZER}\"" -A --force -e"\"SOURCE @@\"" &
+    sleep 1; AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -S fuzzer${FUZZER} -m 5000 -t 60000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data${FUZZER}\"" --server-arg="\"--datadir=${BASEDIR}/data${FUZZER}\"" -A --force -e"\"SOURCE @@\"" &
   done
   # Cleanup screen in background (can be done manually as well, all processes are in background
   while :; do
