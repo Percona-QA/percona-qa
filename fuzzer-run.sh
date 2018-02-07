@@ -6,7 +6,7 @@ SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 # User variables
 BASEDIR=/sda/PS130118-percona-server-5.7.20-19-linux-x86_64-debug  # Warning: running this script will remove ALL data directories in BASEDIR
-FUZZERS=128  # Number of sub fuzzers (the total number of fuzzers is one higher as there is a master fuzzer also)
+FUZZERS=256  # Number of sub fuzzers (the total number of fuzzers is one higher as there is a master fuzzer also)
 
 # Auto-created variables (can be changed if needed)
 AFL_BIN=${SCRIPT_PWD}/fuzzer/afl-2.52b/afl-fuzz
@@ -44,34 +44,34 @@ if [ ! -d in ]; then
 fi
 if [ ! -d out ]; then 
   mkdir out
-  rm -Rf data_TEMPLATE data* fuzzer*
 elif [ "${1}" == "M" ]; then
-  echo "(!) Found existing 'out' directory - please ensure that this is what you want; reusing data from a previous run. Sleeping 10 seconds"
-  sleep 10
-  rm -Rf data_TEMPLATE data
+  echo "(!) Found existing 'out' directory - please ensure that this is what you want; reusing data from a previous run."
+  echo "If this is not what you want, please CTRL+C now and delete, rename or move the 'out' directory. Sleeping 13 seconds."
+  sleep 13
 fi
 if [ "${1}" == "M" ]; then
   killall afl-fuzz 2>/dev/null
+  rm -Rf data data_TEMPLATE
   ${SCRIPT_PWD}/startup.sh
   ./all_no_cl
-  mv data data_TEMPLATE
+  mv ./data ./data_TEMPLATE
 fi
 
 # TERMINAL 1 (master)
 if [ "${1}" == "M" ]; then
-  cp -r data_TEMPLATE data0
-  mkdir fuzzer0
+  rm -Rf ./data0
+  cp -r ./data_TEMPLATE ./data0
   echo "Starting master with id fuzzer0..."
-  AFL_NO_AFFINITY=1 AFL_NO_ARITH=1 AFL_SHUFFLE_QUEUE=1 AFL_IMPORT_FIRST=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -M fuzzer0 -m 4000 -t 30000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data0\"" --server-arg="\"--datadir=${BASEDIR}/data0\"" -A --force -e"\"SOURCE @@\"" &
+  AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -M fuzzer0 -m 4000 -t 30000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data0\"" --server-arg="\"--datadir=${BASEDIR}/data0\"" -A --force -e"\"SOURCE @@\"" &
 fi
 
 # TERMINAL 2 (after master is up) (subfuzzers)
 if [ "${1}" == "S" ]; then
   for FUZZER in $(seq 1 ${FUZZERS}); do
-    cp -r data_TEMPLATE data${FUZZER}
-    mkdir fuzzer${FUZZER}
+    rm -Rf ./data${FUZZER}
+    cp -r ./data_TEMPLATE ./data${FUZZER}
     echo "Starting slave with id fuzzer${FUZZER}..."
-    sleep 1; AFL_NO_AFFINITY=1 AFL_NO_ARITH=1 AFL_SHUFFLE_QUEUE=1 AFL_IMPORT_FIRST=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -S fuzzer${FUZZER} -m 4000 -t 30000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data${FUZZER}\"" --server-arg="\"--datadir=${BASEDIR}/data${FUZZER}\"" -A --force -e"\"SOURCE @@\"" &
+    AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -S fuzzer${FUZZER} -m 4000 -t 30000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data${FUZZER}\"" --server-arg="\"--datadir=${BASEDIR}/data${FUZZER}\"" -A --force -e"\"SOURCE @@\"" &
   done
   # Cleanup screen in background (can be done manually as well, all processes are in background
   while :; do
