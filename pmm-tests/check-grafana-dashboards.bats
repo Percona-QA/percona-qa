@@ -20,7 +20,7 @@ readarray -t dashboards < $PWD'/dashboards'
     echo $dash;
     echo $output
     [ "$status" -eq 0 ]
-    echo "${lines[0]}" | grep "HTTP/1.1 200 OK"
+    echo "${lines[0]}" | grep "200 OK"
 done
 }
 
@@ -28,5 +28,5 @@ done
   run bash -c "curl --insecure -s --head $AUTH  $HTTP://${PMM}/graph/api/dashboards/db/non-exist-dashboard| head -n 1"
   [ "$status" -eq 0 ]
   echo $output
-  echo "${lines[0]}" | grep "HTTP/1.1 404 Not Found"
+  echo "${lines[0]}" | grep "404 Not Found"
 }
