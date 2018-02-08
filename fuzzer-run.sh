@@ -66,7 +66,7 @@ if [ "${1}" == "M" ]; then
   rm -Rf ./data0
   cp -r ./data_TEMPLATE ./data0
   echo "Starting master with id fuzzer0..."
-  AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -M fuzzer0 -m 5000 -t 60000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data0\"" --server-arg="\"--datadir=${BASEDIR}/data0\"" -A --force -e"\"SOURCE @@\"" &
+  AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -M fuzzer0 -m 5000 -t 60000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data0\"" --server-arg="\"--datadir=${BASEDIR}/data0\"" -A -B -r --force --binary-mode -e"\"USE test;SOURCE @@\"" &
 fi
 
 # TERMINAL 2 (after master is up) (subfuzzers)
@@ -75,7 +75,7 @@ if [ "${1}" == "S" ]; then
     rm -Rf ./data${FUZZER}
     cp -r ./data_TEMPLATE ./data${FUZZER}
     echo "Starting slave with id fuzzer${FUZZER}..."
-    sleep 1; AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -S fuzzer${FUZZER} -m 5000 -t 60000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data${FUZZER}\"" --server-arg="\"--datadir=${BASEDIR}/data${FUZZER}\"" -A --force -e"\"SOURCE @@\"" &
+    sleep 1; AFL_NO_AFFINITY=1 AFL_SHUFFLE_QUEUE=1 AFL_NO_ARITH=1 AFL_FAST_CAL=1 AFL_NO_CPU_RED=1 ${AFL_BIN} -S fuzzer${FUZZER} -m 5000 -t 60000 -i in -o out -x ${DICTIONARY} ${BASE_BIN} --server-arg="\"--basedir=${BASEDIR}\"" --server-arg="\"--tmpdir=${BASEDIR}/data${FUZZER}\"" --server-arg="\"--datadir=${BASEDIR}/data${FUZZER}\"" -A -B -r --force --binary-mode -e"\"USE test;SOURCE @@\"" &
   done
   # Cleanup screen in background (can be done manually as well, all processes are in background
   while :; do

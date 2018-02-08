@@ -20,7 +20,7 @@ else
   BIN=$1
 fi
 
-for CORE in $(find . | grep "core") ; do
+for CORE in $(find . | grep "core" | grep -v "mysql-test") ; do
   #COREFILE=$(echo $CORE | sed 's|[^/]*/||;s|\([^/]*\)\(.*\)|\1_\2|;s|/.*/||')  # This is for the txt file name only
   COREFILE=$(echo $CORE | sed 's|/|_|g;s|^[\._]\+||')  # This is for the txt file name only
   echoit "Now processing core ${COREFILE}..."
