@@ -352,7 +352,9 @@ setup(){
     #PMM configuration setup
     if [ -z $pmm_server_version ]; then
       if [ -z $dev ]; then
+        echo "dev is == " $dev
         PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+        echo "PMM VERSION IS $PMM_VERSION"
       else
         PMM_VERSION=$(lynx --dump https://hub.docker.com/r/perconalab/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
       fi
@@ -448,7 +450,7 @@ setup(){
 	OVA_PUBLIC_IP=$(grep 'Percona Monitoring and Management' $WORKDIR/pmm-server-console.log | awk -F[\/\/] '{print $3}')
   fi
   #PMM configuration setup
-  if [ -z $pmm_server_version ]; then
+  if [ -z $pmm_server_version ] && [ -z $dev]; then
     PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
   else 
     PMM_VERSION=$pmm_server_version
@@ -466,9 +468,10 @@ setup(){
       popd > /dev/null
     else
       if [ ! -z $dev ]; then
-        PMM_CLIENT_TAR=$(lynx --dump https://www.percona.com/downloads/TESTING/pmm/ | grep -o pmm-client-$PMM_VERSION.tar.gz   | head -n1)
-        echo "PMM client tar $PMM_CLIENT_TAR"
-        wget https://www.percona.com/downloads/TESTING/pmm/$PMM_CLIENT_TAR
+        PMM_CLIENT_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client-$PMM_VERSION" |awk '{print $2}'| head -n1)
+        echo "PMM client URL $PMM_CLIENT_URL"
+        wget $PMM_CLIENT_URL
+        PMM_CLIENT_TAR=$(echo $PMM_CLIENT_URL | grep -o '[^/]*$') 
         tar -xzf $PMM_CLIENT_TAR
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
