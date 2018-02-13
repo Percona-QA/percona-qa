@@ -123,6 +123,9 @@ fi
 echo "Running generic tests"
 run_generic_tests
 
+echo "Running external exporters tests"
+run_external_exporters_tests
+
 if [[ $stress == "1" && $table_c != "0" && -z $table_size ]] ; then
   echo "WARN: Running stress tests; creating empty tables"
   run_create_table $instance_t $table_c
