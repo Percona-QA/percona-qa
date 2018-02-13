@@ -25,6 +25,22 @@ function  pmm_wipe_server() {
   ${DIRNAME}/pmm-framework.sh --wipe-server
 }
 
+# functions for some env setup
+
+function setup_local_consul_exporter() {
+  FILE_NAME="consul_exporter-0.3.0.linux-amd64.tar.gz"
+
+  if [ -f ${FILE_NAME}  ]; then
+    echo "File exists"
+  else
+    wget https://github.com/prometheus/consul_exporter/releases/download/v0.3.0/consul_exporter-0.3.0.linux-amd64.tar.gz
+    tar -zxpf consul_exporter-0.3.0.linux-amd64.tar.gz
+  fi
+
+  IP_ADDR=$(ip route get 1 | awk '{print $NF;exit}')
+  ./consul_exporter-0.3.0.linux-amd64/consul_exporter -consul.server http://${IP_ADDR}:80
+}
+
 # functions for bats calling
 
 function run_linux_metrics_tests() {
@@ -72,6 +88,14 @@ function run_proxysql_tests() {
     bats --tap ${DIRNAME}/proxysql-tests.bats
   else
     bats ${DIRNAME}/proxysql-tests.bats
+  fi
+}
+
+function run_external_exporters_tests.bats() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/external_exporters_tests.bats
+  else
+    bats ${DIRNAME}/external_exporters_tests.bats
   fi
 }
 
