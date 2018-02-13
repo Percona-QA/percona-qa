@@ -39,7 +39,7 @@ function setup_local_consul_exporter() {
   fi
 
   IP_ADDR=$(ip route get 1 | awk '{print $NF;exit}')
-  ./consul_exporter-0.3.0.linux-amd64/consul_exporter -consul.server http://${IP_ADDR}:80
+  ./consul_exporter-0.3.0.linux-amd64/consul_exporter -consul.server http://${IP_ADDR}:80 &
 }
 
 # functions for bats calling
