@@ -28,6 +28,7 @@ function  pmm_wipe_server() {
 # functions for some env setup
 
 function setup_local_consul_exporter() {
+  echo "Setting up consul_exporter"
   FILE_NAME="consul_exporter-0.3.0.linux-amd64.tar.gz"
 
   if [ -f ${FILE_NAME}  ]; then
@@ -124,6 +125,7 @@ echo "Running generic tests"
 run_generic_tests
 
 echo "Running external exporters tests"
+setup_local_consul_exporter
 run_external_exporters_tests
 
 if [[ $stress == "1" && $table_c != "0" && -z $table_size ]] ; then
