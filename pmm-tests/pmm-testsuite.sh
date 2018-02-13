@@ -91,7 +91,7 @@ function run_proxysql_tests() {
   fi
 }
 
-function run_external_exporters_tests.bats() {
+function run_external_exporters_tests() {
   if [[ $tap == 1 ]] ; then
     bats --tap ${DIRNAME}/external_exporters_tests.bats
   else
