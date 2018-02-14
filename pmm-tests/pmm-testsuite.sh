@@ -39,7 +39,9 @@ function setup_local_consul_exporter() {
   fi
 
   IP_ADDR=$(ip route get 1 | awk '{print $NF;exit}')
-  ./consul_exporter-0.3.0.linux-amd64/consul_exporter -consul.server http://${IP_ADDR}:80 > /dev/null 2>&1 &
+  echo "Running consul_exporter"
+  echo "IMPORTANT: pmm-server docker should be run with additional -p 8500:8500"
+  ./consul_exporter-0.3.0.linux-amd64/consul_exporter -consul.server http://${IP_ADDR}:8500 > /dev/null 2>&1 &
 }
 
 # functions for bats calling
