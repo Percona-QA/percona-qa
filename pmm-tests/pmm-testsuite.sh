@@ -25,6 +25,25 @@ function  pmm_wipe_server() {
   ${DIRNAME}/pmm-framework.sh --wipe-server
 }
 
+# functions for some env setup
+
+function setup_local_consul_exporter() {
+  echo "Setting up consul_exporter"
+  FILE_NAME="consul_exporter-0.3.0.linux-amd64.tar.gz"
+
+  if [ -f ${FILE_NAME}  ]; then
+    echo "File exists"
+  else
+    wget https://github.com/prometheus/consul_exporter/releases/download/v0.3.0/consul_exporter-0.3.0.linux-amd64.tar.gz
+    tar -zxpf consul_exporter-0.3.0.linux-amd64.tar.gz
+  fi
+
+  IP_ADDR=$(ip route get 1 | awk '{print $NF;exit}')
+  echo "Running consul_exporter"
+  echo "IMPORTANT: pmm-server docker should be run with additional -p 8500:8500"
+  ./consul_exporter-0.3.0.linux-amd64/consul_exporter -consul.server http://${IP_ADDR}:8500 > /dev/null 2>&1 &
+}
+
 # functions for bats calling
 
 function run_linux_metrics_tests() {
@@ -75,6 +94,14 @@ function run_proxysql_tests() {
   fi
 }
 
+function run_external_exporters_tests() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/external_exporters_tests.bats
+  else
+    bats ${DIRNAME}/external_exporters_tests.bats
+  fi
+}
+
 # Additional functions
 function run_create_table() {
   bash ${DIRNAME}/create_table.sh $1 $2
@@ -98,6 +125,10 @@ fi
 
 echo "Running generic tests"
 run_generic_tests
+
+echo "Running external exporters tests"
+setup_local_consul_exporter
+run_external_exporters_tests
 
 if [[ $stress == "1" && $table_c != "0" && -z $table_size ]] ; then
   echo "WARN: Running stress tests; creating empty tables"
