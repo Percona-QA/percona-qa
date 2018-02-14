@@ -60,7 +60,7 @@ usage () {
   echo " --key-name                       Pass your aws access key file name"
   echo " --ova-image                      Pass PMM server ova image name"
   echo " --upgrade 			    When this option is specified, PMM framework will be updated to specified version"
-  echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page" 
+  echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
 }
 
 # Check if we have a functional getopt(1)
@@ -281,7 +281,7 @@ elif [[ "$pmm_server" == "ova" ]];then
     fi
   fi
 elif [[ "$pmm_server" == "custom" ]];then
-  if ! sudo pmm-admin ping | grep -q "OK, PMM server is alive"; then 
+  if ! sudo pmm-admin ping | grep -q "OK, PMM server is alive"; then
     echo "ERROR! PMM Server is not running. Please check PMM server status. Terminating"
     exit 1
   fi
@@ -358,7 +358,7 @@ setup(){
       else
         PMM_VERSION=$(lynx --dump https://hub.docker.com/r/perconalab/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
       fi
-    
+
     #PMM sanity check
       if ! pgrep docker > /dev/null ; then
         echo "ERROR! docker service is not running. Terminating"
@@ -374,7 +374,7 @@ setup(){
       fi
     fi
 
-    if [[ "$pmm_server" == "aws" ]];then 
+    if [[ "$pmm_server" == "aws" ]];then
 	    aws ec2 describe-instance-status --instance-ids  $INSTANCE_ID | grep "Code" | sed 's/[^0-9]//g'
     fi
     echo "Initiating PMM configuration"
@@ -385,15 +385,15 @@ setup(){
     fi
     if [ -z $dev ]; then
       if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p 443:443 -e METRICS_MEMORY=$MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p 443:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       else
-       sudo docker run -d -p 80:80 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p 80:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     else
       if [ "$IS_SSL" == "Yes" ];then
-       sudo docker run -d -p 443:443 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p 443:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       else
-       sudo docker run -d -p 80:80 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p 80:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     fi
   elif [[ "$pmm_server" == "ami" ]] ; then
@@ -452,7 +452,7 @@ setup(){
   #PMM configuration setup
   if [ -z $pmm_server_version ] && [ -z $dev]; then
     PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
-  else 
+  else
     PMM_VERSION=$pmm_server_version
     echo "PMM version is ====== $PMM_VERSION"
   fi
@@ -471,7 +471,7 @@ setup(){
         PMM_CLIENT_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client-$PMM_VERSION" |awk '{print $2}'| head -n1)
         echo "PMM client URL $PMM_CLIENT_URL"
         wget $PMM_CLIENT_URL
-        PMM_CLIENT_TAR=$(echo $PMM_CLIENT_URL | grep -o '[^/]*$') 
+        PMM_CLIENT_TAR=$(echo $PMM_CLIENT_URL | grep -o '[^/]*$')
         tar -xzf $PMM_CLIENT_TAR
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
@@ -621,7 +621,7 @@ compare_query(){
 	TOTAL_QUERY_COUNT_BEFORE_RUN=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT COUNT_STAR  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
     for i in `seq $NUM_START $NUM_END`; do
       STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-      ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "INSERT INTO test.t1 (str) VALUES ('${STRING}')" 
+      ${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -e "INSERT INTO test.t1 (str) VALUES ('${STRING}')"
     done
 	TOTAL_QUERY_COUNT_AFTER_RUN=$(${BASEDIR}/bin/mysql -uroot --socket=$TEST_SOCKET -Bse "SELECT COUNT_STAR  FROM performance_schema.events_statements_summary_by_digest WHERE DIGEST_TEXT LIKE 'INSERT INTO `test`%';")
 	CURRENT_QUERY_COUNT=$((TOTAL_QUERY_COUNT_AFTER_RUN - TOTAL_QUERY_COUNT_BEFORE_RUN))
@@ -1113,8 +1113,8 @@ sysbench_prepare(){
   #Initiate sysbench data load on all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
     DB_NAME=$(echo ${i}  | awk -F[\/\.] '{print $3}')
-    $MYSQL_CLIENT --user=root --socket=${i} -e "drop database if exists ${DB_NAME};create database ${DB_NAME};" 
-    sysbench /usr/share/sysbench/oltp_insert.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root --mysql-storage-engine=$storage_engine  --threads=16 --db-driver=mysql --mysql-socket=${i} prepare  > $WORKDIR/logs/sysbench_prepare_${DB_NAME}.txt 2>&1 
+    $MYSQL_CLIENT --user=root --socket=${i} -e "drop database if exists ${DB_NAME};create database ${DB_NAME};"
+    sysbench /usr/share/sysbench/oltp_insert.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root --mysql-storage-engine=$storage_engine  --threads=16 --db-driver=mysql --mysql-socket=${i} prepare  > $WORKDIR/logs/sysbench_prepare_${DB_NAME}.txt 2>&1
     check_script $? "Failed to run sysbench dataload"
   done
 }
@@ -1161,7 +1161,7 @@ fi
 
 if [ ${#ADDCLIENT[@]} -ne 0 ]; then
   if [[ "$pmm_server" == "custom" ]];then
-    if ! sudo pmm-admin ping | grep -q "OK, PMM server is alive"; then 
+    if ! sudo pmm-admin ping | grep -q "OK, PMM server is alive"; then
       echo "ERROR! PMM Server is not running. Please check PMM server status. Terminating"
       exit 1
     fi
