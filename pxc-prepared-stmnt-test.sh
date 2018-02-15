@@ -12,7 +12,7 @@ else
 fi
 
 ROOT_FS=$WORKDIR
-sst_method="xtranackup-v2"
+sst_method="xtrabackup-v2"
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 echo "${SCRIPT_PWD}.."
 
