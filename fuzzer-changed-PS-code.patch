@@ -1,0 +1,107 @@
+diff --git a/sql/sys_vars.cc b/sql/sys_vars.cc
+index a998560..a63dc70 100644
+--- a/sql/sys_vars.cc
++++ b/sql/sys_vars.cc
+@@ -1504,7 +1504,7 @@ static Sys_var_ulong Sys_connect_timeout(
+ 
+ static Sys_var_charptr Sys_datadir(
+        "datadir", "Path to the database root directory",
+-       READ_ONLY GLOBAL_VAR(mysql_real_data_home_ptr),
++       GLOBAL_VAR(mysql_real_data_home_ptr),
+        CMD_LINE(REQUIRED_ARG, 'h'), IN_FS_CHARSET, DEFAULT(mysql_real_data_home));
+ 
+ #ifndef DBUG_OFF
+diff --git a/storage/innobase/buf/buf0lru.cc b/storage/innobase/buf/buf0lru.cc
+index ef57231..715cb59 100644
+--- a/storage/innobase/buf/buf0lru.cc
++++ b/storage/innobase/buf/buf0lru.cc
+@@ -1510,14 +1510,14 @@ loop:
+ 
+ 		/* Backoff to minimize the free list mutex contention while the
+ 		free list is empty */
+-		ulint	priority = srv_current_thread_priority;
++//		ulint	priority = srv_current_thread_priority;
+ 
+ 		if (n_iterations < 3) {
+ 
+ 			os_thread_yield();
+-			if (!priority) {
++//			if (!priority) {
+ 				os_thread_yield();
+-			}
++//			}
+ 		} else {
+ 
+ 			ulint	i, b;
+@@ -1535,7 +1535,8 @@ loop:
+ 			if (b > MAX_FREE_LIST_BACKOFF_SLEEP) {
+ 				b = MAX_FREE_LIST_BACKOFF_SLEEP;
+ 			}
+-			os_thread_sleep(b / (priority
++//			os_thread_sleep(b / (priority
++			os_thread_sleep(b / (0
+ 				? FREE_LIST_BACKOFF_HIGH_PRIO_DIVIDER
+ 				: FREE_LIST_BACKOFF_LOW_PRIO_DIVIDER));
+ 		}
+diff --git a/storage/innobase/include/srv0srv.h b/storage/innobase/include/srv0srv.h
+index 7da1300..07022a3 100644
+--- a/storage/innobase/include/srv0srv.h
++++ b/storage/innobase/include/srv0srv.h
+@@ -547,7 +547,7 @@ extern ulint	srv_sched_priority_master;
+ 
+ /* The relative priority of the current thread.  If 0, low priority; if 1, high
+ priority.  */
+-extern UNIV_THREAD_LOCAL ulint srv_current_thread_priority;
++//extern UNIV_THREAD_LOCAL ulint srv_current_thread_priority;
+ 
+ /* The relative priority of the purge coordinator and worker threads.  */
+ extern my_bool srv_purge_thread_priority;
+diff --git a/storage/innobase/srv/srv0srv.cc b/storage/innobase/srv/srv0srv.cc
+index 5b6d709..bbb261d 100644
+--- a/storage/innobase/srv/srv0srv.cc
++++ b/storage/innobase/srv/srv0srv.cc
+@@ -383,7 +383,7 @@ ulint	srv_sched_priority_master	= 19;
+ 
+ /* The relative priority of the current thread.  If 0, low priority; if 1, high
+ priority.  */
+-UNIV_THREAD_LOCAL ulint srv_current_thread_priority = 0;
++//UNIV_THREAD_LOCAL ulint srv_current_thread_priority = 0;
+ 
+ /* The relative priority of the purge coordinator and worker threads.  */
+ my_bool	srv_purge_thread_priority	= FALSE;
+@@ -2742,7 +2742,7 @@ loop:
+ 
+ 		MONITOR_INC(MONITOR_MASTER_THREAD_SLEEP);
+ 
+-		srv_current_thread_priority = srv_master_thread_priority;
++		//srv_current_thread_priority = srv_master_thread_priority;
+ 
+ 		if (srv_check_activity(old_activity_count,
+ 				       old_ibuf_merge_activity_count)) {
+@@ -2899,7 +2899,7 @@ DECLARE_THREAD(srv_worker_thread)(
+ 
+ 		os_event_wait(slot->event);
+ 
+-		srv_current_thread_priority = srv_purge_thread_priority;
++		//srv_current_thread_priority = srv_purge_thread_priority;
+ 
+ 		if (srv_task_execute()) {
+ 
+@@ -2969,7 +2969,7 @@ srv_do_purge(
+ 	}
+ 
+ 	do {
+-		srv_current_thread_priority = srv_purge_thread_priority;
++		//srv_current_thread_priority = srv_purge_thread_priority;
+ 
+ 		if (trx_sys->rseg_history_len > rseg_history_len
+ 		    || (srv_max_purge_lag > 0
+@@ -3187,7 +3187,7 @@ DECLARE_THREAD(srv_purge_coordinator_thread)(
+ 
+ 		n_total_purged = 0;
+ 
+-		srv_current_thread_priority = srv_purge_thread_priority;
++		//srv_current_thread_priority = srv_purge_thread_priority;
+ 
+ 		rseg_history_len = srv_do_purge(
+ 			srv_n_purge_threads, &n_total_purged);

@@ -1,21 +1,21 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-MAKE_THREADS=1          # Number of build threads. There may be a bug with >1 settings
+MAKE_THREADS=8          # Number of build threads. There may be a bug with >1 settings
 WITH_ROCKSDB=1          # 0 or 1 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
                                  # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
                                  # This is also auto-turned off for all 5.5 and 5.6 builds 
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
 WITH_LOCAL_INFILE=0     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
 ZLIB_MYSQL8_HACK=1      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
-USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re-download
-BOOST_LOCATION=/git/boost_1_65_0.tar.gz
+USE_BOOST_LOCATION=1    # 0 or 1 # Use a custom boost location to avoid boost re-download
+BOOST_LOCATION=/git/boost_1_59_0-debug/
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
 USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
 USE_AFL=0               # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
-AFL_LOCATION="/sda/afl/afl-2.52b"
+AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
 
 # To install the latest clang from Chromium devs;
 # sudo yum remove clang    # Or sudo apt-get remove clang

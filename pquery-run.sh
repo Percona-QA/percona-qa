@@ -220,7 +220,7 @@ ctrl-c(){
   fi
   if [ -d ${RUNDIR}/${TRIAL}/ ]; then
     echoit "Done. Moving the trial $0 was currently working on to workdir as ${WORKDIR}/${TRIAL}/..."
-    mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
+    mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/ 2>&1 | tee -a /${WORKDIR}/pquery-run.log
   fi
   if [ $USE_GENERATOR_INSTEAD_OF_INFILE -eq 1 ]; then
     echoit "Attempting to cleanup generator temporary files..."
@@ -246,7 +246,7 @@ ctrl-c(){
 
 savetrial(){  # Only call this if you definitely want to save a trial
   echoit "Copying rundir from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
-  mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/
+  mv ${RUNDIR}/${TRIAL}/ ${WORKDIR}/ 2>&1 | tee -a /${WORKDIR}/pquery-run.log
   if [ $PMM_CLEAN_TRIAL -eq 1 ];then
     echoit "Removing mysql instance (pq${RANDOMD}-${TRIAL}) from pmm-admin"
     sudo pmm-admin remove mysql pq${RANDOMD}-${TRIAL} > /dev/null
@@ -977,7 +977,7 @@ pquery_test(){
         echo 'USE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         shuf --random-source=/dev/urandom ${INFILE} | head -n${QC_NR_OF_STATEMENTS_PER_TRIAL} >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         awk -v seed=$RANDOM 'BEGIN{srand();} {ORS="#@"int(999999999*rand())"\n"} {print $0}' ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.new
-        rm -f ${RUNDIR}/${TRIAL}/${TRIAL}.sql && mv ${RUNDIR}/${TRIAL}/${TRIAL}.new ${RUNDIR}/${TRIAL}/${TRIAL}.sql
+        rm -f ${RUNDIR}/${TRIAL}/${TRIAL}.sql && mv ${RUNDIR}/${TRIAL}/${TRIAL}.new ${RUNDIR}/${TRIAL}/${TRIAL}.sql 2>&1 | tee -a /${WORKDIR}/pquery-run.log
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
           head -n3 ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}  # Setup testcase with DROP/CREATE/USE test db
@@ -1144,27 +1144,27 @@ pquery_test(){
           if [ ${QUERY_CORRECTNESS_MODE} -ne 2 ]; then
             ${PQUERY_BIN} ${SQL_FILE_1} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
             PQPID="$!"
-            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
-            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out
+            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql 2>&1 | tee -a /${WORKDIR}/pquery-run.log
+            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out 2>&1 | tee -a /${WORKDIR}/pquery-run.log
           else
             ${PQUERY_BIN} ${SQL_FILE_1} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output --user=root --log-query-number --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
             PQPID="$!"
-            mv ${RUNDIR}/${TRIAL}/default.node.tld_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
-            mv ${RUNDIR}/${TRIAL}/default.node.tld_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out
+            mv ${RUNDIR}/${TRIAL}/default.node.tld_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql 2>&1 | tee -a /${WORKDIR}/pquery-run.log
+            mv ${RUNDIR}/${TRIAL}/default.node.tld_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out 2>&1 | tee -a /${WORKDIR}/pquery-run.log
           fi
           echoit "Starting Secondary pquery run for engine ${QC_SEC_ENGINE} (log stored in ${RUNDIR}/${TRIAL}/pquery2.log)..."
           if [ ${QUERY_CORRECTNESS_MODE} -ne 2 ]; then
             ${PQUERY_BIN} ${SQL_FILE_2} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${RUNDIR}/${TRIAL}/socket2.sock >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
             PQPID2="$!"
-            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
-            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out
+            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql 2>&1 | tee -a /${WORKDIR}/pquery-run.log
+            mv ${RUNDIR}/${TRIAL}/pquery_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out 2>&1 | tee -a /${WORKDIR}/pquery-run.log
             grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result
             grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result
           else
             ${PQUERY_BIN} ${SQL_FILE_2} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output --user=root --log-query-number --socket=${RUNDIR}/${TRIAL}/socket2.sock >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
             PQPID2="$!"
-            mv ${RUNDIR}/${TRIAL}/default.node.tld_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
-            mv ${RUNDIR}/${TRIAL}/default.node.tld_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out
+            mv ${RUNDIR}/${TRIAL}/default.node.tld_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql 2>&1 | tee -a /${WORKDIR}/pquery-run.log
+            mv ${RUNDIR}/${TRIAL}/default.node.tld_thread-0.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out 2>&1 | tee -a /${WORKDIR}/pquery-run.log
             diff ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.out ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.out > ${RUNDIR}/${TRIAL}/diff.result
             echo "${QC_PRI_ENGINE}" > ${RUNDIR}/${TRIAL}/diff.left    # When changing this, also search for/edit other '\.left' and '\.right' occurences in this file
             echo "${QC_SEC_ENGINE}" > ${RUNDIR}/${TRIAL}/diff.right
@@ -1174,12 +1174,12 @@ pquery_test(){
           echoit "Starting Primary pquery run for engine ${QC_PRI_ENGINE} (log stored in ${RUNDIR}/${TRIAL}/pquery1.log)..."
           ${PQUERY_BIN} ${SQL_FILE_1} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery1.log 2>&1
           PQPID="$!"
-          mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql
+          mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql 2>&1 | tee -a /${WORKDIR}/pquery-run.log
           grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_PRI_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_PRI_ENGINE}.result
           echoit "Starting Secondary pquery run for engine ${QC_SEC_ENGINE} (log stored in ${RUNDIR}/${TRIAL}/pquery2.log)..."
           ${PQUERY_BIN} ${SQL_FILE_2} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${RUNDIR}/${TRIAL}/node2/node2_socket.sock >${RUNDIR}/${TRIAL}/pquery2.log 2>&1
           PQPID2="$!"
-          mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql
+          mv ${RUNDIR}/${TRIAL}/pquery_thread-0.sql ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql 2>&1 | tee -a /${WORKDIR}/pquery-run.log
           grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result
         fi
       else  # Not a query correctness testing run
