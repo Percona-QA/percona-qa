@@ -898,7 +898,10 @@ ZNK4Item10field_typeEv                                                          
 ZN15Event_scheduler5startEPi                                                            ## https://bugs.launchpad.net/percona-server/+bug/1587195
 ZN7keyring10Vault_curl8read_keyERKNS_9Vault_keyEPNSt7__cxx1112basic_stringIcSt11char_traitsIcENS_16Secure_allocatorIcEEEE  ## https://jira.percona.com/browse/PS-264
 Z24plugin_foreach_with_maskP3THDPPFcS0_PP13st_plugin_intPvEijS4_                                                           ## https://jira.percona.com/browse/PS-264
-
+Z21copy_system_variablesP3THDb                                                          ## https://jira.percona.com/browse/PS-3817
+#ZN7myrocks10ha_rocksdb18get_auto_incrementEyyyPyS1_                           ## Fixed ## https://jira.percona.com/browse/MYR-235
+#ZN7myrocks10ha_rocksdb31update_auto_incr_val_from_fieldEv                     ## Fixed ## https://jira.percona.com/browse/MYR-235
+#ZN7myrocks10ha_rocksdb31load_auto_incr_value_from_indexEv                     ## Fixed ## https://jira.percona.com/browse/MYR-236
 ## =========== Error log crashing query based ===========
 ^Query ([0-9a-f]\+): SELECT.*FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG$                  ## https://bugs.launchpad.net/percona-server/+bug/1375153
 
