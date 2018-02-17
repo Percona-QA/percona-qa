@@ -177,36 +177,8 @@ check_script(){
   if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID}. Terminating!"; exit 1; fi
 }
 
-run_prepared_stmnt(){
-  rm -rf /tmp/pxc_ps.sql
-cat <<EOT >> /tmp/pxc_ps.sql
-PREPARE st1 FROM "INSERT INTO t1(rtext) VALUES('qaxswedcvfrtgbnhtyjmkuiol')";
-
-DELIMITER $$
-CREATE PROCEDURE PS_TEST()    BEGIN
-  DECLARE a INT Default 1 ;
-    simple_loop: LOOP
-      EXECUTE st1;
-      SET a=a+1;
-      IF a=1001 THEN
-         LEAVE simple_loop;
-      END IF;
-   END LOOP simple_loop;
-END $$
-DELIMITER ;
-CALL PS_TEST();
-EOT
-
-  for i in `seq 1 10`; do
-    $BASEDIR/bin/mysql  -uroot -S/tmp/node1.sock -e"drop database if exists test$i; create database test$i" 2>/dev/null 2>&1 
-    $BASEDIR/bin/mysql  -uroot -S/tmp/node1.sock test$i -e"CREATE TABLE t1 (id int auto_increment,rtext varchar(50), primary key(id)) ENGINE=InnoDB;" 2>/dev/null 2>&1
-    $BASEDIR/bin/mysql  -uroot -S/tmp/node1.sock test$i -e"source /tmp/pxc_ps.sql" 2>/dev/null 2>&1
-  done
-}
-
-
 #Initiate PXC prepared statement 
-run_prepared_stmnt &
+$BASEDIR/bin/mysql  -uroot -S/tmp/node1.sock -e"source $SCRIPT_PWD/prepared_statements.sql" 2>/dev/null 2>&1 &
 sleep 60
 echo "Starting single node recovery test"
 kill -9 ${MPID_ARRAY[2]}
@@ -238,12 +210,12 @@ else
   echo 'PXC node4 not stated...'
 fi
 
+sleep 100
 
-
-${BASEDIR}/bin/mysqladmin  --socket=/tmp/node1.sock  -u root shutdown
-${BASEDIR}/bin/mysqladmin  --socket=/tmp/node2.sock  -u root shutdown
-${BASEDIR}/bin/mysqladmin  --socket=/tmp/node3.sock  -u root shutdown
 ${BASEDIR}/bin/mysqladmin  --socket=/tmp/node4.sock  -u root shutdown
+${BASEDIR}/bin/mysqladmin  --socket=/tmp/node3.sock  -u root shutdown
+${BASEDIR}/bin/mysqladmin  --socket=/tmp/node2.sock  -u root shutdown
+${BASEDIR}/bin/mysqladmin  --socket=/tmp/node1.sock  -u root shutdown
 
 exit $EXTSTATUS
 
