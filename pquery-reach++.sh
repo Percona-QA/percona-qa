@@ -3,7 +3,7 @@
 # With thanks to http://unix.stackexchange.com/questions/47271/prevent-gnu-screen-from-terminating-session-once-executed-script-ends (jw013)
 
 # User variables
-BASEDIR=/sda/Percona-Server-5.6.23-rel72.1-debug-Linux.x86_64
+BASEDIR=/sda/PS170218-mysql-8.0.4-rc-linux-x86_64-opt
 WORKDIR=/sda
 THREADS=5
 

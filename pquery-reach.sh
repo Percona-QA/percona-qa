@@ -33,9 +33,9 @@ ctrl-c(){
 if [ ! -r "${SCRIPT_PWD}/pquery-run.sh" ];         then echoit "Assert! pquery-run.sh not found!"; exit 1; fi
 if [ ! -r "${SCRIPT_PWD}/pquery-prep-red.sh" ];    then echoit "Assert! pquery-prep-red.sh not found!"; exit 1; fi
 if [ ! -r "${SCRIPT_PWD}/pquery-clean-known.sh" ]; then echoit "Assert! pquery-clean-known.sh not found!"; exit 1; fi
-if [ ! -r "${SCRIPT_PWD}/pquery/pquery-ps" ];      then echoit "Assert! pquery-ps not found!" exit 1; fi
-if [ ! -r "${SCRIPT_PWD}/pquery/pquery-ms" ];      then echoit "Assert! pquery-ms not found!" exit 1; fi
-if [ ! -r "${SCRIPT_PWD}/pquery/pquery-md" ];      then echoit "Assert! pquery-md not found!" exit 1; fi
+if [ ! -r "${SCRIPT_PWD}/pquery/pquery2-ps" ];     then echoit "Assert! pquery-ps not found!" exit 1; fi
+if [ ! -r "${SCRIPT_PWD}/pquery/pquery2-ms" ];     then echoit "Assert! pquery-ms not found!" exit 1; fi
+if [ ! -r "${SCRIPT_PWD}/pquery/pquery2-md" ];     then echoit "Assert! pquery-md not found!" exit 1; fi
 if [ `ls ${SCRIPT_PWD}/pquery/*.sql 2>/dev/null | wc -l` -lt 1 ]; then echoit "Assert! No SQL input files found!" exit 1; fi
 
 # Make sure we have sub-script tools in place
