@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
 # USA
 
-# In active development: 2012-2017
+# In active development: 2012-2018
 
 # ======== Dev Contacts
 # Main developer: Roel Van de Paar <roel A.T vandepaar D.O.T com>
@@ -884,7 +884,10 @@ remove_dropc(){
 
 set_internal_options(){  # Internal options: do not modify!
   # Try and raise max user processes limit (please also preset the soft/hard nproc settings in /etc/security/limits.conf (Centos), both to at least 20480 - see percona-qa/setup_server.sh for an example)
-  ulimit -u 4000 2>/dev/null
+  ulimit -u 4000  2>/dev/null  # Attempt to raise it to 4000
+  ulimit -u 10000 2>/dev/null  # Attempt to raise it even higher, if it fails, but the previous one worked, then that one is still used
+  ulimit -u 20000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
+  ulimit -u 30000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
   # Unless core files are specifically requested (--core-file or --core option passed to mysqld via MYEXTRA), disable all core file generation (OS+mysqld)
   # It would be good if we could disable OS core file generation without disabling mysqld core file generation, but for the moment it looks like 
   # ulimit -c 0 disables ALL core file generation, both OS and mysqld, so instead, ftm, reducer checks for "CORE" in MYEXTRA (uppercase-ed via ^^) 

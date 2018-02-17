@@ -213,6 +213,8 @@
   cat need_sorted_file_with_unique_results_only.txt | sort -u; cat need_adjoining_same_entries_removed; | uniq; # cat need_all_duplicates_removed.txt | uniq -u
 
 # ------ OS/Admin ------
+# Monitor the current rate of syscalls/sec  ## With thanks, http://www.brendangregg.com/blog/2018-02-09/kpti-kaiser-meltdown-performance.html
+  sudo perf stat -e raw_syscalls:sys_enter -a -I 1000
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
   ## sudo umount -flv /dev/<device>                         ## Make sure you know what you are doing before executing this!   Another possible method is:
   ## sudo yum install psmisc; sudo fuser -km /dev/<device>  ## Make sure you know what you are doing before executing this!

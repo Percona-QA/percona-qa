@@ -19,7 +19,7 @@ if [ "" == "$5" ]; then
   echo "  - If root user uses a password, a script hack is suggested *ftm*"
   echo "  - This script may cause very significant server load if used with many threads"
   echo "  - This script expects write permissions in the current directory ($PWD)"
-  echo "  - Output files for each thread are written as: multi.<thread number>.<repetition number> (e.g. multi.1.1 etc.)"
+  echo "  - Output files for each thread are written as: multirun.<thread number>.<repetition number> (e.g. multirun.1.1 etc.)"
   exit 1
 fi
 
@@ -55,7 +55,7 @@ for (( ; ; )); do
       if [ ${RPT_LEFT[$thread]} -ne 0 ]; then
         REPETITION=$[ $2 - ${RPT_LEFT[$thread]} + 1 ]
         echo -n "Thread: $thread | Repetition: ${REPETITION}/$2 | "
-        CLI_CMD="$4 -uroot -S$5 -f < $3 > multi.$thread 2>&1"
+        CLI_CMD="$4 -uroot -S$5 -f < $3 > multirun.$thread 2>&1"
         # For testing: CLI_CMD="sleep $[ $RANDOM % 10 ]"
         eval ${CLI_CMD} &
         PID[$thread]=$!
