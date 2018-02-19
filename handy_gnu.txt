@@ -156,12 +156,21 @@
 # Check your bash scripts
   https://www.shellcheck.net/  https://github.com/koalaman/shellcheck
 
-# ------ Compiler Issues ------
+# ------ Compiling / Compiler Issues ------
 # If you see for example "/usr/bin/ld: cannot find -lzlib" in your compilation/build of MySQL, and the build fails because of it, then check:
   ld -lzlib --verbose  # Execute in a user writeable directory. If all entries fail, the lib could not be found. 
   You need to just link one of them to the real zlib on your system  ## With thanks, https://stackoverflow.com/a/21647591/1208218
   sudo ln -s /usr/lib64/libz.so.1.2.7 /usr/lib/libzlib.so  ## Though you may have to search for "libz.so" in /usr (cd /usr; find . | grep libz.so)
   This likely works with any linker issue (ld -l{failed lib} --verbose && sudo ln -s ...) 
+# An easy way to install the almost-latest gcc + binutils on Centos 7
+  sudo yum install epel-release
+  sudo yum install centos-release-scl-rh
+  sudo yum install devtoolset-7-gcc-c++  # Or sudo yum install devtoolset-6-gcc-c++  # Or sudo yum install devtoolset-4-gcc-c++
+  # Then, to enable the newly installed (and separate) environment, use;
+  scl enable devtoolset-7 bash  # This sets the newly installed environment for that particular bash session
+  # https://access.redhat.com/documentation/en-US/Red_Hat_Developer_Toolset/3/html/User_Guide/sect-Red_Hat_Developer_Toolset-Install.html
+  # https://access.redhat.com/documentation/en-us/red_hat_developer_toolset/6/html/user_guide/sect-red_hat_developer_toolset-install
+  # Note that devtoolset-4 is really gcc 5.3.1 (the native Centos7 gcc being 4.8.5)
 
 # ------ Common Issues ------
 # Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;

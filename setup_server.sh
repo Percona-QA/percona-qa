@@ -54,9 +54,12 @@ if [ -z "$(yum list | grep 'epel-release.noarch')" ]; then
   #fi
 fi
 
-# Set CPU Governor to Performance. This makes sense on for example a highly used QA server or a performance testing box
-# cd /sys/devices/system/cpu
-# sudo echo performance | sudo tee cpu*/cpufreq/scaling_governor
+# Set CPU Governor to Performance. This makes sense on for example a regularly used QA server or a performance testing box
+# Consider; electricity/power and heating. To do so, see the following document especially under 'cpufreq_powersave';
+# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/power_management_guide/cpufreq_governors 
+# sudo cpupower frequency-set --governor performance
+# cat /sys/devices/system/cpu/intel_pstate/*  # Should read 100,100,[0]
+# cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor  # Should read "performance"
 
 # SCLo SIG
 # https://wiki.centos.org/SpecialInterestGroup/SCLo
