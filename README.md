@@ -546,6 +546,10 @@ nodes for various SQL instructions.  An example of a bug this will test is for
 is lp1421360.  For a reliable test please make sure there is no other traffic
 on the test cluster.
 
+## pxc-prepared-stmnt-test.sh.sh ##
+
+This script is made for PXC Prepared SQL Statement test
+
 ## pxc-rqg.sh ##
 
 *Note:* Jenkins CI script
