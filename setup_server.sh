@@ -54,9 +54,9 @@ if [ -z "$(yum list | grep 'epel-release.noarch')" ]; then
   #fi
 fi
 
-# Set CPU Performance Governor to Performance
-cd /sys/devices/system/cpu
-sudo echo performance | sudo tee cpu*/cpufreq/scaling_governor
+# Set CPU Governor to Performance. This makes sense on for example a highly used QA server or a performance testing box
+# cd /sys/devices/system/cpu
+# sudo echo performance | sudo tee cpu*/cpufreq/scaling_governor
 
 # SCLo SIG
 # https://wiki.centos.org/SpecialInterestGroup/SCLo
