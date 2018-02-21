@@ -138,7 +138,9 @@ check_cmd(){
 #Setting PXC strict mode for running PT table checksum.
 set_pxc_strict_mode(){
   MODE=$1
-  $PXC_BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root -e "set global pxc_strict_mode=$MODE"
+  if [ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.6" ]; then
+    $PXC_BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root -e "set global pxc_strict_mode=$MODE"
+  fi
 }
 
 #Async replication test
@@ -743,7 +745,9 @@ function async_rpl_test(){
   node2_slave_test
   pxc_master_slave_test
   pxc_ps_master_slave_shuffle_test
-  pxc_msr_test
+  if [ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.6" ]; then
+    pxc_msr_test
+  fi
   pxc_mtr_test
 }
 
