@@ -20,6 +20,5 @@
   echo $EXPECTED_MEMORY
   echo $HEAP
   echo "$output"
-      [ "$status" -eq 1 ]
       [ $HEAP == $EXPECTED_MEMORY]
 }
