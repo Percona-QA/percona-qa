@@ -20,5 +20,5 @@
   echo $EXPECTED_MEMORY
   echo $HEAP
   echo "$output"
-      [ $HEAP == $EXPECTED_MEMORY]
+  [[ $HEAP == $EXPECTED_MEMORY ]]
 }
