@@ -7,7 +7,7 @@
 # Check the memory 768000*1024 is equal to the HEAP:
 # pgrep prometheus | xargs ps -o cmd= | sed -re 's/.*--storage.local.target-heap-size=([0-9]+) .*/\1/g'
 
-test "run pmm memory check for -e METRICS_MEMORY" {
+test "run pmm memory check for METRICS_MEMORY" {
   EXPECTED_MEMORY=786432000
   HEAP=$(pgrep prometheus | xargs ps -o cmd= | sed -re 's/.*--storage.local.target-heap-size=([0-9]+) .*/\1/g')
   echo $HEAP
