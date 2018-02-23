@@ -16,7 +16,10 @@
   TOTAL_MEMORY=$(( $(grep MemTotal /proc/meminfo | awk '{print$2}') * 1024 ))
   EXPECTED_MEMORY=$(( ${TOTAL_MEMORY} / 100 * 40 - 256*1024*1024 ))
   HEAP=$(pgrep prometheus | xargs ps -o cmd= | sed -re 's/.*--storage.local.target-heap-size=([0-9]+) .*/\1/g')
+  echo $TOTAL_MEMORY
+  echo $EXPECTED_MEMORY
+  echo $HEAP
   echo "$output"
       [ "$status" -eq 1 ]
-      [ $HEAP -eq $EXPECTED_MEMORY]
+      [ $HEAP == $EXPECTED_MEMORY]
 }
