@@ -6,7 +6,7 @@ DIRNAME=$(dirname "$0")
 # pmm-framework.sh functions
 
 function pmm_framework_setup() {
-  ${DIRNAME}/pmm-framework.sh --setup
+  ${DIRNAME}/pmm-framework.sh --setup $1
 }
 
 function pmm_framework_add_clients() {
@@ -111,6 +111,23 @@ function run_populate_table() {
   bash ${DIRNAME}/populate_table.sh $1 $2 $3
 }
 
+# Setting up the PMM using pmm_framework_setup() here
+if [[ $setup == "1" ]]; then
+  # Check if both options are passed.
+  if [[ $pmm_server_memory == "1" && $pmm_docker_memory == "1" ]]; then
+    echo "Please use one of the options to limit the memory!"
+    exit 1
+  fi
+  # Pass values to setup script
+  if [[ $pmm_server_memory == "1" ]]; then
+    METRICS_MEMORY="--pmm-server-memory=768000"
+    pmm_framework_setup $METRICS_MEMORY
+  elif [[ $pmm_docker_memory == "1" ]]; then
+    MEMORY="--pmm-docker-memory=2147483648"
+    pmm_framework_setup $MEMORY
+  else
+    pmm_framework_setup ""
+fi
 # Running tests
 echo "Wipe clients"
 pmm_wipe_clients
