@@ -55,6 +55,7 @@ usage () {
   echo " --pmm-server-username            User name to access the PMM Server web interface"
   echo " --pmm-server-password            Password to access the PMM Server web interface"
   echo " --pmm-server-memory              Set METRICS_MEMORY option to PMM server"
+  echo " --pmm-docker-memory              Set memory for docker container"
   echo " --pmm-server=[docker|ami|ova]    Choose PMM server appliance, default pmm server appliance is docker"
   echo " --ami-image                      Pass PMM server ami image name"
   echo " --key-name                       Pass your aws access key file name"
@@ -66,7 +67,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -110,16 +111,20 @@ do
       exit 1
     fi
     ;;
-  --pmm-server-version )
+    --pmm-server-version )
     pmm_server_version="$2"
     PMM_VERSION=$pmm_server_version
     shift 2
     ;;
-  --pmm-server-memory )
+    --pmm-server-memory )
     MEMORY="$2"
     shift 2
     ;;
-        --ami-image )
+    --pmm-docker-memory )
+    DOCKER_MEMORY="$2"
+    shift 2
+    ;;
+    --ami-image )
     ami_image="$2"
     shift 2
     ;;
@@ -246,6 +251,11 @@ check_script(){
   if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID}. Terminating!"; exit 1; fi
 }
 
+if [[ -z "$DOCKER_MEMORY" ]]; then
+  DOCKER_CONTAINER_MEMORY=""
+else
+  DOCKER_CONTAINER_MEMORY="--memory=$DOCKER_MEMORY"
+fi
 if [[ -z "$storage_engine" ]];then
   storage_engine=INNODB
 fi
@@ -385,15 +395,15 @@ setup(){
     fi
     if [ -z $dev ]; then
       if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p 443:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p 443:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY -e METRICS_MEMORY=$MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       else
-       sudo docker run -d -p 80:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p 80:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     else
       if [ "$IS_SSL" == "Yes" ];then
-       sudo docker run -d -p 443:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p 443:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       else
-       sudo docker run -d -p 80:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p 80:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     fi
   elif [[ "$pmm_server" == "ami" ]] ; then
