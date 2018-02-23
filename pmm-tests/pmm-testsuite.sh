@@ -102,6 +102,14 @@ function run_external_exporters_tests() {
   fi
 }
 
+function run_pmm_default_memory_check() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/pmm_default_memory_check.bats
+  else
+    bats ${DIRNAME}/pmm_default_memory_check.bats
+  fi
+}
+
 # Additional functions
 function run_create_table() {
   bash ${DIRNAME}/create_table.sh $1 $2
@@ -142,6 +150,13 @@ fi
 
 echo "Running generic tests"
 run_generic_tests
+
+echo "Running default memory consumption check"
+if [[ -z $pmm_server_memory &&  -z $pmm_docker_memory]]; then
+  run_pmm_default_memory_check
+elif [[ $pmm_server_memory != "1" &&  $pmm_docker_memory != "1" ]]; then
+  run_pmm_default_memory_check
+fi
 
 echo "Running external exporters tests"
 setup_local_consul_exporter
