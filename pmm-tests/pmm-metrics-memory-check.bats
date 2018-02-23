@@ -8,8 +8,10 @@
 # pgrep prometheus | xargs ps -o cmd= | sed -re 's/.*--storage.local.target-heap-size=([0-9]+) .*/\1/g'
 
 test "run pmm memory check for -e METRICS_MEMORY" {
+  EXPECTED_MEMORY=786432000
   HEAP=$(pgrep prometheus | xargs ps -o cmd= | sed -re 's/.*--storage.local.target-heap-size=([0-9]+) .*/\1/g')
-  EXPECTED_MEMORY='786432000'
+  echo $HEAP
+  echo $EXPECTED_MEMORY
   echo "$output"
   [[ $HEAP == $EXPECTED_MEMORY ]]
 }
