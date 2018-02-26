@@ -169,7 +169,7 @@ echo "Running generic tests"
 run_generic_tests
 
 echo "Running default memory consumption check"
-if [[ -z $pmm_server_memory &&  -z $pmm_docker_memory]]; then
+if [[ -z $pmm_server_memory &&  -z $pmm_docker_memory ]]; then
   run_pmm_default_memory_check
 elif [[ $pmm_server_memory != "1" &&  $pmm_docker_memory != "1" ]]; then
   run_pmm_default_memory_check
