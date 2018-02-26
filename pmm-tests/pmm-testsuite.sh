@@ -151,6 +151,7 @@ if [[ $setup == "1" ]]; then
     pmm_framework_setup $MEMORY
   else
     pmm_framework_setup ""
+  fi  
 fi
 
 # Running tests
