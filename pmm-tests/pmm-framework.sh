@@ -472,6 +472,7 @@ setup(){
   #PMM configuration setup
   if [ -z $pmm_server_version ] || [ -z $dev ]; then
     PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+    echo "PMM version is ====== $PMM_VERSION"
   else
     PMM_VERSION=$pmm_server_version
     echo "PMM version is ====== $PMM_VERSION"
