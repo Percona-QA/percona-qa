@@ -377,6 +377,7 @@ setup(){
         echo "PMM VERSION IS $PMM_VERSION"
       else
         PMM_VERSION=$(lynx --dump https://hub.docker.com/r/perconalab/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+        echo "PMM VERSION IS $PMM_VERSION"
       fi
 
     #PMM sanity check
@@ -469,14 +470,15 @@ setup(){
 	sleep 120
 	OVA_PUBLIC_IP=$(grep 'Percona Monitoring and Management' $WORKDIR/pmm-server-console.log | awk -F[\/\/] '{print $3}')
   fi
-  #PMM configuration setup
-  if [ -z $pmm_server_version ] || [ -z $dev ]; then
-    PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
-    echo "PMM version is ====== $PMM_VERSION"
-  else
-    PMM_VERSION=$pmm_server_version
-    echo "PMM version is ====== $PMM_VERSION"
-  fi
+ #  #PMM configuration setup
+ #  if [ -z $pmm_server_version ] && [ -z $dev ]; then
+ #   PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+ # else
+ #   if [[ ! -z $pmm_server_version ]]; then
+ #     PMM_VERSION=$pmm_server_version
+ #   fi
+ #   echo "PMM version is ====== $PMM_VERSION"
+ # fi
   echo "Initiating PMM client configuration"
   PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
   if [ -z $PMM_CLIENT_BASEDIR ]; then
