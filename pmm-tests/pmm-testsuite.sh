@@ -6,7 +6,7 @@ DIRNAME=$(dirname "$0")
 # pmm-framework.sh functions
 
 function pmm_framework_setup() {
-  ${DIRNAME}/pmm-framework.sh --setup $1
+  ${DIRNAME}/pmm-framework.sh --setup --dev $1
 }
 
 function pmm_framework_add_clients() {
@@ -151,7 +151,7 @@ if [[ $setup == "1" ]]; then
     pmm_framework_setup $MEMORY
   else
     pmm_framework_setup ""
-  fi  
+  fi
 fi
 
 # Running tests
