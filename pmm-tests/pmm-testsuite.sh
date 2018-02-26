@@ -104,9 +104,25 @@ function run_external_exporters_tests() {
 
 function run_pmm_default_memory_check() {
   if [[ $tap == 1 ]] ; then
-    bats --tap ${DIRNAME}/pmm_default_memory_check.bats
+    bats --tap ${DIRNAME}/pmm-default-memory-check.bats
   else
-    bats ${DIRNAME}/pmm_default_memory_check.bats
+    bats ${DIRNAME}/pmm-default-memory-check.bats
+  fi
+}
+
+function run_pmm_memory_check() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/pmm-memory-check.bats
+  else
+    bats ${DIRNAME}/pmm-memory-check.bats
+  fi
+}
+
+function run_pmm_metrics_memory_check() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/pmm-metrics-memory-check.bats
+  else
+    bats ${DIRNAME}/pmm-metrics-memory-check.bats
   fi
 }
 
@@ -136,6 +152,7 @@ if [[ $setup == "1" ]]; then
   else
     pmm_framework_setup ""
 fi
+
 # Running tests
 echo "Wipe clients"
 pmm_wipe_clients
@@ -156,6 +173,20 @@ if [[ -z $pmm_server_memory &&  -z $pmm_docker_memory]]; then
   run_pmm_default_memory_check
 elif [[ $pmm_server_memory != "1" &&  $pmm_docker_memory != "1" ]]; then
   run_pmm_default_memory_check
+fi
+
+echo "Running memory consumption check for --memory option"
+if [[ $pmm_docker_memory == "1" && $setup == "1" ]]; then
+  run_pmm_memory_check
+else
+  echo "OK - Skipped"
+fi
+
+echo "Running memory consumption check for -e METRICS_MEMORY option"
+if [[ $pmm_server_memory == "1" && $setup == "1" ]]; then
+  run_pmm_metrics_memory_check
+else
+  echo "OK - Skipped"
 fi
 
 echo "Running external exporters tests"
