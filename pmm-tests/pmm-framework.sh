@@ -470,7 +470,7 @@ setup(){
 	OVA_PUBLIC_IP=$(grep 'Percona Monitoring and Management' $WORKDIR/pmm-server-console.log | awk -F[\/\/] '{print $3}')
   fi
   #PMM configuration setup
-  if [ -z $pmm_server_version ] && [ -z $dev ]; then
+  if [ -z $pmm_server_version ] || [ -z $dev ]; then
     PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
   else
     PMM_VERSION=$pmm_server_version
