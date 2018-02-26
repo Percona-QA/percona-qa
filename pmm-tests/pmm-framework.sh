@@ -366,7 +366,8 @@ setup(){
     echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"
     exit 1
   fi
-  IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+  #IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+  IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | awk 'NF>1{print $NF}')
   if [[ "$pmm_server" == "docker" ]];then
     #PMM configuration setup
     if [ -z $pmm_server_version ]; then
