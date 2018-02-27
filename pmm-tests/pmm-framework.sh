@@ -471,14 +471,14 @@ setup(){
 	OVA_PUBLIC_IP=$(grep 'Percona Monitoring and Management' $WORKDIR/pmm-server-console.log | awk -F[\/\/] '{print $3}')
   fi
  #  #PMM configuration setup
- #  if [ -z $pmm_server_version ] && [ -z $dev ]; then
- #   PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
- # else
- #   if [[ ! -z $pmm_server_version ]]; then
- #     PMM_VERSION=$pmm_server_version
- #   fi
- #   echo "PMM version is ====== $PMM_VERSION"
- # fi
+  if [ -z $pmm_server_version ] && [ -z $dev ]; then
+   PMM_VERSION=$(lynx --dump https://hub.docker.com/r/percona/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
+ else
+   if [[ ! -z $pmm_server_version ]]; then
+     PMM_VERSION=$pmm_server_version
+   fi
+   echo "PMM version is ====== $PMM_VERSION"
+ fi
   echo "Initiating PMM client configuration"
   PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
   if [ -z $PMM_CLIENT_BASEDIR ]; then
@@ -491,10 +491,12 @@ setup(){
       popd > /dev/null
     else
       if [ ! -z $dev ]; then
-        PMM_CLIENT_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client-$PMM_VERSION" |awk '{print $2}'| head -n1)
-        echo "PMM client URL $PMM_CLIENT_URL"
-        wget $PMM_CLIENT_URL
-        PMM_CLIENT_TAR=$(echo $PMM_CLIENT_URL | grep -o '[^/]*$')
+        PMM_CLIENT_TARBALL_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client" |awk '{print $2}'| grep "tar.gz" | head -n1)
+        #PMM_CLIENT_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client-$PMM_VERSION" |awk '{print $2}'| head -n1)
+        #echo "PMM client URL $PMM_CLIENT_URL"
+        echo "PMM client tarball $PMM_CLIENT_TARBALL_URL"
+        wget $PMM_CLIENT_TARBALL_URL
+        PMM_CLIENT_TAR=$(echo $PMM_CLIENT_TARBALL_URL | grep -o '[^/]*$')
         tar -xzf $PMM_CLIENT_TAR
         PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
