@@ -6,7 +6,7 @@ DIRNAME=$(dirname "$0")
 # pmm-framework.sh functions
 
 function pmm_framework_setup() {
-  ${DIRNAME}/pmm-framework.sh --setup --dev $1
+  ${DIRNAME}/pmm-framework.sh --setup
 }
 
 function pmm_framework_add_clients() {
@@ -136,23 +136,23 @@ function run_populate_table() {
 }
 
 # Setting up the PMM using pmm_framework_setup() here
-if [[ $setup == "1" ]]; then
-  # Check if both options are passed.
-  if [[ $pmm_server_memory == "1" && $pmm_docker_memory == "1" ]]; then
-    echo "Please use one of the options to limit the memory!"
-    exit 1
-  fi
-  # Pass values to setup script
-  if [[ $pmm_server_memory == "1" ]]; then
-    METRICS_MEMORY="--pmm-server-memory=768000"
-    pmm_framework_setup $METRICS_MEMORY
-  elif [[ $pmm_docker_memory == "1" ]]; then
-    MEMORY="--pmm-docker-memory=2147483648"
-    pmm_framework_setup $MEMORY
-  else
-    pmm_framework_setup ""
-  fi
-fi
+# if [[ $setup == "1" ]]; then
+#   # Check if both options are passed.
+#   if [[ $pmm_server_memory == "1" && $pmm_docker_memory == "1" ]]; then
+#     echo "Please use one of the options to limit the memory!"
+#     exit 1
+#   fi
+#   # Pass values to setup script
+#   if [[ $pmm_server_memory == "1" ]]; then
+#     METRICS_MEMORY="--pmm-server-memory=768000"
+#     pmm_framework_setup $METRICS_MEMORY
+#   elif [[ $pmm_docker_memory == "1" ]]; then
+#     MEMORY="--pmm-docker-memory=2147483648"
+#     pmm_framework_setup $MEMORY
+#   else
+#     pmm_framework_setup ""
+#   fi
+# fi
 
 # Running tests
 echo "Wipe clients"
@@ -177,14 +177,14 @@ elif [[ $pmm_server_memory != "1" &&  $pmm_docker_memory != "1" ]]; then
 fi
 
 echo "Running memory consumption check for --memory option"
-if [[ $pmm_docker_memory == "1" && $setup == "1" ]]; then
+if [[ $pmm_docker_memory == "1" ]]; then
   run_pmm_memory_check
 else
   echo "OK - Skipped"
 fi
 
 echo "Running memory consumption check for -e METRICS_MEMORY option"
-if [[ $pmm_server_memory == "1" && $setup == "1" ]]; then
+if [[ $pmm_server_memory == "1" ]]; then
   run_pmm_metrics_memory_check
 else
   echo "OK - Skipped"
