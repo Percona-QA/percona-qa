@@ -29,7 +29,23 @@ tap -> adding --tap option
 stress -> enabling stress test
 table_c -> the table count for stress test
 table_size -> the table size to prepare using sysbench
+pmm_docker_memory -> the option to enable test for --memory option
+pmm_server_memory -> the option to enable test for -e METRICS_MEMORY
 ```
+
+Sample run for memory tests:
+
+Running -e METRICS_MEMORY test:
+```
+$ instance_t="pxc" instance_c="1" tap=1 pmm_server_memory=1 bash ~/percona-qa/pmm-tests/pmm-testsuite.sh
+```
+
+Running --memory test:
+```
+$ instance_t="pxc" instance_c="1" tap=1 pmm_docker_memory=1 bash ~/percona-qa/pmm-tests/pmm-testsuite.sh
+```
+
+> NOTE: If there is no options passed the default memory checker will run to test.
 
 Running stress test, with 100 tables, with --tap option, for 3 ps instances:
 ```
