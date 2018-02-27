@@ -8,8 +8,7 @@ Percona XtraDB Cluster, and Percona Server for MongoDB.
 For a video introduction to some of the scripts, see:
 https://www.percona.com/blog/2015/03/17/free-mysql-qa-and-bash-linux-training-series/
 
-It is a requirement for many scripts to work that sudo is enabled and working
-(and should not request a password) for the user who is using these scripts.
+Please Note: For the scripts to run successfully, it is required that sudo is enabled and working and should not request a password.
 
 # Files #
 
@@ -49,7 +48,7 @@ set by editing the script.
 
 ## build_percona.sh ##
 
-download and build percona server from bzr url.  Note: script is outdated and
+Download and build percona server from bzr url.  Note: script is outdated and
 it is preferred to use get_percona.sh (see description)
 
 ## build_xtrabackup.sh ##
@@ -490,7 +489,7 @@ then outputs the versions and row count of the test table on both nodes.
 
 *Note:* Jenkins CI script
 
-tests cluster combining 5.6 release with 5.6 latest.
+Tests cluster combining 5.6 release with 5.6 latest.
 
 Tests cluster SST and IST using Mysql test suite and multi-table sysbench from
 both nodes, performs an mysql_upgrade retests.  Reports versions and row
