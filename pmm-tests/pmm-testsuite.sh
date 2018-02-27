@@ -174,6 +174,8 @@ if [[ -z $pmm_server_memory &&  -z $pmm_docker_memory ]]; then
   run_pmm_default_memory_check
 elif [[ $pmm_server_memory != "1" &&  $pmm_docker_memory != "1" ]]; then
   run_pmm_default_memory_check
+else
+  echo "OK - Skipped"
 fi
 
 echo "Running memory consumption check for --memory option"
