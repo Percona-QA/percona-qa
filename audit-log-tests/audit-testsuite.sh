@@ -31,6 +31,19 @@ function execute_sql() {
     ${conn_string} -e "$2"
 }
 
+# Functions for calling BATS tests
+
+function run_plugin_install_check() {
+  # Calling bats file
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/plugin_install_check.bats
+  else
+    bats $DIRNAME/plugin_install_check.bats
+  fi
+}
+
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # Run clone and build here
 
@@ -51,3 +64,10 @@ run_startup ${BASEDIR}
 # Start server here
 echo "Starting Server!"
 start_server ${BASEDIR}
+
+# Enable AUDIT plugin
+INST_PLUGIN="INSTALL PLUGIN audit_log SONAME 'audit_log.so'"
+execute_sql ${BASEDIR} "${INST_PLUGIN}"
+
+# Verify the installation
+run_plugin_install_check
