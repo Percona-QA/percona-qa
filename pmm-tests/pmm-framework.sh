@@ -472,12 +472,12 @@ setup(){
     echo "PMM version is ====== $PMM_VERSION"
   fi
   echo "Initiating PMM client configuration"
-  PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+  PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* 2>/dev/null | grep -v ".tar" | head -n1)
   if [ -z $PMM_CLIENT_BASEDIR ]; then
-    PMM_CLIENT_TAR=$(ls -1td pmm-client-* | grep ".tar" | head -n1)
+    PMM_CLIENT_TAR=$(ls -1td pmm-client-* 2>/dev/null | grep ".tar" | head -n1)
     if [ ! -z $PMM_CLIENT_TAR ];then
       tar -xzf $PMM_CLIENT_TAR
-      PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+      PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* 2>/dev/null | grep -v ".tar" | head -n1)
       pushd $PMM_CLIENT_BASEDIR > /dev/null
       sudo ./install
       popd > /dev/null
@@ -488,7 +488,7 @@ setup(){
         wget $PMM_CLIENT_URL
         PMM_CLIENT_TAR=$(echo $PMM_CLIENT_URL | grep -o '[^/]*$')
         tar -xzf $PMM_CLIENT_TAR
-        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* 2>/dev/null | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
         sudo ./install
         popd > /dev/null
@@ -497,7 +497,7 @@ setup(){
         echo "PMM client tar 2 $PMM_CLIENT_TAR"
         wget https://www.percona.com/downloads/pmm-client/$PMM_VERSION/binary/tarball/$PMM_CLIENT_TAR
         tar -xzf $PMM_CLIENT_TAR
-        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* 2>/dev/null | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
         sudo ./install
         popd > /dev/null
