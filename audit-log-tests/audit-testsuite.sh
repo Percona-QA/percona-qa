@@ -23,6 +23,7 @@ function run_startup() {
 function start_server() {
   cd $1
   ./start --secure-file-priv=
+  cd ..
 }
 
 function execute_sql() {
@@ -66,6 +67,7 @@ echo "Starting Server!"
 start_server ${BASEDIR}
 
 # Enable AUDIT plugin
+echo "Installing the plugin"
 INST_PLUGIN="INSTALL PLUGIN audit_log SONAME 'audit_log.so'"
 execute_sql ${BASEDIR} "${INST_PLUGIN}"
 
