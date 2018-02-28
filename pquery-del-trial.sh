@@ -29,7 +29,6 @@ fi
 
 # Delete other files
 if [[ $PXC -eq 1 ]];then
-  echo "./reducer${TRIAL}-${PXC_NODE}.sh"
   rm -f  ./reducer${TRIAL}-${PXC_NODE}.sh > /dev/null 2>&1
   echo "- pquery trial #${TRIAL_DIR} and all related files wiped"
 else
