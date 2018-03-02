@@ -18,7 +18,6 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   # Creating DB
   $($CONN -e "create database include_commands_test_db1")
   # Checking audit.log file
-  result=$(cat ${BASEDIR}/data/audit.log | grep 'create database include_commands_test_db1')
-  echo $output
+  $(cat ${BASEDIR}/data/audit.log | grep 'create database include_commands_test_db1')
     [ "$status" -eq 0 ]
 }
