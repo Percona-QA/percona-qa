@@ -20,6 +20,5 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   # Checking audit.log file
   sleep 3
   result="$(cat ${BASEDIR}/data/audit.log | grep 'create database include_commands_test_db1')"
-  echo $result
-    [ "$status" -eq 0 ]
+  echo $result | grep "include_commands_test_db1"
 }
