@@ -36,7 +36,8 @@ function flush_audit_log() {
   # Function for flushing log prior executing each statement.
   # $1 path basedir
   rm -f $1/data/audit.log
-  execute_sql $1 -e "set global audit_log_flush=ON"
+  SQL="set global audit_log_flush=ON"
+  execute_sql $1 -e $SQL
 }
 
 # Functions for calling BATS tests
@@ -91,6 +92,6 @@ echo "Installing the plugin"
 run_plugin_install_check
 
 # Flush audit.log file First
-flush_audit_log
+flush_audit_log ${BASEDIR}
 # Call audit_log_include_commands.bats tests here
 run_audit_log_include_commands
