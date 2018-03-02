@@ -29,7 +29,7 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   # Enabling here
   $($CONN -e "set global audit_log_include_commands='create_table'")
   # Creating DB
-  $($CONN -e "create table include_commands_test_db1.t1(int not null)")
+  $($CONN -e "create table include_commands_test_db1.t1(id int not null)")
   # Checking audit.log file
   sleep 3
   result="$(cat ${BASEDIR}/data/audit.log | grep 'create table include_commands_test_db1.t1')"
