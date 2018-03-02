@@ -37,7 +37,7 @@ function flush_audit_log() {
   # $1 path basedir
   rm -f $1/data/audit.log
   SQL="set global audit_log_flush=ON"
-  execute_sql $1 -e "$SQL"
+  execute_sql $1 "$SQL"
 }
 
 # Functions for calling BATS tests
