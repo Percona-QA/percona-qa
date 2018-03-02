@@ -312,6 +312,7 @@ fsp0fsp.cc line 1899                             ## https://bugs.launchpad.net/p
 btr0cur.cc line 2208                             ## https://bugs.launchpad.net/percona-server/+bug/1385028 (Dup of MS #74682/MS #74663)
 fsp0fsp.cc line 2025                             ## https://bugs.mysql.com/bug.php?id=74876 (MS 5.7.15-m15) (InnoDB: Failing assertion: inode)
 Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxPK5TABLEP5trx_tPK ## https://bugs.mysql.com/bug.php?id=74663 (previously 74363)
+Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxP5TABLEPKS3_P5trx_tPKc ## https://bugs.mysql.com/bug.php?id=74663
 #btr0cur.cc line 1239                            ## Fixed ## https://bugs.mysql.com/bug.php?id=75913 MS
 #btr0cur.cc line 1244                            ## Fixed ## https://bugs.mysql.com/bug.php?id=75913 PS
 
