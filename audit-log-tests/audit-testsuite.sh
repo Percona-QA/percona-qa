@@ -32,6 +32,13 @@ function execute_sql() {
     ${conn_string} -e "$2"
 }
 
+function flush_audit_log() {
+  # Function for flushing log prior executing each statement.
+  # $1 path basedir
+  rm -f $1/data/audit.log
+  execute_sql $1 -e "set global audit_log_flush=ON"
+}
+
 # Functions for calling BATS tests
 
 function run_plugin_install_check() {
@@ -40,6 +47,15 @@ function run_plugin_install_check() {
     bats --tap $DIRNAME/plugin_install_check.bats
   else
     bats $DIRNAME/plugin_install_check.bats
+  fi
+}
+
+function run_audit_log_include_commands() {
+  # Calling bats file
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/audit_log_include_commands.bats
+  else
+    bats $DIRNAME/audit_log_include_commands.bats
   fi
 }
 
@@ -73,3 +89,8 @@ echo "Installing the plugin"
 
 # Verify the installation
 run_plugin_install_check
+
+# Flush audit.log file First
+flush_audit_log
+# Call audit_log_include_commands.bats tests here
+run_audit_log_include_commands
