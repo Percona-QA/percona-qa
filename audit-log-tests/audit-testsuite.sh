@@ -22,7 +22,7 @@ function run_startup() {
 
 function start_server() {
   cd $1
-  ./start --secure-file-priv=
+  ./start --plugin-load-add=audit_log=audit_log.so --audit_log_format=json --secure-file-priv=
   cd ..
 }
 
@@ -68,8 +68,8 @@ start_server ${BASEDIR}
 
 # Enable AUDIT plugin
 echo "Installing the plugin"
-INST_PLUGIN="INSTALL PLUGIN audit_log SONAME 'audit_log.so'"
-execute_sql ${BASEDIR} "${INST_PLUGIN}"
+# INST_PLUGIN="INSTALL PLUGIN audit_log SONAME 'audit_log.so'"
+# execute_sql ${BASEDIR} "${INST_PLUGIN}"
 
 # Verify the installation
 run_plugin_install_check
