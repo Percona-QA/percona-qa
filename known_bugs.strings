@@ -762,6 +762,7 @@ Z24get_schema_tables_resultP4JOIN23enum_                                        
 #Z24ha_initialize_handlertonP13st_plugin_int                                   ## Fixed ## https://jira.percona.com/browse/MYR-195
 Z24plugin_foreach_with_maskP3THDPFcS0_PP13st_plugin_intPvEijS4_                         ## https://bugs.launchpad.net/percona-server/+bug/1688176 (also listed elsewhere)
 ZN25table_events_waits_common8make_rowEbP10PFS_threadPV16PFS_events_waits               ## https://bugs.mysql.com/bug.php?id=88799
+ZN25table_events_waits_common8make_rowEP16PFS_events_waits                              ## https://jira.percona.com/browse/PS-3873
 #Z24make_used_partitions_strP14partition_infoP4ListIKcE                        ## Fixed ## https://bugs.mysql.com/bug.php?id=74746 (fixed in 5.6.24)
 #Z24mark_tmp_table_for_reuseP5TABLE                                            ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1417533 (dup of 1387951)
 #Z24plugin_foreach_with_maskP3THDPFcS0_PP13st_plugin_intPvEijS4_               ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368530 (fixed in 5.6.27)
