@@ -36,7 +36,7 @@ usage () {
   echo " --ms-version                     Pass MySQL Server version info"
   echo " --md-version                     Pass MariaDB Server version info"
   echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
-  echo " --mysqld-startup-options         Pass MySQL startup options"
+  echo " --mysqld-startup-options         Pass MySQL startup options. eg : --mysqld-startup-options='--innodb_buffer_pool_size=1G --innodb_log_file_size=1G'"
   echo " --with-proxysql                  This allow to install PXC with proxysql"
   echo " --sysbench-data-load             This will initiate sysbench data load on mysql instances"
   echo " --sysbench-oltp-run              This will initiate sysbench oltp run on mysql instances"
