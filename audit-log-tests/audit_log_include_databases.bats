@@ -14,7 +14,7 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   # First setting to NULL
   $($CONN -e "set global audit_log_include_databases=null")
   # Enabling here
-  $($CONN -e "set global audit_log_include_commands='dummy_db'")
+  $($CONN -e "set global audit_log_include_databases='dummy_db'")
   # Creating DB
   $($CONN -e "create database dummy_db")
   # Creating Table
