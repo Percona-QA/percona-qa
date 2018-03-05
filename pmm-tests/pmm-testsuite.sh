@@ -102,6 +102,30 @@ function run_external_exporters_tests() {
   fi
 }
 
+function run_pmm_default_memory_check() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/pmm-default-memory-check.bats
+  else
+    bats ${DIRNAME}/pmm-default-memory-check.bats
+  fi
+}
+
+function run_pmm_memory_check() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/pmm-memory-check.bats
+  else
+    bats ${DIRNAME}/pmm-memory-check.bats
+  fi
+}
+
+function run_pmm_metrics_memory_check() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/pmm-metrics-memory-check.bats
+  else
+    bats ${DIRNAME}/pmm-metrics-memory-check.bats
+  fi
+}
+
 # Additional functions
 function run_create_table() {
   bash ${DIRNAME}/create_table.sh $1 $2
@@ -110,6 +134,25 @@ function run_create_table() {
 function run_populate_table() {
   bash ${DIRNAME}/populate_table.sh $1 $2 $3
 }
+
+# Setting up the PMM using pmm_framework_setup() here
+# if [[ $setup == "1" ]]; then
+#   # Check if both options are passed.
+#   if [[ $pmm_server_memory == "1" && $pmm_docker_memory == "1" ]]; then
+#     echo "Please use one of the options to limit the memory!"
+#     exit 1
+#   fi
+#   # Pass values to setup script
+#   if [[ $pmm_server_memory == "1" ]]; then
+#     METRICS_MEMORY="--pmm-server-memory=768000"
+#     pmm_framework_setup $METRICS_MEMORY
+#   elif [[ $pmm_docker_memory == "1" ]]; then
+#     MEMORY="--pmm-docker-memory=2147483648"
+#     pmm_framework_setup $MEMORY
+#   else
+#     pmm_framework_setup ""
+#   fi
+# fi
 
 # Running tests
 echo "Wipe clients"
@@ -125,6 +168,29 @@ fi
 
 echo "Running generic tests"
 run_generic_tests
+
+echo "Running default memory consumption check"
+if [[ -z $pmm_server_memory &&  -z $pmm_docker_memory ]]; then
+  run_pmm_default_memory_check
+elif [[ $pmm_server_memory != "1" &&  $pmm_docker_memory != "1" ]]; then
+  run_pmm_default_memory_check
+else
+  echo "OK - Skipped"
+fi
+
+echo "Running memory consumption check for --memory option"
+if [[ $pmm_docker_memory == "1" ]]; then
+  run_pmm_memory_check
+else
+  echo "OK - Skipped"
+fi
+
+echo "Running memory consumption check for -e METRICS_MEMORY option"
+if [[ $pmm_server_memory == "1" ]]; then
+  run_pmm_metrics_memory_check
+else
+  echo "OK - Skipped"
+fi
 
 echo "Running external exporters tests"
 setup_local_consul_exporter
