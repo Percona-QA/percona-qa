@@ -36,6 +36,7 @@ usage () {
   echo " --ms-version                     Pass MySQL Server version info"
   echo " --md-version                     Pass MariaDB Server version info"
   echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
+  echo " --mysqld-startup-options         Pass MySQL startup options. eg : --mysqld-startup-options='--innodb_buffer_pool_size=1G --innodb_log_file_size=1G'"
   echo " --with-proxysql                  This allow to install PXC with proxysql"
   echo " --sysbench-data-load             This will initiate sysbench data load on mysql instances"
   echo " --sysbench-oltp-run              This will initiate sysbench oltp run on mysql instances"
@@ -67,7 +68,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -150,6 +151,10 @@ do
     ;;
     --pxc-version )
     pxc_version="$2"
+    shift 2
+    ;;
+    --mysqld-startup-options )
+    mysqld_startup_options="$2"
     shift 2
     ;;
     --mo-version )
@@ -480,12 +485,12 @@ setup(){
    echo "PMM version is ====== $PMM_VERSION"
  fi
   echo "Initiating PMM client configuration"
-  PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+  PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* 2>/dev/null | grep -v ".tar" | head -n1)
   if [ -z $PMM_CLIENT_BASEDIR ]; then
-    PMM_CLIENT_TAR=$(ls -1td pmm-client-* | grep ".tar" | head -n1)
+    PMM_CLIENT_TAR=$(ls -1td pmm-client-* 2>/dev/null | grep ".tar" | head -n1)
     if [ ! -z $PMM_CLIENT_TAR ];then
       tar -xzf $PMM_CLIENT_TAR
-      PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+      PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* 2>/dev/null | grep -v ".tar" | head -n1)
       pushd $PMM_CLIENT_BASEDIR > /dev/null
       sudo ./install
       popd > /dev/null
@@ -498,7 +503,7 @@ setup(){
         wget $PMM_CLIENT_TARBALL_URL
         PMM_CLIENT_TAR=$(echo $PMM_CLIENT_TARBALL_URL | grep -o '[^/]*$')
         tar -xzf $PMM_CLIENT_TAR
-        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* 2>/dev/null | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
         sudo ./install
         popd > /dev/null
@@ -507,7 +512,7 @@ setup(){
         echo "PMM client tar 2 $PMM_CLIENT_TAR"
         wget https://www.percona.com/downloads/pmm-client/$PMM_VERSION/binary/tarball/$PMM_CLIENT_TAR
         tar -xzf $PMM_CLIENT_TAR
-        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* | grep -v ".tar" | head -n1)
+        PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* 2>/dev/null | grep -v ".tar" | head -n1)
         pushd $PMM_CLIENT_BASEDIR > /dev/null
         sudo ./install
         popd > /dev/null
@@ -865,7 +870,7 @@ add_clients(){
         else
           MYEXTRA+=" --gtid-mode=ON --enforce-gtid-consistency "
         fi
-        ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG $TOKUDB_STARTUP $ROCKSDB_STARTUP --basedir=${BASEDIR} \
+        ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG $TOKUDB_STARTUP $ROCKSDB_STARTUP $mysqld_startup_options --basedir=${BASEDIR} \
           --datadir=$node --log-error=$node/error.err --log-bin=mysql-bin \
           --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1 --log-slave-updates \
           --server-id=10${j} > $node/error.err 2>&1 &
@@ -893,7 +898,7 @@ add_clients(){
           if grep -q "TCP/IP port: Address already in use" $node/error.err; then
             echo "TCP/IP port: Address already in use, restarting ${NODE_NAME}_${j} mysqld daemon with different port"
             RBASE1="$(( RBASE1 - 1 ))"
-            ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG $TOKUDB_STARTUP $ROCKSDB_STARTUP --basedir=${BASEDIR} \
+            ${BASEDIR}/bin/mysqld $MYEXTRA $MYSQL_CONFIG $TOKUDB_STARTUP $ROCKSDB_STARTUP $mysqld_startup_options --basedir=${BASEDIR} \
                --datadir=$node --log-error=$node/error.err --log-bin=mysql-bin \
                --socket=/tmp/${NODE_NAME}_${j}.sock --port=$RBASE1 --log-slave-updates \
                --server-id=10${j} > $node/error.err 2>&1 &
