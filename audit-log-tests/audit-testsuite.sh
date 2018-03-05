@@ -60,6 +60,14 @@ function run_audit_log_include_commands() {
   fi
 }
 
+function run_audit_log_include_databases() {
+  # Calling bats file
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/audit_log_include_databases.bats
+  else
+    bats $DIRNAME/audit_log_include_databases.bats
+  fi
+}
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -95,3 +103,7 @@ run_plugin_install_check
 flush_audit_log ${BASEDIR}
 # Call audit_log_include_commands.bats tests here
 run_audit_log_include_commands
+# Flush audit.log file First
+flush_audit_log ${BASEDIR}
+# Call audit_log_include_databases.bats tests here
+run_audit_log_include_databases
