@@ -23,6 +23,6 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   $($CONN -e "select * from dummy_db.dummy_t1")
   # Checking audit.log file
   sleep 3
-  result="$(cat ${BASEDIR}/data/audit.log | grep 'select * from dummy_db.dummy_t1')"
+  result="$(cat ${BASEDIR}/data/audit.log | grep '* from dummy_db.dummy_t1')"
   echo $result | grep "select * from dummy_db.dummy_t1"
 }
