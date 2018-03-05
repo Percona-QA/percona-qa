@@ -20,10 +20,10 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   # Creating Table
   $($CONN -e "create table dummy_db.dummy_t1(id int not null)")
   # Querying the table
-  $($CONN -e "select * from dummy_db.dummy_t1")
+  $($CONN -e "select id from dummy_db.dummy_t1")
   # Checking audit.log file
   sleep 3
-  result="$(cat ${BASEDIR}/data/audit.log | grep '* from dummy_db.dummy_t1')"
+  result="$(cat ${BASEDIR}/data/audit.log | grep 'id from dummy_db.dummy_t1')"
   echo $result
-  echo $result | grep "* from dummy_db.dummy_t1"
+  echo $result | grep "id from dummy_db.dummy_t1"
 }
