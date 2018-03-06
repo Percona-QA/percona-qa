@@ -129,3 +129,4 @@ run_audit_log_include_databases
 run_audit_log_format
 # Flush audit.log file First
 flush_audit_log ${BASEDIR}
+run_audit_include_accounts
