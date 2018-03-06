@@ -69,6 +69,15 @@ function run_audit_log_include_databases() {
   fi
 }
 
+function run_audit_log_format() {
+  # Calling bats file
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/audit_log_format.bats
+  else
+    bats $DIRNAME/audit_log_format.bats
+  fi
+}
+
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # Run clone and build here
@@ -107,3 +116,5 @@ run_audit_log_include_commands
 flush_audit_log ${BASEDIR}
 # Call audit_log_include_databases.bats tests here
 run_audit_log_include_databases
+# Call audit_log_format.bats file here
+run_audit_log_format
