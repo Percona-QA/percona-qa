@@ -21,6 +21,8 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   # Running dummy SQL
   ${CONN} --user=audited_user --password='Baku12345#' -e "select @@innodb_buffer_pool_size" > /dev/null 2>&1
   # Checking audit.log file
-  result="$(cat ${BASEDIR}/data/audit.log | grep '@@innodb_buffer_pool_size')"
-  echo $result | grep 'audited_user'
+  #result="$(cat ${BASEDIR}/data/audit.log | grep '@@innodb_buffer_pool_size')"
+  #echo $result | grep 'audited_user'
+  cat ${BASEDIR}/data/audit.log | grep '@@innodb_buffer_pool_size' | grep 'audited_user'
+  [ $status -eq 0 ]
 }
