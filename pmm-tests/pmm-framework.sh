@@ -61,6 +61,7 @@ usage () {
   echo " --ami-image                      Pass PMM server ami image name"
   echo " --key-name                       Pass your aws access key file name"
   echo " --ova-image                      Pass PMM server ova image name"
+  echo " --ova-memory                     Pass memory(memorysize in MB) for OVA virtual box"
   echo " --upgrade 			    When this option is specified, PMM framework will be updated to specified version"
   echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
 }
@@ -68,7 +69,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,pmm-server-version:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -135,6 +136,10 @@ do
     ;;
 	--ova-image )
     ova_image="$2"
+    shift 2
+    ;;
+	--ova-memory )
+    ova_memory="$2"
     shift 2
     ;;
     --ps-version )
@@ -344,6 +349,7 @@ if [[ -z "${ms_version}" ]]; then ms_version="8.0"; fi
 if [[ -z "${md_version}" ]]; then md_version="10.2"; fi
 if [[ -z "${mo_version}" ]]; then mo_version="3.4"; fi
 if [[ -z "${REPLCOUNT}" ]]; then REPLCOUNT="1"; fi
+if [[ -z "${ova_memory}" ]]; then ova_memory="2048";fi
 
 setup(){
   if [ $IS_BATS_RUN -eq 0 ];then
@@ -470,6 +476,7 @@ setup(){
 	NETWORK_INTERFACE=$(ip addr | grep $IP_ADDRESS |  awk 'NF>1{print $NF}')
 	VBoxManage modifyvm $ova_image_name --nic1 bridged --bridgeadapter1 ${NETWORK_INTERFACE}
 	VBoxManage modifyvm $ova_image_name --uart1 0x3F8 4 --uartmode1 file $WORKDIR/pmm-server-console.log
+    VBoxManage modifyvm $ova_image_name --memory ${ova_memory}
     # start instance
     VBoxManage startvm --type headless $ova_image_name > $WORKDIR/pmm-server-starup.log 2> /dev/null
 	sleep 120
