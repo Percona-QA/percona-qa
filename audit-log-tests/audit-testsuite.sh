@@ -78,6 +78,15 @@ function run_audit_log_format() {
   fi
 }
 
+function run_audit_include_accounts() {
+  # Calling bats file
+  if [[ $tap == 1 ]] ; then
+    bats --tap $DIRNAME/audit_include_accounts.bats
+  else
+    bats $DIRNAME/audit_include_accounts.bats
+  fi
+}
+
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # Run clone and build here
