@@ -21,6 +21,8 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   $($CONN -e "create table dummy_db.dummy_t1(id int not null)")
   # Querying the table
   $($CONN -e "select id from dummy_db.dummy_t1")
+  # Setting to null again
+  $($CONN -e "set global audit_log_include_databases=null")
   # Checking audit.log file
   sleep 3
   result="$(cat ${BASEDIR}/data/audit.log | grep 'id from dummy_db.dummy_t1')"
