@@ -78,12 +78,12 @@ function run_audit_log_format() {
   fi
 }
 
-function run_audit_include_accounts() {
+function run_audit_log_include_accounts() {
   # Calling bats file
   if [[ $tap == 1 ]] ; then
-    bats --tap $DIRNAME/audit_include_accounts.bats
+    bats --tap $DIRNAME/audit_log_include_accounts.bats
   else
-    bats $DIRNAME/audit_include_accounts.bats
+    bats $DIRNAME/audit_log_include_accounts.bats
   fi
 }
 
