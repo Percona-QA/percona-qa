@@ -19,7 +19,7 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   # Enable here
   $($CONN -e "set global audit_log_include_accounts='audited_user@localhost'")
   # Running dummy SQL
-  sql=$(${CONN} --user=audited_user --password='Baku12345#' -e "select @@innodb_buffer_pool_size")
+  ${CONN} --user=audited_user --password='Baku12345#' -e "select @@innodb_buffer_pool_size" > /dev/null 2>&1
   # Checking audit.log file
   result="$(cat ${BASEDIR}/data/audit.log | grep 'select @@innodb_buffer_pool_size')"
   echo $result | grep 'audited_user'
