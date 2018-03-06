@@ -19,7 +19,7 @@ CONN=$(cat ${BASEDIR}/cl_noprompt)
   # Enable here
   $($CONN -e "set global audit_log_include_accounts='audited_user@localhost'")
   # Running dummy SQL
-  $($CONN -e "select 85")
+  $($CONN --user=audited_user --password='Baku12345#' -e "select 85")
   # Checking audit.log file
   result="$(cat ${BASEDIR}/data/audit.log | grep 'select 85')"
   echo $result | grep 'audited_user'
