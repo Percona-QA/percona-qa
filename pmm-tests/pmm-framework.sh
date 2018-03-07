@@ -32,6 +32,7 @@ usage () {
   echo "                                  You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
   echo " --download                       This will help us to download pmm client binary tar balls"
   echo " --pmm-server-version             Pass PMM version"
+  echo " --pmm-port                       Pass port for PMM docker"
   echo " --ps-version                     Pass Percona Server version info"
   echo " --ms-version                     Pass MySQL Server version info"
   echo " --md-version                     Pass MariaDB Server version info"
@@ -69,7 +70,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -122,6 +123,10 @@ do
     MEMORY="$2"
     shift 2
     ;;
+    --pmm-port )
+    PMM_PORT="$2"
+    shift 2
+    ;;
     --pmm-docker-memory )
     DOCKER_MEMORY="$2"
     shift 2
@@ -134,11 +139,11 @@ do
     key_name="$2"
     shift 2
     ;;
-	--ova-image )
+    --ova-image )
     ova_image="$2"
     shift 2
     ;;
-	--ova-memory )
+    --ova-memory )
     ova_memory="$2"
     shift 2
     ;;
@@ -417,15 +422,15 @@ setup(){
     fi
     if [ -z $dev ]; then
       if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p 443:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       else
-       sudo docker run -d -p 80:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     else
       if [ "$IS_SSL" == "Yes" ];then
-       sudo docker run -d -p 443:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       else
-       sudo docker run -d -p 80:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     fi
   elif [[ "$pmm_server" == "ami" ]] ; then
@@ -551,7 +556,7 @@ setup(){
 	  echo "Alert! Password protection is not enabled in ova image, Please configure it manually"
 	  SERVER_IP=$OVA_PUBLIC_IP
     else
-      sudo pmm-admin config --server $IP_ADDRESS --server-user=$pmm_server_username --server-password=$pmm_server_password $PMM_MYEXTRA
+      sudo pmm-admin config --server $IP_ADDRESS:$PMM_PORT --server-user=$pmm_server_username --server-password=$pmm_server_password $PMM_MYEXTRA
 	  SERVER_IP=$IP_ADDRESS
     fi
   fi
@@ -562,22 +567,22 @@ setup(){
   fi
   if [ "$IS_SSL" == "Yes" ];then
     (
-    printf "%s\t%s\n" "PMM landing page" "https://$SERVER_IP:443"
+    printf "%s\t%s\n" "PMM landing page" "https://$SERVER_IP:$PMM_PORT"
     if [ ! -z $pmm_server_username ];then
       printf "%s\t%s\n" "PMM landing page username" "$pmm_server_username"
     fi
     if [ ! -z $pmm_server_password ];then
       printf "%s\t%s\n" "PMM landing page password" "$pmm_server_password"
     fi
-    printf "%s\t%s\n" "Query Analytics (QAN web app)" "https://$SERVER_IP:443/qan"
-    printf "%s\t%s\n" "Metrics Monitor (Grafana)" "https://$SERVER_IP:443/graph"
+    printf "%s\t%s\n" "Query Analytics (QAN web app)" "https://$SERVER_IP:$PMM_PORT/qan"
+    printf "%s\t%s\n" "Metrics Monitor (Grafana)" "https://$SERVER_IP:$PMM_PORT/graph"
     printf "%s\t%s\n" "Metrics Monitor username" "admin"
     printf "%s\t%s\n" "Metrics Monitor password" "admin"
-    printf "%s\t%s\n" "Orchestrator" "https://$SERVER_IP:443/orchestrator"
+    printf "%s\t%s\n" "Orchestrator" "https://$SERVER_IP:$PMM_PORT/orchestrator"
     ) | column -t -s $'\t'
   else
     (
-    printf "%s\t%s\n" "PMM landing page" "http://$SERVER_IP"
+    printf "%s\t%s\n" "PMM landing page" "http://$SERVER_IP:$PMM_PORT"
     if [ ! -z $pmm_server_username ];then
       printf "%s\t%s\n" "PMM landing page username" "$pmm_server_username"
     fi
@@ -1113,15 +1118,15 @@ upgrade_server(){
     sudo docker rm pmm-server 2&> /dev/null
     if [ -z $dev ]; then
       if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p 443:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       else
-        sudo docker run -d -p 80:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     else
       if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p 443:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       else
-        sudo docker run -d -p 80:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     fi
 
