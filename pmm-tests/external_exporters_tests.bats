@@ -2,6 +2,7 @@
 
 @test "Checking consul_exporter is started" {
   IP_ADDRESS=$(ip route get 1 | awk '{print $NF;exit}')
+  IP_ADDRESS=$(hostname -I | cut -d' ' -f1)
   run bash -c "curl -s "http://${IP_ADDRESS}:9107/metrics" | grep '^consul_'"
   echo "$output"
   [ "$status" -eq 0 ]
