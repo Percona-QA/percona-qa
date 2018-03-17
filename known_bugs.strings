@@ -207,6 +207,7 @@ trx0trx.cc line 1262                                     ## MS5.7 ## https://bug
 #thd->get_transaction                           ## Fixed ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)  ## Fixed in PS 5.7.10-rc1
 thd->get_transaction                                              ## https://jira.percona.com/browse/PS-291 (5.7.20)
 #sync0policy.ic line 63                                  ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79391 (MS version of PS #1519201) (remarked to not miss anything in PS)
+sync0policy.ic line 93                                            ## https://jira.percona.com/browse/PS-3902
 #buf0buf.ic line 230                                     ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1519201 (PS version of MS #79391)  ## Fixed in PS 5.7.10-rc1
 #ha_innodb.cc line 18605                                 ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1519204 (duplicate of 1368552) ## Fixed in PS 5.7.10-rc2
 ZN12ha_myisammrg15detach_childrenEv                      ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79392
@@ -542,7 +543,8 @@ ut0lst.h line 131                                                               
 bit < map->n_bits                                                                       ## https://bugs.mysql.com/bug.php?id=86173
 user_stats->concurrent_connections > 0                                                  ## https://bugs.launchpad.net/percona-server/+bug/1661488
 allocated_status_memory .= __null                                                       ## https://bugs.mysql.com/bug.php?id=83797 (as subsequent testcase)
-#1 == num_erased                                                                        ## https://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
+#1 == num_erased                                                                        ## https://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible
+.relay_master_log_file_len == master_log_file_len                                       ## https://jira.percona.com/browse/PS-3885
 .tables .. thd->lex->is_query_tables_locked                                             ## https://tokutek.atlassian.net/browse/DB-1027
 .bytes_read == .data_written - ..old_pre_checksum_fd .. .description_event->checksum_alg == BINLOG_CHECKSUM_ALG_OFF  ## https://bugs.launchpad.net/percona-server/+bug/1737023
 .auto_increment_lock.*.auto_increment_safe_stmt_log_lock                                ## https://bugs.mysql.com/bug.php?id=76542
