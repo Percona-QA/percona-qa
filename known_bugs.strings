@@ -180,7 +180,7 @@ ZN7SEL_ARG9store_minEjPPhj                               ## https://bugs.mysql.c
 
 ## =========== MS 5.7 GA ===========
 .xid->is_null                                            ## https://bugs.mysql.com/bug.php?id=80694
-#row0quiesce.cc line 724                        ## Fixed ## https://bugs.mysql.com/bug.php?id=80669
+row0quiesce.cc line 724                                  ## https://bugs.mysql.com/bug.php?id=90154 (Old bug #80669. Fixed in 5.7.11)
 ut0ut.cc line 921                                        ## https://bugs.mysql.com/bug.php?id=80695 PS
 ut0ut.cc line 936                                        ## https://bugs.mysql.com/bug.php?id=80668
 #pfs_file .= __null                             ## Fixed ## https://bugs.mysql.com/bug.php?id=79016
