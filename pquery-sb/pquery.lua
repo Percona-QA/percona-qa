@@ -3,7 +3,7 @@
 queries = {}
 
 function thread_init(thread_id)
-   local file = io.open(pquery_file, "r")
+   local file = io.open(pquery-file, "r")
    local i = 1
    for line in file:lines() do
       queries[i] = line
