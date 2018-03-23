@@ -1,1 +1,1 @@
-sysbench --test=pquery.lua --pquery-file=./pquery.sql run
+sysbench --test=pquery.lua --pquery-file=${PWD}/../pquery/main-ms-ps-md.sql run

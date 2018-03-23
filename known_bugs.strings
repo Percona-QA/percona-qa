@@ -180,12 +180,12 @@ ZN7SEL_ARG9store_minEjPPhj                               ## https://bugs.mysql.c
 
 ## =========== MS 5.7 GA ===========
 .xid->is_null                                            ## https://bugs.mysql.com/bug.php?id=80694
-#row0quiesce.cc line 724                        ## Fixed ## https://bugs.mysql.com/bug.php?id=80669
+# row0quiesce.cc line 724                       ## Fixed ## https://bugs.mysql.com/bug.php?id=90154 (Old bug #80669. Fixed in 5.7.11)
 ut0ut.cc line 921                                        ## https://bugs.mysql.com/bug.php?id=80695 PS
 ut0ut.cc line 936                                        ## https://bugs.mysql.com/bug.php?id=80668
 #pfs_file .= __null                             ## Fixed ## https://bugs.mysql.com/bug.php?id=79016
 #Z8filesortP3THDP8FilesortbPyS3_S3_             ## Fixed ## https://bugs.mysql.com/bug.php?id=79016
-#ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_ ## Fixed ## https://bugs.mysql.com/bug.php?id=79018
+#ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_## Fixed ## https://bugs.mysql.com/bug.php?id=79018
 #Z22get_filename_hash_pinsP10PFS_thread         ## Fixed ## https://bugs.mysql.com/bug.php?id=79042
 refkey_rows_estimate >= 1.0                              ## https://bugs.mysql.com/bug.php?id=80782
 thd->owned_gtid.is_empty                                 ## https://bugs.mysql.com/bug.php?id=80663
@@ -659,6 +659,7 @@ thd->lex->sql_command == SQLCOM_XA_COMMIT                                       
 .field->orig_table->const_table                                                         ## https://bugs.launchpad.net/percona-server/+bug/1662091
 #. thd->in_sub_stmt                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74665 
 . thd->in_sub_stmt                                                                      ## https://bugs.mysql.com/bug.php?id=84828 (See also 74665) (Still present in MS 5.6.35)
+.thd->in_active_multi_stmt_transaction                                                  ## https://jira.percona.com/browse/PS-3919
 .thd->is_current_stmt_binlog_format_row                                                 ## https://bugs.launchpad.net/percona-server/+bug/1427030
 #thd->is_error                                                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=74493
 thd->is_error                                                                           ## https://bugs.mysql.com/bug.php?id=84076 (5.6 only)
@@ -822,6 +823,7 @@ ZN12ha_myisammrg5cloneEPKcP11st_mem_root                                        
 #ZN13Item_func_div10decimal_opEP10my_decimal                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74807 (Same gdb trace of Z14my_decimal_divjP10my_decimalPKS_S2_i)
 ZN13MYSQL_BIN_LOG33handle_binlog_flush_or_sync_errorEP3THDb                             ## https://bugs.mysql.com/bug.php?id=86256
 ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event                ## https://jira.percona.com/browse/PS-3878
+ZN13MYSQL_BIN_LOG13new_file_implEbP28Format_description_log_event                       ## https://bugs.mysql.com/bug.php?id=90190
 #ZN14Arg_comparator24cache_converted_constantEP3THDPP4ItemS4_11Item_result     ## Fixed ## https://bugs.mysql.com/bug.php?id=77991 (duplicate of 78188)
 #ZN14cachefile_list15add_cf_unlockedEP9cachefile                               ## Fixed ## https://tokutek.atlassian.net/browse/DB-812 (fixed in 5.6.23/Tk7.5.6)
 #ZN14Item_func_plus10decimal_opEP10my_decimal                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=74619 (Same gdb trace of Z14my_decimal_addjP10my_decimalPKS_S2_ assertion)

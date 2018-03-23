@@ -9,8 +9,8 @@ getopt('io');
 if (($opt_i eq '')||($opt_o eq '')){
   print "Usage: [perl] ./parse_general_log.pl -i infile -o outfile\n";
   print "Where infile is a standard myqld general query log\n";
-  print "General mysqld logs can be generated with these options:\n";
-  print "  --mysqld=--log-output=FILE --mysqld=--general_log --mysqld=--general_log_file=out.sql\n\n";
+  print "General mysqld logs can be generated with these options to mysqld:\n";
+  print "  --log-output=FILE --general_log --general_log_file=general.log\n\n";
   print "WARNING: by default this script eliminates a number of statements which may cause replay issues (KILL, RELEASE)\n";
   print "This may lead to non-reproducibility for certain bugs. Check the script's source for specifics\n";
   exit 1;

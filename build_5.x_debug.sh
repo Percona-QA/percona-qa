@@ -1,13 +1,15 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-MAKE_THREADS=8          # Number of build threads. There may be a bug with >1 settings
+MAKE_THREADS=1          # Number of build threads. There may be a bug with >1 settings
 WITH_ROCKSDB=1          # 0 or 1 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
                                  # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
                                  # This is also auto-turned off for all 5.5 and 5.6 builds 
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
-WITH_LOCAL_INFILE=0     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
-ZLIB_MYSQL8_HACK=1      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
+WITH_LOCAL_INFILE=1     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
+ZLIB_MYSQL8_HACK=0      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
+                                 # Also see https://bugs.launchpad.net/percona-server/+bug/1521566
+                                 # Set this to "0" if you see "Could NOT find ZLIB (missing: ZLIB_INCLUDE_DIR)"
 USE_BOOST_LOCATION=1    # 0 or 1 # Use a custom boost location to avoid boost re-download
 BOOST_LOCATION=/git/boost_1_59_0-debug/
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
@@ -103,14 +105,14 @@ if [ $USE_AFL -eq 1 ]; then
   echo "====================================================================="
   echo "Note: USE_AFL is set to 1, using the AFL gcc/g++ wrapper as compiler!"
   echo "====================================================================="
-  echo "Note: ftm, AFL builds exclude RocksDB"
+  echo "Note: ftm, AFL builds exclude RocksDB and TokuDB"
   echo "====================================================================="
   echo "Note: ftm, AFL builds require patching source code, ask Roel how to"
   echo "====================================================================="
   sleep 3
   WITH_ROCKSDB=0
-  #AFL="-DWITH_TOKUDB=0 -DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
-  AFL="-DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
+  AFL="-DWITH_TOKUDB=0 -DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
+  #AFL="-DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
 fi
 
 # Use a custom compiler

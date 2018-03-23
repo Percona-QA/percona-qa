@@ -164,10 +164,10 @@
 # ------ Compiling / Compiler Issues ------
 # If you see for example "/usr/bin/ld: cannot find -lzlib" in your compilation/build of MySQL, and the build fails because of it, then check:
   ld -lzlib --verbose  # Execute in a user writeable directory. If all entries fail, the lib could not be found. 
-  # You need to just link one of them to the real zlib on your system  ## With thanks, https://stackoverflow.com/a/21647591/1208218
+  You need to just link one of them to the real zlib on your system  ## With thanks, https://stackoverflow.com/a/21647591/1208218
   sudo ln -s /usr/lib64/libz.so.1.2.7 /usr/lib/libzlib.so  ## Though you may have to search for "libz.so" in /usr (cd /usr; find . | grep libz.so)
-  # This likely works with any linker issue (ld -l{failed lib} --verbose && sudo ln -s ...) 
-  # Another example;
+  This likely works with any linker issue (ld -l{failed lib} --verbose && sudo ln -s ...) 
+  Another example;
   ld -ltensorflow --verbose  # Note the "{somelib}.so needed by {somelib}.so" and next line "found {somelib}.so {path}"
   ld /usr/local/lib/libtensorflow.so  # This part; "ld: warning: cannot find entry symbol _start; not setting start address" can be ignored (it is likely just looking for a start address, which will be there in the program which links with this library)
 # If you get an error like this;
