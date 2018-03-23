@@ -823,6 +823,7 @@ ZN12ha_myisammrg5cloneEPKcP11st_mem_root                                        
 #ZN13Item_func_div10decimal_opEP10my_decimal                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74807 (Same gdb trace of Z14my_decimal_divjP10my_decimalPKS_S2_i)
 ZN13MYSQL_BIN_LOG33handle_binlog_flush_or_sync_errorEP3THDb                             ## https://bugs.mysql.com/bug.php?id=86256
 ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event                ## https://jira.percona.com/browse/PS-3878
+ZN13MYSQL_BIN_LOG13new_file_implEbP28Format_description_log_event                       ## https://bugs.mysql.com/bug.php?id=90190
 #ZN14Arg_comparator24cache_converted_constantEP3THDPP4ItemS4_11Item_result     ## Fixed ## https://bugs.mysql.com/bug.php?id=77991 (duplicate of 78188)
 #ZN14cachefile_list15add_cf_unlockedEP9cachefile                               ## Fixed ## https://tokutek.atlassian.net/browse/DB-812 (fixed in 5.6.23/Tk7.5.6)
 #ZN14Item_func_plus10decimal_opEP10my_decimal                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=74619 (Same gdb trace of Z14my_decimal_addjP10my_decimalPKS_S2_ assertion)
