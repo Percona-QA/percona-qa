@@ -10,7 +10,7 @@ WITH_LOCAL_INFILE=1     # 0 or 1 # Include the possibility to use LOAD DATA LOCA
 ZLIB_MYSQL8_HACK=0      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
                                  # Also see https://bugs.launchpad.net/percona-server/+bug/1521566
                                  # Set this to "0" if you see "Could NOT find ZLIB (missing: ZLIB_INCLUDE_DIR)"
-USE_BOOST_LOCATION=1    # 0 or 1 # Use a custom boost location to avoid boost re-download
+USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re-download
 BOOST_LOCATION=/git/boost_1_59_0-debug/
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
@@ -117,7 +117,11 @@ fi
 # ASAN, MSAN, UBSAN
 SAN=
 if [ $USE_SAN -eq 1 ]; then
-  SAN="-DWITH_ASAN -DWITH_ASAN_SCOPE -DWITH_MSAN -DWITH_UBSAN"
+  # MSAN and ASAN cannot be used at the same time, choose one of the two options below.
+  # Also note that for MSAN to have an affect, all libs linked to MySQL must also have been compiled with this option enabled
+  # Ref https://dev.mysql.com/doc/refman/5.7/en/source-configuration-options.html#option_cmake_with_msan
+  #SAN="--DWITH_MSAN=ON -DWITH_UBSAN=ON"
+  SAN="-DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON"  # Default
 fi
 
 # Use a custom compiler
