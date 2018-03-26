@@ -14,19 +14,24 @@ USE_BOOST_LOCATION=1    # 0 or 1 # Use a custom boost location to avoid boost re
 BOOST_LOCATION=/git/boost_1_59_0-debug/
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
-USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
+USE_CLANG=1             # 0 or 1 # Use the clang compiler instead of gcc
+USE_SAN=1               # 0 or 1 # Use ASAN, MSAN, UBSAN
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
 USE_AFL=0               # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
 AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
 
-# To install the latest clang from Chromium devs;
-# sudo yum remove clang    # Or sudo apt-get remove clang
+# To install the latest clang from Chromium devs (and this automatically updates previous version installed with this method too);
+# sudo yum remove clang    # Or sudo apt-get remove clang    # Only required if this procedure has never been followed yet
 # cd ~
 # mkdir TMP_CLANG
 # cd TMP_CLANG
-# git clone https://chromium.googlesource.com/chromium/src/tools/clang
+# git clone --depth=1 https://chromium.googlesource.com/chromium/src/tools/clang
 # cd ..
 # TMP_CLANG/clang/scripts/update.py
+
+# ASAN options to consider for runs
+# https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
+# ASAN_OPTIONS="quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true"
 
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random 6 digit for tmp directory name
 
@@ -46,12 +51,6 @@ if [ "$MYSQL_VERSION_MAJOR" == "5" ]; then
   if [ "$MYSQL_VERSION_MINOR" == "5" -o "$MYSQL_VERSION_MINOR" == "6" ]; then
     WITH_ROCKSDB=0  # This works fine for MS and PS but is not tested for MD
   fi
-fi
-
-ASAN=
-if [ "${1}" != "" ]; then
-  echo "Building with ASAN enabled"
-  ASAN="-DWITH_ASAN=ON"
 fi
 
 DATE=$(date +'%d%m%y')
@@ -115,6 +114,12 @@ if [ $USE_AFL -eq 1 ]; then
   #AFL="-DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
 fi
 
+# ASAN, MSAN, UBSAN
+SAN=
+if [ $USE_SAN -eq 1 ]; then
+  SAN="-DWITH_ASAN -DWITH_ASAN_SCOPE -DWITH_MSAN -DWITH_UBSAN"
+fi
+
 # Use a custom compiler
 CUSTOM_COMPILER=
 if [ $USE_CUSTOM_COMPILER -eq 1 ]; then
@@ -131,7 +136,7 @@ if [ $USE_AFL -eq 1 ]; then
     # Single quotes may work
     FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
   else
-    FLAGS="-DCMAKE_CXX_FLAGS=-w"
+    FLAGS='-DCMAKE_CXX_FLAGS=-w'
   fi
 else
   if [ $FB -eq 1 ]; then
@@ -169,20 +174,16 @@ fi
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build
-  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON -DWITH_KEYRING_TEST ${SAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
   # FB build
   cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 fi
-if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
-  ASAN_OPTIONS="detect_leaks=0" make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)
-  if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
-else
-  make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}
-  if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
-fi
+# Previously we had: ASAN_OPTIONS="detect_leaks=0" make... here due to upstream http://bugs.mysql.com/bug.php?id=80014 but this was fixed
+make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}
+if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 
 if [ ! -r ./scripts/make_binary_distribution ]; then  # Note: ./scripts/binary_distribution is created on-the-fly during the make compile
   echo "Assert: ./scripts/make_binary_distribution was not found. Terminating."
