@@ -14,8 +14,8 @@ USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re
 BOOST_LOCATION=/git/boost_1_59_0-debug/
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
-USE_CLANG=1             # 0 or 1 # Use the clang compiler instead of gcc
-USE_SAN=1               # 0 or 1 # Use ASAN, MSAN, UBSAN
+USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
+USE_SAN=0               # 0 or 1 # Use ASAN, MSAN, UBSAN
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
 USE_AFL=0               # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
 AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
@@ -28,10 +28,6 @@ AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
 # git clone --depth=1 https://chromium.googlesource.com/chromium/src/tools/clang
 # cd ..
 # TMP_CLANG/clang/scripts/update.py
-
-# ASAN options to consider for runs
-# https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
-# ASAN_OPTIONS="quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true"
 
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random 6 digit for tmp directory name
 
@@ -121,7 +117,8 @@ if [ $USE_SAN -eq 1 ]; then
   # Also note that for MSAN to have an affect, all libs linked to MySQL must also have been compiled with this option enabled
   # Ref https://dev.mysql.com/doc/refman/5.7/en/source-configuration-options.html#option_cmake_with_msan
   #SAN="--DWITH_MSAN=ON -DWITH_UBSAN=ON"
-  SAN="-DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON"  # Default
+  SAN="-DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF"  # Default
+    # The -DWITH_RAPID=OFF is a workaround for https://bugs.mysql.com/bug.php?id=90211 - it disables GR and mysqlx (rapid plugins)
 fi
 
 # Use a custom compiler
@@ -145,6 +142,10 @@ if [ $USE_AFL -eq 1 ]; then
 else
   if [ $FB -eq 1 ]; then
     FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
+  else  # Normal builds
+    if [ $USE_SAN -eq 1 ]; then
+      FLAGS='-DCMAKE_CXX_FLAGS=-fsanitize-coverage=trace-pc-guard'
+    fi
   fi
 fi
 # Also note that -k can be use for make to ignore any errors; if the build fails somewhere in the tests/unit tests then it matters 
@@ -177,8 +178,8 @@ else
 fi
 
 if [ $FB -eq 0 ]; then
-  # PS,MS,PXC build
-  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON -DWITH_KEYRING_TEST=ON ${SAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  # PS,MS,PXC build. Consider adding -DWITH_KEYRING_TEST=ON depeding on bug https://bugs.mysql.com/bug.php?id=90212 outcome
+  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${SAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
   # FB build

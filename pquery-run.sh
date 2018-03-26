@@ -18,6 +18,10 @@ CONFIGURATION_FILE=pquery-run.conf  # Do not use any path specifiers, the .conf 
 RANDOM=`date +%s%N | cut -b14-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||'); SCRIPT_PWD=$(cd `dirname $0` && pwd)
 WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0; STOREANYWAY=0
+# Set ASAN coredump options - TODO this needs to be added to reducer also
+# https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
+# https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
+SAN_OPTIONS="ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1"  # This used to have disable_core=0 (now disable_coredump=0 ?) - TODO: check optimal setting
 
 # Read configuration
 if [ "$1" != "" ]; then CONFIGURATION_FILE=$1; fi
@@ -31,10 +35,6 @@ if [ "$(echo ${RANDOMD} | sed 's|[0-9]|/|g')" != "//////" ]; then echo "Assert! 
 if [ "$(echo ${WORKDIR} | grep -oi "$RANDOMD" | head -n1)" != "${RANDOMD}" ]; then echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
 if [ "$(echo ${RUNDIR}  | grep -oi "$RANDOMD" | head -n1)" != "${RANDOMD}" ]; then echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
 if [ "$(echo ${PQUERY_BIN} | sed 's|\(^/pquery\)|\1|')" == "/pquery" ]; then echo "Assert! \$PQUERY_BIN == '${PQUERY_BIN}' - is it missing the \$SCRIPT_PWD prefix?"; exit 1; fi
-
-# Set ASAN coredump options
-#export ASAN_OPTIONS=disable_core=0:abort_on_error=1:unmap_shadow_on_exit=1
-export ASAN_OPTIONS=disable_core=0:abort_on_error=1
 
 # Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
 ulimit -u 7000 
@@ -716,7 +716,7 @@ pquery_test(){
       echoit "Starting mysqld. Error log is stored at ${RUNDIR}/${TRIAL}/log/master.err"
     fi
     if [ ${VALGRIND_RUN} -eq 0 ]; then
-      CMD="${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
+      CMD="${SAN_OPTIONS} ${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
         --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${RUNDIR}/${TRIAL}/socket.sock \
         --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
     else
