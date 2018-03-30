@@ -15,12 +15,6 @@
 
 3) Steps to start postgresql database server
 
-   sudo adduser postgres
-   sudo mkdir /pgsql/base/data
-   cd /pgsql/base
-   sudo chown postgres /pgsql/base
-   sudo chown postgres /pgsql/base/*
-   sudo su postgres
    # Database initialization command
    /pgsql/base/bin/initdb -D /pgsql/base/data
    # Startup command 
