@@ -1,0 +1,31 @@
+#PostgreSQL source code installation instructions.
+
+1) Download source code.
+   The source code can be found from following locations;
+   https://www.postgresql.org/ftp/source/
+   https://git.postgresql.org/gitweb/?p=postgresql.git;a=summary
+
+2) Steps to build debug binary;
+
+   ./configure --enable-debug --prefix=/pgsql/base
+   gmake
+   gmake install
+   
+   This will install postgres binary files under /pgsql/base.
+
+3) Steps to start postgresql database server
+
+   sudo adduser postgres
+   sudo mkdir /pgsql/base/data
+   cd /pgsql/base
+   sudo chown postgres /pgsql/base
+   sudo chown postgres /pgsql/base/*
+   sudo su postgres
+   # Database initialization command
+   /pgsql/base/bin/initdb -D /pgsql/base/data
+   # Startup command 
+   /pgsql/base/bin/pg_ctl -D /pgsql/base/data -l /pgsql/base/data/pgsql.log start
+     ** To generate coredump start postgres with `-c` option
+
+Notes;
+  ** Report PostgeSQL bugs here : https://www.postgresql.org/account/submitbug/
