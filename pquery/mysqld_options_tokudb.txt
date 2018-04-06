@@ -339,9 +339,9 @@
 --tokudb-row-format=tokudb-default
 --tokudb-row-format=tokudb-default,tokudb-small
 --tokudb-row-format=tokudb-small,tokudb-uncompressed
---tokudb-disable-slow-update=0
---tokudb-disable-slow-update=1
---tokudb-disable-slow-upsert=0
---tokudb-disable-slow-upsert=1
+--tokudb_enable_fast_update=1
+--tokudb_enable_fast_update=0
+--tokudb_enable_fast_upsert=1
+--tokudb_enable_fast_upsert=0
 --tokudb-support-xa=0
 --tokudb-support-xa=1
