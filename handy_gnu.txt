@@ -1,0 +1,327 @@
+# ------ GNU/Bash ------
+# In-file replace a with b in file in.txt and save a backup copy of original as in.txt.bak. If '' or nothing is specified for i, then no backup is saved
+  sed -i'.bak' 's/a/b/' in.txt
+# To cat two files and immediately redirect the output back so that it becomes the content of the first file, one cannot use 'cat a b > a', instead use:
+  echo '1' > a; echo '2' > b; echo "$(cat a b)" > a; cat a  # i.e. echo "$(cat a b)" > a
+  echo '1' > a; echo '2' >> a; echo '3' > b; echo "$(echo 'inserted 1'; cat a | grep -v '1'; cat b)" > a; cat a  # More complex example with extra insert/remove
+# Start output of a file after a certain string is seen (i.e. delete all output upto a certain string)    Second example uses 'delete (d)' line numbers instead 
+  sed '0,/3/d' test  # If test had 6 lines with numbers 1->6, then output would be 4,5,6 (3 lines)        sed '1,3d' test  # Note functionality is quite different
+# Print a single line from a file
+  sed -n "1p" file  # Where 1 is the line number to print
+# Get all directories that consist of numbers (any lenght) and the for each of those do something (dir name will be in $i inside loop)
+  VAR=`ls -d [0-9]*`; for i in ${VAR[*]}; do ...insertyourcode...; done
+# Get the current workdirectory of this script
+  SCRIPT_PWD=$(cd `dirname $0` && pwd)
+# Random number generator (6 digits). If randomness is paramount/you need a large number of random numbers remember to init entropy pool
+  RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
+# Random selection of echo's, with another type of entropy pool init
+  RANDOM=`date +%s%N | cut -b14-19`; case $[$RANDOM % 3 + 1] in 1) echo '1';; 2) echo '2';; 3) echo '3';; *) echo '+';; esac
+# Random number between 0-9 based on nanosecond clock. To get random number between 0 and 99 do -b18-19 and so on
+  date +%s%N | cut -b19-19
+# Random number between 1 and X
+  echo $(( RANDOM % 2000 + 1 ))  or  echo $[$RANDOM % 2000 + 1]  # Examples where X is 2000, change as needed
+# Change all upper case letters to lower case (With thanks, http://www.linuxquestions.org/questions/linux-newbie-8/evaluate-strings-as-case-insensitive-676101/)
+  echo "LoweR CasE" | tr [:upper:] [:lower:]  # Output: lower case
+# Ensure fault-free grep operation when grepping through a file which contains non-ASCII characters
+  grep --binary-files=text ...
+# Shuffle lines of a file. Much better then sort -R --random-source=/dev/urandom. sort -R will still sort according to hash, leaving similar lines clustered
+  shuf --random-source=/dev/urandom inputfile > outputfile
+# The same, but with a set number of lines extracted
+  shuf -n10 --random-source=/dev/urandom inputfile > outputfile 
+# The same as original, with random entropy pool initialization (TODO: confirm that RANDOM=x entropy pool init also inits /dev/urandom)
+  RANDOM=`date +%s%N | cut -b14-19`; shuf --random-source=/dev/urandom inputfile > outputfile 
+# Delete all alpha chars from a string
+  echo "string" | tr -d '[:alpha:]'
+# Re-use filename based output as input for a new command
+  ls | xargs -I{} echo {}  # {} is the filename passed and has become a variable, echo is the example new command
+# Execute two (or more) commands from xargs, based on pipe input, and additionally use some variables from the parent shell in the subshell
+  export TEST="path of parent shell: "; ls * | xargs -I{} -i sh -c 'echo {}; echo {}; echo $0 $1;' ${TEST} ${PWD}
+# Discover the process name of the parent shell (output can be things like 'screen', 'bash', 'sh', 'sshd' etc.)
+  if [ "`cat /proc/$PPID/comm`" == "sh" ]; then echo "Subshell started from sh"; else echo "Subshell was started from `cat /proc/$PPID/cmdline`"; fi
+# Gotcha: always use quotes around variables in an if statement, which would avoid errors if the string is empty/zero-lenght
+  if [ "${SOME_STRING}" == "${SOME_OTHER_STRING}" ]; then ...
+# Arrays: * expands to a concatenated, IFS 1st char seperated, one line string, but only if it is double quoted. [@] expands to each-member-of-the-array, always
+  IFS="";v=('1 2' '3 4');for i in ${v[*]};do echo $i;done;for i in ${v[@]};do echo $i;done;for i in "${v[*]}";do echo $i;done;for i in "${v[@]}";do echo $i;done
+# Show the manual (man) for a particular command without using pager mode (i.e. continuous stdout output): use `cat` command as pager:
+  man -Pcat ls
+# Get full output of a command into a file, while at the same time providing parsed/partial output of the same command to stdout
+  for i in `seq 1 10`; do echo $i; done | tee fulllog.txt | grep "[369]"  # fulllog.txt will have 1-10, screen will only have 3,6,9
+# Track progress, on a single line, of a live income stream, while modifying the income stream to be in a different (i.e. usually "readable") format. Example;
+  for i in `seq 1 10`; do echo $i; sleep 0.3; done | awk '/[2-8]/{sub(/[456]/,"middle",$0);printf "%s",$0}'  # Output: 23middlemiddlemiddle78
+# Tracking visual output of Docker build process, on one line, live:  $ sudo docker build . | \
+  awk '{if(match($0,/Step/)!=0){sub(/Step[ \t]*/,"",$0);sub(/[ \t]*:.*/,"",$0);printf("%s... ",$0)};if(match($0,/Successfully built/)!=0){printf("%s",$0);}}'
+# Using input redirection ("here document") which removes the tabs (ref http://tldp.org/LDP/abs/html/here-docs.html) (the EOF can have a leading tab also);
+  cat <<-EOF   ....   EOF  # Where .... and EOF are on subsequent lines. The "-" in "<<-" removes a leading tab from what follows in ....
+# The name of the calling procedure in a script
+  caller 0 | awk '{print $2}'
+# Extract the directory name, with leading slash, from a path with filename in the form of (example); "/some/paths/here/some_filename" to "/some/paths/here/"
+  DIR_NAME=$(echo $PATH_AND_FILENAME | sed "s|/[^/]\+$|/|")
+# Show signal masks for a running process - bit position 1 (2nd bit) is SIGHUP, etc..
+  grep ^Sig /proc/$PPID/status
+# Interleave, after each 75 lines in[to] file A.txt, the content of file B.txt
+  sed -i "0~75 r B.txt" A.txt
+# Interleave, after each 2nd line, a newly inserted string ($=EOL).          Second example does the same, just for a input file 'test' instead of for loop
+  for i in $(seq 1 10); do echo $i; done | sed "0~2 s|$|\ninsert_text|";     cat test | sed "0~2 s|$|\ninsert_text|"
+# If a variable [partially] matches a pre-determinted value, print another value instead (match needs to be from start of line)
+  VAR1="abc"; echo "${VAR1/#ab/c}"  # output: cc ("ab" matches and is replaced by "c". A search for "bc" would fail, as it is not from start of line)
+# Terminate a long-running/(or 'screen scrolling') command (which does not respond to CTRL+C quickly: 
+  1) Press CTRL+z, 2) jobs -l; kill -9 {PID_seen_in_jobs_-l_output}
+# Timeout a given script/program after a set time. In the example, 1h=1 hour, but one can also use 10s=10 seconds etc.
+  timeout --signal=9 1h ./pquery-run.sh
+# If you have made a process background (bg) with for example CTRL+Z it will show you the background ID: [1] to kill this particular background process, use:
+  kill %1  # Where 1 is the index of the background process
+# Check for the existence of multiple files. (Btw, if you get '-bash: !": event not found' when running directly at the bash prompt, see 'Common Issues' below)
+  if [ ! -r aaa -o ! -r bbb -o ! -r ccc ]; then echo "One or more files not found: aaa, bbb and ccc!"; fi
+# Multi-threaded (3 threads in example) xargs call with direct input using cat. Output will be 1 then 2 then 3 after respective pauses (start at same time):
+  CONCURRENCY=3; cat << EOC |
+  sleep 1; echo "1" % sleep 2; echo "2" % sleep 3; echo "3" 
+  EOC
+  xargs -d"%" -P${CONCURRENCY} -i^ sudo sh -c '^'
+# xargs can be used as follows: INPUT | xargs | PROCESSOR - i.e. "pipe the INPUT directly into the PROCESSOR". Note this is conceptually somewhat similar to
+  INPUT | xargs bash -c, but a much cleaner/clearer way to write it, as well as allowing some additional functionality + bash may not always be the shell used;
+  echo "INPUT" | xargs | sed "s/INPUT/PROCESSOR/"
+  echo ls | xargs | sh -x  # Conceptually similar to echo ls | xargs bash -c
+  echo -n "echo\necho" | xargs | sed 's|DUMMY|NO ACTION|'  # When used like this, a \n is added to the output. This is not the case if 'xargs |' is dropped
+# For all lines in a file, action something. Note that the for loop has limitations (spaces) which require IFS to be set. This is not so with the while loop 
+  ORIG_IFS=${IFS}; IFS=$'\n'; for LINE in $(cat ./file.txt); do echo ${LINE}; done; IFS=${ORIG_IFS}   #OR#  while read line; do echo ${line}; done < ./file.txt
+# Obtain a fully qualified directory and script name 
+  SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||')
+# Change the file contents (inline replace used here) of multiple files in subdirectories
+  ls ./*/somefiles | xargs -I{} sed -i 's|find|replace|' {}
+# Rename file names from abc to xyz (where there is no numbers in the filename) in numerical subdirectories (where there is no letters in the directory name)
+  ls ./*/abc | sed 's|[^0-9]||g' | xargs -I{} mv ./{}/abc ./{}/xyz
+# Age of a file or directory in seconds (Thanks http://www.linuxquestions.org/questions/linux-software-2/how-to-calculate-file-age-file-xy-is-2-days-3-hours-old-164908/)
+  echo $[ $(date +%s) - $(stat -c %Z filename.txt) ]  # where filename.txt is the file name (can also be a directory name) you want to know the age of
+# For each file in a given filespec, action something. Example here: all reducer logs
+  for file in /dev/shm/14*/reducer.log; do echo "$file"; done
+# Two different ways to find today's directories, text process them, and then execute the processed text
+  find . -mindepth 1 -maxdepth 1 -type d -mtime -1 -exec sh -c 'cd {};~/percona-qa/pquery-results.sh' \;
+  ls -l | grep "^d" | grep "$(date +'%b %d')" | sed 's|.*:[0-9][0-9] ||' | xargs -I{} echo 'cd {};~/percona-qa/pquery-results.sh' | xargs -I{} sh -c '{}'
+# Display a one-liner script, and append to it a given option, then execute the total. Example used here is a MyQSL client script which already has mysql -uroot etc.
+  cat ./cl | sed -e "s|$| -e 'SELECT 1;SELECT 2;'|" | xargs -0 -I{} sh -c {}
+# Insert a line at the top of a file
+  sed -ie '1i\your_text_here' file.txt
+# Rename files, in subdirectories, from .log to .sql
+  ls */pquery_thread*.log | xargs -I{} echo "mv {} {}DUMMY" | sed 's|logDUMMY|sql|' | xargs -0 | sh
+# Conditionally execute commands based on presence of a string within a file
+  if cat testfile.txt | egrep -qi "123"; then echo "yes"; else echo "no"; fi;   #OR#
+# Uppercase/lowercase a string. With thanks, http://stackoverflow.com/a/19411918/1580826
+  V="Aa"; echo ${V^^}; echo ${V,,}  # Will output AA and aa respectively
+# Check a string for presence of a search/substring. With thanks, http://timmurphy.org/2013/05/13/string-contains-substring-in-bash/
+  if [[ "$string" == *"$searchstring"* ]]; then echo "found"; else echo "not found"; fi  # This is much faster then grep -q (which is not recommended for strings) and always works
+  if [[ "$string" =~ $searchstring ]]; then echo "found"; else echo "not found"; fi
+  if [[ "$string" == *"={$searchstring1|$searchstring2}"* ]]; then echo "yes"; else echo "no"; fi;
+  if [[ "${string^^}" == *"${searchstring^^}"* ]]; then echo "yes"; else echo "no"; fi;  # Case insensitive compare
+# Check if sudo is installed and available
+  if [ "$(sudo -A echo 'test' 2>/dev/null)" == "test" ]; then echo "SUDO installed & available"; else echo "SUDO not available, or password based access only"; fi
+# Sent all stdout/stderr output to a file while still on screen (With thanks http://stackoverflow.com/questions/692000/how-do-i-write-stderr-to-a-file-while-using-tee-with-a-pipe)
+  exec 1>> >(tee /tmp/stdout.log >&1); exec 2>> >(tee /tmp/stderr.log >&2)
+# Start console selflogging from inside a script (With thanks http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session)
+  [ -z "$TYPESCRIPTLOG" ] && TYPESCRIPTLOG=1 exec /usr/bin/script -a -q -f /tmp/console_typescript.log -c "TYPESCRIPTLOG=1 $0 $@"  # http://stackoverflow.com/a/26308092
+# Hack for per-subshell variables to ensure 'thread'(subshell) safety (With thanks http://askubuntu.com/questions/305858/how-to-know-process-pid-of-bash-function-running-as-child)
+  function_runs_in_subshell(){ PID_OF_SUBSHELL=$BASHPID; VARIABLE[${PID_OF_SUBSHELL}]="some_var_value"; echo ${VARIABLE[${PID_OF_SUBSHELL}]}; }  function_runs_in_subshell &
+# Read a file into an array (With thanks http://stackoverflow.com/questions/30988586/creating-an-array-from-a-text-file-in-bash)
+  mapfile -t somearray < file.txt  # -t drops newline chars. See http://wiki.bash-hackers.org/commands/builtin/mapfile for more options
+# Make a file unique/sort it without using a temporary file (similar to the -i function in sed). Note that something like: cat file.txt | sort -u > file.txt does NOT work.
+  sort -u -o file.txt file.txt
+# Using sed, replace any '-' into '_' in 'a-a-a=b-b_b' but only before the '=', which is definitely not straighforward. (With thanks http://stackoverflow.com/a/6637457)
+  echo "a-a-a=b-b_b" | sed 'h;s|-|_|g;s|=.*|=|;x;s|.*=||;x;G;s|\n||';  # Output: a_a_a=b-b_b # h: place copy in hold buffer, x: swap buffers; G: dump buffers
+# The same as the line above, but this one a bit more robust: ensure that if there is a secondary '=', it will still only change the first part
+  echo 'a-a-a=b-b_b=c-c_c' | sed 'h;s|-|_|g;s|\([^=]\+\).*|\1|;x;s|[^=]\+||;x;G;s|\n||'  # Output: a_a_a=b-b_b=c-c_c # \([^=]\+\) : select the part, any char not =, upto first =
+# Start a immediately-detached screen session, execute ls (in color) and provide a new prompt there. Name it 's1' so that  $ screen -d -r s1  will get you into the screen
+  screen -admS s1 bash -c "ls --color=auto;bash"  # With thanks, http://www.cyberciti.biz/faq/how-to-turn-on-or-off-colors-in-bash/ and http://askubuntu.com/q/62562
+# An easy way to get all text from a webpage, ready for further textual processing (removes all html tags etc)
+  lynx --dump http://someurl.com
+# Sort a numeric array  # With thanks, https://www.reddit.com/r/bash/comments/3cbt1p/sorting_array_of_numeric_values/csu2150/
+  mapfile -t ARRAY < <(printf '%s\n' "${ARRAY[@]}" | sort -n)  # You can also use -u with the sort to have unqiue values only and/or -r to have a reverse (large>small) sort
+# Find a certain string within all files in a subdirectory (handy for finding text like function names etc. in source code etc.)
+  grep -R --include=* -n "search string"  # From the highest directory
+# Generate a random string  # With thanks, https://gist.github.com/earthgecko/3089509
+  cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-32} | head -n 1
+# Redirect multiple files into mapfile or other commands  # With thanks, https://unix.stackexchange.com/questions/238967/controlling-the-order-in-which-files-are-put-into-an-array
+  mapfile -t arrayname < <(cat a b)  # where a and b are input file[s][names]
+# Obtain the parent pid (in-script)  # With thanks, https://superuser.com/questions/150117/how-to-get-parent-pid-of-a-given-process-in-gnu-linux-from-command-line
+  ppid () { ps -p ${1:-$$} -o ppid=; }
+  P=$(ppid); echo $P
+
+# ------ Debugging ------
+# View complete output of all executed items, which is great for debugging
+  bash -x ./your_script.sh
+# In some complex redirection cases, using bash -x is not sufficient for finding the source a problem, for example a faulty sed command. In such cases use
+  script out.txt
+  bash -x ./your_script.sh; vi out.txt  # Then search for the error seen previously on normal execution. Verify surrounding output
+# View all OS-level function/system calls/IO etc.
+  strace ./your_script.sh  # You may need to add additional strace options, see 'man strace'
+# View what mysqld (or any other process) is doing. Ideal for hangs/odd long query durations etc. (First install utility perf: $ sudo yum install perf)
+  perf record -g --pid=`pidof mysqld`; perf report | c++filt; rm perf.data   # CTRL+C to interrupt the perf record once you think you have enough data
+# Find out which compiler was used to compile an un-stripped binary
+  objdump -s --section .comment /path/binary
+# Attach gdb to a certain PID then write a coredump. In the example below, $! is used which is the PID for the last started process (sleep in this example)
+  sleep 1000 &  gdb /usr/bin/sleep --pid=$! --ex 'generate-core-file'
+# Check your bash scripts
+  https://www.shellcheck.net/  https://github.com/koalaman/shellcheck
+
+# ------ Compiling / Compiler Issues ------
+# If you see for example "/usr/bin/ld: cannot find -lzlib" in your compilation/build of MySQL, and the build fails because of it, then check:
+  ld -lzlib --verbose  # Execute in a user writeable directory. If all entries fail, the lib could not be found. 
+  You need to just link one of them to the real zlib on your system  ## With thanks, https://stackoverflow.com/a/21647591/1208218
+  sudo ln -s /usr/lib64/libz.so.1.2.7 /usr/lib/libzlib.so  ## Though you may have to search for "libz.so" in /usr (cd /usr; find . | grep libz.so)
+  This likely works with any linker issue (ld -l{failed lib} --verbose && sudo ln -s ...) 
+  Another example;
+  ld -ltensorflow --verbose  # Note the "{somelib}.so needed by {somelib}.so" and next line "found {somelib}.so {path}"
+  ld /usr/local/lib/libtensorflow.so  # This part; "ld: warning: cannot find entry symbol _start; not setting start address" can be ignored (it is likely just looking for a start address, which will be there in the program which links with this library)
+# If you get an error like this;
+  /usr/local/lib/somlelib.so: undefined reference to `somefunction@GLIBC_2.23'
+  # Then check first what GLIBC version you are running;
+  sudo yum list glibc  # Or use ldd --version
+  # If the version is older (in this example it was 2.17), then either update the OS or consider adding another glibc along the main OS one;
+  https://unix.stackexchange.com/a/299665/241016
+# An easy way to install the almost-latest gcc + binutils on Centos 7
+  sudo yum install epel-release
+  sudo yum install centos-release-scl-rh
+  sudo yum install devtoolset-7-gcc-c++  # Or sudo yum install devtoolset-6-gcc-c++  # Or sudo yum install devtoolset-4-gcc-c++
+  # Then, to enable the newly installed (and separate) environment, use;
+  scl enable devtoolset-7 bash  # This sets the newly installed environment for that particular bash session
+  # https://access.redhat.com/documentation/en-US/Red_Hat_Developer_Toolset/3/html/User_Guide/sect-Red_Hat_Developer_Toolset-Install.html
+  # https://access.redhat.com/documentation/en-us/red_hat_developer_toolset/6/html/user_guide/sect-red_hat_developer_toolset-install
+  # Note that devtoolset-4 is really gcc 5.3.1 (the native Centos7 gcc being 4.8.5)
+
+# ------ Common Issues ------
+# Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;
+  histchars=  # in ./bash_profile (or at the command line) will fix it. Reason; https://www.gnu.org/software/bash/manual/html_node/History-Interaction.html
+# Unlike echo -n, sed cannot parse a live input stream and print the result on a single line step-by-step as the input comes in. Proof;
+  for i in `seq 1 10`; do echo $i; sleep 1; done | sed -n "H;/[369]/{x;s/\n/ /g;p}"  # Ref https://www.gnu.org/software/sed/manual/sed.html#fn-3
+# While the above cannot be done with sed, it can be done quite easily with awk. Semi-similar example, showing output, progressively, on one line;
+  for i in `seq 1 10`; do echo $i; sleep 0.3; done | awk '/[369]/{printf "%s",$0}'  # To make example above 100% similar, use: sed -n "/[369]/{s/\n/ /g;p}"
+# When calling a function in the background (like the example on the next line) in a script, remember that such a function runs in a subshell
+  function &  # By calling a function this way, all variables used within it will be fresh/new and any variables updated will not reflect back in the parent
+# When checking for the existence of a directory, do not just use:  if [ -d ${SOME_VAR} ]; then echo "yes"; fi  The reason is that if ${SOME_VAR} is empty,
+  the check will still work. Confirm the gotcha by executing:  if [ -d ]; then echo "yes"; fi  Instead, use:  if [ "${SOME_VAR}" != "" -a -d ${SOME_VAR} ];
+# Along the same lines of the last issue, it is an easy mistake to make not to include double quotes around variables when checking for (in)equality. Use;
+  if [ "${SOME_VAR}" == "Some Text" ]; then ...; fi  instead of not using double quotes (which fails when the variable is empty).
+# If you see an error like '/usr/bin/ld: cannot find -lsnappy' when compiling, then it means that the snappy (for example) library cannot be found.
+  To discover the real source, run  ld -lsnappy --verbose  and look near the end for the locations is scans for 'attempt to open ...' 
+  If you have the library in a specific location, you can use;  sudo ln -s /usr/lib64/libsnappy.so.1 /usr/lib64/libsnappy.so  or use -L option to your compiler!
+  With thanks, http://stackoverflow.com/questions/16710047/usr-bin-ld-cannot-find-lnameofthelibrary
+# Find out symbols for a library
+  nm --synthetic some_plugin.so | c++filt
+# Recursively copying with hidden files included: http://superuser.com/a/804367/457699
+  cp -a  # Always use cp -a instead of cp -R (or -r) which does not copy hidden files/directories
+# The first echo below will output an asterix, the second will output a directory listing
+  echo "$(echo "*")"; echo "----"; echo $(echo "*");
+# Except for searching files (if grep -qi "search string" file.txt...), it's best not to use: echo "text" | grep -q "text" to search strings for substrings. It is very slow, and 
+  has a gotcha: Test this:  LINE='test'; DONE=0; echo ${LINE} | if grep -q 'test'; then DONE=1; echo "DONE"; fi; echo $DONE  # DONE is 0 because (as per Bash team); 'All elements
+  of a pipeline are executed in subshells.  A subshell cannot affect its parent's environment. The 'lastpipe' shell option can change this when job control is not active.'
+  Instead, see 'Check a string for presence of a search/substring' above for substring searches. Another gotcha can be seen in this one; echo "abc123xyz457" | grep -o '[^0-9]'
+# In Bash, a calling function needs to be declared ABOVE the line it is called from. An example script (place the following 3 lines in a script) will show this (output on right):
+  echo "does not work (error will be shown before this line): `works`"         # ./test.sh: line 1: works: command not found
+  works(){ echo "works"; }                                                     # does not work (error will be shown before this line): 
+  echo "does work (will show 'works' output after semicolon): `works`"         # does work (will show 'works' output after semicolon): works
+# However, the following does work, as all the functions are "read" before one of them is called (even though works1 calls a function defined LOWER then the calling line itself):
+  works1(){ echo "`works2`"; }
+  works2(){ echo "works"; }
+  echo "does work: `works1`"                                                   # does work: works
+# When wanting to execute multiple commands as one, the syntax is () not $(). For example, to time two commands executed sequentially;
+  time $(echo "a";echo "a")  # WRONG: this will try and execute "a" and report: bash: a: command not found... (the total time will still be approx. correct, though bit higher)
+  time OUTPUT=$(echo "a" ; echo "a"); echo $OUTPUT  # WRONG: while it works, just like the above, the time is slightly higher (due to the added variable assignment)
+  time echo "a";echo "a"     # WRONG: this does not achieve the objective, it only times the first command
+  time (echo "a";echo "a")   # CORRECT: this times both commands (without anything affecting time and without any sub-execution or variable assignment)
+# Obtain the primary IP address of this machine
+  IP_ADDRESS=$(ip route get 8.8.8.8 | head -n1 | cut -d' ' -f8); echo ${IP_ADDRESS}  # Fails on for example Centos 7.4 (needs -f7)
+# Better methods to obtain the IP address of this machine
+  IP_ADDRESS=$(ip route get 1 | head -n1 awk '{print $NF;exit}'); echo ${IP_ADDRESS}  # Or perhaps even better;
+  IP_ADDRESS=$(hostname -I | head -n1 | cut -d' ' -f1); echo ${IP_ADDRESS}  # Current version we use
+# Generate fake data
+  https://faker.readthedocs.io/en/latest/providers.html  # Faker for Python
+# When used in a function, the 'declare' command (for example DECLARE -a ARRAY) makes each variable local, as with the 'local' command, unless the '-g' option is used.
+  With thanks, https://unix.stackexchange.com/questions/136720/bash-array-declared-in-a-function-is-not-available-outside-the-function
+  It is thus likely best to use 'local' instead of 'declare' to remove any misunderstanding. This is also the default code syntax for percona-qa scripts
+# Gotcha: do not use:  some command | uniq  assuming you will get unique items only. uniq and uniq -u can produce very unexpected results. To see some examples, try these;
+  echo -e "1\n2\n2\n3\n2">test;echo "test:";cat test;echo "sort -u test:";sort -u test;echo "uniq test:";uniq test;echo "uniq -u test:";uniq -u test
+  echo -e "1\n2\n2\n3">test;echo "test:";cat test;echo "uniq -u test:";uniq -u test
+  With uniq -u it keeps any line which is truly unique, and this is why the first uniq, the first uniq -u and the second uniq -u results all so different
+  Thus; uniq is a versatile tool, but only if you are after very specific functionality. If not, always use short -u
+
+# Sort unique vs uniq: sort -u sorts the input list and only leaves unique entries. uniq on the other hand does not sort and removes only adjoining same entries
+  cat need_sorted_file_with_unique_results_only.txt | sort -u; cat need_adjoining_same_entries_removed; | uniq; # cat need_all_duplicates_removed.txt | uniq -u
+
+# ------ OS/Admin ------
+# Monitor the current rate of syscalls/sec  ## With thanks, http://www.brendangregg.com/blog/2018-02-09/kpti-kaiser-meltdown-performance.html
+  sudo perf stat -e raw_syscalls:sys_enter -a -I 1000
+# If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
+  ## sudo umount -flv /dev/<device>                         ## Make sure you know what you are doing before executing this!   Another possible method is:
+  ## sudo yum install psmisc; sudo fuser -km /dev/<device>  ## Make sure you know what you are doing before executing this!
+# To recover text from a deleted file, use: (change 'your_search_string' to a known string that was in the file, and /dev/sda to the partition it was on)
+  sudo grep -a -C 500 'your_search_string' /dev/sda | tee /tmp/recover  # Make sure to tee to another partition then the one the file was on
+# Make a 12Gb tmpfs drive for reducer.sh/pquery-run.sh (also works on Centos7): edit fstab (sudo vi /etc/fstab;) and add:
+  tmpfs     /dev/shm        tmpfs   size=12g,noatime,nodiratime       0 0
+# Check the process limits of any process, mysqld example:
+  cat /proc/`pidof mysqld`/limits
+# Hanging processes/load average (ref 'uptime') increasing steadily/rogue processes? See which ones are causing issues by:
+  top -n10 -b | head -n25
+# Trace all TCP on localhost. Use in combination with mysql -uroot -h127.0.0.1 -P3306 to see TCP traffic generated by server/client communication
+  sudo tcpdump -i lo -X -s 0 src host 127.0.0.1
+# After running cmake/make, you can use make install in the following way to install the package to a non-default location (handy for testing):
+  make install DESTDIR=/tmp/somedir  # With thanks to AlexeyB
+# List packages on Ubuntu/Debian
+  dpkg-query -l | egrep -i "percona|mysql|maria" | awk '{print $2}'  # With thanks to Evgeniy Patlan
+# List installed version of jemalloc on Centos
+  sudo yum list jemalloc
+# Undelete utility: testdisk. example with /dev/sda below. Once browsing, use ':' to select files, then use 'C' to copy and again 'C' to specifiy target
+  sudo yum install testdisk; sudo umount /dev/sda; sudo testdisk /dev/sda  # Enter on /dev/sda > 'None' partition > Advanced > Select patition > cursor right ('List') > browse
+# Reset all directories to 755 (needed to be able to browse them) and all files to 644. This cannot be done in a single chmod command.
+  find . -type d -exec chmod 0755 {} \; find . -type f -exec chmod 0644 {} \;  # With thanks https://help.directadmin.com/item.php?id=589
+# Cleanup a broken installation of some program (example; someprog - note that someprog needs to be a recognized program name by the package manager). Confirmed to fix things.
+  sudo apt-get purge someprog; sudo apt-get autoclean; sudo apt-get clean; sudo apt-get update; sudo apt-get install someprog; [optional:] sudo apt-get install -f someprog 
+# Get the IP address of the host (hostname --ip-address may produce 127.0.0.1 which is not usefull if you need the network interface IP)
+  ip route get 1 | awk '{print $NF;exit}'  # With thanks, https://stackoverflow.com/questions/13322485/how-to-i-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x
+# Raise the priority of a certain process  # With thanks, https://serverfault.com/a/228632
+  sudo renice -10 -p ${PROCESSID}  # Where ${PROCESSID} is the ID of the process to raise priority for 
+# Clear OS cache
+  sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"
+# Use cgroups to limit application memory usage
+  sudo service cgconfig restart
+  sudo cgcreate -g memory:DBLimitedGroup
+  sudo sh -c "$(which echo) 32G > /cgroup/memory/DBLimitedGroup/memory.limit_in_bytes"
+  sudo sync;sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"
+  sudo cgclassify -g memory:DBLimitedGroup `pidof mysqld`
+  
+# ------ Tools ------
+# Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax
+  sudo yum install cabal-install; cabal update; cabal install shellcheck; ~/.cabal/bin/shellcheck
+
+# ------ Shortcuts ------
+# Pquery, single-threaded run, mysqld pre-started, socket, testcase and ./lib/ in this directory, percona-qa bzr tree pulled to ~/percona-qa/
+  export LD_LIBRARY_PATH=${PWD}/lib;~/percona-qa/pquery/pquery --infile=./testc.sql --database=test --threads=1 --no-shuffle --user=root --socket=./socket.sock
+
+# ------ Git ------
+# git: git checkout (checkout a branch), git branch [-a] [-r] (show current branch, -a is all branches local and remote, -r is remote branches only)
+# Undo last commit, leaving everything else as-is (for example to change commit message)  # With thanks, https://stackoverflow.com/questions/2845731/how-to-uncommit-my-last-commit-in-git
+  git reset --soft HEAD^         # Undoes commit
+  git reset HEAD^                # Undoes commit AND everything staged (i.e. new files added)
+  clean_tree.sh (in percona-qa)  # Resets tree completely to last online commit
+# Register author details
+  git config --global user.name "your name"
+  git config --global user.email email@domain.com
+# Store git credentials, and turn off warnings for whitespace errors (with thanks, http://stackoverflow.com/a/12396793/1580826) - run from within clone directory
+  git config credential.helper store  # After this, you only need to enter your password (or app token) once. It will then be saved for the future
+  git config apply.whitespace nowarn
+# Diff ALL changes, including newly added (i.e. staged) files (with thanks, http://stackoverflow.com/a/27299842)
+  git diff HEAD
+# Apply a diff and then patch (with thanks, http://www.thegeekstuff.com/2014/03/git-patch-create-and-apply/)
+  git diff HEAD > patch.diff; # Change to another place #; git apply < patch.diff
+# Retrieve a single file in full from Github using wget. With thanks, http://stackoverflow.com/a/4605068
+  wget https://raw.githubusercontent.com/Percona-QA/percona-qa/master/ldd_files.sh  # The filename, repository etc. in the url can be changed to get the needed file
+  wget https://raw.githubusercontent.com/Percona-QA/percona-qa/master/pmm-info.sh && chmod +x pmm-info.sh && ./pmm-info.sh
+
+# ------ Must read's ------
+# http://tldp.org/LDP/abs/html/globbingref.html on globbing (and not regex) and filename expansion
+  echo *  # expands "*" to all filenames     ls -l [^ab]*  # Lists all files not starting with a or b, but [^ab]* is not a regex, it's globbing
+# Various tools to extract information from files etc. From http://stackoverflow.com/questions/1124571/get-list-of-static-libraries-used-in-an-executable
+  file, ldd, nm, objdump, readelf, strings
+# On Redirection
+  http://www.tldp.org/LDP/abs/html/io-redirection.html
+# On Arrays
+  http://wiki.bash-hackers.org/syntax/arrays
+# On using a named pipe
+  http://stackoverflow.com/a/14893732
