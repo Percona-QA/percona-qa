@@ -353,6 +353,11 @@ TS_VARIABILITY_SLEEP=1
 # $WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
+# Set ASAN coredump options
+# https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
+# https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
+export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1
+
 # === Check TokuDB & RocksDB storage engine options, .so availability, split options into ROCKSDB and TOKUDB variables, and cleanup MYEXTRA to remove the related options
 # SE Removal approach; 1) If the engine is referred to by .so reference in MYEXTRA, reducer.sh uses it, but reducer.sh ensure the engine .so file exists
 #                      2) Any reference to the engine is removed from MYEXTRA and stored in two variables TOKUDB/ROCKSDB to allow more control/testcase reducability
@@ -2904,6 +2909,7 @@ finish(){
     echo_out "[Finish] Matching run script (CLI)         : $WORK_RUN (executes the testcase via the mysql CLI)"
     echo_out "[Finish] Matching startup script (pquery)  : $WORK_RUN_PQUERY (executes the testcase via the pquery binary)"
   fi
+  echo_out "[Finish] Remember; ASAN testcases may need : export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1"
   echo_out "[Finish] Final testcase bundle tar ball    : ${EPOCH}_bug_bundle.tar.gz (handy for upload to bug reports)"
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     MYSQLD_OPTIONS_REQUIRED=$(echo "$TOKUDB $ROCKSDB $BINLOG $MYEXTRA" | sed "s|[ \t]\+| |g")
