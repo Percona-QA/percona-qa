@@ -19,8 +19,9 @@ fi
 
 echoit "> Generating SQL"
 
+# with thanks https://www.unix.com/shell-programming-and-scripting/80633-sed-combining-multiple-lines-into-one.html
 cat $TESTS_PATH/test/*/*.sql $TESTS_PATH/test/*/*/*.sql $TESTS_PATH/test/*/*/*/*.sql | \
-  sed '/^$/d' | \
+  sed '/^[ \t]*$/d' | \
   sed '/^--.*/d' | \
   sed 's|;.*.\-\-.*|;|' | \
   sed '/^\\d/d' | \
