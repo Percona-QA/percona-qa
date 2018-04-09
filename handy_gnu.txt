@@ -130,6 +130,7 @@
   screen -admS s1 bash -c "ls --color=auto;bash"  # With thanks, http://www.cyberciti.biz/faq/how-to-turn-on-or-off-colors-in-bash/ and http://askubuntu.com/q/62562
 # An easy way to get all text from a webpage, ready for further textual processing (removes all html tags etc)
   lynx --dump http://someurl.com
+  lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client.*.tar.gz" |awk '{print $2}' | head -n1
 # Sort a numeric array  # With thanks, https://www.reddit.com/r/bash/comments/3cbt1p/sorting_array_of_numeric_values/csu2150/
   mapfile -t ARRAY < <(printf '%s\n' "${ARRAY[@]}" | sort -n)  # You can also use -u with the sort to have unqiue values only and/or -r to have a reverse (large>small) sort
 # Find a certain string within all files in a subdirectory (handy for finding text like function names etc. in source code etc.)
@@ -138,6 +139,9 @@
   cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-32} | head -n 1
 # Redirect multiple files into mapfile or other commands  # With thanks, https://unix.stackexchange.com/questions/238967/controlling-the-order-in-which-files-are-put-into-an-array
   mapfile -t arrayname < <(cat a b)  # where a and b are input file[s][names]
+# Combine multiple lines of sql untill a ';' is seen near EOL (; followed by spaces or tabs and then EOL will work as well). Ideal for combining multi-line SQL statements into one
+  # With thanks, https://www.unix.com/shell-programming-and-scripting/80633-sed-combining-multiple-lines-into-one.html & https://www.gnu.org/software/sed/manual/sed.html#Multiline-techniques
+  cat multiple_unterminated_lines.sql | sed -e :x -e '/;[ \t]*$/b' -e N -e 's/\n//' -e bx  
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
