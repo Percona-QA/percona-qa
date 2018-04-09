@@ -180,12 +180,12 @@ ZN7SEL_ARG9store_minEjPPhj                               ## https://bugs.mysql.c
 
 ## =========== MS 5.7 GA ===========
 .xid->is_null                                            ## https://bugs.mysql.com/bug.php?id=80694
-#row0quiesce.cc line 724                        ## Fixed ## https://bugs.mysql.com/bug.php?id=80669
+# row0quiesce.cc line 724                       ## Fixed ## https://bugs.mysql.com/bug.php?id=90154 (Old bug #80669. Fixed in 5.7.11)
 ut0ut.cc line 921                                        ## https://bugs.mysql.com/bug.php?id=80695 PS
 ut0ut.cc line 936                                        ## https://bugs.mysql.com/bug.php?id=80668
 #pfs_file .= __null                             ## Fixed ## https://bugs.mysql.com/bug.php?id=79016
 #Z8filesortP3THDP8FilesortbPyS3_S3_             ## Fixed ## https://bugs.mysql.com/bug.php?id=79016
-#ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_ ## Fixed ## https://bugs.mysql.com/bug.php?id=79018
+#ZN9Item_func4walkEM4ItemFbPhENS0_9enum_walkES1_## Fixed ## https://bugs.mysql.com/bug.php?id=79018
 #Z22get_filename_hash_pinsP10PFS_thread         ## Fixed ## https://bugs.mysql.com/bug.php?id=79042
 refkey_rows_estimate >= 1.0                              ## https://bugs.mysql.com/bug.php?id=80782
 thd->owned_gtid.is_empty                                 ## https://bugs.mysql.com/bug.php?id=80663
@@ -207,6 +207,7 @@ trx0trx.cc line 1262                                     ## MS5.7 ## https://bug
 #thd->get_transaction                           ## Fixed ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1518183 (dup of 1488055 below)  ## Fixed in PS 5.7.10-rc1
 thd->get_transaction                                              ## https://jira.percona.com/browse/PS-291 (5.7.20)
 #sync0policy.ic line 63                                  ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79391 (MS version of PS #1519201) (remarked to not miss anything in PS)
+sync0policy.ic line 93                                            ## https://jira.percona.com/browse/PS-3902
 #buf0buf.ic line 230                                     ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1519201 (PS version of MS #79391)  ## Fixed in PS 5.7.10-rc1
 #ha_innodb.cc line 18605                                 ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1519204 (duplicate of 1368552) ## Fixed in PS 5.7.10-rc2
 ZN12ha_myisammrg15detach_childrenEv                      ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79392
@@ -312,6 +313,7 @@ fsp0fsp.cc line 1899                             ## https://bugs.launchpad.net/p
 btr0cur.cc line 2208                             ## https://bugs.launchpad.net/percona-server/+bug/1385028 (Dup of MS #74682/MS #74663)
 fsp0fsp.cc line 2025                             ## https://bugs.mysql.com/bug.php?id=74876 (MS 5.7.15-m15) (InnoDB: Failing assertion: inode)
 Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxPK5TABLEP5trx_tPK ## https://bugs.mysql.com/bug.php?id=74663 (previously 74363)
+Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxP5TABLEPKS3_P5trx_tPKc ## https://bugs.mysql.com/bug.php?id=74663
 #btr0cur.cc line 1239                            ## Fixed ## https://bugs.mysql.com/bug.php?id=75913 MS
 #btr0cur.cc line 1244                            ## Fixed ## https://bugs.mysql.com/bug.php?id=75913 PS
 
@@ -439,8 +441,9 @@ ha_innodb.cc line 19383                                                         
 ha_innodb.cc line 19423                                                                 ## PS 5.6.36     --innodb-log-buffer-size=1125899906842624 (or similar)
 mem0mem.c line 361                                                                      ## PS 5.5.53     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 18962                                                                 ## MS/PS 5.6.31  SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
-ut0ut.cc line 935                                                                       ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
-ut0ut.cc line 936                                                                       ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
+#ut0ut.cc line 935                                                          ## Outdated ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
+#ut0ut.cc line 936                                                          ## Outdated ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
+ut0ut.cc line 958                                                                       ## PS 5.7.20     --innodb-buffer-pool-size=-1125899906842624 (or similar)
 mem0dbg.c line 684                                                                      ## https://bugs.mysql.com/bug.php?id=86234 PS 5.5.55, MS 5.5.54
 handler0alter.cc line 787                                                               ## https://bugs.mysql.com/bug.php?id=88747 MS
 handler0alter.cc line 798                                                               ## https://bugs.mysql.com/bug.php?id=88747 PS
@@ -540,12 +543,14 @@ ut0lst.h line 131                                                               
 bit < map->n_bits                                                                       ## https://bugs.mysql.com/bug.php?id=86173
 user_stats->concurrent_connections > 0                                                  ## https://bugs.launchpad.net/percona-server/+bug/1661488
 allocated_status_memory .= __null                                                       ## https://bugs.mysql.com/bug.php?id=83797 (as subsequent testcase)
-#1 == num_erased                                                                        ## https://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible 
+#1 == num_erased                                                                        ## https://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible
+.relay_master_log_file_len == master_log_file_len                                       ## https://jira.percona.com/browse/PS-3885
 .tables .. thd->lex->is_query_tables_locked                                             ## https://tokutek.atlassian.net/browse/DB-1027
 .bytes_read == .data_written - ..old_pre_checksum_fd .. .description_event->checksum_alg == BINLOG_CHECKSUM_ALG_OFF  ## https://bugs.launchpad.net/percona-server/+bug/1737023
 .auto_increment_lock.*.auto_increment_safe_stmt_log_lock                                ## https://bugs.mysql.com/bug.php?id=76542
 args.0.->fixed                                                  ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74695 (Fixed in 5.7.8)
 auto_increment_value                                                                    ## https://bugs.mysql.com/bug.php?id=75057 (old LP #1384684)
+binlog_checksum_options == var->save_result.ulonglong_value                             ## https://jira.percona.com/browse/PS-3927
 bitmap_is_set.*m_part_info->read_partitions, m_part_spec.start_part                     ## https://bugs.mysql.com/bug.php?id=74779 (old PS #1384591)
 bitmap_is_clear_all..table->tmp_set                                                     ## https://bugs.mysql.com/bug.php?id=87576
 bitmap_is_set_all...table->s->all_set                                                   ## https://bugs.mysql.com/bug.php?id=75003
@@ -655,6 +660,7 @@ thd->lex->sql_command == SQLCOM_XA_COMMIT                                       
 .field->orig_table->const_table                                                         ## https://bugs.launchpad.net/percona-server/+bug/1662091
 #. thd->in_sub_stmt                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74665 
 . thd->in_sub_stmt                                                                      ## https://bugs.mysql.com/bug.php?id=84828 (See also 74665) (Still present in MS 5.6.35)
+.thd->in_active_multi_stmt_transaction                                                  ## https://jira.percona.com/browse/PS-3919
 .thd->is_current_stmt_binlog_format_row                                                 ## https://bugs.launchpad.net/percona-server/+bug/1427030
 #thd->is_error                                                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=74493
 thd->is_error                                                                           ## https://bugs.mysql.com/bug.php?id=84076 (5.6 only)
@@ -760,6 +766,7 @@ Z24get_schema_tables_resultP4JOIN23enum_                                        
 #Z24ha_initialize_handlertonP13st_plugin_int                                   ## Fixed ## https://jira.percona.com/browse/MYR-195
 Z24plugin_foreach_with_maskP3THDPFcS0_PP13st_plugin_intPvEijS4_                         ## https://bugs.launchpad.net/percona-server/+bug/1688176 (also listed elsewhere)
 ZN25table_events_waits_common8make_rowEbP10PFS_threadPV16PFS_events_waits               ## https://bugs.mysql.com/bug.php?id=88799
+ZN25table_events_waits_common8make_rowEP16PFS_events_waits                              ## https://jira.percona.com/browse/PS-3873
 #Z24make_used_partitions_strP14partition_infoP4ListIKcE                        ## Fixed ## https://bugs.mysql.com/bug.php?id=74746 (fixed in 5.6.24)
 #Z24mark_tmp_table_for_reuseP5TABLE                                            ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1417533 (dup of 1387951)
 #Z24plugin_foreach_with_maskP3THDPFcS0_PP13st_plugin_intPvEijS4_               ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368530 (fixed in 5.6.27)
@@ -816,6 +823,8 @@ ZN12ha_myisammrg5cloneEPKcP11st_mem_root                                        
 #ZN13st_select_lex5printEP3THDP6String15enum_query_type                        ## Fixed ## https://bugs.mysql.com/bug.php?id=78335 (Could not reproduce the issue)
 #ZN13Item_func_div10decimal_opEP10my_decimal                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74807 (Same gdb trace of Z14my_decimal_divjP10my_decimalPKS_S2_i)
 ZN13MYSQL_BIN_LOG33handle_binlog_flush_or_sync_errorEP3THDb                             ## https://bugs.mysql.com/bug.php?id=86256
+ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event                ## https://jira.percona.com/browse/PS-3878
+ZN13MYSQL_BIN_LOG13new_file_implEbP28Format_description_log_event                       ## https://bugs.mysql.com/bug.php?id=90190
 #ZN14Arg_comparator24cache_converted_constantEP3THDPP4ItemS4_11Item_result     ## Fixed ## https://bugs.mysql.com/bug.php?id=77991 (duplicate of 78188)
 #ZN14cachefile_list15add_cf_unlockedEP9cachefile                               ## Fixed ## https://tokutek.atlassian.net/browse/DB-812 (fixed in 5.6.23/Tk7.5.6)
 #ZN14Item_func_plus10decimal_opEP10my_decimal                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=74619 (Same gdb trace of Z14my_decimal_addjP10my_decimalPKS_S2_ assertion)
@@ -898,7 +907,10 @@ ZNK4Item10field_typeEv                                                          
 ZN15Event_scheduler5startEPi                                                            ## https://bugs.launchpad.net/percona-server/+bug/1587195
 ZN7keyring10Vault_curl8read_keyERKNS_9Vault_keyEPNSt7__cxx1112basic_stringIcSt11char_traitsIcENS_16Secure_allocatorIcEEEE  ## https://jira.percona.com/browse/PS-264
 Z24plugin_foreach_with_maskP3THDPPFcS0_PP13st_plugin_intPvEijS4_                                                           ## https://jira.percona.com/browse/PS-264
-
+Z21copy_system_variablesP3THDb                                                          ## https://jira.percona.com/browse/PS-3817
+#ZN7myrocks10ha_rocksdb18get_auto_incrementEyyyPyS1_                           ## Fixed ## https://jira.percona.com/browse/MYR-235
+#ZN7myrocks10ha_rocksdb31update_auto_incr_val_from_fieldEv                     ## Fixed ## https://jira.percona.com/browse/MYR-235
+#ZN7myrocks10ha_rocksdb31load_auto_incr_value_from_indexEv                     ## Fixed ## https://jira.percona.com/browse/MYR-236
 ## =========== Error log crashing query based ===========
 ^Query ([0-9a-f]\+): SELECT.*FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG$                  ## https://bugs.launchpad.net/percona-server/+bug/1375153
 

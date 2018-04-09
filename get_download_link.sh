@@ -165,7 +165,9 @@ get_link(){
     fi
 
   elif [[ "${PRODUCT}" = "psmdb" && "${BUILD_ARCH}" = "x86_64" ]]; then
-    if [[ "${DISTRIBUTION}" = "ubuntu" ]]; then OPT="xenial"; else OPT="centos6"; fi
+    if [[ "${DISTRIBUTION}" = "ubuntu" ]]; then OPT="xenial";
+    elif [[ "${DISTRIBUTION}" = "centos" ]]; then OPT="centos6";
+    else OPT="${DISTRIBUTION}"; fi
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
         LINK=$(wget -qO- https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+\.[0-9]+-${OPT}-${BUILD_ARCH}\.tar\.gz"|head -n1)

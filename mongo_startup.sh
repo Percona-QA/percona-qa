@@ -7,6 +7,7 @@ STORAGE_ENGINE="wiredTiger"
 MONGOD_EXTRA=""
 MONGOS_EXTRA=""
 CONFIG_EXTRA=""
+RS_ARBITER=0
 
 if [ -z $1 ]; then
   echo "You need to specify at least one of the options for layout: --single, --rSet, --sCluster or use --help!"
@@ -16,8 +17,8 @@ fi
 # Check if we have a functional getopt(1)
 if ! getopt --test
 then
-    go_out="$(getopt --options=mrshe:b: \
-        --longoptions=single,rSet,sCluster,help,storageEngine:,bindir:,mongodExtra:,mongosExtra:,configExtra: \
+    go_out="$(getopt --options=mrsahe:b: \
+        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,bindir:,mongodExtra:,mongosExtra:,configExtra: \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
@@ -39,6 +40,10 @@ do
     shift
     LAYOUT="sh"
     ;;
+  -a | --arbiter )
+    shift
+    RS_ARBITER=1
+    ;;
   -h | --help )
     shift
     echo -e "\nThis script can be used to setup single instance, replica set or sharded cluster of mongod or psmdb from binary tarball."
@@ -48,6 +53,7 @@ do
     echo -e "-m, --single\t\t\t run single instance"
     echo -e "-r, --rSet\t\t\t run replica set (3 nodes)"
     echo -e "-s, --sCluster\t\t\t run sharding cluster (2 replica sets with 3 nodes each)"
+    echo -e "-a, --arbiter\t\t\t instead of 3 nodes in replica set add 2 nodes and 1 arbiter"
     echo -e "-e<se>, --storageEngine=<se>\t specify storage engine for data nodes (wiredTiger, rocksdb, mmapv1)"
     echo -e "-b<path>, --bindir<path>\t specify binary directory if running from some other location (this should end with /bin)"
     echo -e "--mongodExtra=\"...\"\t\t specify extra options to pass to mongod"
@@ -162,7 +168,14 @@ start_replicaset(){
   sleep 5
   echo "#!/usr/bin/env bash" > ${RSDIR}/init_rs.sh
   echo "echo \"Initializing replica set: ${RSNAME}\"" >> ${RSDIR}/init_rs.sh
-  echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"localhost:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"localhost:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"localhost:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
+  if [ ${RS_ARBITER} = 0 ]; then
+    echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"localhost:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"localhost:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"localhost:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
+  else
+    echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"localhost:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"localhost:$(($RSBASEPORT + 1))\"}]})'" >> ${RSDIR}/init_rs.sh
+    echo "sleep 20" >> ${RSDIR}/init_rs.sh
+    echo "PRIMARY=\$(${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/init_rs.sh
+    echo "${BINDIR}/mongo \${PRIMARY} --quiet --eval 'rs.addArb(\"localhost:$(($RSBASEPORT + 2))\")'" >> ${RSDIR}/init_rs.sh
+  fi
   echo "#!/usr/bin/env bash" > ${RSDIR}/stop_rs.sh
   echo "echo \"=== Stopping replica set: ${RSNAME} ===\"" >> ${RSDIR}/stop_rs.sh
   for cmd in $(find ${RSDIR} -name stop.sh); do

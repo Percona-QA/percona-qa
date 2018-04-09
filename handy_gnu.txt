@@ -26,7 +26,9 @@
   grep --binary-files=text ...
 # Shuffle lines of a file. Much better then sort -R --random-source=/dev/urandom. sort -R will still sort according to hash, leaving similar lines clustered
   shuf --random-source=/dev/urandom inputfile > outputfile
-# The same, with random entropy pool initialization (TODO: confirm that RANDOM=x entropy pool init also inits /dev/urandom)
+# The same, but with a set number of lines extracted
+  shuf -n10 --random-source=/dev/urandom inputfile > outputfile 
+# The same as original, with random entropy pool initialization (TODO: confirm that RANDOM=x entropy pool init also inits /dev/urandom)
   RANDOM=`date +%s%N | cut -b14-19`; shuf --random-source=/dev/urandom inputfile > outputfile 
 # Delete all alpha chars from a string
   echo "string" | tr -d '[:alpha:]'
@@ -139,6 +141,9 @@
   cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-32} | head -n 1
 # Redirect multiple files into mapfile or other commands  # With thanks, https://unix.stackexchange.com/questions/238967/controlling-the-order-in-which-files-are-put-into-an-array
   mapfile -t arrayname < <(cat a b)  # where a and b are input file[s][names]
+# Obtain the parent pid (in-script)  # With thanks, https://superuser.com/questions/150117/how-to-get-parent-pid-of-a-given-process-in-gnu-linux-from-command-line
+  ppid () { ps -p ${1:-$$} -o ppid=; }
+  P=$(ppid); echo $P
 # Combine multiple lines of sql untill a ';' is seen near EOL (; followed by spaces or tabs and then EOL will work as well). Ideal for combining multi-line SQL statements into one
   # With thanks, https://www.unix.com/shell-programming-and-scripting/80633-sed-combining-multiple-lines-into-one.html & https://www.gnu.org/software/sed/manual/sed.html#Multiline-techniques
   cat multiple_unterminated_lines.sql | sed -e :x -e '/;[ \t]*$/b' -e N -e 's/\n//' -e bx  
@@ -159,6 +164,31 @@
   sleep 1000 &  gdb /usr/bin/sleep --pid=$! --ex 'generate-core-file'
 # Check your bash scripts
   https://www.shellcheck.net/  https://github.com/koalaman/shellcheck
+
+# ------ Compiling / Compiler Issues ------
+# If you see for example "/usr/bin/ld: cannot find -lzlib" in your compilation/build of MySQL, and the build fails because of it, then check:
+  ld -lzlib --verbose  # Execute in a user writeable directory. If all entries fail, the lib could not be found. 
+  You need to just link one of them to the real zlib on your system  ## With thanks, https://stackoverflow.com/a/21647591/1208218
+  sudo ln -s /usr/lib64/libz.so.1.2.7 /usr/lib/libzlib.so  ## Though you may have to search for "libz.so" in /usr (cd /usr; find . | grep libz.so)
+  This likely works with any linker issue (ld -l{failed lib} --verbose && sudo ln -s ...) 
+  Another example;
+  ld -ltensorflow --verbose  # Note the "{somelib}.so needed by {somelib}.so" and next line "found {somelib}.so {path}"
+  ld /usr/local/lib/libtensorflow.so  # This part; "ld: warning: cannot find entry symbol _start; not setting start address" can be ignored (it is likely just looking for a start address, which will be there in the program which links with this library)
+# If you get an error like this;
+  /usr/local/lib/somlelib.so: undefined reference to `somefunction@GLIBC_2.23'
+  # Then check first what GLIBC version you are running;
+  sudo yum list glibc  # Or use ldd --version
+  # If the version is older (in this example it was 2.17), then either update the OS or consider adding another glibc along the main OS one;
+  https://unix.stackexchange.com/a/299665/241016
+# An easy way to install the almost-latest gcc + binutils on Centos 7
+  sudo yum install epel-release
+  sudo yum install centos-release-scl-rh
+  sudo yum install devtoolset-7-gcc-c++  # Or sudo yum install devtoolset-6-gcc-c++  # Or sudo yum install devtoolset-4-gcc-c++
+  # Then, to enable the newly installed (and separate) environment, use;
+  scl enable devtoolset-7 bash  # This sets the newly installed environment for that particular bash session
+  # https://access.redhat.com/documentation/en-US/Red_Hat_Developer_Toolset/3/html/User_Guide/sect-Red_Hat_Developer_Toolset-Install.html
+  # https://access.redhat.com/documentation/en-us/red_hat_developer_toolset/6/html/user_guide/sect-red_hat_developer_toolset-install
+  # Note that devtoolset-4 is really gcc 5.3.1 (the native Centos7 gcc being 4.8.5)
 
 # ------ Common Issues ------
 # Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;
@@ -201,7 +231,10 @@
   time echo "a";echo "a"     # WRONG: this does not achieve the objective, it only times the first command
   time (echo "a";echo "a")   # CORRECT: this times both commands (without anything affecting time and without any sub-execution or variable assignment)
 # Obtain the primary IP address of this machine
-  IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8); echo ${IP_ADDRESS}
+  IP_ADDRESS=$(ip route get 8.8.8.8 | head -n1 | cut -d' ' -f8); echo ${IP_ADDRESS}  # Fails on for example Centos 7.4 (needs -f7)
+# Better methods to obtain the IP address of this machine
+  IP_ADDRESS=$(ip route get 1 | head -n1 awk '{print $NF;exit}'); echo ${IP_ADDRESS}  # Or perhaps even better;
+  IP_ADDRESS=$(hostname -I | head -n1 | cut -d' ' -f1); echo ${IP_ADDRESS}  # Current version we use
 # Generate fake data
   https://faker.readthedocs.io/en/latest/providers.html  # Faker for Python
 # When used in a function, the 'declare' command (for example DECLARE -a ARRAY) makes each variable local, as with the 'local' command, unless the '-g' option is used.
@@ -217,6 +250,8 @@
   cat need_sorted_file_with_unique_results_only.txt | sort -u; cat need_adjoining_same_entries_removed; | uniq; # cat need_all_duplicates_removed.txt | uniq -u
 
 # ------ OS/Admin ------
+# Monitor the current rate of syscalls/sec  ## With thanks, http://www.brendangregg.com/blog/2018-02-09/kpti-kaiser-meltdown-performance.html
+  sudo perf stat -e raw_syscalls:sys_enter -a -I 1000
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)
   ## sudo umount -flv /dev/<device>                         ## Make sure you know what you are doing before executing this!   Another possible method is:
   ## sudo yum install psmisc; sudo fuser -km /dev/<device>  ## Make sure you know what you are doing before executing this!

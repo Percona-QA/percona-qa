@@ -54,6 +54,13 @@ if [ -z "$(yum list | grep 'epel-release.noarch')" ]; then
   #fi
 fi
 
+# Set CPU Governor to Performance. This makes sense on for example a regularly used QA server or a performance testing box
+# Consider; electricity/power and heating. To do so, see the following document especially under 'cpufreq_powersave';
+# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/power_management_guide/cpufreq_governors 
+# sudo cpupower frequency-set --governor performance
+# cat /sys/devices/system/cpu/intel_pstate/*  # Should read 100,100,[0]
+# cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor  # Should read "performance"
+
 # SCLo SIG
 # https://wiki.centos.org/SpecialInterestGroup/SCLo
 # https://centos.pkgs.org/7/centos-sclo-rh/devtoolset-7-gcc-c++-7.2.1-1.el7.x86_64.rpm.html
@@ -68,24 +75,28 @@ fi
 sudo yum-config-manager --enable epel-debuginfo
 
 # Software
+# libssh (Centos) / libssh-dev (Ubuntu) was added here (27/02/17). Though not strictly needed, seemed like a good lib to have.
+# If it causes issues, please remove it again.
 # Temporary removed sysbench from the list as it causes issues on Centos7 - see https://bugs.launchpad.net/sysbench/+bug/1340092
 sudo yum install kernel-devel wget patch make cmake automake autoconf bzr git htop man lsof gdb \
      gcc gcc-c++ ncurses-devel ncurses-devel-5* libtool libaio libaio-devel bison libcurl-devel \
      valgrind perl-DBD-mysql perl-Time-HiRes cpan bzip2 valgrind-devel svn strace screen \
      hdparm pam-devel openssl openssl-devel gtest zlib zlib-devel zlib-static tree vim libasan \
      yum-utils readline-devel lshw lscpu iotop pymongo bats lzma lzma bzip2-devel snappy-dev \
-     boost-devel lz4-devel gflags-devel xz jemalloc jemalloc-devel jemalloc-debuginfo 
+     boost-devel lz4-devel gflags-devel xz jemalloc jemalloc-devel jemalloc-debuginfo libssh
 
 sudo yum remove abrt  # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
 sudo yum remove pulseaudio*  # Only do this on servers, to avoid writing of pulse* files into /dev/shm. Best to leave on workstations (for audio)
 
 # Apt-get equivalent
 # Ubuntu 16.10
-#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ ncurses-dev libncurses-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libtime-hires-perl libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline6 libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libbz2-dev libsnappy-dev libboost-all-dev liblz4-dev libgflags-dev libcurl4-openssl-dev
+#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ ncurses-dev libncurses-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libtime-hires-perl libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline6 libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libbz2-dev libsnappy-dev libboost-all-dev liblz4-dev libgflags-dev libcurl4-openssl-dev libssh-dev
 # Ubuntu 17.04
-#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libperl5.24 libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline-dev libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev
+#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libperl5.24 libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libasan1 libreadline-dev libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev libssh-dev
 # Ubuntu 17.10
-#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libreadline-dev libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev
+#sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libreadline-dev libreadline6-dbg libreadline6-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev libssh-dev
+# Ubuntu 18.04 (same as 17.10 without libreadline6-dbg
+# sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libreadline-dev libreadline7-dbg debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev libssh-dev
 
 # Facebook MTR test support (https://github.com/facebook/mysql-5.6/wiki/Build-Steps)
 #sudo apt-get install -y python python-mysqldb

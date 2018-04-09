@@ -1,14 +1,14 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-MAKE_THREADS=1      # Number of build threads. There may be a bug with >1 settings
+MAKE_THREADS=8      # Number of build threads. There may be a bug with >1 settings
 WITH_ROCKSDB=1      # 0 or 1  # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
                               # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
                               # This is also auto-turned off for all 5.5 and 5.6 builds 
 USE_CLANG=0         # Use the clang compiler instead of gcc
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"
 CLANGPP_LOCATION="${CLANG_LOCATION}++"
-USE_BOOST_LOCATION=1
+USE_BOOST_LOCATION=0
 BOOST_LOCATION=/git/boost_1_59_0-debug
 
 # To install the latest clang from Chromium devs;

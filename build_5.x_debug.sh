@@ -6,23 +6,26 @@ WITH_ROCKSDB=1          # 0 or 1 # Please note when building the facebook-mysql-
                                  # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
                                  # This is also auto-turned off for all 5.5 and 5.6 builds 
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
-WITH_LOCAL_INFILE=0     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
-ZLIB_MYSQL8_HACK=1      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
+WITH_LOCAL_INFILE=1     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
+ZLIB_MYSQL8_HACK=0      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
+                                 # Also see https://bugs.launchpad.net/percona-server/+bug/1521566
+                                 # Set this to "0" if you see "Could NOT find ZLIB (missing: ZLIB_INCLUDE_DIR)"
 USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re-download
-BOOST_LOCATION=/git/boost_1_65_0.tar.gz
+BOOST_LOCATION=/git/boost_1_59_0-debug/
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
 USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
+USE_SAN=0               # 0 or 1 # Use ASAN, MSAN, UBSAN
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
 USE_AFL=0               # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
-AFL_LOCATION="/sda/afl/afl-2.52b"
+AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
 
-# To install the latest clang from Chromium devs;
-# sudo yum remove clang    # Or sudo apt-get remove clang
+# To install the latest clang from Chromium devs (and this automatically updates previous version installed with this method too);
+# sudo yum remove clang    # Or sudo apt-get remove clang    # Only required if this procedure has never been followed yet
 # cd ~
 # mkdir TMP_CLANG
 # cd TMP_CLANG
-# git clone https://chromium.googlesource.com/chromium/src/tools/clang
+# git clone --depth=1 https://chromium.googlesource.com/chromium/src/tools/clang
 # cd ..
 # TMP_CLANG/clang/scripts/update.py
 
@@ -44,12 +47,6 @@ if [ "$MYSQL_VERSION_MAJOR" == "5" ]; then
   if [ "$MYSQL_VERSION_MINOR" == "5" -o "$MYSQL_VERSION_MINOR" == "6" ]; then
     WITH_ROCKSDB=0  # This works fine for MS and PS but is not tested for MD
   fi
-fi
-
-ASAN=
-if [ "${1}" != "" ]; then
-  echo "Building with ASAN enabled"
-  ASAN="-DWITH_ASAN=ON"
 fi
 
 DATE=$(date +'%d%m%y')
@@ -103,14 +100,25 @@ if [ $USE_AFL -eq 1 ]; then
   echo "====================================================================="
   echo "Note: USE_AFL is set to 1, using the AFL gcc/g++ wrapper as compiler!"
   echo "====================================================================="
-  echo "Note: ftm, AFL builds exclude RocksDB"
+  echo "Note: ftm, AFL builds exclude RocksDB and TokuDB"
   echo "====================================================================="
   echo "Note: ftm, AFL builds require patching source code, ask Roel how to"
   echo "====================================================================="
   sleep 3
   WITH_ROCKSDB=0
-  #AFL="-DWITH_TOKUDB=0 -DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
-  AFL="-DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
+  AFL="-DWITH_TOKUDB=0 -DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
+  #AFL="-DCMAKE_C_COMPILER=$AFL_LOCATION/afl-gcc -DCMAKE_CXX_COMPILER=$AFL_LOCATION/afl-g++"
+fi
+
+# ASAN, MSAN, UBSAN
+SAN=
+if [ $USE_SAN -eq 1 ]; then
+  # MSAN and ASAN cannot be used at the same time, choose one of the two options below.
+  # Also note that for MSAN to have an affect, all libs linked to MySQL must also have been compiled with this option enabled
+  # Ref https://dev.mysql.com/doc/refman/5.7/en/source-configuration-options.html#option_cmake_with_msan
+  #SAN="--DWITH_MSAN=ON -DWITH_UBSAN=ON"
+  SAN="-DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF"  # Default
+    # The -DWITH_RAPID=OFF is a workaround for https://bugs.mysql.com/bug.php?id=90211 - it disables GR and mysqlx (rapid plugins)
 fi
 
 # Use a custom compiler
@@ -129,11 +137,15 @@ if [ $USE_AFL -eq 1 ]; then
     # Single quotes may work
     FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
   else
-    FLAGS="-DCMAKE_CXX_FLAGS=-w"
+    FLAGS='-DCMAKE_CXX_FLAGS=-w'
   fi
 else
   if [ $FB -eq 1 ]; then
     FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
+  else  # Normal builds
+    if [ $USE_SAN -eq 1 ]; then
+      FLAGS='-DCMAKE_CXX_FLAGS=-fsanitize-coverage=trace-pc-guard'
+    fi
   fi
 fi
 # Also note that -k can be use for make to ignore any errors; if the build fails somewhere in the tests/unit tests then it matters 
@@ -166,21 +178,17 @@ else
 fi
 
 if [ $FB -eq 0 ]; then
-  # PS,MS,PXC build
-  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${ASAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  # PS,MS,PXC build. Consider adding -DWITH_KEYRING_TEST=ON depeding on bug https://bugs.mysql.com/bug.php?id=90212 outcome
+  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${SAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
   # FB build
   cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 fi
-if [ "${ASAN}" != "" -a $MS -eq 1 ]; then
-  ASAN_OPTIONS="detect_leaks=0" make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}  # Upstream is affected by http://bugs.mysql.com/bug.php?id=80014 (fixed in PS)
-  if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
-else
-  make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}
-  if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
-fi
+# Previously we had: ASAN_OPTIONS="detect_leaks=0" make... here due to upstream http://bugs.mysql.com/bug.php?id=80014 but this was fixed
+make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}
+if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 
 if [ ! -r ./scripts/make_binary_distribution ]; then  # Note: ./scripts/binary_distribution is created on-the-fly during the make compile
   echo "Assert: ./scripts/make_binary_distribution was not found. Terminating."
