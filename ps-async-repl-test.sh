@@ -180,12 +180,16 @@ sysbench_run(){
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-storage-engine=$ENGINE --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "insert_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=30 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
     fi
   elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-storage-engine=$ENGINE --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
+    elif [ "$TEST_TYPE" == "insert_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=30 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
@@ -343,13 +347,22 @@ function async_rpl_test(){
     echoit "OLTP RW run on master (Database: $MASTER_DB)"
     sysbench_run oltp $MASTER_DB
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$MASTER_SOCKET run  > $WORKDIR/logs/sysbench_master_rw.log 2>&1 &
-    #check_cmd $? "Failed to execute sysbench oltp read/write run on master ($MASTER_SOCKET)" 
+    check_cmd $? "Failed to execute sysbench oltp read/write run on master ($MASTER_SOCKET)" 
     
     #OLTP RW run on slave
     echoit "OLTP RW run on slave (Database: $SLAVE_DB)"
     sysbench_run oltp $SLAVE_DB
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SLAVE_SOCKET run  > $WORKDIR/logs/sysbench_slave_rw.log 2>&1 
-    #check_cmd $? "Failed to execute sysbench oltp read/write run on slave($SLAVE_SOCKET)"  
+    check_cmd $? "Failed to execute sysbench oltp read/write run on slave($SLAVE_SOCKET)"  
+  }
+
+  function async_sysbench_insert_run(){
+    DATABASE_NAME=$1
+    SOCKET=$2  
+    echoit "Sysbench insert run (Database: $DATABASE_NAME)"
+    sysbench_run insert_data $DATABASE_NAME
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET run  > $WORKDIR/logs/sysbench_insert.log 2>&1
+    check_cmd $? "Failed to execute sysbench insert run ($SOCKET)"
   }
   
   function async_sysbench_load(){
@@ -358,7 +371,7 @@ function async_rpl_test(){
     echoit "Sysbench Run: Prepare stage (Database: $DATABASE_NAME)"
     sysbench_run load_data $DATABASE_NAME
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  > $WORKDIR/logs/sysbench_prepare.txt 2>&1
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench prepare stage ($SOCKET)"
   }
   
   function master_slave_test(){
@@ -419,6 +432,12 @@ function async_rpl_test(){
     async_sysbench_rw_run sbtest_ps_master sbtest_ps_slave_1 "/tmp/ps1.sock" "/tmp/ps2.sock"
     async_sysbench_rw_run sbtest_ps_master sbtest_ps_slave_2 "/tmp/ps1.sock" "/tmp/ps3.sock"
     async_sysbench_rw_run sbtest_ps_master sbtest_ps_slave_3 "/tmp/ps1.sock" "/tmp/ps4.sock"
+	
+    async_sysbench_insert_run sbtest_ps_master "/tmp/ps1.sock"
+    async_sysbench_insert_run sbtest_ps_slave_1 "/tmp/ps2.sock"
+    async_sysbench_insert_run sbtest_ps_slave_2 "/tmp/ps3.sock"
+    async_sysbench_insert_run sbtest_ps_slave_3 "/tmp/ps4.sock"
+	
     sleep 5
     echoit "Checking slave sync status"
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
@@ -459,6 +478,9 @@ function async_rpl_test(){
     async_sysbench_load sbtest_ps_master_2 "/tmp/ps2.sock"
 	
     async_sysbench_rw_run sbtest_ps_master_1 sbtest_ps_master_2 "/tmp/ps1.sock" "/tmp/ps2.sock"
+	
+    async_sysbench_insert_run sbtest_ps_master_1 "/tmp/ps1.sock"
+    async_sysbench_insert_run sbtest_ps_master_2 "/tmp/ps2.sock"
 	
     sleep 5
     echoit "Checking slave sync status"
@@ -504,14 +526,18 @@ function async_rpl_test(){
     
     sysbench_run oltp msr_db_master1
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_ps_channel1_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (/tmp/ps2.sock)"
     sysbench_run oltp msr_db_master2
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps3.sock  run  > $WORKDIR/logs/sysbench_ps_channel2_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (/tmp/ps3.sock)"
     sysbench_run oltp msr_db_master3
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps4.sock  run  > $WORKDIR/logs/sysbench_ps_channel3_rw.log 2>&1 
-    check_cmd $?
-    
+    check_cmd $? "Failed to execute sysbench read/write run (/tmp/ps4.sock)"
+	
+    async_sysbench_insert_run msr_db_master1 "/tmp/ps2.sock"
+    async_sysbench_insert_run msr_db_master2 "/tmp/ps3.sock"
+    async_sysbench_insert_run msr_db_master3 "/tmp/ps4.sock"
+	
     sleep 10
     SB_CHANNEL1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master1'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     SB_CHANNEL2=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master2'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -607,35 +633,50 @@ function async_rpl_test(){
     # Sysbench RW MTR test run...
     sysbench_run oltp mtr_db_ps1_1
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_1_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_1 ,socket : /tmp/ps1.sock)"
     sysbench_run oltp mtr_db_ps1_2
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_2_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_2 ,socket : /tmp/ps1.sock)"
     sysbench_run oltp mtr_db_ps1_3
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_3_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_3 ,socket : /tmp/ps1.sock)"
     sysbench_run oltp mtr_db_ps1_4
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_4_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_4 ,socket : /tmp/ps1.sock)"
     sysbench_run oltp mtr_db_ps1_5
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_5_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_5 ,socket : /tmp/ps1.sock)"
     # Sysbench RW MTR test run...
     sysbench_run oltp mtr_db_ps2_1
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_1_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_1 ,socket : /tmp/ps2.sock)"
     sysbench_run oltp mtr_db_ps2_2
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_2_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_2 ,socket : /tmp/ps2.sock)"
     sysbench_run oltp mtr_db_ps2_3
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_3_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_3 ,socket : /tmp/ps2.sock)"
     sysbench_run oltp mtr_db_ps2_4
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_4_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_4 ,socket : /tmp/ps2.sock)"
     sysbench_run oltp mtr_db_ps2_5
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_5_rw.log 2>&1 
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_5 ,socket : /tmp/ps2.sock)"
+	
+    # Sysbench data insert run for MTR test
+    echoit "Sysbench data insert run for MTR test"
+    async_sysbench_insert_run mtr_db_ps1_1 "/tmp/ps1.sock"
+    async_sysbench_insert_run mtr_db_ps1_2 "/tmp/ps1.sock"
+    async_sysbench_insert_run mtr_db_ps1_3 "/tmp/ps1.sock"
+    async_sysbench_insert_run mtr_db_ps1_4 "/tmp/ps1.sock"
+    async_sysbench_insert_run mtr_db_ps1_5 "/tmp/ps1.sock"
+
+    async_sysbench_insert_run mtr_db_ps2_1 "/tmp/ps2.sock"
+    async_sysbench_insert_run mtr_db_ps2_2 "/tmp/ps2.sock"
+    async_sysbench_insert_run mtr_db_ps2_3 "/tmp/ps2.sock"
+    async_sysbench_insert_run mtr_db_ps2_4 "/tmp/ps2.sock"
+    async_sysbench_insert_run mtr_db_ps2_5 "/tmp/ps2.sock"	
+	
     sleep 10
     SB_PS_1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     SB_PS_2=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
