@@ -594,7 +594,7 @@ function async_rpl_test(){
     echo "********************$MYEXTRA_CHECK multi thread replication test ************************"  
     #PS server initialization
     echoit "PS server initialization"
-    ps_start 3 "--slave-parallel-workers=5"
+    ps_start 2 "--slave-parallel-workers=5"
 
     echo "Sysbench Run for replication master master test : Prepare stage"
     invoke_slave "/tmp/ps1.sock" "/tmp/ps2.sock" ";START SLAVE;"
