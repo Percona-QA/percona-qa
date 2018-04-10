@@ -2,21 +2,84 @@
 # Created by Ramesh Sivaraman, Percona LLC
 # This will help us to test replication features
 
+# Dispay script usage details
+usage () {
+  echo "Usage: [ options ]"
+  echo "Options:"
+  echo "  --workdir                  	       Specify work directory"
+  echo "  --storage-engine                     Specify mysql server storage engine"
+  echo "  --build-number                       Specify work build directory"
+  echo "  --with-binlog-encryption             Run the script with binary log encryption feature"
+}
+
+# Check if we have a functional getopt(1)
+if ! getopt --test
+  then
+  go_out="$(getopt --options=edv --longoptions=workdir:,storage-engine:,build-number:,with-binlog-encryption,help \
+  --name="$(basename "$0")" -- "$@")"
+  test $? -eq 0 || exit 1
+  eval set -- "$go_out"
+fi
+
+if [[ $go_out == " --" ]];then
+  usage
+  exit 1
+fi
+
+for arg
+do
+  case "$arg" in
+    -- ) shift; break;;
+    --workdir )
+    export WORKDIR="$2"
+    if [[ ! -d "$WORKDIR" ]]; then
+      echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
+      exit 1
+    fi
+    shift 2
+    ;;
+    --build-number )
+    export BUILD_NUMBER="$2"
+    shift 2
+    ;;
+    --storage-engine )
+    export ENGINE="$2"
+    if [ "$ENGINE" != "innodb" ] && [ "$ENGINE" != "rocksdb" ] && [ "$ENGINE" != "tokudb" ]; then
+      echo "ERROR: Invalid --storage-engine passed:"
+      echo "  Please choose any of these storage engine options: innodb, rocksdb, tokudb"
+      exit 1
+    fi
+    shift 2
+    ;;
+    --with-binlog-encryption )
+    shift
+    BINLOG_ENCRYPTION=1
+    ;;
+    --help )
+    usage
+    exit 0
+    ;;
+  esac
+done
+
+
+# generic variables
+if [[ -z "$WORKDIR" ]]; then
+  export WORKDIR=${PWD}
+fi
+
+if [[ -z "$BUILD_NUMBER" ]]; then
+  export BUILD_NUMBER="100"
+fi
+
 # User Configurable Variables
 SBENCH="sysbench"
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
-WORKDIR=$1
-ENGINE=$2
 ROOT_FS=$WORKDIR
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 PS_START_TIMEOUT=60
 
 cd $WORKDIR
-
-# For local run - User Configurable Variables
-if [ -z ${BUILD_NUMBER} ]; then
-  BUILD_NUMBER=1001
-fi
 
 if [ -z ${SDURATION} ]; then
   SDURATION=30
@@ -38,10 +101,10 @@ if [ -z ${TCOUNT} ]; then
   TCOUNT=16
 fi
 
-if [ "$ENGINE" == "INNODB" ]; then
+if [ "$ENGINE" == "innodb" ]; then
   MYEXTRA_ENGINE="--default-storage-engine=INNODB"
   SE_STARTUP=""
-elif [ "$ENGINE" == "ROCKSDB" ]; then
+elif [ "$ENGINE" == "rocksdb" ]; then
   MYEXTRA_ENGINE="--plugin-load-add=rocksdb=ha_rocksdb.so  --init-file=${SCRIPT_PWD}/MyRocks.sql --default-storage-engine=ROCKSDB "
   SE_STARTUP="--rocksdb-flush-log-at-trx-commit=2 --rocksdb-wal-recovery-mode=2"
   #Check MySQL utilities
@@ -49,7 +112,7 @@ elif [ "$ENGINE" == "ROCKSDB" ]; then
     echo "ERROR! mysql utilities are currently not installed. Please install mysql utilities. Terminating"
     exit 1
   fi
-elif [ "$ENGINE" == "TOKUDB" ]; then
+elif [ "$ENGINE" == "tokudb" ]; then
   MYEXTRA_ENGINE=" --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/TokuDB.sql --default-storage-engine=TokuDB"
   SE_STARTUP=""
 else
@@ -57,6 +120,10 @@ else
   ENGINE="INNODB"
 fi
 
+if [ "$BINLOG_ENCRYPTION" == 1 ];then  
+  MYEXTRA_BINLOG="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32"
+fi
+  
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 mkdir -p $WORKDIR/logs
 
@@ -176,7 +243,7 @@ function async_rpl_test(){
   
       ${PS_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
        --basedir=${PS_BASEDIR} $STARTUP_OPTION $MYEXTRA_ENGINE $SE_STARTUP --datadir=$node \
-       --innodb_file_per_table \
+       --innodb_file_per_table $MYEXTRA_BINLOG \
        --binlog-format=ROW --server-id=20${i} $MYEXTRA \
        --innodb_flush_method=O_DIRECT --core-file --loose-new \
        --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= \
