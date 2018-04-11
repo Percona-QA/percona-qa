@@ -121,7 +121,7 @@ else
 fi
 
 if [ "$BINLOG_ENCRYPTION" == 1 ];then  
-  MYEXTRA_BINLOG="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32"
+  MYEXTRA_BINLOG="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
 fi
   
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
@@ -373,6 +373,18 @@ function async_rpl_test(){
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  > $WORKDIR/logs/sysbench_prepare.txt 2>&1
     check_cmd $? "Failed to execute sysbench prepare stage ($SOCKET)"
   }
+
+  function gt_test_run(){
+    DATABASE_NAME=$1
+    SOCKET=$2
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLESPACE gen_ts1 ADD DATAFILE 'gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE gen_ts1" 2>&1
+    NUM_ROWS=$(shuf -i 100-500 -n 1)
+    for i in `seq 1 $NUM_ROWS`; do
+      STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+      ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "INSERT INTO gen_ts_tb1 (str) VALUES ('${STRING}')"
+    done
+  }
   
   function master_slave_test(){
     echoit "******************** $MYEXTRA_CHECK master slave test ************************"
@@ -392,6 +404,14 @@ function async_rpl_test(){
     
     async_sysbench_rw_run sbtest_ps_master sbtest_ps_slave "/tmp/ps1.sock" "/tmp/ps2.sock"
     sleep 5
+	
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run sbtest_ps_master "/tmp/ps1.sock"
+      gt_test_run sbtest_ps_slave "/tmp/ps2.sock"      
+    fi
+    sleep 5
+	
     echoit "Checking slave sync status"
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
     sleep 10
@@ -437,8 +457,17 @@ function async_rpl_test(){
     async_sysbench_insert_run sbtest_ps_slave_1 "/tmp/ps2.sock"
     async_sysbench_insert_run sbtest_ps_slave_2 "/tmp/ps3.sock"
     async_sysbench_insert_run sbtest_ps_slave_3 "/tmp/ps4.sock"
-	
     sleep 5
+
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run sbtest_ps_master "/tmp/ps1.sock"
+      gt_test_run sbtest_ps_slave_1 "/tmp/ps2.sock"
+      gt_test_run sbtest_ps_slave_2 "/tmp/ps2.sock"
+      gt_test_run sbtest_ps_slave_3 "/tmp/ps4.sock"
+    fi
+    sleep 5
+	
     echoit "Checking slave sync status"
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
     slave_sync_check "/tmp/ps3.sock" "$WORKDIR/logs/slave_status_psnode3.log" "$WORKDIR/logs/psnode3.err"
@@ -481,8 +510,15 @@ function async_rpl_test(){
 	
     async_sysbench_insert_run sbtest_ps_master_1 "/tmp/ps1.sock"
     async_sysbench_insert_run sbtest_ps_master_2 "/tmp/ps2.sock"
-	
     sleep 5
+	
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run sbtest_ps_master_1 "/tmp/ps1.sock"
+      gt_test_run sbtest_ps_master_2 "/tmp/ps2.sock"
+    fi
+    sleep 5
+	
     echoit "Checking slave sync status"
     slave_sync_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
@@ -537,6 +573,14 @@ function async_rpl_test(){
     async_sysbench_insert_run msr_db_master1 "/tmp/ps2.sock"
     async_sysbench_insert_run msr_db_master2 "/tmp/ps3.sock"
     async_sysbench_insert_run msr_db_master3 "/tmp/ps4.sock"
+	sleep 5
+
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run msr_db_master1 "/tmp/ps2.sock"
+      gt_test_run msr_db_master2 "/tmp/ps3.sock"
+      gt_test_run msr_db_master3 "/tmp/ps4.sock"
+    fi
 	
     sleep 10
     SB_CHANNEL1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master1'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -676,6 +720,13 @@ function async_rpl_test(){
     async_sysbench_insert_run mtr_db_ps2_3 "/tmp/ps2.sock"
     async_sysbench_insert_run mtr_db_ps2_4 "/tmp/ps2.sock"
     async_sysbench_insert_run mtr_db_ps2_5 "/tmp/ps2.sock"	
+    sleep 5
+
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run mtr_db_ps1_1 "/tmp/ps1.sock"
+      gt_test_run mtr_db_ps2_1 "/tmp/ps2.sock"
+    fi
 	
     sleep 10
     SB_PS_1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
