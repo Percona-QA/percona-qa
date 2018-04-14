@@ -2,21 +2,84 @@
 # Created by Ramesh Sivaraman, Percona LLC
 # This will help us to test replication features
 
+# Dispay script usage details
+usage () {
+  echo "Usage: [ options ]"
+  echo "Options:"
+  echo "  --workdir                  	       Specify work directory"
+  echo "  --storage-engine                     Specify mysql server storage engine"
+  echo "  --build-number                       Specify work build directory"
+  echo "  --with-binlog-encryption             Run the script with binary log encryption feature"
+}
+
+# Check if we have a functional getopt(1)
+if ! getopt --test
+  then
+  go_out="$(getopt --options=edv --longoptions=workdir:,storage-engine:,build-number:,with-binlog-encryption,help \
+  --name="$(basename "$0")" -- "$@")"
+  test $? -eq 0 || exit 1
+  eval set -- "$go_out"
+fi
+
+if [[ $go_out == " --" ]];then
+  usage
+  exit 1
+fi
+
+for arg
+do
+  case "$arg" in
+    -- ) shift; break;;
+    --workdir )
+    export WORKDIR="$2"
+    if [[ ! -d "$WORKDIR" ]]; then
+      echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
+      exit 1
+    fi
+    shift 2
+    ;;
+    --build-number )
+    export BUILD_NUMBER="$2"
+    shift 2
+    ;;
+    --storage-engine )
+    export ENGINE="$2"
+    if [ "$ENGINE" != "innodb" ] && [ "$ENGINE" != "rocksdb" ] && [ "$ENGINE" != "tokudb" ]; then
+      echo "ERROR: Invalid --storage-engine passed:"
+      echo "  Please choose any of these storage engine options: innodb, rocksdb, tokudb"
+      exit 1
+    fi
+    shift 2
+    ;;
+    --with-binlog-encryption )
+    shift
+    BINLOG_ENCRYPTION=1
+    ;;
+    --help )
+    usage
+    exit 0
+    ;;
+  esac
+done
+
+
+# generic variables
+if [[ -z "$WORKDIR" ]]; then
+  export WORKDIR=${PWD}
+fi
+
+if [[ -z "$BUILD_NUMBER" ]]; then
+  export BUILD_NUMBER="100"
+fi
+
 # User Configurable Variables
 SBENCH="sysbench"
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
-WORKDIR=$1
-ENGINE=$2
 ROOT_FS=$WORKDIR
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 PS_START_TIMEOUT=60
 
 cd $WORKDIR
-
-# For local run - User Configurable Variables
-if [ -z ${BUILD_NUMBER} ]; then
-  BUILD_NUMBER=1001
-fi
 
 if [ -z ${SDURATION} ]; then
   SDURATION=30
@@ -38,10 +101,10 @@ if [ -z ${TCOUNT} ]; then
   TCOUNT=16
 fi
 
-if [ "$ENGINE" == "INNODB" ]; then
+if [ "$ENGINE" == "innodb" ]; then
   MYEXTRA_ENGINE="--default-storage-engine=INNODB"
   SE_STARTUP=""
-elif [ "$ENGINE" == "ROCKSDB" ]; then
+elif [ "$ENGINE" == "rocksdb" ]; then
   MYEXTRA_ENGINE="--plugin-load-add=rocksdb=ha_rocksdb.so  --init-file=${SCRIPT_PWD}/MyRocks.sql --default-storage-engine=ROCKSDB "
   SE_STARTUP="--rocksdb-flush-log-at-trx-commit=2 --rocksdb-wal-recovery-mode=2"
   #Check MySQL utilities
@@ -49,7 +112,7 @@ elif [ "$ENGINE" == "ROCKSDB" ]; then
     echo "ERROR! mysql utilities are currently not installed. Please install mysql utilities. Terminating"
     exit 1
   fi
-elif [ "$ENGINE" == "TOKUDB" ]; then
+elif [ "$ENGINE" == "tokudb" ]; then
   MYEXTRA_ENGINE=" --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/TokuDB.sql --default-storage-engine=TokuDB"
   SE_STARTUP=""
 else
@@ -57,6 +120,10 @@ else
   ENGINE="INNODB"
 fi
 
+if [ "$BINLOG_ENCRYPTION" == 1 ];then  
+  MYEXTRA_BINLOG="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+fi
+  
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 mkdir -p $WORKDIR/logs
 
@@ -113,12 +180,16 @@ sysbench_run(){
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-storage-engine=$ENGINE --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+    elif [ "$TEST_TYPE" == "insert_data" ];then
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=30 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
     fi
   elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-storage-engine=$ENGINE --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
+    elif [ "$TEST_TYPE" == "insert_data" ];then
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=30 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
@@ -176,7 +247,7 @@ function async_rpl_test(){
   
       ${PS_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
        --basedir=${PS_BASEDIR} $STARTUP_OPTION $MYEXTRA_ENGINE $SE_STARTUP --datadir=$node \
-       --innodb_file_per_table \
+       --innodb_file_per_table $MYEXTRA_BINLOG \
        --binlog-format=ROW --server-id=20${i} $MYEXTRA \
        --innodb_flush_method=O_DIRECT --core-file --loose-new \
        --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= \
@@ -276,13 +347,22 @@ function async_rpl_test(){
     echoit "OLTP RW run on master (Database: $MASTER_DB)"
     sysbench_run oltp $MASTER_DB
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$MASTER_SOCKET run  > $WORKDIR/logs/sysbench_master_rw.log 2>&1 &
-    #check_cmd $? "Failed to execute sysbench oltp read/write run on master ($MASTER_SOCKET)" 
+    check_cmd $? "Failed to execute sysbench oltp read/write run on master ($MASTER_SOCKET)" 
     
     #OLTP RW run on slave
     echoit "OLTP RW run on slave (Database: $SLAVE_DB)"
     sysbench_run oltp $SLAVE_DB
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SLAVE_SOCKET run  > $WORKDIR/logs/sysbench_slave_rw.log 2>&1 
-    #check_cmd $? "Failed to execute sysbench oltp read/write run on slave($SLAVE_SOCKET)"  
+    check_cmd $? "Failed to execute sysbench oltp read/write run on slave($SLAVE_SOCKET)"  
+  }
+
+  function async_sysbench_insert_run(){
+    DATABASE_NAME=$1
+    SOCKET=$2  
+    echoit "Sysbench insert run (Database: $DATABASE_NAME)"
+    sysbench_run insert_data $DATABASE_NAME
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET run  > $WORKDIR/logs/sysbench_insert.log 2>&1
+    check_cmd $? "Failed to execute sysbench insert run ($SOCKET)"
   }
   
   function async_sysbench_load(){
@@ -291,7 +371,19 @@ function async_rpl_test(){
     echoit "Sysbench Run: Prepare stage (Database: $DATABASE_NAME)"
     sysbench_run load_data $DATABASE_NAME
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  > $WORKDIR/logs/sysbench_prepare.txt 2>&1
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench prepare stage ($SOCKET)"
+  }
+
+  function gt_test_run(){
+    DATABASE_NAME=$1
+    SOCKET=$2
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLESPACE gen_ts1 ADD DATAFILE 'gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE gen_ts1" 2>&1
+    NUM_ROWS=$(shuf -i 100-500 -n 1)
+    for i in `seq 1 $NUM_ROWS`; do
+      STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+      ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "INSERT INTO gen_ts_tb1 (str) VALUES ('${STRING}')"
+    done
   }
   
   function master_slave_test(){
@@ -312,6 +404,14 @@ function async_rpl_test(){
     
     async_sysbench_rw_run sbtest_ps_master sbtest_ps_slave "/tmp/ps1.sock" "/tmp/ps2.sock"
     sleep 5
+	
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run sbtest_ps_master "/tmp/ps1.sock"
+      gt_test_run sbtest_ps_slave "/tmp/ps2.sock"      
+    fi
+    sleep 5
+	
     echoit "Checking slave sync status"
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
     sleep 10
@@ -352,7 +452,22 @@ function async_rpl_test(){
     async_sysbench_rw_run sbtest_ps_master sbtest_ps_slave_1 "/tmp/ps1.sock" "/tmp/ps2.sock"
     async_sysbench_rw_run sbtest_ps_master sbtest_ps_slave_2 "/tmp/ps1.sock" "/tmp/ps3.sock"
     async_sysbench_rw_run sbtest_ps_master sbtest_ps_slave_3 "/tmp/ps1.sock" "/tmp/ps4.sock"
+	
+    async_sysbench_insert_run sbtest_ps_master "/tmp/ps1.sock"
+    async_sysbench_insert_run sbtest_ps_slave_1 "/tmp/ps2.sock"
+    async_sysbench_insert_run sbtest_ps_slave_2 "/tmp/ps3.sock"
+    async_sysbench_insert_run sbtest_ps_slave_3 "/tmp/ps4.sock"
     sleep 5
+
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run sbtest_ps_master "/tmp/ps1.sock"
+      gt_test_run sbtest_ps_slave_1 "/tmp/ps2.sock"
+      gt_test_run sbtest_ps_slave_2 "/tmp/ps2.sock"
+      gt_test_run sbtest_ps_slave_3 "/tmp/ps4.sock"
+    fi
+    sleep 5
+	
     echoit "Checking slave sync status"
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
     slave_sync_check "/tmp/ps3.sock" "$WORKDIR/logs/slave_status_psnode3.log" "$WORKDIR/logs/psnode3.err"
@@ -393,7 +508,17 @@ function async_rpl_test(){
 	
     async_sysbench_rw_run sbtest_ps_master_1 sbtest_ps_master_2 "/tmp/ps1.sock" "/tmp/ps2.sock"
 	
+    async_sysbench_insert_run sbtest_ps_master_1 "/tmp/ps1.sock"
+    async_sysbench_insert_run sbtest_ps_master_2 "/tmp/ps2.sock"
     sleep 5
+	
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run sbtest_ps_master_1 "/tmp/ps1.sock"
+      gt_test_run sbtest_ps_master_2 "/tmp/ps2.sock"
+    fi
+    sleep 5
+	
     echoit "Checking slave sync status"
     slave_sync_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
@@ -437,14 +562,26 @@ function async_rpl_test(){
     
     sysbench_run oltp msr_db_master1
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_ps_channel1_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (/tmp/ps2.sock)"
     sysbench_run oltp msr_db_master2
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps3.sock  run  > $WORKDIR/logs/sysbench_ps_channel2_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (/tmp/ps3.sock)"
     sysbench_run oltp msr_db_master3
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps4.sock  run  > $WORKDIR/logs/sysbench_ps_channel3_rw.log 2>&1 
-    check_cmd $?
-    
+    check_cmd $? "Failed to execute sysbench read/write run (/tmp/ps4.sock)"
+	
+    async_sysbench_insert_run msr_db_master1 "/tmp/ps2.sock"
+    async_sysbench_insert_run msr_db_master2 "/tmp/ps3.sock"
+    async_sysbench_insert_run msr_db_master3 "/tmp/ps4.sock"
+	sleep 5
+
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run msr_db_master1 "/tmp/ps2.sock"
+      gt_test_run msr_db_master2 "/tmp/ps3.sock"
+      gt_test_run msr_db_master3 "/tmp/ps4.sock"
+    fi
+	
     sleep 10
     SB_CHANNEL1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master1'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     SB_CHANNEL2=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master2'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -501,7 +638,7 @@ function async_rpl_test(){
     echo "********************$MYEXTRA_CHECK multi thread replication test ************************"  
     #PS server initialization
     echoit "PS server initialization"
-    ps_start 3 "--slave-parallel-workers=5"
+    ps_start 2 "--slave-parallel-workers=5"
 
     echo "Sysbench Run for replication master master test : Prepare stage"
     invoke_slave "/tmp/ps1.sock" "/tmp/ps2.sock" ";START SLAVE;"
@@ -540,35 +677,57 @@ function async_rpl_test(){
     # Sysbench RW MTR test run...
     sysbench_run oltp mtr_db_ps1_1
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_1_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_1 ,socket : /tmp/ps1.sock)"
     sysbench_run oltp mtr_db_ps1_2
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_2_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_2 ,socket : /tmp/ps1.sock)"
     sysbench_run oltp mtr_db_ps1_3
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_3_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_3 ,socket : /tmp/ps1.sock)"
     sysbench_run oltp mtr_db_ps1_4
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_4_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_4 ,socket : /tmp/ps1.sock)"
     sysbench_run oltp mtr_db_ps1_5
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps1.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps1_5_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps1_5 ,socket : /tmp/ps1.sock)"
     # Sysbench RW MTR test run...
     sysbench_run oltp mtr_db_ps2_1
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_1_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_1 ,socket : /tmp/ps2.sock)"
     sysbench_run oltp mtr_db_ps2_2
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_2_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_2 ,socket : /tmp/ps2.sock)"
     sysbench_run oltp mtr_db_ps2_3
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_3_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_3 ,socket : /tmp/ps2.sock)"
     sysbench_run oltp mtr_db_ps2_4
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_4_rw.log 2>&1 &
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_4 ,socket : /tmp/ps2.sock)"
     sysbench_run oltp mtr_db_ps2_5
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/ps2.sock  run  > $WORKDIR/logs/sysbench_mtr_db_ps2_5_rw.log 2>&1 
-    check_cmd $?
+    check_cmd $? "Failed to execute sysbench read/write run (DB : mtr_db_ps2_5 ,socket : /tmp/ps2.sock)"
+	
+    # Sysbench data insert run for MTR test
+    echoit "Sysbench data insert run for MTR test"
+    async_sysbench_insert_run mtr_db_ps1_1 "/tmp/ps1.sock"
+    async_sysbench_insert_run mtr_db_ps1_2 "/tmp/ps1.sock"
+    async_sysbench_insert_run mtr_db_ps1_3 "/tmp/ps1.sock"
+    async_sysbench_insert_run mtr_db_ps1_4 "/tmp/ps1.sock"
+    async_sysbench_insert_run mtr_db_ps1_5 "/tmp/ps1.sock"
+
+    async_sysbench_insert_run mtr_db_ps2_1 "/tmp/ps2.sock"
+    async_sysbench_insert_run mtr_db_ps2_2 "/tmp/ps2.sock"
+    async_sysbench_insert_run mtr_db_ps2_3 "/tmp/ps2.sock"
+    async_sysbench_insert_run mtr_db_ps2_4 "/tmp/ps2.sock"
+    async_sysbench_insert_run mtr_db_ps2_5 "/tmp/ps2.sock"	
+    sleep 5
+
+    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run mtr_db_ps1_1 "/tmp/ps1.sock"
+      gt_test_run mtr_db_ps2_1 "/tmp/ps2.sock"
+    fi
+	
     sleep 10
     SB_PS_1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     SB_PS_2=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`

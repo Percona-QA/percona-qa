@@ -29,13 +29,16 @@ mkdir testc_dir; export n = 0; while read -r keyword; do echo -n "$keyword" > te
 cp dictionary1.txt dictionary2.txt;sed -i "s|\(.*\)|kw_\1=\" \1\"|" dictionary2.txt
 vi dictionary2.txt 
 echo 'kw_RV1="(1)"' >> dictionary2.txt 
-echo 'kw_RV1="(0)"' >> dictionary2.txt 
-echo 'kw_RV1="(NULL)"' >> dictionary2.txt 
-echo 'kw_RV1="(NOW())"' >> dictionary2.txt 
-echo 'kw_RV1="()"' >> dictionary2.txt 
-echo 'kw_RV1="(1),(2)"' >> dictionary2.txt 
-echo 'kw_RV1="(1),(2),(3)"' >> dictionary2.txt 
-echo 'kw_RV1="('')"' >> dictionary2.txt 
+echo 'kw_RV2="(0)"' >> dictionary2.txt 
+echo 'kw_RV3="(NULL)"' >> dictionary2.txt 
+echo 'kw_RV4="(NOW())"' >> dictionary2.txt 
+echo 'kw_RV5="()"' >> dictionary2.txt 
+echo 'kw_RV6="(1),(2)"' >> dictionary2.txt 
+echo 'kw_RV7="(1),(2),(3)"' >> dictionary2.txt 
+echo 'kw_RV8="(\' \')"' >> dictionary2.txt 
+echo 'kw_RV9="("' >> dictionary2.txt 
+echo 'kw_RV10=")"' >> dictionary2.txt 
+echo 'kw_RV11=","' >> dictionary2.txt 
+echo 'kw_RV12="\'"' >> dictionary2.txt 
 
-then edit the file to make it RV2,3,4,.... after RV1
-and edit the special chars (11 at top, one just above RV1) to something more generic like kw_1=,kw_2=,etc
+then edit the file and edit the special chars (11 at top, one just above RV1) to something more generic like kw_1=,kw_2=,etc
