@@ -521,6 +521,7 @@ srv0srv.cc line 3074                                                            
 srv0srv.cc line 3070                                                                    ## Also 73913 PS 5.7.17
 srv0srv.cc line 3084                                                                    ## Also 73913 PS 5.7.19
 srv0srv.cc line 3094                                                                    ## Also 73913 PS 5.7.20
+srv0srv.cc line 3183                                                                    ## Also 73913 PS 5.7.21
 sync0sync.ic line 307                                                                   ## https://bugs.launchpad.net/percona-server/+bug/1435678
 sync0sync.cc line 1318                                                                  ## https://bugs.mysql.com/bug.php?id=75640 MS
 sync0sync.cc line 1432                                                                  ## https://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
