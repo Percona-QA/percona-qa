@@ -7,6 +7,9 @@ WITH_ROCKSDB=1          # 0 or 1 # Please note when building the facebook-mysql-
                                  # This is also auto-turned off for all 5.5 and 5.6 builds 
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
 WITH_LOCAL_INFILE=1     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
+SSL_MYSQL57_HACK=1      # 0 or 1 # PS 5.7.21 will compile fine on Ubuntu Bionic, MS 5.7.21 will not and fail with this error:
+                                 # viossl.c:422:44: error: dereferencing pointer to incomplete type 'SSL_COMP {aka struct ssl_comp_st}'
+				 # This hacks sets -DWITH_SSL=bundled of =system
 ZLIB_MYSQL8_HACK=0      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
                                  # Also see https://bugs.launchpad.net/percona-server/+bug/1521566
                                  # Set this to "0" if you see "Could NOT find ZLIB (missing: ZLIB_INCLUDE_DIR)"
@@ -70,6 +73,12 @@ fi
 ZLIB="-DWITH_ZLIB=system"
 if [ $ZLIB_MYSQL8_HACK -eq 1 ]; then
   ZLIB="-DWITH_ZLIB=bundled"
+fi
+
+# SSL Hack
+SSL="-DWITH_SSL=system"
+if [ $SSL_MYSQL57_HACK -eq 1 ]; then
+  SSL="-DWITH_SSL=bundled"
 fi
 
 # Use CLANG compiler
@@ -179,11 +188,17 @@ fi
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build. Consider adding -DWITH_KEYRING_TEST=ON depeding on bug https://bugs.mysql.com/bug.php?id=90212 outcome
-  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${SAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${SAN} ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}"
+  echo "Build command used:"
+  echo $CMD
+  $CMD
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
   # FB build
-  cmake . $CLANG $AFL -DCMAKE_BUILD_TYPE=Debug -DWITH_SSL=system -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}
+  CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DMYSQL_MAINTAINER_MODE=0 ${FLAGS} | tee /tmp/5.x_debug_build_${RANDOMD}"
+  echo "Build command used:"
+  echo $CMD
+  $CMD
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 fi
 # Previously we had: ASAN_OPTIONS="detect_leaks=0" make... here due to upstream http://bugs.mysql.com/bug.php?id=80014 but this was fixed
@@ -213,6 +228,7 @@ if [[ "${TAR_dbg}" == *".tar.gz"* ]]; then
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for tar!"; exit 1; fi
   mv ${DIR_dbg} ${DIR_dbg_new}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for moving of tarball (2)!"; exit 1; fi
+  echo $CMD > ../${DIR_dbg_new}/BUILD_CMD_CMAKE
   echo "Done! Now run;"
   echo "mv ../${DIR_dbg_new} /sda"  # The script will end still in $PWD, hence we will need ../ (output only)
   #rm -Rf ${CURPATH}_dbg  # Best not to delete it; this way gdb debugging is better quality as source will be available!
