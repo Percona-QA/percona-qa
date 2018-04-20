@@ -16,6 +16,12 @@
 ## [ERROR] Got error 155 when reading table                 ## Read from table after ALTER TABLE x DISCARD TABLESPACE  | MS 75911
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
+## =========== MS 8.0 GA
+Item_func_internal_get_comment_or_error..val_str         ## https://bugs.mysql.com/bug.php?id=90518 # Optimized build
+adjust_fk_parents                                        ## https://bugs.mysql.com/bug.php?id=90520 # Optimized build
+.trx->declared_to_be_inside_innodb                       ## https://bugs.mysql.com/bug.php?id=90521 # Optimized build
+.n . .n - 1.. == 0                                       ## https://bugs.mysql.com/bug.php?id=90522 # Optimized build
+
 ## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
 maybe_null                                               ## https://bugs.mysql.com/bug.php?id=83115
