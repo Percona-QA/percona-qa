@@ -549,7 +549,7 @@ if [ ${QC} -eq 0 ]; then
         if [ -r ./${TRIAL}/VALGRIND -a ${VALGRIND_OVERRIDE} -ne 1 ]; then
           VALGRIND_CHECK=1
           # What follows are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
-          VALGRIND_CHECK_1=$(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ./${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
+          VALGRIND_CHECK_1=$(grep --binary-files=text "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ./${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
           if [ "${VALGRIND_CHECK_1}" == "" ]; then VALGRIND_CHECK_1=0; fi
           if [ ${VALGRIND_CHECK_1} -gt 0 ]; then
             VALGRIND_ERRORS_FOUND=1
@@ -609,7 +609,7 @@ else
       echo "Assert! Basedir '${BASE}' does not look to be a directory"
       exit 1
     fi
-    TEXT=$(grep "^[<>]" ./${TRIAL}/diff.result | awk '{print length, $0;}' | sort -nr | head -n1 | sed 's/^[0-9]\+[ \t]\+//')
+    TEXT=$(grep --binary-files=text "^[<>]" ./${TRIAL}/diff.result | awk '{print length, $0;}' | sort -nr | head -n1 | sed 's/^[0-9]\+[ \t]\+//')
     LEFTRIGHT=$(echo ${TEXT} | sed 's/\(^.\).*/\1/')
     TEXT=$(echo ${TEXT} | sed 's/[<>][ \t]\+//')
     ENGINE=
@@ -629,9 +629,9 @@ else
       FAULT=1
     fi
     if [ ${FAULT} -ne 1 ]; then
-      QCTEXTLN=$(echo "${TEXT}" | grep -o "[0-9]*$")
+      QCTEXTLN=$(echo "${TEXT}" | grep --binary-files=text -o "[0-9]*$")
       TEXT=$(echo ${TEXT} | sed "s/#[0-9]*$//")
-      QCTEXT=$(sed -n "${QCTEXTLN},${QCTEXTLN}p" ${WORKD_PWD}/${TRIAL}/*_thread-0.${ENGINE}.sql | grep -o "#@[0-9]*#")
+      QCTEXT=$(sed -n "${QCTEXTLN},${QCTEXTLN}p" ${WORKD_PWD}/${TRIAL}/*_thread-0.${ENGINE}.sql | grep --binary-files=text -o "#@[0-9]*#")
     fi
     # Output of the following is too verbose
     #if [ "${MYEXTRA}" != "" ]; then

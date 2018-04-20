@@ -45,9 +45,12 @@ while read line; do
   STRING="`echo "$line" | sed 's|[ \t]*##.*$||'`"
   if [ "`echo "$STRING" | sed 's|^[ \t]*$||' | grep -v '^[ \t]*#'`" != "" ]; then
     if [ `ls reducer[0-9]* 2>/dev/null | wc -l` -gt 0 ]; then
+      # echo $STRING  # For debugging
       if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
+	# grep -li "${STRING}" reducer[0-9]*  # For debugging (use script utility, then search for the reducer<nr>.sh in the typescript)
         grep -li "${STRING}" reducer[0-9]* | awk -F'.'  '{print substr($1,8)}' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
       else
+	# grep -li "${STRING}" reducer[0-9]*  # For debugging (use script utility, then search for the reducer<nr>.sh in the typescript)
         grep -li "${STRING}" reducer[0-9]* | sed 's/[^0-9]//g' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
       fi
     fi

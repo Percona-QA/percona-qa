@@ -22,6 +22,8 @@ adjust_fk_parents                                        ## https://bugs.mysql.c
 .trx->declared_to_be_inside_innodb                       ## https://bugs.mysql.com/bug.php?id=90521 # Optimized build
 .n . .n - 1.. == 0                                       ## https://bugs.mysql.com/bug.php?id=90522 # Optimized build
 ut0link_buf.h.191..capacity . .capacity - 1.. == 0       ## https://bugs.mysql.com/bug.php?id=90523 # Optimized build
+.is_set                                                  ## https://bugs.mysql.com/bug.php?id=90525
+TEXT=.write_max_size > 0.$                               ## https://bugs.mysql.com/bug.php?id=90526 # Optimized build
 
 ## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
@@ -641,7 +643,6 @@ precision > 0                                                                   
 #scale.*=.*precision                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74859
 s_tx_list.size                                                                          ## https://jira.percona.com/projects/MYR/issues/MYR-213
 share->rows_recorded                                                                    ## https://bugs.mysql.com/bug.php?id=76307
-size > 0                                                                                ## https://bugs.launchpad.net/percona-server/+bug/1382408
 .rocksdb_db_options->allow_mmap_writes                                                  ## https://jira.percona.com/browse/MYR-192
 .slen % 2                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (original report)
 .slen % 4                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (4th comment)
@@ -956,3 +957,4 @@ TEXT=.cmp .= 0.$                                                                
 TEXT=.ha_initialize_handlerton.$                                                        ## https://jira.percona.com/browse/MYR-204
 TEXT=.item->type.$                                                                      ## https://bugs.mysql.com/bug.php?id=88749
 TEXT=.plugin.$                                                                          ## https://jira.percona.com/browse/MYR-222
+TEXT=.size > 0.$                                                                        ## https://bugs.launchpad.net/percona-server/+bug/1382408
