@@ -261,6 +261,7 @@ Handlerton. 0                                                          ## https:
 Handlerton: ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
 Handlerton. next_key_part < _rec_per_keys                              ## https://tokutek.atlassian.net/browse/DB-944
 Handlerton. db .= NULL                                                 ## https://tokutek.atlassian.net/browse/DB-945 
+Handlerton. trx->tokudb_lock_count > 0                                 ## logged: https://jira.percona.com/browse/TDB-193
 mh->m_magic == 1234                                                    ## https://tokutek.atlassian.net/browse/DB-920  
 #used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926 # Fixed 5.7 RC2
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb    ## https://tokutek.atlassian.net/browse/DB-921
@@ -575,6 +576,7 @@ decimals_arg <= 30                                                              
 #db_txn_struct_i.txn->parent                                                   ## Fixed ## https://tokutek.atlassian.net/browse/DB-761 (fixed in 5.6.23/Tk7.5.6)
 do_checksum.*remains                                                                    ## https://bugs.mysql.com/bug.php?id=75079
 #duration .= MDL_EXPLICIT .* .thd->mdl_context.is_lock_owner.m_namespace       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1432494
+eq_cond_len >= Rdb_key_def..INDEX_NUMBER_SIZE                                           ## https://jira.percona.com/browse/MYR-295
 exec_method .= EXEC_MATERIALIZATION .* .exec_method == EXEC_MATERIALIZATION .* engine->engine_type ## https://bugs.mysql.com/bug.php?id=74889
 .flags.finalized                                                                        ## https://bugs.mysql.com/bug.php?id=76040
 #Failing assertion: (mode . .16384) == BTR_MODIFY_LEAF                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1224272 (dup of 1395579)
@@ -603,6 +605,7 @@ keys >= 0.0                                                                     
 key->flags . 1                                                                          ## https://bugs.mysql.com/bug.php?id=89087
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## https://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## https://bugs.mysql.com/bug.php?id=74646
+last_val > 0                                                                            ## https://jira.percona.com/browse/MYR-297
 .length % 4                                                                             ## https://bugs.mysql.com/bug.php?id=74220
 #length > 0                                                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=85059 (fixed in 8.0 only, ref bug below)
 length > 0                                                                              ## https://bugs.mysql.com/bug.php?id=89088 (5.7 request for 85059 backport)
@@ -616,6 +619,7 @@ reginfo.lock_type >= TL_READ                                       ## Still pres
 .mysql_bin_log.is_open                                                                  ## https://bugs.mysql.com/bug.php?id=76614
 m_owner .= __null                                                                       ## https://tokutek.atlassian.net/browse/DB-1017
 map->bitmap .* map2->bitmap .* map->n_bits==map2->n_bits                                ## https://bugs.mysql.com/bug.php?id=74504
+max_val == std..numeric_limits<ulonglong>..max                                          ## https://jira.percona.com/browse/MYR-296
 #maxcount.=0                                                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74898 (Fixed as part of internal bug)
 multi_range_length > 0                                                                  ## https://bugs.mysql.com/bug.php?id=81410
 #mi_cmp_dynamic_unique                                                                  ## https://bugs.launchpad.net/percona-server/+bug/1486849 (Remarked to get more testcases)
@@ -624,6 +628,7 @@ m_lock_type == 2                                                                
 #m_lock_type == 2                                                              ## Fixed ## https://bugs.mysql.com/bug.php?id=74291 (duplicated by 74436) (Originally PS Bug #1382749)
 #m_prot_lock .= __null .* thd->mdl_context.is_lock_owner.m_namespace, .*, .*, MDL_INTENTION_EXCLUSIVE ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1393682
 m_num_writers == 1                                                                      ## https://tokutek.atlassian.net/browse/DB-852
+.m_run_once                                                                             ## https://jira.percona.com/browse/PS-3817
 #m_status == DA_ERROR                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=76912 (old LP #1384632) (fixed in 5.6.27)
 m_status == DA_ERROR                                                                    ## https://bugs.mysql.com/bug.php?id=86260 (LP #1689736)
 nr >= 0.0                                                                               ## https://bugs.mysql.com/bug.php?id=74946
@@ -858,6 +863,7 @@ ZN18Locked_tables_list20unlock_locked_tablesEP3THD                              
 #ZN23Gcalc_operation_reducer10end_coupleEPNS_13active_threadES1_PKN10Gcalc_heap4InfoE ## Fixed ## https://bugs.mysql.com/bug.php?id=77580
 ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=78201 (Fixed in 5.7)
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=82967 (old PS #1622992)
+ZN24subselect_hash_sj_engine7cleanupEv                                                  ## https://jira.percona.com/browse/PS-3958
 #ZN4JOIN8optimizeEv                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74783
 ZN4Item31tmp_table_field_from_field_typeEP5TABLEb               ## Still present in 5.7 ## https://bugs.mysql.com/bug.php?id=86254 (also bug 87577)
 ZN5TABLE11set_keyreadEb                                                                 ## https://bugs.mysql.com/bug.php?id=84755 (Won't fix)
