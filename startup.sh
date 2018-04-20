@@ -29,10 +29,10 @@ if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
     sudo apt-get install libjemalloc1
   fi
   if [ ! -r /lib/x86_64-linux-gnu/libssl.so.6 ]; then
-    sudo ln -s /lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.6
+    sudo ln -s /lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.6 2>/dev/null
   fi
   if [ ! -r /lib/x86_64-linux-gnu/libcrypto.so.6 ]; then
-    sudo ln -s /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.6
+    sudo ln -s /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.6 2>/dev/null
   fi
 fi
 
