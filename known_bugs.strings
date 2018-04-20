@@ -21,6 +21,7 @@ Item_func_internal_get_comment_or_error..val_str         ## https://bugs.mysql.c
 adjust_fk_parents                                        ## https://bugs.mysql.com/bug.php?id=90520 # Optimized build
 .trx->declared_to_be_inside_innodb                       ## https://bugs.mysql.com/bug.php?id=90521 # Optimized build
 .n . .n - 1.. == 0                                       ## https://bugs.mysql.com/bug.php?id=90522 # Optimized build
+ut0link_buf.h.191..capacity . .capacity - 1.. == 0       ## https://bugs.mysql.com/bug.php?id=90523 # Optimized build
 
 ## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
