@@ -41,7 +41,7 @@ check_better_string(){
 # be done to try and get a better quality string. Adding other "poor outputs" is also possible, though not 100% (as someone may have
 # already added that particular poor output to known_bugs.strings - always check that file first, especially the TEXT=... strings
 # towards the end of that file).
-if [ "${STRING}" == "" -o "${STRING}" == "my_print_stacktrace" -o "${STRING}" == "0" -o "${STRING}" == "NULL" ]; then
+if [ "${STRING}" == "" -o "${STRING}" == "my_print_stacktrace" -o "${STRING}" == "my_print_stacktrace.unsigned" -o "${STRING}" == "0" -o "${STRING}" == "NULL" ]; then
   POTENTIALLY_BETTER_STRING="$(grep 'Assertion failure:' $1 | tail -n1 | sed 's|.*Assertion failure:[ \t]\+||;s|[ \t]+$||;s|.*c:[0-9]\+:||;s/|/./g;s/\&/./g;s/:/./g;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g')"
   check_better_string
   if [ ${BETTER_FOUND} -eq 0 ]; then 
