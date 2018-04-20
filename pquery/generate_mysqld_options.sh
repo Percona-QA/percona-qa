@@ -32,7 +32,7 @@ echoit(){
 
 # mysqld options excluded from list
 # RV/HM 18.07.2017 Temporarily added to EXCLUDED_LIST: --binlog-group-commit-sync-delay due to hang issues seen in 5.7 with startup like --no-defaults --plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=/home/hrvoje/percona-qa/plugins_57.sql --binlog-group-commit-sync-delay=2047
-EXCLUDED_LIST=( --basedir --datadir --plugin-dir --lc-messages-dir --tmpdir --slave-load-tmpdir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password --socket --socket-umask --innodb-trx-rseg-n-slots-debug --innodb-fil-make-page-dirty-debug --initialize --initialize-insecure --port --binlog-group-commit-sync-delay )
+EXCLUDED_LIST=( --basedir --datadir --plugin-dir --lc-messages-dir --tmpdir --slave-load-tmpdir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password --socket --socket-umask --innodb-trx-rseg-n-slots-debug --innodb-fil-make-page-dirty-debug --initialize --initialize-insecure --port --binlog-group-commit-sync-delay --innodb-directories --keyring-migration-destination --keyring-migration-host --keyring-migration-password --keyring-migration-port --keyring-migration-socket --keyring-migration-source --keyring-migration-user --mysqlx-socket --mysqlx-ssl-ca --mysqlx-bind-address --mysqlx-ssl-capath --mysqlx-ssl-cert --mysqlx-ssl-cipher --mysqlx-ssl-crl --mysqlx-ssl-crlpath --mysqlx-ssl-key )
 # Create a file (${OUTPUT_FILE}) with all options/values intelligently handled and included
 rm -Rf ${OUTPUT_FILE}
 touch ${OUTPUT_FILE}
@@ -73,6 +73,12 @@ while read line; do
     echo "${OPTION}=ON" >> ${OUTPUT_FILE}
     echo "${OPTION}=ON --enforce-gtid-consistency=ON" >> ${OUTPUT_FILE}
     echo "${OPTION}=ON_PERMISSIVE" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--mandatory-roles" ]; then
+    echoit "  > Adding possible values '','role1@%,role2,role3,role4@localhost','@%','user1@localhost,testuser@%' for option '${OPTION}' to the final list..."
+    echo "${OPTION}=''" >> ${OUTPUT_FILE}
+    echo "${OPTION}='role1@%,role2,role3,role4@localhost'" >> ${OUTPUT_FILE}
+    echo "${OPTION}='@%'" >> ${OUTPUT_FILE}
+    echo "${OPTION}='user1@localhost,testuser@%'" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--binlog-format" ]; then
     echoit "  > Adding possible values ROW, STATEMENT, MIXED for option '${OPTION}' to the final list..."
     echo "${OPTION}=ROW" >> ${OUTPUT_FILE}
@@ -80,9 +86,13 @@ while read line; do
     echo "${OPTION}=MIXED" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--binlog-row-image" ]; then
     echoit "  > Adding possible values full, minimal, noblob for option '${OPTION}' to the final list..."
-     echo "${OPTION}=full" >> ${OUTPUT_FILE}
-     echo "${OPTION}=minimal" >> ${OUTPUT_FILE}
-     echo "${OPTION}=noblob" >> ${OUTPUT_FILE}
+    echo "${OPTION}=full" >> ${OUTPUT_FILE}
+    echo "${OPTION}=minimal" >> ${OUTPUT_FILE}
+    echo "${OPTION}=noblob" >> ${OUTPUT_FILE}
+  elif [ "${OPTION}" == "--binlog-row-value-options" ]; then
+    echoit "  > Adding possible values '',PARTIAL_JSON for option '${OPTION}' to the final list..."
+    echo "${OPTION}=''" >> ${OUTPUT_FILE}
+    echo "${OPTION}=PARTIAL_JSON" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--binlogging-impossible-mode" ]; then
     echoit "  > Adding possible values IGNORE_ERROR, ABORT_SERVER for option '${OPTION}' to the final list..."
     echo "${OPTION}=IGNORE_ERROR" >> ${OUTPUT_FILE}
@@ -486,7 +496,6 @@ while read line; do
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
   elif [ "${OPTION}" == "--" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-
   elif [ "${VALUE}" == "TRUE" -o "${VALUE}" == "FALSE" -o "${VALUE}" == "ON" -o "${VALUE}" == "OFF" -o "${VALUE}" == "YES" -o "${VALUE}" == "NO" ]; then
     echoit "  > Adding possible values TRUE/ON/YES/1 and FALSE/OFF/NO/0 (as a universal 1 and 0) for option '${OPTION}' to the final list..."
     echo "${OPTION}=1" >> ${OUTPUT_FILE}
