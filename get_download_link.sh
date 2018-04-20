@@ -166,7 +166,7 @@ get_link(){
 
   elif [[ "${PRODUCT}" = "psmdb" && "${BUILD_ARCH}" = "x86_64" ]]; then
     if [[ "${DISTRIBUTION}" = "ubuntu" ]]; then OPT="xenial";
-    elif [[ "${DISTRIBUTION}" = "centos" ]]; then OPT="centos";
+    elif [[ "${DISTRIBUTION}" = "centos" ]]; then OPT="centos6";
     else OPT="${DISTRIBUTION}"; fi
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
