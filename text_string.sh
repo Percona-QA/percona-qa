@@ -9,19 +9,24 @@
 
 # WARNING! If there are multiple crashes/asserts shown in the error log, remove the older ones (or the ones you do not want)
 
-if [ "$1" == "" ]; then
-  echo "$0 failed to extract string from an error log, as no error log file name was passed to this script"
-  exit 1
+ERROR_LOG=$1
+if [ "$ERROR_LOG" == "" ]; then
+  if [ -r ./log/master.err ]; then
+    ERROR_LOG=./log/master.err  
+  else
+    echo "$0 failed to extract string from an error log, as no error log file name was passed to this script"
+    exit 1
+  fi
 fi
 
 # The 4 egreps are individual commands executed in a subshell of which the output is then combined and processed further
 # Be not misled by the 'libgalera_smm' start of the egrep. note the OR (i.e. '|') in the egreps; mysqld(_ is also scanned for, etc.
 # This code block CAN NOT be changed without breaking backward compatibility, unless ALL bugs in known_bugs.strings are re-string'ed
 STRING="$(echo "$( \
-    egrep -i 'Assertion failure.*in file.*line' $1 | sed 's|.*in file ||;s| |DUMMY|g'; \
-    egrep 'Assertion.*failed' $1 | grep -v 'Assertion .0. failed' | sed 's/|/./g;s/\&/./g;s/"/./g;s/:/./g;s|^.*Assertion .||;s|. failed.*$||;s| |DUMMY|g'; \
-    egrep 'libgalera_smm\.so\(_|mysqld\(_|ha_rocksdb.so\(_|ha_tokudb.so\(_' $1; \
-    egrep 'libgalera_smm\.so\(|mysqld\(|ha_rocksdb.so\(|ha_tokudb.so\(' $1 | egrep -v 'mysqld\(_|ha_rocksdb.so\(_|ha_tokudb.so\(_' \
+    egrep -i 'Assertion failure.*in file.*line' $ERROR_LOG | sed 's|.*in file ||;s| |DUMMY|g'; \
+    egrep 'Assertion.*failed' $ERROR_LOG | grep -v 'Assertion .0. failed' | sed 's/|/./g;s/\&/./g;s/"/./g;s/:/./g;s|^.*Assertion .||;s|. failed.*$||;s| |DUMMY|g'; \
+    egrep 'libgalera_smm\.so\(_|mysqld\(_|ha_rocksdb.so\(_|ha_tokudb.so\(_' $ERROR_LOG; \
+    egrep 'libgalera_smm\.so\(|mysqld\(|ha_rocksdb.so\(|ha_tokudb.so\(' $ERROR_LOG | egrep -v 'mysqld\(_|ha_rocksdb.so\(_|ha_tokudb.so\(_' \
   )" \
   | tr ' ' '\n' | \
   sed 's|.*libgalera_smm\.so[\(_]*||;s|.*mysqld[\(_]*||;s|.*ha_rocksdb.so[\(_]*||;s|.*ha_tokudb.so[\(_]*||;s|).*||;s|+.*$||;s|DUMMY| |g;s|($||;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g' | \
@@ -42,12 +47,12 @@ check_better_string(){
 # already added that particular poor output to known_bugs.strings - always check that file first, especially the TEXT=... strings
 # towards the end of that file).
 if [ "${STRING}" == "" -o "${STRING}" == "my_print_stacktrace" -o "${STRING}" == "my_print_stacktrace.unsigned" -o "${STRING}" == "0" -o "${STRING}" == "NULL" ]; then
-  POTENTIALLY_BETTER_STRING="$(grep 'Assertion failure:' $1 | tail -n1 | sed 's|.*Assertion failure:[ \t]\+||;s|[ \t]+$||;s|.*c:[0-9]\+:||;s/|/./g;s/\&/./g;s/:/./g;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g')"
+  POTENTIALLY_BETTER_STRING="$(grep 'Assertion failure:' $ERROR_LOG | tail -n1 | sed 's|.*Assertion failure:[ \t]\+||;s|[ \t]+$||;s|.*c:[0-9]\+:||;s/|/./g;s/\&/./g;s/:/./g;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g')"
   check_better_string
   if [ ${BETTER_FOUND} -eq 0 ]; then 
     # Last resort; try to get first frame from stack trace in error log in a more basic way
     # This may need some further work, if we start seeing too generic strings like 'do_command', 'parse_sql' etc. text showing in bug list
-    POTENTIALLY_BETTER_STRING="$(egrep -o 'libgalera_smm\.so\(.*|mysqld\(.*|ha_rocksdb.so\(.*|ha_tokudb.so\(.*' $1 | sed 's|[^(]\+(||;s|).*||;s|(.*||;s|+0x.*||' | egrep -v 'my_print_stacktrace|handle.*signal|^[ \t]*$' | sed 's/|/./g;s/\&/./g;s/:/./g;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g' | head -n1)"
+    POTENTIALLY_BETTER_STRING="$(egrep -o 'libgalera_smm\.so\(.*|mysqld\(.*|ha_rocksdb.so\(.*|ha_tokudb.so\(.*' $ERROR_LOG | sed 's|[^(]\+(||;s|).*||;s|(.*||;s|+0x.*||' | egrep -v 'my_print_stacktrace|handle.*signal|^[ \t]*$' | sed 's/|/./g;s/\&/./g;s/:/./g;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g' | head -n1)"
     check_better_string
     # More can be added here, always preceded by: if [ ${BETTER_FOUND} -eq 0 ]; then
   fi
@@ -65,7 +70,7 @@ STRING=$(echo ${STRING} | sed 's|info->end_of_file == inline_mysql_file_tell.*|i
 # Normally this would be done by 1) making the look-for TEXT="..." string (...) more specific in reducer, 2) filtering 
 # it at the end of known_bugs.strings with a TEXT=.....$ (to avoid it matching too generic strings)
 if [ "${STRING}" == ".all" ]; then 
-  if grep "MYSQL_BIN_LOG..rollback.THD.. bool.. Assertion ..all" $1 2>/dev/null 1>&2; then  # Always check that it is a specific issue
+  if grep "MYSQL_BIN_LOG..rollback.THD.. bool.. Assertion ..all" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
     STRING="MYSQL_BIN_LOG..rollback.THD.. bool.. Assertion ..all"
   fi
 fi
