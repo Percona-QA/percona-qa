@@ -3106,7 +3106,7 @@ verify(){
               remove_dropc $WORKT
               # Re-setup DROPC using multiple lines (ref remove_dropc() for more information) and add the INITFILE
               DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
-              echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep -v "^$";cat $INITFILE;cat $WORKT)" > /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp
+              echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep --binary-files=text -v "^$";cat $INITFILE;cat $WORKT)" > /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp
               rm -f $WORKT
               mv /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKT
             fi

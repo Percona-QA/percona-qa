@@ -25,6 +25,7 @@ ut0link_buf.h.191..capacity . .capacity - 1.. == 0       ## https://bugs.mysql.c
 .is_set                                                  ## https://bugs.mysql.com/bug.php?id=90525
 TEXT=.write_max_size > 0.$                               ## https://bugs.mysql.com/bug.php?id=90526 # Optimized build
 partition_info..add_named_partition                      ## https://bugs.mysql.com/bug.php?id=90542 # Optimized build
+dirname_length                                           ## https://bugs.mysql.com/bug.php?id=90543 # Optimized build 
 
 ## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
