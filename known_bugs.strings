@@ -26,6 +26,8 @@ ut0link_buf.h.191..capacity . .capacity - 1.. == 0       ## https://bugs.mysql.c
 TEXT=.write_max_size > 0.$                               ## https://bugs.mysql.com/bug.php?id=90526 # Optimized build
 partition_info..add_named_partition                      ## https://bugs.mysql.com/bug.php?id=90542 # Optimized build
 dirname_length                                           ## https://bugs.mysql.com/bug.php?id=90543 # Optimized build 
+std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >..find  ## https://bugs.mysql.com/bug.php?id=90544 # Optimized build
+fil_space_get.table->space. .= __null                    ## https://bugs.mysql.com/bug.php?id=90545 # Optimized build 
 
 ## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
