@@ -27,7 +27,13 @@ TEXT=.write_max_size > 0.$                               ## https://bugs.mysql.c
 partition_info..add_named_partition                      ## https://bugs.mysql.com/bug.php?id=90542 # Optimized build
 dirname_length                                           ## https://bugs.mysql.com/bug.php?id=90543 # Optimized build 
 std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >..find  ## https://bugs.mysql.com/bug.php?id=90544 # Optimized build
-fil_space_get.table->space. .= __null                    ## https://bugs.mysql.com/bug.php?id=90545 # Optimized build 
+fil_space_get.table->space. .= __null                    ## https://bugs.mysql.com/bug.php?id=90545
+.thd .. thd->locked_tables_mode .. .thd->mdl_context.has_locks  ## https://bugs.mysql.com/bug.php?id=90546
+gtid_next_type == ANONYMOUS_GTID                         ## https://bugs.mysql.com/bug.php?id=90547
+..idx_el_it                                              ## https://bugs.mysql.com/bug.php?id=90548
+.m_auto_increment_lock                                   ## https://bugs.mysql.com/bug.php?id=90549
+TEXT=.data_type.$                                        ## https://bugs.mysql.com/bug.php?id=90550
+.thd->has_gtid_consistency_violation                     ## https://bugs.mysql.com/bug.php?id=90551
 
 ## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114

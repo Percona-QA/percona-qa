@@ -338,14 +338,14 @@ else
   fi
 fi
 
-echo 'if [ $(ls data/core.* 2>/dev/null | wc -l) -eq 0 ]; then' > gdb
-echo '  echo "No core file found in data/core.* - exiting"' >> gdb
+echo 'if [ $(ls data/*core* 2>/dev/null | wc -l) -eq 0 ]; then' > gdb
+echo '  echo "No core file found in data/*core* - exiting"' >> gdb
 echo '  exit 1' >> gdb
-echo 'elif [ $(ls data/core.* 2>/dev/null | wc -l) -gt 1 ]; then' >> gdb
-echo '  echo "More then one core file found in data/core.* - exiting"' >> gdb
+echo 'elif [ $(ls data/*core* 2>/dev/null | wc -l) -gt 1 ]; then' >> gdb
+echo '  echo "More then one core file found in data/*core* - exiting"' >> gdb
 echo '  exit 1' >> gdb
 echo 'else' >> gdb
-echo '  gdb bin/mysqld $(ls data/core.*)' >> gdb
+echo '  gdb bin/mysqld $(ls data/*core*)' >> gdb
 echo 'fi' >> gdb
 
 echo 'sudo pmm-admin config --server $(ifconfig | grep -A1 "^en" | grep -v "^en" | sed "s|.*inet ||;s| .*||")' > pmm_os_agent

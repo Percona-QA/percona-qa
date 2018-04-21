@@ -1,6 +1,13 @@
-COUNT=$(ls -t $1/*_out | head -n1 | wc -l)
+#!/bin/bash
+# Created by Roel Van de Paar, Percona LLC
+
+if [ ! -d $1 ]; then
+  echo "The trial directory $1 does not exist!"
+  exit 1
+fi
+COUNT=$(ls -t $1/*_out | head -n1 | xargs -I{} wc -l {} | awk '{print $1}')
 if [ $COUNT -gt 25 ]; then
-  echo "The file $(ls -t $1/*_out | head -n1) is >25 lines long, not displaying it here"
+  echo "The file $(ls -t $1/*_out | head -n1) is >25 lines long ($COUNT lines), not displaying it here"
 else
   cat $(ls -t $1/*_out | head -n1)
 fi
