@@ -2887,12 +2887,12 @@ finish(){
   echo_out "[Finish] Number of server startups         : $STARTUPCOUNT (not counting subreducers)"
   echo_out "[Finish] Working directory was             : $WORKD"
   echo_out "[Finish] Reducer log                       : $WORKD/reducer.log"
-  if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
-    cp -f $WORKO $WORK_OUT
-    echo_out "[Finish] Final testcase                    : $WORKO ($(wc -l $WORKO | awk '{print $1}') lines)"
-  else
+  if [ ! -r $WORKO ]; then  # If there was no reduction (i.e. issue was not found), $WORKO was never written
     cp $INPUTFILE $WORK_OUT
     echo_out "[Finish] Final testcase                    : $INPUTFILE (= input file, no optimizations were successful. $(wc -l $INPUTFILE | awk '{print $1}') lines)"
+  else  # Reduction
+    cp -f $WORKO $WORK_OUT
+    echo_out "[Finish] Final testcase                    : $WORKO ($(wc -l $WORKO | awk '{print $1}') lines)"
   fi
   BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
   rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
@@ -2922,10 +2922,12 @@ finish(){
     fi
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     copy_workdir_to_tmp
-    if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
-      cp -f $WORKO $WORK_OUT
-      echo_out "[DONE!] Final testcase: $WORKO ($(wc -l $WORKO | awk '{print $1}') lines)"
-    fi
+  fi
+  if [ ! -r $WORKO ]; then  # If there was no reduction (i.e. issue was not found), $WORKO was never written
+    echo_out "[DONE] Final testcase: $INPUTFILE (= input file, no optimizations were successful. $(wc -l $INPUTFILE | awk '{print $1}') lines)"
+  else  # Reduction
+    echo_out "[DONE] Final testcase: $WORKO ($(wc -l $WORKO | awk '{print $1}') lines)"
+  fi
   exit 0
 }
 

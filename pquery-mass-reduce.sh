@@ -33,14 +33,17 @@ RND=${RANDOM}
 ${SCRIPT_PWD}/pquery-results.sh | grep -o "reducers.*" | sed 's|reducers ||;s|[,)]\+.*||' > /tmp/${RND}.txt
 # Now put the issues into an issue array
 mapfile -t issues < /tmp/${RND}.txt; rm -f /tmp/${RND}.txt 2>/dev/null
+# Check for existing reducers started in a similar way, to continue s<nr> name count (allows easy reconnect with `screen -d -r s<nr>`
+COUNTER_LIVE=$(screen -d -r | sed 's|\t|=|g' | grep -o "\.s[0-9]\+=" | sed 's|[^0-9]||g' | sort -unr | head -n1)
 # Now loop though the issues. When the counter reaches the amount passed to this scirpt, the loop will terminate
 COUNTER=0
 for TRIAL in "${issues[@]}"; do
   COUNTER=$[ $COUNTER + 1 ]
+  COUNTER_LIVE=$[ $COUNTER_LIVE + 1 ]
   if [ $COUNTER -gt $SKIP ]; then
-    screen -admS s${COUNTER} bash -c "ulimit -u 4000;./reducer${TRIAL}.sh;bash"  # Start reducer, and when done give a usable bash prompt
+    screen -admS s${COUNTER_LIVE} bash -c "ulimit -u 4000;./reducer${TRIAL}.sh;bash"  # Start reducer, and when done give a usable bash prompt
     sleep 0.3  # Avoid a /dev/shm/<epoch> directory conflict (yes, it happened)
-    echo "Started screen with name 's${COUNTER}' and started ./reducer${TRIAL}.sh within it for issue: $(grep "   TEXT=" reducer${TRIAL}.sh | sed 's|   TEXT="||;s|"$||')"
+    echo "Started screen with name 's${COUNTER_LIVE}' and started ./reducer${TRIAL}.sh within it for issue: $(grep "   TEXT=" reducer${TRIAL}.sh | sed 's|   TEXT="||;s|"$||')"
   fi
   if [ $COUNTER -eq $TOTAL ]; then break; fi
 done
