@@ -35,6 +35,7 @@ gtid_next_type == ANONYMOUS_GTID                         ## https://bugs.mysql.c
 TEXT=.data_type.$                                        ## https://bugs.mysql.com/bug.php?id=90550
 .thd->has_gtid_consistency_violation                     ## https://bugs.mysql.com/bug.php?id=90551
 table .. table->s .. table->s->ha_share                  ## https://bugs.mysql.com/bug.php?id=90552
+addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA   ## https://bugs.mysql.com/bug.php?id=90590
 
 ## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114

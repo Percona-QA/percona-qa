@@ -1652,9 +1652,10 @@ generate_run_scripts(){
   echo "    if [ ! -h \${BASEDIR}/share -o ! -f \${BASEDIR}/share ]; then ln -s \${SOURCE_DIR}/scripts \${BASEDIR}/share ; fi" >> $WORK_INIT
   echo -e "    if [ ! -h \${BASEDIR}/share/errmsg.sys -o ! -f \${BASEDIR}/share/errmsg.sys ]; then ln -s \${BASEDIR}/sql/share/english/errmsg.sys \${BASEDIR}/share/errmsg.sys ; fi;\n  fi\nelse" >> $WORK_INIT
   echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
-  echo "MID=\`find \${BASEDIR} -maxdepth 2 -name mysql_install_db\`;if [ -z "\$MID" ]; then echo \"Assert! mysql_install_db '\$MID' could not be read\";exit 1;fi" >> $WORK_INIT
-  echo "if [ \"\`\$BIN --version | grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\`\$BIN --version | grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\`\$BIN --version| grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
-  echo "if [ \"\`\$BIN --version | grep -E --binary-files=text -oe '5\.[1567]' | head -n1\`\" == \"5.7\" ]; then \$BIN  --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
+  echo "MID=\`find \${BASEDIR} -maxdepth 2 -name mysql_install_db\`" >> $WORK_INIT
+  echo "VERSION=\"\`\$BIN --version | grep -E --binary-files=text -oe '[58]\.[15670]' | head -n1\`\"" >> $WORK_INIT
+  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\$VERSION\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\${VERSION}\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
+  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then \$BIN  --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
   if [ $MODE -ge 6 ]; then
     # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
     echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet"
