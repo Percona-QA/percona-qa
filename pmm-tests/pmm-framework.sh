@@ -422,13 +422,13 @@ setup(){
     fi
     if [ -z $dev ]; then
       if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       else
        sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     else
       if [ "$IS_SSL" == "Yes" ];then
-       sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+       sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       else
        sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       fi
@@ -861,7 +861,7 @@ add_clients(){
         fi
         VERSION="$(${BASEDIR}/bin/mysqld --version | grep -oe '[58]\.[5670]' | head -n1)"
         if [ "$VERSION" == "5.7" -o "$VERSION" == "8.0" ]; then
-        mkdir -p $node
+          mkdir -p $node
           ${MID} --datadir=$node  > ${BASEDIR}/startup_node$j.err 2>&1
         else
           if [ ! -d $node ]; then
@@ -1120,13 +1120,13 @@ upgrade_server(){
     sudo docker rm pmm-server 2&> /dev/null
     if [ -z $dev ]; then
       if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server -v $WORKDIR:/etc/nginx/ssl  --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       else
         sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
       fi
     else
       if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server   --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       else
         sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 -e METRICS_MEMORY=$MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
       fi
@@ -1167,7 +1167,7 @@ sysbench_run(){
   #Initiate sysbench oltp run on all mysql client instances
   for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
     DB_NAME=$(echo ${i}  | awk -F[\/\.] '{print $3}')
-    sysbench /usr/share/sysbench/oltp_read_write.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root  --mysql-storage-engine=$storage_engine --threads=16 --time=36000 --events=1870000000 --db-driver=mysql --db-ps-mode=disable --mysql-socket=${i} run  > $WORKDIR/logs/sysbench_run_${DB_NAME}.txt 2>&1 &
+    sysbench /usr/share/sysbench/oltp_read_write.lua --table-size=100000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root  --mysql-storage-engine=$storage_engine --threads=16 --time=1200 --events=1870000000 --db-driver=mysql --db-ps-mode=disable --mysql-socket=${i} run  > $WORKDIR/logs/sysbench_run_${DB_NAME}.txt 2>&1 &
     check_script $? "Failed to run sysbench oltp"
   done
 }
