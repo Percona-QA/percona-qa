@@ -1719,7 +1719,7 @@ generate_run_scripts(){
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_CL
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_CL
   echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
-  echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock test" >> $WORK_CL
+  echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock \$(ls -d /dev/shm/${EPOCH}/data/test 2>/dev/null | grep -o 'test')" >> $WORK_CL
   echo -e "The attached tarball (${EPOCH}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
   echo "$ vi ${EPOCH}_mybase         # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
   echo "$ ./${EPOCH}_init            # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
