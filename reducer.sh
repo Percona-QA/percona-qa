@@ -1130,7 +1130,20 @@ multi_reducer(){
           INIT_FILE_USED=
           if [[ "${MEXTRA}" == *"init[-_]file"* ]]; then INIT_FILE_USED="or any file(s) called using --init-file which is present in \$MYEXTRA, "; fi
           if [ ${SUBR_SVR_START_FAILURE} -eq 1 ]; then
-            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared due to a failed start of mysqld inside the subreducer thread, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen irregularly on busy servers. If the message is scrolling however, please investigate; reducer has copied the last mysqld error log to /tmp/$TMP_RND_FILENAME for review)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+            # Check if we ran out of disk space
+            OOS1=$(grep "Out of disk space" $TMP_RND_FILENAME)
+            OOS2=$(grep "InnoDB: Error while writing" $TMP_RND_FILENAME)
+            OOS3=$(grep "bytes should have been written" $TMP_RND_FILENAME)
+            OOS4=$(grep "Operating system error number 28" $TMP_RND_FILENAME)
+            OOS5=$(grep "PerconaFT No space when writing" $TMP_RND_FILENAME)
+            OOS6=$(grep "OS errno 28 - No space left on device" $TMP_RND_FILENAME)
+            OOS="$(echo "${OOS1}${OOS2}${OOS3}${OOS4}${OOS5}${OOS6}" | tr -d '\n' | tr -d '\r' | sed "s|[ \t]*||g")"
+            if [ "${OOS}" != "" ]; then
+              echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] [OOS] Thread #$t disappeared (mysqld start failed) due to running out of diskspace. Restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t"))."
+              #echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] [OOS] Copied the last mysqld error log to /tmp/$TMP_RND_FILENAME for review. Otherwise, please ignore the \"check...\" message just above; the files are no longer there given the restart above)"
+            else
+              echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared due to a failed start of mysqld inside a subreducer thread, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen irregularly on busy servers. If the message is scrolling however, please investigate; reducer has copied the last mysqld error log to /tmp/$TMP_RND_FILENAME for review. Otherwise, please ignore the \"Failed to start..., check...\" message just above, the files are no longer there/it does not apply, given the restart)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+            fi
           else
             # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
             echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
