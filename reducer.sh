@@ -18,6 +18,13 @@
 # USA
 
 # In active development: 2012-2018
+# This program has been used to reduce thousands of SQL based testcases from tens of thousands of lines to < 10 lines. Learn more at;
+# https://www.percona.com/blog/2014/09/03/reducer-sh-a-powerful-mysql-test-case-simplificationreducer-tool/
+# https://www.percona.com/blog/2015/07/21/mysql-qa-episode-7-single-threaded-reducer-sh-reducing-testcases-for-beginners
+# https://www.percona.com/blog/2015/07/23/mysql-qa-episode-8-reducing-testcases-engineers-tuning-reducer-sh/
+# https://www.percona.com/blog/2015/07/28/mysql-qa-episode-9-reducing-testcases-experts-multi-threaded-reducer-sh/
+# https://www.percona.com/blog/2015/07/31/mysql-qa-episode-10-reproducing-simplifying-get-right/
+# https://www.percona.com/blog/2015/03/17/free-mysql-qa-and-bash-linux-training-series/
 
 # ======== Dev Contacts
 # Main developer: Roel Van de Paar <roel A.T vandepaar D.O.T com>
@@ -2950,15 +2957,16 @@ copy_workdir_to_tmp(){
       fi
       # Check if the copy of directories (excluding the socket file,this reducer script,the original input file,and the current still-being-written-to log) is indentical (i.e. no output shown for the diff command)
       DIFF_WORKDIR_COPY="not_empty"
-      if [ -d /tmp/$EPOCH ]; then 
-        DIFF_WORKDIR_COPY="$(diff -qr $WORKD /tmp/$EPOCH | grep -vE "is a socket|Only in.*tmp.*$0|Only in.*tmp.*$INPUTFILE|Files.*dev.*shm.*reducer\.log.*tmp.*reducer\.log differ")"
+      if [ -d /tmp/$EPOCH ]; then
+        DIFF_WORKDIR_COPY="$(diff -qr $WORKD /tmp/$EPOCH | grep -vE "is a socket|Only in /tmp/|Files.*dev.*shm.*reducer\.log.*tmp.*reducer\.log differ")"
       fi
       if [ "$DIFF_WORKDIR_COPY" == "" ]; then
         WORKDIR_COPY_SUCCESS=1
-        echo_out "[Cleanup] As reducer saved a copy of the work directory in /tmp/$EPOCH (including the input file $INPUTFILE, this reducer $0, and the reducer log /tmp/$EPOCH/reducer.log), now deleting temporary work directory $WORKD"
+        echo_out "[Cleanup] Saved copy of work directory (+ the input file, this reducer script, and reducer.log) in /tmp/$EPOCH"
+        echo_out "[Cleanup] Now deleting temporary work directory $WORKD"
         rm -Rf $WORKD
       else 
-        echo_out "[Non-fatal Error] Reducer tried saving a copy of the working directory ($WORKD), the input file ($INPUTFILE), and this reducer ($0) in /tmp/$EPOCH, but on checkup after the copy, differences were found. The diff output was:"
+        echo_out "[Non-fatal Error] Reducer tried saving a copy of the working directory ($WORKD), the input file ($INPUTFILE), this reducer ($0) and the reducer log in /tmp/$EPOCH, but on checkup after the copy, differences were found. The diff output was:"
         echo_out "$DIFF_WORKDIR_COPY"
         echo_out "Please check the diff output, and if necessary that the filesystem on which /tmp is stored is not full and that this script has write rights to /tmp. Note this error is non-fatal; the original work directory ($WORKD) was left, and the inputfile ($INPUTFILE) and this reducer ($0), if necessary, can still be accessed from their original location."
       fi
@@ -4150,9 +4158,10 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 153 ]; then sed "s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 154 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 155 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 156 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 157 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 158 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 156 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT
+    elif [ $TRIAL -eq 157 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 158 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 159 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
