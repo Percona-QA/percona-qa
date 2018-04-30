@@ -1131,12 +1131,16 @@ multi_reducer(){
           if [[ "${MEXTRA}" == *"init[-_]file"* ]]; then INIT_FILE_USED="or any file(s) called using --init-file which is present in \$MYEXTRA, "; fi
           if [ ${SUBR_SVR_START_FAILURE} -eq 1 ]; then
             # Check if we ran out of disk space
-            OOS1=$(grep "Out of disk space" $TMP_RND_FILENAME 2>/dev/null)
-            OOS2=$(grep "InnoDB: Error while writing" $TMP_RND_FILENAME 2>/dev/null)
-            OOS3=$(grep "bytes should have been written" $TMP_RND_FILENAME 2>/dev/null)
-            OOS4=$(grep "Operating system error number 28" $TMP_RND_FILENAME 2>/dev/null)
-            OOS5=$(grep "PerconaFT No space when writing" $TMP_RND_FILENAME 2>/dev/null)
-            OOS6=$(grep "OS errno 28 - No space left on device" $TMP_RND_FILENAME 2>/dev/null)
+            if [ ! -r /tmp/$TMP_RND_FILENAME ]; then 
+              echo_out "Assert: /tmp/$TMP_RND_FILENAME not found or not readable! Did the volume hosting /tmp run out of space?"
+              echo_out "Will try and continue assuming this is a recoverable situation, though it may not be"
+            fi
+            OOS1=$(grep "Out of disk space" /tmp/$TMP_RND_FILENAME)
+            OOS2=$(grep "InnoDB: Error while writing" /tmp/$TMP_RND_FILENAME)
+            OOS3=$(grep "bytes should have been written" /tmp/$TMP_RND_FILENAME)
+            OOS4=$(grep "Operating system error number 28" /tmp/$TMP_RND_FILENAME)
+            OOS5=$(grep "PerconaFT No space when writing" /tmp/$TMP_RND_FILENAME)
+            OOS6=$(grep "OS errno 28 - No space left on device" /tmp/$TMP_RND_FILENAME)
             OOS="$(echo "${OOS1}${OOS2}${OOS3}${OOS4}${OOS5}${OOS6}" | tr -d '\n' | tr -d '\r' | sed "s|[ \t]*||g")"
             if [ "${OOS}" != "" ]; then
               echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] [OOS] Thread #$t disappeared (mysqld start failed) due to running out of diskspace. Restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t"))."
