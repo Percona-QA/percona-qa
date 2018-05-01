@@ -156,8 +156,10 @@
   bash -x ./your_script.sh; vi out.txt  # Then search for the error seen previously on normal execution. Verify surrounding output
 # View all OS-level function/system calls/IO etc.
   strace ./your_script.sh  # You may need to add additional strace options, see 'man strace'
+# View all file I/O operations for a running process, cleanly
+  sudo strace -p $(pidof -s mysqld) -e trace=%file -f  # Change $(pidof -s mysqld) to any pid (pidof -s just returns one pid of one mysqld)
 # View what mysqld (or any other process) is doing. Ideal for hangs/odd long query durations etc. (First install utility perf: $ sudo yum install perf)
-  perf record -g --pid=`pidof mysqld`; perf report | c++filt; rm perf.data   # CTRL+C to interrupt the perf record once you think you have enough data
+  perf record -g --pid=`pidof -s mysqld`; perf report | c++filt; rm perf.data   # CTRL+C to interrupt the perf record once you think you have enough data
 # Find out which compiler was used to compile an un-stripped binary
   objdump -s --section .comment /path/binary
 # Attach gdb to a certain PID then write a coredump. In the example below, $! is used which is the PID for the last started process (sleep in this example)
