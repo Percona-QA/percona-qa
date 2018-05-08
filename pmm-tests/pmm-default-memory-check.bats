@@ -32,6 +32,7 @@ setup() {
 }
 
 @test "run pmm default memory consumption check" {
+  skip
   TOTAL_MEMORY=$(( $(grep MemTotal /proc/meminfo | awk '{print$2}') * 1024 ))
   if [[ $(echo $VERSION | grep -o "^[0-9]\.[0-9]" | tr -d '.') -lt 19 ]]; then
     EXPECTED_MEMORY=$(( ${TOTAL_MEMORY} / 100 * 40 - 256 * 1024 * 1024 ))
