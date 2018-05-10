@@ -422,8 +422,7 @@ buf0buf.cc line 3093                                                            
 dict0dict.ic line 786                                                                   ## https://bugs.mysql.com/bug.php?id=73926, NS 5.6.20
 dict0dict.ic line 787                                                                   ## https://bugs.mysql.com/bug.php?id=73926, MS 5.6.34
 #dict0dict.cc line 1202                                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=74900 (Fixed in 5.6.24, 5.7.6)
-dict0dict.cc line 2332                                                                  ## https://bugs.mysql.com/bug.php?id=85060
-dict0dict.cc line 2342                                                                  ## https://bugs.mysql.com/bug.php?id=85060
+dict0dict.cc line 23[2-4][0-9]                                                          ## https://bugs.mysql.com/bug.php?id=85060
 dict0load.c line 1066                                                                   ## https://bugs.mysql.com/bug.php?id=88794
 fsp0fsp.ic line 172                                                                     ## https://bugs.mysql.com/bug.php?id=73926, MS 5.7.16
 fil0fil.cc line 2099                                                                    ## https://bugs.mysql.com/bug.php?id=87573, PS 5.7.19
