@@ -272,6 +272,11 @@ function async_rpl_test(){
       for X in $(seq 0 ${PXC_START_TIMEOUT}); do
         sleep 1
         if ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc${i}.sock ping > /dev/null 2>&1; then
+          WSREP_STATE=0
+          while [[ $WSREP_STATE -ne 4 ]]; do 
+            WSREP_STATE=$(${PXC_BASEDIR}/bin/mysql -uroot -S/tmp/pxc${i}.sock -Bse"show status like 'wsrep_local_state'" | awk '{print $2}')
+            echoit "WSREP: Synchronized with group, ready for connections" 
+          done
           break
         fi
 	    if [[ $X -eq ${PXC_START_TIMEOUT} ]]; then
@@ -640,6 +645,11 @@ function async_rpl_test(){
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
       if ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc2.sock ping > /dev/null 2>&1; then
+        WSREP_STATE=0
+        while [[ $WSREP_STATE -ne 4 ]]; do 
+          WSREP_STATE=$(${PXC_BASEDIR}/bin/mysql -uroot -S/tmp/pxc2.sock -Bse"show status like 'wsrep_local_state'" | awk '{print $2}')
+          echoit "WSREP: Synchronized with group, ready for connections"  
+        done
         break
       fi
 	  if [[ $X -eq ${PXC_START_TIMEOUT} ]]; then
@@ -888,6 +898,3 @@ function async_rpl_test(){
 
 async_rpl_test
 async_rpl_test GTID
-
-
-
