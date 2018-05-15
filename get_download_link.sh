@@ -123,17 +123,16 @@ get_link(){
 
   if [[ "${PRODUCT}" = "ps" ]]; then
     if [[ "${VERSION}" = "5.5" || "${VERSION}" = "5.6" ]]; then
-      if [[ -z ${VERSION_FULL} ]]; then
-        OPT="rel[0-9]+."
-      else
-        OPT="rel"
-      fi
+      OPT="rel"
       if [[ ${SOURCE} = 1 ]]; then OPT=${OPT#rel}; fi
     fi
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
-        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/|grep -oE "Percona-Server-${VERSION}\.[0-9]+-${OPT}[0-9]+-Linux\.${BUILD_ARCH}\.${SSL_VER}\.tar\.gz"|head -n1)
-        if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/tarball/${LINK}"; fi
+        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/|grep -oE "Percona-Server-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?"|head -n1)
+        PS_VER_MAJ=$(echo "${LINK}" | cut -d- -f3)
+        PS_VER_MIN=$(echo "${LINK}" | cut -d- -f4)
+        #LINK=$(wget -qO- https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/|grep -oE "Percona-Server-${VERSION}\.[0-9]+-${OPT}[0-9]+-Linux\.${BUILD_ARCH}\.${SSL_VER}\.tar\.gz"|head -n1)
+        if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/tarball/Percona-Server-${PS_VER_MAJ}-${OPT}${PS_VER_MIN}-Linux.${BUILD_ARCH}.${SSL_VER}.tar.gz"; fi
       else
         LINK=$(wget -qO- https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/source/|grep -oE "percona-server-${VERSION}\.[0-9]+-${OPT}[0-9]+\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/source/tarball/${LINK}"; fi
