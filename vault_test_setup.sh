@@ -237,5 +237,8 @@ if [[ $SETUP_PXC_MOUNT_POINTS -eq 1 ]];then
     echo "secret_mount_point = pxc_node${i}" >> ${WORKDIR}/keyring_vault_pxc${i}.cnf
     echo "token = ${ROOT_TOKEN}" >> ${WORKDIR}/keyring_vault_pxc${i}.cnf
     echo "Vault configuration for PXC node${i} : ${WORKDIR}/keyring_vault_pxc${i}.cnf"
+    if [[ ${USE_SSL} -eq 1 ]]; then
+      echo "vault_ca = ${WORKDIR}/certificates/root.cer" >> ${WORKDIR}/keyring_vault_pxc${i}.cnf
+    fi
   done
 fi

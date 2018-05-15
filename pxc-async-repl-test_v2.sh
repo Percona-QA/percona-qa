@@ -5,16 +5,17 @@
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-  echo "  --workdir                  	       Specify work directory"
-  echo "  --build-number                       Specify work build directory"
-  echo "  --with-binlog-encryption             Run the script with binary log encryption feature"
-  echo "  --enable-checksum                    Run pt-table-checksum to check slave sync status"
+  echo "  --workdir=<path>, -w<path>               	        Specify work directory"
+  echo "  --build-number=<no>, -b<no>                       Specify work build directory"
+  echo "  --with-binlog-encryption, -e                      Run the script with binary log encryption feature"
+  echo "  --keyring-plugin=[file|vault], -k[file|vault]     Specify which keyring plugin to use(default keyring-file)"
+  echo "  --enable-checksum, -c                             Run pt-table-checksum to check slave sync status"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=workdir:,build-number:,with-binlog-encryption,help \
+  go_out="$(getopt --options=w:b:k:ech --longoptions=workdir:,build-number:,keyring-plugin:,with-binlog-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -29,7 +30,7 @@ for arg
 do
   case "$arg" in
     -- ) shift; break;;
-    --workdir )
+    -w | --workdir )
     export WORKDIR="$2"
     if [[ ! -d "$WORKDIR" ]]; then
       echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
@@ -37,19 +38,23 @@ do
     fi
     shift 2
     ;;
-    --build-number )
+    -b | --build-number )
     export BUILD_NUMBER="$2"
     shift 2
     ;;
-    --with-binlog-encryption )
+    -e | --with-binlog-encryption )
     shift
     BINLOG_ENCRYPTION=1
     ;;
-    --enable-checksum )
+    -k | --keyring-plugin )
+    export KEYRING_PLUGIN="$2"
+    shift 2
+    ;;
+    -c | --enable-checksum )
     shift
     ENABLE_CHECKSUM=1
     ;;
-    --help )
+    -h | --help )
     usage
     exit 0
     ;;
@@ -61,18 +66,21 @@ if [[ -z "$WORKDIR" ]]; then
   export WORKDIR=${PWD}
 fi
 
-if [[ "$BINLOG_ENCRYPTION" == 1 ]];then
-  MYEXTRA_BINLOG="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+if [[ -z "$KEYRING_PLUGIN" ]]; then
+  KEYRING_PLUGIN="file"
 fi
+
+if [[ "$BINLOG_ENCRYPTION" == 1 ]];then
+  MYEXTRA_BINLOG="--encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+fi
+
 # User Configurable Variables
 SBENCH="sysbench"
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 ROOT_FS=$WORKDIR
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 PXC_START_TIMEOUT=200
-
 cd $WORKDIR
-
 # For local run - User Configurable Variables
 if [[ -z ${BUILD_NUMBER} ]]; then
   BUILD_NUMBER=1001
@@ -99,12 +107,24 @@ if [[ -z ${TCOUNT} ]]; then
 fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
+rm -rf $WORKDIR/*
 mkdir -p $WORKDIR/logs
 
 echoit(){
   echo "[$(date +'%T')] $1"
   if [[ "${WORKDIR}" != "" ]]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/pxc_async_test.log; fi
 }
+if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+  MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring"
+elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+  echoit "Setting up vault server"
+  mkdir $WORKDIR/vault
+  rm -rf $WORKDIR/vault/*
+  killall vault
+  echoit "********************************************************************************************"
+  ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl 
+  echoit "********************************************************************************************"
+fi
 
 #Kill existing mysqld process
 ps -ef | grep 'pxc[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
@@ -258,11 +278,14 @@ function async_rpl_test(){
       if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]]; then
         mkdir -p $node
       fi
+      if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+        MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf"
+      fi
       ${MID} --datadir=$node  > ${WORKDIR}/logs/node${i}.err 2>&1 || exit 1;
   
       ${PXC_BASEDIR}/bin/mysqld --defaults-file=${PXC_BASEDIR}/my.cnf \
        $STARTUP_OPTION --datadir=$node \
-       --server-id=10${i} $MYEXTRA $MYEXTRA_BINLOG \
+       --server-id=10${i} $MYEXTRA $MYEXTRA_BINLOG $MYEXTRA_KEYRING \
        --wsrep_cluster_address=$WSREP_CLUSTER \
        --wsrep_node_incoming_address=$ADDR \
        --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
@@ -305,10 +328,14 @@ function async_rpl_test(){
         mkdir -p $node
       fi
 
+      if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+        MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf"
+      fi
+
       ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
   
       ${PXC_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-       --basedir=${PXC_BASEDIR} $STARTUP_OPTION $MYEXTRA_BINLOG --datadir=$node \
+       --basedir=${PXC_BASEDIR} $STARTUP_OPTION $MYEXTRA_BINLOG $MYEXTRA_KEYRING --datadir=$node \
        --innodb_file_per_table --default-storage-engine=InnoDB \
        --binlog-format=ROW --log-bin=mysql-bin --server-id=20${i} $MYEXTRA \
        --innodb_flush_method=O_DIRECT --core-file --loose-new \
