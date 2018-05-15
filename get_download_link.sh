@@ -5,6 +5,7 @@ PRODUCT=""
 VERSION=""
 BUILD_ARCH="x86_64"
 DISTRIBUTION="ubuntu"
+DIST_REL=""
 LINK=""
 DOWNLOAD=0
 SOURCE=0
@@ -22,6 +23,7 @@ usage(){
   echo -e "                                 (default: latest major version)"
   echo -e "  --arch=ARCH, -aARCH            build architecture, can be x86_64|i686 (default: x86_64)"
   echo -e "  --distribution=DIST, -dDIST    needed because of SSL linking, can be centos|ubuntu (default: ubuntu)"
+  echo -e "                                 also can be specified like ubuntu-bionic or centos-7 if build is specific"
   echo -e "  --source, -s                   get source tarball instead of binary"
   echo -e "  --download, -g                 download tarball with wget (default: off)\n"
   echo -e "Examples: get_download_link.sh --product=ps --version=5.6 --arch=x86_64"
@@ -32,7 +34,7 @@ usage(){
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=p:v:a:sdhg \
+  go_out="$(getopt --options=p:v:a:d:hsg \
   --longoptions=product:,version:,arch:,distribution:,help,source,download \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
@@ -93,12 +95,21 @@ if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then
   VERSION=$(wget -qO- https://www.mongodb.com/download-center\#community | grep -o -P "Current Stable Release \(.{3,10}\)" | grep -o -P "\(.{3,10}\)" | sed 's/(//' | sed 's/)//')
 fi
 
+if [[ "${DISTRIBUTION}" = *"-"* ]]; then
+  DIST_REL=$(echo "${DISTRIBUTION}" | cut -d- -f2)
+  DISTRIBUTION=$(echo "${DISTRIBUTION}" | cut -d- -f1)
+fi
+
 get_link(){
   local OPT=""
   local OPT2=""
 
-  if [[ "${DISTRIBUTION}" = "ubuntu" ]]; then
-    SSL_VER="ssl100"
+  if [[ "${DISTRIBUTION}" = "ubuntu" || "${DISTRIBUTION}" = "debian" ]]; then
+    if [[ "${DIST_REL}" = "bionic" || "${DIST_REL}" = "stretch" ]]; then
+      SSL_VER="ssl102"
+    else
+      SSL_VER="ssl100"
+    fi
   else
     SSL_VER="ssl101"
   fi
