@@ -28,14 +28,15 @@ usage(){
   echo -e "  --vault-dev-mode, -d          This starts vault in dev mode"
   echo -e "                                (inmemory, no persistance, no ssl, no config, unsealed, default port: 8200)"
   echo -e "  --workdir=<path>, -w<path>    Directory where vault will be setup and additional directories created (mandatory)."
+  echo -e "  --setup-pxc-mount-points, -m  This will create 3 mount points in vault server for Percona XtraDB Cluster"
   echo -e "  --help, -h                    This help screen.\n"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=sw:dh \
-  --longoptions=use-ssl,workdir:,vault-dev-mode,help \
+  go_out="$(getopt --options=sw:dmh \
+  --longoptions=use-ssl,workdir:,vault-dev-mode,setup-pxc-mount-points,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -55,6 +56,10 @@ do
     ;;
     -d | --vault-dev-mode )
     VAULT_DEV_MODE=1
+    shift
+    ;;
+    -m | --setup-pxc-mount-points  )
+    SETUP_PXC_MOUNT_POINTS=1
     shift
     ;;
     -h | --help )
@@ -222,3 +227,15 @@ if [[ ${GEN_MYSQL_CONFIG} -eq 1 ]]; then
   echo "--early-plugin-load=keyring_vault=keyring_vault.so --loose-keyring_vault_config=${WORKDIR}/keyring_vault.cnf"
 fi
 
+if [[ $SETUP_PXC_MOUNT_POINTS -eq 1 ]];then
+  echo -e "\nGenerating mount points for Percona XtraDB Cluster..."
+  export VAULT_ADDR=${VAULT_PROTOCOL}://127.0.0.1:${VAULT_PORT}
+  export VAULT_TOKEN=${ROOT_TOKEN}
+  for i in `seq 1 3`; do
+    ${WORKDIR}/vault mount -tls-skip-verify -path=pxc_node${i} generic 2>/dev/null
+    echo "vault_url = ${VAULT_PROTOCOL}://127.0.0.1:${VAULT_PORT}" > ${WORKDIR}/keyring_vault_pxc${i}.cnf
+    echo "secret_mount_point = pxc_node${i}" >> ${WORKDIR}/keyring_vault_pxc${i}.cnf
+    echo "token = ${ROOT_TOKEN}" >> ${WORKDIR}/keyring_vault_pxc${i}.cnf
+    echo "Vault configuration for PXC node${i} : ${WORKDIR}/keyring_vault_pxc${i}.cnf"
+  done
+fi
