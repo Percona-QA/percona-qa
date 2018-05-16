@@ -11,7 +11,7 @@ if [ -z "$2" ]; then
   echo "Download the latest version of a single file from a launchpad project."
   echo "Usage: $0 [lp:project] [path/file.ext] {destination path}"
   exit 1
-fi  
+fi
 
 # parameters
 
@@ -58,7 +58,7 @@ fi
 # --EMBEDDABLE--
 # this is the actual download, if you know the target
 # system has wget, you can just set LP_PROJECT and SRC_FILE
-# (and optionally DEST_PATH} here and cut & paste this block 
+# (and optionally DEST_PATH} here and cut & paste this block
 # into your script
 
 #LP_PROJECT=percona-qa

@@ -75,7 +75,7 @@ done
 if test "$#" -eq 0
 then
     WORKDIR="$(pwd)"
-    
+
     # Check that the current directory is not empty
     if test "x$(echo *)" != "x*"
     then
@@ -132,13 +132,13 @@ WSREP_VERSION="$(grep WSREP_INTERFACE_VERSION \
 PRODUCT="Codership-$MYSQL_VERSION"
 
 # Build information
-if [[ -z ${REVNO:-} ]];then 
-    REVISION=500 
-else 
+if [[ -z ${REVNO:-} ]];then
+    REVISION=500
+else
     REVISION=$REVNO
-fi 
+fi
 
-if [[ $COPYGALERA -eq 0 ]];then 
+if [[ $COPYGALERA -eq 0 ]];then
     GALERA_REVISION="$(cd "$SOURCEDIR/percona-xtradb-cluster-galera"; test -r GALERA-REVISION && cat GALERA-REVISION || bzr revno)"
 fi
 PRODUCT_FULL="$PRODUCT-$RELEASE_TAG$WSREP_VERSION.$REVISION.$(uname -s).$TARGET"
@@ -156,7 +156,7 @@ export MAKE_JFLAG="${MAKE_JFLAG:--j$PROCESSORS}"
 # Create a temporary working directory
 INSTALLDIR="$WORKDIR_ABS/cbuild"   # Make it absolute
 
-mkdir -p $INSTALLDIR 
+mkdir -p $INSTALLDIR
 
 # Test jemalloc directory
 if test "x$WITH_JEMALLOC" != "x"
@@ -166,7 +166,7 @@ then
         echo >&2 "Jemalloc dir $WITH_JEMALLOC does not exist"
         exit 1
     fi
-    
+
     JEMALLOCDIR="$(cd "$WITH_JEMALLOC"; pwd)"
 
 fi
@@ -174,10 +174,10 @@ fi
 # Build
 (
     cd "$SOURCEDIR"
- 
+
     # Build galera
     (
-    if [[ $COPYGALERA -eq 0 ]];then 
+    if [[ $COPYGALERA -eq 0 ]];then
         export CC=${GALERA_CC:-gcc}
         export CXX=${GALERA_CXX:-g++}
 
@@ -188,7 +188,7 @@ fi
              "$INSTALLDIR/usr/local/$PRODUCT_FULL/lib"
         #cp garb/garbd "$INSTALLDIR/usr/local/$PRODUCT_FULL/bin"
         cp libgalera_smm.so "$INSTALLDIR/usr/local/$PRODUCT_FULL/lib"
-    else 
+    else
         mkdir -p "$INSTALLDIR/usr/local/$PRODUCT_FULL/bin" \
              "$INSTALLDIR/usr/local/$PRODUCT_FULL/lib"
         #cp $WORKDIR_ABS/garbd "$INSTALLDIR/usr/local/$PRODUCT_FULL/bin"
@@ -251,10 +251,10 @@ fi
 (
     cd "$INSTALLDIR/usr/local/"
 
-    # For compatibility with builds 
+    # For compatibility with builds
     $TAR czf "$WORKDIR_ABS/Percona-XtraDB-Cluster-codership.tar.gz" \
         --owner=0 --group=0 "$PRODUCT_FULL/"
-    
+
 )
 
 # Clean up

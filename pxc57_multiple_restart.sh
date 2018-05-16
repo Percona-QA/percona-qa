@@ -163,8 +163,8 @@ TRIAL_NUM=0
 while [ $EXTSTATUS -eq 0 ]; do
   TRIAL_NUM=$((TRIAL_NUM+1))
   pxc_start_node 2 "5.7" "$node2" "gcomm://$LADDR1" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-pre.err" "${MYSQL_BASEDIR2}"
- 
-  sleep 10 
+
+  sleep 10
 
   echo -e "\n\n*** TRIAL NUMBER: ${TRIAL_NUM} ***\n"
 

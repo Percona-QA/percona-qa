@@ -29,7 +29,7 @@ fi
 if [ ! -d ${TRIAL_DIR}/data ]; then
   echo "There is no pquery data (${TRIAL_DIR}/data) directory? Terminating."
   exit 1
-elif [ ! -r ${TRIAL_DIR}/start ]; then 
+elif [ ! -r ${TRIAL_DIR}/start ]; then
   echo "There is no start file in the pquery trial directory (${SCRIPT_PWD}/start)? Cannot continue, as this is needed. Terminating."
   exit 1
 elif [ ! -r ${SCRIPT_PWD}/ldd_files.sh ]; then

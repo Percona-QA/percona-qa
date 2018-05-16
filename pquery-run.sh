@@ -39,10 +39,10 @@ if [ "$(echo ${PQUERY_BIN} | sed 's|\(^/pquery\)|\1|')" == "/pquery" ]; then ech
 if [ ! -r ${PQUERY_BIN} ]; then echo "${PQUERY_BIN} specified in the script cannot be found/read"; exit 1; fi
 
 # Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
-ulimit -u 7000 
+ulimit -u 7000
 
 # Check input file (when generator is not used)
-if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -ne 1 -a ! -r ${INFILE} ]; then 
+if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -ne 1 -a ! -r ${INFILE} ]; then
   echo "Assert! \$INFILE (${INFILE}) cannot be read? Check file existence and privileges!"
   exit 1
 fi
@@ -78,11 +78,11 @@ if [ ${SKIP_JEMALLOC_FOR_PS} -ne 1 ]; then
   if [ "${PSORNOT1}" == "Percona" ] || [ ${PSORNOT2} -ge 1 ]; then
     if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
       export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
-    else 
+    else
       echoit "Assert! Binary (${BIN} reported itself as Percona Server, yet jemalloc was not found, please install it!";
       echoit "For Centos7 you can do this by:  sudo yum -y install epel-release; sudo yum -y install jemalloc;"
       echoit "For Ubuntu you can do this by: sudo apt-get install libjemalloc-dev;"
-      exit 1; 
+      exit 1;
     fi
   fi
 else
@@ -101,7 +101,7 @@ fi
 if [ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]; then
   echoit "As GRP_RPL_CLUSTER_RUN=1, this script is auto-assuming this is a Group Replication run and will set GRP_RPL=1"
   GRP_RPL=1
-fi 
+fi
 if [ ${PXC} -eq 1 ]; then
   if [ ${QUERIES_PER_THREAD} -lt 2147483647 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
     echoit "Note: As this is a PXC=1 run, and QUERIES_PER_THREAD was set to only ${QUERIES_PER_THREAD}, this script is setting the queries per thread to the required minimum of 2147483647 for this run."
@@ -134,7 +134,7 @@ if [ ${GRP_RPL} -eq 1 ]; then
 fi
 
 if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then echoit "MODE: Query Duration Testing"; fi
-if [ ${QUERY_DURATION_TESTING} -ne 1 -a ${QUERY_CORRECTNESS_TESTING} -ne 1 -a ${CRASH_RECOVERY_TESTING} -ne 1 ]; then 
+if [ ${QUERY_DURATION_TESTING} -ne 1 -a ${QUERY_CORRECTNESS_TESTING} -ne 1 -a ${CRASH_RECOVERY_TESTING} -ne 1 ]; then
   if [ ${VALGRIND_RUN} -eq 1 ]; then
     if [ ${THREADS} -eq 1 ]; then
       echoit "MODE: Single threaded Valgrind pquery testing"
@@ -202,10 +202,10 @@ if [ ${VALGRIND_RUN} -eq 1 ]; then
     MYSQLD_START_TIMEOUT=300
   fi
   echoit "Note: As this is a VALGRIND_RUN=1 run, this script is increasing PQUERY_RUN_TIMEOUT (${PQUERY_RUN_TIMEOUT}) by 180 seconds because Valgrind is very slow in processing SQL."
-  PQUERY_RUN_TIMEOUT=$[ ${PQUERY_RUN_TIMEOUT} + 180 ] 
+  PQUERY_RUN_TIMEOUT=$[ ${PQUERY_RUN_TIMEOUT} + 180 ]
 fi
 
-# Trap ctrl-c 
+# Trap ctrl-c
 trap ctrl-c SIGINT
 
 ctrl-c(){
@@ -303,7 +303,7 @@ if [[ $PXC -eq 1 ]];then
   echo "log-output=none" >> ${BASEDIR}/my.cnf
   echo "wsrep_slave_threads=2" >> ${BASEDIR}/my.cnf
 fi
-pxc_startup(){  
+pxc_startup(){
   ADDR="127.0.0.1"
   RPORT=$(( (RANDOM%21 + 10)*1000 ))
   SUSER=root
@@ -313,7 +313,7 @@ pxc_startup(){
   elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
   fi
-  
+
   pxc_startup_chk(){
     ERROR_LOG=$1
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
@@ -359,7 +359,7 @@ pxc_startup(){
       WSREP_PROVIDER_OPT=""
     else
       node="${RUNDIR}/${TRIAL}/node${i}"
-    fi	
+    fi
     if [ "$1" == "startup" ]; then
       ${MID} --datadir=$node  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
     fi
@@ -404,10 +404,10 @@ gr_startup(){
   LADDR1="$ADDR:$(( RBASE + 101 ))"
   LADDR2="$ADDR:$(( RBASE + 102 ))"
   LADDR3="$ADDR:$(( RBASE + 103 ))"
-  
+
   SUSER=root
   SPASS=
-  
+
   MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
   if [ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]; then
     MYEXTRA="$MYEXTRA --plugin-load=group_replication.so --group_replication_single_primary_mode=OFF"
@@ -514,7 +514,7 @@ gr_startup(){
     fi
     gr_startup_chk $node2/node2.err
   done
-  
+
   if [ "$1" == "startup" ]; then
     ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
   fi
@@ -567,14 +567,14 @@ pquery_test(){
     SAVEDIR=${PWD}
     cd ${SCRIPT_PWD}/generator/
     if [ ${TRIAL} -eq 1 -o $[ ${TRIAL} % ${GENERATE_NEW_QUERIES_EVERY_X_TRIALS} ] -eq 0 ]; then
-      if [ "${RANDOMD}" == "" ]; then 
+      if [ "${RANDOMD}" == "" ]; then
         echoit "Assert: RANDOMD is empty. This should not happen. Terminating."
         exit 1
       fi
       cp generator.sh generator${RANDOMD}.sh
       sed -i "s|^[ \t]*OUTPUT_FILE[ \t]*=.*|OUTPUT_FILE=out${RANDOMD}|" generator${RANDOMD}.sh
       ./generator${RANDOMD}.sh ${QUERIES_PER_GENERATOR_RUN} >/dev/null
-      if [ ! -r out${RANDOMD}.sql ]; then 
+      if [ ! -r out${RANDOMD}.sql ]; then
         echoit "Assert: out${RANDOMD}.sql not present in ${PWD} after generator execution! This script left ${PWD}/generator${RANDOMD}.sh in place to check what happened"
         exit 1
       fi
@@ -731,11 +731,11 @@ pquery_test(){
     echo "  echoit \"For Centos7 you can do this by: sudo yum -y install epel-release; sudo yum -y install jemalloc;\"" >> ${RUNDIR}/${TRIAL}/start_recovery
     echo "  exit 1;" >> ${RUNDIR}/${TRIAL}/start_recovery
     echo "fi" >> ${RUNDIR}/${TRIAL}/start_recovery
-    
+
     echo "${CMD//$RUNDIR/$WORKDIR} --init-file=${WORKDIR}/recovery-user.sql > ${WORKDIR}/${TRIAL}/log/master.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
     # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
-      echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA.left   # When changing this, also search for/edit other '\.left' and '\.right' occurences in this file 
+      echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA.left   # When changing this, also search for/edit other '\.left' and '\.right' occurences in this file
       echo "${MYSAFE} ${MYEXTRA2}" > ${RUNDIR}/${TRIAL}/MYEXTRA.right
     else
       echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
@@ -744,7 +744,7 @@ pquery_test(){
       touch  ${RUNDIR}/${TRIAL}/VALGRIND
     fi
     # Restore orignal MYEXTRA for the next trial (MYEXTRA is no longer needed anywhere else. If this changes in the future, relocate this to below the changed code)
-    MYEXTRA=${MYEXTRA_SAVE_IT}  
+    MYEXTRA=${MYEXTRA_SAVE_IT}
     # Give up to x (start timeout) seconds for mysqld to start, but check intelligently for known startup issues like "Error while setting value" for options
     if [ ${VALGRIND_RUN} -eq 0 ]; then
       echoit "Waiting for mysqld (pid: ${MPID}) to fully start..."
@@ -823,7 +823,7 @@ pquery_test(){
     cp -R ${WORKDIR}/node3.template ${RUNDIR}/${TRIAL}/node3 2>&1
 
     PXC_MYEXTRA=
-    # === PXC Options Stage 1: Add random mysqld options to PXC_MYEXTRA 
+    # === PXC Options Stage 1: Add random mysqld options to PXC_MYEXTRA
     if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 1 ]; then
       OPTIONS_TO_ADD=
       NR_OF_OPTIONS_TO_ADD=$(( RANDOM % PXC_MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
@@ -839,7 +839,7 @@ pquery_test(){
         MYEXTRA2="${MYEXTRA2} ${OPTIONS_TO_ADD}"
       fi
     fi
-    # === PXC Options Stage 2: Add random wsrep mysqld options to PXC_MYEXTRA 
+    # === PXC Options Stage 2: Add random wsrep mysqld options to PXC_MYEXTRA
     if [ ${PXC_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS} -eq 1 ]; then
       OPTIONS_TO_ADD=
       NR_OF_OPTIONS_TO_ADD=$(( RANDOM % PXC_WSREP_MAX_NR_OF_RND_OPTS_TO_ADD + 1 ))
@@ -867,7 +867,7 @@ pquery_test(){
       touch  ${RUNDIR}/${TRIAL}/VALGRIND
       echoit "Waiting for all PXC nodes to fully start (note this is slow for Valgrind runs, and can easily take 90-180 seconds even on an high end server)..."
     fi
-    pxc_startup 
+    pxc_startup
     echoit "Checking 3 node PXC Cluster startup..."
     for X in $(seq 0 10); do
       sleep 1
@@ -919,7 +919,7 @@ pquery_test(){
         echoit "Taking ${QC_NR_OF_STATEMENTS_PER_TRIAL} lines randomly from ${INFILE} as testcase for this query correctness trial..."
         # Make sure that the code below generates exactly 3 lines (DROP/CREATE/USE) -OR- change the "head -n3" and "sed '1,3d'" (both below) to match any updates made
         echo 'DROP DATABASE test;' > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
-        if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
+        if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then
           case "$(echo $(( RANDOM % 3 + 1 )))" in
             1) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="Binary" DEFAULT COLLATE="Binary";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
             2) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="utf8" DEFAULT COLLATE="utf8_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
@@ -933,7 +933,7 @@ pquery_test(){
         awk -v seed=$RANDOM 'BEGIN{srand();} {ORS="#@"int(999999999*rand())"\n"} {print $0}' ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.new
         rm -f ${RUNDIR}/${TRIAL}/${TRIAL}.sql && mv ${RUNDIR}/${TRIAL}/${TRIAL}.new ${RUNDIR}/${TRIAL}/${TRIAL}.sql 2>&1 | tee -a /${WORKDIR}/pquery-run.log
         echoit "Further processing testcase into two testcases against primary (${QC_PRI_ENGINE}) and secondary (${QC_SEC_ENGINE}) engines..."
-        if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then 
+        if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then
           head -n3 ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}  # Setup testcase with DROP/CREATE/USE test db
           sed '1,3d' ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
            sed 's|UNIQUE[ \t]\+KEY||i' | \
@@ -1188,7 +1188,7 @@ pquery_test(){
           fi
         fi
       fi
-    else  
+    else
       if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
         SQL_FILE="--infile=${INFILE}"
       else
@@ -1202,7 +1202,7 @@ pquery_test(){
         ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
         PQPID="$!"
       else
-        ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &  
+        ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
         PQPID="$!"
       fi
     fi
@@ -1231,18 +1231,18 @@ pquery_test(){
              break
           fi
         fi
-        if [ $X -ge ${PQUERY_RUN_TIMEOUT} ]; then 
+        if [ $X -ge ${PQUERY_RUN_TIMEOUT} ]; then
           echoit "${PQUERY_RUN_TIMEOUT}s timeout reached. Terminating this trial..."
           TIMEOUT_REACHED=1
           break
         fi
       done
       if [ $PMM -eq 1 ]; then
-        if ps -p  ${MPID} > /dev/null ; then 
+        if ps -p  ${MPID} > /dev/null ; then
           echoit "PMM trial info : Sleeping 5 mints to check the data collection status"
           sleep 300
         fi
-      fi 
+      fi
     fi
   else
     if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
@@ -1276,18 +1276,18 @@ pquery_test(){
   # NOTE**: Do not kill PQPID here/before shutdown. The reason is that pquery may still be writing queries it's executing to the log. The only way to halt pquery properly is by
   # actually shutting down the server which will auto-terminate pquery due to 250 consecutive queries failing. If 250 queries failed and ${PQUERY_RUN_TIMEOUT}s timeout was reached,
   # and if there is no core/Valgrind issue and there is no output of percona-qa/text_string.sh either (in case core dumps are not configured correctly, and thus no core file is
-  # generated, text_string.sh will still produce output in case the server crashed based on the information in the error log), then we do not need to save this trial (as it is a 
+  # generated, text_string.sh will still produce output in case the server crashed based on the information in the error log), then we do not need to save this trial (as it is a
   # standard occurence for this to happen). If however we saw 250 queries failed before the timeout was complete, then there may be another problem and the trial should be saved.
   if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     if [ ${VALGRIND_RUN} -eq 1 ]; then  # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
-      # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
+      # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin.
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
       # ==========================================================================================================================================================
       # TODO: the timeout...mysqladmin shutdown can be improved further to catch shutdown issues. For this, a new special "CATCH_SHUTDOWN=0/1" mode should be
       #       added (because the runs would be much slower, so you would want to run this on-demand), and a much longer timeout should be given for mysqladmin
-      #       to succeed getting the server down (3 minutes for single thread runs for example?) if the shutdown fails to complete (i.e. exit status code of 
-      #       timeout is 137 as the timeout took place), then a shutdown issue is likely present. It should not take 3+ minutes to shutdown a server. There a 
-      #       good number of trials that seem to run into this situation. Likely a subset of them will be related to the already seen shutdown issues in TokuDB. 
+      #       to succeed getting the server down (3 minutes for single thread runs for example?) if the shutdown fails to complete (i.e. exit status code of
+      #       timeout is 137 as the timeout took place), then a shutdown issue is likely present. It should not take 3+ minutes to shutdown a server. There a
+      #       good number of trials that seem to run into this situation. Likely a subset of them will be related to the already seen shutdown issues in TokuDB.
       # UPDATE: As an intial stopgap workaround, the timeout was increased to 90 seconds, and the timeout exit code is checked. Trials are saved when this
       #         happens and a special "SHUTDOWN_TIMEOUT_ISSUE empty file is saved in the trial's directory. pquery-results has been updated to scan for this file
       # ==========================================================================================================================================================
@@ -1322,7 +1322,7 @@ pquery_test(){
           TRIAL_SAVED=1
         fi
       fi
-    else     
+    else
       if [ ${QUERY_CORRECTNESS_TESTING} -ne 1 ]; then
         timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
         if [ $? -eq 137 ]; then
@@ -1343,24 +1343,24 @@ pquery_test(){
     sleep 1  # <^ Make sure all is gone
   elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
     if [ ${VALGRIND_RUN} -eq 1 ]; then # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
-      # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin. 
+      # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin.
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
       # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log
-      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1
       if [ $? -eq 137 ]; then
         echoit "mysqld for node3 failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
         touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
         savetrial
         TRIAL_SAVED=1
       fi
-      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1
       if [ $? -eq 137 ]; then
         echoit "mysqld for node2 failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
         touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
         savetrial
         TRIAL_SAVED=1
       fi
-      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1 
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1
       if [ $? -eq 137 ]; then
         echoit "mysqld for node1 failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
         touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
@@ -1430,14 +1430,14 @@ pquery_test(){
       # What follows next are 3 different ways of checking if Valgrind issues were seen, mostly to ensure that no Valgrind issues go unseen, especially if log is not complete
       VALGRIND_CHECK_1=$(grep "==[0-9]\+== ERROR SUMMARY: [0-9]\+ error" ${RUNDIR}/${TRIAL}/log/master.err | sed 's|.*ERROR SUMMARY: \([0-9]\+\) error.*|\1|')
       if [ "${VALGRIND_CHECK_1}" == "" ]; then VALGRIND_CHECK_1=0; fi
-      if [ ${VALGRIND_CHECK_1} -gt 0 ]; then 
-        VALGRIND_ERRORS_FOUND=1; 
+      if [ ${VALGRIND_CHECK_1} -gt 0 ]; then
+        VALGRIND_ERRORS_FOUND=1;
       fi
-      if egrep -qi "^[ \t]*==[0-9]+[= \t]+[atby]+[ \t]*0x" ${RUNDIR}/${TRIAL}/log/master.err; then 
-        VALGRIND_ERRORS_FOUND=1; 
+      if egrep -qi "^[ \t]*==[0-9]+[= \t]+[atby]+[ \t]*0x" ${RUNDIR}/${TRIAL}/log/master.err; then
+        VALGRIND_ERRORS_FOUND=1;
       fi
-      if egrep -qi "==[0-9]+== ERROR SUMMARY: [1-9]" ${RUNDIR}/${TRIAL}/log/master.err; then 
-        VALGRIND_ERRORS_FOUND=1; 
+      if egrep -qi "==[0-9]+== ERROR SUMMARY: [1-9]" ${RUNDIR}/${TRIAL}/log/master.err; then
+        VALGRIND_ERRORS_FOUND=1;
       fi
       if [ ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then
         VALGRIND_TEXT=`${SCRIPT_PWD}/valgrind_string.sh ${RUNDIR}/${TRIAL}/log/master.err`
@@ -1484,7 +1484,7 @@ pquery_test(){
         savetrial
         TRIAL_SAVED=1
       else
-        if [ ${SAVE_SQL} -eq 1 ]; then 
+        if [ ${SAVE_SQL} -eq 1 ]; then
           if [ ${VALGRIND_RUN} -eq 1 ]; then
             if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
               echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no issue was seen), except the SQL trace (as SAVE_SQL=1)"
@@ -1493,22 +1493,22 @@ pquery_test(){
             echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1, and no issue was seen), except the SQL trace (as SAVE_SQL=1)"
           fi
           savesql
-        else 
+        else
           if [ ${VALGRIND_RUN} -eq 1 ]; then
             if [ ${VALGRIND_ERRORS_FOUND} -ne 1 ]; then
-              echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 and SAVE_SQL=0, and no issue was seen)" 
+              echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 and SAVE_SQL=0, and no issue was seen)"
             fi
           else
             echoit "Not saving anything for this trial (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1 and SAVE_SQL=0, and no issue was seen)"
           fi
         fi
       fi
-    fi  
+    fi
     if [ ${TRIAL_SAVED} -eq 0 ]; then
       removetrial
     fi
   fi
-} 
+}
 
 # Setup
 if [[ "${INFILE}" == *".tar."* ]]; then
@@ -1556,7 +1556,7 @@ if [[ $WITH_KEYRING_VAULT -eq 1 ]];then
   fi
 fi
 
-if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then 
+if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
   echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Trials: ${TRIALS} | Statements per trial: ${QC_NR_OF_STATEMENTS_PER_TRIAL} | Primary Engine: ${QC_PRI_ENGINE} | Secondary Engine: ${QC_SEC_ENGINE}"
 else
   echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Queries/Thread: ${QUERIES_PER_THREAD} | Trials: ${TRIALS} | Save coredump/valgrind issue trials only: `if [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 1 ]; then echo -n 'TRUE'; if [ ${SAVE_SQL} -eq 1 ]; then echo ' + save all SQL traces'; else echo ''; fi; else echo 'FALSE'; fi`"
@@ -1662,12 +1662,12 @@ if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
       check_cmd $? "pmm-server container not started"
     fi
     if [[ ! -e `which pmm-admin 2> /dev/null` ]] ;then
-      echoit "Assert! The pmm-admin client binary was not found, please install the pmm-admin client package"  
+      echoit "Assert! The pmm-admin client binary was not found, please install the pmm-admin client package"
       exit 1
     else
       PMM_ADMIN_VERSION=`sudo pmm-admin --version`
       if [ "$PMM_ADMIN_VERSION" != "${PMM_VERSION_CHECK}" ]; then
-        echoit "Assert! The pmm-admin client version is $PMM_ADMIN_VERSION. Required version is ${PMM_VERSION_CHECK}"  
+        echoit "Assert! The pmm-admin client version is $PMM_ADMIN_VERSION. Required version is ${PMM_VERSION_CHECK}"
         exit 1
       else
         IP_ADDRESS=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`
@@ -1732,7 +1732,7 @@ for X in $(seq 1 ${TRIALS}); do
 done
 # All done, wrap up pquery run
 echoit "pquery finished requested number of trials (${TRIALS})... Terminating..."
-if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then 
+if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
   echoit "Cleaning up any leftover processes..."
   KILL_PIDS=`ps -ef | grep "$RANDOMD" | grep -v "grep" | awk '{print $2}' | tr '\n' ' '`
   if [ "${KILL_PIDS}" != "" ]; then

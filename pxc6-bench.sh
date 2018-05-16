@@ -9,7 +9,7 @@ pgrep -f mysqld
 pkill -f mysqld
 sleep 10
 pgrep mysqld || pkill -9 -f mysqld
-set -e 
+set -e
 
 sleep 5
 
@@ -67,16 +67,16 @@ fi
 
 count=$(ls -1ct Percona-XtraDB-Cluster*.tar.gz | wc -l)
 
-if [[ $count -gt 1 ]];then 
-    for dirs in `ls -1ct Percona-XtraDB-Cluster*.tar.gz | tail -n +2`;do 
+if [[ $count -gt 1 ]];then
+    for dirs in `ls -1ct Percona-XtraDB-Cluster*.tar.gz | tail -n +2`;do
         rm -rf $dirs
-    done 
+    done
 fi
 
 find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster*' -exec rm -rf {} \+
 
 echo "Removing older core files, if any"
-rm -f ${ROOT_FS}/**/*core* 
+rm -f ${ROOT_FS}/**/*core*
 
 echo "Removing older directories"
 find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+
@@ -99,16 +99,16 @@ if [[ "x${Host}" == "xubuntu-trusty-64bit" ]];then
     export CFLAGS="-Wl,--no-undefined -lasan"
 fi
 
-if [[ ! -e `which sysbench` ]];then 
-    echo "Sysbench not found" 
+if [[ ! -e `which sysbench` ]];then
+    echo "Sysbench not found"
     exit 1
 fi
 echo "Note: Using sysbench at $(which sysbench)"
 
-# Parameter of parameterized build 
-if [[ -n $SDURATION ]];then 
+# Parameter of parameterized build
+if [[ -n $SDURATION ]];then
     export SYSBENCH_DURATION=$SDURATION
-else 
+else
     export SYSBENCH_DURATION=300
 fi
 
@@ -141,7 +141,7 @@ prepare()
 
 ver_and_row(){
     local sock=$1
-    
+
 
     $MYSQL_BASEDIR/bin/mysql -S $sock  -u root -e "show global variables like 'version';"
     $MYSQL_BASEDIR/bin/mysql -S $sock  -u root -e "select count(*) from $STABLE;"
@@ -189,7 +189,7 @@ oltp_ddl()
     $SBENCH --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
         --test=$SDIR/oltp_ddl.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=$TCOUNT --mysql-db=test \
         --mysql-user=root --db-driver=mysql --mysql-socket=$sock  run  2>&1 | tee $log
- 
+
 }
 
 clean_up()
@@ -245,7 +245,7 @@ sysbench_run()
   echo "Starting PXC node1"
   pushd ${MYSQL_BASEDIR}/mysql-test/
 
-  set +e 
+  set +e
   perl mysql-test-run.pl \
     --start-and-exit \
     --port-base=$RBASE1 \
@@ -275,7 +275,7 @@ sysbench_run()
     --mysqld=--socket=$node1/socket.sock \
     --mysqld=--log-error=$WORKDIR/logs/node1.err \
     --mysqld=--log-output=none \
-    1st 
+    1st
   set -e
   popd
 
@@ -287,21 +287,21 @@ sysbench_run()
     ## Prepare/setup
     echo "Sysbench Run: Prepare stage"
 
-   if [[ -n ${BUILTIN_SYSBENCH:-} ]];then 
+   if [[ -n ${BUILTIN_SYSBENCH:-} ]];then
          /usr/bin/sysbench --test=oltp   --oltp-auto-inc=off --mysql-engine-trx=yes --mysql-table-engine=innodb \
         --oltp-table-size=100000 --mysql-db=test --mysql-user=root \
         --db-driver=mysql --mysql-socket=$node1/socket.sock prepare \
-        > $SRESULTS/sysbench_prepare.txt 
-    else 
-        prepare $node1/socket.sock $WORKDIR/logs/sysbench_prepare.txt 
+        > $SRESULTS/sysbench_prepare.txt
+    else
+        prepare $node1/socket.sock $WORKDIR/logs/sysbench_prepare.txt
     fi
- 
+
     $MYSQL_BASEDIR/bin/mysql  -S $node1/socket.sock -u root -e "create database testdb;" || true
 
-  if [[ -n ${DUALTEST:-} ]];then 
+  if [[ -n ${DUALTEST:-} ]];then
     pushd ${MYSQL_BASEDIR}/mysql-test/
     export MYSQLD_BOOTSTRAP_CMD=
-    set +e 
+    set +e
     perl mysql-test-run.pl \
         --start-and-exit \
         --port-base=$RBASE2 \
@@ -331,7 +331,7 @@ sysbench_run()
         --mysqld=--log-error=$WORKDIR/logs/node2.err \
         --mysqld=--socket=$node2/socket.sock \
         --mysqld=--log-output=none \
-        1st  
+        1st
     set -e
     popd
   fi
@@ -340,20 +340,20 @@ sysbench_run()
   sleep 10
 
 
-   if [[ -z ${BUILTIN_SYSBENCH:-} ]];then 
-       STABLE="test.sbtest1" 
-   else 
-       STABLE="test.sbtest" 
+   if [[ -z ${BUILTIN_SYSBENCH:-} ]];then
+       STABLE="test.sbtest1"
+   else
+       STABLE="test.sbtest"
    fi
 
-  if [[ -n ${DUALTEST:-} ]];then 
+  if [[ -n ${DUALTEST:-} ]];then
     echo "Before RW testing"
 
-    ver_and_row $node1/socket.sock 
+    ver_and_row $node1/socket.sock
     ver_and_row $node2/socket.sock
   fi
 
-    if [[ ! -e $SDIR/${STEST}.lua ]];then 
+    if [[ ! -e $SDIR/${STEST}.lua ]];then
         pushd /tmp
 
         rm $STEST.lua || true
@@ -363,61 +363,14 @@ sysbench_run()
     fi
 
    set -x
-  if [[ -n ${DUALTEST:-} ]];then 
+  if [[ -n ${DUALTEST:-} ]];then
         ## OLTP RW Run
         echo "Sysbench Run: OLTP RW testing"
-        if [[ -n ${BUILTIN_SYSBENCH:-} ]];then 
+        if [[ -n ${BUILTIN_SYSBENCH:-} ]];then
             /usr/bin/sysbench --num-threads=16 --oltp-auto-inc=off --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
                 --test=oltp --oltp-table-size=100000 --mysql-db=test \
                 --mysql-user=root --db-driver=mysql --mysql-socket=$node2/socket.sock \
-                run > $SRESULTS/sysbench_rw_run.txt 
-        else 
-            if [ ${IST_RUN} -eq 1 ]; then
-              ${MYSQL_BASEDIR}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown > /dev/null 2>&1
-              sleep 5
-              rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_ist_run.txt
-              ${MYSQL_BASEDIR}/bin/mysqld --defaults-group-suffix=.1 --defaults-file=$node2/my.cnf --log-output=file --loose-debug-sync-timeout=600 --default-storage-engine=MyISAM --default-tmp-storage-engine=MyISAM --skip-performance-schema  --innodb_file_per_table --binlog-format=ROW --wsrep-slave-threads=2 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 --wsrep-provider=${MYSQL_BASEDIR}/lib/libgalera_smm.so --wsrep_cluster_address=gcomm://$LADDR1 --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT --core-file --loose-new --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 --skip-name-resolve --log-error=$WORKDIR/logs/node2.err --socket=$node2/socket.sock --log-output=none --core-file > $WORKDIR/logs/node2.err 2>&1 & 
-              MPID="$!"
-              while true ; do
-                sleep 10
-                if egrep -qi  "Synchronized with group, ready for connections" $WORKDIR/logs/node2.err ; then
-                  break
-                fi
-                if [ "${MPID}" == "" ]; then
-                  echoit "Error! server not started.. Terminating!"
-                  egrep -i "ERROR|ASSERTION" $WORKDIR/logs/node2.err 
-                  exit 1
-                fi
-              done 
-              echo "Table row count after IST run"
-              ver_and_row $node1/socket.sock
-              ver_and_row $node2/socket.sock
-              clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
-            else
-              echo "Table row count after SST run"
-              rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
-              ver_and_row $node1/socket.sock
-              ver_and_row $node2/socket.sock
-              oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
-              clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
-            fi
-        fi
-        if [[ -n ${BUILTIN_SYSBENCH:-} ]];then 
-            echo "Sleeping for 5s"
-            sleep 5
-            /usr/bin/sysbench --num-threads=16 --oltp-auto-inc=off --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
-                --test=oltp --oltp-table-size=100000 --mysql-db=test \
-                --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock \
-                run > $SRESULTS/sysbench_rw_run-1.txt 
-        fi
-  else 
-        ## OLTP RW Run
-        echo "Sysbench Run: OLTP RW testing"
-        if [[ -n ${BUILTIN_SYSBENCH:-} ]];then 
-            /usr/bin/sysbench --num-threads=16 --oltp-auto-inc=off --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
-                --test=oltp --oltp-table-size=100000 --mysql-db=test \
-                --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock \
-                run > $SRESULTS/sysbench_rw_run.txt 
+                run > $SRESULTS/sysbench_rw_run.txt
         else
             if [ ${IST_RUN} -eq 1 ]; then
               ${MYSQL_BASEDIR}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown > /dev/null 2>&1
@@ -432,7 +385,54 @@ sysbench_run()
                 fi
                 if [ "${MPID}" == "" ]; then
                   echoit "Error! server not started.. Terminating!"
-                  egrep -i "ERROR|ASSERTION" $WORKDIR/logs/node2.err  
+                  egrep -i "ERROR|ASSERTION" $WORKDIR/logs/node2.err
+                  exit 1
+                fi
+              done
+              echo "Table row count after IST run"
+              ver_and_row $node1/socket.sock
+              ver_and_row $node2/socket.sock
+              clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
+            else
+              echo "Table row count after SST run"
+              rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
+              ver_and_row $node1/socket.sock
+              ver_and_row $node2/socket.sock
+              oltp_ddl $node1/socket.sock $WORKDIR/logs/sysbench_ddl.txt
+              clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
+            fi
+        fi
+        if [[ -n ${BUILTIN_SYSBENCH:-} ]];then
+            echo "Sleeping for 5s"
+            sleep 5
+            /usr/bin/sysbench --num-threads=16 --oltp-auto-inc=off --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
+                --test=oltp --oltp-table-size=100000 --mysql-db=test \
+                --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock \
+                run > $SRESULTS/sysbench_rw_run-1.txt
+        fi
+  else
+        ## OLTP RW Run
+        echo "Sysbench Run: OLTP RW testing"
+        if [[ -n ${BUILTIN_SYSBENCH:-} ]];then
+            /usr/bin/sysbench --num-threads=16 --oltp-auto-inc=off --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
+                --test=oltp --oltp-table-size=100000 --mysql-db=test \
+                --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock \
+                run > $SRESULTS/sysbench_rw_run.txt
+        else
+            if [ ${IST_RUN} -eq 1 ]; then
+              ${MYSQL_BASEDIR}/bin/mysqladmin -uroot -S$node2/socket.sock shutdown > /dev/null 2>&1
+              sleep 5
+              rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_ist_run.txt
+              ${MYSQL_BASEDIR}/bin/mysqld --defaults-group-suffix=.1 --defaults-file=$node2/my.cnf --log-output=file --loose-debug-sync-timeout=600 --default-storage-engine=MyISAM --default-tmp-storage-engine=MyISAM --skip-performance-schema  --innodb_file_per_table --binlog-format=ROW --wsrep-slave-threads=2 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 --wsrep-provider=${MYSQL_BASEDIR}/lib/libgalera_smm.so --wsrep_cluster_address=gcomm://$LADDR1 --wsrep_sst_receive_address=$RADDR2 --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT --core-file --loose-new --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 --skip-name-resolve --log-error=$WORKDIR/logs/node2.err --socket=$node2/socket.sock --log-output=none --core-file > $WORKDIR/logs/node2.err 2>&1 &
+              MPID="$!"
+              while true ; do
+                sleep 10
+                if egrep -qi  "Synchronized with group, ready for connections" $WORKDIR/logs/node2.err ; then
+                  break
+                fi
+                if [ "${MPID}" == "" ]; then
+                  echoit "Error! server not started.. Terminating!"
+                  egrep -i "ERROR|ASSERTION" $WORKDIR/logs/node2.err
                   exit 1
                 fi
               done

@@ -73,7 +73,7 @@ function varifyPXC {
   echo $! >> myq_status_pid.txt
   myq_status -u $dbuser -p $dbpass -h $node3 -t 1 wsrep > node3.log &
   echo $! >> myq_status_pid.txt
-  sleep 120 
+  sleep 120
   strt=`eval date +'%H:%M'`
   sleep 60
   stop=`eval date +'%H:%M'`
@@ -102,7 +102,7 @@ function checkPXC {
  status_node3=`mysql -u $dbuser -p$dbpass -h$node3 -Bse"show global status like 'wsrep_cluster_status'" | awk '{print $2}'`
  if [ -z $status_node3 ] ;  then   wsrep_cluster_status+=("MySQL is not running!") ;  else wsrep_cluster_status+=($status_node3) ; fi
  comment_node1=`mysql -u $dbuser -p$dbpass -h$node1 -Bse"show global status like 'wsrep_local_state_comment'" | awk '{print $2}'`
- if [ -z $comment_node1 ] ;  then wsrep_local_state_comment+=('MySQL is not running!') ; else wsrep_local_state_comment+=($comment_node1) ; fi 
+ if [ -z $comment_node1 ] ;  then wsrep_local_state_comment+=('MySQL is not running!') ; else wsrep_local_state_comment+=($comment_node1) ; fi
  comment_node2=`mysql -u $dbuser -p$dbpass -h$node2 -Bse"show global status like 'wsrep_local_state_comment'" | awk '{print $2}'`
  if [ -z $comment_node2 ] ;  then wsrep_local_state_comment+=('MySQL is not running!') ; else wsrep_local_state_comment+=($comment_node2) ; fi
  comment_node3=`mysql -u $dbuser -p$dbpass -h$node3 -Bse"show global status like 'wsrep_local_state_comment'" | awk '{print $2}'`
@@ -121,7 +121,7 @@ function NWdelay {
     node=`ssh $i "hostname"`
     status=`echo $check | awk '{print $1}'`
     if [ "$status" == "ERROR!" ] ; then
-      ssh $i 'sudo rm -rf /var/lib/mysql/*.pid;sudo /etc/init.d/mysql start' 
+      ssh $i 'sudo rm -rf /var/lib/mysql/*.pid;sudo /etc/init.d/mysql start'
       sysbench_run oltp pxc_test
       sysbench $SYSBENCH_OPTIONS run | grep tps > /dev/null 2>&1 &
       rm -rf $node.log
@@ -129,17 +129,17 @@ function NWdelay {
      echo $! >> myq_status_pid.txt
     fi
   done
- 
+
   tc qdisc add dev eth1 root netem delay $ms
   sleep 120
   strt=`eval date +'%H:%M'`
   sleep 60
   stop=`eval date +'%H:%M'`
- 
+
   sed -n "/$strt/ , /$stop/p" node1.log > after-node1.log
   sed -n "/$strt/ , /$stop/p" node2.log > after-node2.log
   sed -n "/$strt/ , /$stop/p" node3.log > after-node3.log
- 
+
   node1_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' after-node1.log`
   node2_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' after-node2.log`
   node3_up=`awk '{ if ( substr($11,length($11),1) == "K" )  sum += $11 * 1024 ;else if (substr($11,length($11),1) == "M")  sum += $11 * 1024 * 1024 ; else if ($11 ~ /[0-9]/) sum += $11 fi } END {printf ("%0.2f\n",sum /1024)}' after-node3.log`
@@ -149,7 +149,7 @@ function NWdelay {
 
   echo -e "\n\n*************** Network Delay $1 milliseconds byte transfer rate b/w nodes ******************\n" >> script_out.log
   printf "|%-10s %-21s *%-20s |%-20s *%-20s |\n" "" "Normal" "" "NW delay($ms)" "" >> script_out.log
-  echo -e "----------------------------------------------------------------------------------------------------------" >> script_out.log 
+  echo -e "----------------------------------------------------------------------------------------------------------" >> script_out.log
   header1="|%-10s |%-20s |%-20s |%-20s |%-20s |\n"
   printf "$header1" "Nodes" "Upload Rate(KB)" "Download Rate(KB)" "Upload Rate(KB)" "Download Rate(KB)" >> script_out.log
   echo -e "----------------------------------------------------------------------------------------------------------" >> script_out.log
@@ -211,7 +211,7 @@ function NWpacketloss {
  printf "$header1" "Node 1" $bnode1_up $bnode1_dn $node1_up $node1_dn >> script_out.log
  printf "$header1" "Node 2" $bnode2_up $bnode2_dn $node2_up $node2_dn >> script_out.log
  printf "$header1" "Node 3" $bnode3_up $bnode3_dn $node3_up $node3_dn >> script_out.log
- 
+
  echo -e "\n\n" >> script_out.log
  checkPXC
  printf "$header" "Nodes" "wsrep_cluster_status" "wsrep_local_state" >> script_out.log
@@ -219,7 +219,7 @@ function NWpacketloss {
  printf "$header" "Node 1" ${cluster_status[0]} ${state_comment[0]} >> script_out.log
  printf "$header" "Node 2" ${cluster_status[1]} ${state_comment[1]} >> script_out.log
  printf "$header" "Node 3" ${cluster_status[2]} ${state_comment[2]} >> script_out.log
-  
+
  tc qdisc delete dev eth1 root
 
 }
@@ -242,7 +242,7 @@ function NWpkt_corruption {
  done
  perc=$1
 
- tc qdisc add dev eth1 root netem corrupt $perc 
+ tc qdisc add dev eth1 root netem corrupt $perc
  sleep 120
  strt=`eval date +'%H:%M'`
  sleep 60
@@ -277,7 +277,7 @@ function NWpkt_corruption {
  printf "$header" "Node 1" ${cluster_status[0]} ${state_comment[0]} >> script_out.log
  printf "$header" "Node 2" ${cluster_status[1]} ${state_comment[1]} >> script_out.log
  printf "$header" "Node 3" ${cluster_status[2]} ${state_comment[2]} >> script_out.log
-  
+
  tc qdisc delete dev eth1 root
 }
 
@@ -332,8 +332,8 @@ function NWpkt_reordering {
  echo -e "--------------------------------------------------------------------------" >> script_out.log
  printf "$header" "Node 1" ${cluster_status[0]} ${state_comment[0]} >> script_out.log
  printf "$header" "Node 2" ${cluster_status[1]} ${state_comment[1]} >> script_out.log
- printf "$header" "Node 3" ${cluster_status[2]} ${state_comment[2]} >> script_out.log 
-  
+ printf "$header" "Node 3" ${cluster_status[2]} ${state_comment[2]} >> script_out.log
+
  tc qdisc delete dev eth1 root
 }
 
@@ -386,8 +386,8 @@ function singleNodefailure {
  echo -e "--------------------------------------------------------------------------" >> script_out.log
  printf "$header" "Node 1" ${cluster_status[0]} ${state_comment[0]} >> script_out.log
  printf "$header" "Node 2" ${cluster_status[1]} ${state_comment[1]} >> script_out.log
- printf "$header" "Node 3" ${cluster_status[2]} ${state_comment[2]} >> script_out.log 
-  
+ printf "$header" "Node 3" ${cluster_status[2]} ${state_comment[2]} >> script_out.log
+
 }
 
 function pxc269 {
@@ -413,14 +413,14 @@ function pxc269 {
  checkPXC
  ssh $node1 "cd ${WORKDIR};./percona-qa/pxc-hung-mysqld.sh"
  ssh $node2 "cd ${WORKDIR};./percona-qa/pxc-hung-mysqld.sh"
- ssh $node3 "cd ${WORKDIR};./percona-qa/pxc-hung-mysqld.sh" 
+ ssh $node3 "cd ${WORKDIR};./percona-qa/pxc-hung-mysqld.sh"
 
  printf "$header" "Nodes" "wsrep_cluster_status" "wsrep_local_state" >> script_out.log
  echo -e "--------------------------------------------------------------------------" >> script_out.log
  printf "$header" "Node 1" ${cluster_status[0]} ${state_comment[0]} >> script_out.log
  printf "$header" "Node 2" ${cluster_status[1]} ${state_comment[1]} >> script_out.log
  printf "$header" "Node 3" ${cluster_status[2]} ${state_comment[2]} >> script_out.log
- 
+
  echo -e "\nSaved GDB/coredump/error log in ${WORKDIR}"
 }
 

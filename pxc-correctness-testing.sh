@@ -146,21 +146,21 @@ pxc_startup(){
   RBASE2="$(( RBASE1 + 100 ))"
   RADDR2="$ADDR:$(( RBASE2 + 7 ))"
   LADDR2="$ADDR:$(( RBASE2 + 8 ))"
-  
+
   RBASE3="$(( RBASE1 + 200 ))"
   RADDR3="$ADDR:$(( RBASE3 + 7 ))"
   LADDR3="$ADDR:$(( RBASE3 + 8 ))"
-  
+
   SUSER=root
   SPASS=
-  
+
   node1="${WORKDIR}/node1"
   node2="${WORKDIR}/node2"
   node3="${WORKDIR}/node3"
   rm -Rf $node1 $node2 $node3
   mkdir -p $node1 $node2 $node3
 
-   
+
   echo "Starting PXC node1"
   ${MID} --datadir=$node1  > ${WORKDIR}/logs/node1.err 2>&1 || exit 1;
 
@@ -330,7 +330,7 @@ for i in {1..5}; do
   check_script $? "Failed to run sysbench read write run"
   # Run pt-table-checksum to analyze data consistency
   if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-    $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root -e "set global pxc_strict_mode=DISABLED" 
+    $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root -e "set global pxc_strict_mode=DISABLED"
     pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d pxc_test,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
     check_script $? "Failed to run pt-table-checksum"
     $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root -e "set global pxc_strict_mode=ENFORCING"

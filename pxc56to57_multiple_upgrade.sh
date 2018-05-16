@@ -196,46 +196,46 @@ for BUILD_NUMBER in $(seq 1 ${NUMBEROFTRIALS}); do
   # User settings
   WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
   mkdir -p $WORKDIR/logs
-  
+
   MYSQL_BASEDIR1="${ROOT_FS}/$BASE1"
   MYSQL_BASEDIR2="${ROOT_FS}/$BASE2"
   export MYSQL_VARDIR="$WORKDIR/mysqldir"
   mkdir -p $MYSQL_VARDIR
-  
+
   echo "Workdir: $WORKDIR"
   echo "Basedirs: $MYSQL_BASEDIR1 $MYSQL_BASEDIR2"
-  
+
   ADDR="127.0.0.1"
   RPORT=$(( RANDOM%21 + 10 ))
   RBASE1="$(( RPORT*1000 ))"
   echo "Setting RBASE to $RBASE1"
   RADDR1="$ADDR:$(( RBASE1 + 7 ))"
   LADDR1="$ADDR:$(( RBASE1 + 8 ))"
-  
+
   RBASE2="$(( RBASE1 + 100 ))"
   RADDR2="$ADDR:$(( RBASE2 + 7 ))"
   LADDR2="$ADDR:$(( RBASE2 + 8 ))"
-  
+
   SUSER=root
   SPASS=
-  
+
   node1="${MYSQL_VARDIR}/node1"
   rm -rf $node1;mkdir -p $node1
   node2="${MYSQL_VARDIR}/node2"
   rm -rf $node2;mkdir -p $node2
-  
+
   EXTSTATUS=0
-  
+
   #
   # Install cluster from previous version
   #
   echo -e "\n\n#### Installing cluster from previous version\n"
   ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 > $WORKDIR/logs/node1-pre.err 2>&1 || exit 1;
   pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-pre.err" "${MYSQL_BASEDIR1}"
-  
+
   ${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node2 > $WORKDIR/logs/node2-pre.err 2>&1 || exit 1;
   pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-pre.err" "${MYSQL_BASEDIR1}"
-  
+
   #
   # Upgrading node2 to the new version
   #
@@ -245,7 +245,7 @@ for BUILD_NUMBER in $(seq 1 ${NUMBEROFTRIALS}); do
   pxc_upgrade_node 2 "5.7" "$node2" "$RBASE2" "$WORKDIR/logs/node2-upgrade.err" "${MYSQL_BASEDIR2}"
   echo "Starting node2 after upgrade"
   pxc_start_node 2 "5.7" "$node2" "gcomm://$LADDR1" "gmcast.listen_addr=tcp://$LADDR2" "$RBASE2" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-after_upgrade.err" "${MYSQL_BASEDIR2}"
-  
+
   echo -e "\n\n#### Show node2 status after upgrade\n"
   show_node_status 2 $MYSQL_BASEDIR2 0
   #

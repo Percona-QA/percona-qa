@@ -164,7 +164,7 @@ for i in ${SERVER_THREADS[@]};do
   # Check for shutdown issues
   for j in `seq 1 ${i}`;do
     # Check for shutdown failure (mysqld still responding to mysqladmin pings)
-    PING=    
+    PING=
     timeout --signal=9 10s ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping > /dev/null 2>&1
 ${PWD}/bin/mysqladmin -uroot -S${WORKDIR}/${j}_socket.sock ping
     PING=$?

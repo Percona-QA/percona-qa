@@ -183,7 +183,7 @@ function start_pxc(){
   done
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
-  
+
   if [ -d ${WS_DATADIR}/node${DATASIZE}_1 ]; then
     for i in `seq 1 $NODES`;do
      cp -r ${WS_DATADIR}/node${DATASIZE}_${i} ${DB_DIR}/node${i}
@@ -249,9 +249,9 @@ function sysbench_rw_run(){
   mkdir -p ${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}
   BACKUP_FILES="${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}"
   cp ${tarFileName} ${BACKUP_FILES}
-  rm -rf ${MYSQL_NAME}* 
+  rm -rf ${MYSQL_NAME}*
   rm -rf ${DB_DIR}/node*
-  
+
 }
 
 iibench_insert_run(){

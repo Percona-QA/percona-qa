@@ -23,7 +23,7 @@ echoit(){
   if [ "${BUILD}" != "" ]; then echo "[$(date +'%T')] $1" >> ${BUILD}/logs/ps_ssl_testing.log; fi
 }
 
-if [ ! -r ${BUILD}/bin/mysqld ]; then  
+if [ ! -r ${BUILD}/bin/mysqld ]; then
   echoit "Please execute the script from PXC basedir"
   exit 1
 fi
@@ -49,8 +49,8 @@ create_certs(){
   rm -rf ${BUILD}/certs* && mkdir -p ${BUILD}/certs ${BUILD}/certs_two && cd ${BUILD}/certs
   # Creating CA certificate
   echoit "Creating CA certificate"
-  openssl genrsa 2048 > ca-key.pem 
-  openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US' 
+  openssl genrsa 2048 > ca-key.pem
+  openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'
 
   # Creating server certificate
   echoit "Creating server certificate"
@@ -85,7 +85,7 @@ echo "skip-name-resolve" >> my.cnf
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   if [ "$(dpkg -l | grep 'libaio1')" == "" ]; then
-    sudo apt-get install libaio1 
+    sudo apt-get install libaio1
   fi
   if [ "$(dpkg -l | grep 'libjemalloc1')" == "" ]; then
     sudo apt-get install libjemalloc1
@@ -121,14 +121,14 @@ start_ps_node(){
 
   if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
     mkdir -p $node
-    if  [ ! "$(ls -A $node)" ]; then 
+    if  [ ! "$(ls -A $node)" ]; then
       ${MID} --datadir=$node  > ${BUILD}/logs/startup_node${i}.err 2>&1 || exit 1;
     fi
   fi
   if [ ! -d $node ]; then
     ${MID} --datadir=$node  > ${BUILD}/logs/startup_node${i}.err 2>&1 || exit 1;
   fi
-  
+
   echoit "Starting PS node${i}..."
   ${BUILD}/bin/mysqld $DEFAULT_FILE \
    --datadir=$node \
@@ -145,7 +145,7 @@ insert_loop(){
   CONNECTION_STRING=$2
   for i in `seq 1 $NUM_END`; do
     STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-    ${BUILD}/bin/mysql $CONNECTION_STRING -e "INSERT INTO test.t1 (str) VALUES ('${STRING}')" 
+    ${BUILD}/bin/mysql $CONNECTION_STRING -e "INSERT INTO test.t1 (str) VALUES ('${STRING}')"
   done
 }
 
@@ -156,7 +156,7 @@ encryption_run(){
   start_ps_node $1
   ${BUILD}/bin/mysql -uroot --socket=/tmp/n1.sock -e"drop database if exists test;create database test;"
   ${BUILD}/bin/mysql -uroot --socket=/tmp/n1.sock -e"create table test.t1 (id int auto_increment,str varchar(32), primary key(id))" 2>&1
-  
+
   #Data load
   echoit "Running  load data..."
   if [ -r  ${BUILD}/mysql-test/std_data/percona-cacert.pem ];then

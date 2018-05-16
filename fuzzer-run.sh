@@ -25,14 +25,14 @@ BASE_BIN="$(echo "${BASEDIR}/bin/mysql_embedded")"  # Only use the embedded serv
 # renamed to mysqld0 before runnig it, etc. If the mysql_embedded binary is used it will be mysql_embedded 0 etc.
 
 # Code hack required in main() in client/mysql.cc (i.e. the source code tree before compiling with AFL);
-# Insert under the lines "int main(int argc,char *argv[])" and "{"; 
+# Insert under the lines "int main(int argc,char *argv[])" and "{";
 #   /* With thanks, https://stackoverflow.com/a/308712/1208218 */
 #  char cmdex[80];
 #  strcpy(cmdex, "sh -c 'b=$(echo \"");
 #  strcat(cmdex, argv[0]);
 #  strcat(cmdex, "\" | sed \"s|.*/||\"); rm -Rf $b; cp -r data $b'");
 #  system(cmdex);
-# This is for mysql_embedded 
+# This is for mysql_embedded
 
 # System variables, do not change
 BINARY="$(echo "${BASE_BIN}" | sed 's|.*/||')"
@@ -67,7 +67,7 @@ if [ ! -d in ]; then
   echo "Terminating."; exit 1
 fi
 INPUT_DIR_OPTION="in"
-if [ ! -d out ]; then 
+if [ ! -d out ]; then
   mkdir out
 elif [ "${1}" == "M" ]; then
   echo "(!) Found existing 'out' directory - please ensure that this is what you want; reusing data from a previous run."
@@ -78,7 +78,7 @@ elif [ "${1}" == "S" ]; then
   # Use existing out dir, not in dir. This works whetter this is a brand new run with a just-created (by M[aster] thread) 'out' dir
   # or whetter this is a previously-long-running resumed run where the 'out' dir has already been there from before
   ### TODO - this needs work - you can de-remark the next line for continuning an existing run with out/fuzer{nr} in place
-  ###        but it does not work correctly when starting a new run ([-] PROGRAM ABORT : Resume attempted but old output directory 
+  ###        but it does not work correctly when starting a new run ([-] PROGRAM ABORT : Resume attempted but old output directory
   ###        not found) as the out/fuzzer{nr} directories do not exist at that point yet.
   ### INPUT_DIR_OPTION="-"
   sleep 0.01  # dummy, remove when above is fixed

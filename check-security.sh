@@ -35,9 +35,9 @@ if [ ! -r ${BASEDIR}/bin/mysqladmin ]; then echoit "${BASEDIR}/bin/mysqladmin is
 
 # Check that server is up and running (has to be started before tool is used)
 PWD=
-if [ "$(${BASEDIR}/bin/mysqladmin -uroot -S${SOCKET} ping 2>/dev/null)" != "mysqld is alive" ]; then 
-  if [ "$(${BASEDIR}/bin/mysqladmin -uroot -phidden -S${SOCKET} ping 2>/dev/null)" != "mysqld is alive" ]; then 
-    echoit "The server with socket ${SOCKET} is not alive. Terminating."; exit 1; 
+if [ "$(${BASEDIR}/bin/mysqladmin -uroot -S${SOCKET} ping 2>/dev/null)" != "mysqld is alive" ]; then
+  if [ "$(${BASEDIR}/bin/mysqladmin -uroot -phidden -S${SOCKET} ping 2>/dev/null)" != "mysqld is alive" ]; then
+    echoit "The server with socket ${SOCKET} is not alive. Terminating."; exit 1;
   else
     PWD='-phidden'
   fi

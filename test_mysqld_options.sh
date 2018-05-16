@@ -2,17 +2,17 @@
 # Created by Roel Van de Paar, Percona LLC
 
 # This script quickly tests all available mysqld options
-# Possible improvements: 
+# Possible improvements:
 # - Auto-scan for correct core file naming syntax (ref OS), or get results from using --core-file to mysqld or something (scan for core.*)
 # - See 'TODO' below re: combinatorics or intelligent option/value combinations
 
-# This script is deprecated in two ways: fully deprecated for TEST_OR_GENERATE=1, and semi-deprecated for TEST_OR_GENERATE=0: 
+# This script is deprecated in two ways: fully deprecated for TEST_OR_GENERATE=1, and semi-deprecated for TEST_OR_GENERATE=0:
 # 1) The TEST_OR_GENERATE=1 option was added to generate a list of all options to use in combination with pquery-run.sh, but while this works, the quality of the generated
 #    possibilities is rather low, resulting in many pqury-run.sh trial failures. Hence, generate_mysqld_options.sh was born, which is much more intelligent (and semi-manual)
 # 2) The TEST_OR_GENERATE=0 option still works fine, and if you have a spare machine to run this script on for a long time you can test all mysqld options at mysqld startup
-#    (i.e. more or less the original function of this script). However, as pquery-run.sh now encapulates the mysqld option testing functionality, the offset between this 
-#    script and the updated pquery-run.sh is minimal. The only advantage that this script offers is that it is likely (TBD) somewhat better in handling/capturing mysqld 
-#    startup failures/crashes then pquery-run.sh is (as pquery-run.sh will simply assume that there is a startup failure). 
+#    (i.e. more or less the original function of this script). However, as pquery-run.sh now encapulates the mysqld option testing functionality, the offset between this
+#    script and the updated pquery-run.sh is minimal. The only advantage that this script offers is that it is likely (TBD) somewhat better in handling/capturing mysqld
+#    startup failures/crashes then pquery-run.sh is (as pquery-run.sh will simply assume that there is a startup failure).
 # Overall recommendation: unless you have spare hardware to run this on for (for example for a few days, or even two weeks or more), stick with pquery-run.sh for the moment.
 
 if [ ! -r ./bin/mysqld ]; then
@@ -22,7 +22,7 @@ if [ ! -r ./bin/mysqld ]; then
     echo "To set your server up in this way (in terms of corefile generation), see core file setting part of setup_server.sh, available at lp:percona-qa"
     echo "Error: no ./bin/mysqld or ./mysqld found!"
     exit 1
-  else 
+  else
     cd ..
   fi
 fi
@@ -64,7 +64,7 @@ test_options(){
   echoit "Ensuring there are no relevant servers running..."
   KILLPID=$(ps -ef | grep "${RUNDIR}" | grep -v grep | awk '{print $2}' | tr '\n' ' ')
   (sleep 0.2; kill -9 ${KILLPID} >/dev/null 2>&1) &
-  wait $KILLDPID >/dev/null 2>&1  # The sleep 0.2 + subsequent wait (cought before the kill) avoids the annoying 'Killed' message 
+  wait $KILLDPID >/dev/null 2>&1  # The sleep 0.2 + subsequent wait (cought before the kill) avoids the annoying 'Killed' message
                                   # from being displayed in the output. Thank you to user 'Foonly' @ forums.whirlpool.net.au
   echoit "Clearing rundir..."
   rm -Rf ${RUNDIR}/data/* ${RUNDIR}/log/* ${RUNDIR}/pid.pid ${RUNDIR}/socket.sock
@@ -72,7 +72,7 @@ test_options(){
   mkdir -p ${RUNDIR}/data/test ${RUNDIR}/data/mysql ${RUNDIR}/log
   echoit "Copying datadir from template..."
   cp -R ${RUNDIR}/data.template/* ${RUNDIR}/data
-  PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ] 
+  PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
   echoit "Starting mysqld..."
   CMD="./bin/mysqld --basedir=${PWD} --datadir=${RUNDIR}/data --core-file \
                     --port=${PORT} --pid_file=${RUNDIR}/pid.pid --socket=${RUNDIR}/socket.sock \
@@ -105,7 +105,7 @@ test_options(){
       if egrep -qi "value.*adjusted to" ${RUNDIR}/log/master.err; then
         echoit "=== Modified: an option value was modified by mysqld."
       elif egrep -qi "ignoring option.*due to invalid value" ${RUNDIR}/log/master.err; then
-        echoit "=== Ignored: an option value was ignored by mysqld." 
+        echoit "=== Ignored: an option value was ignored by mysqld."
       elif egrep -qi "option.*value.*wasn't recognized" ${RUNDIR}/log/master.err; then
         echoit "=== Not recognized: an option value was not recognized by mysqld."
       else
@@ -125,7 +125,7 @@ test_options(){
         echoit "=== ??? Fail: an option failed, but did not generate a core. Relevant error log content:"
         egrep "${FINDS}" ${RUNDIR}/log/master.err | grep -v "${IGNOR}" | sed 's|^|^  |'
         egrep "${FINDS}" ${RUNDIR}/log/master.err | grep -v "${IGNOR}" | sed 's|^|^  |' >> /${WORKDIR}/test_mysqld_options.log
-      fi 
+      fi
     fi
   fi
 }
@@ -138,17 +138,17 @@ if [ ${TEST_OR_GENERATE} -eq 0 ]; then
   echoit "Generating initial rundir subdirectories..."
   mkdir -p ${RUNDIR}/data/test ${RUNDIR}/data/mysql ${RUNDIR}/log
   echoit "Generating datadir template (using mysql_install_db)..."
-  if [ -r ./bin/mysql_install_db ]; then 
+  if [ -r ./bin/mysql_install_db ]; then
     ./bin/mysql_install_db --force --no-defaults --basedir=${PWD} --datadir=${RUNDIR}/data > ${RUNDIR}/log/mysql_install_db.txt 2>&1
-  elif [ -r ./scripts/mysql_install_db ]; then 
+  elif [ -r ./scripts/mysql_install_db ]; then
     ./scripts/mysql_install_db --force --no-defaults --basedir=${PWD} --datadir=${RUNDIR}/data > ${RUNDIR}/log/mysql_install_db.txt 2>&1
-  else 
+  else
     echo "Error: mysql_install_db not found in ${PWD}/scripts nor in ${PWD}/bin"
     exit 1
   fi
   mv ${RUNDIR}/data ${RUNDIR}/data.template
-else 
-  rm -Rf ${WORKDIR} 
+else
+  rm -Rf ${WORKDIR}
   mkdir ${WORKDIR}
   echoit "Mode: mysqld option generation | Workdir: ${WORKDIR} | Basedir: ${PWD}"
   echoit "Writing all generated option combinations to ${WORKDIR}/full_generated_mysqld_options_list.txt..."
@@ -205,16 +205,16 @@ for VALUE4 in "${VALUES[@]}"; do
                   option_add ${OPTION3} ${VALUE3}
                 fi
                 if [ ${LEVEL} -ge 2 ]; then
-                  option_add ${OPTION2} ${VALUE2} 
+                  option_add ${OPTION2} ${VALUE2}
                 fi
                 option_add ${OPTION1} ${VALUE1}
-                OPTIONS=$(echo ${OPTIONS} | sed 's|[ ]*$||') 
+                OPTIONS=$(echo ${OPTIONS} | sed 's|[ ]*$||')
                 if [ ${TEST_OR_GENERATE} -eq 0 ]; then
                   test_options
                 else
                   echo "${OPTIONS}" >> ${WORKDIR}/full_generated_mysqld_options_list.txt
                 fi
-                # Debug 
+                # Debug
                 # read -p "Press enter to continue..."
               done
             done

@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 # pxc proxysql testing with network namespace
 
@@ -37,7 +37,7 @@ create_nw_ns(){
     sudo ip netns exec pxc_ns$i ip addr add 10.200.10.$((i+1))/24 dev pxc-veth$i
     sudo ip netns exec pxc_ns$i ip link set dev pxc-veth$i up
     sudo ip link set dev br-pxc-veth$i up
-    sudo ip netns exec pxc_ns$i ip link set lo up  
+    sudo ip netns exec pxc_ns$i ip link set lo up
     sudo ip netns exec pxc_ns$i ip route add default via 10.200.10.1
   done
 
@@ -138,8 +138,8 @@ function create_emp_db()
    popd
 }
 
-if [[ ! -e `which proxysql` ]];then 
-  echo "proxysql not found" 
+if [[ ! -e `which proxysql` ]];then
+  echo "proxysql not found"
   exit 1
 else
   PROXYSQL=`which proxysql`
@@ -160,12 +160,12 @@ pxc_startup(){
   elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
   fi
-  
+
   node1="${WORKDIR}/node1"
   node2="${WORKDIR}/node2"
   node3="${WORKDIR}/node3"
   node4="${WORKDIR}/node4"
-  
+
   if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
     mkdir -p $node1
   fi
@@ -178,8 +178,8 @@ pxc_startup(){
     if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node1.sock ping > /dev/null 2>&1; then
       break
     fi
-  done    
-  
+  done
+
   ${MID} --datadir=$node2  > ${WORKDIR}/startup_node2.err 2>&1 || exit 1;
 
   sudo ip netns exec pxc_ns2 ${BASEDIR}/bin/mysqld --defaults-file=${SCRIPT_PWD}/pxc_node.cnf --basedir=${BASEDIR} --datadir=$node2 --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so --log-error=${WORKDIR}/logs/node2.err --socket=/tmp/node2.sock --user=ramesh --wsrep_cluster_address="gcomm://10.200.10.2"  --wsrep_cluster_name=cluster1 &
@@ -190,7 +190,7 @@ pxc_startup(){
       break
     fi
   done
-  
+
   ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
 
   sudo ip netns exec pxc_ns3 ${BASEDIR}/bin/mysqld --defaults-file=${SCRIPT_PWD}/pxc_node.cnf --basedir=${BASEDIR} --datadir=$node3 --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so --log-error=${WORKDIR}/logs/node3.err --socket=/tmp/node3.sock --user=ramesh --wsrep_cluster_address="gcomm://10.200.10.2"  --wsrep_cluster_name=cluster1 &
@@ -215,11 +215,11 @@ proxysql_startup(){
   sleep 10
   sudo ip netns exec pxc_ns1 ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'proxysql'@'%' IDENTIFIED BY 'proxysql'"
   check_script $?
-  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '10.200.10.2', 3306, 20),(0, '10.200.10.3', 3306, 20),(0, '10.200.10.4', 3306, 20)" 
+  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '10.200.10.2', 3306, 20),(0, '10.200.10.3', 3306, 20),(0, '10.200.10.4', 3306, 20)"
   check_script $?
   ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)"
   check_script $?
-  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;" 
+  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;"
   check_script $?
   sleep 10
 }

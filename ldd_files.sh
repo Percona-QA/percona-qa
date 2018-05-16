@@ -5,7 +5,7 @@
 
 if [ ! -r ./mysqld -a ! -r ./xtrabackup ]; then
   echo "Assert: ./mysqld nor ./xtrabackup exist?"
-  exit 1 
+  exit 1
 fi
 
 if [ -r ./mysqld ]; then

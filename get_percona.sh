@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-if [ "" == "$2" ]; then 
+if [ "" == "$2" ]; then
   build_option=0
 else
   build_option=$2

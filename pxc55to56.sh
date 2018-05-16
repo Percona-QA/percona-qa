@@ -26,10 +26,10 @@ cd $WORKDIR
 
 count=$(ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | wc -l)
 
-if [[ $count -gt 1 ]];then 
-    for dirs in `ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | tail -n +2`;do 
+if [[ $count -gt 1 ]];then
+    for dirs in `ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | tail -n +2`;do
         rm -rf $dirs
-    done 
+    done
 fi
 
 find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.6*' -exec rm -rf {} \+
@@ -38,10 +38,10 @@ find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.6*' -exec rm -rf {} \
 
 count=$(ls -1ct Percona-XtraDB-Cluster-5.5*.tar.gz | wc -l)
 
-if [[ $count -gt 1 ]];then 
-    for dirs in `ls -1ct Percona-XtraDB-Cluster-5.5*.tar.gz | tail -n +2`;do 
+if [[ $count -gt 1 ]];then
+    for dirs in `ls -1ct Percona-XtraDB-Cluster-5.5*.tar.gz | tail -n +2`;do
         rm -rf $dirs
-    done 
+    done
 fi
 
 find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.5*' -exec rm -rf {} \+
@@ -66,10 +66,10 @@ tar -xf $TAR
 
 LPATH=${SPATH:-/usr/share/doc/sysbench/tests/db}
 
-# Parameter of parameterized build 
-if [[ -n $SDURATION ]];then 
+# Parameter of parameterized build
+if [[ -n $SDURATION ]];then
     export SYSBENCH_DURATION=$SDURATION
-else 
+else
     export SYSBENCH_DURATION=300
 fi
 
@@ -93,7 +93,7 @@ mkdir -p $SRESULTS
 echo "Workdir: $WORKDIR"
 echo "Basedirs: $MYSQL_BASEDIR1 $MYSQL_BASEDIR2"
 
-if [[ $THREEONLY -eq 1 ]];then 
+if [[ $THREEONLY -eq 1 ]];then
     GALERA2="${MYSQL_BASEDIR2}/lib/libgalera_smm.so"
     GALERA3="${MYSQL_BASEDIR2}/lib/libgalera_smm.so"
 else
@@ -123,29 +123,29 @@ fi
 
 EXTSTATUS=0
 
-if [[ $MEM -eq 1 ]];then 
+if [[ $MEM -eq 1 ]];then
     MEMOPT="--mem"
-else 
+else
     MEMOPT=""
 fi
 
 
 trap "tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs" EXIT KILL
 
-if [[ -n ${EXTERNALS:-} ]];then 
+if [[ -n ${EXTERNALS:-} ]];then
     EXTOPTS="$EXTERNALS"
 else
     EXTOPTS=""
 fi
 
 
-#if [[ $BUILD_SOURCE == 'debug' ]];then 
+#if [[ $BUILD_SOURCE == 'debug' ]];then
     #EXTOPTS+=" --mysqld=--skip-performance-schema "
 #fi
 
-if [[ $DEBUG -eq 1 ]];then 
+if [[ $DEBUG -eq 1 ]];then
     DBG="--mysqld=--wsrep-debug=1"
-else 
+else
     DBG=""
 fi
 
@@ -153,7 +153,7 @@ fi
 
   pushd ${MYSQL_BASEDIR1}/mysql-test/
 
-  set +e 
+  set +e
   perl mysql-test-run.pl \
     --mysqld=--basedir=${MYSQL_BASEDIR1} \
     --start-and-exit \
@@ -200,19 +200,19 @@ fi
 
     sysbench --test=$SDIR/parallel_prepare.lua --report-interval=10  --oltp-auto-inc=$AUTOINC --mysql-engine-trx=yes --mysql-table-engine=innodb \
         --oltp-table-size=$TSIZE --oltp_tables_count=100 --mysql-db=test --mysql-user=root \
-        --db-driver=mysql --mysql-socket=$node1/socket.sock prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt 
+        --db-driver=mysql --mysql-socket=$node1/socket.sock prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
-    if [[ ${PIPESTATUS[0]} -ne 0 ]];then 
+    if [[ ${PIPESTATUS[0]} -ne 0 ]];then
         echo "Sysbench prepare failed"
         exit 1
     fi
 
     $MYSQL_BASEDIR1/bin/mysql  -S $node1/socket.sock -u root -e "create database testdb;" || true
- 
+
 
     pushd ${MYSQL_BASEDIR1}/mysql-test/
     export MYSQLD_BOOTSTRAP_CMD=
-    set +e 
+    set +e
     perl mysql-test-run.pl \
         --mysqld=--basedir=${MYSQL_BASEDIR1} \
         --start-and-exit \
@@ -259,13 +259,13 @@ fi
     echo "Shutting down node2 after SST"
     ${MYSQL_BASEDIR1}/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
 
-    if [[ $? -ne 0 ]];then 
-        echo "Shutdown failed for node2" 
+    if [[ $? -ne 0 ]];then
+        echo "Shutdown failed for node2"
         exit 1
     fi
 
     popd
-    
+
     sleep 10
 
 
@@ -305,7 +305,7 @@ fi
 
     $MYSQL_BASEDIR2/bin/mysql_upgrade -S $node2/socket.sock -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade.log
 
-    if [[ $? -ne 0 ]];then 
+    if [[ $? -ne 0 ]];then
         echo "mysql upgrade failed"
         exit 1
     fi
@@ -318,8 +318,8 @@ fi
     $MYSQL_BASEDIR2/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
 
 
-    if [[ $? -ne 0 ]];then 
-        echo "Shutdown failed for node2" 
+    if [[ $? -ne 0 ]];then
+        echo "Shutdown failed for node2"
         exit 1
     fi
 
@@ -327,7 +327,7 @@ fi
 
 
 
-    if [[ $THREEONLY -eq 0 ]];then 
+    if [[ $THREEONLY -eq 0 ]];then
     echo "Starting again with compat options"
         perl mysql-test-run.pl \
             --mysqld=--basedir=${MYSQL_BASEDIR2} \
@@ -368,7 +368,7 @@ fi
             --mysqld=--log-error=$WORKDIR/logs/node2-post.err \
             --mysqld=--log-output=none \
             1st
-    else 
+    else
     echo "Starting node again without compat"
         perl mysql-test-run.pl \
             --mysqld=--basedir=${MYSQL_BASEDIR2} \
@@ -420,12 +420,12 @@ fi
   sleep 10
 
 
-       STABLE="test.sbtest1" 
+       STABLE="test.sbtest1"
 
     echo "Before RW testing"
-    echo "Rows on node1" 
+    echo "Rows on node1"
     $MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "select count(*) from $STABLE;"
-    echo "Rows on node2" 
+    echo "Rows on node2"
     $MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "select count(*) from $STABLE;"
 
 
@@ -435,7 +435,7 @@ fi
     $MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "show global variables like 'version';"
 
 
-    if [[ ! -e $SDIR/${STEST}.lua ]];then 
+    if [[ ! -e $SDIR/${STEST}.lua ]];then
         pushd /tmp
 
         rm $STEST.lua || true
@@ -449,11 +449,11 @@ fi
 
     $MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "create database testdb;" || true
 
-    if [[ $DIR -eq 1 ]];then 
+    if [[ $DIR -eq 1 ]];then
         sockets="$node1/socket.sock,$node2/socket.sock"
-    elif [[ $DIR -eq 2 ]];then 
+    elif [[ $DIR -eq 2 ]];then
         sockets="$node2/socket.sock"
-    elif [[ $DIR -eq 3 ]];then 
+    elif [[ $DIR -eq 3 ]];then
         sockets="$node1/socket.sock"
     fi
 
@@ -464,11 +464,11 @@ fi
             sysbench --mysql-table-engine=innodb --num-threads=$NUMT --report-interval=10 --oltp-auto-inc=$AUTOINC --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
                 --test=$SDIR/$STEST.lua --init-rng=on --oltp_index_updates=10 --oltp_non_index_updates=10 --oltp_distinct_ranges=15 --oltp_order_ranges=15 --oltp_tables_count=100 --mysql-db=test \
                 --mysql-user=root --db-driver=mysql --mysql-socket=$sockets \
-                run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run.txt 
+                run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run.txt
 
 
 
-    if [[ ${PIPESTATUS[0]} -ne 0 ]];then 
+    if [[ ${PIPESTATUS[0]} -ne 0 ]];then
         echo "Sysbench run failed"
         EXTSTATUS=1
     fi
@@ -480,10 +480,10 @@ fi
     $MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "show global variables like 'version';"
     echo "Version of second node:"
     $MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "show global variables like 'version';"
-  
-    echo "Rows on node1" 
+
+    echo "Rows on node1"
     $MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "select count(*) from $STABLE;"
-    echo "Rows on node2" 
+    echo "Rows on node2"
     $MYSQL_BASEDIR1/bin/mysql -S $node2/socket.sock  -u root -e "select count(*) from $STABLE;"
 
     $MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "drop database testdb;" || true
@@ -491,5 +491,5 @@ fi
 
   exit $EXTSTATUS
 
- 
+
 

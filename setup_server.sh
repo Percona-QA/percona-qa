@@ -56,7 +56,7 @@ fi
 
 # Set CPU Governor to Performance. This makes sense on for example a regularly used QA server or a performance testing box
 # Consider; electricity/power and heating. To do so, see the following document especially under 'cpufreq_powersave';
-# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/power_management_guide/cpufreq_governors 
+# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/power_management_guide/cpufreq_governors
 # sudo cpupower frequency-set --governor performance
 # cat /sys/devices/system/cpu/intel_pstate/*  # Should read 100,100,[0]
 # cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor  # Should read "performance"
@@ -104,7 +104,7 @@ sudo yum remove pulseaudio*  # Only do this on servers, to avoid writing of puls
 #sudo apt-get install -y libdbd-mysql libdbi-perl libdbd-mysql-perl
 
 # Bash Profile
-if [ -z "$(cat ~/.bash_profile|grep 'pshugD')" ]; then 
+if [ -z "$(cat ~/.bash_profile|grep 'pshugD')" ]; then
   echo 'alias tree="tree -pshugD"' >> ~/.bash_profile
 fi
 if ! egrep -qi "CDPATH=" ~/.bash_profile; then
@@ -113,7 +113,7 @@ fi
 
 # GDB Script
 touch ~/.gdbinit
-if [ -z "$(cat ~/.gdbinit|grep 'print elements')" ]; then cat << EOF > ~/.gdbinit 
+if [ -z "$(cat ~/.gdbinit|grep 'print elements')" ]; then cat << EOF > ~/.gdbinit
 # Next line avoids libary loading issues/manual work, see: bash$ info "(gdb)Auto-loading safe path" (do not add anything after "/" on next line, even comments)
 set auto-load safe-path /
 # [Temporarily/Permanently] disabled; it should not use /usr/lib/ but /lib64, and it seems to cause issues with thread debugging lib loading (warnings at start)
@@ -158,7 +158,7 @@ bind k kill
 EOF
 fi
 
-# Python (for LP API) 
+# Python (for LP API)
 sudo yum install python python-pip
 sudo pip install launchpadlib
 

@@ -29,7 +29,7 @@ rm -f /tmp/_qstat1.sh
 
 echo -e "\n=== Client version strings for easy access"
 ps -ef | grep mysqld | grep subreducer | \
-  sed "s/.*:[0-9][0-9] //;s/d .*--socket/ --socket/;s/\.sock .*/.sock -uroot/" 
+  sed "s/.*:[0-9][0-9] //;s/d .*--socket/ --socket/;s/\.sock .*/.sock -uroot/"
 
 echo -e "\n=== # Running mysqld sessions (can be used to quickly gauge if at least some subreducers terminated early - i.e. a crash/bug was seen)"
 ps -ef | grep mysqld | grep subreducer | wc -l

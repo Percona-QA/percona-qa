@@ -23,7 +23,7 @@ else
         if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
           AGEDIR=$[ $(date +%s) - $(stat -c %Z ${DIR}) ]  # Directory age in seconds
           if [ ${AGEDIR} -ge 90 ]; then  # Yet another safety, don't delete very recent directories
-            if [ -r ${DIR}/reducer.log ]; then 
+            if [ -r ${DIR}/reducer.log ]; then
               AGEFILE=$[ $(date +%s) - $(stat -c %Z ${DIR}/reducer.log) ]  # File age in seconds
               if [ ${AGEFILE} -ge 90 ]; then  # Yet another safety specifically for often-occuring reducer directories, don't delete very recent reducers
                 echo "Deleting reducer directory ${DIR} (directory age: ${AGEDIR}s, file age: ${AGEFILE}s)"
@@ -47,7 +47,7 @@ else
                     if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
                   fi
                 fi
-              else 
+              else
                 echo "Deleting directory ${DIR} (directory age: ${AGEDIR}s)"
                 COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
                 if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi

@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 
 # User Configurable Variables
@@ -83,7 +83,7 @@ RADDR1="$ADDR:$(( RBASE1 + 7 ))"
 LADDR1="$ADDR:$(( RBASE1 + 8 ))"
 RBASE2="$(( RBASE1 + 100 ))"
 RADDR2="$ADDR:$(( RBASE2 + 7 ))"
-LADDR2="$ADDR:$(( RBASE2 + 8 ))"  
+LADDR2="$ADDR:$(( RBASE2 + 8 ))"
 RBASE3="$(( RBASE1 + 200 ))"
 RADDR3="$ADDR:$(( RBASE3 + 7 ))"
 LADDR3="$ADDR:$(( RBASE3 + 8 ))"
@@ -239,7 +239,7 @@ pxc_startup(){
       break
     fi
   done
-  
+
 
   ${MID} --datadir=$node2  > ${WORKDIR}/startup_node2.err 2>&1 || exit 1;
   ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
@@ -268,7 +268,7 @@ pxc_startup(){
   sysbench_run load_data test
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/node1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
   check_script $?
-  
+
   $ROOT_FS/garbd --address gcomm://$LADDR1,$LADDR2,$LADDR3 --group "my_wsrep_cluster" --options "gmcast.listen_addr=tcp://$GARBDP" --log /tmp/garbd.log --daemon
   check_script $?
 }

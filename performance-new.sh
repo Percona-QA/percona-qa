@@ -38,7 +38,7 @@ fi
 echo "Workdir: $WORKDIR/$WORKDIRSUB"
 echo "Basedir: $WORKDIR/$BASEDIRSUB"
 
-# Check directories & start run if all ok 
+# Check directories & start run if all ok
 if [  -d $WORKDIR/$WORKDIRSUB ]; then
   echo "Work directory already exists. Fatal error.";
   exit 1
@@ -99,11 +99,11 @@ else
     else
       echo "Data directory template does not exist. Fatal error.";
       exit 1
-    fi 
+    fi
   else
    echo "Script is created only for PS version 5.5 and 5.6. Retry.."
    exit 1
-  fi 
+  fi
   # Start the server with default server settings.
   $BIN --basedir=${BASEDIR} --datadir=$WORKDIR/$WORKDIRSUB/default_datadir --tmpdir=$WORKDIR/$WORKDIRSUB/default_datadir \
 	--core-file --port=$PORT --pid_file=$WORKDIR/$WORKDIRSUB/default_datadir/pid.pid --socket=$WORKDIR/$WORKDIRSUB/socket.sock \
@@ -129,7 +129,7 @@ else
   while [ $i -le $THREAD_CNT ]; do
     for j in $(seq 1 2); do
       ## OLTP RW Run with default server settings + cpubound ( data size approx = 6G)
-      echo "Sysbench Run: OLTP RW testing with default server settings + cpubound ( data size approx = 6G)" 
+      echo "Sysbench Run: OLTP RW testing with default server settings + cpubound ( data size approx = 6G)"
       /usr/bin/sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua \
         --num-threads=$i --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
         --oltp-tables-count=5 --mysql-db=test --mysql-user=root \
@@ -143,7 +143,7 @@ else
     echo "THREAD_${i} $AVG_RESULT" >> $WORKSPACE/sysbench_performance_results_dcpu.txt
     i=$(( i * 2))
   done
-  echo '</performance>' >> $WORKSPACE/sysbench_performance_results_dcpu.xml  
+  echo '</performance>' >> $WORKSPACE/sysbench_performance_results_dcpu.xml
   ## Cleanup system
   timeout --signal=9 20s ${BASEDIR}/bin/mysqladmin --socket=$WORKDIR/$WORKDIRSUB/socket.sock -uroot shutdown /dev/null 2>&1
   $BIN $IO_TUNED_VAR --basedir=${BASEDIR} --datadir=$WORKDIR/$WORKDIRSUB/tuned_datadir --tmpdir=$WORKDIR/$WORKDIRSUB/tuned_datadir \
@@ -169,7 +169,7 @@ else
   while [ $i -le $THREAD_CNT ]; do
     for j in $(seq 1 2); do
       ## OLTP RW Run with tuned server settings + iobound ( data size approx = 6G)
-      echo "Sysbench Run: OLTP RW Run with tuned server settings + iobound ( data size approx = 6G)" 
+      echo "Sysbench Run: OLTP RW Run with tuned server settings + iobound ( data size approx = 6G)"
       /usr/bin/sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua \
        --num-threads=$i --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
        --oltp-tables-count=5 --mysql-db=test --mysql-user=root \
@@ -210,7 +210,7 @@ else
   while [ $i -le $THREAD_CNT ]; do
     for j in $(seq 1 2); do
       ## OLTP RW Run with tuned server settings + cpubound ( data size approx = 6G)
-      echo "Sysbench Run: OLTP RW testing with tuned server settings + cpubound ( data size approx = 6G)" 
+      echo "Sysbench Run: OLTP RW testing with tuned server settings + cpubound ( data size approx = 6G)"
       /usr/bin/sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua \
        --num-threads=$i --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
        --oltp-tables-count=5 --mysql-db=test --mysql-user=root --db-driver=mysql \
@@ -304,5 +304,5 @@ else
   ## Permanent logging
   cp $WORKSPACE/sysbench_performance_results_dcpu.xml $WORKSPACE/sysbench_performance_results_dcpu_`date +"%F_%H%M"`.xml
   cp $WORKSPACE/sysbench_performance_results_tcpu.xml $WORKSPACE/sysbench_performance_results_tcpu_`date +"%F_%H%M"`.xml
-  cp $WORKSPACE/sysbench_performance_results_tio.xml  $WORKSPACE/sysbench_performance_results_tio_`date +"%F_%H%M"`.xml 
+  cp $WORKSPACE/sysbench_performance_results_tio.xml  $WORKSPACE/sysbench_performance_results_tio_`date +"%F_%H%M"`.xml
 fi

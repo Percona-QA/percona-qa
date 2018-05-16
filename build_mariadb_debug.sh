@@ -31,4 +31,4 @@ if [[ "${TAR_dbg}" == *".tar.gz"* ]]; then
 else
   echo "Build error! Nothing cleaned up. Have a nice day!"
   exit 1
-fi 
+fi

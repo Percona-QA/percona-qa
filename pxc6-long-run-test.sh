@@ -7,7 +7,7 @@ pgrep -f mysqld
 pkill -f mysqld
 sleep 10
 pgrep mysqld || pkill -9 -f mysqld
-set -e 
+set -e
 
 sleep 5
 
@@ -65,16 +65,16 @@ fi
 
 count=$(ls -1ct Percona-XtraDB-Cluster*.tar.gz | wc -l)
 
-if [[ $count -gt 1 ]];then 
-    for dirs in `ls -1ct Percona-XtraDB-Cluster*.tar.gz | tail -n +2`;do 
+if [[ $count -gt 1 ]];then
+    for dirs in `ls -1ct Percona-XtraDB-Cluster*.tar.gz | tail -n +2`;do
     rm -rf $dirs
-    done 
+    done
 fi
 
 find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster*' -exec rm -rf {} \+
 
 echo "Removing older core files, if any"
-rm -f ${ROOT_FS}/**/*core* 
+rm -f ${ROOT_FS}/**/*core*
 
 echo "Removing older directories"
 find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+
@@ -97,16 +97,16 @@ if [[ "x${Host}" == "xubuntu-trusty-64bit" ]];then
     export CFLAGS="-Wl,--no-undefined -lasan"
 fi
 
-if [[ ! -e `which sysbench` ]];then 
-    echo "Sysbench not found" 
+if [[ ! -e `which sysbench` ]];then
+    echo "Sysbench not found"
     exit 1
 fi
 echo "Note: Using sysbench at $(which sysbench)"
 
-# Parameter of parameterized build 
-if [[ -n $SDURATION ]];then 
+# Parameter of parameterized build
+if [[ -n $SDURATION ]];then
     export SYSBENCH_DURATION=$SDURATION
-else 
+else
     export SYSBENCH_DURATION=300
 fi
 
@@ -198,7 +198,7 @@ echo "Basedir: $MYSQL_BASEDIR"
 echo "Starting PXC node1"
 pushd ${MYSQL_BASEDIR}/mysql-test/
 
-set +e 
+set +e
 perl mysql-test-run.pl \
     --start-and-exit \
     --port-base=$RBASE1 \
@@ -229,7 +229,7 @@ perl mysql-test-run.pl \
     --mysqld=--socket=$node1/socket.sock \
     --mysqld=--log-error=$WORKDIR/logs/node1.err \
     --mysqld=--log-output=none \
-  1st 
+  1st
 set -e
 popd
 
@@ -241,21 +241,21 @@ sleep 10
 ## Prepare/setup
 echo "Sysbench Run: Prepare stage"
 
-if [[ -n ${BUILTIN_SYSBENCH:-} ]];then 
+if [[ -n ${BUILTIN_SYSBENCH:-} ]];then
   /usr/bin/sysbench --test=oltp   --oltp-auto-inc=off --mysql-engine-trx=yes --mysql-table-engine=innodb \
    --oltp-table-size=100000 --mysql-db=test --mysql-user=root \
    --db-driver=mysql --mysql-socket=$node1/socket.sock prepare \
-  > $SRESULTS/sysbench_prepare.txt 
-else 
-  prepare $node1/socket.sock $WORKDIR/logs/sysbench_prepare.txt 
+  > $SRESULTS/sysbench_prepare.txt
+else
+  prepare $node1/socket.sock $WORKDIR/logs/sysbench_prepare.txt
 fi
 
 $MYSQL_BASEDIR/bin/mysql  -S $node1/socket.sock -u root -e "create database testdb;" || true
 
-if [[ -n ${DUALTEST:-} ]];then 
+if [[ -n ${DUALTEST:-} ]];then
   pushd ${MYSQL_BASEDIR}/mysql-test/
   export MYSQLD_BOOTSTRAP_CMD=
-  set +e 
+  set +e
   perl mysql-test-run.pl \
     --start-and-exit \
     --port-base=$RBASE2 \
@@ -286,7 +286,7 @@ if [[ -n ${DUALTEST:-} ]];then
     --mysqld=--log-error=$WORKDIR/logs/node2.err \
     --mysqld=--socket=$node2/socket.sock \
     --mysqld=--log-output=none \
-  1st  
+  1st
   set -e
   popd
 fi
@@ -295,13 +295,13 @@ echo "Sleeping for 10s"
 sleep 10
 
 
-if [[ -z ${BUILTIN_SYSBENCH:-} ]];then 
-  STABLE="test.sbtest1" 
-else 
-  STABLE="test.sbtest" 
+if [[ -z ${BUILTIN_SYSBENCH:-} ]];then
+  STABLE="test.sbtest1"
+else
+  STABLE="test.sbtest"
 fi
 
-if [[ ! -e $SDIR/${STEST}.lua ]];then 
+if [[ ! -e $SDIR/${STEST}.lua ]];then
   pushd /tmp
   rm $STEST.lua || true
   wget -O $STEST.lua  https://github.com/Percona-QA/sysbench/tree/0.5/sysbench/tests/db/${STEST}.lua
@@ -310,27 +310,27 @@ if [[ ! -e $SDIR/${STEST}.lua ]];then
 fi
 
 set -x
-if [[ -n ${DUALTEST:-} ]];then 
+if [[ -n ${DUALTEST:-} ]];then
   ## OLTP RW Run
   echo "Sysbench Run: OLTP RW testing"
-  if [[ -n ${BUILTIN_SYSBENCH:-} ]];then 
+  if [[ -n ${BUILTIN_SYSBENCH:-} ]];then
      /usr/bin/sysbench --num-threads=16 --oltp-auto-inc=off --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
      --test=oltp --oltp-table-size=100000 --mysql-db=test \
      --mysql-user=root --db-driver=mysql --mysql-socket=$node2/socket.sock \
-     run > $SRESULTS/sysbench_rw_run.txt 
-  else 
+     run > $SRESULTS/sysbench_rw_run.txt
+  else
      echo "Table row count after SST run"
      rw_full "$node1/socket.sock,$node2/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt
      clean_up $node1/socket.sock $WORKDIR/logs/sysbench_cleanup.txt
   fi
-else 
+else
    ## OLTP RW Run
    echo "Sysbench Run: OLTP RW testing"
-   if [[ -n ${BUILTIN_SYSBENCH:-} ]];then 
+   if [[ -n ${BUILTIN_SYSBENCH:-} ]];then
      /usr/bin/sysbench --num-threads=16 --oltp-auto-inc=off --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
       --test=oltp --oltp-table-size=100000 --mysql-db=test \
       --mysql-user=root --db-driver=mysql --mysql-socket=$node1/socket.sock \
-      run > $SRESULTS/sysbench_rw_run.txt 
+      run > $SRESULTS/sysbench_rw_run.txt
    else
      echo "Table row count after SST run"
      rw_full "$node1/socket.sock"  $WORKDIR/logs/sysbench_rw_run.txt

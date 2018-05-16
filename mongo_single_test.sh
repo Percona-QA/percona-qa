@@ -80,13 +80,13 @@ fi
 if [ ${VERBOSE} -eq 1 ]; then echoit "Intializing per-engine working directories..."; fi
 WORKDIR_PRI="${WORKDIR}/$(echo ${PRI_SHORT_ENGINE_NAME})_RUN_DATA"
 mkdir -p ${WORKDIR_PRI}
-if [ ! -d ${WORKDIR_PRI} ]; then 
+if [ ! -d ${WORKDIR_PRI} ]; then
   echoit "Assert: this script tried to create the directory ${WORKDIR_PRI}, but the directory does not exist after creation!"
   exit 1
 fi
 WORKDIR_SEC="${WORKDIR}/$(echo ${SEC_SHORT_ENGINE_NAME})_RUN_DATA"
 mkdir -p ${WORKDIR_SEC}
-if [ ! -d ${WORKDIR_SEC} ]; then 
+if [ ! -d ${WORKDIR_SEC} ]; then
   echoit "Assert: this script tried to create the directory ${WORKDIR_SEC}, but the directory does not exist after creation!"
   exit 1
 fi
@@ -105,8 +105,8 @@ done
 
 REPORT_PRI=${WORKDIR}/smoke.py_$(echo ${PRI_SHORT_ENGINE_NAME} | sed 's|V[0-9]\+||').log
 REPORT_SEC=${WORKDIR}/smoke.py_$(echo ${SEC_SHORT_ENGINE_NAME} | sed 's|V[0-9]\+||').log
-# --with-cleanbb cannot be used (yet): ref smoke.py; cleanbb terminates all mongod instances on the box. 
-# It is likely also not necessary, as we use per-trial working directories already 
+# --with-cleanbb cannot be used (yet): ref smoke.py; cleanbb terminates all mongod instances on the box.
+# It is likely also not necessary, as we use per-trial working directories already
 DEFAULT_OPTIONS="--mode=files ${PWD}/jstests/${TEST_TO_RUN}"
 OPTIONS_PRI="--port=$PORT1 --smoke-db-prefix ${WORKDIR_PRI} --report-file=${REPORT_PRI}.report --storageEngine ${PRI_ENGINE} ${DEFAULT_OPTIONS}"
 OPTIONS_SEC="--port=$PORT2 --smoke-db-prefix ${WORKDIR_SEC} --report-file=${REPORT_SEC}.report --storageEngine ${SEC_ENGINE} ${DEFAULT_OPTIONS}"

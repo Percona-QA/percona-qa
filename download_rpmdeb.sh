@@ -6,7 +6,7 @@ if [ -z "$1" ]; then
   echo "Download all rpm or deb packages from the given URL."
   echo "Usage: $0 {url}"
   exit
-fi  
+fi
 
 # determine package manager for requirements function
 pkgmgr=
@@ -34,7 +34,7 @@ requires()
     fi
     echo ""
   fi
-} 
+}
 
 # check script dependencies
 requires "lynx"

@@ -1,11 +1,11 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-# This script may need a few improvements, alike to build_5.x_dbg.sh 
+# This script may need a few improvements, alike to build_5.x_dbg.sh
 
 # The first option is the bzr tree name on lp. If it is not passed, check if the local tree = a source tree ready for building
 if [ -z $1 ]; then
-  if [ ! -r CMakeLists.txt ]; then 
+  if [ ! -r CMakeLists.txt ]; then
     echo "No bzr tree name (for example "lp:percona-xtrabackup/2.2" was specified (as first option to this script to enable pull and build mode),"
     echo "and the current directory is not a source tree (to enable build mode only). Exiting"
     exit 1
@@ -14,13 +14,13 @@ else
   bzr branch $1
   DIR=$(echo "$1" | sed 's|.*/||')
   cd $DIR
-  if [ ! -r CMakeLists.txt ]; then 
+  if [ ! -r CMakeLists.txt ]; then
     echo "Something went wrong. Branch was pulled but there is no "Makefile" in the current directory $PWD. Exiting"
     exit 1
   fi
 fi
 
-# Setup gmock (avoids certain compilation issues) 
+# Setup gmock (avoids certain compilation issues)
 if [ -r '/bzr/gmock-1.6.0.zip' ]; then
   export WITH_GMOCK=/bzr/gmock-1.6.0.zip
 fi

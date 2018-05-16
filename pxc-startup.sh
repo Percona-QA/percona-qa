@@ -8,7 +8,7 @@ sst_method="rsync"
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   if [ "$(dpkg -l | grep 'libaio1')" == "" ]; then
-    sudo apt-get install libaio1 
+    sudo apt-get install libaio1
   fi
   if [ "$(dpkg -l | grep 'libjemalloc1')" == "" ]; then
     sudo apt-get install libjemalloc1
@@ -28,7 +28,7 @@ if [[ $sst_method == "xtrabackup" ]];then
   else
     wget http://jenkins.percona.com/job/percona-xtrabackup-2.4-binary-tarball/label_exp=centos5-64/lastSuccessfulBuild/artifact/*zip*/archive.zip
     unzip archive.zip
-    tar -xzf archive/TARGET/*.tar.gz 
+    tar -xzf archive/TARGET/*.tar.gz
     PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
     export PATH="$BUILD/$PXB_BASE/bin:$PATH"
   fi
