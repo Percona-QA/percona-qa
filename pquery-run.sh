@@ -286,44 +286,34 @@ check_cmd(){
   if [ ${CMD_PID} -ne 0 ]; then echo -e "\nERROR: $ERROR_MSG. Terminating!"; exit 1; fi
 }
 
-pxc_startup(){
+if [[ $PXC -eq 1 ]];then
+  # Creating default my.cnf file
+  rm -rf ${BASEDIR}/my.cnf
+  echo "[mysqld]" > ${BASEDIR}/my.cnf
+  echo "basedir=${BASEDIR}" >> ${BASEDIR}/my.cnf
+  echo "wsrep-debug=ON" >> ${BASEDIR}/my.cnf
+  echo "innodb_file_per_table" >> ${BASEDIR}/my.cnf
+  echo "innodb_autoinc_lock_mode=2" >> ${BASEDIR}/my.cnf
+  echo "innodb_locks_unsafe_for_binlog=1" >> ${BASEDIR}/my.cnf
+  echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${BASEDIR}/my.cnf
+  echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
+  echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
+  echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
+  echo "core-file" >> ${BASEDIR}/my.cnf
+  echo "log-output=none" >> ${BASEDIR}/my.cnf
+  echo "wsrep_slave_threads=2" >> ${BASEDIR}/my.cnf
+fi
+pxc_startup(){  
   ADDR="127.0.0.1"
-  RPORT=$(( RANDOM%21 + 10 ))
-  RBASE1="$(( RPORT*1000 ))"
-  RADDR1="$ADDR:$(( RBASE1 + 7 ))"
-  LADDR1="$ADDR:$(( RBASE1 + 8 ))"
-  
-  RBASE2="$(( RBASE1 + 100 ))"
-  RADDR2="$ADDR:$(( RBASE2 + 7 ))"
-  LADDR2="$ADDR:$(( RBASE2 + 8 ))"
-  
-  RBASE3="$(( RBASE1 + 200 ))"
-  RADDR3="$ADDR:$(( RBASE3 + 7 ))"
-  LADDR3="$ADDR:$(( RBASE3 + 8 ))"
-  
+  RPORT=$(( (RANDOM%21 + 10)*1000 ))
   SUSER=root
   SPASS=
-  
   if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
     MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
   elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
   fi
-
-  if [ "$1" == "startup" ]; then
-    node1="${WORKDIR}/node1.template"
-    node2="${WORKDIR}/node2.template"
-    node3="${WORKDIR}/node3.template"
-    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
-      mkdir -p $node1 $node2 $node3
-    fi
-    WSREP_PROVIDER_OPT=""
-  else
-    node1="${RUNDIR}/${TRIAL}/node1"
-    node2="${RUNDIR}/${TRIAL}/node2"
-    node3="${RUNDIR}/${TRIAL}/node3"
-  fi
-
+  
   pxc_startup_chk(){
     ERROR_LOG=$1
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
@@ -350,96 +340,58 @@ pxc_startup(){
       fi
     fi
   }
-
-  if [ "$1" == "startup" ]; then
-    ${MID} --datadir=$node1  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
-  fi
-  if [ ${VALGRIND_RUN} -eq 1 ]; then
-    VALGRIND_CMD="${VALGRIND_CMD}"
-  else
-    VALGRIND_CMD=""
-  fi
-  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
-    --basedir=${BASEDIR} --datadir=$node1 \
-    --loose-debug-sync-timeout=600  --wsrep-debug=ON \
-    --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm:// \
-    --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT" \
-    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=$node1/node1.err \
-    --socket=$node1/node1_socket.sock --log-output=none \
-    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/node1.err 2>&1 &
-
-  for X in $(seq 0 ${PXC_START_TIMEOUT}); do
-    sleep 1
-    if ${BASEDIR}/bin/mysqladmin -uroot -S$node1/node1_socket.sock ping > /dev/null 2>&1; then
-      break
+  for i in `seq 1 3`;do
+    RBASE1="$(( RPORT + ( 100 * $i ) ))"
+    LADDR1="127.0.0.1:$(( RBASE1 + 8 ))"
+	if [ $i -eq 1 ];then
+	  WSREP_CLUSTER="gcomm://"
+	else
+      WSREP_CLUSTER="$WSREP_CLUSTER,gcomm://$LADDR1"
+	fi
+    if [[ $WITH_KEYRING_VAULT -eq 1 ]]; then
+      MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf"
     fi
-    pxc_startup_chk $node1/node1.err
-  done
-
-  if [ "$1" == "startup" ]; then
-    ${MID} --datadir=$node2  > ${WORKDIR}/startup_node2.err 2>&1 || exit 1;
-  fi
-
-  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-    --basedir=${BASEDIR} --datadir=$node2 \
-    --loose-debug-sync-timeout=600  --wsrep-debug=ON \
-    --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
-    --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2;$WSREP_PROVIDER_OPT" \
-    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=$node2/node2.err \
-    --socket=$node2/node2_socket.sock --log-output=none \
-    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/node2.err 2>&1 &
-
-  for X in $(seq 0 ${PXC_START_TIMEOUT}); do
-    sleep 1
-    if ${BASEDIR}/bin/mysqladmin -uroot -S$node2/node2_socket.sock ping > /dev/null 2>&1; then
-      break
+    if [ "$1" == "startup" ]; then
+      node="${WORKDIR}/node${i}.template"
+      if [[ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]]; then
+        mkdir -p $node
+      fi
+      WSREP_PROVIDER_OPT=""
+    else
+      node="${RUNDIR}/${TRIAL}/node${i}"
+    fi	
+    if [ "$1" == "startup" ]; then
+      ${MID} --datadir=$node  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
     fi
-    pxc_startup_chk $node2/node2.err
-  done
-  
-  if [ "$1" == "startup" ]; then
-    ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
-  fi
-
-  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
-    --basedir=${BASEDIR} --datadir=$node3 \
-    --loose-debug-sync-timeout=600  --wsrep-debug=ON \
-    --innodb_file_per_table $MYEXTRA $PXC_MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
-    --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR3;$WSREP_PROVIDER_OPT" \
-    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=$node3/node3.err \
-    --socket=$node3/node3_socket.sock --log-output=none \
-    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/node3.err 2>&1 &
-
-  for X in $(seq 0 ${PXC_START_TIMEOUT}); do
-    sleep 1
-    if ${BASEDIR}/bin/mysqladmin -uroot -S$node3/node3_socket.sock ping > /dev/null 2>&1; then
-      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -e "create database if not exists test" > /dev/null 2>&1
-      sleep 2
-      break
+    if [ ${VALGRIND_RUN} -eq 1 ]; then
+      VALGRIND_CMD="${VALGRIND_CMD}"
+    else
+      VALGRIND_CMD=""
     fi
-    pxc_startup_chk $node3/node3.err
+
+    $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf \
+      $STARTUP_OPTION --datadir=$node \
+      --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA \
+      --wsrep_cluster_address=$WSREP_CLUSTER \
+      --wsrep_node_incoming_address=$ADDR \
+      --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT" \
+      --wsrep_node_address=$ADDR --log-error=$node/node${i}.err \
+      --socket=$node/node${i}_socket.sock --port=$RBASE1 > $node/node${i}.err 2>&1 &
+
+    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
+      sleep 1
+      if ${BASEDIR}/bin/mysqladmin -uroot -S$node/node${i}_socket.sock ping > /dev/null 2>&1; then
+        break
+      fi
+      pxc_startup_chk $node/node${i}.err
+    done
+	if [[ $i -eq 1 ]];then
+	  WSREP_CLUSTER="gcomm://$LADDR1"
+    fi
   done
+  if [ "$1" == "startup" ]; then
+    ${BASEDIR}/bin/mysql -uroot -S$node/node${i}_socket.sock -e "create database if not exists test" > /dev/null 2>&1
+  fi
 }
 
 gr_startup(){
@@ -1589,6 +1541,21 @@ elif [[ ${GRP_RPL} -eq 1 ]]; then
     echoit "Group Replication Cluster run: 'NO'"
   fi
 fi
+
+# Start vault server for pquery encryption run
+if [[ $WITH_KEYRING_VAULT -eq 1 ]];then
+  echoit "Setting up vault server"
+  mkdir $WORKDIR/vault
+  rm -rf $WORKDIR/vault/*
+  killall vault
+  if [[ $PXC -eq 1 ]];then
+    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
+  else
+    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
+    MYEXTRA="$MYEXTRA --early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf"
+  fi
+fi
+
 if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then 
   echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Trials: ${TRIALS} | Statements per trial: ${QC_NR_OF_STATEMENTS_PER_TRIAL} | Primary Engine: ${QC_PRI_ENGINE} | Secondary Engine: ${QC_SEC_ENGINE}"
 else
