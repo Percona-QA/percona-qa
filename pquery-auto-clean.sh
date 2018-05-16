@@ -3,7 +3,7 @@
 #30 */1 * * * roel /home/roel/percona-qa/pquery-auto-clean.sh 629181 >> /sda/629181_pquery-auto-clean.out 2>&1
 #45 */1 * * * roel /home/roel/percona-qa/pquery-auto-clean.sh 663235 >> /sda/663235_pquery-auto-clean.out 2>&1
 # The above would, every hour, at :15, :30 and :45 respectively, start a auto clean job for 3 various pquery-run.sh run directories (3 pquery-run.sh's running)
-# Note that starting them all at the same time is twice a bad idea; 1) failures will occur as currently the pquery-prep-red.sh scripts expects it is the 
+# Note that starting them all at the same time is twice a bad idea; 1) failures will occur as currently the pquery-prep-red.sh scripts expects it is the
 # only one running, and it uses extract_query.gdb in percona-qa, which has a hard-coded filename being stored in /tmp (this can be improved later) and 2) since
 # it would cause significant load at the time the jobs are executed, thereby maybe affecting existing pquery runs too negatively (reproducibility etc...)
 
@@ -28,7 +28,7 @@ if [ -d ${SCRIPT_PWD} ]; then
   cd ${SCRIPT_PWD}
   git pull || true
 else
-  git clone https://github.com/Percona-QA/percona-qa.git 
+  git clone https://github.com/Percona-QA/percona-qa.git
   cd ${SCRIPT_PWD}
 fi
 

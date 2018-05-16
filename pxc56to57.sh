@@ -44,7 +44,7 @@ if [ -d ${ROOT_FS}/nocache ]; then
   popd
 else
   pushd ${ROOT_FS}
-  git clone https://github.com/Feh/nocache 
+  git clone https://github.com/Feh/nocache
   popd
 fi
 export PATH="$PATH:${ROOT_FS}/nocache"

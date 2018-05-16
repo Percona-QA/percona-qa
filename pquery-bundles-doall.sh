@@ -1,10 +1,10 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-# This script is handy once you've worked through a pquery run/work directory (i.e. tried reducer<nr>.sh scripts to generate testcases), 
-# and there are a number of bugs left for which testcase creation has failed for one reason or another. In this case, simply start this 
+# This script is handy once you've worked through a pquery run/work directory (i.e. tried reducer<nr>.sh scripts to generate testcases),
+# and there are a number of bugs left for which testcase creation has failed for one reason or another. In this case, simply start this
 # script from within the pquery run/work dir and it will generate bundles, and a handy copy of the error log and gdb trace, to make bug
-# logging a breeze. Just see the resulting .err and .gdb files for bug details, and the bundle can be uploaded as it has ALL files 
+# logging a breeze. Just see the resulting .err and .gdb files for bug details, and the bundle can be uploaded as it has ALL files
 # a developer could one for analysis (minus a testcase that is).
 
 SCRIPT_PWD=$(cd `dirname $0` && pwd)

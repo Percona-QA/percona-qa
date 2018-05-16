@@ -6,7 +6,7 @@
 # 1) Project Name: build-xtradb-cluster-binaries-56/label_exp=$Host,BUILD_TYPE=$Ttype
 #    Artifact to copy: target/Percona-XtraDB-Cluster-*.tar.gz
 # 2) Project Name: percona-xtrabackup-2.2-binaries/label_exp=$Host
-#    Artifact to copy: 
+#    Artifact to copy:
 # 3) Project Name: qpress-binaries/label_exp=$Host
 #    Artifact to copy: qpress
 
@@ -16,7 +16,7 @@
 
 ROOT_FS=$(pwd)
 
-# libeatmydata is a small LD_PRELOAD library designed 
+# libeatmydata is a small LD_PRELOAD library designed
 # to (transparently) disable fsync
 
 if test -f /usr/local/lib/libeatmydata.so
@@ -86,11 +86,11 @@ else
   MTR_TESTS="$*"
 fi
 
-if [[ -n ${SKIPEM:-} ]];then 
+if [[ -n ${SKIPEM:-} ]];then
     echo -e $SKIPEM > /tmp/skip.tests
 else
-    :>/tmp/skip.tests 
-fi 
+    :>/tmp/skip.tests
+fi
 
 # Run the MTR tests
 
@@ -101,19 +101,19 @@ perl ./mtr --force \
   2>&1 | tee mtr.out; \
   MTR_EXIT_CODE=${PIPESTATUS[0]};
 
-# build junit.xml from MTR output using awk script 
+# build junit.xml from MTR output using awk script
 # lifted from percona-server-5.6-TokuDB-MTR job
 
 cat mtr.out | awk -f <(cat - <<-EOD
 # header
-BEGIN { 
+BEGIN {
   print "<testsuite name=\"Percona XtraDB Cluster 56 - ${MTR_TESTS}\">"
   inFail = 0;
 }
 
 # if we are in failure and a result is found  then end exit
 inFail == 1 && /^([[:alnum:]]+).*[\[] [a-z]+ [\]](.*)/ {
-  print "]]>" 
+  print "]]>"
   print "    </system-out>"
   print "  </testcase>"
   inFail = 0
@@ -126,10 +126,10 @@ inFail == 1 && /^([[:alnum:]]+).*[\[] [a-z]+ [\]](.*)/ {
   print "    <system-out>"
   print "<![CDATA["
   print
-  print "]]>" 
+  print "]]>"
   print "    </system-out>"
   print "  </testcase>"
-} 
+}
 
 # report disabled tests
 /^(.*) .*\[ disabled \]/ {
@@ -137,7 +137,7 @@ inFail == 1 && /^([[:alnum:]]+).*[\[] [a-z]+ [\]](.*)/ {
   print "    <system-out>"
   print "<![CDATA["
   print
-  print "]]>" 
+  print "]]>"
   print "    </system-out>"
   print "  </testcase>"
 }
@@ -148,7 +148,7 @@ inFail == 1 && /^([[:alnum:]]+).*[\[] [a-z]+ [\]](.*)/ {
   print "    <system-out>"
   print "<![CDATA["
   print
-  print "]]>" 
+  print "]]>"
   print "    </system-out>"
   print "  </testcase>"
  }
@@ -171,7 +171,7 @@ inFail == 1 {
 END {
   # end the failure if we are still in it
   if (inFail == 1) {
-    print "]]>" 
+    print "]]>"
     print "    </system-out>"
     print "  </testcase>"
   }

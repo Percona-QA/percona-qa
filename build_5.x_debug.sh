@@ -4,7 +4,7 @@
 MAKE_THREADS=1          # Number of build threads. There may be a bug for builds when setting this >1
 WITH_ROCKSDB=1          # 0 or 1 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
                                  # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
-                                 # This is also auto-turned off for all 5.5 and 5.6 builds 
+                                 # This is also auto-turned off for all 5.5 and 5.6 builds
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
 WITH_LOCAL_INFILE=1     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
 SSL_MYSQL57_HACK=1      # 0 or 1 # PS 5.7.21 will compile fine on Ubuntu Bionic, MS 5.7.21 will not and fail with this error:
@@ -85,7 +85,7 @@ fi
 CLANG=
 if [ $USE_CLANG -eq 1 ]; then
   if [ $USE_CUSTOM_COMPILER -eq 1 ]; then
-    echo "Both USE_CLANG and USE_CUSTOM_COMPILER are enabled, while they are mutually exclusive; this script can only one custom compiler! Terminating." 
+    echo "Both USE_CLANG and USE_CUSTOM_COMPILER are enabled, while they are mutually exclusive; this script can only one custom compiler! Terminating."
     exit 1
   fi
   echo "======================================================"
@@ -99,11 +99,11 @@ fi
 AFL=
 if [ $USE_AFL -eq 1 ]; then
   if [ $USE_CLANG -eq 1 ]; then
-    echo "Both USE_CLANG and USE_AFL are enabled, while they are mutually exclusive; this script can only one custom compiler! Terminating." 
+    echo "Both USE_CLANG and USE_AFL are enabled, while they are mutually exclusive; this script can only one custom compiler! Terminating."
     exit 1
   fi
   if [ $USE_CUSTOM_COMPILER -eq 1 ]; then
-    echo "Both USE_AFL and USE_CUSTOM_COMPILER are enabled, while they are mutually exclusive; this script can only one custom compiler! Terminating." 
+    echo "Both USE_AFL and USE_CUSTOM_COMPILER are enabled, while they are mutually exclusive; this script can only one custom compiler! Terminating."
     exit 1
   fi
   echo "====================================================================="
@@ -157,7 +157,7 @@ else
     fi
   fi
 fi
-# Also note that -k can be use for make to ignore any errors; if the build fails somewhere in the tests/unit tests then it matters 
+# Also note that -k can be use for make to ignore any errors; if the build fails somewhere in the tests/unit tests then it matters
 # little. Note that -k is not a compiler flag as -w is. It is a make option.
 
 CURPATH=$(echo $PWD | sed 's|.*/||')
@@ -209,7 +209,7 @@ if [ ! -r ./scripts/make_binary_distribution ]; then  # Note: ./scripts/binary_d
   echo "Assert: ./scripts/make_binary_distribution was not found. Terminating."
   exit 1
 else
-  ./scripts/make_binary_distribution | tee -a /tmp/5.x_debug_build_${RANDOMD} 
+  ./scripts/make_binary_distribution | tee -a /tmp/5.x_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for ./scripts/make_binary_distribution!"; exit 1; fi
 fi
 

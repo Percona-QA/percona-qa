@@ -45,7 +45,7 @@ echo "Workdir: $WORKDIR/$WORKDIRSUB"
 echo "Basedir: $WORKDIR/$BASEDIRSUB"
 echo "Testbin: $TESTBIN"
 
-# Check directories & start run if all ok 
+# Check directories & start run if all ok
 if [ -d $WORKDIR/$WORKDIRSUB ]; then
   echo "Work directory already exists. Fatal error.";
   exit 1
@@ -91,16 +91,16 @@ else
    --oltp-tables-count=30 --mysql-db=test --oltp-read-only --mysql-user=root \
    --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock \
    run > $WORKDIR/$WORKDIRSUB/sysbench_ro_run_warm_up.txt 2>&1
- 
+
   ## OLTP RW Run with default server settings + single threaded + cpubound
-  echo "Sysbench Run: OLTP RW testing with default server settings + single threaded + cpubound" 
+  echo "Sysbench Run: OLTP RW testing with default server settings + single threaded + cpubound"
   /usr/bin/sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua \
    --num-threads=1 --max-time=$SYSBENCH_SINGLE_THREAD_DURATION --max-requests=1870000000 \
    --oltp-tables-count=10 --mysql-db=test --mysql-user=root \
    --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock \
    run > $WORKDIR/$WORKDIRSUB/sysbench_default_rw_single_thread_cpubound.txt 2>&1
 
-  ## OLTP RW Run with default server settings + multiple threaded (700) + cpubound 
+  ## OLTP RW Run with default server settings + multiple threaded (700) + cpubound
   echo "Sysbench Run: OLTP RW testing with default server settings + multiple threaded (700) + cpubound"
   /usr/bin/sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua \
    --num-threads=$MULTI_THREAD_COUNT --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
@@ -115,14 +115,14 @@ else
    --oltp-tables-count=40 --mysql-db=test --mysql-user=root \
    --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock \
    cleanup > $WORKDIR/$WORKDIRSUB/sysbench_default_cleanup.txt 2>&1
- 
+
   # kill current mysql process to start the server with tuned server settings
   pkill -f mysqld
   sleep 5
   mkdir -p $WORKDIR/$WORKDIRSUB/tuned_run
   PS_VERSION=`$WORKDIR/$BASEDIRSUB/bin/mysqld --version | awk '{print $3}' | cut -c1-3`
   if [ $PS_VERSION == "5.6" ];then
-    LINK="http://jenkins.percona.com/view/QA/job/percona-server-5.6-qa-performance/plot/" 
+    LINK="http://jenkins.percona.com/view/QA/job/percona-server-5.6-qa-performance/plot/"
     # Start 5.6 server with tuned server settings.
     set -o pipefail; MTR_BUILD_THREAD=$MTR_BT; perl lib/v1/mysql-test-run.pl \
      --start-and-exit \
@@ -204,7 +204,7 @@ else
    --oltp-tables-count=40 --oltp-table-size=1000000 --mysql-db=test --mysql-user=root \
    --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock \
    run > $WORKDIR/$WORKDIRSUB/sysbench_prepare.txt 2>&1
-	
+
   ## OLTP RO Run for memory Warmup
   echo "Sysbench Run: OLTP RO Run for memory Warmup"
   /usr/bin/sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua \
@@ -212,25 +212,25 @@ else
    --oltp-tables-count=30 --mysql-db=test --oltp-read-only --mysql-user=root \
    --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock \
    run > $WORKDIR/$WORKDIRSUB/sysbench_ro_run_warm_up.txt 2>&1
- 
+
   ## OLTP RW Run with Tuned server settings + single threaded + cpubound (10 tables * 1 M Rows each : data size approx = 2.3G)
-  echo "Sysbench Run: OLTP RW testing with default server settings + single threaded + cpubound" 
+  echo "Sysbench Run: OLTP RW testing with default server settings + single threaded + cpubound"
   /usr/bin/sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua \
    --num-threads=1 --max-time=$SYSBENCH_SINGLE_THREAD_DURATION --max-requests=1870000000 \
    --oltp-tables-count=10 --mysql-db=test --mysql-user=root --db-driver=mysql \
    --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock \
    run > $WORKDIR/$WORKDIRSUB/sysbench_tuned_rw_single_thread_cpubound.txt 2>&1
 
-  ## OLTP RW Run with Tuned server settings + multiple threaded (700) + cpubound (10 tables * 1 M Rows each : data size approx = 2.3G ) 
+  ## OLTP RW Run with Tuned server settings + multiple threaded (700) + cpubound (10 tables * 1 M Rows each : data size approx = 2.3G )
   echo "Sysbench Run: OLTP RW testing with default server settings + multiple threaded (700) + cpubound"
   /usr/bin/sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua \
    --num-threads=$MULTI_THREAD_COUNT --max-time=$SYSBENCH_DURATION --max-requests=1870000000 \
    --oltp-tables-count=10 --mysql-db=test --mysql-user=root \
    --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock \
    run > $WORKDIR/$WORKDIRSUB/sysbench_tuned_rw_multi_thread_cpubound.txt 2>&1
-	
+
   ## OLTP RW Run with Tuned server settings + single threaded + iobound (30 tables * 1 M Rows each : data size approx = 6.9G )
-  echo "Sysbench Run: OLTP RW testing with tuned server settings + single threaded + iobound" 
+  echo "Sysbench Run: OLTP RW testing with tuned server settings + single threaded + iobound"
   /usr/bin/sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua \
    --num-threads=1 --max-time=$SYSBENCH_SINGLE_THREAD_DURATION --max-requests=1870000000 \
    --oltp-tables-count=30 --mysql-db=test --mysql-user=root \
@@ -252,8 +252,8 @@ else
    --oltp-tables-count=40 --mysql-db=test --mysql-user=root \
    --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock \
    cleanup > $WORKDIR/$WORKDIRSUB/sysbench_tuned_cleanup.txt 2>&1
-  
-  # Process Results 
+
+  # Process Results
   RW_DS_CPUBOUND_QUERIES=`grep "total:" $WORKDIR/$WORKDIRSUB/sysbench_default_rw_single_thread_cpubound.txt | awk '{print $2}' | xargs echo`
   RW_DM_CPUBOUND_QUERIES=`grep "total:" $WORKDIR/$WORKDIRSUB/sysbench_default_rw_multi_thread_cpubound.txt | awk '{print $2}' | xargs echo`
   RW_TS_CPUBOUND_QUERIES=`grep "total:" $WORKDIR/$WORKDIRSUB/sysbench_tuned_rw_single_thread_cpubound.txt | awk '{print $2}' | xargs echo`
@@ -322,7 +322,7 @@ else
     RW_TM_CPUBOUND_FACTOR=`echo "scale=2; $RW_TM_CPUBOUND_QUERIES / $RW_TM_CPUBOUND_QUERIES_LAST" | bc`
     RW_TS_IOBOUND_FACTOR=`echo "scale=2; $RW_TS_IOBOUND_QUERIES / $RW_TS_IOBOUND_QUERIES_LAST" | bc`
     RW_TM_IOBOUND_FACTOR=`echo "scale=2; $RW_TM_IOBOUND_QUERIES / $RW_TM_IOBOUND_QUERIES_LAST" | bc`
-	
+
     RW_DS_CPUBOUND_PERCNT=`echo "$RW_DS_CPUBOUND_FACTOR * 100" | bc | sed 's/\..*//'`
     RW_DM_CPUBOUND_PERCNT=`echo "$RW_DM_CPUBOUND_FACTOR * 100" | bc | sed 's/\..*//'`
     RW_TS_CPUBOUND_PERCNT=`echo "$RW_TS_CPUBOUND_FACTOR * 100" | bc | sed 's/\..*//'`

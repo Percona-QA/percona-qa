@@ -7,12 +7,12 @@
 # based on a script by waldner
 
 # Enhanced by David Bennett - david.bennett@percona.com - 2015-02-24
- 
+
 use warnings;
 use strict;
 use bignum;
 use Config;
- 
+
 my %sigMap=(
   'SigPnd','Thread Pending',
   'ShdPnd','Process Pending',
@@ -20,9 +20,9 @@ my %sigMap=(
   'SigIgn','Ignored',
   'SigCgt','Caught'
 );
- 
+
 defined $Config{sig_name} or die "Cannot find signal names in Config";
-my @sigs = map { "SIG$_" } split(/ /, $Config{sig_name});  
+my @sigs = map { "SIG$_" } split(/ /, $Config{sig_name});
 
 # print the process
 
@@ -38,9 +38,9 @@ sub showproc {
   # print the signal status
 
   my $statfile = "/proc/$pid/status";
- 
+
   open(S, "<", $statfile) or die "Cannot open status file $statfile";
- 
+
   while(<S>) {
     chomp;
     if (/^((Sig|Shd)(Pnd|Blk|Ign|Cgt)):\s+(\S+)/) {

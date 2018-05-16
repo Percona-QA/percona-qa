@@ -22,13 +22,13 @@ echoit(){
   if [ "${BUILD}" != "" ]; then echo "[$(date +'%T')] $1" >> ${BUILD}/pxc_ssl_testing.log; fi
 }
 
-if [ ! -r ${BUILD}/bin/mysqld ]; then  
+if [ ! -r ${BUILD}/bin/mysqld ]; then
   echoit "Please execute the script from PXC basedir"
   exit 1
 fi
 
 # Creating sysbench log directory
-mkdir -p ${BUILD}/logs 
+mkdir -p ${BUILD}/logs
 #rm -rf ${BUILD}/certs && mkdir -p ${BUILD}/certs && cd ${BUILD}/certs
 
 archives() {
@@ -59,8 +59,8 @@ create_certs(){
   rm -rf ${BUILD}/certs* && mkdir -p ${BUILD}/certs ${BUILD}/certs_two && cd ${BUILD}/certs
   # Creating CA certificate
   echoit "Creating CA certificate"
-  openssl genrsa 2048 > ca-key.pem 
-  openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US' 
+  openssl genrsa 2048 > ca-key.pem
+  openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'
 
   # Creating server certificate
   echoit "Creating server certificate"
@@ -124,7 +124,7 @@ echo "ssl-key=${BUILD}/certs/client-key.pem" >> my-template.cnf
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   if [ "$(dpkg -l | grep 'libaio1')" == "" ]; then
-    sudo apt-get install libaio1 
+    sudo apt-get install libaio1
   fi
   if [ "$(dpkg -l | grep 'libjemalloc1')" == "" ]; then
     sudo apt-get install libjemalloc1
@@ -145,7 +145,7 @@ if [[ $sst_method == "xtrabackup" ]];then
   else
     wget http://jenkins.percona.com/job/percona-xtrabackup-2.4-binary-tarball/label_exp=centos5-64/lastSuccessfulBuild/artifact/*zip*/archive.zip
     unzip archive.zip
-    tar -xzf archive/TARGET/*.tar.gz 
+    tar -xzf archive/TARGET/*.tar.gz
     PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
     export PATH="$BUILD/$PXB_BASE/bin:$PATH"
   fi
@@ -180,7 +180,7 @@ start_pxc_node(){
 
   if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
     mkdir -p $node $keyring_node
-    if  [ ! "$(ls -A $node)" ]; then 
+    if  [ ! "$(ls -A $node)" ]; then
       ${MID} --datadir=$node  > ${BUILD}/logs/startup_node${i}.err 2>&1 || exit 1;
     fi
   fi
@@ -217,7 +217,7 @@ start_pxc_node(){
        --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
        --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
        --socket=/tmp/n${i}.sock --port=$RBASE1 --wsrep_sst_method=mysqldump --wsrep_sst_auth=sslsst: > $node/node${i}.err 2>&1 &
-      
+
       startup_check
     else
       echoit "Starting PXC node${i}..."
@@ -226,10 +226,10 @@ start_pxc_node(){
        --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;socket.ssl_key=${BUILD}/certs/server-key.pem;socket.ssl_cert=${BUILD}/certs/server-cert.pem;socket.ssl_ca=${BUILD}/certs/ca.pem" \
        --log-error=$node/node${i}.err $KEY_RING_OPTIONS \
        --socket=/tmp/n${i}.sock --port=$RBASE1 --wsrep_sst_method=mysqldump --wsrep_sst_auth=sslsst: > $node/node${i}.err 2>&1 &
-      
+
       startup_check
       ${BUILD}/bin/mysql -uroot --socket=/tmp/n${i}.sock -e"CREATE USER 'sslsst'@'%' REQUIRE SSL;GRANT ALL ON *.* TO 'sslsst'@'%';"
-       
+
     fi
   else
     echoit "Starting PXC node${i}..."
@@ -288,7 +288,7 @@ sst_encryption_run(){
   sysbench $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock prepare > ${BUILD}/logs/sysbench_load.log 2>&1
 
   start_pxc_node 2
-  
+
   echoit "Initiated sysbench read write run ..."
   sysbench_run oltp
   sysbench $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
@@ -302,9 +302,9 @@ sst_encryption_run(){
   TABLE_ROW_COUNT_NODE1=`${BUILD}/bin/mysql -uroot --socket=/tmp/n1.sock -e"select count(1) from test.sbtest11"`
   TABLE_ROW_COUNT_NODE2=`${BUILD}/bin/mysql -uroot --socket=/tmp/n2.sock -e"select count(1) from test.sbtest11"`
 
-  if  [[ ( -z $TABLE_ROW_COUNT_NODE1 ) &&  (  -z $TABLE_ROW_COUNT_NODE2 ) ]] ;then 
+  if  [[ ( -z $TABLE_ROW_COUNT_NODE1 ) &&  (  -z $TABLE_ROW_COUNT_NODE2 ) ]] ;then
     TABLE_ROW_COUNT_NODE1=1;
-    TABLE_ROW_COUNT_NODE2=2; 
+    TABLE_ROW_COUNT_NODE2=2;
   fi
 
   echo $SST_SHUFFLE_CERT

@@ -82,7 +82,7 @@ for (( ; ; )); do
       if [ -z "`ps -p ${PID[$thread]} | awk '{print $1}' | grep -v 'PID'`" ]; then
         echo -e "\t\t\t\t\t\t   Thread: $thread | Repetition: $[ $2 - ${RPT_LEFT[$thread]} ]/$2 | [PID: ${PID[$thread]}] Ended!"
         EXE_DONE=$[ $EXE_DONE + 1 ]
-        PID[$thread]=0 
+        PID[$thread]=0
       fi
     fi
   done

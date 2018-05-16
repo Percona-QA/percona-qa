@@ -44,7 +44,7 @@ echo "Workdir: $WORKDIR/$WORKDIRSUB"
 echo "Basedir: $WORKDIR/$BASEDIRSUB"
 echo "Testbin: $TESTBIN"
 
-# Check directories & start run if all ok 
+# Check directories & start run if all ok
 if [ -d $WORKDIR/$WORKDIRSUB ]; then
   echo "Work directory already exists. Fatal error.";
   exit 1
@@ -99,8 +99,8 @@ else
     --test=oltp --oltp-table-size=100000 --mysql-db=test \
     --mysql-user=root --db-driver=mysql --mysql-socket=$WORKDIR/$WORKDIRSUB/socket.sock \
     run > $WORKDIR/$WORKDIRSUB/sysbench_rw_run.txt 2>&1
- 
-  # Process Results 
+
+  # Process Results
   RO_QUERIES=`grep "total:" $WORKDIR/$WORKDIRSUB/sysbench_ro_run.txt | awk '{print $2}' | xargs echo`
   RW_QUERIES=`grep "total:" $WORKDIR/$WORKDIRSUB/sysbench_rw_run.txt | awk '{print $2}' | xargs echo`
 

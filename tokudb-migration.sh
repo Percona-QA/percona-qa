@@ -35,7 +35,7 @@ start_mysql_55(){
 }
 
 stop_mysql_55(){
-  timeout --signal=9 20s ${BASEDIR_56}/bin/mysqladmin -uroot --socket=${BASEDIR_56}/socket.sock shutdown > /dev/null 2>&1 
+  timeout --signal=9 20s ${BASEDIR_56}/bin/mysqladmin -uroot --socket=${BASEDIR_56}/socket.sock shutdown > /dev/null 2>&1
   sleep 5
 }
 
@@ -56,7 +56,7 @@ start_mysql_56(){
 }
 
 stop_mysql_56(){
-  timeout --signal=9 20s ${BASEDIR_56}/bin/mysqladmin -uroot --socket=${BASEDIR_56}/socket.sock shutdown > /dev/null 2>&1 
+  timeout --signal=9 20s ${BASEDIR_56}/bin/mysqladmin -uroot --socket=${BASEDIR_56}/socket.sock shutdown > /dev/null 2>&1
   sleep 5
 }
 
@@ -82,26 +82,26 @@ mkdir -p ${BACKP_DIR} ${LOG_DIR} ${TOKU_DIR}
 #Start 55 server for dataload
 echoit "Starting MySQL-5.5 mysqld process."
 # Run mysql_install_db
-if [ -r ${BASEDIR_55}/bin/mysql_install_db ]; then 
+if [ -r ${BASEDIR_55}/bin/mysql_install_db ]; then
   ${BASEDIR_55}/bin/mysql_install_db --force --no-defaults --basedir=${BASEDIR_55} --datadir=${BASEDIR_55}/data > ${LOG_DIR}/mysql55_install.log 2>&1
-elif [ -r ${BASEDIR_55}/scripts/mysql_install_db ]; then 
+elif [ -r ${BASEDIR_55}/scripts/mysql_install_db ]; then
   ${BASEDIR_55}/scripts/mysql_install_db --force --no-defaults --basedir=${BASEDIR_55} --datadir=${BASEDIR_55}/data > ${LOG_DIR}/mysql55_install.log 2>&1
-else 
-  echo 'mysql_install_db not found in scripts nor bin directories'; 
+else
+  echo 'mysql_install_db not found in scripts nor bin directories';
   exit 1
 fi
 
 # Load jemalloc lib
-if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
+if [ -r /usr/lib64/libjemalloc.so.1 ]; then
   export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
-elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then 
+elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then
   export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
 elif [ -r ${BASEDIR_55}/lib/mysql/libjemalloc.so.1 ]; then
   export LD_PRELOAD=${BASEDIR_55}/lib/mysql/libjemalloc.so.1
-else 
-  echo 'Error: jemalloc not found, please install it first'; 
-  exit 1; 
-fi 
+else
+  echo 'Error: jemalloc not found, please install it first';
+  exit 1;
+fi
 
 MYEXTRA=""
 start_mysql_55 $MYEXTRA
@@ -132,14 +132,14 @@ $INNOBACKUP  --user=root --socket=${BASEDIR_55}/socket.sock --datadir=${BASEDIR_
 BACKUP_LOC=`ls -rt ${BACKP_DIR} | tail -1`
 
 $INNOBACKUP --apply-log ${BACKP_DIR}/$BACKUP_LOC > ${LOG_DIR}/innobackupex_prepare.log 2&>1
-timeout --signal=9 20s ${BASEDIR_55}/bin/mysqladmin -uroot --socket=${BASEDIR_55}/socket.sock shutdown > /dev/null 2>&1 
+timeout --signal=9 20s ${BASEDIR_55}/bin/mysqladmin -uroot --socket=${BASEDIR_55}/socket.sock shutdown > /dev/null 2>&1
 
 find ${BASEDIR_55}/data -type f -name "*toku*" | xargs cp -t ${WORKDIR}/tokudb_files
 
 cp -r ${BACKP_DIR}/$BACKUP_LOC/* ${BASEDIR_56}/data
 
 export LD_PRELOAD=""
-#Start 56 server without TokuDB plugin 
+#Start 56 server without TokuDB plugin
 echoit "Starting 56 server without TokuDB plugin for non tokudb tables migration."
 MYEXTRA=""
 start_mysql_56 $1
@@ -149,18 +149,18 @@ echoit "mysql_upgrade completed successfully for non tokudb tables."
 stop_mysql_56
 
 # Load jemalloc lib
-if [ -r /usr/lib64/libjemalloc.so.1 ]; then 
+if [ -r /usr/lib64/libjemalloc.so.1 ]; then
   export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
-elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then 
+elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then
   export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
 elif [ -r ${BASEDIR_56}/lib/mysql/libjemalloc.so.1 ]; then
   export LD_PRELOAD=${BASEDIR_56}/lib/mysql/libjemalloc.so.1
-else 
+else
   echoit "Error: jemalloc not found, please install it first"
-  exit 1; 
-fi 
+  exit 1;
+fi
 
-#Start 56 server with TokuDB plugin 
+#Start 56 server with TokuDB plugin
 echoit "Starting 56 server with TokuDB plugin for tokudb migration."
 MYEXTRA=""
 MYEXTRA="--plugin-load=tokudb=ha_tokudb.so"

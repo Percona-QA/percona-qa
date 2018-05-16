@@ -168,7 +168,7 @@ pxc_startup(){
   MPID="$!"
   MPID_ARRAY+=(${MPID})
   check_server_startup node3
-  
+
   if $BASEDIR/bin/mysqladmin -uroot --socket=/tmp/node1.sock ping > /dev/null 2>&1; then
     echo 'Started PXC node1...'
     $BASEDIR/bin/mysql -uroot --socket=/tmp/node1.sock -e"CREATE DATABASE IF NOT EXISTS test" > /dev/null 2>&1

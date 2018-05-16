@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 
 # User Configurable Variables
@@ -65,7 +65,7 @@ else
   tar -xzf $MS57_TAR
   tar -xzf $MS_TEST_TAR
   MS57_BASE=`ls -1td mysql-5.7* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$MS57_BASE/bin:$PATH"  
+  export PATH="$ROOT_FS/$MS57_BASE/bin:$PATH"
 fi
 
 if [ ! -z $PS57_TAR ];then
@@ -86,7 +86,7 @@ else
   tar -xzf $MS57_11_TAR
   tar -xzf $MS_TEST_TAR
   MS57_11_BASE=`ls -1td mysql-5.7* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$MS57_11_BASE/bin:$PATH"  
+  export PATH="$ROOT_FS/$MS57_11_BASE/bin:$PATH"
 fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
@@ -120,7 +120,7 @@ function create_emp_db()
 
 pushd ${MS57_BASEDIR}/mysql-test/
 
-set +e 
+set +e
 perl mysql-test-run.pl \
   --start-and-exit \
   --vardir=$psdatadir \
@@ -140,7 +140,7 @@ perl mysql-test-run.pl \
   --mysqld=--log-error=$WORKDIR/logs/ms57.err \
   --mysqld=--socket=$WORKDIR/ms57.sock \
   --mysqld=--log-output=none \
-1st  
+1st
 set -e
 popd
 
@@ -167,7 +167,7 @@ $MS57_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ms57.sock -u root shutdown
 
 pushd ${PS57_BASEDIR}/mysql-test/
 
-set +e 
+set +e
 perl mysql-test-run.pl \
   --start-and-exit \
   --start-dirty \
@@ -188,7 +188,7 @@ perl mysql-test-run.pl \
   --mysqld=--log-error=$WORKDIR/logs/ps57.err \
   --mysqld=--socket=$WORKDIR/ps57.sock \
   --mysqld=--log-output=none \
-1st  
+1st
 set -e
 popd
 
@@ -222,7 +222,7 @@ PORT1=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 
 pushd ${MS57_11_BASEDIR}/mysql-test/
 
-set +e 
+set +e
 perl mysql-test-run.pl \
   --start-and-exit \
   --start-dirty \
@@ -243,7 +243,7 @@ perl mysql-test-run.pl \
   --mysqld=--log-error=$WORKDIR/logs/ms57.err \
   --mysqld=--socket=$WORKDIR/ms57.sock \
   --mysqld=--log-output=none \
-1st  
+1st
 set -e
 popd
 

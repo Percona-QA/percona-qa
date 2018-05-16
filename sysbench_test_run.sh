@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 # This script is for sysbench test run
 
@@ -60,7 +60,7 @@ ${PSBASEDIR}/bin/mysqld --no-defaults \
     --log-error=${WORKDIR}/logs/mysql.err \
     --socket=/tmp/mysql.sock \
 	--log-output=none > ${WORKDIR}/logs/mysql.err 2>&1 &
-	  
+
 for X in $(seq 0 ${PS_START_TIMEOUT}); do
   sleep 1
   if ${PSBASEDIR}/bin/mysqladmin -uroot -S/tmp/mysql.sock ping > /dev/null 2>&1; then

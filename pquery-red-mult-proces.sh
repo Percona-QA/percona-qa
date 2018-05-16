@@ -4,7 +4,7 @@
 # OPTIONAL - If you want to run two or more at the same time, change /dev/shm to another path that reducer can use.
 # Make sure that this is an empty subdirectory that can be deleted over and over again!
 USE_ALTERNATIVE_DIRECTORY=0  # Set to 1 to enable, 0 for disable
-# WARNING! DO NOT USE THE ROOT OF SOME VOLUME OR SOME IMPORTANT DIRECTORY. IT WILL BE WIPED. SET TO AN EMPTY DIRECTORY. 
+# WARNING! DO NOT USE THE ROOT OF SOME VOLUME OR SOME IMPORTANT DIRECTORY. IT WILL BE WIPED. SET TO AN EMPTY DIRECTORY.
 # It does not have to exist yet (Creation will be attempted)
 ALT_REDUCER_DIRECTORY=/sda/reducerdir2
 # If you use this, reducer will give minor error './reducer<nr>.sh: line 658: [: -lt: unary operator expected' in output
@@ -16,7 +16,7 @@ if [ ${USE_ALTERNATIVE_DIRECTORY} -eq 1 ]; then
     mkdir ${ALT_REDUCER_DIRECTORY}
     if [ -d ${ALT_REDUCER_DIRECTORY} ]; then
       echo "Created ${ALT_REDUCER_DIRECTORY} which will be used as temporary storage for reducer scripts"
-    else 
+    else
       echo "Assert: ${ALT_REDUCER_DIRECTORY} did not exist, this script tried to created it, but it failed"
       exit 1
     fi

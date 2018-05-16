@@ -20,7 +20,7 @@ HOST=127.0.0.1                                    # IP Address of the target hos
 PORT=16327                                        # Port of the target host
 USER="root"                                       # MySQL Username on the target host
 PASSWORD=""                                       # Password on the target host
-DATABASE=test                                     # Database on the target host. It's highly recommended to use 'test' as the SQL input file references it many times. If you 
+DATABASE=test                                     # Database on the target host. It's highly recommended to use 'test' as the SQL input file references it many times. If you
                                                   # need to use another database if name, it's best to:  sed -i "s|test|somedb|g" ${INFILE}  or similar (may lower SQL quality!)
 
 echoit(){
@@ -84,7 +84,7 @@ while true; do
    fi
    if egrep -qi "Access denied for user" ${WORKDIR}/${TRIAL}/pquery.log; then
      echoit "[Trial ${TRIAL}] Authentication denied - check credentials! Error from pquery log:"
-     grep "Access denied for user" ${WORKDIR}/${TRIAL}/pquery.log | head -n1 
+     grep "Access denied for user" ${WORKDIR}/${TRIAL}/pquery.log | head -n1
      echoit "[Trial ${TRIAL}] Terminating!"
      exit 1
    fi

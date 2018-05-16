@@ -18,7 +18,7 @@ NUMT=10
 SDURATION=300
 
 # Installing percona tookit
-if ! rpm -qa | grep -qw percona-toolkit ; then 
+if ! rpm -qa | grep -qw percona-toolkit ; then
   sudo yum install percona-toolkit
 fi
 
@@ -70,6 +70,6 @@ for i in {1..5}; do
   # Sysbench transaction run
   sysbench_run oltp pxc_test
   $SBENCH $SYSBENCH_OPTIONS --mysql-user=$dbuser --mysql-password=$dbpass --mysql-host=${nodes[0]}  run | grep tps > /dev/null 2>&1
-  # Run pt-table-checksum to analyze data consistency 
+  # Run pt-table-checksum to analyze data consistency
   pt-table-checksum h=208.88.225.243,P=3306,u=root,p=root -d pxc_test --recursion-method dsn=h=208.88.225.243,P=3306,u=root,p=root,D=percona,t=dsns
 done

@@ -12,7 +12,7 @@
 ERROR_LOG=$1
 if [ "$ERROR_LOG" == "" ]; then
   if [ -r ./log/master.err ]; then
-    ERROR_LOG=./log/master.err  
+    ERROR_LOG=./log/master.err
   else
     echo "$0 failed to extract string from an error log, as no error log file name was passed to this script"
     exit 1
@@ -49,7 +49,7 @@ check_better_string(){
 if [ "${STRING}" == "" -o "${STRING}" == "my_print_stacktrace" -o "${STRING}" == "my_print_stacktrace.unsigned" -o "${STRING}" == "0" -o "${STRING}" == "NULL" ]; then
   POTENTIALLY_BETTER_STRING="$(grep 'Assertion failure:' $ERROR_LOG | tail -n1 | sed 's|.*Assertion failure:[ \t]\+||;s|[ \t]+$||;s|.*c:[0-9]\+:||;s/|/./g;s/\&/./g;s/:/./g;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g')"
   check_better_string
-  if [ ${BETTER_FOUND} -eq 0 ]; then 
+  if [ ${BETTER_FOUND} -eq 0 ]; then
     # Last resort; try to get first frame from stack trace in error log in a more basic way
     # This may need some further work, if we start seeing too generic strings like 'do_command', 'parse_sql' etc. text showing in bug list
     POTENTIALLY_BETTER_STRING="$(egrep -o 'libgalera_smm\.so\(.*|mysqld\(.*|ha_rocksdb.so\(.*|ha_tokudb.so\(.*' $ERROR_LOG | sed 's|[^(]\+(||;s|).*||;s|(.*||;s|+0x.*||' | egrep -v 'my_print_stacktrace|handle.*signal|^[ \t]*$' | sed 's/|/./g;s/\&/./g;s/:/./g;s|"|.|g;s|\!|.|g;s|&|.|g;s|\*|.|g;s|\]|.|g;s|\[|.|g;s|)|.|g;s|(|.|g' | head -n1)"
@@ -58,7 +58,7 @@ if [ "${STRING}" == "" -o "${STRING}" == "my_print_stacktrace" -o "${STRING}" ==
   fi
 fi
 
-if [ $(echo ${STRING} | wc -l) -gt 1 ]; then 
+if [ $(echo ${STRING} | wc -l) -gt 1 ]; then
   echo "ASSERT! TEXT STRING WAS MORE THEN ONE LINE. PLEASE FIX ME (text_string.sh). NOTE; AS PER INSTRUCTIONS IN FILE, PLEASE AVOID EDITING THE ORIGINAL CODE BLOCK!"
   exit 1
 fi
@@ -67,9 +67,9 @@ fi
 STRING=$(echo ${STRING} | sed 's|info->end_of_file == inline_mysql_file_tell.*|info->end_of_file == inline_mysql_file_tel|')
 
 # Fixup a common (".all") text string (seen much in error logs, so reducer reduces to 0 lines instead of the bug)
-# Normally this would be done by 1) making the look-for TEXT="..." string (...) more specific in reducer, 2) filtering 
+# Normally this would be done by 1) making the look-for TEXT="..." string (...) more specific in reducer, 2) filtering
 # it at the end of known_bugs.strings with a TEXT=.....$ (to avoid it matching too generic strings)
-if [ "${STRING}" == ".all" ]; then 
+if [ "${STRING}" == ".all" ]; then
   if grep "MYSQL_BIN_LOG..rollback.THD.. bool.. Assertion ..all" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
     STRING="MYSQL_BIN_LOG..rollback.THD.. bool.. Assertion ..all"
   fi

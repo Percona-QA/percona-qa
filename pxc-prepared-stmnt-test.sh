@@ -151,7 +151,7 @@ pxc_startup(){
   MPID="$!"
   MPID_ARRAY+=(${MPID})
   check_server_startup node3
-  
+
   if $BASEDIR/bin/mysqladmin -uroot --socket=/tmp/node1.sock ping > /dev/null 2>&1; then
     echo 'Started PXC node1...'
     $BASEDIR/bin/mysql -uroot --socket=/tmp/node1.sock -e"CREATE DATABASE IF NOT EXISTS test" > /dev/null 2>&1
@@ -177,7 +177,7 @@ check_script(){
   if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID}. Terminating!"; exit 1; fi
 }
 
-#Initiate PXC prepared statement 
+#Initiate PXC prepared statement
 $BASEDIR/bin/mysql  -uroot -S/tmp/node1.sock -e"source $SCRIPT_PWD/prepared_statements.sql" 2>/dev/null 2>&1 &
 sleep 60
 echo "Starting single node recovery test"
@@ -197,12 +197,12 @@ mkdir -p $node4
 RBASE4="$(( RBASE1 + 300 ))"
 RADDR4="$ADDR:$(( RBASE4 + 7 ))"
 LADDR4="$ADDR:$(( RBASE4 + 8 ))"
-${MID} --datadir=$node4  > ${WORKDIR}/logs/node4.err 2>&1 
+${MID} --datadir=$node4  > ${WORKDIR}/logs/node4.err 2>&1
 
 CMD="${BASEDIR}/bin/mysqld --no-defaults $STARTUP_OPTIONS --basedir=${BASEDIR} --datadir=$node4 --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2,gcomm://$LADDR3,gcomm://$LADDR4 --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR4 --log-error=${WORKDIR}/logs/node4.err --socket=/tmp/node4.sock --log-output=none --port=$RBASE4 --server-id=4"
 
 $CMD  > ${WORKDIR}/logs/node4.err 2>&1 &
- 
+
 check_server_startup node4
 if $BASEDIR/bin/mysqladmin -uroot --socket=/tmp/node4.sock ping > /dev/null 2>&1; then
   echo 'Started PXC node4...'

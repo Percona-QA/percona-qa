@@ -17,7 +17,7 @@ elif [ ! -d ${WORK_PWD}/bin ]; then
 elif [ ! -r ${SCRIPT_PWD}/ldd_files.sh ]; then
   echo "There is no ldd_files.sh in the script (${SCRIPT_PWD}) directory? Terminating."
   exit 1
-else 
+else
   BUGNR=$1
 fi
 

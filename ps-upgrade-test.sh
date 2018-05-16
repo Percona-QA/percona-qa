@@ -1,6 +1,6 @@
-#!/bin/bash 
+#!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
-# This will help us to test PS upgrade 
+# This will help us to test PS upgrade
 # Usage example:
 # $ ~/percona-qa/ps_upgrade.sh <workdir> <lower_version> <upper_version>"
 # $ ~/percona-qa/ps_upgrade.sh /qa/workdir 5.6.34 5.7.18"
@@ -96,7 +96,7 @@ if [ ! -z $PS_UPPER_TAR ];then
   tar -xzf $PS_UPPER_TAR
   PS_UPPER_BASE=`ls -1td ?ercona-?erver-${PS_UPPER_VERSION}* | grep -v ".tar" | head -n1`
   export PATH="$ROOT_FS/$PS_UPPER_BASE/bin:$PATH"
-else  
+else
   PS_UPPER_BASE=`ls -1td ?ercona-?erver-${PS_UPPER_VERSION}* | grep -v ".tar" | head -n1`
   if [ ! -z $PS_UPPER_BASE ]; then
     export PATH="$ROOT_FS/$PS_UPPER_BASE/bin:$PATH"
@@ -133,19 +133,19 @@ function create_emp_db()
 }
 
 #Load jemalloc lib
-if [ -r `find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then 
+if [ -r `find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
   export LD_PRELOAD=`find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
-elif [ -r $PS_UPPER_BASEDIR/lib/mysql/libjemalloc.so.1 ]; then 
+elif [ -r $PS_UPPER_BASEDIR/lib/mysql/libjemalloc.so.1 ]; then
   export LD_PRELOAD=$PS_UPPER_BASEDIR/lib/mysql/libjemalloc.so.1
-else 
-  echoit "Error: jemalloc not found, please install it first" 
-  exit 1; 
+else
+  echoit "Error: jemalloc not found, please install it first"
+  exit 1;
 fi
 
 
 pushd ${PS_LOWER_BASEDIR}/mysql-test/
 
-set +e 
+set +e
 perl mysql-test-run.pl \
   --start-and-exit \
   --vardir=$psdatadir \
@@ -165,7 +165,7 @@ perl mysql-test-run.pl \
   --mysqld=--log-error=$WORKDIR/logs/ps_lower.err \
   --mysqld=--socket=$WORKDIR/ps_lower.sock \
   --mysqld=--log-output=none \
-1st  
+1st
 set -e
 popd
 
@@ -204,9 +204,9 @@ $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root sysbench_myi
 
 if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
   #Install TokuDB plugin
-  echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock 
+  echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
   $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/TokuDB.sql
-  
+
   echoit "Loading employees database with tokudb engine for upgrade testing.."
   create_emp_db employee_5 tokudb employees.sql
 
@@ -216,11 +216,11 @@ fi
 
 if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
   #Install RocksDB plugin
-  echo "INSTALL PLUGIN rocksdb SONAME 'ha_rocksdb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock 
+  echo "INSTALL PLUGIN rocksdb SONAME 'ha_rocksdb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
   $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/MyRocks.sql
- 
+
   echo "DROP DATABASE IF EXISTS rocksdb_test;CREATE DATABASE IF NOT EXISTS rocksdb_test; set global default_storage_engine = ROCKSDB " | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
-  
+
   echoit "Sysbench rocksdb data load"
   sysbench_run rocksdb rocksdb_test
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_lower.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_rocksdb_prepare.txt
@@ -261,7 +261,7 @@ $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_lower.sock -u root shutdo
 
 pushd ${PS_UPPER_BASEDIR}/mysql-test/
 
-set +e 
+set +e
 perl mysql-test-run.pl \
   --start-and-exit \
   --start-dirty \
@@ -282,7 +282,7 @@ perl mysql-test-run.pl \
   --mysqld=--log-error=$WORKDIR/logs/ps_upper.err \
   --mysqld=--socket=$WORKDIR/ps_upper.sock \
   --mysqld=--log-output=none \
-1st  
+1st
 set -e
 popd
 
@@ -303,7 +303,7 @@ PORT1=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 
 pushd ${PS_LOWER_BASEDIR}/mysql-test/
 
-set +e 
+set +e
 perl mysql-test-run.pl \
   --start-and-exit \
   --vardir=$psdatadir \
@@ -354,7 +354,7 @@ function rpl_test(){
 
   pushd ${PS_LOWER_BASEDIR}/mysql-test/
 
-  set +e 
+  set +e
   perl mysql-test-run.pl \
     --start-and-exit \
     --vardir=$ps_master_datadir \
@@ -416,7 +416,7 @@ function rpl_test(){
   SLAVE_SQL_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_SQL_Running | awk '{ print $2 }'`
 
   if [ -z "$SLAVE_IO_STATUS" -o -z "$SLAVE_SQL_STATUS" ] ; then
-    echoit "Error : Replication is not running, please check.." 
+    echoit "Error : Replication is not running, please check.."
     exit
   fi
   echoit "Replication status : Slave_IO_Running=$SLAVE_IO_STATUS - Slave_SQL_Running=$SLAVE_SQL_STATUS"
@@ -427,13 +427,13 @@ function rpl_test(){
 
   ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none --skip-slave-start > $WORKDIR/logs/ps_slave.err 2>&1 &
 
-  
+
   startup_check $WORKDIR/ps_slave.sock
   ${PS_UPPER_BASEDIR}/bin/mysql_upgrade --socket=$WORKDIR/ps_slave.sock -uroot > $WORKDIR/logs/ps_rpl_slave_upgrade.log 2>&1
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_slave.sock -u root shutdown
   ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
- 
+
   startup_check $WORKDIR/ps_slave.sock
   sysbench_run innodb test
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_master.sock prepare  2>&1 | tee $WORKDIR/logs/rpl_sysbench_prepare.txt
@@ -442,14 +442,14 @@ function rpl_test(){
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
 
-  ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_master_datadir/mysqld.1/data  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 & 
+  ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_master_datadir/mysqld.1/data  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 &
 
   startup_check $WORKDIR/ps_master.sock
   ${PS_UPPER_BASEDIR}/bin/mysql_upgrade --socket=$WORKDIR/ps_master.sock -uroot > $WORKDIR/logs/ps_rpl_master_upgrade.log 2>&1
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
 
-  ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_master_datadir/mysqld.1/data  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=101 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 & 
+  ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_master_datadir/mysqld.1/data  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=101 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 &
 
   startup_check $WORKDIR/ps_master.sock
 

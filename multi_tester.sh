@@ -56,7 +56,7 @@ Go(){
   kill -9 $(ps -ef | grep ${PWD} | grep -v grep | awk '{print $2}') >/dev/null 2>&1
   sleep 0.2
   ./init >/dev/null 2>&1
-  ./start >/dev/null 2>&1 
+  ./start >/dev/null 2>&1
   sleep 3
   timeout --signal=SIGKILL ${TEST_MAX_DURATION}s ./test >/dev/null 2>&1
   if [ $? -ge 124 ]; then echo "test run timed out. You may want to consider increasing TEST_MAX_DURATION or check what is going wrong"; fi
@@ -66,7 +66,7 @@ Go(){
   TEXT2="$(${SCRIPT_PWD}/text_string.sh ./log/master.err)"
   if [ "${TEXT1}" != "" -a "${TEXT1}" == "${TEXT2}" ]; then echo "mysqld crash detected during replay: ${TEXT1}"; fi
   if [ "${TEXT1}" == "" -a "${TEXT2}" != "" ]; then echo "mysqld crash detected during shutdown: ${TEXT2}"; fi
-}  
+}
 
 Go ${NAMEDIR1} ${TESTD1} ${TESTDIR1}
 Go ${NAMEDIR2} ${TESTD2} ${TESTDIR2}

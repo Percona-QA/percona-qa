@@ -104,7 +104,7 @@ loop(){  # $1 to this function is the JS TEST_TO_RUN
     #Once tokuft-only failures are cleared, we can start looking into test failures where both engines fail. Ftm, we are ignoring/deleting them
     #update_saved_counter
     #echoit "Both engines failed on ${1}, saving details in ${RESULTSDIR}/${RANDOMD}..."
-    #mv ${WORKDIR} ${RESULTSDIR} 
+    #mv ${WORKDIR} ${RESULTSDIR}
     #if [ ! -d ${RESULTSDIR}/${RANDOMD} ]; then
     #  echo "Assert: attempted to move ${WORKDIR} to ${RESULTSDIR}, but this seems to have failed. Out of disk space maybe? Terminating run..."
     #  exit 1
@@ -136,7 +136,7 @@ update_saved_counter(){  # Use a MUTEX to ensure that two or more threads do not
     MUTEX2=1
   else
     while [ ${MUTEX2} -ne 0 ]; do
-      sleep 2 
+      sleep 2
     done
     MUTEX2=1
   fi
@@ -144,14 +144,14 @@ update_saved_counter(){  # Use a MUTEX to ensure that two or more threads do not
   SAVED=$[ ${SAVED} + 1 ]
   echo ${SAVED} > ${RESULTSDIR}/saved.lock
   MUTEX2=0
-} 
+}
 
 start_thread(){  # Use a MUTEX to ensure that two or more threads do not update the test counter / access the tests list file at the same time
   if [ ${MUTEX1} -eq 0 ]; then
     MUTEX1=1
   else
     while [ ${MUTEX1} -ne 0 ]; do
-      sleep 2 
+      sleep 2
     done
     MUTEX1=1
   fi

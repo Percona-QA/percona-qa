@@ -3,7 +3,7 @@
 # This script installs protractor and all packages required for PMM e2e testing on Ubuntu
 
 ##############################################################
-# Check if package is not installed and then install it 
+# Check if package is not installed and then install it
 # Arguments: package's name
 ##############################################################
 check_package_installed() {

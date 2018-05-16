@@ -6,9 +6,9 @@
 # Internal variables
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
-if [ "$1" == "" ]; then 
+if [ "$1" == "" ]; then
   echo "Assert: This script expects one option, namely how many reducers to start on pquery-results.sh output."
-  echo "Additionally one can pass a second option to 'skip' a number of results. For example, ./pquery-mass-reduce.sh 10 5 will start to reduce items 6-16 of the pquery-results.sh output." 
+  echo "Additionally one can pass a second option to 'skip' a number of results. For example, ./pquery-mass-reduce.sh 10 5 will start to reduce items 6-16 of the pquery-results.sh output."
   echo "Note that it is likely not wise to start more then 10-15 reducers, unless you are using a very high-end server."
   echo "That last note is applicable when pquery-go-expert.sh was used. If not, then likely much less (2-4) reducers should be started, or they need to be monitored more closely. For the reason why, please see the extensive help text near the top of the pquery-go-expert.sh script"
   echo "Terminating."
@@ -18,7 +18,7 @@ elif [ "$(echo $1 | sed 's|^[0-9]\+||')" != "" ]; then
   exit 1
 fi
 
-if [ "$2" == "" ]; then 
+if [ "$2" == "" ]; then
   SKIP=0
 elif [ "$(echo $2 | sed 's|^[0-9]\+||')" != "" ]; then
   echo "Assert: an option passed is not numeric. If you do not know how to use this script, execute it without options to see more information"

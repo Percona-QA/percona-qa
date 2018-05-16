@@ -23,7 +23,7 @@ ROOT_FS=$WORKDIR
 sst_method=${SST_METHOD:-rsync}
 thres=1
 
-if [[ $sst_method == 'xtrabackup' ]];then 
+if [[ $sst_method == 'xtrabackup' ]];then
     wget -q  http://www.percona.com/redir/downloads/XtraBackup/LATEST/binary/tarball/percona-xtrabackup-2.2.3-4982-Linux-x86_64.tar.gz
     tar xf percona-xtrabackup-2.2.3-4982-Linux-x86_64.tar.gz
     export PATH="$PATH:$PWD/percona-xtrabackup-2.2.3-Linux-x86_64/bin/"
@@ -36,35 +36,35 @@ VER1=$(basename $RELEASE_BIN1 | cut -d- -f4)
 VER2=$(basename $RELEASE_BIN2 | cut -d- -f4)
 
 
-if [[ $VER1 == $VER2 ]];then 
+if [[ $VER1 == $VER2 ]];then
     thres=2
 fi
 
 count=$(ls -1ct Percona-XtraDB-Cluster-$VER1*.tar.gz | wc -l)
 
-if [[ $count -gt $thres ]];then 
-    for dirs in `ls -1ct Percona-XtraDB-Cluster-$VER1*.tar.gz | tail -n +2`;do 
+if [[ $count -gt $thres ]];then
+    for dirs in `ls -1ct Percona-XtraDB-Cluster-$VER1*.tar.gz | tail -n +2`;do
         rm -rf $dirs || true
-    done 
+    done
 fi
 
-find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-$VER1*' -exec rm -rf {} \+ || true 
+find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-$VER1*' -exec rm -rf {} \+ || true
 
 
 
 count=$(ls -1ct Percona-XtraDB-Cluster-$VER2*.tar.gz | wc -l)
 
-if [[ $count -gt $thres ]];then 
-    for dirs in `ls -1ct Percona-XtraDB-Cluster-$VER2*.tar.gz | tail -n +2`;do 
-        rm -rf $dirs || true 
-    done 
+if [[ $count -gt $thres ]];then
+    for dirs in `ls -1ct Percona-XtraDB-Cluster-$VER2*.tar.gz | tail -n +2`;do
+        rm -rf $dirs || true
+    done
 fi
 
-find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-$VER2*' -exec rm -rf {} \+ || true 
+find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-$VER2*' -exec rm -rf {} \+ || true
 
 
 echo "Removing older directories"
-find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+ || true 
+find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+ || true
 
 echo "Removing their symlinks"
 find . -maxdepth 1 -type l -mtime +10 -delete
@@ -77,13 +77,13 @@ tar -xf $TAR
 TAR=`ls -1ct Percona-XtraDB-Cluster-$VER1*.tar.gz | head -n1`
 BASE1="$(tar tf $TAR | head -1 | tr -d '/')"
 
-if [[ $BASE1 == $BASE2 ]];then 
+if [[ $BASE1 == $BASE2 ]];then
     TAR=`ls -1ct Percona-XtraDB-Cluster-$VER1*.tar.gz | tail -1`
     BASE1="$(tar tf $TAR | head -1 | tr -d '/')"
 fi
 
 
-if [[ $BASE1 == $BASE2 ]];then 
+if [[ $BASE1 == $BASE2 ]];then
     echo "FATAL: Failed"
     exit 1
 fi
@@ -91,28 +91,28 @@ fi
 tar -xf $TAR
 
 
-    if [ -d sysbench ];then 
+    if [ -d sysbench ];then
         touch -m sysbench
         pushd sysbench
         export PATH="$PATH:${ROOT_FS}/${BASE1}/bin"
-        ./configure --prefix=${ROOT_FS}/${BASE1} 
-        make -s install 
+        ./configure --prefix=${ROOT_FS}/${BASE1}
+        make -s install
         popd
-    else 
+    else
         bzr branch lp:sysbench sysbench
         pushd sysbench
         export PATH="$PATH:${ROOT_FS}/${BASE1}/bin"
-        ./autogen.sh 
+        ./autogen.sh
         ./configure --prefix=${ROOT_FS}/${BASE1}
-        make -s 
-        make -s install 
-        popd 
+        make -s
+        make -s install
+        popd
     fi
 
-# Parameter of parameterized build 
-if [[ -n $SDURATION ]];then 
+# Parameter of parameterized build
+if [[ -n $SDURATION ]];then
     export SYSBENCH_DURATION=$SDURATION
-else 
+else
     export SYSBENCH_DURATION=300
 fi
 
@@ -120,7 +120,7 @@ fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 
-for l in `seq $((BUILD_NUMBER - 2)) -1 1`;do 
+for l in `seq $((BUILD_NUMBER - 2)) -1 1`;do
     rm -rf $l || true
 done
 
@@ -131,11 +131,11 @@ MYSQL_BASEDIR2="${ROOT_FS}/$BASE2"
 GALERA1="${MYSQL_BASEDIR1}/lib/libgalera_smm.so"
 GALERA2="${MYSQL_BASEDIR2}/lib/libgalera_smm.so"
 
-if [[ ! -e $GALERA1 ]];then 
+if [[ ! -e $GALERA1 ]];then
     GALERA1="${MYSQL_BASEDIR1}/lib/galera3/libgalera_smm.so"
 fi
 
-if [[ ! -e $GALERA2 ]];then 
+if [[ ! -e $GALERA2 ]];then
     GALERA2="${MYSQL_BASEDIR2}/lib/galera3/libgalera_smm.so"
 fi
 
@@ -173,9 +173,9 @@ echo "Basedirs: $MYSQL_BASEDIR1 $MYSQL_BASEDIR2"
 
 EXTSTATUS=0
 
-if [[ $MEM -eq 1 ]];then 
+if [[ $MEM -eq 1 ]];then
     MEMOPT="--mem"
-else 
+else
     MEMOPT=""
 fi
 
@@ -187,30 +187,30 @@ cleanup(){
 
 trap cleanup EXIT KILL
 
-if [[ -n ${EXTERNALS:-} ]];then 
+if [[ -n ${EXTERNALS:-} ]];then
     EXTOPTS="$EXTERNALS"
 else
     EXTOPTS=""
 fi
 
-if [[ $DIR -eq 1 ]];then 
+if [[ $DIR -eq 1 ]];then
     sockets="$node1/socket.sock,$node2/socket.sock"
-elif [[ $DIR -eq 2 ]];then 
+elif [[ $DIR -eq 2 ]];then
     sockets="$node2/socket.sock"
-elif [[ $DIR -eq 3 ]];then 
+elif [[ $DIR -eq 3 ]];then
     sockets="$node1/socket.sock"
 fi
-STABLE="test.sbtest1" 
+STABLE="test.sbtest1"
 
-if [[ $BUILD_SOURCE == 'debug' ]];then 
+if [[ $BUILD_SOURCE == 'debug' ]];then
     EXTOPTS+=" --mysqld=--skip-performance-schema "
 fi
 
-if [[ $DEBUG -eq 1 ]];then 
+if [[ $DEBUG -eq 1 ]];then
     DBG="--mysqld=--wsrep-debug=1"
-elif [[ $DEBUG -eq 2 ]];then 
+elif [[ $DEBUG -eq 2 ]];then
     DBG=" --mysqld=--wsrep-debug=1 --mysqld=--wsrep-log-conflicts=ON "
-else 
+else
     DBG=""
 fi
 
@@ -261,7 +261,7 @@ u_common=" --mysqld=--skip-grant-tables \
 
 ver_and_row(){
     local sock=$1
-    
+
 
     $MYSQL_BASEDIR1/bin/mysql -S $sock  -u root -e "show global variables like 'version';"
 
@@ -308,7 +308,7 @@ rw_ist()
 get_script()
 {
 
-    if [[ ! -e $SDIR/${STEST}.lua ]];then 
+    if [[ ! -e $SDIR/${STEST}.lua ]];then
         pushd /tmp
 
         rm $STEST.lua || true
@@ -321,10 +321,10 @@ get_script()
 reset_compat()
 {
     local gpath=$1
-    if [[ $gpath == *galera3* || ( $GCOMPAT -eq 1 && $gpath == *5.6* ) ]];then 
-        COMPAT="; socket.checksum=1"  
-    else 
-        COMPAT=""  
+    if [[ $gpath == *galera3* || ( $GCOMPAT -eq 1 && $gpath == *5.6* ) ]];then
+        COMPAT="; socket.checksum=1"
+    else
+        COMPAT=""
     fi
 }
 
@@ -350,7 +350,7 @@ reset_compat()
   popd
 
 
-  prepare $node1/socket.sock $WORKDIR/logs/sysbench_prepare.txt 
+  prepare $node1/socket.sock $WORKDIR/logs/sysbench_prepare.txt
 
   reset_compat $GALERA2
   echo "Starting $VER2 node for SST"
@@ -374,7 +374,7 @@ reset_compat()
     echo "Sleeping till SST is complete"
     sleep 10
 
-    ver_and_row $node2/socket.sock 
+    ver_and_row $node2/socket.sock
     ver_and_row $node1/socket.sock
 
 
@@ -382,11 +382,11 @@ reset_compat()
     ${MYSQL_BASEDIR1}/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
 
 
-    rw_ist $node1/socket.sock $WORKDIR/logs/sysbench_for_ist.txt 
+    rw_ist $node1/socket.sock $WORKDIR/logs/sysbench_for_ist.txt
 
 
 
-    
+
     sleep 10
 
 
@@ -412,26 +412,26 @@ reset_compat()
 
     sleep 10
 
-    ver_and_row $node2/socket.sock 
+    ver_and_row $node2/socket.sock
     ver_and_row $node1/socket.sock
 
     get_script
 
     $MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "create database testdb;" || true
 
-    rw_full $sockets  $WORKDIR/logs/sysbench_rw_run.txt 
+    rw_full $sockets  $WORKDIR/logs/sysbench_rw_run.txt
 
-    if [[ $VER1 >= $VER2 ]];then 
-        node_for_upgrade=$VER2 
-        nodeu=$node2 
+    if [[ $VER1 >= $VER2 ]];then
+        node_for_upgrade=$VER2
+        nodeu=$node2
         pbase=$RBASE2
         baseu=$MYSQL_BASEDIR1
         ugalera="${baseu}/lib/libgalera_smm.so"
         listu=$LADDR2
         recvu=$RADDR2
-    else 
-        node_for_upgrade=$VER1 
-        nodeu=$node1 
+    else
+        node_for_upgrade=$VER1
+        nodeu=$node1
         pbase=$RBASE1
         baseu=$MYSQL_BASEDIR2
         ugalera="${baseu}/lib/libgalera_smm.so"
@@ -439,7 +439,7 @@ reset_compat()
         recvu=$RADDR1
     fi
 
-    if [[ ! -e $ugalera ]];then 
+    if [[ ! -e $ugalera ]];then
         ugalera="${baseu}/lib/galera3/libgalera_smm.so"
     fi
 
@@ -488,10 +488,10 @@ reset_compat()
 
     get_script
 
-    rw_full $sockets  $WORKDIR/logs/sysbench_rw_run-2.txt 
+    rw_full $sockets  $WORKDIR/logs/sysbench_rw_run-2.txt
 
 
-    ver_and_row $node2/socket.sock 
+    ver_and_row $node2/socket.sock
     ver_and_row $node1/socket.sock
     $MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "drop database testdb;" || true
     $MYSQL_BASEDIR1/bin/mysql -S $node1/socket.sock  -u root -e "drop database test;"
@@ -499,13 +499,13 @@ reset_compat()
     echo "Shutting down node2 "
     $MYSQL_BASEDIR2/bin/mysqladmin  --socket=$node2/socket.sock -u root shutdown
 
-    sleep 10 
+    sleep 10
 
     echo "Shutting down node1 "
     $MYSQL_BASEDIR2/bin/mysqladmin  --socket=$node1/socket.sock -u root shutdown
 
 
-    echo "TESTING in reverse" 
+    echo "TESTING in reverse"
 
 
   node3="${MYSQL_VARDIR}/node3"
@@ -517,22 +517,22 @@ reset_compat()
   MYSQL_BASEDIR2="${ROOT_FS}/$BASE1"
   GALERA1="${MYSQL_BASEDIR1}/lib/libgalera_smm.so"
   GALERA2="${MYSQL_BASEDIR2}/lib/libgalera_smm.so"
-    if [[ ! -e $GALERA1 ]];then 
+    if [[ ! -e $GALERA1 ]];then
         GALERA1="${MYSQL_BASEDIR1}/lib/galera3/libgalera_smm.so"
     fi
 
-    if [[ ! -e $GALERA2 ]];then 
+    if [[ ! -e $GALERA2 ]];then
         GALERA2="${MYSQL_BASEDIR2}/lib/galera3/libgalera_smm.so"
     fi
 
-if [[ $DIR -eq 1 ]];then 
+if [[ $DIR -eq 1 ]];then
     sockets="$node3/socket.sock,$node4/socket.sock"
-elif [[ $DIR -eq 2 ]];then 
+elif [[ $DIR -eq 2 ]];then
     sockets="$node4/socket.sock"
-elif [[ $DIR -eq 3 ]];then 
+elif [[ $DIR -eq 3 ]];then
     sockets="$node3/socket.sock"
 fi
- 
+
   VER1=$(basename $RELEASE_BIN1 | cut -d- -f4)
   VER2=$(basename $RELEASE_BIN2 | cut -d- -f4)
   echo "Starting $VER1 node"
@@ -556,7 +556,7 @@ fi
     1st
   popd
 
-    prepare $node3/socket.sock $WORKDIR/logs/sysbench_prepare_r.txt 
+    prepare $node3/socket.sock $WORKDIR/logs/sysbench_prepare_r.txt
 
   reset_compat $GALERA2
   echo "Starting $VER2 node for SST"
@@ -580,13 +580,13 @@ fi
     echo "Sleeping till SST is complete"
     sleep 10
 
-    ver_and_row $node3/socket.sock 
+    ver_and_row $node3/socket.sock
     ver_and_row $node4/socket.sock
 
     echo "Shutting down node4 after SST"
     ${MYSQL_BASEDIR1}/bin/mysqladmin  --socket=$node4/socket.sock -u root shutdown
 
-    rw_ist $node3/socket.sock $WORKDIR/logs/sysbench_for_ist_r.txt 
+    rw_ist $node3/socket.sock $WORKDIR/logs/sysbench_for_ist_r.txt
     sleep 10
 
   reset_compat $GALERA2
@@ -611,33 +611,33 @@ fi
 
     sleep 10
 
-    ver_and_row $node3/socket.sock 
+    ver_and_row $node3/socket.sock
     ver_and_row $node4/socket.sock
 
     get_script
 
     $MYSQL_BASEDIR1/bin/mysql -S $node3/socket.sock  -u root -e "create database testdb;" || true
 
-    rw_full $sockets  $WORKDIR/logs/sysbench_rw_run_r.txt 
+    rw_full $sockets  $WORKDIR/logs/sysbench_rw_run_r.txt
 
-    if [[ $VER1 >= $VER2 ]];then 
-        node_for_upgrade=$VER2 
-        nodeu=$node4 
+    if [[ $VER1 >= $VER2 ]];then
+        node_for_upgrade=$VER2
+        nodeu=$node4
         pbase=$RBASE2
         baseu=$MYSQL_BASEDIR1
         ugalera="${baseu}/lib/libgalera_smm.so"
         listu=$LADDR2
         recvu=$RADDR2
-    else 
-        node_for_upgrade=$VER1 
-        nodeu=$node2 
+    else
+        node_for_upgrade=$VER1
+        nodeu=$node2
         pbase=$RBASE1
         baseu=$MYSQL_BASEDIR2
         ugalera="${baseu}/lib/libgalera_smm.so"
         listu=$LADDR1
         recvu=$RADDR1
     fi
-    if [[ ! -e $ugalera ]];then 
+    if [[ ! -e $ugalera ]];then
         ugalera="${baseu}/lib/galera3/libgalera_smm.so"
     fi
 
@@ -685,10 +685,10 @@ fi
 
     get_script
 
-    
-    rw_full $sockets  $WORKDIR/logs/sysbench_rw_run_r-2.txt 
 
-    ver_and_row $node3/socket.sock 
+    rw_full $sockets  $WORKDIR/logs/sysbench_rw_run_r-2.txt
+
+    ver_and_row $node3/socket.sock
     ver_and_row $node4/socket.sock
     $MYSQL_BASEDIR1/bin/mysql -S $node3/socket.sock  -u root -e "drop database testdb;" || true
     $MYSQL_BASEDIR1/bin/mysql -S $node3/socket.sock  -u root -e "drop database test;"
@@ -696,7 +696,7 @@ fi
     echo "Shutting down node4 after IST"
     $MYSQL_BASEDIR2/bin/mysqladmin  --socket=$node4/socket.sock -u root shutdown
 
-    sleep 10 
+    sleep 10
 
     echo "Shutting down node3 after IST"
     $MYSQL_BASEDIR2/bin/mysqladmin  --socket=$node3/socket.sock -u root shutdown

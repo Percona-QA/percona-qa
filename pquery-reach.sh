@@ -68,7 +68,7 @@ pquery_run(){
   PQUERY_RUN=${WORKDIR}/${RANDOMD}_pquery-run.sh
   PQR_WORKDIR=${WORKDIR}/${RANDOMD}_WORKDIR
   PQR_RUNDIR=${WORKDIR}/${RANDOMD}_RUNDIR
-  cat ${SCRIPT_PWD}/pquery-run.sh | 
+  cat ${SCRIPT_PWD}/pquery-run.sh |
   sed "s|^[ \t]*PQUERY_BIN=.*|PQUERY_BIN=${PQUERY_BIN}|" | \
   sed "s|^[ \t]*INFILE=.*|INFILE=${INFILE}|" | \
   #sed "s|^[ \t]*INFILE=.*|INFILE=~/percona-qa/pquery/main.sql|" | \
@@ -128,12 +128,12 @@ main_loop(){
       fi
     else
       echoit "This bug was filtered (already logged), cleaning up & trying again..."
-      rm -Rf ${PQR_WORKDIR}; rm -Rf ${PQR_RUNDIR}; rm -Rf ${PQUERY_RUN}; PQR_WORKDIR=; PQR_RUNDIR=; PQUERY_RUN=;  # Cleanup 
-      main_loop 
+      rm -Rf ${PQR_WORKDIR}; rm -Rf ${PQR_RUNDIR}; rm -Rf ${PQUERY_RUN}; PQR_WORKDIR=; PQR_RUNDIR=; PQUERY_RUN=;  # Cleanup
+      main_loop
     fi
   else
     echoit "No bug found, cleaning up & trying again..."
-    rm -Rf ${PQR_WORKDIR}; rm -Rf ${PQR_RUNDIR}; rm -Rf ${PQUERY_RUN}; PQR_WORKDIR=; PQR_RUNDIR=; PQUERY_RUN=;  # Cleanup 
+    rm -Rf ${PQR_WORKDIR}; rm -Rf ${PQR_RUNDIR}; rm -Rf ${PQUERY_RUN}; PQR_WORKDIR=; PQR_RUNDIR=; PQUERY_RUN=;  # Cleanup
     main_loop
   fi
 }

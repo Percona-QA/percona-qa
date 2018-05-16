@@ -43,7 +43,7 @@ echoit(){
   if [ "${BUILD}" != "" ]; then echo "[$(date +'%T')] $1" >> ${BUILD}/pxc_chaosmonkey_testing.log; fi
 }
 
-if [ ! -r ${BUILD}/bin/mysqld ]; then  
+if [ ! -r ${BUILD}/bin/mysqld ]; then
   echoit "Please execute the script from PXC basedir"
   exit 1
 fi
@@ -68,7 +68,7 @@ echo "wsrep_slave_threads=2" >> my.cnf
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   if [ "$(dpkg -l | grep 'libaio1')" == "" ]; then
-    sudo apt-get install libaio1 
+    sudo apt-get install libaio1
   fi
   if [ "$(dpkg -l | grep 'libjemalloc1')" == "" ]; then
     sudo apt-get install libjemalloc1
@@ -89,7 +89,7 @@ if [[ $sst_method == "xtrabackup" ]];then
   else
     wget http://jenkins.percona.com/job/percona-xtrabackup-2.4-binary-tarball/label_exp=centos5-64/lastSuccessfulBuild/artifact/*zip*/archive.zip
     unzip archive.zip
-    tar -xzf archive/TARGET/*.tar.gz 
+    tar -xzf archive/TARGET/*.tar.gz
     PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
     export PATH="$BUILD/$PXB_BASE/bin:$PATH"
   fi
@@ -118,7 +118,7 @@ function start_multi_node(){
 
     if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
       mkdir -p $node $keyring_node
-      if  [ ! "$(ls -A $node)" ]; then 
+      if  [ ! "$(ls -A $node)" ]; then
         ${MID} --datadir=$node  > ${BUILD}/logs/startup_node$i.err 2>&1 || exit 1;
       fi
     fi
@@ -171,8 +171,8 @@ function recovery_test(){
   while [[ "$NUM" == "1" ]]
   do
     NUM="$(( ( RANDOM % $NODES )  + 1 ))"
-  done  
-  # Forcefully killing PXC node for recovery testing 
+  done
+  # Forcefully killing PXC node for recovery testing
   kill -9 ${MPID_ARRAY[$NUM - 1]}
   wait ${MPID_ARRAY[$NUM - 1]} 2>/dev/null
   echoit "Forcefully killed PXC node$NUM for recovery testing "
@@ -209,7 +209,7 @@ function recovery_test(){
 }
 
 function multi_recovery_test(){
-  # Picking random nodes from cluster 
+  # Picking random nodes from cluster
   rand_nodes=(`shuf -i 1-6 -n 3 |  tr '\n' ' '`)
   kill -9 ${MPID_ARRAY[${rand_nodes[0]}]} ${MPID_ARRAY[${rand_nodes[1]}]} ${MPID_ARRAY[${rand_nodes[2]}]}
   wait ${MPID_ARRAY[${rand_nodes[0]}]} ${MPID_ARRAY[${rand_nodes[1]}]} ${MPID_ARRAY[${rand_nodes[2]}]} 2>/dev/null
@@ -220,7 +220,7 @@ function multi_recovery_test(){
     # With thanks, http://www.thegeekstuff.com/2010/06/bash-array-tutorial/
     MPID_ARRAY=(${MPID_ARRAY[@]:0:$PID} ${MPID_ARRAY[@]:$(($PID + 1))})
   done
-  for j in `seq 0 2`;do  
+  for j in `seq 0 2`;do
     let NUM=${rand_nodes[$j]}+1
     if [ $KEY_RING_CHECK -eq 1 ]; then
       KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${BUILD}/keyring_node$NUM/keyring"
@@ -300,7 +300,7 @@ function node_leaving(){
   do
     NUM="$(( ( RANDOM % $NODES )  + 1 ))"
   done
-  # Shutting down random PXC node 
+  # Shutting down random PXC node
   echoit "Shutting PXC node$NUM"
   ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$NUM/socket.sock shutdown
   echoit "Server on socket ${BUILD}/node$NUM/socket.sock with datadir ${BUILD}/node$NUM halted"

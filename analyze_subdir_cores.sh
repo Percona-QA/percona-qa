@@ -27,7 +27,7 @@ for CORE in $(find . | grep "core" | grep -v "mysql-test") ; do
   # For debugging purposes, remove ">/dev/null 2>&1" on the next line and observe output
   gdb ${BIN} ${CORE} >/dev/null 2>&1 <<EOF
     # Avoids libary loading issues / more manual work, see bash$ info "(gdb)Auto-loading safe path"
-    set auto-load safe-path /         
+    set auto-load safe-path /
     # See http://sourceware.org/gdb/onlinedocs/gdb/Threads.html - this avoids the following issue:
     # "warning: unable to find libthread_db matching inferior's threadlibrary, thread debugging will not be available"
     set libthread-db-search-path /usr/lib/

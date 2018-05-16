@@ -39,7 +39,7 @@ sst_method="xtrabackup-v2"
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   if [ "$(sudo apt-get -s install libaio1 | grep 'is already')" == "" ]; then
-    sudo apt-get install libaio1 
+    sudo apt-get install libaio1
   fi
   if [ "$(sudo apt-get -s install libjemalloc1 | grep 'is already')" == "" ]; then
     sudo apt-get install libjemalloc1
@@ -66,7 +66,7 @@ if [[ $sst_method == "xtrabackup-v2" ]];then
 	tar -xzf percona-xtrabackup-2.4.2-Linux-x86_64.tar.gz
     fi
 
-     
+
     PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
     export PATH="$BUILD/$PXB_BASE/bin:$PATH"
   fi

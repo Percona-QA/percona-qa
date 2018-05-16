@@ -2,8 +2,8 @@
 # Created by Roel Van de Paar, Percona LLC
 
 # This script provides a handy template for logging TokuMXse bugs
-# It expects one option: the failed test name. For example, 
-# ./TokuMXse_bug_report.sh 'disk/diskfull.js' 
+# It expects one option: the failed test name. For example,
+# ./TokuMXse_bug_report.sh 'disk/diskfull.js'
 
 cat << EOF
 == Issue observed
@@ -25,7 +25,7 @@ $ ~/percona-qa/mongo_single_test.sh	# Output (except for path) should look simil
 [...] > 0 tests succeeded for TokuMXse on $1
 
 == Full information available
-All relevant files/logs etc. are in the /dev/shm/{nr} work directory listed in the script's output. 
+All relevant files/logs etc. are in the /dev/shm/{nr} work directory listed in the script's output.
 
 Directory contents for the /dev/shm/{nr} directory are as follows;
 FT_RUN_DATA The data directory from the TokuMXse test
