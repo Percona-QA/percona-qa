@@ -243,7 +243,7 @@ fi
 COREDUMPS="$(find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -un | tr '\n' ' ' | sed 's|$|\n|')"
 if [ "$(echo "${COREDUMPS}" | sed 's| \+||g')" != "" ]; then
   echo "================ Coredumps found in trials:"
-  find . | grep core | grep -v parse | grep -v pquery | cut -d '/' -f2 | sort -un | tr '\n' ' ' | sed 's|$|\n|'
+  find . | grep core | grep -v parse | grep -v pquery | grep -v vault | cut -d '/' -f2 | sort -un | tr '\n' ' ' | sed 's|$|\n|'
 fi
 echo "================"
 if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | wc -l` -gt 0 ]; then
