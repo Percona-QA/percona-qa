@@ -680,9 +680,16 @@ function async_rpl_test(){
       sleep 1
       if ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc2.sock ping > /dev/null 2>&1; then
         WSREP_STATE=0
+        COUNTER=0
         while [[ $WSREP_STATE -ne 4 ]]; do
           WSREP_STATE=$(${PXC_BASEDIR}/bin/mysql -uroot -S/tmp/pxc2.sock -Bse"show status like 'wsrep_local_state'" | awk '{print $2}')
           echoit "WSREP: Synchronized with group, ready for connections"
+          let COUNTER=COUNTER+1
+          if [[ $COUNTER -eq 50 ]];then
+            echoit "WARNING! WSREP: Node is not synchronized with group. Checking slave status"
+            break
+          fi
+          sleep 3
         done
         break
       fi
