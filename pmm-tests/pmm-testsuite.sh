@@ -126,6 +126,13 @@ function run_pmm_metrics_memory_check() {
   fi
 }
 
+function run_pmm_slow_log_rotation_check() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/pmm-slow-log-rotation-tests.bats
+  else
+    bats ${DIRNAME}/pmm-slow-log-rotation-tests.bats
+  fi
+}
 # Additional functions
 function run_create_table() {
   bash ${DIRNAME}/create_table.sh $1 $2
@@ -191,6 +198,9 @@ if [[ $pmm_server_memory == "1" ]]; then
 else
   echo "OK - Skipped"
 fi
+
+echo "Running Slow Log rotation tests [PMM-2432]"
+run_pmm_slow_log_rotation_check
 
 echo "Running external exporters tests"
 setup_local_consul_exporter

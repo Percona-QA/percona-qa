@@ -164,13 +164,11 @@ function run_regression_tests() {
   [ "$status" -eq 0 ]
 }
 
-
 @test "Running regression tests" {
   run_regression_tests
   echo ${output}
   [ "$status" -eq 0 ]
-}
-# ProxySQL
+}	
 
 @test "Wipe clients" {
     pmm_wipe_clients
