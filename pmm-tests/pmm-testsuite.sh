@@ -199,6 +199,9 @@ else
   echo "OK - Skipped"
 fi
 
+echo "Running Slow Log rotation tests [PMM-2432]"
+run_pmm_slow_log_rotation_check
+
 echo "Running external exporters tests"
 setup_local_consul_exporter
 run_external_exporters_tests
