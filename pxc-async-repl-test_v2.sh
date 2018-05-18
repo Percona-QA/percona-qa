@@ -1,21 +1,37 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
-
+# This script will test following replication features in Percona XtraDB Cluster.
+# Master-Slave replication test
+# Master-Master replication test
+# Master-Slave shuffle replication test
+# Multi Source replication test
+# Multi thread replication test
 # Dispay script usage details
+
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-  echo "  --workdir=<path>, -w<path>               	        Specify work directory"
-  echo "  --build-number=<no>, -b<no>                       Specify work build directory"
-  echo "  --with-binlog-encryption, -e                      Run the script with binary log encryption feature"
-  echo "  --keyring-plugin=[file|vault], -k[file|vault]     Specify which keyring plugin to use(default keyring-file)"
-  echo "  --enable-checksum, -c                             Run pt-table-checksum to check slave sync status"
+  echo "  -w, --workdir=PATH                Specify work directory"
+  echo "  -b, --build-number=NUMBER         Specify work build directory"
+  echo "  -l, --binlog-format=FORMAT        Specify mysql binary log format(default ROW)"
+  echo "  -k, --keyring-plugin=[file|vault] Specify which keyring plugin to use(default keyring-file)"
+  echo "  -t, --testcase=<testcases|all>    Run only following comma-separated list of testcases"
+  echo "                                      node1_master_test"
+  echo "                                      node1_slave_test"
+  echo "                                      node2_slave_test"
+  echo "                                      pxc_master_slave_shuffle_test"
+  echo "                                      pxc_msr_test"
+  echo "                                      pxc_mtr_test"
+  echo "                                    If you specify 'all', the script will execute all testcases"
+  echo ""
+  echo "  -e, --with-binlog-encryption      Run the script with binary log encryption feature"
+  echo "  -c, --enable-checksum             Run pt-table-checksum to check slave sync status"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:k:ech --longoptions=workdir:,build-number:,keyring-plugin:,with-binlog-encryption,help \
+  go_out="$(getopt --options=w:b:k:l:t:ech --longoptions=workdir:,build-number:,binlog-format:,keyring-plugin:,testcase:,with-binlog-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -42,9 +58,22 @@ do
     export BUILD_NUMBER="$2"
     shift 2
     ;;
+    -l | --binlog-format )
+    export BINLOG_FORMAT="$2"
+	shift 2
+    if [[ "$BINLOG_FORMAT" != "ROW" ]] && [[ "$BINLOG_FORMAT" != "MIXED" ]] && [[ "$BINLOG_FORMAT" != "STATEMENT" ]] ; then
+      echo "ERROR: Invalid --binlog-format passed:"
+      echo "  Please choose any of these binlog-format options: 'ROW', 'MIXED', or 'STATEMENT'"
+      exit 1
+    fi
+    ;;
+    -t | --testcase )
+    export TESTCASE="$2"
+	shift 2
+	;;
     -e | --with-binlog-encryption )
     shift
-    BINLOG_ENCRYPTION=1
+    export BINLOG_ENCRYPTION=1
     ;;
     -k | --keyring-plugin )
     export KEYRING_PLUGIN="$2"
@@ -52,7 +81,7 @@ do
     ;;
     -c | --enable-checksum )
     shift
-    ENABLE_CHECKSUM=1
+    export ENABLE_CHECKSUM=1
     ;;
     -h | --help )
     usage
@@ -66,12 +95,21 @@ if [[ -z "$WORKDIR" ]]; then
   export WORKDIR=${PWD}
 fi
 
+if [[ -z "$BINLOG_FORMAT" ]];then
+  BINLOG_FORMAT="ROW"
+fi
 if [[ -z "$KEYRING_PLUGIN" ]]; then
-  KEYRING_PLUGIN="file"
+  export KEYRING_PLUGIN="file"
 fi
 
 if [[ "$BINLOG_ENCRYPTION" == 1 ]];then
-  MYEXTRA_BINLOG="--encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+  export MYEXTRA_BINLOG="--encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+fi
+
+if [[ ! -z "$TESTCASE" ]]; then
+  IFS=', ' read -r -a TC_ARRAY <<< "$TESTCASE"
+else
+  TC_ARRAY=(all)
 fi
 
 # User Configurable Variables
@@ -194,7 +232,7 @@ echo "wsrep-provider=${PXC_BASEDIR}/lib/libgalera_smm.so" >> ${PXC_BASEDIR}/my.c
 echo "wsrep_sst_method=rsync" >> ${PXC_BASEDIR}/my.cnf
 echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${PXC_BASEDIR}/my.cnf
 echo "wsrep_sst_method=$SST_METHOD" >> ${PXC_BASEDIR}/my.cnf
-echo "binlog-format=ROW" >> ${PXC_BASEDIR}/my.cnf
+echo "binlog-format=$BINLOG_FORMAT" >> ${PXC_BASEDIR}/my.cnf
 echo "log-bin=mysql-bin" >> ${PXC_BASEDIR}/my.cnf
 echo "master-info-repository=TABLE" >> ${PXC_BASEDIR}/my.cnf
 echo "relay-log-info-repository=TABLE" >> ${PXC_BASEDIR}/my.cnf
@@ -484,35 +522,11 @@ function async_rpl_test(){
     slave_sync_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
     if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
       sleep 10
-	  echoit "1. pxc1. PXC node-1 as master: Checksum result."
+	  echoit "PXC node-1 as master: Checksum result."
 	  run_pt_table_checksum "sbtest_pxc_master" "$WORKDIR/logs/node1_master_checksum.log"
     else
-      echoit "1. pxc1. PXC node-1 as master: replication looks good."
+      echoit "PXC node-1 as master: replication looks good."
     fi
-  }
-
-  function node2_master_test(){
-    echoit "******************** $MYEXTRA_CHECK PXC-node-2 becomes master (take over from node-1) ************************"
-
-    ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e"stop slave; reset slave all"
-	invoke_slave "/tmp/pxc2.sock" "/tmp/ps1.sock" ";START SLAVE;"
-
-    echoit "Checking slave startup"
-	slave_startup_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
-
-	async_sysbench_rw_run sbtest_pxc_master sbtest_ps_slave "/tmp/pxc2.sock" "/tmp/ps1.sock"
-	sleep 5
-    echoit "Checking slave sync status"
-    slave_sync_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
-    if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
-      sleep 10
-	  echoit "2. pxc2. PXC-node-2 becomes master (took over from node-1): Checksum result."
-	  run_pt_table_checksum "sbtest_pxc_master" "$WORKDIR/logs/node2_master_checksum.log"
-    else
-      echoit "2. pxc2. PXC-node-2 becomes master (took over from node-1): replication looks good."
-    fi
-    sleep 10
-
 	#Shutdown PXC/PS servers
 	echoit "Shutdown PXC/PS servers"
 	$PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
@@ -565,10 +579,10 @@ function async_rpl_test(){
 	fi
 
     if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
-      echoit "3. pxc3. PXC-as-slave (node-1) from independent master: Checksum result."
+      echoit "PXC-as-slave (node-1) from independent master: Checksum result."
 	  run_pt_table_checksum "sbtest_ps_master" "$WORKDIR/logs/node1_slave_checksum.log"
     else
-      echoit "3. pxc3. PXC-as-slave (node-1) from independent master: replication looks good."
+      echoit "PXC-as-slave (node-1) from independent master: replication looks good."
     fi
 
     #Shutdown PXC/PS servers
@@ -602,10 +616,10 @@ function async_rpl_test(){
     slave_sync_check "/tmp/pxc2.sock" "$WORKDIR/logs/slave_status_node2.log" "$WORKDIR/logs/node2.err"
     if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
       sleep 10
-      echoit "4. PXC-as-slave (node-2) from independent master: Checksum result."
+      echoit "PXC-as-slave (node-2) from independent master: Checksum result."
 	  run_pt_table_checksum "sbtest_pxc_slave" "$WORKDIR/logs/node2_slave_checksum.log"
     else
-      echoit "4. PXC-as-slave (node-2) from independent master: replication looks good."
+      echoit "PXC-as-slave (node-2) from independent master: replication looks good."
     fi
 
     #Shutdown PXC/PS servers
@@ -616,7 +630,7 @@ function async_rpl_test(){
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
   }
 
-  function pxc_master_slave_test(){
+  function pxc_master_slave_shuffle_test(){
     echoit "********************$MYEXTRA_CHECK PXC - master - and - slave ************************"
 	#PXC/PS server initialization
 	echoit "PXC/PS server initialization"
@@ -645,14 +659,12 @@ function async_rpl_test(){
     slave_sync_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
     if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
       sleep 10
-      echoit "5. PXC - master - and - slave: Checksum result."
+      echoit "PXC - master - and - slave: Checksum result."
 	  run_pt_table_checksum "sbtest_pxc_db,sbtest_ps_db" "$WORKDIR/logs/node1_slave_checksum.log"
     else
-      echoit "5. PXC - master - and - slave: replication looks good."
+      echoit "PXC - master - and - slave: replication looks good."
     fi
-  }
 
-  function pxc_ps_master_slave_shuffle_test(){
     echoit "********************$MYEXTRA_CHECK PXC - master - and - slave shuffle test ************************"
 	MASTER_HOST_PORT=`$PXC_BASEDIR/bin/mysql  --socket=/tmp/pxc2.sock -u root -Bse "select @@port"`
 	LADDR="$ADDR:$(( MASTER_HOST_PORT + 8 ))"
@@ -715,11 +727,17 @@ function async_rpl_test(){
     slave_sync_check "/tmp/pxc2.sock" "$WORKDIR/logs/slave_status_node2.log" "$WORKDIR/logs/node2.err"
     if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
       sleep 10
-      echoit "6. PXC shuffle master - and - slave : Checksum result."
+      echoit "PXC shuffle master - and - slave : Checksum result."
 	  run_pt_table_checksum "test" "$WORKDIR/logs/pxc_master_slave_shuffle_checksum.log"
     else
-      echoit "6. PXC shuffle master - and - slave : replication looks good."
+      echoit "PXC shuffle master - and - slave : replication looks good."
     fi
+    #Shutdown PXC/PS servers
+	echoit "Shutdown PXC/PS servers"
+	$PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc3.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
   }
 
   function pxc_msr_test(){
@@ -790,10 +808,10 @@ function async_rpl_test(){
     done
     if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
       sleep 10
-	  echoit "7. PXC - multi source replication: Checksum result."
+	  echoit "PXC - multi source replication: Checksum result."
 	  run_pt_table_checksum "msr_db_master1,msr_db_master2,msr_db_master3" "$WORKDIR/logs/pxc_msr_checksum.log"
     else
-      echoit "7. PXC - multi source replication: replication looks good."
+      echoit "PXC - multi source replication: replication looks good."
     fi
     #Shutdown PXC/PS servers for MSR test
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
@@ -910,10 +928,10 @@ function async_rpl_test(){
     done
     if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
       sleep 10
-	  echoit "8. PXC - multi thread replication: Checksum result."
+	  echoit "PXC - multi thread replication: Checksum result."
 	  run_pt_table_checksum "mtr_db_pxc1,mtr_db_pxc2,mtr_db_pxc3,mtr_db_pxc4,mtr_db_pxc5,mtr_db_ps1,mtr_db_ps2,mtr_db_ps3,mtr_db_ps4,mtr_db_ps5" "$WORKDIR/logs/pxc_mtr_checksum.log"
     else
-      echoit "8. PXC - multi thread replication: replication looks good."
+      echoit "PXC - multi thread replication: replication looks good."
     fi
 	#Shutdown PXC/PS servers
 	echoit "Shuttingdown PXC/PS servers"
@@ -925,16 +943,35 @@ function async_rpl_test(){
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
   }
 
-  node1_master_test
-  node2_master_test
-  node1_slave_test
-  node2_slave_test
-  pxc_master_slave_test
-  pxc_ps_master_slave_shuffle_test
-  if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.6" ]]; then
-    pxc_msr_test
+  if [[ ! " ${TC_ARRAY[@]} " =~ " all " ]]; then
+    for i in "${TC_ARRAY[@]}"; do
+      if [[ "$i" == "node1_master_test" ]]; then
+  	    node1_master_test
+  	  elif [[ "$i" == "node1_slave_test" ]]; then
+  	    node1_slave_test
+  	  elif [[ "$i" == "node2_slave_test" ]]; then
+  	    node2_slave_test
+  	  elif [[ "$i" == "pxc_master_slave_shuffle_test" ]]; then
+  	    pxc_master_slave_shuffle_test
+  	  elif [[ "$i" == "pxc_msr_test" ]]; then
+        if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.6" ]]; then
+          pxc_msr_test
+        fi
+      elif [[ "$i" == "pxc_mtr_test" ]]; then
+  	   pxc_mtr_test
+      fi
+    done
+  else
+    node1_master_test
+    node1_slave_test
+    node2_slave_test
+    pxc_master_slave_shuffle_test
+    if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.6" ]]; then
+      pxc_msr_test
+    fi
+    pxc_mtr_test
   fi
-  pxc_mtr_test
+
 }
 
 async_rpl_test
