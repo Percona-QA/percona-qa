@@ -1856,8 +1856,9 @@ start_mysqld_or_valgrind_or_pxc(){
     fi
     if [ ${REDUCE_STARTUP_ISSUES} -le 0 ]; then
       if ! $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then
-        if [ ${STAGE} -eq 9 ]; then
-          STAGE9_NOT_STARTED_CORRECTLY=1
+        if [ ${STAGE} -eq 8 -o ${STAGE} -eq 9 ]; then
+          if [ ${STAGE} -eq 8 ]; then STAGE8_NOT_STARTED_CORRECTLY=1; fi
+          if [ ${STAGE} -eq 9 ]; then STAGE9_NOT_STARTED_CORRECTLY=1; fi
           echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, assuming this option set is required"
         else
           echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] Failed to start mysqld server, check $WORKD/error.log.out, $WORKD/mysqld.out and $WORKD/init.log"
@@ -2110,7 +2111,6 @@ gr_start_main(){
 }
 
 start_mysqld_main(){
-  COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} ${TOKUDB} ${ROCKSDB} | wc -w`
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_START
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_START
   echo "echo \"Attempting to start mysqld (socket /dev/shm/${EPOCH}/socket.sock)...\"" >> $WORK_START
@@ -2119,7 +2119,6 @@ start_mysqld_main(){
   echo "BIN=\`find \${BASEDIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
   SCHEDULER_OR_NOT=
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
-  ORIGINAL_MYEXTRA_FOR_WORK_START=$MYEXTRA  # This variable is used in finish() to remove the original then add the possibly-reduced (stage 8) one
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
@@ -2547,12 +2546,8 @@ cleanup_and_save(){
     $(cd $BUGTARDIR; tar -zhcf ${EPOCH}_bug_bundle.tar.gz ${EPOCH}*)
   fi
   ATLEASTONCE="[*]"  # The issue was seen at least once (this is used to permanently mark lines with '[*]' suffix as soon as this happens)
-  if [ ${STAGE} -eq 8 ]; then
-    STAGE8_CHK=1
-  fi
-  if [ ${STAGE} -eq 9 ]; then
-    STAGE9_CHK=1
-  fi
+  if [ ${STAGE} -eq 8 ]; then STAGE8_CHK=1; fi
+  if [ ${STAGE} -eq 9 ]; then STAGE9_CHK=1; fi
   # VERFIED file creation + subreducer handling
   echo "TRIAL:$TRIAL" > $WORKD/VERIFIED
   echo "WORKO:$WORKO" >> $WORKD/VERIFIED
@@ -2938,16 +2933,6 @@ stop_mysqld_or_pxc(){
 }
 
 finish(){
-  if [ "${STAGE}" != "" ]; then  # Prevention for issue where ${STAGE} was empty on CTRL+C
-    if [ ${STAGE} -ge 8 ]; then
-      if [ "${STAGE8_CHK}" != "" ]; then
-        if [ ${STAGE8_CHK} -eq 0 ]; then
-          export -n MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
-        fi
-      fi
-      sed -i "s|$ORIGINAL_MYEXTRA_FOR_WORK_START|$MYEXTRA|" $WORK_START
-    fi
-  fi
   echo_out "[Finish] Finalized reducing SQL input file ($INPUTFILE)"
   echo_out "[Finish] Number of server startups         : $STARTUPCOUNT (not counting subreducers)"
   echo_out "[Finish] Working directory was             : $WORKD"
@@ -4235,90 +4220,84 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
   done
 fi
 
-#STAGE8: Execute mysqld option simplification. Perform a check if the issue is still present for each replacement (set)
+#STAGE8: Execute mysqld option simplification. Perform a check if the issue is still present once options are removed one-by-one
 if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   STAGE=8
   TRIAL=1
+  NEXTACTION="& try removing next mysqld option"
   cp $WORKF $WORKT  # Setup STAGE8 to begin with the last known good testcase. WORKT is used as input in run_and_check
-  STAGE8_CHK=0
-  echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
-  COUNT_MYEXTRA=`echo ${MYEXTRA} | wc -w`
   FILE1="$WORKD/file1"
   FILE2="$WORKD/file2"
 
-  myextra_check(){
-    count_mysqld_opt=`cat $WORKD/mysqld_opt.out | wc -l`
-    head -n $((count_mysqld_opt/2)) $WORKD/mysqld_opt.out > $FILE1
-    tail -n $((count_mysqld_opt-count_mysqld_opt/2)) $WORKD/mysqld_opt.out > $FILE2
+  myextra_split(){
+    echo $MYEXTRA | sed 's|[ \t]\+| |g' | tr -s " " "\n" | grep -v "^[ \t]*$" > $WORKD/mysqld_opt.out
+    MYSQLD_OPTION_COUNT=$(cat $WORKD/mysqld_opt.out | wc -l)
+    head -n $((MYSQLD_OPTION_COUNT/2)) $WORKD/mysqld_opt.out > $FILE1
+    tail -n $((MYSQLD_OPTION_COUNT-MYSQLD_OPTION_COUNT/2)) $WORKD/mysqld_opt.out > $FILE2
   }
-
-  myextra_check
 
   myextra_reduction(){
     while read line; do
-      NEXTACTION="& try removing next mysqld option"
-      MYEXTRA=$(echo $MYEXTRA | sed "s|$line||")
-      if [ "${STAGE8_CHK}" == "1" ]; then
-        if [ "" != "$STAGE8_OPT" ]; then
-          MYEXTRA=$(echo $MYEXTRA | sed "s|$STAGE8_OPT||")
-        fi
-      else
-        MYEXTRA="$MYEXTRA ${STAGE8_OPT}"
-      fi
       STAGE8_CHK=0
-      COUNT_MYSQLDOPTIONS=`echo ${MYEXTRA} | wc -w`
+      STAGE8_NOT_STARTED_CORRECTLY=0
       echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Filtering mysqld option $line from MYEXTRA";
+      MYEXTRA=$(echo $MYEXTRA | sed "s|$line||")
       run_and_check
+      if [ $STAGE8_CHK -eq 0 -o $STAGE8_NOT_STARTED_CORRECTLY -eq 1 ];then  # Issue failed to reproduce, revert
+        MYEXTRA="$MYEXTRA $line"
+      else  # Issue reproduced, so leave MYEXTRA as-is (already filtered), and filter the same from WORK_START now too
+        sed -i "s|$line||" $WORK_START
+      fi
       TRIAL=$[$TRIAL+1]
-      STAGE8_OPT=$line
     done < $WORKD/mysqld_opt.out
   }
 
-  if [ -n "$MYEXTRA" ]; then
-    if [[ $COUNT_MYEXTRA -gt 3 ]]; then
-      while true; do
-        ISSUE_CHECK=0
-        NEXTACTION="& try removing next mysqld option"
-        MYEXTRA=$(cat $FILE1 | tr -s "\n" " ")
-        COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
-        if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA"
-        else
-          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA";
-        fi
-        run_and_check
-        if [ "${STAGE8_CHK}" == "1" ]; then
-          ISSUE_CHECK=1
-          echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
-          myextra_check
-        else
-          MYEXTRA=$(cat $FILE2 | tr -s "\n" " ")
-          COUNT_MYSQLDOPTIONS=$(echo $MYEXTRA | wc -w)
-          if [[ $COUNT_MYSQLDOPTIONS -eq 1 ]]; then
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using $MYEXTRA mysqld option from MYEXTRA"
-          else
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set ${COUNT_MYSQLDOPTIONS} mysqld options from MYEXTRA: $MYEXTRA";
-          fi
-          run_and_check
-          if [ "${STAGE8_CHK}" == "1" ]; then
-            ISSUE_CHECK=1
-            echo $MYEXTRA | tr -s " " "\n" > $WORKD/mysqld_opt.out
-            myextra_check
-          fi
-        fi
-        STAGE8_CHK=0
-        COUNT_MYFILE=`cat $WORKD/mysqld_opt.out | wc -l`
-        if [[ $COUNT_MYFILE -le 3 ]] || [[ $ISSUE_CHECK -eq 0 ]]; then
-          myextra_reduction
-          break
-        fi
-        TRIAL=$[$TRIAL+1]
-      done
-    else
-      myextra_reduction
+  # Deal with options differently depending on how many there are (this selection is only made once)
+  myextra_split
+  if [ $MYSQLD_OPTION_COUNT -eq 0 ]; then  # 0 options
+    if [ -n "$(echo ${MYEXTRA} | sed "s|[ \t]*||")" ]; then
+      echo_out "Assert: counted number of mysqld options was zero, yet \$MYEXTRA is not empty;"
+      echo_out "MYEXTRA: $MYEXTRA"
+      echo_out "Please check. Terminating."
+      exit 1
     fi
-  else
     echo_out "$ATLEASTONCE [Stage $STAGE] Skipping this stage as the testcase does not contain extraneous mysqld options"
+  elif [ $MYSQLD_OPTION_COUNT -ge 1 -a $MYSQLD_OPTION_COUNT -le 5 ]; then  # 1-5 options
+    myextra_reduction
+  else  # 5+ options
+    while true; do
+      SAVE_STAGE8_MYEXTRA=$MYEXTRA
+      MYEXTRA=$(cat $FILE1 | tr -s "\n" " " | sed 's|[ \t]\+| |g;s| $||g;s|^ ||g')
+      STAGE8_CHK=0
+      STAGE8_NOT_STARTED_CORRECTLY=0
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using first set of mysqld option(s) from MYEXTRA: $MYEXTRA";
+      run_and_check
+      TRIAL=$[$TRIAL+1]
+      if [ $STAGE8_CHK -eq 0 -o $STAGE8_NOT_STARTED_CORRECTLY -eq 1 ];then  # Issue failed to reproduce, try second set
+        MYEXTRA=$(cat $FILE2 | tr -s "\n" " " | sed 's|[ \t]\+| |g;s| $||g;s|^ ||g')
+        STAGE8_CHK=0
+        STAGE8_NOT_STARTED_CORRECTLY=0
+        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Using second set of mysqld option(s) from MYEXTRA: $MYEXTRA";
+        run_and_check
+        TRIAL=$[$TRIAL+1]
+        if [ $STAGE8_CHK -eq 0 -o $STAGE8_NOT_STARTED_CORRECTLY -eq 1 ];then  # Issue failed to reproduce, try reducing 1-by-1
+          # Both the first set as well as the second set of options failed to reproduce the issue
+          MYEXTRA=$SAVE_STAGE8_MYEXTRA
+          myextra_reduction  # Commence 1-by-1 reduction
+          break
+        else  # Issue reproduced, so leave MYEXTA as-is (already filtered), and filter each filtered optiom from WORK_START now too
+          while read line; do
+            sed -i "s|$line||" $WORK_START
+          done < $FILE1  # We use $FILE1 here (the opposite option set with options that are not required for issue reproduction) 
+          myextra_split
+        fi
+      else  # Issue reproduced, so leave MYEXTRA as-is (already filtered), and filter each filtered option from WORK_START now too
+        while read line; do
+          sed -i "s|$line||" $WORK_START
+        done < $FILE2  # We use $FILE2 here (the opposite option set with options that are not required for issue reproduction) 
+        myextra_split
+      fi
+    done
   fi
 fi
 
