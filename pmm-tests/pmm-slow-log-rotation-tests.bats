@@ -15,6 +15,7 @@
 }
 
 @test "run pmm-admin add mysql with default values [PMM-2432]" {
+  skip
   MYSQL_SOCK=$(sudo pmm-admin list | grep -m1 "mysql:metrics" | sed 's|.*(||;s|)||') 
   run sudo pmm-admin add mysql  --socket=${MYSQL_SOCK}  mysql_default
   echo "$output"
@@ -23,6 +24,7 @@
 }
 
 @test "check pmm-admin list has instance enabled slow log rotation [PMM-2432]" {
+  skip
   run sudo pmm-admin list
   echo "$output"
   [ "$status" -eq 0 ]
@@ -31,14 +33,16 @@
 }
 
 @test "run pmm-admin add mysql with disabled slow log rotation option [PMM-2432]" {
+  skip
   MYSQL_SOCK=$(sudo pmm-admin list | grep -m1 "mysql:metrics" | sed 's|.*(||;s|)||')
-    run sudo pmm-admin add mysql  --socket=${MYSQL_SOCK} --slow-log-rotation=false mysql_disabled_slow_log
-    echo "$output"
-    [ "$status" -eq 0 ]
-    echo "${lines[2]}" | grep "OK, now monitoring"
+  run sudo pmm-admin add mysql  --socket=${MYSQL_SOCK} --slow-log-rotation=false mysql_disabled_slow_log
+  echo "$output"
+  [ "$status" -eq 0 ]
+  echo "${lines[2]}" | grep "OK, now monitoring"
 }
 
 @test "check pmm-admin list has instance with disabled slow log rotation [PMM-2432]" {
+  skip
   run sudo pmm-admin list
   echo "$output"
   [ "$status" -eq 0 ]
@@ -47,6 +51,7 @@
 }
 
 @test "run pmm-admin add mysql with retain-slow-logs option [PMM-2432]" {
+  skip
   MYSQL_SOCK=$(sudo pmm-admin list | grep -m1 "mysql:metrics" | sed 's|.*(||;s|)||')
   run sudo pmm-admin add mysql  --socket=${MYSQL_SOCK} --retain-slow-logs=5 mysql_slow_log_5
   echo "$output"
@@ -55,6 +60,7 @@
 }
 
 @test "check added instance has slow_log_rotation=true and retain_slow_logs flags [PMM-2432]" {
+  skip
   run sudo pmm-admin list 
   echo "$output"
   [ "$status" -eq 0 ]
