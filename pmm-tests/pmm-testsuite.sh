@@ -126,6 +126,13 @@ function run_pmm_metrics_memory_check() {
   fi
 }
 
+function run_pmm_slow_log_rotation_check() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/pmm-slow-log-rotation-tests.bats
+  else
+    bats ${DIRNAME}/pmm-slow-log-rotation-tests.bats
+  fi
+}
 # Additional functions
 function run_create_table() {
   bash ${DIRNAME}/create_table.sh $1 $2
