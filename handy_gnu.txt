@@ -193,6 +193,8 @@
   # https://access.redhat.com/documentation/en-US/Red_Hat_Developer_Toolset/3/html/User_Guide/sect-Red_Hat_Developer_Toolset-Install.html
   # https://access.redhat.com/documentation/en-us/red_hat_developer_toolset/6/html/user_guide/sect-red_hat_developer_toolset-install
   # Note that devtoolset-4 is really gcc 5.3.1 (the native Centos7 gcc being 4.8.5)
+# Capture all console output, including stderr:  sudo apt-get/yum install script
+  script; ./somescript.sh; exit; vi typescript
 
 # ------ Common Issues ------
 # Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;
@@ -251,6 +253,10 @@
   Thus; uniq is a versatile tool, but only if you are after very specific functionality. If not, always use short -u
 # Sort unique vs uniq: sort -u sorts the input list and only leaves unique entries. uniq on the other hand does not sort and removes only adjoining same entries
   cat need_sorted_file_with_unique_results_only.txt | sort -u; cat need_adjoining_same_entries_removed; | uniq; # cat need_all_duplicates_removed.txt | uniq -u
+# Gotcha: This will not work: $ if [[ "a-b" == *"a[-_]b"* ]]; then echo "yes"; fi
+          This will     work: $ if [[ "a-b" == *"a"[-_]"b"* ]]; then echo "yes"; fi  # With thanks, http://wiki.bash-hackers.org/syntax/pattern
+# Gotcha: sh -x != bash -x. If you use sh -x instead of bash -x to see the debug output of a complex script, you may see errors like this:
+  ./script.sh: 5: ./script.sh: [[: not found  # The reason is that sh -x cannot handle "[[" if statements whereas bash -x can
 
 # ------ OS/Admin ------
 # Monitor the current rate of syscalls/sec  ## With thanks, http://www.brendangregg.com/blog/2018-02-09/kpti-kaiser-meltdown-performance.html
@@ -292,6 +298,9 @@
   sudo sh -c "$(which echo) 32G > /cgroup/memory/DBLimitedGroup/memory.limit_in_bytes"
   sudo sync;sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"
   sudo cgclassify -g memory:DBLimitedGroup `pidof mysqld`
+# apt != apt-get  # For example, to list application you need: sudo apt list <package_name> and list is not a valid option for apt-get
+  sudo apt-cache policy <package_name>  # Can be used to find out what repo a package comes from etc.
+  apt-cache search <package name>       # Search
   
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax

@@ -129,7 +129,9 @@ btr0cur.cc line 1240                                     ## https://bugs.mysql.c
 fsp0fsp.cc line 2023                                     ## https://bugs.mysql.com/bug.php?id=74343 (testcase from bug #74876 triggers this assertion also)
 #ZN16QEP_shared_owner4keysEv                    ## Fixed ## https://bugs.mysql.com/bug.php?id=75938
 #Z14fill_variablesP3THDP10TABLE_LISTP4Item      ## Fixed ## https://bugs.mysql.com/bug.php?id=75940 
-Z14ha_show_statusP3THDP10handlerton12ha_stat_type        ## https://jira.percona.com/browse/PS-4491
+Z14ha_show_statusP3THDP10handlerton12ha_stat_type        ## https://jira.percona.com/browse/PS-4491 (also see dups below)
+ZN7rocksdb16ColumnFamilyData19InstallSuperVersionEPNS_19SuperVersionContextEPNS_17InstrumentedMutexERKNS_16MutableCFOptionsE  ## Likely duplicate of PS-4491 above
+manifest_filenames->empty                                ## Likely duplicate of PS-4491 above
 #job_context->logs_to_free.empty                         ## Likely dup or consequence of PS-4491 above (on shutdown). Check report and add new testcase if other bug
 #Z18create_ref_for_keyP4JOINP8JOIN_TABP7Key_usey ## Fixed ## https://bugs.mysql.com/bug.php?id=75944 (Marked dup of 74559)                          (# after MS 5.7.7 merged)
 #t1->result_range                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75946                                                 (# after MS 5.7.7 merged)
@@ -300,6 +302,8 @@ handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 
 rem0rec.c line 738                               ##DONOTREMOVE## --innodb-fake-changes=1 will crash PS 5.5 (ref https://bugs.launchpad.net/bugs/1629220)
 #fil0fil.cc line 3499                            ##DONOTREMOVE## SET SESSION debug="+d,dict_tf_to_fsp_flags_failure" > Failing assertion: fsp_flags_is_valid(flags) in PS 5.7.16 (Not a bug. This assertion is by design)
 fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above, for MS 5.7.16 (also logged as https://bugs.mysql.com/bug.php?id=84593 Also see #73926, #74873)
+#ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event  ## See https://jira.percona.com/browse/PS-4493 and compare details with new testcase/findings. If MYEXTRA contains --early-plugin-load=keyring_file.so and the SQL contains INSTALL PLUGIN keyring_vault SONAME 'keyring_vault.so'; you can expect either a crash on FLUSH BINARY LOGS (or any SQL which triggers the same) or earlier (different asserts) due to undefined behaviour
+#.get_stmt_da                                     ## Ref ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event and https://jira.percona.com/browse/PS-4493
 
 ## =========== Special: OOS issues ===========
 #row0mysql.cc line 4950                           ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
@@ -980,3 +984,4 @@ TEXT=.item->type.$                                                              
 TEXT=.plugin.$                                                                          ## https://jira.percona.com/browse/MYR-222
 TEXT=.size > 0.$                                                                        ## https://bugs.launchpad.net/percona-server/+bug/1382408
 TEXT=.BaseValid.$                                                                       ## https://jira.percona.com/browse/PS-4490
+TEXT=.qep_tab->table.$                                                                  ## https://jira.percona.com/browse/PS-4492
