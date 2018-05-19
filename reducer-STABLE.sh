@@ -510,6 +510,7 @@ if [[ "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
 fi
 # ===== [SPECIAL MYEXTRA SECTION END]: Make sure to update 'SPECIAL_MYEXTRA_OPTIONS' re-declaration below if you add additional sections (i.e. MYEXTRA special option sets) above!
 SPECIAL_MYEXTRA_OPTIONS="$TOKUDB $ROCKSDB $BL_ENCRYPTION $KF_ENCRYPTION $BINLOG"
+SPECIAL_MYEXTRA_OPTIONS=$(echo $SPECIAL_MYEXTRA_OPTIONS | sed 's|^[ \t]\+||;s|[ \t]\+$||;s|  | |g')
 
 # For GLIBC crash reduction, we need to capture the output of the console from which reducer.sh is started. Currently only a SINGLE threaded solution using the 'scrip'
 # binary from the util-linux package was found. The script binary is able to capture the GLIC output from the main console. It may be interesting to review the source C
