@@ -378,7 +378,7 @@ TOKUDB=
 ROCKSDB=
 if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
   if [ -r ${BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
-    ROCKSDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin[-_][^ ]\+ha_rocksdb.so")"  # Grep all text including and after ' --plugin[-_]' (upto any space as a new option starts there) upto and including the last 'ha_rocksdb.so' for that option
+    ROCKSDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin[-_][^ ]\+ha_rocksdb.so" | head -n1)"  # Grep all text including and after ' --plugin[-_]' (upto any space as a new option starts there) upto and including the last 'ha_rocksdb.so' for that option
     MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${ROCKSDB}||g")"
     # The below issues should never happen in the Percona pquery framework as we simply use;
     # --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --init-file=/home/roel/percona-qa/plugins_57.sql
@@ -404,10 +404,10 @@ if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
 fi
 if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
   if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
-    TOKUDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin[-_][^ ]\+ha_tokudb.so")"  # Grep all text including and after '--plugin[-_]' (upto any space as a new option starts there) upto and including the last 'ha_tokudb.so' for that option
+    TOKUDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin[-_][^ ]\+ha_tokudb.so" | head -n1)"  # Grep all text including and after '--plugin[-_]' (upto any space as a new option starts there) upto and including the last 'ha_tokudb.so' for that option
     MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDB}||g")"
     if [[ "${MYEXTRA}" == *"--tokudb"[-_]"check"[-_]"jemalloc"* ]]; then
-      TOKUDBJC="$(echo "${MYEXTRA}" | grep -o "\-\-tokudb[-_]check[-_]jemalloc[^ ]\+")"  # Grep all text including and after '--tokudb[-_]check[-_]jemalloc' upto the first space
+      TOKUDBJC="$(echo "${MYEXTRA}" | grep -o "\-\-tokudb[-_]check[-_]jemalloc[^ ]*" | head -n1)"  # Grep all text including and after '--tokudb[-_]check[-_]jemalloc' upto the first space
       MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDBJC}||g")"
       TOKUDB="$(echo "${TOKUDB} ${TOKUDBCJ}")"
     fi
@@ -448,11 +448,11 @@ if [[ "${MYEXTRA}" == *"encrypt"[-_]"binlog"* ]]; then
     echo "Terminating now."
     exit 1
   fi
-  BL_ENCRYPTION="$(echo "${MYEXTRA}" | grep -o "\-\-encrypt[-_]binlog[^ ]\+")"  # Grep all text including and after '--encrypt_binlog' upto the first space
+  BL_ENCRYPTION="$(echo "${MYEXTRA}" | grep -o "\-\-encrypt[-_]binlog[^ ]*" | head -n1)"  # Grep all text including and after '--encrypt_binlog' upto the first space
   MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${BL_ENCRYPTION}||g")"
-  BL_ENCRYPTIONMVC="$(echo "${MYEXTRA}" | grep -o "\-\-master[-_]verify[-_]checksum[^ ]\+")"  # Grep all text including and after '--master[-_]verify[-_]checksum' upto the first space
+  BL_ENCRYPTIONMVC="$(echo "${MYEXTRA}" | grep -o "\-\-master[-_]verify[-_]checksum[^ ]*" | head -n1)"  # Grep all text including and after '--master[-_]verify[-_]checksum' upto the first space
   MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${BL_ENCRYPTIONMVC}||g")"
-  BL_ENCRYPTIONBC="$(echo "${MYEXTRA}" | grep -o "\-\-binlog[-_]checksum[^ ]\+")"  # Grep all text including and after '--binlog[-_]checksum' upto the first space
+  BL_ENCRYPTIONBC="$(echo "${MYEXTRA}" | grep -o "\-\-binlog[-_]checksum[^ ]*" | head -n1)"  # Grep all text including and after '--binlog[-_]checksum' upto the first space
   MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${BL_ENCRYPTIONBC}||g")"
   BL_ENCRYPTION="$(echo "${BL_ENCRYPTION} ${BL_ENCRYPTIONMVC} ${BL_ENCRYPTIONBC}")"
 fi
@@ -464,10 +464,10 @@ if [[ "${MYEXTRA}" == *"plugin"[-_]"load=keyring_file.so"* ]]; then
     echo "Terminating now."
     exit 1
   fi
-  KF_ENCRYPTION="$(echo "${MYEXTRA}" | grep -o "\-\-[^ ]\+keyring_file.so")"  # Grep all text (which is not a space) including and after '--' upto and including 'keyring_file.so'
+  KF_ENCRYPTION="$(echo "${MYEXTRA}" | grep -o "\-\-[^ ]\+keyring_file.so" | head -n1)"  # Grep all text (which is not a space) including and after '--' upto and including 'keyring_file.so'
   MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${KF_ENCRYPTION}||g")"
   if [[ "${MYEXTRA}" == *"--keyring"[-_]"file"[-_]"data"* ]]; then
-    KF_ENCRYPTIONFD="$(echo "${MYEXTRA}" | grep -o "\-\-keyring[-_]file[-_]data[^ ]\+")"  # Grep all text including and after '--keyring[-_]file[-_]data' upto the first space
+    KF_ENCRYPTIONFD="$(echo "${MYEXTRA}" | grep -o "\-\-keyring[-_]file[-_]data[^ ]*" | head -n1)"  # Grep all text including and after '--keyring[-_]file[-_]data' upto the first space
     MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${KF_ENCRYPTIONFD}||g")"
     KF_ENCRYPTION="$(echo "${KF_ENCRYPTION} ${KF_ENCRYPTIONFD}")"
   fi
@@ -495,10 +495,10 @@ if [[ "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
       exit 1
     fi
   fi
-  BINLOG="$(echo "${MYEXTRA}" | grep -o "\-\-log[-_]bin[^ ]\+")"  # Grep all text including and after '--log[-_]bin' upto a space
+  BINLOG="$(echo "${MYEXTRA}" | grep -o "\-\-log[-_]bin[^ ]*" | head -n1)"  # Grep all text including and after '--log[-_]bin' upto a space
   MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${BINLOG}||g")"
   if [[ "${MYEXTRA}" == *"--server"[-_]"id"* ]]; then
-    BINLOGSI="$(echo "${MYEXTRA}" | grep -o "\-\-server[-_]id[^ ]\+")"  # Grep all text including and after '--server[-_]id' upto the first space
+    BINLOGSI="$(echo "${MYEXTRA}" | grep -o "\-\-server[-_]id[^ ]*" | head -n1)"  # Grep all text including and after '--server[-_]id' upto the first space
     MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${BINLOGSI}||g")"
     BINLOG="$(echo "${BINLOG} ${BINLOGSI}")"
   fi
