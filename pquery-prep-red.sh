@@ -147,9 +147,20 @@ if [ "${PQUERY_BIN}" == "" ]; then
   exit 1
 fi
 
+check_if_startup_failure(){  # This function may not be 100% compatible with multi-threaded (MULTI=1) yet (though an attempt was made with the [0-9] regex, ref the MULTI one above which has [1-9] but here we're checking for any startup failure and that would only happen if startup_failure_thread-0.sql is present. Then again, pquery-run.sh may not rename a file correctly to something like startup_failure_thread-{threadnr}.sql - to be verified also. < some TODO's. This function works fine for single thread runs. Multi-thread runs untested. May or may not work as described. Feel free to improve and then remove this note.
+  STARTUP_ISSUE=0
+  echo "* Checking if this trial had a mysqld startup failure"
+  if [ `ls ${TRIAL}/*startup_failure_thread-[0-9]*.sql 2>/dev/null | wc -l` -gt 0 ]; then
+    echo "  > This trial had a mysqld startup failure, the trial's reducer will be set to reduce as such (using REDUCE_STARTUP_ISSUES=1)"
+    STARTUP_ISSUE=1
+  else
+    echo "  > This trial is not marked by a mysqld startup failure"
+  fi
+}
+
 extract_queries_core(){
   echo "* Obtaining quer(y)(ies) from the trial's coredump (core: ${CORE})"
-  . ${SCRIPT_PWD}/pquery-failing-sql.sh ${TRIAL} 1
+  . ${SCRIPT_PWD}/pquery-failing-sql.sh ${TRIAL} 1  # The leading dot and space (and note it should not read ./) is signficant - it means "source" this script, ref bash manual for more information
   if [ "${MULTI}" == "1" ]; then
     CORE_FAILURE_COUNT=`cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing | wc -l`
     echo "  > $[ $CORE_FAILURE_COUNT ] quer(y)(ies) added with interleave sql function to the SQL trace"
@@ -374,6 +385,13 @@ generate_reducer_script(){
     QC_STRING3="0,/#VARMOD#/s:#VARMOD#:QCTEXT=\"${QCTEXT}\"\n#VARMOD#:"
     QC_STRING4="s|SKIPSTAGEABOVE=9|SKIPSTAGEABOVE=3|"
   fi
+  if [ ${STARTUP_ISSUE} -eq 0 ]; then
+    SI_CLEANUP1="s|ZERO0|ZERO0|"
+    SI_STRING1="s|ZERO0|ZERO0|"
+  else
+    SI_CLEANUP1="0,/^[ \t]*REDUCE_STARTUP_ISSUES[ \t]*=.*$/s|^[ \t]*REDUCE_STARTUP_ISSUES[ \t]*=.*$|#REDUCE_STARTUP_ISSUES=<set_below_in_machine_variables_section>|"
+    SI_STRING1="0,/#VARMOD#/s:#VARMOD#:REDUCE_STARTUP_ISSUES=1\n#VARMOD#:"
+  fi
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*MODE[ \t]*=.*$/s|^[ \t]*MODE[ \t]*=.*$|#MODE=<set_below_in_machine_variables_section>|" \
@@ -391,6 +409,8 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "${PXC_CLEANUP1}" \
    | sed -e "${GRP_RPL_CLEANUP1}" \
+   | sed -e "${SI_CLEANUP1}" \
+   | sed -e "${SI_STRING1}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:DISABLE_TOKUDB_AUTOLOAD=${DISABLE_TOKUDB_AUTOLOAD}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
@@ -544,6 +564,8 @@ if [ ${QC} -eq 0 ]; then
         fi
         add_select_ones_to_trace
         remove_non_sql_from_trace
+        # Check if this trial was/had a startup failure (which would take priority over anything else) - will be used to set REDUCE_STARTUP_ISSUES=1
+        check_if_startup_failure
         VALGRIND_CHECK=0
         VALGRIND_ERRORS_FOUND=0; VALGRIND_CHECK_1=
         if [ -r ./${TRIAL}/VALGRIND -a ${VALGRIND_OVERRIDE} -ne 1 ]; then

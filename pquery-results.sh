@@ -227,6 +227,14 @@ if [ "$(echo "${OOS}" | sed "s| ||g")" != "" ]; then
   echo "$(echo "${OOS}" | tr ' ' '\n' | sort -nu |  tr '\n' ' ' | sed 's|$|\n|;s|^ \+||')"
 fi
 
+# Likely disk I/O issues trials
+DI1=$(grep "bytes should have been read. Only" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
+DI="$(echo "${DI1}" | sed "s|  | |g")"
+if [ "$(echo "${DI}" | sed "s| ||g")" != "" ]; then
+  echo "================ Likely disk I/O issues trials (unable to read from disk etc.):"
+  echo "$(echo "${DI}" | tr ' ' '\n' | sort -nu |  tr '\n' ' ' | sed 's|$|\n|;s|^ \+||')"
+fi
+
 # Likely result of 'RELEASE' command (client connection lost resulting in pquery seeing >200 x 'MySQL server has gone away'
 # For the moment, these can simply be deleted. In time, pquery itself should handle this better by reconnecting to mysqld
 # However, in such case reducer replay needs to be checked as well; does it continue replaying the SQL via a live client connection

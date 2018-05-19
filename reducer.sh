@@ -51,7 +51,7 @@ FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as spo
 PQUERY_MULTI=0                  # On/off (1/0) Enables true multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
 
 # === Reduce startup issues     # Reduces startup issues. This will only work if a clean start (mysqld --no-defaults) works correctly; otherwise template creation will fail also
-REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce mysqld startup issues (without SQL simplication), caused for example by a failing --option to mysqld
+REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce mysqld startup (ie. failing mysqld --option etc.) issues (with SQL replay but without SQL simplication)
 
 # === Reduce GLIBC/SS crashes   # Remember that if you use REDUCE_GLIBC_OR_SS_CRASHES=1 with MODE=3, then the console/typescript log is searched for TEXT, not the mysqld error log
 REDUCE_GLIBC_OR_SS_CRASHES=0    # Default/normal use: 0. Set to 1 to reduce testcase based on a GLIBC crash or stack smash being detected. MODE=3 (TEXT) and MODE=4 (all) supported
