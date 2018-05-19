@@ -348,6 +348,7 @@ TS_VARIABILITY_SLEEP=1
 # ======== Internal variable Reference
 # $WORKD = Working directory (i.e. likely /tmp/<epoch>/ or /dev/shm/<epoch>)
 # $INPUTFILE = The original input file (the file to reduce). This file, and this variable, are never changed (to protect the original file from being changed).
+# $WORK_BUG_DIR = The directory in which the original input file resides (i.e. $INPUTFILE, which may have been set to $1 specifically as well). In this directory the output files will be stored
 # $WORKF = This is *originally* a copy of $INPUTFILE, seen in the working directory as $WORKD/in.sql
 #   work   From it are then made chunk deletes etc. and the result is stored in the $WORKT file. Then, $WORKT ovewrites $WORKF when
 #   file   a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT
@@ -535,7 +536,7 @@ if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
   fi
 fi
 
-# Sanitize input filenames which do not have a path specified by pointing to the current path. This ensures [Finish] output looks correct (ref $BUGTARDIR)
+# Sanitize input filenames which do not have a path specified by pointing to the current path. This ensures [Finish] output looks correct (ref $WORK_BUG_DIR)
 if [[ "${INPUTFILE}" != *"/"* ]]; then INPUTFILE="./${INPUTFILE}"; fi;
 
 echo_out(){
@@ -1414,6 +1415,7 @@ init_workdir_and_files(){
   JE3=" elif [ -r \${BASEDIR}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=\${BASEDIR}/lib/mysql/libjemalloc.so.1"
   JE4=" else echo 'Warning: jemalloc was not loaded as it was not found (this is fine for MS, but do check ./${EPOCH}_mybase to set correct jemalloc location for PS)'; fi"
 
+  WORK_BUG_DIR=$(echo $INPUTFILE | sed "s|/[^/]\+$||;s|/$||")  # i.e. the directory in which the original $INPUTFILE resides
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
   WORK_BASEDIR=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_mybase|")
@@ -1441,6 +1443,7 @@ init_workdir_and_files(){
     else
       WORKO=$(echo $INPUTFILE | sed 's/$/_out/' | sed "s/^.*\//$(echo $WORKD | sed 's/\//\\\//g')\//")  # Save output file in individual workdirs
     fi
+    echo_out "[Init] Output dir: $WORK_BUG_DIR"
     echo_out "[Init] Input file: $INPUTFILE"
     # Initial INPUTFILE to WORKF copy
     if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
@@ -2541,9 +2544,8 @@ cleanup_and_save(){
     MYSQLD_OPTIONS_REQUIRED=
     cp -f $WORKO $WORK_OUT
     # Save a tarball of full self-contained testcase on each successful reduction
-    BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
-    rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
-    $(cd $BUGTARDIR; tar -zhcf ${EPOCH}_bug_bundle.tar.gz ${EPOCH}*)
+    rm -f $WORK_BUG_DIR/${EPOCH}_bug_bundle.tar.gz
+    $(cd $WORK_BUG_DIR; tar -zhcf ${EPOCH}_bug_bundle.tar.gz ${EPOCH}*)
   fi
   ATLEASTONCE="[*]"  # The issue was seen at least once (this is used to permanently mark lines with '[*]' suffix as soon as this happens)
   if [ ${STAGE} -eq 8 ]; then STAGE8_CHK=1; fi
@@ -2944,10 +2946,9 @@ finish(){
     cp -f $WORKO $WORK_OUT
     echo_out "[Finish] Final testcase                    : $WORKO ($(wc -l $WORKO | awk '{print $1}') lines)"
   fi
-  BUGTARDIR=$(echo $WORKO | sed 's|/[^/]\+$||;s|/$||')
-  rm -f $BUGTARDIR/${EPOCH}_bug_bundle.tar.gz
-  $(cd $BUGTARDIR; tar -zhcf ${EPOCH}_bug_bundle.tar.gz ${EPOCH}*)
-  echo_out "[Finish] Final testcase bundle + scripts in: $BUGTARDIR"
+  rm -f $WORK_BUG_DIR/${EPOCH}_bug_bundle.tar.gz
+  $(cd $WORK_BUG_DIR; tar -zhcf ${EPOCH}_bug_bundle.tar.gz ${EPOCH}*)
+  echo_out "[Finish] Final testcase bundle + scripts in: $WORK_BUG_DIR"
   echo_out "[Finish] Final testcase for script use     : $WORK_OUT (handy to use in combination with the scripts below)"
   echo_out "[Finish] File containing datadir           : $WORK_BASEDIR (All scripts below use this. Update this when basedir changes)"
   echo_out "[Finish] Matching data dir init script     : $WORK_INIT (This script will use /dev/shm/${EPOCH} as working directory)"
