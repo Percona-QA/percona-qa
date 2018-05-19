@@ -4263,9 +4263,9 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       exit 1
     fi
     echo_out "$ATLEASTONCE [Stage $STAGE] Skipping this stage as the testcase does not contain extraneous mysqld options"
-  elif [ $MYSQLD_OPTION_COUNT -ge 1 -a $MYSQLD_OPTION_COUNT -le 5 ]; then  # 1-5 options
+  elif [ $MYSQLD_OPTION_COUNT -ge 1 -a $MYSQLD_OPTION_COUNT -le 4 ]; then  # 1-4 options
     myextra_reduction
-  else  # 5+ options
+  else  # 4+ options
     while true; do
       SAVE_STAGE8_MYEXTRA=$MYEXTRA
       MYEXTRA=$(cat $FILE1 | tr -s "\n" " " | sed 's|[ \t]\+| |g;s| $||g;s|^ ||g')
@@ -4291,12 +4291,20 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
             sed -i "s|$line||" $WORK_START
           done < $FILE1  # We use $FILE1 here (the opposite option set with options that are not required for issue reproduction) 
           myextra_split
+          if [ $(wc -l $FILE1 $FILE2 | grep total | awk '{print $1}') -le 4 ]; then  # Remaining nr of options <=4
+            myextra_reduction  # Commence 1-by-1 reduction
+            break
+          fi
         fi
       else  # Issue reproduced, so leave MYEXTRA as-is (already filtered), and filter each filtered option from WORK_START now too
         while read line; do
           sed -i "s|$line||" $WORK_START
         done < $FILE2  # We use $FILE2 here (the opposite option set with options that are not required for issue reproduction) 
         myextra_split
+        if [ $(wc -l $FILE1 $FILE2 | grep total | awk '{print $1}') -le 4 ]; then  # Remaining nr of options <=4
+          myextra_reduction  # Commence 1-by-1 reduction
+          break
+        fi
       fi
     done
   fi
