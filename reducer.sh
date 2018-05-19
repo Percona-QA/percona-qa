@@ -4183,17 +4183,17 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 135 ]; then sed -e "s/set[ ]*('','','','',/SET('',/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 136 ]; then sed -e "s/set[ ]*('','','',/SET('',/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 137 ]; then sed -e "s/set[ ]*('','',/SET('',/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 138 ]; then NOSKIP=1; sed -e "s/ ENGINE=TokuDB/ ENGINE=InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 139 ]; then NOSKIP=1; sed -e "s/ ENGINE=RocksDB/ ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 138 ]; then NOSKIP=1; sed -e "s/ ENGINE=TokuDB/ ENGINE=InnoDB/gi" $WORKF > $WORKT # NOSKIP as lenght of 'TokuDB' is same as 'InnoDB' and we want to check if the testcase is engine specific or not
+    elif [ $TRIAL -eq 139 ]; then sed -e "s/ ENGINE=RocksDB/ ENGINE=InnoDB/gi" $WORKF > $WORKT  # NOSKIP not required; InnoDB is shorter then RocksDB
     elif [ $TRIAL -eq 140 ]; then NOSKIP=1; sed -e "s/ ENGINE=MEMORY/ ENGINE=InnoDB/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 141 ]; then NOSKIP=1; sed -e "s/ ENGINE=MyISAM/ ENGINE=InnoDB/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 142 ]; then NOSKIP=1; sed -e "s/ ENGINE=CSV/ ENGINE=InnoDB/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 143 ]; then NOSKIP=1; sed -e "s/ ENGINE=[A-Za-z_-]\+/ ENGINE=InnoDB/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 144 ]; then NOSKIP=1; sed -e "s/ ENGINE=[A-Za-z_-]\+/ /gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 145 ]; then NOSKIP=1; sed -e "s/ ENGINE=TokuDB/ ENGINE=none/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 146 ]; then NOSKIP=1; sed -e "s/ ENGINE=RocksDB/ ENGINE=none/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 147 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT  # NOSKIP as lenght of 'TokuDB' is same as 'InnoDB' and we want to check if the testcase is engine specific or not
-    elif [ $TRIAL -eq 148 ]; then NOSKIP=1; sed -e "s/RocksDB/InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 145 ]; then sed -e "s/ ENGINE=TokuDB/ ENGINE=none/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 146 ]; then sed -e "s/ ENGINE=RocksDB/ ENGINE=none/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 147 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 148 ]; then sed -e "s/RocksDB/InnoDB/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 149 ]; then sed -e 's/[\t ]\+/ /g' -e 's/ \([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
     elif [ $TRIAL -eq 150 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
     elif [ $TRIAL -eq 151 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
