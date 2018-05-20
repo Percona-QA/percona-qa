@@ -743,7 +743,7 @@ add_clients(){
       PORT_CHECK=201
       NODE_NAME="MS_NODE"
       get_basedir mysql "mysql-${ms_version}*" "MySQL Server binary tar ball" ${ms_version}
-      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --innodb_monitor_enable=all --performance_schema=ON --default-authentication-plugin=mysql_native_password"
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --innodb_monitor_enable=all --performance_schema=ON"
     elif [[ "${CLIENT_NAME}" == "md" ]]; then
       PORT_CHECK=301
       NODE_NAME="MD_NODE"
