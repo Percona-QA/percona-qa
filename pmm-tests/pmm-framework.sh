@@ -354,7 +354,7 @@ sanity_check(){
   fi
 }
 
-if [[ -z "${ps_version}" ]]; then ps_version="5.7"; fi
+if [[ -z "{$ps_version}" ]]; then ps_version="5.7"; fi
 if [[ -z "${pxc_version}" ]]; then pxc_version="5.7"; fi
 if [[ -z "${ms_version}" ]]; then ms_version="8.0"; fi
 if [[ -z "${md_version}" ]]; then md_version="10.2"; fi
@@ -865,7 +865,7 @@ add_clients(){
         if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
           echo "WARNING! Another mysqld process using /tmp/${NODE_NAME}_${j}.sock"
           if ! sudo pmm-admin list | grep "/tmp/${NODE_NAME}_${j}.sock" > /dev/null ; then
-            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
+            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
           fi
           continue
         fi
@@ -936,7 +936,7 @@ add_clients(){
             exit 1
           fi
         fi
-        sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
+        sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
       done
       pxc_proxysql_setup(){
         if  [[ "${CLIENT_NAME}" == "pxc" ]]; then
