@@ -33,6 +33,16 @@ if [ $QUERIES -lt $THREADS ]; then
   THREADS=$QUERIES
 fi
 
+# Check if pwgen is installed
+PWGEN=0
+pwgen -ycns 1 1 >/dev/null 2>&1
+if [ $? -eq 1 -o $? -eq 127 ]; then 
+  echo "NOTE: pwgen is not installed. Installing it may create additional complexity in some random data."
+  echo "Install it with: sudo apt-get install pwgen  # or use yum instead of apt-get on yum packaging manager based systems"
+else 
+  PWGEN=1
+fi
+
 # ====== Check all needed data files are present
 if [ ! -r tables.txt ]; then echo "Assert: tables.txt not found!"; exit 1; fi
 if [ ! -r views.txt ]; then echo "Assert: views.txt not found!"; exit 1; fi
@@ -184,7 +194,7 @@ convertxid() { if [ $[$RANDOM % 20 + 1] -le 3  ]; then echo "CONVERT XID"; fi } 
 ifnotexist() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF NOT EXISTS"; fi }                # 50% IF NOT EXISTS
 ifexist()    { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "IF EXISTS"; fi }                    # 50% IF EXISTS
 completion() { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "ON COMPLETION `not` PRESERVE"; fi } # 25% ON COMPLETION [NOT] PRESERVE
-comment()    { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "COMMENT '$(echo "`data`" | sed "s|'||g")'"; fi }  # 25% COMMENT
+comment()    { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "COMMENT $(echo "`data`" )'"; fi }  # 25% COMMENT
 intervaladd(){ if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "+ INTERVAL `interval`"; fi }        # 20% + 0-9 INTERVAL
 work()       { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "WORK"; fi }                         # 25% WORK (for transactions and savepoints)
 savepoint()  { if [ $[$RANDOM % 20 + 1] -le 5  ]; then echo "SAVEPOINT"; fi }                    # 25% SAVEPOINT (for savepoints)
@@ -217,7 +227,7 @@ danrorfull() { if [ $[$RANDOM % 20 + 1] -le 19 ]; then echo "`dataornum`"; else 
 numericadd() { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "`numsimple` `eitherornn` `numericadd`"; else echo "`numsimple` `eitherornn`" ; fi }  # 40% NESTED +/-/etc. NR FUNCTION() OR SIMPLE, 60% SINGLE (OR FINAL) +/-/etc. as above
 dataornum()  { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo "`data`"; else echo "`nn1000`"; fi }           # 20% data (inc numbers), 80% -1000 to 1000
 dataornum2() { if [ $[$RANDOM % 20 + 1] -le 2  ]; then echo "`data`"; else echo "`n100`"; fi }             # 10% data (inc numbers), 90% 0 to 100
-fullnrfunc() { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`eitherornn` `numsimple` `eitherornn`"; else echo "`eitherornn` `numsimple` `eitherornn` `numericadd`"; fi }  # 50% full numeric function, 50% idem with nesting
+fullnrfunc() { if [ $[$RANDOM % 20 + 1] -le 15 ]; then echo "`eitherornn` `numsimple` `eitherornn`"; else echo "`eitherornn` `numsimple` `eitherornn` `numericadd`"; fi }  # 75% full numeric function, 25% idem with nesting
 aggregated() { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed "s|DUMMY|`data`|"; else echo "`aggregate`" | sed "s|DUMMY|`danrorfull`|"; fi }  # 80% AGGREGATE FUNCTION with data, 20% with numbers or full function (for use inside a SELECT ... query)
 aggregatec() { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`aggregate`" | sed "s|DUMMY|c`n3`|"; else echo "`aggregate`" | sed "s|DUMMY|`aggregated`|"; fi }  # 80% AGGREGATE FUNCTION using a column, 20% with data, numbers or full function (for use inside a SELECT ... FROM ... query)
 azn9()       { if [ $[$RANDOM % 36 + 1] -le 26 ]; then echo "`az`"; else echo "`n9`"; fi }  # 26 Letters, 10 digits, equal total division => 1 random character a-z or 0-9
@@ -229,7 +239,6 @@ partdefar1() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef1b`"; els
 partdefar2() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef2b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pMAX VALUES LESS THAN (MAXVALUE,MAXVALUE) `partse` `partcomment` `partmax` `partmin`"; fi; fi }  # 20% partdef2b, 40% MAXVALUE parition, 40% EMPTY/NOTHING
 partdefar3() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef3b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pNEG VALUES IN (-1,-2,-3,-4,-5) `partse` `partcomment` `partmax` `partmin`"; fi; fi }  # 20% partdef3b, 40% some negative values parition, 40% EMPTY/NOTHING
 partdefar4() { if [ $[$RANDOM % 20 + 1] -le 4  ]; then echo ", `partdef4b`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ", PARTITION pNEG VALUES IN ((NULL,NULL),(-2,-2),(-3,-3),(-4,-4),(-5,-5)) `partse` `partcomment` `partmax` `partmin`"; fi; fi }  # 20% partdef4b, 40% some NULL/negative values parition, 40% EMPTY/NOTHING
-data()       { if [ $[$RANDOM % 20 + 1] -le 16 ]; then echo "`datafile`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`timefunc`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi; fi }  # 80% data from data.txt file, 10% date/time function data from timefunc.txt, 10% generated full numerical function
 ac()         { if [ $[$RANDOM % 20 + 1] -le 8  ]; then echo "a"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "b"; else echo "c"; fi; fi }  # 40% a, 30% b, 30% c
 algorithm()  { if [ $[$RANDOM % 20 + 1] -le 6  ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "ALGORITHM=1"; else echo "ALGORITHM=2"; fi; fi }  # 15% ALGORITHM=1, ALGORITHM=2, 70% EMPTY/NOTHING
 trxopt()     { if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`readwrite`"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "WITH CONSISTENT SNAPSHOT, `readwrite`"; else echo "WITH CONSISTENT SNAPSHOT"; fi; fi }  # 50% R/W or R/O, 25% WITH C/S + R/W or R/O, 25% C/S
@@ -250,6 +259,7 @@ like()       { if [ $[$RANDOM % 20 + 1] -le 8  ]; then if [ $[$RANDOM % 20 + 1] 
 isolation()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ COMMITTED"; else echo "REPEATABLE READ"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "READ UNCOMMITTED"; else echo "SERIALIZABLE"; fi; fi }  # 25% READ COMMITTED, 25% REPEATABLE READ, 25% READ UNCOMMITTED, 25% SERIALIZABLE
 timestamp()  { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "CURRENT_TIMESTAMP"; else echo "CURRENT_TIMESTAMP()"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "NOW()"; else echo "`data`"; fi; fi }  # 25% CURRENT_TIMESTAMP, 25% CURRENT_TIMESTAMP(), 25% NOW(), 25% random data
 partdecl()   { if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`parthash`"; else echo "`partkey`"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`partrange`"; else echo "`partlist`"; fi; fi }  # Partitioning: 25% HASH, 25% KEY, 25% RANGE (split further), 25% LIST (split furter)
+data()       { if [ $[$RANDOM % 20 + 1] -le 16 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $PWGEN -eq 1 ]; then echo "'`pwgen -ycnsr "|\'" $[$RANDOM % 1027 + 1] 1`'"; else echo "`datafile`"; fi; else echo "`datafile`"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "`timefunc`"; else echo "(`fullnrfunc`) `numsimple` (`fullnrfunc`)"; fi; fi }  # 40% random data (1-1027 chars long) from pwgen (if installed; or use data.txt file instead via EXTRA if statement), 40% data from data.txt file, 10% date/time function data from timefunc.txt, 10% generated full numerical function
 # ========================================= Quintuple
 operator()   { if [ $[$RANDOM % 20 + 1] -le 8 ]; then echo "="; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo ">"; else echo ">="; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "<"; else echo "<="; fi; fi; fi }  # 40% =, 15% >, 15% >=, 15% <, 15% <=
 pstimer()    { if [ $[$RANDOM % 20 + 1] -le 4 ]; then echo "idle"; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "wait"; else echo "stage"; fi; else if [ $[$RANDOM % 20 + 1] -le 10 ]; then echo "statement"; else echo "statement"; fi; fi; fi }  # 20% idle, 20% wait, 20% stage, 20% statement, 20% statement
@@ -701,6 +711,6 @@ else
   # SQL syntax cleanup; replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma, remove end-of-line spaces
   sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g;s|[ ]*;$|;|" ${FINAL_OUTFILE}.sql
   END=`date +%s`; RUNTIME=$[ ${END} - ${START} ]; MINUTES=$[ ${RUNTIME} / 60 ]; SECONDS=$[ ${RUNTIME} % 60 ]
-  echo "Done! Generated ${QUERIES} quality queries in ${MINUTES}m${SECONDS}s, and saved the results in ${FINAL_OUTFILE}.sql"
-  echo "Please note you may want to do:  \$ sed -i \"s|RocksDB|InnoDB|gi;s|TokuDB|InnoDB|gi\" ${FINAL_OUTFILE}.sql  # depending on what MySQL distribution you are using. Or, edit engines.txt and run generator.sh again"
+  echo "DONE! Generated ${QUERIES} quality queries in ${MINUTES}m${SECONDS}s, and saved the results in ${FINAL_OUTFILE}.sql"
+  echo "NOTE: you may want to do:  \$ sed -i \"s|RocksDB|InnoDB|gi;s|TokuDB|InnoDB|gi\" ${FINAL_OUTFILE}.sql  # depending on what MySQL distribution you are using. Or, edit engines.txt and run generator.sh again"
 fi

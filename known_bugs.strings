@@ -247,7 +247,6 @@ thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_in
 #.old_mh->m_key == key                                   ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1534874  ## Fixed in PS 5.7.10-2rc2  
 #..HA_ATTACHABLE_TRX_COMPATIBLE is not set.              ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1520403 (duplicate of 1488055) ## Fixed in PS 5.7.10-rc1
 #fsp0fsp.cc line 766                                     ## RC1   ## https://bugs.launchpad.net/percona-server/+bug/1529555  ## Fixed in PS 5.7.10-2rc2
-get_state                                                ## MS5.7 ## https://bugs.mysql.com/bug.php?id=80168
 #ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79801 (Fixed in 5.8 only, ref 86249)
 #ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=86249
 ha_innodb.cc line 8210                                   ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79821 (debug)
@@ -303,7 +302,7 @@ rem0rec.c line 738                               ##DONOTREMOVE## --innodb-fake-c
 #fil0fil.cc line 3499                            ##DONOTREMOVE## SET SESSION debug="+d,dict_tf_to_fsp_flags_failure" > Failing assertion: fsp_flags_is_valid(flags) in PS 5.7.16 (Not a bug. This assertion is by design)
 fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above, for MS 5.7.16 (also logged as https://bugs.mysql.com/bug.php?id=84593 Also see #73926, #74873)
 #ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event  ## See https://jira.percona.com/browse/PS-4493 and compare details with new testcase/findings. If MYEXTRA contains --early-plugin-load=keyring_file.so and the SQL contains INSTALL PLUGIN keyring_vault SONAME 'keyring_vault.so'; you can expect either a crash on FLUSH BINARY LOGS (or any SQL which triggers the same) or earlier (different asserts) due to undefined behaviour
-TEXT=.\.get_stmt_da.$                            ## https://jira.percona.com/browse/PS-4493 | Ref ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event and https://jira.percona.com/browse/PS-4493
+TEXT=.\.get_stmt_da.$                            ## https://jira.percona.com/browse/PS-4500 | Ref ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event and https://jira.percona.com/browse/PS-4493
 
 ## =========== Special: OOS issues ===========
 #row0mysql.cc line 4950                           ##DONOTREMOVE## Likely out of disk space. Check pquery-results.sh section 'Likely out of disk space'. Perhaps report at some point to upstream; remarking ftm. Also; filtering any OOS bugs may cause other bug masking!
@@ -986,3 +985,6 @@ TEXT=.plugin.$                                                                  
 TEXT=.size > 0.$                                                                        ## https://bugs.launchpad.net/percona-server/+bug/1382408
 TEXT=.BaseValid.$                                                                       ## https://jira.percona.com/browse/PS-4490
 TEXT=.qep_tab->table.$                                                                  ## https://jira.percona.com/browse/PS-4492
+TEXT=.whitelist \.= nullptr.$                                                           ## https://jira.percona.com/browse/PS-4501
+TEXT=.get_state.$                                                                       ## https://bugs.mysql.com/bug.php?id=80168 (!)
+TEXT=.get_state.$                                                                       ## https://bugs.mysql.com/bug.php?id=90946 (!)
