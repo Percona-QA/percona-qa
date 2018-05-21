@@ -63,14 +63,15 @@ usage () {
   echo " --key-name                       Pass your aws access key file name"
   echo " --ova-image                      Pass PMM server ova image name"
   echo " --ova-memory                     Pass memory(memorysize in MB) for OVA virtual box"
-  echo " --upgrade 			    When this option is specified, PMM framework will be updated to specified version"
+  echo " --upgrade 			  When this option is specified, PMM framework will be updated to specified version"
+  echo " --query-source                   Set query source (perfschema or slowlog)"
   echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -135,7 +136,7 @@ do
     ami_image="$2"
     shift 2
     ;;
-	--key-name )
+    --key-name )
     key_name="$2"
     shift 2
     ;;
@@ -165,6 +166,10 @@ do
     ;;
     --mysqld-startup-options )
     mysqld_startup_options="$2"
+    shift 2
+    ;;
+    --query-source )
+    query_source="$2"
     shift 2
     ;;
     --mo-version )
@@ -320,6 +325,7 @@ elif [[ "$pmm_server" == "custom" ]];then
     exit 1
   fi
 fi
+
 sanity_check(){
   if [[ "$pmm_server" == "docker" ]];then
     if ! sudo docker ps | grep 'pmm-server' > /dev/null ; then
@@ -348,13 +354,17 @@ sanity_check(){
   fi
 }
 
-if [[ -z "${ps_version}" ]]; then ps_version="5.7"; fi
+if [[ -z "{$ps_version}" ]]; then ps_version="5.7"; fi
 if [[ -z "${pxc_version}" ]]; then pxc_version="5.7"; fi
 if [[ -z "${ms_version}" ]]; then ms_version="8.0"; fi
 if [[ -z "${md_version}" ]]; then md_version="10.2"; fi
 if [[ -z "${mo_version}" ]]; then mo_version="3.4"; fi
 if [[ -z "${REPLCOUNT}" ]]; then REPLCOUNT="1"; fi
 if [[ -z "${ova_memory}" ]]; then ova_memory="2048";fi
+
+if [[ -z "$query_source" ]];then
+  query_source=perfschema
+fi
 
 setup(){
   if [ $IS_BATS_RUN -eq 0 ];then
@@ -733,7 +743,7 @@ add_clients(){
       PORT_CHECK=201
       NODE_NAME="MS_NODE"
       get_basedir mysql "mysql-${ms_version}*" "MySQL Server binary tar ball" ${ms_version}
-      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --innodb_monitor_enable=all --performance_schema=ON --default-authentication-plugin=mysql_native_password"
+      MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --innodb_monitor_enable=all --performance_schema=ON"
     elif [[ "${CLIENT_NAME}" == "md" ]]; then
       PORT_CHECK=301
       NODE_NAME="MD_NODE"
@@ -855,7 +865,7 @@ add_clients(){
         if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
           echo "WARNING! Another mysqld process using /tmp/${NODE_NAME}_${j}.sock"
           if ! sudo pmm-admin list | grep "/tmp/${NODE_NAME}_${j}.sock" > /dev/null ; then
-            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
+            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
           fi
           continue
         fi
@@ -926,7 +936,7 @@ add_clients(){
             exit 1
           fi
         fi
-        sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=perfschema
+        sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
       done
       pxc_proxysql_setup(){
         if  [[ "${CLIENT_NAME}" == "pxc" ]]; then
