@@ -1,9 +1,4 @@
 #Checking MySQL Slow log rotation functionality
-setup() {
-
-  SLOW_LOG=$(sudo pmm-admin list| grep -m1 "slowlog")
-}
-
 @test "check that help has slow-log-rotation option [PMM-2432]" {
   run sudo pmm-admin add mysql --help
   echo "$output"
@@ -19,7 +14,7 @@ setup() {
 }
 
 @test "run pmm-admin add mysql with default values [PMM-2432]" {
-  if [[ -z $SLOW_LOG ]]
+if [[ -z $(sudo pmm-admin list| grep -m1 "slowlog") ]]
   then
     skip "Instance should be added with slowlog query source"
   else
@@ -32,7 +27,7 @@ setup() {
 }
 
 @test "check pmm-admin list has instance enabled slow log rotation [PMM-2432]" {
-  if [[ -z $SLOW_LOG ]]
+if [[ -z $(sudo pmm-admin list| grep -m1 "slowlog") ]]
   then
     skip "Instance should be added with slowlog query source"
   else
@@ -45,7 +40,7 @@ setup() {
 }
 
 @test "run pmm-admin add mysql with disabled slow log rotation option [PMM-2432]" {
-  if [[ -z $SLOW_LOG ]]
+if [[ -z $(sudo pmm-admin list| grep -m1 "slowlog") ]]
   then
     skip "Instance should be added with slowlog query source"
   else
@@ -58,7 +53,7 @@ setup() {
 }
 
 @test "check pmm-admin list has instance with disabled slow log rotation [PMM-2432]" {
-  if [[ -z $SLOW_LOG ]]
+if [[ -z $(sudo pmm-admin list| grep -m1 "slowlog") ]]
   then
     skip "Instance should be added with slowlog query source"
   else
@@ -71,7 +66,7 @@ setup() {
 }
 
 @test "run pmm-admin add mysql with retain-slow-logs option [PMM-2432]" {
-  if [[ -z $SLOW_LOG ]]
+if [[ -z $(sudo pmm-admin list| grep -m1 "slowlog") ]]
   then
     skip "Instance should be added with slowlog query source"
   else
@@ -84,7 +79,7 @@ setup() {
 }
 
 @test "check added instance has slow_log_rotation=true and retain_slow_logs flags [PMM-2432]" {
-  if [[ -z $SLOW_LOG ]]
+if [[ -z $(sudo pmm-admin list| grep -m1 "slowlog") ]]
   then
     skip "Instance should be added with slowlog query source"
   else
