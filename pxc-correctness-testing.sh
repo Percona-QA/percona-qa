@@ -58,6 +58,7 @@ do
       echo "  Please choose any of these keyring-plugin options: 'file' or 'vault'"
       exit 1
     fi
+	;;
     -s | --sst-method )
     export SST_METHOD="$2"
     shift 2
