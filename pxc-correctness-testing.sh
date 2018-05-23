@@ -1,41 +1,112 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
+# This script will test the data consistency between Percona XtraDB Cluster nodes.
 
-if [ -z $1 ]; then
-  echo "No valid parameters were passed. Need relative workdir setting. Retry.";
-  echo "Usage example:"
-  echo "$./pxc-correctness-testing.sh /sda/pxc-correctness-testing"
+# Dispay script usage details
+usage () {
+  echo "Usage:"
+  echo "  pxc-correctness-testing.sh  --workdir=PATH"
+  echo ""
+  echo "Additional options:"
+  echo "  -w, --workdir=PATH                     Specify work directory"
+  echo "  -b, --build-number=NUMBER              Specify work build directory"
+  echo "  -k, --keyring-plugin=[file|vault]      Specify which keyring plugin to use(default keyring-file)"
+  echo "  -s, --sst-method=[rsync|xtrabackup-v2] Specify SST method for cluster data transfer"
+  echo "  -e, --with-binlog-encryption           Run the script with binary log encryption feature"
+  echo "  -c, --enable-checksum                  Run pt-table-checksum to check slave sync status"
+}
+
+# Check if we have a functional getopt(1)
+if ! getopt --test
+  then
+  go_out="$(getopt --options=w:b:k:l:t:ech --longoptions=workdir:,build-number:,keyring-plugin:,with-binlog-encryption,help \
+  --name="$(basename "$0")" -- "$@")"
+  test $? -eq 0 || exit 1
+  eval set -- "$go_out"
+fi
+
+if [[ $go_out == " --" ]];then
+  usage
   exit 1
-else
-  WORKDIR=$1
+fi
+
+for arg
+do
+  case "$arg" in
+    -- ) shift; break;;
+    -w | --workdir )
+    export WORKDIR="$2"
+    if [[ ! -d "$WORKDIR" ]]; then
+      echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
+      exit 1
+    fi
+    shift 2
+    ;;
+    -b | --build-number )
+    export BUILD_NUMBER="$2"
+    shift 2
+    ;;
+    -e | --with-binlog-encryption )
+    shift
+    export BINLOG_ENCRYPTION=1
+    ;;
+    -k | --keyring-plugin )
+    export KEYRING_PLUGIN="$2"
+    shift 2
+    if [[ "$KEYRING_PLUGIN" != "file" ]] && [[ "$KEYRING_PLUGIN" != "vault" ]] ; then
+      echo "ERROR: Invalid --keyring-plugin passed:"
+      echo "  Please choose any of these keyring-plugin options: 'file' or 'vault'"
+      exit 1
+    fi
+    -s | --sst-method )
+    export SST_METHOD="$2"
+    shift 2
+    if [[ "$SST_METHOD" != "rsync" ]] && [[ "$SST_METHOD" != "xtrabackup-v2" ]] ; then
+      echo "ERROR: Invalid --sst-method passed:"
+      echo "  Please choose any of these sst-method options: 'rsync' or 'xtrabackup-v2'"
+      exit 1
+    fi
+    ;;
+    -c | --enable-checksum )
+    shift
+    export ENABLE_CHECKSUM=1
+    ;;
+    -h | --help )
+    usage
+    exit 0
+    ;;
+  esac
+done
+
+# generic variables
+if [[ -z "$WORKDIR" ]]; then
+  export WORKDIR=${PWD}
 fi
 
 ROOT_FS=$WORKDIR
-sst_method="rsync"
+if [[ -z "$SST_METHOD" ]]; then
+  export SST_METHOD="xtrabackup"
+fi
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
-echo "${SCRIPT_PWD}.."
 
 cd $WORKDIR
-count=$(ls -1ct Percona-XtraDB-Cluster-5.*.tar.gz | wc -l)
 
-if [[ $count -gt 1 ]];then
-  for dirs in `ls -1ct Percona-XtraDB-Cluster-5.*.tar.gz | tail -n +2`;do
-     rm -rf $dirs
-  done
+#Check PXC binary tar ball
+PXC_TAR=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep ".tar" | head -n1`
+if [[ ! -z $PXC_TAR ]];then
+  tar -xzf $PXC_TAR
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+else
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  if [[ -z $PXCBASE ]] ; then
+    echoit "ERROR! Could not find PXC base directory."
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+  fi
 fi
-
-find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.*' -exec rm -rf {} \+
-
-echo "Removing older directories"
-find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+
-
-echo "Removing their symlinks"
-find . -maxdepth 1 -type l -mtime +10 -delete
-
-TAR=`ls -1ct Percona-XtraDB-Cluster-5.*.tar.gz | head -n1`
-BASEDIR="$(tar tf $TAR | head -1 | tr -d '/')"
-
-tar -xf $TAR
+BASEDIR="${ROOT_FS}/$PXCBASE"
 
 PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
 if [ ! -z $PT_TAR ];then
@@ -55,7 +126,7 @@ if [ -z ${BUILD_NUMBER} ]; then
   BUILD_NUMBER=1001
 fi
 if [ -z ${SDURATION} ]; then
-  SDURATION=100
+  SDURATION=30
 fi
 if [ -z ${TSIZE} ]; then
   TSIZE=500
@@ -85,19 +156,43 @@ function create_emp_db()
    | sed -e "s|USE employees|USE ${DB_NAME}|" \
    | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
    > ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql
-   $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
+   $BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
    popd
 }
+
+echoit(){
+  echo "[$(date +'%T')] $1"
+  if [[ "${WORKDIR}" != "" ]]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/pxc-correctness-testing.log; fi
+}
+
+if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+  echoit "Setting up vault server"
+  mkdir $WORKDIR/vault
+  rm -rf $WORKDIR/vault/*
+  killall vault
+  echoit "********************************************************************************************"
+  ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
+  echoit "********************************************************************************************"
+fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 mkdir -p $WORKDIR/logs
 
-if [ ! -d ${ROOT_FS}/$BASEDIR ]; then
-  echo "Base directory does not exist. Fatal error.";
-  exit 1
-else
-  BASEDIR="${ROOT_FS}/$BASEDIR"
-fi
+create_certs(){
+  # Creating SSL certificate directories
+  rm -rf ${WORKDIR}/certs* && mkdir -p ${WORKDIR}/certs && pushd ${WORKDIR}/certs
+  # Creating CA certificate
+  echoit "Creating CA certificate"
+  openssl genrsa 2048 > ca-key.pem
+  openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'
+
+  # Creating server certificate
+  echoit "Creating server certificate"
+  openssl req -newkey rsa:2048 -days 3600 -nodes -keyout server-key.pem -out server-req.pem -subj '/CN=www.percona.com/O=Database Performance./C=AU'
+  openssl rsa -in server-key.pem -out server-key.pem
+  openssl x509 -req -in server-req.pem -days 3600 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out server-cert.pem
+  popd
+}
 
 #mysql install db check
 
@@ -108,13 +203,16 @@ elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == 
 fi
 
 archives() {
-    tar czf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
-    rm -rf $WORKDIR
+  tar czf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
+  $BASEDIR/bin/mysqladmin  --socket=/tmp/pxc3.sock -u root shutdown
+  $BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
+  $BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
+  rm -rf $WORKDIR
 }
 
 trap archives EXIT KILL
 
-ps -ef | grep 'pxc-pxc-mysql.sock' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+ps -ef | grep 'pxc[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
 SBENCH="sysbench"
 
@@ -131,212 +229,190 @@ sysbench_run(){
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
 
-pxc_startup(){
-  ADDR="127.0.0.1"
-  RPORT=$(( RANDOM%21 + 10 ))
-  RBASE1="$(( RPORT*1000 ))"
-  RADDR1="$ADDR:$(( RBASE1 + 7 ))"
-  LADDR1="$ADDR:$(( RBASE1 + 8 ))"
+echoit "Setting PXC Port"
+ADDR="127.0.0.1"
+RPORT=$(( (RANDOM%21 + 10)*1000 ))
+LADDR="$ADDR:$(( RPORT + 8 ))"
+PXC_START_TIMEOUT=200
 
-  RBASE2="$(( RBASE1 + 100 ))"
-  RADDR2="$ADDR:$(( RBASE2 + 7 ))"
-  LADDR2="$ADDR:$(( RBASE2 + 8 ))"
+SUSER=root
+SPASS=
 
-  RBASE3="$(( RBASE1 + 200 ))"
-  RADDR3="$ADDR:$(( RBASE3 + 7 ))"
-  LADDR3="$ADDR:$(( RBASE3 + 8 ))"
-
-  SUSER=root
-  SPASS=
-
-  node1="${WORKDIR}/node1"
-  node2="${WORKDIR}/node2"
-  node3="${WORKDIR}/node3"
-  rm -Rf $node1 $node2 $node3
-  mkdir -p $node1 $node2 $node3
-
-
-  echo "Starting PXC node1"
-  ${MID} --datadir=$node1  > ${WORKDIR}/logs/node1.err 2>&1 || exit 1;
-
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
-    --basedir=${BASEDIR} --datadir=$node1 --max-connections=2048 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $1 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm:// \
-    --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=${WORKDIR}/logs/node1.err \
-    --socket=/tmp/n1.sock --log-output=none \
-    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node1.err 2>&1 &
-
-  echo "Waiting for node-1 to start ....."
-  MPID="$!"
-  while true ; do
-    sleep 10
-    if egrep -qi  "Synchronized with group, ready for connections" ${WORKDIR}/logs/node1.err ; then
-     break
+if [[ ! -z $KEYRING_PLUGIN ]] || [[ ! -z $BINLOG_ENCRYPTION ]]; then
+  echoit "Generating SSL certificates"
+  create_certs
+fi
+	
+function pxc_start(){
+  for i in `seq 1 3`;do
+    RBASE1="$(( RPORT + ( 100 * $i ) ))"
+    LADDR1="127.0.0.1:$(( RBASE1 + 8 ))"
+    if [ $i -eq 1 ];then
+      WSREP_CLUSTER="gcomm://"
+    else
+      WSREP_CLUSTER="$WSREP_CLUSTER,gcomm://$LADDR1"
     fi
-    if [ "${MPID}" == "" ]; then
-      echoit "Error! server not started.. Terminating!"
-      egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node1.err
-      exit 1
+    WSREP_CLUSTER_STRING="$WSREP_CLUSTER"
+    echoit "Starting PXC node${i}"
+    node="${WORKDIR}/node${i}"
+    rm -rf $node
+    if [[ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]]; then
+      mkdir -p $node
     fi
-  done
 
-  sleep 10
-
-  echo "Starting PXC node2"
-  ${MID} --datadir=$node2  > ${WORKDIR}/logs/node2.err 2>&1 || exit 1;
-
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-    --basedir=${BASEDIR} --datadir=$node2 --max-connections=2048 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $1 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
-    --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR2 \
-    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=${WORKDIR}/logs/node2.err \
-    --socket=/tmp/n2.sock --log-output=none \
-    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node2.err 2>&1 &
-
-  echo "Waiting for node-2 to start ....."
-  MPID="$!"
-  while true ; do
-    sleep 10
-    if egrep -qi  "Synchronized with group, ready for connections" ${WORKDIR}/logs/node2.err ; then
-     break
+    # Creating PXC configuration file
+    rm -rf ${WORKDIR}/n${i}.cnf
+    echo "[mysqld]" > ${WORKDIR}/n${i}.cnf
+    echo "basedir=${BASEDIR}" >> ${WORKDIR}/n${i}.cnf
+    echo "datadir=$node" >> ${WORKDIR}/n${i}.cnf
+    echo "wsrep-debug=ON" >> ${WORKDIR}/n${i}.cnf
+    echo "wsrep_cluster_address=$WSREP_CLUSTER" >> ${WORKDIR}/n${i}.cnf
+    echo "wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1" >> ${WORKDIR}/n${i}.cnf
+    echo "log-error=${WORKDIR}/logs/node${i}.err" >> ${WORKDIR}/n${i}.cnf
+    echo "socket=/tmp/pxc${i}.sock" >> ${WORKDIR}/n${i}.cnf
+    echo "port=$RBASE1" >> ${WORKDIR}/n${i}.cnf
+    echo "wsrep_node_incoming_address=127.0.0.1" >> ${WORKDIR}/n${i}.cnf
+    echo "wsrep_node_address=127.0.0.1" >> ${WORKDIR}/n${i}.cnf
+    echo "innodb_file_per_table" >> ${WORKDIR}/n${i}.cnf
+    echo "innodb_autoinc_lock_mode=2" >> ${WORKDIR}/n${i}.cnf
+    echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKDIR}/n${i}.cnf
+    echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKDIR}/n${i}.cnf
+    echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKDIR}/n${i}.cnf
+    echo "wsrep_sst_method=$SST_METHOD" >> ${WORKDIR}/n${i}.cnf
+    echo "log-bin=mysql-bin" >> ${WORKDIR}/n${i}.cnf
+    echo "master-info-repository=TABLE" >> ${WORKDIR}/n${i}.cnf
+    echo "relay-log-info-repository=TABLE" >> ${WORKDIR}/n${i}.cnf
+    echo "core-file" >> ${WORKDIR}/n${i}.cnf
+    echo "log-output=none" >> ${WORKDIR}/n${i}.cnf
+    echo "wsrep_slave_threads=2" >> ${WORKDIR}/n${i}.cnf
+    echo "server-id=10${i}" >> ${WORKDIR}/n${i}.cnf
+    if [[ "$BINLOG_ENCRYPTION" == 1 ]];then
+      echo "encrypt_binlog" >> ${WORKDIR}/n${i}.cnf
+      echo "master_verify_checksum=on" >> ${WORKDIR}/n${i}.cnf
+      echo "binlog_checksum=crc32" >> ${WORKDIR}/n${i}.cnf
+      echo "innodb_encrypt_tables=ON" >> ${WORKDIR}/n${i}.cnf
+	  if [[ -z $KEYRING_PLUGIN ]]; then
+        echo "early-plugin-load=keyring_file.so" >> ${WORKDIR}/n${i}.cnf
+        echo "keyring_file_data=$node/keyring" >> ${WORKDIR}/n${i}.cnf
+      fi
     fi
-    if [ "${MPID}" == "" ]; then
-      echo "Error! server not started.. Terminating!"
-      egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node2.err
-      exit 1
+	if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+      echo "early-plugin-load=keyring_file.so" >> ${WORKDIR}/n${i}.cnf
+      echo "keyring_file_data=$node/keyring" >> ${WORKDIR}/n${i}.cnf
     fi
-  done
-  sleep 10
+	if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+      echo "early-plugin-load=keyring_vault.so" >> ${WORKDIR}/n${i}.cnf
+      echo "loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${WORKDIR}/n${i}.cnf
+    fi	
+    echo "" >> ${WORKDIR}/n${i}.cnf
+    echo "[sst]" >> ${WORKDIR}/n${i}.cnf
+    echo "encrypt = 4" >> ${WORKDIR}/n${i}.cnf
+    echo "ssl-ca=${WORKDIR}/certs/ca.pem" >> ${WORKDIR}/n${i}.cnf
+    echo "ssl-cert=${WORKDIR}/certs/server-cert.pem" >> ${WORKDIR}/n${i}.cnf
+    echo "ssl-key=${WORKDIR}/certs/server-key.pem" >> ${WORKDIR}/n${i}.cnf
 
-  echo "Starting PXC node3"
-  ${MID} --datadir=$node3  > ${WORKDIR}/logs/node3.err 2>&1 || exit 1;
+    ${MID} --datadir=$node  > ${WORKDIR}/logs/node${i}.err 2>&1 || exit 1;
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
-    --basedir=${BASEDIR} --datadir=$node3 --max-connections=2048 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $1 --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-    --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
-    --wsrep_node_incoming_address=$ADDR \
-    --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR3 \
-    --wsrep_sst_method=$sst_method --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
-    --log-error=${WORKDIR}/logs/node3.err \
-    --socket=/tmp/n3.sock --log-output=none \
-    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > ${WORKDIR}/logs/node3.err 2>&1 &
+    ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/n${i}.cnf  > ${WORKDIR}/logs/node${i}.err 2>&1 &
 
-  # ensure that node-3 has started and has joined the group post SST
-  echo "Waiting for node-3 to start ....."
-  MPID="$!"
-  while true ; do
-    sleep 10
-    if egrep -qi  "Synchronized with group, ready for connections" ${WORKDIR}/logs/node3.err ; then
-     break
-    fi
-    if [ "${MPID}" == "" ]; then
-      echo "Error! server not started.. Terminating!"
-      egrep -i "ERROR|ASSERTION" ${WORKDIR}/logs/node3.err
-      exit 1
+    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
+      sleep 1
+      if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc${i}.sock ping > /dev/null 2>&1; then
+        WSREP_STATE=0
+        COUNTER=0
+        while [[ $WSREP_STATE -ne 4 ]]; do
+          WSREP_STATE=$(${BASEDIR}/bin/mysql -uroot -S/tmp/pxc${i}.sock -Bse"show status like 'wsrep_local_state'" | awk '{print $2}')
+          echoit "WSREP: Synchronized with group, ready for connections"
+          let COUNTER=COUNTER+1
+          if [[ $COUNTER -eq 50 ]];then
+            echoit "WARNING! WSREP: Node is not synchronized with group. Checking slave status"
+            break
+          fi
+          sleep 3
+        done
+        break
+      fi
+      if [[ $X -eq ${PXC_START_TIMEOUT} ]]; then
+        echoit "PXC startup failed.."
+        grep "ERROR" ${WORKDIR}/logs/node${i}.err
+        exit 1
+	  fi
+    done
+    if [[ $i -eq 1 ]];then
+      cp $node/*.pem $WORKDIR/certs/
+      WSREP_CLUSTER="gcomm://$LADDR1"
+      export NODE1_PORT=$RBASE1
+      $BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
+      # Create DSNs table to run pt-table-checksum
+      $BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100), primary key(id));"
+      $BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "insert into percona.dsns (id,dsn) values (1,'h=127.0.0.1,P=$RBASE1,u=root');"
+    else
+      $BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "insert into percona.dsns (id,dsn) values (${i},'h=127.0.0.1,P=$RBASE1,u=root');"
     fi
   done
-
-  if $BASEDIR/bin/mysqladmin -uroot --socket=/tmp/n1.sock ping > /dev/null 2>&1; then
-   echo 'Started PXC node1...'
-  else
-   echo 'PXC node1 not stated...'
-  fi
-  if $BASEDIR/bin/mysqladmin -uroot --socket=/tmp/n2.sock ping > /dev/null 2>&1; then
-   echo 'Started PXC node2...'
-  else
-   echo 'PXC node2 not stated...'
-  fi
-  if $BASEDIR/bin/mysqladmin -uroot --socket=/tmp/n3.sock ping > /dev/null 2>&1; then
-   echo 'Started PXC node3...'
-  else
-   echo 'PXC node3 not stated...'
-  fi
 }
 
-pxc_startup
+pxc_start
+
 check_script(){
   MPID=$1
   ERROR_MSG=$2
   if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID}. Terminating!"; exit 1; fi
 }
 
-$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
-# Create DSNs table to run pt-table-checksum
-$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100), primary key(id));"
-$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id,dsn) values (1,'h=127.0.0.1,P=$RBASE1,u=root');"
-$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id,dsn) values (2,'h=127.0.0.1,P=$RBASE2,u=root');"
-$BASEDIR/bin/mysql -uroot --socket=/tmp/n1.sock -e "insert into percona.dsns (id,dsn) values (3,'h=127.0.0.1,P=$RBASE3,u=root');"
-
-
 #Sysbench prepare run
+echoit "Initiating sysbench dataload"
 sysbench_run load_data pxc_test
-$SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+$SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 check_script $? "Failed to run sysbench dataload"
 
 if [[ ${PIPESTATUS[0]} -ne 0 ]];then
-  echo "Sysbench run failed"
+  echoit "Sysbench run failed"
   EXTSTATUS=1
 fi
 
-echo "Loading sakila test database"
-#$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
-$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
+echoit "Loading sakila test database"
+#$BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
+$BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
 check_script $? "Failed to load sakila test database"
 
-echo "Loading world test database"
-$BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
+echoit "Loading world test database"
+$BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
 check_script $? "Failed to load world test datbase"
 
-echo "Loading employees database with innodb engine.."
+echoit "Loading employees database with innodb engine.."
 create_emp_db employee_1 innodb employees.sql
 check_script $? "Failed to load employees database with innodb engine"
 
-echo "Loading employees partitioned database with innodb engine.."
+echoit "Loading employees partitioned database with innodb engine.."
 create_emp_db employee_2 innodb employees_partitioned.sql
 check_script $? "Failed to load employees partitioned database with innodb engine"
 
 for i in {1..5}; do
   # Sysbench transaction run
+  echoit "Initiating sysbench insert run"
   sysbench_run oltp pxc_test
-  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run.log
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=/tmp/pxc1.sock run 2>&1 | tee $WORKDIR/logs/sysbench_rw_run.log
   check_script $? "Failed to run sysbench read write run"
   # Run pt-table-checksum to analyze data consistency
   if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-    $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root -e "set global pxc_strict_mode=DISABLED"
-    pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d pxc_test,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
+    $BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root -e "set global pxc_strict_mode=DISABLED"
+    pt-table-checksum h=127.0.0.1,P=$NODE1_PORT,u=root -d pxc_test,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$NODE1_PORT,u=root,D=percona,t=dsns
     check_script $? "Failed to run pt-table-checksum"
-    $BASEDIR/bin/mysql --socket=/tmp/n1.sock -u root -e "set global pxc_strict_mode=ENFORCING"
+    $BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root -e "set global pxc_strict_mode=ENFORCING"
   else
-    pt-table-checksum h=127.0.0.1,P=$RBASE1,u=root -d pxc_test,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$RBASE1,u=root,D=percona,t=dsns
+    pt-table-checksum h=127.0.0.1,P=$NODE1_PORT,u=root -d pxc_test,world,employee_1,employee_2 --recursion-method dsn=h=127.0.0.1,P=$NODE1_PORT,u=root,D=percona,t=dsns
     check_script $? "Failed to run pt-table-checksum"
+  fi
+  if [[ $i -eq 5 ]];then
+    if [[ $? -eq 0 ]];then
+      echoit "PXC correctness test run completed!"
+    fi
   fi
 done
 

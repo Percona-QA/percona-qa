@@ -9,8 +9,10 @@
 # Dispay script usage details
 
 usage () {
-  echo "Usage: [ options ]"
-  echo "Options:"
+  echo "Usage:"
+  echo "  pxc-async-repl-test_v2.sh  --workdir=PATH"
+  echo ""
+  echo "Additional options:"
   echo "  -w, --workdir=PATH                Specify work directory"
   echo "  -b, --build-number=NUMBER         Specify work build directory"
   echo "  -l, --binlog-format=FORMAT        Specify mysql binary log format(default ROW)"
@@ -78,6 +80,11 @@ do
     -k | --keyring-plugin )
     export KEYRING_PLUGIN="$2"
     shift 2
+    if [[ "$KEYRING_PLUGIN" != "file" ]] && [[ "$KEYRING_PLUGIN" != "vault" ]] ; then
+      echo "ERROR: Invalid --keyring-plugin passed:"
+      echo "  Please choose any of these keyring-plugin options: 'file' or 'vault'"
+      exit 1
+    fi
     ;;
     -c | --enable-checksum )
     shift
@@ -97,13 +104,6 @@ fi
 
 if [[ -z "$BINLOG_FORMAT" ]];then
   BINLOG_FORMAT="ROW"
-fi
-if [[ -z "$KEYRING_PLUGIN" ]]; then
-  export KEYRING_PLUGIN="file"
-fi
-
-if [[ "$BINLOG_ENCRYPTION" == 1 ]];then
-  export MYEXTRA_BINLOG="--encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
 fi
 
 if [[ ! -z "$TESTCASE" ]]; then
@@ -152,6 +152,14 @@ echoit(){
   echo "[$(date +'%T')] $1"
   if [[ "${WORKDIR}" != "" ]]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/pxc_async_test.log; fi
 }
+
+if [[ $BINLOG_ENCRYPTION -eq 1 ]];then
+  export MYEXTRA_BINLOG="--encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+  if [[ -z $KEYRING_PLUGIN ]]; then
+    export MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring"
+  fi
+fi
+
 if [[ "$KEYRING_PLUGIN" == "file" ]]; then
   MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring"
 elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
@@ -229,7 +237,6 @@ echo "innodb_file_per_table" >> ${PXC_BASEDIR}/my.cnf
 echo "innodb_autoinc_lock_mode=2" >> ${PXC_BASEDIR}/my.cnf
 echo "innodb_locks_unsafe_for_binlog=1" >> ${PXC_BASEDIR}/my.cnf
 echo "wsrep-provider=${PXC_BASEDIR}/lib/libgalera_smm.so" >> ${PXC_BASEDIR}/my.cnf
-echo "wsrep_sst_method=rsync" >> ${PXC_BASEDIR}/my.cnf
 echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${PXC_BASEDIR}/my.cnf
 echo "wsrep_sst_method=$SST_METHOD" >> ${PXC_BASEDIR}/my.cnf
 echo "binlog-format=$BINLOG_FORMAT" >> ${PXC_BASEDIR}/my.cnf
