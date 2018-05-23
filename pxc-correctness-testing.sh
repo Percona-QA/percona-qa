@@ -86,7 +86,7 @@ fi
 
 ROOT_FS=$WORKDIR
 if [[ -z "$SST_METHOD" ]]; then
-  export SST_METHOD="xtrabackup"
+  export SST_METHOD="xtrabackup-v2"
 fi
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
