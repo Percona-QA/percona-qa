@@ -72,6 +72,7 @@ egrep --binary-files=text -ih "^SELECT |^INSERT |^UPDATE |^DROP |^CREATE |^RENAM
   grep --binary-files=text -vi "innodb_replication_delay" | \
   grep --binary-files=text -vi "strict" | \
   grep --binary-files=text -vi "restart_server_args" | \
+  grep --binary-files=text -vi "json_binary::parse_binary" | \
   grep --binary-files=text -vi "\-\-error" | \
   grep --binary-files=text -vi "\-\-let" | \
   grep --binary-files=text -vi "\-\-enable" | \
@@ -134,6 +135,7 @@ cat ${TESTS_PATH}/*/*.test ${TESTS_PATH}/*/*/*.test ${TESTS_PATH}/*/*/*/*.test $
   grep --binary-files=text -vi "innodb_replication_delay" | \
   grep --binary-files=text -vi "restart_server_args" | \
   grep --binary-files=text -vi "restart_server_args" | \
+  grep --binary-files=text -vi "json_binary::parse_binary" | \
   grep --binary-files=text -vi "\-\-error" | \
   grep --binary-files=text -vi "\-\-let" | \
   grep --binary-files=text -vi "\-\-enable" | \

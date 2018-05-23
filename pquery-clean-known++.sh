@@ -1,7 +1,10 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
+# Note that running this script does not execute pquery-clean-known.sh - run that script seperately as well, before or after this one
 
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
+
+echo "Extra cleaning up of known issues++ (expert mode)..."
 
 # Delete all likely out of disk space trials
 ${SCRIPT_PWD}/pquery-results.sh | grep -A1 "Likely out of disk space trials" | \
@@ -14,3 +17,5 @@ ${SCRIPT_PWD}/pquery-results.sh | grep -A1 "Likely 'Server has gone away' 200x d
 # Delete all Handlerton. error == 0 trials
 ${SCRIPT_PWD}/pquery-results.sh | grep "Handlerton. error == 0" | grep -o "reducers.*[^)]" | \
   sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
+
+echo "Done!"

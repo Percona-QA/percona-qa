@@ -199,11 +199,11 @@ fi
 if [ "$(grep -m1 '* hard stack 20480' /etc/security/limits.conf)" != '* hard stack 20480' ]; then
   sudo sh -c 'echo "* hard stack 20480" >> /etc/security/limits.conf'
 fi
-if [ "$(grep -m1 '* soft nproc 20480' /etc/security/limits.conf)" != '* soft nproc 1048576' ]; then  # Previously; 1048576. May cause system hangs on Centos7?
-  sudo sh -c 'echo "* soft nproc 20480" >> /etc/security/limits.conf'
+if [ "$(grep -m1 '* soft nproc 300000' /etc/security/limits.conf)" != '* soft nproc 300000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. 
+  sudo sh -c 'echo "* soft nproc 300000" >> /etc/security/limits.conf'
 fi
-if [ "$(grep -m1 '* hard nproc 20480' /etc/security/limits.conf)" != '* hard nproc 1048576' ]; then  # Previously; 1048576. May cause system hangs on Centos7?
-  sudo sh -c 'echo "* hard nproc 20480" >> /etc/security/limits.conf'
+if [ "$(grep -m1 '* hard nproc 300000' /etc/security/limits.conf)" != '* hard nproc 300000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. 
+  sudo sh -c 'echo "* hard nproc 300000" >> /etc/security/limits.conf'
 fi
 #if [ "$(grep -m1 '* soft memlock 128' /etc/security/limits.conf)" != '* soft memlock 128' ]; then  # May cause system hangs on Centos7?
 #  sudo sh -c 'echo "* soft memlock 128" >> /etc/security/limits.conf'

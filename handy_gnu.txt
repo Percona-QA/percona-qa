@@ -149,6 +149,10 @@
   cat multiple_unterminated_lines.sql | sed -e :x -e '/;[ \t]*$/b' -e N -e 's/\n//' -e bx  
 # Sed can be used to "add/insert" a line behind another one. In the example (output is (on 3 lines): 1 2 3), 2 is inserted after the search term of "1". The 'a' is command for 'add'
   echo -e "1\n3" | sed '/1/a\2'
+# Generate a random string of any lenght, with thanks @MichaelC
+  sudo apt-get install pwgen; pwgen -ycns 100 1  # 100 chars, one result
+# Find out what debugger and potentially what OS was used to compile mysqld, show GCC version, with thanks @DavidB
+  objdump -s --section .comment bin/mysqld  # Then use a site like https://packages.debian.org/search?keywords=gcc-{version} etc.
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging
