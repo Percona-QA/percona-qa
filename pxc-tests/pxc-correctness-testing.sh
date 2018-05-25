@@ -19,7 +19,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:k:l:t:ech --longoptions=workdir:,build-number:,keyring-plugin:,with-binlog-encryption,help \
+  go_out="$(getopt --options=w:b:k:s:ech --longoptions=workdir:,build-number:,keyring-plugin:,with-binlog-encryption,enable-checksum,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -172,7 +172,7 @@ if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
   rm -rf $WORKDIR/vault/*
   killall vault
   echoit "********************************************************************************************"
-  ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
+  ${SCRIPT_PWD}/../vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
   echoit "********************************************************************************************"
 fi
 

@@ -1,6 +1,69 @@
 #!/bin/bash -ue
+# Created by Raghavendra Prabhu
+# Updated by Ramesh Sivaraman, Percona LLC
+# This script will test the data consistency between Percona XtraDB Cluster nodes.
 
-# Author: Raghavendra Prabhu
+# Dispay script usage details
+usage () {
+  echo "Usage:"
+  echo "  pxc-correctness-testing.sh  --workdir=PATH"
+  echo ""
+  echo "Additional options:"
+  echo "  -w, --workdir=PATH           Specify work directory"
+  echo "  -b, --build-number=NUMBER    Specify work build directory"
+  echo "  -x, --xb-version=VERSION     Specify xtrabackup version"
+  echo "  -k, --with-keyring-plugin    Run the script with keyring-file plugin"
+  echo "  -e, --with-binlog-encryption Run the script with binary log encryption feature"
+}
+
+# Check if we have a functional getopt(1)
+if ! getopt --test
+  then
+  go_out="$(getopt --options=w:b:x:keh --longoptions=workdir:,build-number:,xb-version:,with-keyring-plugin,with-binlog-encryption,help \
+  --name="$(basename "$0")" -- "$@")"
+  test $? -eq 0 || exit 1
+  eval set -- "$go_out"
+fi
+
+if [[ $go_out == " --" ]];then
+  usage
+  exit 1
+fi
+
+for arg
+do
+  case "$arg" in
+    -- ) shift; break;;
+    -w | --workdir )
+    export WORKDIR="$2"
+    if [[ ! -d "$WORKDIR" ]]; then
+      echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
+      exit 1
+    fi
+    shift 2
+    ;;
+    -b | --build-number )
+    export BUILD_NUMBER="$2"
+    shift 2
+    ;;
+    -e | --with-binlog-encryption )
+    shift
+    export BINLOG_ENCRYPTION=1
+    ;;
+    -k | --with-keyring-plugin )
+    shift
+    export KEYRING_PLUGIN=1
+	;;
+    -x | --xb-version )
+    export XB_VERSION="$2"
+    shift 2
+    ;;
+    -h | --help )
+    usage
+    exit 0
+    ;;
+  esac
+done
 
 set +e
 echo "Killing existing mysqld"
@@ -14,9 +77,30 @@ set -e
 
 sleep 5
 
-XB_VER=2.2
-WORKDIR=$1
+# generic variables
+if [[ -z ${WORKDIR:-} ]]; then
+  export WORKDIR=${PWD}
+fi
+if [[ -z ${XB_VERSION:-} ]]; then
+  export XB_VERSION=2.4
+fi
+if [ -z ${BUILD_NUMBER:-} ]; then
+  BUILD_NUMBER=1001
+fi
+
+if [[ ${KEYRING_PLUGIN:-} -eq 1 ]]; then
+  export EXTRA_ENCRIPTION_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=keyring"
+fi
+
+if [[ ${BINLOG_ENCRYPTION:-} -eq 1 ]];then
+  if [[ -z ${KEYRING_PLUGIN:-} ]]; then
+    export EXTRA_ENCRIPTION_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=keyring"
+  fi
+  export EXTRA_ENCRIPTION_OPTIONS="$EXTRA_ENCRIPTION_OPTIONS --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+fi
+
 cd $WORKDIR
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 FAILEDTESTS=""
 DISTESTS=""
@@ -38,10 +122,7 @@ echo "Removing older directories"
 find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+
 
 echo "Removing their symlinks"
-find . -maxdepth 1 -type l -mtime +10 -delete
-
-
-
+#find . -maxdepth 1 -type l -mtime +10 -delete+
 
 TAR=`ls -1ct Percona-XtraDB-Cluster*.tar.gz | head -n1`
 BASE="$(basename $TAR .tar.gz)"
@@ -52,9 +133,9 @@ TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
 tar -xf $TAR
 
 for ver in {20..0};do
-    BBASE="percona-xtrabackup-${XB_VER}.${ver}-Linux-$(uname -m)"
+    BBASE="percona-xtrabackup-${XB_VERSION}.${ver}-Linux-$(uname -m)"
     if [[ -d $BBASE ]];then
-        XB_VER=2.2.$ver
+        XB_VERSION=2.4.$ver
         break
     fi
 done
@@ -92,12 +173,12 @@ export PATH="$ROOT_FS/$BBASE/bin:$ROOT_FS:$PATH"
 
 MYSQL_BASEDIR="${ROOT_FS}/$BASE"
 #export XB_TESTDIR="$ROOT_FS/$BBASE/share/percona-xtrabackup-test/"
-export XB_TESTDIR="$ROOT_FS/$BASE/percona-xtradb-cluster-tests"
+export XB_TESTDIR="${SCRIPT_PWD}/percona-xtradb-cluster-tests/sst"
 trap "cp -R $XB_TESTDIR/results $WORKDIR/results-${BUILD_NUMBER} && tar czf $WORKDIR/results-${BUILD_NUMBER}.tar.gz $WORKDIR/results-${BUILD_NUMBER} " EXIT KILL
 
 cp -R $XB_TESTDIR/certs /tmp/
 
-cp $MYSQL_BASEDIR/lib/$GVER/libgalera_smm.so $MYSQL_BASEDIR/lib/
+#cp $MYSQL_BASEDIR/lib/$GVER/libgalera_smm.so $MYSQL_BASEDIR/lib/
 
 echo "Workdir: $ROOT_FS"
 echo "Basedir: $MYSQL_BASEDIR"
@@ -321,6 +402,9 @@ set -e
 
 
 echo "Running test for encrypted replication and SST"
+if [[ ! -z ${EXTRA_ENCRIPTION_OPTIONS:-} ]];then
+  echo "This run will initiate with keyring-file plugin/data-at-rest encryption options"
+fi
 
 t="Encrypted replication and encrypted SST"
 set +e
