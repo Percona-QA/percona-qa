@@ -233,7 +233,12 @@ for tn in `seq 1 $NUMTESTS`; do
     else
         export PING_ATTEMPTS=100
     fi
-
+    if [[ "$t" == *"encrypt"* ]];then
+        if [[ ! -z ${EXTRA_ENCRIPTION_OPTIONS:-} ]];then
+          echo "This run will initiate with keyring-file plugin/data-at-rest encryption options"
+          export KEYRING_ENCRIPTION_OPTIONS="$EXTRA_ENCRIPTION_OPTIONS"
+        fi
+    fi
     set +e
     if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
         bash -x ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_advanced-v2.sh
@@ -277,7 +282,12 @@ for tn in `seq 1 $NUMTESTS`; do
     else
         export PING_ATTEMPTS=100
     fi
-
+    if [[ "$t" == *"encrypt"* ]];then 
+        if [[ ! -z ${EXTRA_ENCRIPTION_OPTIONS:-} ]];then
+          echo "This run will initiate with keyring-file plugin/data-at-rest encryption options"
+          export KEYRING_ENCRIPTION_OPTIONS="$EXTRA_ENCRIPTION_OPTIONS"
+        fi
+    fi
     set +e
     if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
         bash -x ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_advanced.sh
