@@ -1,29 +1,66 @@
 #!/bin/bash
 # Created by Raghavendra Prabhu
 # Updated by Ramesh Sivaraman, Percona LLC
+# This script will test the upgrade between PXC-5.6 and PXC-5.7
 
-if [ "$#" -ne 1 ]; then
-  echo "This script requires absolute workdir as a parameter!";
+# Dispay script usage details
+usage () {
+  echo "Usage:"
+  echo "  pxc56to57.sh  --workdir=PATH"
+  echo ""
+  echo "Additional options:"
+  echo "  -w, --workdir=PATH                     Specify work directory"
+  echo "  -b, --build-number=NUMBER              Specify work build directory"
+}
+
+# Check if we have a functional getopt(1)
+if ! getopt --test
+  then
+  go_out="$(getopt --options=w:b:k:s:ech --longoptions=workdir:,build-number:,help \
+  --name="$(basename "$0")" -- "$@")"
+  test $? -eq 0 || exit 1
+  eval set -- "$go_out"
+fi
+
+if [[ $go_out == " --" ]];then
+  usage
   exit 1
 fi
+
+for arg
+do
+  case "$arg" in
+    -- ) shift; break;;
+    -w | --workdir )
+    export WORKDIR="$2"
+    if [[ ! -d "$WORKDIR" ]]; then
+      echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
+      exit 1
+    fi
+    shift 2
+    ;;
+    -b | --build-number )
+    export BUILD_NUMBER="$2"
+    shift 2
+    ;;
+    -h | --help )
+    usage
+    exit 0
+    ;;
+  esac
+done
 
 ulimit -c unlimited
 export MTR_MAX_SAVE_CORE=5
 
-set +e
 echo "Killing existing mysqld"
-pgrep -f mysqld
+ps -ef | grep 'node[0-9].sock' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
-pkill -f mysqld
-sleep 10
-pgrep mysqld || pkill -9 -f mysqld
-
-#Kill proxysql process
-killall -9 proxysql > /dev/null 2>&1 || true
-
-sleep 5
+# generic variables
+if [[ -z "$WORKDIR" ]]; then
+  export WORKDIR=${PWD}
+fi
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
-WORKDIR=$1
 ROOT_FS=$WORKDIR
 MYSQLD_START_TIMEOUT=180
 
@@ -118,7 +155,7 @@ fi
 cd $WORKDIR
 
 if [ $USE_PROXYSQL -eq 1 ]; then
-  PROXYSQL_BIN=`ls -1t proxysql | head -n1`
+  PROXYSQL_BIN=$(which proxysql 2>/dev/null)
   if [ -z $PROXYSQL_BIN ]; then
     echo "ProxySQL binary is missing!"
     exit 1
@@ -416,7 +453,7 @@ sysbench_run(){
 }
 
 proxysql_start(){
-  $ROOT_FS/$PROXYSQL_BIN --initial -f -c $SCRIPT_PWD/proxysql.cnf > /dev/null 2>&1 &
+  $ROOT_FS/$PROXYSQL_BIN --initial -f -c $SCRIPT_PWD/../proxysql.cnf > /dev/null 2>&1 &
   check_script $?
   sleep 10
   ${MYSQL_BASEDIR1}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'proxysql'@'localhost' IDENTIFIED BY 'proxysql'"
