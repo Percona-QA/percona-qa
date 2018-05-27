@@ -508,11 +508,11 @@ if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
 fi
 
 echo "Loading sakila test database on node1"
-$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
+$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/sakila.sql
 check_script $?
 
 echo "Loading world test database on node1"
-$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/sample_db/world.sql
+$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/world.sql
 check_script $?
 
 echo "Loading employees database with innodb engine.."
