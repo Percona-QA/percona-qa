@@ -93,7 +93,7 @@ fts0opt.cc line 2576                                                            
 log0log.cc line 1878                                                                     ## https://jira.percona.com/browse/PXC-809
 m_protocol->type                                                                         ## https://jira.percona.com/browse/PXC-2116
 n < 64                                                                                   ## https://jira.percona.com/browse/PXC-2117
-TEXT=.n % 4$                                                                             ## https://jira.percona.com/browse/PXC-2120
+TEXT=.\.n % 4.$                                                                          ## https://jira.percona.com/browse/PXC-2120
 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
