@@ -69,6 +69,7 @@ mi->rli->inited                                                                 
 sync0policy.ic line 63                                                                   ## https://jira.percona.com/browse/PXC-773
 tabledef->type.i                                                                         ## https://jira.percona.com/browse/PXC-774
 thd->wsrep_next_trx_id                                                                   ## https://github.com/codership/mysql-wsrep/issues/306 (PXC-775)
+thd->wsrep_trx_id                                                                        ## https://jira.percona.com/browse/PXC-2114
 Z11plugin_lockP3THDPPP13st_plugin_int                                                    ## https://jira.percona.com/browse/PXC-776
 Z26log_online_follow_redo_logv                                                           ## https://jira.percona.com/browse/PXC-777
 ZN2gu12MutexWithPFSC2E19wsrep_pfs_instr_tag                                              ## https://jira.percona.com/browse/PXC-778
@@ -90,6 +91,9 @@ ZN6galera3FSMINS_10Replicator5StateENS_13ReplicatorSMM10TransitionENS_10EmptyGua
 thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->get_transaction              ## https://jira.percona.com/browse/PXC-807
 fts0opt.cc line 2576                                                                     ## https://jira.percona.com/browse/PXC-808
 log0log.cc line 1878                                                                     ## https://jira.percona.com/browse/PXC-809
+m_protocol->type                                                                         ## https://jira.percona.com/browse/PXC-2116
+n < 64                                                                                   ## https://jira.percona.com/browse/PXC-2117
+TEXT=.n % 4$                                                                             ## https://jira.percona.com/browse/PXC-2120
 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
