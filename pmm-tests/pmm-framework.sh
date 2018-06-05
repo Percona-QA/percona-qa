@@ -63,7 +63,8 @@ usage () {
   echo " --key-name                       Pass your aws access key file name"
   echo " --ova-image                      Pass PMM server ova image name"
   echo " --ova-memory                     Pass memory(memorysize in MB) for OVA virtual box"
-  echo " --upgrade 			  When this option is specified, PMM framework will be updated to specified version"
+  echo " --upgrade-server          			  When this option is specified, PMM Server will be updated to the last version"
+  echo " --upgrade-client          			  When this option is specified, PMM client will be updated to the last version"
   echo " --query-source                   Set query source (perfschema or slowlog)"
   echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
 }
@@ -71,7 +72,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -1208,8 +1209,12 @@ if [ ! -z $setup ]; then
   setup
 fi
 
-if [ ! -z $upgrade ]; then
+if [ ! -z $upgrade-server ]; then
   upgrade_server
+  upgrade_client
+fi
+
+if [ ! -z $upgrade-client ]; then
   upgrade_client
 fi
 
