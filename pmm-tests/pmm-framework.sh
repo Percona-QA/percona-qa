@@ -233,8 +233,12 @@ do
     shift
     compare_query_count=1
     ;;
-    --upgrade )
-    upgrade=1
+    --upgrade-server)
+    upgrade_server
+    shift
+    ;;
+    --upgrade-client)
+    upgrade_client
     shift
     ;;
     --pmm-server-username )
@@ -1152,7 +1156,18 @@ upgrade_server(){
 
 upgrade_client(){
   #Install new pmm-client
-  echo "Installing new pmm-client..."
+  echo "Installing new pmm-client tarball from TESTING directory..."
+  PMM_CLIENT_TARBALL_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client" |awk '{print $2}'| grep "tar.gz" | head -n1)
+  echo "PMM client tarball $PMM_CLIENT_TARBALL_URL"
+  wget $PMM_CLIENT_TARBALL_URL
+  PMM_CLIENT_TAR=$(echo $PMM_CLIENT_TARBALL_URL | grep -o '[^/]*$')
+  tar -xzf $PMM_CLIENT_TAR
+  PMM_CLIENT_BASEDIR=$(ls -1td pmm-client-* 2>/dev/null | grep -v ".tar" | head -n1)
+  pushd $PMM_CLIENT_BASEDIR > /dev/null
+  sudo ./install
+  popd > /dev/null
+  if [[ $(sudo pmm-admin list |grep metrics) ]]; then
+    echo "There is no any instances, please check pmm-admin list output"
 }
 
 sysbench_prepare(){
