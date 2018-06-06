@@ -233,12 +233,12 @@ do
     shift
     compare_query_count=1
     ;;
-    --upgrade-server)
-    upgrade_server
+    --upgrade-server )
+    upgrade_server=1
     shift
     ;;
-    --upgrade-client)
-    upgrade_client
+    --upgrade-client )
+    upgrade_client=1
     shift
     ;;
     --pmm-server-username )
@@ -1167,7 +1167,10 @@ upgrade_client(){
   sudo ./install
   popd > /dev/null
   if [[ $(sudo pmm-admin list |grep metrics) ]]; then
+    echo "Upgrade client has been finished successfully"
+  else
     echo "There is no any instances, please check pmm-admin list output"
+  fi
 }
 
 sysbench_prepare(){
@@ -1224,12 +1227,11 @@ if [ ! -z $setup ]; then
   setup
 fi
 
-if [ ! -z $upgrade-server ]; then
+if [ ! -z $upgrade_server ]; then
   upgrade_server
-  upgrade_client
 fi
 
-if [ ! -z $upgrade-client ]; then
+if [ ! -z $upgrade_client ]; then
   upgrade_client
 fi
 
