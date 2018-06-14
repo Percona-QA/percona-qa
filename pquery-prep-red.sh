@@ -358,21 +358,21 @@ generate_reducer_script(){
     MULTI_STRING2="0,/#VARMOD#/s:#VARMOD#:FORCE_SKIPV=1\n#VARMOD#:"
     MULTI_STRING3="0,/#VARMOD#/s:#VARMOD#:FORCE_SPORADIC=1\n#VARMOD#:"
   fi
-  if [ ${PXC} -eq 1 ]; then
+  if [[ ${PXC} -eq 1 ]]; then
     PXC_CLEANUP1="0,/^[ \t]*PXC_MOD[ \t]*=.*$/s|^[ \t]*PXC_MOD[ \t]*=.*$|#PXC_MOD=<set_below_in_machine_variables_section>|"
     PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_MOD=1\n#VARMOD#:"
   else
     PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
     PXC_STRING1="s|ZERO0|ZERO0|"
   fi
-  if [ ${GRP_RPL} -eq 1 ]; then
+  if [[ ${GRP_RPL} -eq 1 ]]; then
     GRP_RPL_CLEANUP1="0,/^[ \t]*GRP_RPL_MOD[ \t]*=.*$/s|^[ \t]*GRP_RPL_MOD[ \t]*=.*$|#GRP_RPL_MOD=<set_below_in_machine_variables_section>|"
     GRP_RPL_STRING1="0,/#VARMOD#/s:#VARMOD#:GRP_RPL_MOD=1\n#VARMOD#:"
   else
     GRP_RPL_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
     GRP_RPL_STRING1="s|ZERO0|ZERO0|"
   fi
-  if [ ${QC} -eq 0 ]; then
+  if [[ ${QC} -eq 0 ]]; then
     REDUCER_FILENAME=reducer${OUTFILE}.sh
     QC_STRING1="s|ZERO0|ZERO0|"
     QC_STRING2="s|ZERO0|ZERO0|"
@@ -385,7 +385,7 @@ generate_reducer_script(){
     QC_STRING3="0,/#VARMOD#/s:#VARMOD#:QCTEXT=\"${QCTEXT}\"\n#VARMOD#:"
     QC_STRING4="s|SKIPSTAGEABOVE=9|SKIPSTAGEABOVE=3|"
   fi
-  if [ ${STARTUP_ISSUE} -eq 0 ]; then
+  if [[ ${STARTUP_ISSUE} -eq 0 ]]; then
     SI_CLEANUP1="s|ZERO0|ZERO0|"
     SI_STRING1="s|ZERO0|ZERO0|"
   else

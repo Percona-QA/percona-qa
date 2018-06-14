@@ -309,13 +309,15 @@ function pxc_start(){
 	if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
       echo "early-plugin-load=keyring_vault.so" >> ${WORKDIR}/n${i}.cnf
       echo "loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${WORKDIR}/n${i}.cnf
-    fi	
-    echo "" >> ${WORKDIR}/n${i}.cnf
-    echo "[sst]" >> ${WORKDIR}/n${i}.cnf
-    echo "encrypt = 4" >> ${WORKDIR}/n${i}.cnf
-    echo "ssl-ca=${WORKDIR}/certs/ca.pem" >> ${WORKDIR}/n${i}.cnf
-    echo "ssl-cert=${WORKDIR}/certs/server-cert.pem" >> ${WORKDIR}/n${i}.cnf
-    echo "ssl-key=${WORKDIR}/certs/server-key.pem" >> ${WORKDIR}/n${i}.cnf
+    fi
+    if [[ "$BINLOG_ENCRYPTION" == 1 ]] || [[ "$KEYRING_PLUGIN" == "file" ]] || [[ "$KEYRING_PLUGIN" == "vault" ]] ;then
+      echo "" >> ${WORKDIR}/n${i}.cnf
+      echo "[sst]" >> ${WORKDIR}/n${i}.cnf
+      echo "encrypt = 4" >> ${WORKDIR}/n${i}.cnf
+      echo "ssl-ca=${WORKDIR}/certs/ca.pem" >> ${WORKDIR}/n${i}.cnf
+      echo "ssl-cert=${WORKDIR}/certs/server-cert.pem" >> ${WORKDIR}/n${i}.cnf
+      echo "ssl-key=${WORKDIR}/certs/server-key.pem" >> ${WORKDIR}/n${i}.cnf
+    fi
 
     ${MID} --datadir=$node  > ${WORKDIR}/logs/node${i}.err 2>&1 || exit 1;
 
@@ -345,7 +347,6 @@ function pxc_start(){
 	  fi
     done
     if [[ $i -eq 1 ]];then
-      cp $node/*.pem $WORKDIR/certs/
       WSREP_CLUSTER="gcomm://$LADDR1"
       export NODE1_PORT=$RBASE1
       $BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
@@ -379,11 +380,11 @@ fi
 
 echoit "Loading sakila test database"
 #$BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
-$BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
+$BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root < ${SCRIPT_PWD}/../sample_db/sakila_workaround_bug81497.sql
 check_script $? "Failed to load sakila test database"
 
 echoit "Loading world test database"
-$BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root < ${SCRIPT_PWD}/sample_db/world.sql
+$BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root < ${SCRIPT_PWD}/../sample_db/world.sql
 check_script $? "Failed to load world test datbase"
 
 echoit "Loading employees database with innodb engine.."
