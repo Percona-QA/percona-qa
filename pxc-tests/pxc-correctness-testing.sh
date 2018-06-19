@@ -12,14 +12,14 @@ usage () {
   echo "  -b, --build-number=NUMBER              Specify work build directory"
   echo "  -k, --keyring-plugin=[file|vault]      Specify which keyring plugin to use(default keyring-file)"
   echo "  -s, --sst-method=[rsync|xtrabackup-v2] Specify SST method for cluster data transfer"
-  echo "  -e, --with-binlog-encryption           Run the script with binary log encryption feature"
+  echo "  -e, --with-encryption                  Run the script with encryption features"
   echo "  -c, --enable-checksum                  Run pt-table-checksum to check slave sync status"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:k:s:ech --longoptions=workdir:,build-number:,keyring-plugin:,with-binlog-encryption,enable-checksum,help \
+  go_out="$(getopt --options=w:b:k:s:ech --longoptions=workdir:,build-number:,keyring-plugin:,with-encryption,enable-checksum,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -46,9 +46,9 @@ do
     export BUILD_NUMBER="$2"
     shift 2
     ;;
-    -e | --with-binlog-encryption )
+    -e | --with-encryption )
     shift
-    export BINLOG_ENCRYPTION=1
+    export ENCRYPTION=1
     ;;
     -k | --keyring-plugin )
     export KEYRING_PLUGIN="$2"
@@ -244,7 +244,7 @@ PXC_START_TIMEOUT=200
 SUSER=root
 SPASS=
 
-if [[ ! -z $KEYRING_PLUGIN ]] || [[ ! -z $BINLOG_ENCRYPTION ]]; then
+if [[ ! -z $KEYRING_PLUGIN ]] || [[ ! -z $ENCRYPTION ]]; then
   echoit "Generating SSL certificates"
   create_certs
 fi
@@ -292,10 +292,10 @@ function pxc_start(){
     echo "log-output=none" >> ${WORKDIR}/n${i}.cnf
     echo "wsrep_slave_threads=2" >> ${WORKDIR}/n${i}.cnf
     echo "server-id=10${i}" >> ${WORKDIR}/n${i}.cnf
-    if [[ "$BINLOG_ENCRYPTION" == 1 ]];then
-      echo "encrypt_binlog" >> ${WORKDIR}/n${i}.cnf
-      echo "master_verify_checksum=on" >> ${WORKDIR}/n${i}.cnf
-      echo "binlog_checksum=crc32" >> ${WORKDIR}/n${i}.cnf
+    if [[ "$ENCRYPTION" == 1 ]];then
+      #echo "encrypt_binlog" >> ${WORKDIR}/n${i}.cnf
+      #echo "master_verify_checksum=on" >> ${WORKDIR}/n${i}.cnf
+      #echo "binlog_checksum=crc32" >> ${WORKDIR}/n${i}.cnf
       echo "innodb_encrypt_tables=ON" >> ${WORKDIR}/n${i}.cnf
 	  if [[ -z $KEYRING_PLUGIN ]]; then
         echo "early-plugin-load=keyring_file.so" >> ${WORKDIR}/n${i}.cnf
@@ -310,7 +310,7 @@ function pxc_start(){
       echo "early-plugin-load=keyring_vault.so" >> ${WORKDIR}/n${i}.cnf
       echo "loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${WORKDIR}/n${i}.cnf
     fi
-    if [[ "$BINLOG_ENCRYPTION" == 1 ]] || [[ "$KEYRING_PLUGIN" == "file" ]] || [[ "$KEYRING_PLUGIN" == "vault" ]] ;then
+    if [[ "$ENCRYPTION" == 1 ]] || [[ "$KEYRING_PLUGIN" == "file" ]] || [[ "$KEYRING_PLUGIN" == "vault" ]] ;then
       echo "" >> ${WORKDIR}/n${i}.cnf
       echo "[sst]" >> ${WORKDIR}/n${i}.cnf
       echo "encrypt = 4" >> ${WORKDIR}/n${i}.cnf
