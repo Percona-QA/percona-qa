@@ -26,14 +26,14 @@ usage () {
   echo "                                      pxc_mtr_test"
   echo "                                    If you specify 'all', the script will execute all testcases"
   echo ""
-  echo "  -e, --with-binlog-encryption      Run the script with binary log encryption feature"
+  echo "  -e, --with-encryption             Run the script with encryption features"
   echo "  -c, --enable-checksum             Run pt-table-checksum to check slave sync status"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:k:l:t:ech --longoptions=workdir:,build-number:,binlog-format:,keyring-plugin:,testcase:,with-binlog-encryption,help \
+  go_out="$(getopt --options=w:b:k:l:t:ech --longoptions=workdir:,build-number:,binlog-format:,keyring-plugin:,testcase:,with-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -73,9 +73,9 @@ do
     export TESTCASE="$2"
 	shift 2
 	;;
-    -e | --with-binlog-encryption )
+    -e | --with-encryption )
     shift
-    export BINLOG_ENCRYPTION=1
+    export ENCRYPTION=1
     ;;
     -k | --keyring-plugin )
     export KEYRING_PLUGIN="$2"
@@ -153,8 +153,9 @@ echoit(){
   if [[ "${WORKDIR}" != "" ]]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/pxc_async_test.log; fi
 }
 
-if [[ $BINLOG_ENCRYPTION -eq 1 ]];then
-  export MYEXTRA_BINLOG="--encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+if [[ $ENCRYPTION -eq 1 ]];then
+  #export MYEXTRA_BINLOG="--encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+  export MYEXTRA_ENCRYPTION="--innodb_encrypt_tables=ON"
   if [[ -z $KEYRING_PLUGIN ]]; then
     export MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring"
   fi
@@ -330,7 +331,7 @@ function async_rpl_test(){
 
       ${PXC_BASEDIR}/bin/mysqld --defaults-file=${PXC_BASEDIR}/my.cnf \
        $STARTUP_OPTION --datadir=$node \
-       --server-id=10${i} $MYEXTRA $MYEXTRA_BINLOG $MYEXTRA_KEYRING \
+       --server-id=10${i} $MYEXTRA $MYEXTRA_ENCRYPTION $MYEXTRA_KEYRING \
        --wsrep_cluster_address=$WSREP_CLUSTER \
        --wsrep_node_incoming_address=$ADDR \
        --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
@@ -387,7 +388,7 @@ function async_rpl_test(){
       ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
 
       ${PXC_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-       --basedir=${PXC_BASEDIR} $STARTUP_OPTION $MYEXTRA_BINLOG $MYEXTRA_KEYRING --datadir=$node \
+       --basedir=${PXC_BASEDIR} $STARTUP_OPTION $MYEXTRA_ENCRYPTION $MYEXTRA_KEYRING --datadir=$node \
        --innodb_file_per_table --default-storage-engine=InnoDB \
        --binlog-format=ROW --log-bin=mysql-bin --server-id=20${i} $MYEXTRA \
        --innodb_flush_method=O_DIRECT --core-file --loose-new \
