@@ -19,7 +19,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:k:s:ech --longoptions=workdir:,build-number:,keyring-plugin:,with-encryption,enable-checksum,help \
+  go_out="$(getopt --options=w:b:k:s:ech --longoptions=workdir:,build-number:,keyring-plugin:,sst-method:,with-encryption,enable-checksum,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"

@@ -26,6 +26,7 @@ usage () {
   echo "                                      pxc_mtr_test"
   echo "                                    If you specify 'all', the script will execute all testcases"
   echo ""
+  echo "  -s, --sst-method=[rsync|xtrabackup-v2] Specify SST method for cluster data transfer"
   echo "  -e, --with-encryption             Run the script with encryption features"
   echo "  -c, --enable-checksum             Run pt-table-checksum to check slave sync status"
 }
@@ -33,7 +34,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:k:l:t:ech --longoptions=workdir:,build-number:,binlog-format:,keyring-plugin:,testcase:,with-encryption,help \
+  go_out="$(getopt --options=w:b:k:l:t:s:ech --longoptions=workdir:,build-number:,binlog-format:,keyring-plugin:,testcase:,with-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -73,6 +74,15 @@ do
     export TESTCASE="$2"
 	shift 2
 	;;
+    -s | --sst-method )
+    export SST_METHOD="$2"
+    shift 2
+    if [[ "$SST_METHOD" != "rsync" ]] && [[ "$SST_METHOD" != "xtrabackup-v2" ]] ; then
+      echo "ERROR: Invalid --sst-method passed:"
+      echo "  Please choose any of these sst-method options: 'rsync' or 'xtrabackup-v2'"
+      exit 1
+    fi
+    ;;
     -e | --with-encryption )
     shift
     export ENCRYPTION=1
