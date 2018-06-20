@@ -240,6 +240,13 @@ if [[ ! -e `which sysbench` ]];then
 fi
 echoit "Note: Using sysbench at $(which sysbench)"
 
+echoit "Setting PXC/PS Port"
+ADDR="127.0.0.1"
+RPORT=$(( (RANDOM%21 + 10)*1000 ))
+LADDR="$ADDR:$(( RPORT + 8 ))"
+SUSER=root
+SPASS=
+
 # Creating default my.cnf file
 rm -rf ${PXC_BASEDIR}/my.cnf
 echo "[mysqld]" > ${PXC_BASEDIR}/my.cnf
@@ -284,21 +291,12 @@ elif [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)
   MID="${PXC_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PXC_BASEDIR}"
 fi
 
-echoit "Setting PXC/PS Port"
-ADDR="127.0.0.1"
-RPORT=$(( (RANDOM%21 + 10)*1000 ))
-LADDR="$ADDR:$(( RPORT + 8 ))"
-
-SUSER=root
-SPASS=
-
 #Check command failure
 check_cmd(){
   MPID=$1
   ERROR_MSG=$2
   if [[ ${MPID} -ne 0 ]]; then echoit "ERROR: $ERROR_MSG. Terminating!"; exit 1; fi
 }
-
 
 #Setting PXC strict mode for running PT table checksum.
 set_pxc_strict_mode(){
