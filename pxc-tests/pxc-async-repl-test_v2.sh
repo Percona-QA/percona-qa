@@ -163,12 +163,25 @@ echoit(){
   if [[ "${WORKDIR}" != "" ]]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/pxc_async_test.log; fi
 }
 
-if [[ $ENCRYPTION -eq 1 ]];then
-  #export MYEXTRA_BINLOG="--encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
-  export MYEXTRA_ENCRYPTION="--innodb_encrypt_tables=ON"
-  if [[ -z $KEYRING_PLUGIN ]]; then
-    export MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring"
-  fi
+create_certs(){
+  # Creating SSL certificate directories
+  rm -rf ${WORKDIR}/certs* && mkdir -p ${WORKDIR}/certs && pushd ${WORKDIR}/certs
+  # Creating CA certificate
+  echoit "Creating CA certificate"
+  openssl genrsa 2048 > ca-key.pem
+  openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'
+
+  # Creating server certificate
+  echoit "Creating server certificate"
+  openssl req -newkey rsa:2048 -days 3600 -nodes -keyout server-key.pem -out server-req.pem -subj '/CN=www.percona.com/O=Database Performance./C=AU'
+  openssl rsa -in server-key.pem -out server-key.pem
+  openssl x509 -req -in server-req.pem -days 3600 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out server-cert.pem
+  popd
+}
+
+if [[ ! -z $KEYRING_PLUGIN ]] || [[ ! -z $ENCRYPTION ]]; then
+  echoit "Generating SSL certificates"
+  create_certs
 fi
 
 if [[ "$KEYRING_PLUGIN" == "file" ]]; then
@@ -247,24 +260,6 @@ LADDR="$ADDR:$(( RPORT + 8 ))"
 SUSER=root
 SPASS=
 
-# Creating default my.cnf file
-rm -rf ${PXC_BASEDIR}/my.cnf
-echo "[mysqld]" > ${PXC_BASEDIR}/my.cnf
-echo "basedir=${PXC_BASEDIR}" >> ${PXC_BASEDIR}/my.cnf
-echo "innodb_file_per_table" >> ${PXC_BASEDIR}/my.cnf
-echo "innodb_autoinc_lock_mode=2" >> ${PXC_BASEDIR}/my.cnf
-echo "innodb_locks_unsafe_for_binlog=1" >> ${PXC_BASEDIR}/my.cnf
-echo "wsrep-provider=${PXC_BASEDIR}/lib/libgalera_smm.so" >> ${PXC_BASEDIR}/my.cnf
-echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${PXC_BASEDIR}/my.cnf
-echo "wsrep_sst_method=$SST_METHOD" >> ${PXC_BASEDIR}/my.cnf
-echo "binlog-format=$BINLOG_FORMAT" >> ${PXC_BASEDIR}/my.cnf
-echo "log-bin=mysql-bin" >> ${PXC_BASEDIR}/my.cnf
-echo "master-info-repository=TABLE" >> ${PXC_BASEDIR}/my.cnf
-echo "relay-log-info-repository=TABLE" >> ${PXC_BASEDIR}/my.cnf
-echo "core-file" >> ${PXC_BASEDIR}/my.cnf
-echo "log-output=none" >> ${PXC_BASEDIR}/my.cnf
-echo "wsrep_slave_threads=2" >> ${PXC_BASEDIR}/my.cnf
-
 #sysbench command should compatible with versions 0.5 and 1.0
 sysbench_run(){
   TEST_TYPE="$1"
@@ -309,12 +304,6 @@ set_pxc_strict_mode(){
 #Async replication test
 function async_rpl_test(){
   MYEXTRA_CHECK=$1
-  if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
-    MYEXTRA="--gtid-mode=ON --log-slave-updates --enforce-gtid-consistency"
-  else
-    MYEXTRA="--log-slave-updates"
-  fi
-  MYEXTRA="$MYEXTRA --binlog-stmt-cache-size=1M"
   function pxc_start(){
     for i in `seq 1 3`;do
       STARTUP_OPTION="$1"
@@ -332,19 +321,70 @@ function async_rpl_test(){
       if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]]; then
         mkdir -p $node
       fi
-      if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-        MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf"
+	  
+      # Creating PXC configuration file
+      rm -rf ${PXC_BASEDIR}/n${i}.cnf
+      echo "[mysqld]" > ${PXC_BASEDIR}/n${i}.cnf
+      echo "basedir=${PXC_BASEDIR}" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "datadir=$node" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "wsrep-debug=ON" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "wsrep_cluster_address=$WSREP_CLUSTER" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "log-error=${WORKDIR}/logs/node${i}.err" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "socket=/tmp/pxc${i}.sock" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "port=$RBASE1" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "wsrep_node_incoming_address=127.0.0.1" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "wsrep_node_address=127.0.0.1" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "innodb_file_per_table" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "innodb_autoinc_lock_mode=2" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "innodb_locks_unsafe_for_binlog=1" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "wsrep-provider=${PXC_BASEDIR}/lib/libgalera_smm.so" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "wsrep_sst_method=$SST_METHOD" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "log-bin=mysql-bin" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "master-info-repository=TABLE" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "relay-log-info-repository=TABLE" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "core-file" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "log-output=none" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "wsrep_slave_threads=2" >> ${PXC_BASEDIR}/n${i}.cnf
+      echo "server-id=10${i}" >> ${PXC_BASEDIR}/n${i}.cnf
+      if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
+        echo "gtid-mode=ON" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "log-slave-updates" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "enforce-gtid-consistency" >> ${PXC_BASEDIR}/n${i}.cnf
+      else
+        echo "log-slave-updates" >> ${PXC_BASEDIR}/n${i}.cnf
       fi
+      if [[ "$ENCRYPTION" == 1 ]];then
+        #echo "encrypt_binlog" >> ${PXC_BASEDIR}/n${i}.cnf
+        #echo "master_verify_checksum=on" >> ${PXC_BASEDIR}/n${i}.cnf
+        #echo "binlog_checksum=crc32" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "innodb_encrypt_tables=ON" >> ${PXC_BASEDIR}/n${i}.cnf
+  	  if [[ -z $KEYRING_PLUGIN ]]; then
+          echo "early-plugin-load=keyring_file.so" >> ${PXC_BASEDIR}/n${i}.cnf
+          echo "keyring_file_data=$node/keyring" >> ${PXC_BASEDIR}/n${i}.cnf
+        fi
+      fi
+  	if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+        echo "early-plugin-load=keyring_file.so" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "keyring_file_data=$node/keyring" >> ${PXC_BASEDIR}/n${i}.cnf
+      fi
+  	if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+        echo "early-plugin-load=keyring_vault.so" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${PXC_BASEDIR}/n${i}.cnf
+      fi
+      if [[ "$ENCRYPTION" == 1 ]] || [[ "$KEYRING_PLUGIN" == "file" ]] || [[ "$KEYRING_PLUGIN" == "vault" ]] ;then
+        echo "" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "[sst]" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "encrypt = 4" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "ssl-ca=${WORKDIR}/certs/ca.pem" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "ssl-cert=${WORKDIR}/certs/server-cert.pem" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "ssl-key=${WORKDIR}/certs/server-key.pem" >> ${PXC_BASEDIR}/n${i}.cnf
+      fi
+	
       ${MID} --datadir=$node  > ${WORKDIR}/logs/node${i}.err 2>&1 || exit 1;
 
-      ${PXC_BASEDIR}/bin/mysqld --defaults-file=${PXC_BASEDIR}/my.cnf \
-       $STARTUP_OPTION --datadir=$node \
-       --server-id=10${i} $MYEXTRA $MYEXTRA_ENCRYPTION $MYEXTRA_KEYRING \
-       --wsrep_cluster_address=$WSREP_CLUSTER \
-       --wsrep_node_incoming_address=$ADDR \
-       --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-       --wsrep_node_address=$ADDR --log-error=${WORKDIR}/logs/node${i}.err \
-       --socket=/tmp/pxc${i}.sock --port=$RBASE1 > ${WORKDIR}/logs/node${i}.err 2>&1 &
+      ${PXC_BASEDIR}/bin/mysqld --defaults-file=${PXC_BASEDIR}/n${i}.cnf $STARTUP_OPTION > ${WORKDIR}/logs/node${i}.err 2>&1 &
 
       for X in $(seq 0 ${PXC_START_TIMEOUT}); do
         sleep 1
@@ -353,7 +393,9 @@ function async_rpl_test(){
           COUNTER=0
           while [[ $WSREP_STATE -ne 4 ]]; do
             WSREP_STATE=$(${PXC_BASEDIR}/bin/mysql -uroot -S/tmp/pxc${i}.sock -Bse"show status like 'wsrep_local_state'" | awk '{print $2}')
-            echoit "WSREP: Synchronized with group, ready for connections"
+            if [[ $WSREP_STATE -eq 4 ]]; then
+              echoit "WSREP: Synchronized with group, ready for connections"
+            fi
             let COUNTER=COUNTER+1
             if [[ $COUNTER -eq 50 ]];then
               echoit "WARNING! WSREP: Node is not synchronized with group. Checking slave status"
@@ -388,22 +430,50 @@ function async_rpl_test(){
       if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]]; then
         mkdir -p $node
       fi
-
-      if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-        MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf"
+	  
+      rm -rf ${PXC_BASEDIR}/ps${i}.cnf
+      echo "[mysqld]" > ${PXC_BASEDIR}/ps${i}.cnf
+      echo "basedir=${PXC_BASEDIR}" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "datadir=$node" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "log-error=${WORKDIR}/logs/psnode${i}.err" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "socket=/tmp/ps${i}.sock" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "port=$RBASE1" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "innodb_file_per_table" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "log-bin=mysql-bin" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "master-info-repository=TABLE" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "relay-log-info-repository=TABLE" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "core-file" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "log-output=none" >> ${PXC_BASEDIR}/ps${i}.cnf
+      echo "server-id=20${i}" >> ${PXC_BASEDIR}/ps${i}.cnf
+      if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
+        echo "gtid-mode=ON" >> ${PXC_BASEDIR}/ps${i}.cnf
+        echo "log-slave-updates" >> ${PXC_BASEDIR}/ps${i}.cnf
+        echo "enforce-gtid-consistency" >> ${PXC_BASEDIR}/ps${i}.cnf
+      else
+        echo "log-slave-updates" >> ${PXC_BASEDIR}/ps${i}.cnf
+      fi
+      if [[ "$ENCRYPTION" == 1 ]];then
+        #echo "encrypt_binlog" >> ${PXC_BASEDIR}/ps${i}.cnf
+        #echo "master_verify_checksum=on" >> ${PXC_BASEDIR}/ps${i}.cnf
+        #echo "binlog_checksum=crc32" >> ${PXC_BASEDIR}/ps${i}.cnf
+        echo "innodb_encrypt_tables=ON" >> ${PXC_BASEDIR}/ps${i}.cnf
+  	    if [[ -z $KEYRING_PLUGIN ]]; then
+          echo "early-plugin-load=keyring_file.so" >> ${PXC_BASEDIR}/ps${i}.cnf
+          echo "keyring_file_data=$node/keyring" >> ${PXC_BASEDIR}/ps${i}.cnf
+        fi
+      fi
+  	  if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+        echo "early-plugin-load=keyring_file.so" >> ${PXC_BASEDIR}/ps${i}.cnf
+        echo "keyring_file_data=$node/keyring" >> ${PXC_BASEDIR}/ps${i}.cnf
+      fi
+  	  if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+        echo "early-plugin-load=keyring_vault.so" >> ${PXC_BASEDIR}/ps${i}.cnf
+        echo "loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${PXC_BASEDIR}/ps${i}.cnf
       fi
 
       ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
 
-      ${PXC_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-       --basedir=${PXC_BASEDIR} $STARTUP_OPTION $MYEXTRA_ENCRYPTION $MYEXTRA_KEYRING --datadir=$node \
-       --innodb_file_per_table --default-storage-engine=InnoDB \
-       --binlog-format=ROW --log-bin=mysql-bin --server-id=20${i} $MYEXTRA \
-       --innodb_flush_method=O_DIRECT --core-file --loose-new \
-       --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= \
-       --log-error=$WORKDIR/logs/psnode${i}.err \
-       --socket=/tmp/ps${i}.sock  --log-output=none \
-       --port=$RBASE1 --master-info-repository=TABLE --relay-log-info-repository=TABLE > $WORKDIR/logs/psnode${i}.err 2>&1 &
+      ${PXC_BASEDIR}/bin/mysqld --defaults-file=${PXC_BASEDIR}/ps${i}.cnf $STARTUP_OPTION  > $WORKDIR/logs/psnode${i}.err 2>&1 &
 
       for X in $(seq 0 ${PXC_START_TIMEOUT}); do
         sleep 1
@@ -689,20 +759,7 @@ function async_rpl_test(){
 
     echo "Start PXC node2 for shuffle test"
 
-	${PXC_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
-     --basedir=${PXC_BASEDIR} $STARTUP_OPTION --datadir=${WORKDIR}/node2 \
-     --binlog-format=ROW --log-bin=mysql-bin --server-id=102 $MYEXTRA \
-     --innodb_file_per_table --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-     --wsrep-provider=${PXC_BASEDIR}/lib/libgalera_smm.so \
-     --wsrep_cluster_address=$WSREP_CLUSTER \
-     --wsrep_node_incoming_address=$ADDR \
-     --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR \
-     --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS \
-     --wsrep_node_address=$ADDR --core-file \
-     --log-error=${WORKDIR}/logs/node2.err \
-     --socket=/tmp/pxc2.sock --log-output=none \
-     --port=$MASTER_HOST_PORT --wsrep_slave_threads=2  \
-     --master-info-repository=TABLE --relay-log-info-repository=TABLE > ${WORKDIR}/logs/node2.err 2>&1 &
+    ${PXC_BASEDIR}/bin/mysqld --defaults-file=${PXC_BASEDIR}/n2.cnf $STARTUP_OPTION > ${WORKDIR}/logs/node2.err 2>&1 &
 
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
