@@ -192,7 +192,7 @@ elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
   rm -rf $WORKDIR/vault/*
   killall vault
   echoit "********************************************************************************************"
-  ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
+  ${SCRIPT_PWD}/../vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
   echoit "********************************************************************************************"
 fi
 
@@ -370,8 +370,8 @@ function async_rpl_test(){
         echo "keyring_file_data=$node/keyring" >> ${PXC_BASEDIR}/n${i}.cnf
       fi
   	if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-        echo "early-plugin-load=keyring_vault.so" >> ${PXC_BASEDIR}/n${i}.cnf
-        echo "loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "early-plugin-load=\"keyring_vault=keyring_vault.so\"" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${PXC_BASEDIR}/n${i}.cnf
       fi
       if [[ "$ENCRYPTION" == 1 ]] || [[ "$KEYRING_PLUGIN" == "file" ]] || [[ "$KEYRING_PLUGIN" == "vault" ]] ;then
         echo "" >> ${PXC_BASEDIR}/n${i}.cnf
@@ -467,8 +467,8 @@ function async_rpl_test(){
         echo "keyring_file_data=$node/keyring" >> ${PXC_BASEDIR}/ps${i}.cnf
       fi
   	  if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-        echo "early-plugin-load=keyring_vault.so" >> ${PXC_BASEDIR}/ps${i}.cnf
-        echo "loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${PXC_BASEDIR}/ps${i}.cnf
+        echo "early-plugin-load=\"keyring_vault=keyring_vault.so\"" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PXC_BASEDIR}/n${i}.cnf
       fi
 
       ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;

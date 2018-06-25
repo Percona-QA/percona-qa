@@ -307,8 +307,8 @@ function pxc_start(){
       echo "keyring_file_data=$node/keyring" >> ${WORKDIR}/n${i}.cnf
     fi
 	if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-      echo "early-plugin-load=keyring_vault.so" >> ${WORKDIR}/n${i}.cnf
-      echo "loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${WORKDIR}/n${i}.cnf
+      echo "early-plugin-load=\"keyring_vault=keyring_vault.so\"" >> ${WORKDIR}/n${i}.cnf
+      echo "keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${WORKDIR}/n${i}.cnf
     fi
     if [[ "$ENCRYPTION" == 1 ]] || [[ "$KEYRING_PLUGIN" == "file" ]] || [[ "$KEYRING_PLUGIN" == "vault" ]] ;then
       echo "" >> ${WORKDIR}/n${i}.cnf
