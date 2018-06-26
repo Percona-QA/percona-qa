@@ -28,6 +28,7 @@ ZN24subselect_hash_sj_engine7cleanupEv                                          
 #lock_get_wait(other_lock)                                                       # Fixed ## https://jira.percona.com/browse/PXC-561
 trx0sys.cc line 354                                                                      ## https://github.com/codership/galera/issues/382
 trx0sys.cc line 356                                                                      ## https://github.com/codership/galera/issues/382
+trx0sys.cc line 376                                                                      ## https://github.com/codership/galera/issues/382
 trx0trx.cc line 383                                                                      ## https://github.com/codership/mysql-wsrep/issues/301
 trx0trx.cc line 387                                                                      ## https://github.com/codership/mysql-wsrep/issues/301
 trx0trx.cc line 1290                                                                     ## https://bugs.mysql.com/bug.php?id=82024
@@ -94,6 +95,8 @@ log0log.cc line 1878                                                            
 m_protocol->type                                                                         ## https://jira.percona.com/browse/PXC-2116
 n < 64                                                                                   ## https://jira.percona.com/browse/PXC-2117
 TEXT=.\.n % 4.$                                                                          ## https://jira.percona.com/browse/PXC-2120
+process_.idx..state_ == Process..S_APPLYING .. process_.idx..state_ == Process..S_CANCELED ## https://jira.percona.com/browse/PXC-2146
+ZN6galera13ReplicatorSMM9param_setERKSsS2_                                               ## https://jira.percona.com/browse/PXC-2137
 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
