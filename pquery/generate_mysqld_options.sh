@@ -19,6 +19,12 @@ if [ ! -r ./bin/mysqld ]; then
   fi
 fi
 
+if ./bin/mysqld --version | grep -q 'Percona XtraDB Cluster' 2>/dev/null ; then 
+  IS_PXC=1
+else
+  IS_PXC=0
+fi
+
 echoit(){
   echo "[$(date +'%T')] $1"
   echo "[$(date +'%T')] $1" >> /tmp/generate_mysqld_options.log
@@ -467,21 +473,25 @@ while read line; do
     echo "${OPTION}=FILE" >> ${OUTPUT_FILE}
     echo "${OPTION}=TABLE" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--default-storage-engine" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}   # More times InnoDB to increase random selection frequency
-    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-    echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
-    echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
-    echo "${OPTION}=MyISAM" >> ${OUTPUT_FILE}
-    echo "${OPTION}=MyISAM" >> ${OUTPUT_FILE}
-    echo "${OPTION}=TokuDB" >> ${OUTPUT_FILE}
-    echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
+    if [[ $IS_PXC -ne 1 ]]; then # Skipping this option for PXC, PXC support only InnoDB engine.
+      echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}   # More times InnoDB to increase random selection frequency
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MyISAM" >> ${OUTPUT_FILE}
+      echo "${OPTION}=TokuDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=TokuDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=TokuDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
+    fi
   elif [ "${OPTION}" == "--" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
   elif [ "${OPTION}" == "--" ]; then
