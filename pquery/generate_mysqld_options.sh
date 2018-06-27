@@ -473,15 +473,29 @@ while read line; do
     echo "${OPTION}=FILE" >> ${OUTPUT_FILE}
     echo "${OPTION}=TABLE" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--default-storage-engine" ]; then
-    if [[ $IS_PXC -ne 1 ]]; then # Skipping this option for PXC, PXC support only InnoDB engine.
-      echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+    if [[ $IS_PXC -eq 1 ]]; then 
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}   # More times InnoDB to increase random selection frequency
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MyISAM" >> ${OUTPUT_FILE}
+      echo "${OPTION}=TokuDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
+    else
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}   # More times InnoDB to increase random selection frequency
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
       echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
       echo "${OPTION}=MyISAM" >> ${OUTPUT_FILE}
