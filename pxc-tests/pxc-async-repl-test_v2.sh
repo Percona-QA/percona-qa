@@ -359,6 +359,8 @@ function async_rpl_test(){
         #echo "encrypt_binlog" >> ${PXC_BASEDIR}/n${i}.cnf
         #echo "master_verify_checksum=on" >> ${PXC_BASEDIR}/n${i}.cnf
         #echo "binlog_checksum=crc32" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "innodb_temp_tablespace_encrypt=ON" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "encrypt-tmp-files=ON" >> ${PXC_BASEDIR}/n${i}.cnf
         echo "innodb_encrypt_tables=ON" >> ${PXC_BASEDIR}/n${i}.cnf
   	  if [[ -z $KEYRING_PLUGIN ]]; then
           echo "early-plugin-load=keyring_file.so" >> ${PXC_BASEDIR}/n${i}.cnf

@@ -296,6 +296,8 @@ function pxc_start(){
       #echo "encrypt_binlog" >> ${WORKDIR}/n${i}.cnf
       #echo "master_verify_checksum=on" >> ${WORKDIR}/n${i}.cnf
       #echo "binlog_checksum=crc32" >> ${WORKDIR}/n${i}.cnf
+      echo "innodb_temp_tablespace_encrypt=ON" >> ${WORKDIR}/n${i}.cnf
+      echo "encrypt-tmp-files=ON" >> ${WORKDIR}/n${i}.cnf
       echo "innodb_encrypt_tables=ON" >> ${WORKDIR}/n${i}.cnf
 	  if [[ -z $KEYRING_PLUGIN ]]; then
         echo "early-plugin-load=keyring_file.so" >> ${WORKDIR}/n${i}.cnf
