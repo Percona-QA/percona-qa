@@ -75,6 +75,7 @@ do
       echo "  Please choose any of these keyring-plugin options: 'file' or 'vault'"
       exit 1
     fi
+    ;;
     -h | --help )
     usage
     exit 0
