@@ -8,19 +8,19 @@ usage () {
   echo "  pxc-quick-start.sh  --workdir=PATH"
   echo ""
   echo "Additional options:"
-  echo "  -w, --workdir=PATH           Specify work directory"
-  echo "  -b, --basedir=PATH           Specify base directory"
-  echo "  -s, --start                  Start Percona XtraDB Cluster"
-  echo "  -a, --stop                   Stop Percona XtraDB Cluster"
-  echo "  -r, --restart                Restart Percona XtraDB Cluster"
-  echo "  -k, --with-keyring-plugin    Run the script with keyring-file plugin"
-  echo "  -e, --with-binlog-encryption Run the script with binary log encryption feature"
+  echo "  -w, --workdir=PATH                Specify work directory"
+  echo "  -b, --basedir=PATH                Specify base directory"
+  echo "  -k, --keyring-plugin=[file|vault] Specify which keyring plugin to use(default keyring-file)"
+  echo "  -s, --start                       Start Percona XtraDB Cluster"
+  echo "  -a, --stop                        Stop Percona XtraDB Cluster"
+  echo "  -r, --restart                     Restart Percona XtraDB Cluster"
+  echo "  -e, --with-binlog-encryption      Run the script with binary log encryption feature"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:sarkeh --longoptions=workdir:,basedir:,start,stop,restart,with-keyring-plugin,with-binlog-encryption,help \
+  go_out="$(getopt --options=w:b:k:sareh --longoptions=workdir:,basedir:,start,stop,restart,keyring-plugin,with-binlog-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -67,10 +67,14 @@ do
     shift
     export BINLOG_ENCRYPTION=1
     ;;
-    -k | --with-keyring-plugin )
-    shift
-    export KEYRING_PLUGIN=1
-	;;
+    -k | --keyring-plugin )
+    export KEYRING_PLUGIN="$2"
+    shift 2
+    if [[ "$KEYRING_PLUGIN" != "file" ]] && [[ "$KEYRING_PLUGIN" != "vault" ]] ; then
+      echo "ERROR: Invalid --keyring-plugin passed:"
+      echo "  Please choose any of these keyring-plugin options: 'file' or 'vault'"
+      exit 1
+    fi
     -h | --help )
     usage
     exit 0
@@ -263,11 +267,14 @@ function pxc_start(){
           echo "keyring_file_data=$node/keyring" >> ${WORKDIR}/n${i}.cnf
         fi
       fi
-  	  if [[ ! -z $KEYRING_PLUGIN ]]; then
+  	  if [[ "$KEYRING_PLUGIN" == "file" ]]; then
         echo "early-plugin-load=keyring_file.so" >> ${WORKDIR}/n${i}.cnf
         echo "keyring_file_data=$node/keyring" >> ${WORKDIR}/n${i}.cnf
       fi
-
+	  if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+        echo "early-plugin-load=\"keyring_vault=keyring_vault.so\"" >> ${WORKDIR}/n${i}.cnf
+        echo "keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf" >> ${WORKDIR}/n${i}.cnf
+      fi
       if [[ ! -z $KEYRING_PLUGIN ]] || [[ ! -z $BINLOG_ENCRYPTION ]]; then
         echo "" >> ${WORKDIR}/n${i}.cnf
         echo "[sst]" >> ${WORKDIR}/n${i}.cnf
