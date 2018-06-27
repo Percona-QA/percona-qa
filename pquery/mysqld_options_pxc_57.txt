@@ -378,6 +378,8 @@
 --eq-range-index-dive-limit=2047
 --eq-range-index-dive-limit=-1125899906842624
 --eq-range-index-dive-limit=1125899906842624
+--encrypt-tmp-files=0
+--encrypt-tmp-files=1
 --expand-fast-index-creation=1
 --expand-fast-index-creation=0
 --expire-logs-days=0
@@ -790,6 +792,8 @@
 --innodb-doublewrite-batch-size=1125899906842624
 --innodb-empty-free-list-algorithm=legacy
 --innodb-empty-free-list-algorithm=backoff
+--innodb-encrypt-tables=0
+--innodb-encrypt-tables=1
 --innodb-fast-shutdown=1
 --innodb-fast-shutdown=0
 --innodb-fast-shutdown=1
@@ -1515,6 +1519,8 @@
 --innodb-sync-spin-loops=1125899906842624
 --innodb-table-locks=1
 --innodb-table-locks=0
+--innodb-temp-tablespace-encrypt=0
+--innodb-temp-tablespace-encrypt=1
 --innodb-thread-concurrency=0
 --innodb-thread-concurrency=1
 --innodb-thread-concurrency=2
