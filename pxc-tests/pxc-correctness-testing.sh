@@ -92,36 +92,6 @@ SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 cd $WORKDIR
 
-#Check PXC binary tar ball
-PXC_TAR=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep ".tar" | head -n1`
-if [[ ! -z $PXC_TAR ]];then
-  tar -xzf $PXC_TAR
-  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
-else
-  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
-  if [[ -z $PXCBASE ]] ; then
-    echoit "ERROR! Could not find PXC base directory."
-    exit 1
-  else
-    export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
-  fi
-fi
-BASEDIR="${ROOT_FS}/$PXCBASE"
-
-PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
-if [ ! -z $PT_TAR ];then
-  tar -xzf $PT_TAR
-  PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
-else
-  wget https://www.percona.com/downloads/percona-toolkit/2.2.19/tarball/percona-toolkit-2.2.19.tar.gz
-  PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
-  tar -xzf $PT_TAR
-  PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
-fi
-
 # Parameter of parameterized build
 if [ -z ${BUILD_NUMBER} ]; then
   BUILD_NUMBER=1001
@@ -161,10 +131,43 @@ function create_emp_db()
    popd
 }
 
+WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
+mkdir -p $WORKDIR/logs
+
 echoit(){
   echo "[$(date +'%T')] $1"
   if [[ "${WORKDIR}" != "" ]]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/pxc-correctness-testing.log; fi
 }
+
+#Check PXC binary tar ball
+PXC_TAR=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep ".tar" | head -n1`
+if [[ ! -z $PXC_TAR ]];then
+  tar -xzf $PXC_TAR
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+else
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  if [[ -z $PXCBASE ]] ; then
+    echoit "ERROR! Could not find PXC base directory."
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+  fi
+fi
+BASEDIR="${ROOT_FS}/$PXCBASE"
+
+PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
+if [ ! -z $PT_TAR ];then
+  tar -xzf $PT_TAR
+  PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
+else
+  wget https://www.percona.com/downloads/percona-toolkit/2.2.19/tarball/percona-toolkit-2.2.19.tar.gz
+  PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
+  tar -xzf $PT_TAR
+  PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
+fi
 
 if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
   echoit "Setting up vault server"
@@ -175,9 +178,6 @@ if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
   ${SCRIPT_PWD}/../vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
   echoit "********************************************************************************************"
 fi
-
-WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
-mkdir -p $WORKDIR/logs
 
 create_certs(){
   # Creating SSL certificate directories
@@ -208,6 +208,7 @@ archives() {
   $BASEDIR/bin/mysqladmin  --socket=/tmp/pxc3.sock -u root shutdown
   $BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
   $BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
+  killall vault
   rm -rf $WORKDIR
 }
 
