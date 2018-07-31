@@ -197,10 +197,17 @@ get_link(){
     fi
 
   elif [[ "${PRODUCT}" = "pxb" ]]; then
+    if [[ "${DISTRIBUTION}" = "ubuntu" || "${DISTRIBUTION}" = "debian" ]]; then
+      OPT="libgcrypt20"
+    else
+      OPT="libgcrypt145"
+    fi
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
-        LINK=$(wget -qO- https://www.percona.com/downloads/XtraBackup/LATEST/binary/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+-Linux-${BUILD_ARCH}\.tar\.gz"|head -n1)
-        if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/XtraBackup/LATEST/binary/tarball/${LINK}"; fi
+        #LINK=$(wget -qO- https://www.percona.com/downloads/XtraBackup/LATEST/binary/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+-Linux-${BUILD_ARCH}\.tar\.gz"|head -n1)
+        VERSION=$(wget -qO- https://www.percona.com/downloads/XtraBackup/LATEST/binary/|grep -oE "Percona-XtraBackup-[0-9]+\.[0-9]+\.[0-9]+"|head -n1|grep -oE "[0-9]+\.[0-9]+\.[0-9]+$")
+        TARBALL="percona-xtrabackup-${VERSION}-Linux-${BUILD_ARCH}.${OPT}.tar.gz"
+        if [[ ! -z ${TARBALL} ]]; then LINK="https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-${VERSION}/binary/tarball/${TARBALL}"; fi
       else
         LINK=$(wget -qO- https://www.percona.com/downloads/XtraBackup/LATEST/source/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/XtraBackup/LATEST/source/tarball/${LINK}"; fi
@@ -251,11 +258,11 @@ get_link(){
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
         BASE_LINK="https://dev.mysql.com/get/Downloads/MySQL-${VERSION}/"
-        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=2|grep -o -P "(mysql|MySQL)-[0-9]+\.[0-9]+\.[0-9]+.*${BUILD_ARCH}.tar.gz"|grep -v "mysql-test"|head -n1)
+        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=2|grep -o -P "(mysql|MySQL)-[0-9]+\.[0-9]+\.[0-9]+.*${BUILD_ARCH}\.tar\..."|grep -v "mysql-test"|head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       else
         BASE_LINK="https://dev.mysql.com/get/Downloads/MySQL-${VERSION}/"
-        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=src|grep -o -P "(mysql|MySQL)-[0-9]+\.[0-9]+\.[0-9]+.tar.gz"|head -n1)
+        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=src|grep -o -P "(mysql|MySQL)-[0-9]+\.[0-9]+\.[0-9]+\.tar\..."|head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       fi
     else
@@ -305,7 +312,7 @@ get_link(){
     if [[ "${DISTRIBUTION}" = "ubuntu" ]]; then DISTRIBUTION="xenial"; fi
     BASE_LINK="https://www.percona.com/downloads/proxysql/"
     if [[ -z ${VERSION_FULL} ]]; then
-        VERSION=$(wget -qO- ${BASE_LINK}|grep -o "proxysql-[0-9]*.[0-9]*.[0-9]*"|head -n1|sed 's/^.*-//')
+        VERSION=$(wget -qO- ${BASE_LINK}|grep -o "proxysql-[0-9]*.[0-9]*.[0-9]*"|tail -n1|sed 's/^.*-//')
       if [[ ${SOURCE} = 0 ]]; then
         TARBALL="proxysql-${VERSION}-Linux-${DISTRIBUTION}-${BUILD_ARCH}.tar.gz"
         LINK="${BASE_LINK}proxysql-${VERSION}/binary/tarball/${TARBALL}"
