@@ -45,10 +45,16 @@ fi
 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
 # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
 # This is also auto-turned off for all 5.5 and 5.6 builds
-if [ ! -d storage/rocksdb ]; then
-  WITH_ROCKSDB=0
-else
+MYSQL_VERSION_MAJOR=$(grep "MYSQL_VERSION_MAJOR" VERSION | sed 's|.*=||')
+MYSQL_VERSION_MINOR=$(grep "MYSQL_VERSION_MINOR" VERSION | sed 's|.*=||')
+WITH_ROCKSDB=0
+if [ -d storage/rocksdb ]; then
   WITH_ROCKSDB=1
+  if [ "$MYSQL_VERSION_MAJOR" == "5" ]; then
+    if [ "$MYSQL_VERSION_MINOR" == "5" -o "$MYSQL_VERSION_MINOR" == "6" ]; then
+      WITH_ROCKSDB=0 
+    fi
+  fi
 fi
 
 DATE=$(date +'%d%m%y')
