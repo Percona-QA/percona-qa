@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Prints process information about mongod and mongos and formats output
+export esc=$(printf "\033");
+
+echo -e "\033[0;35m===== MONGOS =====\033[0m";
+ps aux|grep -v grep|grep "mongos "|sed "s/$/\n/g"|sed "s,\-\-port [^ ]*,${esc}[35m&${esc}[0m,";
+
+echo -e "\033[0;32m===== MONGOD =====\033[0m";
+ps aux|grep -v grep|grep "mongod "|sed "s/$/\n/g"|sed "s,\-\-port [^ ]*,${esc}[32m&${esc}[0m,";
