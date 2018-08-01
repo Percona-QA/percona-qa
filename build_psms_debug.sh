@@ -45,7 +45,7 @@ fi
 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
 # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
 # This is also auto-turned off for all 5.5 and 5.6 builds
-if [ ! -d rocksdb ]; then
+if [ ! -d storage/rocksdb ]; then
   WITH_ROCKSDB=0
 else
   WITH_ROCKSDB=1
