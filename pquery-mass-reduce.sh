@@ -37,6 +37,7 @@ mapfile -t issues < /tmp/${RND}.txt; rm -f /tmp/${RND}.txt 2>/dev/null
 COUNTER_LIVE=$(screen -d -r | sed 's|\t|=|g' | grep -o "\.s[0-9]\+=" | sed 's|[^0-9]||g' | sort -unr | head -n1)
 # Now loop though the issues. When the counter reaches the amount passed to this scirpt, the loop will terminate
 COUNTER=0
+COUNTER_START=$[ $COUNTER_LIVE + 1 ]
 for TRIAL in "${issues[@]}"; do
   COUNTER=$[ $COUNTER + 1 ]
   COUNTER_LIVE=$[ $COUNTER_LIVE + 1 ]
@@ -47,4 +48,4 @@ for TRIAL in "${issues[@]}"; do
   fi
   if [ $COUNTER -eq $TOTAL ]; then break; fi
 done
-echo "Done! started $[ $COUNTER - $SKIP ] screen sessions named s$[ ${SKIP} + 1 ]-${COUNTER}. To reconnect to any of them, use:  $ screen -d -r s<nr>  where <nr> matches the number listed above!"
+echo "Done! started $[ $COUNTER - $SKIP ] screen sessions named s${COUNTER_START}-${COUNTER_LIVE}. To reconnect to any of them, use:  $ screen -d -r s<nr>  where <nr> matches the number listed above!"
