@@ -2,9 +2,6 @@
 # Created by Roel Van de Paar, Percona LLC
 
 MAKE_THREADS=1          # Number of build threads. There may be a bug for builds when setting this >1
-WITH_ROCKSDB=1          # 0 or 1 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
-                                 # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
-                                 # This is also auto-turned off for all 5.5 and 5.6 builds
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
 WITH_LOCAL_INFILE=1     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
 SSL_MYSQL57_HACK=1      # 0 or 1 # PS 5.7.21 will compile fine on Ubuntu Bionic, MS 5.7.21 will not and fail with this error:
@@ -44,12 +41,14 @@ if [ $USE_CLANG -eq 1 -a $USE_AFL -eq 1 ]; then
   exit 1
 fi
 
-MYSQL_VERSION_MAJOR=$(grep "MYSQL_VERSION_MAJOR" VERSION | sed 's|.*=||')
-MYSQL_VERSION_MINOR=$(grep "MYSQL_VERSION_MINOR" VERSION | sed 's|.*=||')
-if [ "$MYSQL_VERSION_MAJOR" == "5" ]; then
-  if [ "$MYSQL_VERSION_MINOR" == "5" -o "$MYSQL_VERSION_MINOR" == "6" ]; then
-    WITH_ROCKSDB=0  # This works fine for MS and PS but is not tested for MD
-  fi
+# Check RocksDB storage engine.
+# Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
+# For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
+# This is also auto-turned off for all 5.5 and 5.6 builds
+if [ ! -d rocksdb ]; then
+  WITH_ROCKSDB=0
+else
+  WITH_ROCKSDB=1
 fi
 
 DATE=$(date +'%d%m%y')
@@ -164,7 +163,7 @@ CURPATH=$(echo $PWD | sed 's|.*/||')
 
 cd ..
 rm -Rf ${CURPATH}_dbg
-rm -f /tmp/5.x_debug_build_${RANDOMD}
+rm -f /tmp/psms_debug_build_${RANDOMD}
 cp -R ${CURPATH} ${CURPATH}_dbg
 cd ${CURPATH}_dbg
 
@@ -191,25 +190,25 @@ if [ $FB -eq 0 ]; then
   CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON ${SAN} ${FLAGS}"
   echo "Build command used:"
   echo $CMD
-  $CMD | tee /tmp/5.x_debug_build_${RANDOMD}
+  $CMD | tee /tmp/psms_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
   # FB build
   CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DMYSQL_MAINTAINER_MODE=0 ${FLAGS}"
   echo "Build command used:"
   echo $CMD
-  $CMD | tee /tmp/5.x_debug_build_${RANDOMD}
+  $CMD | tee /tmp/psms_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 fi
 # Previously we had: ASAN_OPTIONS="detect_leaks=0" make... here due to upstream http://bugs.mysql.com/bug.php?id=80014 but this was fixed
-make -j${MAKE_THREADS} | tee -a /tmp/5.x_debug_build_${RANDOMD}
+make -j${MAKE_THREADS} | tee -a /tmp/psms_debug_build_${RANDOMD}
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 
 if [ ! -r ./scripts/make_binary_distribution ]; then  # Note: ./scripts/binary_distribution is created on-the-fly during the make compile
   echo "Assert: ./scripts/make_binary_distribution was not found. Terminating."
   exit 1
 else
-  ./scripts/make_binary_distribution | tee -a /tmp/5.x_debug_build_${RANDOMD}
+  ./scripts/make_binary_distribution | tee -a /tmp/psms_debug_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for ./scripts/make_binary_distribution!"; exit 1; fi
 fi
 
