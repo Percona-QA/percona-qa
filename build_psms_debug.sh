@@ -63,7 +63,6 @@ if [[ "$CURRENT_VERSION" > "080000" ]] && [[ "$CURRENT_VERSION" < "080011" ]]; t
   ZLIB_MYSQL8_HACK=1
 fi
 
-
 DATE=$(date +'%d%m%y')
 PREFIX=
 FB=0
