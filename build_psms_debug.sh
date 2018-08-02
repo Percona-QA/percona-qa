@@ -4,12 +4,6 @@
 MAKE_THREADS=1          # Number of build threads. There may be a bug for builds when setting this >1
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
 WITH_LOCAL_INFILE=1     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
-SSL_MYSQL57_HACK=1      # 0 or 1 # PS 5.7.21 will compile fine on Ubuntu Bionic, MS 5.7.21 will not and fail with this error:
-                                 # viossl.c:422:44: error: dereferencing pointer to incomplete type 'SSL_COMP {aka struct ssl_comp_st}'
-				 # This hacks sets -DWITH_SSL=bundled of =system | Ref https://bugs.mysql.com/?id=90506 (5.7.23 will have fix)
-ZLIB_MYSQL8_HACK=0      # 0 or 1 # Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
-                                 # Also see https://bugs.launchpad.net/percona-server/+bug/1521566
-                                 # Set this to "0" if you see "Could NOT find ZLIB (missing: ZLIB_INCLUDE_DIR)"
 USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re-download
 BOOST_LOCATION=/git/boost_1_59_0-debug/
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
@@ -47,15 +41,28 @@ fi
 # This is also auto-turned off for all 5.5 and 5.6 builds
 MYSQL_VERSION_MAJOR=$(grep "MYSQL_VERSION_MAJOR" VERSION | sed 's|.*=||')
 MYSQL_VERSION_MINOR=$(grep "MYSQL_VERSION_MINOR" VERSION | sed 's|.*=||')
+MYSQL_VERSION_PATCH=$(grep "MYSQL_VERSION_PATCH" VERSION | sed 's|.*=||')
+CURRENT_VERSION=$(printf %02d%02d%02d $MYSQL_VERSION_MAJOR $MYSQL_VERSION_MINOR $MYSQL_VERSION_PATCH)
+
 WITH_ROCKSDB=0
 if [ -d storage/rocksdb ]; then
   WITH_ROCKSDB=1
-  if [ "$MYSQL_VERSION_MAJOR" == "5" ]; then
-    if [ "$MYSQL_VERSION_MINOR" == "5" -o "$MYSQL_VERSION_MINOR" == "6" ]; then
-      WITH_ROCKSDB=0 
-    fi
+  if [[ "$CURRENT_VERSION" < "050700" ]]; then
+    WITH_ROCKSDB=0
   fi
 fi
+
+SSL_MYSQL57_HACK=0
+if [ -f /usr/bin/apt-get ]; then
+  if [[ "$CURRENT_VERSION" < "050723" ]]; then
+    SSL_MYSQL57_HACK=1
+  fi
+fi
+ZLIB_MYSQL8_HACK=0
+if [[ "$CURRENT_VERSION" > "080000" ]] && [[ "$CURRENT_VERSION" < "080011" ]]; then
+  ZLIB_MYSQL8_HACK=1
+fi
+
 
 DATE=$(date +'%d%m%y')
 PREFIX=
@@ -75,12 +82,18 @@ else
 fi
 
 # MySQL8 zlib Hack
+# Use -DWITH_ZLIB=bundled instead of =system for bug https://bugs.mysql.com/bug.php?id=89373
+# Also see https://bugs.launchpad.net/percona-server/+bug/1521566
+# Set this to "0" if you see "Could NOT find ZLIB (missing: ZLIB_INCLUDE_DIR)"
 ZLIB="-DWITH_ZLIB=system"
 if [ $ZLIB_MYSQL8_HACK -eq 1 ]; then
   ZLIB="-DWITH_ZLIB=bundled"
 fi
 
 # SSL Hack
+# PS 5.7.21 will compile fine on Ubuntu Bionic, MS 5.7.21 will not and fail with this error:
+# viossl.c:422:44: error: dereferencing pointer to incomplete type 'SSL_COMP {aka struct ssl_comp_st}'
+# This hacks sets -DWITH_SSL=bundled of =system | Ref https://bugs.mysql.com/?id=90506 (5.7.23 will have fix)
 SSL="-DWITH_SSL=system"
 if [ $SSL_MYSQL57_HACK -eq 1 ]; then
   SSL="-DWITH_SSL=bundled"
