@@ -1,4 +1,4 @@
-# Welcome to PMM testing land.
+PMM Backend Testing
 
 It is integrated into pmm-testsuite.bats
   > Please call from where PS tarball downloaded.
