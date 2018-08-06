@@ -172,8 +172,14 @@ mkdir -p $ROOT_FS/tmp
 export PATH="$ROOT_FS/$BBASE/bin:$ROOT_FS:$PATH"
 
 MYSQL_BASEDIR="${ROOT_FS}/$BASE"
+if [ "$(${MYSQL_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+  export XB_TESTDIR="${SCRIPT_PWD}/percona-xtradb-cluster-tests/sst"
+elif [ "$(${MYSQL_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+  export XB_TESTDIR="${MYSQL_BASEDIR}/percona-xtradb-cluster-tests"
+fi
+
 #export XB_TESTDIR="$ROOT_FS/$BBASE/share/percona-xtrabackup-test/"
-export XB_TESTDIR="${SCRIPT_PWD}/percona-xtradb-cluster-tests/sst"
+#export XB_TESTDIR="${SCRIPT_PWD}/percona-xtradb-cluster-tests/sst"
 trap "cp -R $XB_TESTDIR/results $WORKDIR/results-${BUILD_NUMBER} && tar czf $WORKDIR/results-${BUILD_NUMBER}.tar.gz $WORKDIR/results-${BUILD_NUMBER} " EXIT KILL
 
 cp -R $XB_TESTDIR/certs /tmp/
