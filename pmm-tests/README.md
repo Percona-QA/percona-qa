@@ -11,7 +11,7 @@ linux-metrics.bats      -> linux:metrics tests
 pmm-framework.sh        -> Executable for creating environment
 mongodb-tests.bats      -> MongoDB specific tests
 pmm-testsuite.bats      -> The test suite bats file
-pmm-testsuite.sh      -> The workaround for issue #80, it will be used in jenkins
+pmm-testsuite.sh        -> The workaround for issue #80, it will be used in jenkins
 proxysql-tests.bats     -> proxysql:metrics tests
 ps-specific-tests.bats  -> PS specific tests
 pxc-specific-tests.bats -> PXC specific tests
