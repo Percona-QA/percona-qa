@@ -27,46 +27,46 @@ IS_BATS_RUN=0
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-  echo " --setup                          This will setup and configure a PMM server"
-  echo " --addclient=ps,2                 Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
-  echo "                                  You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
-  echo " --download                       This will help us to download pmm client binary tar balls"
-  echo " --pmm-server-version             Pass PMM version"
-  echo " --pmm-port                       Pass port for PMM docker"
-  echo " --ps-version                     Pass Percona Server version info"
-  echo " --ms-version                     Pass MySQL Server version info"
-  echo " --md-version                     Pass MariaDB Server version info"
-  echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
-  echo " --mysqld-startup-options         Pass MySQL startup options. eg : --mysqld-startup-options='--innodb_buffer_pool_size=1G --innodb_log_file_size=1G'"
-  echo " --with-proxysql                  This allow to install PXC with proxysql"
-  echo " --sysbench-data-load             This will initiate sysbench data load on mysql instances"
-  echo " --sysbench-oltp-run              This will initiate sysbench oltp run on mysql instances"
-  echo " --storage-engine                 This will create sysbench tables with specific storage engine"
-  echo " --mo-version                     Pass MongoDB Server version info"
-  echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine"
-  echo " --replcount                      You can configure multiple mongodb replica sets with this oprion"
-  echo " --with-replica                   This will configure mongodb replica setup"
-  echo " --with-shrading                  This will configure mongodb shrading setup"
-  echo " --add-docker-client              Add docker pmm-clients with percona server to the currently live PMM server"
-  echo " --list                           List all client information as obtained from pmm-admin"
-  echo " --wipe-clients                   This will stop all client instances and remove all clients from pmm-admin"
-  echo " --wipe-docker-clients            This will stop all docker client instances and remove all clients from docker container"
-  echo " --wipe-server                    This will stop pmm-server container and remove all pmm containers"
-  echo " --wipe                           This will wipe all pmm configuration"
-  echo " --dev                            When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
-  echo " --pmm-server-username            User name to access the PMM Server web interface"
-  echo " --pmm-server-password            Password to access the PMM Server web interface"
-  echo " --pmm-server-memory              Set METRICS_MEMORY option to PMM server"
-  echo " --pmm-docker-memory              Set memory for docker container"
-  echo " --pmm-server=[docker|ami|ova]    Choose PMM server appliance, default pmm server appliance is docker"
-  echo " --ami-image                      Pass PMM server ami image name"
-  echo " --key-name                       Pass your aws access key file name"
-  echo " --ova-image                      Pass PMM server ova image name"
-  echo " --ova-memory                     Pass memory(memorysize in MB) for OVA virtual box"
-  echo " --upgrade-server          			  When this option is specified, PMM Server will be updated to the last version"
-  echo " --upgrade-client          			  When this option is specified, PMM client will be updated to the last version"
-  echo " --query-source                   Set query source (perfschema or slowlog)"
-  echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
+  echo " --setup                        This will setup and configure a PMM server"
+  echo " --addclient=ps,2               Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
+  echo "                                You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
+  echo " --download                     This will help us to download pmm client binary tar balls"
+  echo " --pmm-server-version           Pass PMM version"
+  echo " --pmm-port                     Pass port for PMM docker"
+  echo " --ps-version                   Pass Percona Server version info"
+  echo " --ms-version                   Pass MySQL Server version info"
+  echo " --md-version                   Pass MariaDB Server version info"
+  echo " --pxc-version                  Pass Percona XtraDB Cluster version info"
+  echo " --mysqld-startup-options       Pass MySQL startup options. eg : --mysqld-startup-options='--innodb_buffer_pool_size=1G --innodb_log_file_size=1G'"
+  echo " --with-proxysql                This allow to install PXC with proxysql"
+  echo " --sysbench-data-load           This will initiate sysbench data load on mysql instances"
+  echo " --sysbench-oltp-run            This will initiate sysbench oltp run on mysql instances"
+  echo " --storage-engine               This will create sysbench tables with specific storage engine"
+  echo " --mo-version                   Pass MongoDB Server version info"
+  echo " --mongo-with-rocksdb           This will start mongodb with rocksdb engine"
+  echo " --replcount                    You can configure multiple mongodb replica sets with this oprion"
+  echo " --with-replica                 This will configure mongodb replica setup"
+  echo " --with-shrading                This will configure mongodb shrading setup"
+  echo " --add-docker-client            Add docker pmm-clients with percona server to the currently live PMM server"
+  echo " --list                         List all client information as obtained from pmm-admin"
+  echo " --wipe-clients                 This will stop all client instances and remove all clients from pmm-admin"
+  echo " --wipe-docker-clients          This will stop all docker client instances and remove all clients from docker container"
+  echo " --wipe-server                  This will stop pmm-server container and remove all pmm containers"
+  echo " --wipe                         This will wipe all pmm configuration"
+  echo " --dev                          When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
+  echo " --pmm-server-username          User name to access the PMM Server web interface"
+  echo " --pmm-server-password          Password to access the PMM Server web interface"
+  echo " --pmm-server-memory            Set METRICS_MEMORY option to PMM server"
+  echo " --pmm-docker-memory            Set memory for docker container"
+  echo " --pmm-server=[docker|ami|ova]  Choose PMM server appliance, default pmm server appliance is docker"
+  echo " --ami-image                    Pass PMM server ami image name"
+  echo " --key-name                     Pass your aws access key file name"
+  echo " --ova-image                    Pass PMM server ova image name"
+  echo " --ova-memory                   Pass memory(memorysize in MB) for OVA virtual box"
+  echo " --upgrade-server               When this option is specified, PMM Server will be updated to the last version"
+  echo " --upgrade-client          		When this option is specified, PMM client will be updated to the last version"
+  echo " --query-source                 Set query source (perfschema or slowlog)"
+  echo " --compare-query-count          This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
 }
 
 # Check if we have a functional getopt(1)
@@ -378,11 +378,17 @@ setup(){
       y|Y)
         echo -e "\nGenerating SSL certificate files to protect PMM from unauthorized access"
         openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout server.key -out server.crt -subj '/CN=www.percona.com/O=Database Performance./C=US'
-         IS_SSL="Yes"
+        IS_SSL="Yes"
+        if [[ -z $PMM_PORT ]]; then
+          PMM_PORT=443
+        fi
       ;;
       n|N)
         echo ""
         IS_SSL="No"
+        if [[ -z $PMM_PORT ]]; then
+          PMM_PORT=80
+        fi
       ;;
       *)
         echo "Please type [y/n]! Terminating."
@@ -393,6 +399,7 @@ setup(){
     IS_SSL="No"
   fi
 
+  
   if [[ ! -e $(which lynx 2> /dev/null) ]] ;then
     echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"
     exit 1
