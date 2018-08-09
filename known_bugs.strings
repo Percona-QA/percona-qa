@@ -274,7 +274,7 @@ Handlerton. share->file == NULL                                   ## PS5.7 # htt
 ZN6tokudb6memory4freeEPv                                          ## PS5.7 $ https://tokutek.atlassian.net/browse/FT-727
 
 ## =========== PS 5.7 TokuDB bugs ==========
-#Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2 
+#Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2
 #Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917 # Fixed 5.7 RC2
 Handlerton. 0                                                          ## https://tokutek.atlassian.net/browse/DB-1028
 Handlerton: ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
@@ -611,6 +611,7 @@ from->len == to->len                                                            
 Handlerton. ...share->kc_info.num_blobs == 0                                            ## https://jira.percona.com/browse/TDB-12
 head->owned_gtid.sidno == THD..OWNED_SIDNO_ANONYMOUS                                    ## https://bugs.mysql.com/bug.php?id=85552
 head->variables.gtid_next.type == ANONYMOUS_GROUP                                       ## https://bugs.mysql.com/bug.php?id=86251
+Handlerton. error == 0                                                                  ## https://jira.percona.com/browse/PS-4721
 #Handlerton.*offset_start                                                               ## https://tokutek.atlassian.net/browse/DB-771 (Fixed tokudb-7.5.4)
 #Handlerton.*.share->kc_info.num_blobs == 0                                    ## Fixed ## https://tokutek.atlassian.net/browse/DB-811 (Fixed in tokudb-7.5.7)
 #Handlerton.*trx                                                               ## Fixed ## https://tokutek.atlassian.net/browse/DB-762 (Fixed tokudb-7.5.4)
