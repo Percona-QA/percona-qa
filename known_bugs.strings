@@ -295,6 +295,7 @@ ha_innodb.cc line 2797                           ##DONOTREMOVE## https://bugs.la
 ha_innodb.cc line 3512                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.35
 ha_innodb.cc line 3521                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.36
 ha_innodb.cc line 3539                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.38
+ha_innodb.cc line 3540                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.41
 btr0cur.c line 3918                              ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
 handler0alter.cc line 5083                       ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread 
 handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
@@ -531,6 +532,7 @@ row0merge.cc line 2698                                                          
 row0sel.c line 3791                                                                     ## https://bugs.mysql.com/bug.php?id=88782
 row0sel.cc line 3932                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1395249
 #row0sel.cc line 4017                                                                   ## https://bugs.mysql.com/bug.php?id=59513 Not fixed, but needs better testcase
+row0sel.cc line 4220                                                                    ## https://bugs.mysql.com/bug.php?id=59513
 row0sel.cc line 4071                                                                    ## https://bugs.launchpad.net/bugs/1402999
 row0trunc.cc line 1983                                                                  ## https://bugs.mysql.com/bug.php?id=83361
 #row0umod.cc line 338                                                          ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1381916 (dup of 1395579)
@@ -540,6 +542,7 @@ srv0srv.cc line 2664                                                            
 srv0srv.cc line 3072                                                                    ## https://bugs.mysql.com/bug.php?id=73913 or 74418, PS 5.17.16 (also see PS bug 1369326)
 srv0srv.cc line 3337                                                                    ## https://bugs.mysql.com/bug.php?id=73913 PS 5.6.35-79
 srv0srv.cc line 3338                                                                    ## https://bugs.mysql.com/bug.php?id=73913 PS 5.6.35-80
+srv0srv.cc line 3365                                                                    ## https://bugs.mysql.com/bug.php?id=73913 PS 5.6.41
 srv0srv.cc line 2666                                                                    ## https://bugs.mysql.com/bug.php?id=73913 MS 5.6.22
 srv0srv.cc line 3353                                                                    ## https://bugs.mysql.com/bug.php?id=73913 PS 5.5.53
 srv0srv.cc line 3058                                                                    ## Also 73913 PS 5.6.35. Use grep -i "INNODB_PURGE_STOP_NOW" on sql
