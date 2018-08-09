@@ -27,46 +27,46 @@ IS_BATS_RUN=0
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-  echo " --setup                          This will setup and configure a PMM server"
-  echo " --addclient=ps,2                 Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
-  echo "                                  You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
-  echo " --download                       This will help us to download pmm client binary tar balls"
-  echo " --pmm-server-version             Pass PMM version"
-  echo " --pmm-port                       Pass port for PMM docker"
-  echo " --ps-version                     Pass Percona Server version info"
-  echo " --ms-version                     Pass MySQL Server version info"
-  echo " --md-version                     Pass MariaDB Server version info"
-  echo " --pxc-version                    Pass Percona XtraDB Cluster version info"
-  echo " --mysqld-startup-options         Pass MySQL startup options. eg : --mysqld-startup-options='--innodb_buffer_pool_size=1G --innodb_log_file_size=1G'"
-  echo " --with-proxysql                  This allow to install PXC with proxysql"
-  echo " --sysbench-data-load             This will initiate sysbench data load on mysql instances"
-  echo " --sysbench-oltp-run              This will initiate sysbench oltp run on mysql instances"
-  echo " --storage-engine                 This will create sysbench tables with specific storage engine"
-  echo " --mo-version                     Pass MongoDB Server version info"
-  echo " --mongo-with-rocksdb             This will start mongodb with rocksdb engine"
-  echo " --replcount                      You can configure multiple mongodb replica sets with this oprion"
-  echo " --with-replica                   This will configure mongodb replica setup"
-  echo " --with-shrading                  This will configure mongodb shrading setup"
-  echo " --add-docker-client              Add docker pmm-clients with percona server to the currently live PMM server"
-  echo " --list                           List all client information as obtained from pmm-admin"
-  echo " --wipe-clients                   This will stop all client instances and remove all clients from pmm-admin"
-  echo " --wipe-docker-clients            This will stop all docker client instances and remove all clients from docker container"
-  echo " --wipe-server                    This will stop pmm-server container and remove all pmm containers"
-  echo " --wipe                           This will wipe all pmm configuration"
-  echo " --dev                            When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
-  echo " --pmm-server-username            User name to access the PMM Server web interface"
-  echo " --pmm-server-password            Password to access the PMM Server web interface"
-  echo " --pmm-server-memory              Set METRICS_MEMORY option to PMM server"
-  echo " --pmm-docker-memory              Set memory for docker container"
-  echo " --pmm-server=[docker|ami|ova]    Choose PMM server appliance, default pmm server appliance is docker"
-  echo " --ami-image                      Pass PMM server ami image name"
-  echo " --key-name                       Pass your aws access key file name"
-  echo " --ova-image                      Pass PMM server ova image name"
-  echo " --ova-memory                     Pass memory(memorysize in MB) for OVA virtual box"
-  echo " --upgrade-server          			  When this option is specified, PMM Server will be updated to the last version"
-  echo " --upgrade-client          			  When this option is specified, PMM client will be updated to the last version"
-  echo " --query-source                   Set query source (perfschema or slowlog)"
-  echo " --compare-query-count            This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
+  echo " --setup                        This will setup and configure a PMM server"
+  echo " --addclient=ps,2               Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
+  echo "                                You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
+  echo " --download                     This will help us to download pmm client binary tar balls"
+  echo " --pmm-server-version           Pass PMM version"
+  echo " --pmm-port                     Pass port for PMM docker"
+  echo " --ps-version                   Pass Percona Server version info"
+  echo " --ms-version                   Pass MySQL Server version info"
+  echo " --md-version                   Pass MariaDB Server version info"
+  echo " --pxc-version                  Pass Percona XtraDB Cluster version info"
+  echo " --mysqld-startup-options       Pass MySQL startup options. eg : --mysqld-startup-options='--innodb_buffer_pool_size=1G --innodb_log_file_size=1G'"
+  echo " --with-proxysql                This allow to install PXC with proxysql"
+  echo " --sysbench-data-load           This will initiate sysbench data load on mysql instances"
+  echo " --sysbench-oltp-run            This will initiate sysbench oltp run on mysql instances"
+  echo " --storage-engine               This will create sysbench tables with specific storage engine"
+  echo " --mo-version                   Pass MongoDB Server version info"
+  echo " --mongo-with-rocksdb           This will start mongodb with rocksdb engine"
+  echo " --replcount                    You can configure multiple mongodb replica sets with this oprion"
+  echo " --with-replica                 This will configure mongodb replica setup"
+  echo " --with-shrading                This will configure mongodb shrading setup"
+  echo " --add-docker-client            Add docker pmm-clients with percona server to the currently live PMM server"
+  echo " --list                         List all client information as obtained from pmm-admin"
+  echo " --wipe-clients                 This will stop all client instances and remove all clients from pmm-admin"
+  echo " --wipe-docker-clients          This will stop all docker client instances and remove all clients from docker container"
+  echo " --wipe-server                  This will stop pmm-server container and remove all pmm containers"
+  echo " --wipe                         This will wipe all pmm configuration"
+  echo " --dev                          When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
+  echo " --pmm-server-username          User name to access the PMM Server web interface"
+  echo " --pmm-server-password          Password to access the PMM Server web interface"
+  echo " --pmm-server-memory            Set METRICS_MEMORY option to PMM server"
+  echo " --pmm-docker-memory            Set memory for docker container"
+  echo " --pmm-server=[docker|ami|ova]  Choose PMM server appliance, default pmm server appliance is docker"
+  echo " --ami-image                    Pass PMM server ami image name"
+  echo " --key-name                     Pass your aws access key file name"
+  echo " --ova-image                    Pass PMM server ova image name"
+  echo " --ova-memory                   Pass memory(memorysize in MB) for OVA virtual box"
+  echo " --upgrade-server               When this option is specified, PMM Server will be updated to the last version"
+  echo " --upgrade-client          		When this option is specified, PMM client will be updated to the last version"
+  echo " --query-source                 Set query source (perfschema or slowlog)"
+  echo " --compare-query-count          This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
 }
 
 # Check if we have a functional getopt(1)
@@ -359,7 +359,7 @@ sanity_check(){
   fi
 }
 
-if [[ -z "{$ps_version}" ]]; then ps_version="5.7"; fi
+if [[ -z "${ps_version}" ]]; then ps_version="5.7"; fi
 if [[ -z "${pxc_version}" ]]; then pxc_version="5.7"; fi
 if [[ -z "${ms_version}" ]]; then ms_version="8.0"; fi
 if [[ -z "${md_version}" ]]; then md_version="10.2"; fi
@@ -378,11 +378,17 @@ setup(){
       y|Y)
         echo -e "\nGenerating SSL certificate files to protect PMM from unauthorized access"
         openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout server.key -out server.crt -subj '/CN=www.percona.com/O=Database Performance./C=US'
-         IS_SSL="Yes"
+        IS_SSL="Yes"
+        if [[ -z $PMM_PORT ]]; then
+          PMM_PORT=443
+        fi
       ;;
       n|N)
         echo ""
         IS_SSL="No"
+        if [[ -z $PMM_PORT ]]; then
+          PMM_PORT=80
+        fi
       ;;
       *)
         echo "Please type [y/n]! Terminating."
@@ -393,12 +399,13 @@ setup(){
     IS_SSL="No"
   fi
 
+  
   if [[ ! -e $(which lynx 2> /dev/null) ]] ;then
     echo "ERROR! The program 'lynx' is currently not installed. Please install lynx. Terminating"
     exit 1
   fi
   #IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
-  IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | awk 'NF>1{print $NF}')
+  IP_ADDRESS=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
   if [[ "$pmm_server" == "docker" ]];then
     #PMM configuration setup
     if [ -z $pmm_server_version ]; then
@@ -778,29 +785,29 @@ add_clients(){
     ADDCLIENTS_COUNT=$(echo "${i}" | sed 's|[^0-9]||g')
     if  [[ "${CLIENT_NAME}" == "mo" ]]; then
       rm -rf $BASEDIR/data
-	  for k in `seq 1  ${REPLCOUNT}`;do
-		PSMDB_PORT=$(( (RANDOM%21 + 10) * 1001 ))
-		PSMDB_PORTS+=($PSMDB_PORT)
-        for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
-          PORT=$(( $PSMDB_PORT + $j - 1 ))
-          mkdir -p ${BASEDIR}/data/rpldb${k}_${j}
-          $BASEDIR/bin/mongod --profile 2 --slowms 1  $mongo_storage_engine  --replSet r${k} --dbpath=$BASEDIR/data/rpldb${k}_${j} --logpath=$BASEDIR/data/rpldb${k}_${j}/mongod.log --port=$PORT --logappend --fork &
-		  sleep 10
-          sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
-        done
+      for k in `seq 1  ${REPLCOUNT}`;do
+        PSMDB_PORT=$(( (RANDOM%21 + 10) * 1001 ))
+        PSMDB_PORTS+=($PSMDB_PORT)
+          for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
+            PORT=$(( $PSMDB_PORT + $j - 1 ))
+            mkdir -p ${BASEDIR}/data/rpldb${k}_${j}
+            $BASEDIR/bin/mongod --profile 2 --slowms 1  $mongo_storage_engine  --replSet r${k} --dbpath=$BASEDIR/data/rpldb${k}_${j} --logpath=$BASEDIR/data/rpldb${k}_${j}/mongod.log --port=$PORT --logappend --fork &
+            sleep 10
+            sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
+          done
       done
-	  create_replset_js(){
-	    REPLSET_COUNT=$(( ${ADDCLIENTS_COUNT} - 1 ))
-	    rm -rf /tmp/config_replset.js
-		echo "port=parseInt(db.adminCommand(\"getCmdLineOpts\").parsed.net.port)" >> /tmp/config_replset.js
-		for i in `seq 1  ${REPLSET_COUNT}`;do
+      create_replset_js(){
+        REPLSET_COUNT=$(( ${ADDCLIENTS_COUNT} - 1 ))
+        rm -rf /tmp/config_replset.js
+        echo "port=parseInt(db.adminCommand(\"getCmdLineOpts\").parsed.net.port)" >> /tmp/config_replset.js
+        for i in `seq 1  ${REPLSET_COUNT}`;do
           echo "port${i}=port+${i};" >> /tmp/config_replset.js
-		done
+        done
         echo "conf = {" >> /tmp/config_replset.js
         echo "_id : replSet," >> /tmp/config_replset.js
         echo "members: [" >> /tmp/config_replset.js
         echo "  { _id:0 , host:\"localhost:\"+port,priority:10}," >> /tmp/config_replset.js
-		for i in `seq 1  ${REPLSET_COUNT}`;do
+        for i in `seq 1  ${REPLSET_COUNT}`;do
           echo "  { _id:${i} , host:\"localhost:\"+port${i}}," >> /tmp/config_replset.js
         done
         echo "  ]" >> /tmp/config_replset.js
@@ -808,50 +815,49 @@ add_clients(){
 
         echo "printjson(conf)" >> /tmp/config_replset.js
         echo "printjson(rs.initiate(conf));" >> /tmp/config_replset.js
-
-	  }
-	  create_replset_js
+  	  }
+	    create_replset_js
       if [[ "$with_replica" == "1" ]]; then
         for k in `seq 1  ${REPLCOUNT}`;do
-	      n=$(( $k - 1 ))
-		  echo "Configuring replcaset"
+	        n=$(( $k - 1 ))
+		      echo "Configuring replcaset"
           sudo $BASEDIR/bin/mongo --quiet --port ${PSMDB_PORTS[$n]} --eval "var replSet='r${k}'" "/tmp/config_replset.js"
           sleep 5
-	    done
-	  fi
+	      done
+	    fi
 
       if [[ "$with_shrading" == "1" ]]; then
-    	#config
-	    CONFIG_MONGOD_PORT=$(( (RANDOM%21 + 10) * 1001 ))
-		CONFIG_MONGOS_PORT=$(( (RANDOM%21 + 10) * 1001 ))
-		for m in `seq 1 ${ADDCLIENTS_COUNT}`;do
-		  PORT=$(( $CONFIG_MONGOD_PORT + $m - 1 ))
-		  mkdir -p $BASEDIR/data/confdb${m}
+    	  #config
+        CONFIG_MONGOD_PORT=$(( (RANDOM%21 + 10) * 1001 ))
+        CONFIG_MONGOS_PORT=$(( (RANDOM%21 + 10) * 1001 ))
+        for m in `seq 1 ${ADDCLIENTS_COUNT}`;do
+          PORT=$(( $CONFIG_MONGOD_PORT + $m - 1 ))
+          mkdir -p $BASEDIR/data/confdb${m}
           $BASEDIR/bin/mongod --profile 2 --slowms 1 --fork --logpath $BASEDIR/data/confdb${m}/config_mongo.log --dbpath=$BASEDIR/data/confdb${m} --port $PORT --configsvr --replSet config &
-		  sleep 10
-		  sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
-		  MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
-		done
+          sleep 10
+          sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
+          MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
+        done
 
-		echo "Configuring replcaset"
+        echo "Configuring replcaset"
         $BASEDIR/bin/mongo --quiet --port ${CONFIG_MONGOD_PORT} --eval "var replSet='config'" "/tmp/config_replset.js"
         sleep 20
 
-		MONGOS_STARTUP_CMD="${MONGOS_STARTUP_CMD::-1}"
-		mkdir $BASEDIR/data/mongos
-		#Removing default mongodb socket file
-		sudo rm -rf /tmp/mongodb-27017.sock
-		$BASEDIR/bin/mongos --fork --logpath $BASEDIR/data/mongos/mongos.log --configdb config/$MONGOS_STARTUP_CMD  &
-		sleep 5
+        MONGOS_STARTUP_CMD="${MONGOS_STARTUP_CMD::-1}"
+        mkdir $BASEDIR/data/mongos
+        #Removing default mongodb socket file
+        sudo rm -rf /tmp/mongodb-27017.sock
+        $BASEDIR/bin/mongos --fork --logpath $BASEDIR/data/mongos/mongos.log --configdb config/$MONGOS_STARTUP_CMD  &
+        sleep 5
         sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOD_PORT mongod_config_inst
-	    sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
+        sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
         echo "Adding Shards"
-		sleep 20
+		    sleep 20
         for k in `seq 1  ${REPLCOUNT}`;do
           n=$(( $k - 1 ))
           $BASEDIR/bin/mongo --quiet --eval "printjson(db.getSisterDB('admin').runCommand({addShard: 'r${k}/localhost:${PSMDB_PORTS[$n]}'}))"
         done
-	  fi
+	    fi
     else
       if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
         TOKUDB_STARTUP="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
@@ -1004,10 +1010,10 @@ pmm_docker_client_startup(){
       sleep 5 ;
     done
     DOCKER_CONTAINER_NAME=$(docker ps | grep ${BASE_DIR}_centos_ps | awk '{print $NF}')
-    IP_ADD=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+    IP_ADD=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
     if [ ! -z $DOCKER_CONTAINER_NAME ]; then
       echo -e "\nAdding pmm-client instance from CentOS docker container to the currently live PMM server"
-      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin config --server $IP_ADD --bind-address $IP_DOCKER_ADD
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin add mysql
     fi
@@ -1043,10 +1049,10 @@ pmm_docker_client_startup(){
       sleep 5 ;
     done
     DOCKER_CONTAINER_NAME=$(docker ps | grep ${BASE_DIR}_ubuntu_ps | awk '{print $NF}')
-    IP_ADD=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+    IP_ADD=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
     if [ ! -z $DOCKER_CONTAINER_NAME ]; then
       echo -e "\nAdding pmm-client instance from Ubuntu docker container to the currently live PMM server"
-      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin config --server $IP_ADD --bind-address $IP_DOCKER_ADD
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin add mysql
     fi

@@ -19,10 +19,9 @@ if [ ! -r ./bin/mysqld ]; then
   fi
 fi
 
+IS_PXC=0
 if ./bin/mysqld --version | grep -q 'Percona XtraDB Cluster' 2>/dev/null ; then 
   IS_PXC=1
-else
-  IS_PXC=0
 fi
 
 echoit(){

@@ -2540,7 +2540,11 @@ cleanup_and_save(){
     grep -E --binary-files=text -v "^# mysqld options required for replay:" $WORKT > $WORKO
     MYSQLD_OPTIONS_REQUIRED=$(echo "$SPECIAL_MYEXTRA_OPTIONS $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
-      sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+      if [ -s $WORKO ]; then
+        sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+      else
+        echo "# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" > $WORKO
+      fi
     fi
     MYSQLD_OPTIONS_REQUIRED=
     cp -f $WORKO $WORK_OUT

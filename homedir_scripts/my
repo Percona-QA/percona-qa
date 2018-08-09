@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Prints process information about mysqld, proxysql, vault and formats output
+export esc=$(printf "\033");
+
+echo -e "\033[0;31m===== MYSQL =====\033[0m";
+ps aux|grep -v grep|grep "mysqld "|sed "s/$/\n/g"|sed "s,\-\-socket=[^ ]*,${esc}[31m&${esc}[0m,"|sed "s,\-\-port=[^ ]*,${esc}[31m&${esc}[0m,";
+
+echo -e "\033[0;33m===== VAULT =====\033[0m";
+ps aux|grep -v grep|grep "vault "|sed "s/$/\n/g";
+
+echo -e "\033[0;34m===== PROXYSQL =====\033[0m";
+ps aux|grep -v grep|grep "proxysql"|sed "s/$/\n/g";
