@@ -398,7 +398,7 @@ setup(){
     exit 1
   fi
   #IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
-  IP_ADDRESS=$(ip route get 8.8.8.8 | head -1 | awk 'NF>1{print $NF}')
+  IP_ADDRESS=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
   if [[ "$pmm_server" == "docker" ]];then
     #PMM configuration setup
     if [ -z $pmm_server_version ]; then
@@ -1003,10 +1003,10 @@ pmm_docker_client_startup(){
       sleep 5 ;
     done
     DOCKER_CONTAINER_NAME=$(docker ps | grep ${BASE_DIR}_centos_ps | awk '{print $NF}')
-    IP_ADD=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+    IP_ADD=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
     if [ ! -z $DOCKER_CONTAINER_NAME ]; then
       echo -e "\nAdding pmm-client instance from CentOS docker container to the currently live PMM server"
-      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin config --server $IP_ADD --bind-address $IP_DOCKER_ADD
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin add mysql
     fi
@@ -1042,10 +1042,10 @@ pmm_docker_client_startup(){
       sleep 5 ;
     done
     DOCKER_CONTAINER_NAME=$(docker ps | grep ${BASE_DIR}_ubuntu_ps | awk '{print $NF}')
-    IP_ADD=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+    IP_ADD=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
     if [ ! -z $DOCKER_CONTAINER_NAME ]; then
       echo -e "\nAdding pmm-client instance from Ubuntu docker container to the currently live PMM server"
-      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+      IP_DOCKER_ADD=$(docker exec -it $DOCKER_CONTAINER_NAME ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin config --server $IP_ADD --bind-address $IP_DOCKER_ADD
       docker exec -it $DOCKER_CONTAINER_NAME pmm-admin add mysql
     fi
