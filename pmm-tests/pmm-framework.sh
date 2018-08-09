@@ -778,29 +778,29 @@ add_clients(){
     ADDCLIENTS_COUNT=$(echo "${i}" | sed 's|[^0-9]||g')
     if  [[ "${CLIENT_NAME}" == "mo" ]]; then
       rm -rf $BASEDIR/data
-	  for k in `seq 1  ${REPLCOUNT}`;do
-		PSMDB_PORT=$(( (RANDOM%21 + 10) * 1001 ))
-		PSMDB_PORTS+=($PSMDB_PORT)
-        for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
-          PORT=$(( $PSMDB_PORT + $j - 1 ))
-          mkdir -p ${BASEDIR}/data/rpldb${k}_${j}
-          $BASEDIR/bin/mongod --profile 2 --slowms 1  $mongo_storage_engine  --replSet r${k} --dbpath=$BASEDIR/data/rpldb${k}_${j} --logpath=$BASEDIR/data/rpldb${k}_${j}/mongod.log --port=$PORT --logappend --fork &
-		  sleep 10
-          sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
-        done
+      for k in `seq 1  ${REPLCOUNT}`;do
+        PSMDB_PORT=$(( (RANDOM%21 + 10) * 1001 ))
+        PSMDB_PORTS+=($PSMDB_PORT)
+          for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
+            PORT=$(( $PSMDB_PORT + $j - 1 ))
+            mkdir -p ${BASEDIR}/data/rpldb${k}_${j}
+            $BASEDIR/bin/mongod --profile 2 --slowms 1  $mongo_storage_engine  --replSet r${k} --dbpath=$BASEDIR/data/rpldb${k}_${j} --logpath=$BASEDIR/data/rpldb${k}_${j}/mongod.log --port=$PORT --logappend --fork &
+            sleep 10
+            sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
+          done
       done
-	  create_replset_js(){
-	    REPLSET_COUNT=$(( ${ADDCLIENTS_COUNT} - 1 ))
-	    rm -rf /tmp/config_replset.js
-		echo "port=parseInt(db.adminCommand(\"getCmdLineOpts\").parsed.net.port)" >> /tmp/config_replset.js
-		for i in `seq 1  ${REPLSET_COUNT}`;do
+      create_replset_js(){
+        REPLSET_COUNT=$(( ${ADDCLIENTS_COUNT} - 1 ))
+        rm -rf /tmp/config_replset.js
+        echo "port=parseInt(db.adminCommand(\"getCmdLineOpts\").parsed.net.port)" >> /tmp/config_replset.js
+        for i in `seq 1  ${REPLSET_COUNT}`;do
           echo "port${i}=port+${i};" >> /tmp/config_replset.js
-		done
+        done
         echo "conf = {" >> /tmp/config_replset.js
         echo "_id : replSet," >> /tmp/config_replset.js
         echo "members: [" >> /tmp/config_replset.js
         echo "  { _id:0 , host:\"localhost:\"+port,priority:10}," >> /tmp/config_replset.js
-		for i in `seq 1  ${REPLSET_COUNT}`;do
+        for i in `seq 1  ${REPLSET_COUNT}`;do
           echo "  { _id:${i} , host:\"localhost:\"+port${i}}," >> /tmp/config_replset.js
         done
         echo "  ]" >> /tmp/config_replset.js
@@ -808,50 +808,49 @@ add_clients(){
 
         echo "printjson(conf)" >> /tmp/config_replset.js
         echo "printjson(rs.initiate(conf));" >> /tmp/config_replset.js
-
-	  }
-	  create_replset_js
+  	  }
+	    create_replset_js
       if [[ "$with_replica" == "1" ]]; then
         for k in `seq 1  ${REPLCOUNT}`;do
-	      n=$(( $k - 1 ))
-		  echo "Configuring replcaset"
+	        n=$(( $k - 1 ))
+		      echo "Configuring replcaset"
           sudo $BASEDIR/bin/mongo --quiet --port ${PSMDB_PORTS[$n]} --eval "var replSet='r${k}'" "/tmp/config_replset.js"
           sleep 5
-	    done
-	  fi
+	      done
+	    fi
 
       if [[ "$with_shrading" == "1" ]]; then
-    	#config
-	    CONFIG_MONGOD_PORT=$(( (RANDOM%21 + 10) * 1001 ))
-		CONFIG_MONGOS_PORT=$(( (RANDOM%21 + 10) * 1001 ))
-		for m in `seq 1 ${ADDCLIENTS_COUNT}`;do
-		  PORT=$(( $CONFIG_MONGOD_PORT + $m - 1 ))
-		  mkdir -p $BASEDIR/data/confdb${m}
+    	  #config
+        CONFIG_MONGOD_PORT=$(( (RANDOM%21 + 10) * 1001 ))
+        CONFIG_MONGOS_PORT=$(( (RANDOM%21 + 10) * 1001 ))
+        for m in `seq 1 ${ADDCLIENTS_COUNT}`;do
+          PORT=$(( $CONFIG_MONGOD_PORT + $m - 1 ))
+          mkdir -p $BASEDIR/data/confdb${m}
           $BASEDIR/bin/mongod --profile 2 --slowms 1 --fork --logpath $BASEDIR/data/confdb${m}/config_mongo.log --dbpath=$BASEDIR/data/confdb${m} --port $PORT --configsvr --replSet config &
-		  sleep 10
-		  sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
-		  MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
-		done
+          sleep 10
+          sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
+          MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
+        done
 
-		echo "Configuring replcaset"
+        echo "Configuring replcaset"
         $BASEDIR/bin/mongo --quiet --port ${CONFIG_MONGOD_PORT} --eval "var replSet='config'" "/tmp/config_replset.js"
         sleep 20
 
-		MONGOS_STARTUP_CMD="${MONGOS_STARTUP_CMD::-1}"
-		mkdir $BASEDIR/data/mongos
-		#Removing default mongodb socket file
-		sudo rm -rf /tmp/mongodb-27017.sock
-		$BASEDIR/bin/mongos --fork --logpath $BASEDIR/data/mongos/mongos.log --configdb config/$MONGOS_STARTUP_CMD  &
-		sleep 5
+        MONGOS_STARTUP_CMD="${MONGOS_STARTUP_CMD::-1}"
+        mkdir $BASEDIR/data/mongos
+        #Removing default mongodb socket file
+        sudo rm -rf /tmp/mongodb-27017.sock
+        $BASEDIR/bin/mongos --fork --logpath $BASEDIR/data/mongos/mongos.log --configdb config/$MONGOS_STARTUP_CMD  &
+        sleep 5
         sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOD_PORT mongod_config_inst
-	    sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
+        sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
         echo "Adding Shards"
-		sleep 20
+		    sleep 20
         for k in `seq 1  ${REPLCOUNT}`;do
           n=$(( $k - 1 ))
           $BASEDIR/bin/mongo --quiet --eval "printjson(db.getSisterDB('admin').runCommand({addShard: 'r${k}/localhost:${PSMDB_PORTS[$n]}'}))"
         done
-	  fi
+	    fi
     else
       if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
         TOKUDB_STARTUP="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
