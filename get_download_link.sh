@@ -3,8 +3,6 @@
 
 PRODUCT=""
 VERSION=""
-BUILD_ARCH="x86_64"
-DISTRIBUTION="ubuntu"
 DIST_REL=""
 LINK=""
 DOWNLOAD=0
@@ -80,6 +78,14 @@ if [[ -z ${PRODUCT} ]]; then
   echo "ERROR: Product parameter is mandatory!"
   usage
   exit 1
+fi
+
+if [[ -z ${BUILD_ARCH} ]]; then
+  BUILD_ARCH="x86_64"
+fi
+
+if [[ -z ${DISTRIBUTION} ]]; then
+  DISTRIBUTION="ubuntu"
 fi
 
 if [[ -z "$(which wget)" ]]; then
