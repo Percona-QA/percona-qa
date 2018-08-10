@@ -445,6 +445,7 @@ fil0fil.cc line 5594                                                            
 fsp0fsp.cc line 1287                                                                    ## https://bugs.mysql.com/bug.php?id=77164 PS
 fsp0fsp.cc line 1319                                                                    ## https://bugs.mysql.com/bug.php?id=77164 MS
 fsp0fsp.cc line 1861                                                                    ## https://bugs.mysql.com/bug.php?id=74343 MS
+fsp0fsp.cc line 1880                                                                    ## https://jira.percona.com/browse/PS-1552
 fsp0fsp.cc line 1887                                                                    ## https://bugs.mysql.com/bug.php?id=74343 MS
 fsp0fsp.cc line 1899                                                                    ## https://bugs.mysql.com/bug.php?id=74343 PS
 fsp0fsp.cc line 2150                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1382758
