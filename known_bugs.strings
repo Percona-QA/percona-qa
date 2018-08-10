@@ -470,6 +470,8 @@ ha_innodb.cc line 18530                                                         
 ha_innodb.cc line 19335                                                                 ## PS 5.6.31     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 19383                                                                 ## PS 5.6.34     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 19423                                                                 ## PS 5.6.36     --innodb-log-buffer-size=1125899906842624 (or similar)
+ha_innodb.cc line 19523                                                                 ## PS 5.6.41     https://bugs.mysql.com/bug.php?id=91956
+ha_innodb.cc line 17420                                                                 ## MS 5.6.41     https://bugs.mysql.com/bug.php?id=91956
 mem0mem.c line 361                                                                      ## PS 5.5.53     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 18962                                                                 ## MS/PS 5.6.31  SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 #ut0ut.cc line 935                                                          ## Outdated ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
