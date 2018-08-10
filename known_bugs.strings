@@ -87,6 +87,7 @@ TEXT=.table2 == NULL.$                                   ## https://bugs.mysql.c
 purge_sys->n_stop == 0                                   ## https://bugs.mysql.com/bug.php?id=89503
 Sql_cmd_install_plugin..execute                          ## https://bugs.mysql.com/bug.php?id=89504
 thread_ids.empty                                         ## https://bugs.mysql.com/bug.php?id=91847
+Cached_authentication_plugins..optimize_plugin_compare_by_pointer ## https://bugs.mysql.com/bug.php?id=91899
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
