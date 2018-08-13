@@ -2984,7 +2984,7 @@ finish(){
     fi
     MYSQLD_OPTIONS_REQUIRED=
     if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
-      echo_out "[Finish] Final testcase size               : $SIZEF bytes ($LINECOUNTF lines)"
+      echo_out "[Finish] Final testcase size               : $(stat -c %s $WORKO) bytes ($(wc -l $WORKO | awk '{print $1}') lines)"
     fi
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     copy_workdir_to_tmp
