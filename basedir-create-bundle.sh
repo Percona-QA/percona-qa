@@ -57,7 +57,7 @@ mv ./data/*core* .
 ${SCRIPT_PWD}/ldd_files.sh
 
 # For debugging purposes, remove ">/dev/null 2>&1" on the next line and observe output
-# Note that here the $CORE variable represents the file in the original data dir (at ${WORK_PWD}/data/core*), yet
+# Note that here the $CORE variable represents the file in the original data dir (at ${WORK_PWD}/data/*core*), yet
 # There is a copy of that same coredump file already here in ./bug${BUGNR}. The script could be changed to use this,
 # Though it matters little. Also, ldd_files.sh (called above) uses the one in this directory (./bug${BUGNR}) to find
 # it's lib64 dependency files, so it's a bit of a mix atm. Works well, and no issues foreseeable, but could be changed.

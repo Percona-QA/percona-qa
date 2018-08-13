@@ -43,7 +43,7 @@ TEXT=.bin2decimal.$                                      ## https://bugs.mysql.c
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
 maybe_null                                               ## https://bugs.mysql.com/bug.php?id=83115
 #MDL_checker..is_read_locked.m_thd, .object     ## Fixed ## https://bugs.mysql.com/bug.php?id=83117
-rc == TYPE_OK                                            ## https://bugs.mysql.com/bug.php?id=86282
+#rc == TYPE_OK                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=86282
 sym_node->table .= NULL                                  ## https://bugs.mysql.com/bug.php?id=86293
 thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., tablespace_name, MDL_INTENTION_EXCLUSIVE  ## https://bugs.mysql.com/bug.php?id=86297
 row_drop_table_for_mysql                                 ## https://bugs.mysql.com/bug.php?id=88161
@@ -88,6 +88,13 @@ purge_sys->n_stop == 0                                   ## https://bugs.mysql.c
 Sql_cmd_install_plugin..execute                          ## https://bugs.mysql.com/bug.php?id=89504
 thread_ids.empty                                         ## https://bugs.mysql.com/bug.php?id=91847
 Cached_authentication_plugins..optimize_plugin_compare_by_pointer ## https://bugs.mysql.com/bug.php?id=91899
+srv_shutdown_all_bg_threads                              ## https://bugs.mysql.com/bug.php?id=91973
+TEXT=.\.fail.$                                           ## https://bugs.mysql.com/bug.php?id=91975 (NOTE: ".fail" is very common in logs (" failed" will match for example. Thus, actual testcase reduction had to be done using the string "dict0dd.cc:1071". An attempt to update text_string.sh to handle this string better proved non-straightforward. Thus the string is included here as-is (and is low enough frequency). Note also that this does NOT mean that all error logs with " failed" (i.e. as good as all logs as the mysqlx plugins commonly fails to load) are somehow filtered; it is only a text filter string for this particular bug as per framework workings (i.e. matched via reducer's TEXT="..." matching in pquery-clean-known.sh)
+THD..send_statement_status                               ## https://bugs.mysql.com/bug.php?id=91976
+TEXT=.ha_innopart..external_lock.$                       ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12)
+ut0ut.cc.670                                             ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12)
+#TEXT=.innobase_parse_hint_from_comment.$                ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12) (not reproducible)
+charset_database_number <= 0xFF                          ## https://bugs.mysql.com/bug.php?id=91986 
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684

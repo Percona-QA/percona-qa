@@ -438,7 +438,7 @@ generate_reducer_script(){
 # Main pquery results processing
 if [ ${QC} -eq 0 ]; then
   if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
-    for TRIAL in $(ls ./*/node*/core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | sort -u); do
+    for TRIAL in $(ls ./*/node*/*core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | sort -u); do
       for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep --binary-files=text '^d' | awk '{print $8}' | tr -dc '0-9\n' | sort`; do
         OUTFILE="${TRIAL}-${SUBDIR}"
         rm -Rf  ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing

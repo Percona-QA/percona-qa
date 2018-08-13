@@ -3,9 +3,10 @@
 # With thanks to http://unix.stackexchange.com/questions/47271/prevent-gnu-screen-from-terminating-session-once-executed-script-ends (jw013)
 
 # User variables
-BASEDIR=/sda/PS170218-mysql-8.0.4-rc-linux-x86_64-opt
+BASEDIR=/sda/MS300718-mysql-8.0.12-linux-x86_64-debug
 WORKDIR=/sda
-THREADS=5
+THREADS=1
+STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
 
 # Internal variables: Do not change!
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
@@ -23,6 +24,7 @@ restore-pqr-settings(){
     sed -i "s|^[ \t]*BASEDIR=.*|BASEDIR=${BACKUP_BASEDIR}|" ${SCRIPT_PWD}/pquery-reach.sh
     sed -i "s|^[ \t]*WORKDIR=.*|WORKDIR=${BACKUP_WORKDIR}|" ${SCRIPT_PWD}/pquery-reach.sh
     sed -i "s|^[ \t]*THREADS=.*|THREADS=${BACKUP_THREADS}|" ${SCRIPT_PWD}/pquery-reach.sh
+    sed -i "s|^[ \t]*STATIC_PQUERY_BIN=.*|STATIC_PQUERY_BIN=${BACKUP_STATICP}|" ${SCRIPT_PWD}/pquery-reach.sh
   fi
 }
 
@@ -39,11 +41,13 @@ fi
 BACKUP_BASEDIR="$(grep "^[ \t]*BASEDIR=" ${SCRIPT_PWD}/pquery-reach.sh | head -n1 | sed 's|[ \t]*BASEDIR=||')"
 BACKUP_WORKDIR="$(grep "^[ \t]*WORKDIR=" ${SCRIPT_PWD}/pquery-reach.sh | head -n1 | sed 's|[ \t]*WORKDIR=||')"
 BACKUP_THREADS="$(grep "^[ \t]*THREADS=" ${SCRIPT_PWD}/pquery-reach.sh | head -n1 | sed 's|[ \t]*THREADS=||')"
+BACKUP_STATICP="$(grep "^[ \t]*STATIC_PQUERY_BIN=" ${SCRIPT_PWD}/pquery-reach.sh | head -n1 | sed 's|[ \t]*STATIC_PQUERY_BIN=||')"
 
 # Set new basedir and threads as per settings above
 sed -i "s|^[ \t]*BASEDIR=.*|BASEDIR=${BASEDIR}|" ${SCRIPT_PWD}/pquery-reach.sh
 sed -i "s|^[ \t]*WORKDIR=.*|WORKDIR=${WORKDIR}|" ${SCRIPT_PWD}/pquery-reach.sh
 sed -i "s|^[ \t]*THREADS=.*|THREADS=${THREADS}|" ${SCRIPT_PWD}/pquery-reach.sh
+sed -i "s|^[ \t]*STATIC_PQUERY_BIN=.*|STATIC_PQUERY_BIN=${STATIC_PQUERY_BIN}|" ${SCRIPT_PWD}/pquery-reach.sh
 
 for i in $(seq 1 10); do
   echoit "Starting pquery-reach.sh screen session #${i}..."

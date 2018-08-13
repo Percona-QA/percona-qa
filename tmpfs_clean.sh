@@ -16,41 +16,43 @@ if [ $(ls -ld /dev/shm/* | wc -l) -eq 0 ]; then
   exit 0
 else
   for DIR in $(ls -ld /dev/shm/* | sed 's|^.*/dev/shm|/dev/shm|'); do
-    if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
-      sync; sleep 0.3  # Small wait, then recheck (to avoid missed ps output)
+    if [ -d ${DIR} ]; then  # Ensure it's a directory (avoids deleting pquery-reach.log for example)
       if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
         sync; sleep 0.3  # Small wait, then recheck (to avoid missed ps output)
         if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
-          AGEDIR=$[ $(date +%s) - $(stat -c %Z ${DIR}) ]  # Directory age in seconds
-          if [ ${AGEDIR} -ge 90 ]; then  # Yet another safety, don't delete very recent directories
-            if [ -r ${DIR}/reducer.log ]; then
-              AGEFILE=$[ $(date +%s) - $(stat -c %Z ${DIR}/reducer.log) ]  # File age in seconds
-              if [ ${AGEFILE} -ge 90 ]; then  # Yet another safety specifically for often-occuring reducer directories, don't delete very recent reducers
-                echo "Deleting reducer directory ${DIR} (directory age: ${AGEDIR}s, file age: ${AGEFILE}s)"
-                COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
-                if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
-              fi
-            else
-              DIRNAME=$(echo ${DIR} | sed 's|.*/||')
-              if [ "$(echo ${DIRNAME} | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9]||')" == "" ]; then  # 6 Numbers subdir; this is likely a pquery-run.sh generated directory
-                SUBDIRCOUNT=$(ls ${DIR} 2>/dev/null | wc -l)  # Number of trial subdirectories
-                if [ ${SUBDIRCOUNT} -le 1 ]; then  # pquery-run.sh directories generally have 1 (or 0 when in between trials) subdirectories. Both 0 and 1 need to be covered
-                  SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
-                  if [ "${SUBDIR}" == "" ]; then  # Script may have caught a snapshot in-between pquery-run.sh trials
-                    sync; sleep 3  # Delay (to provide pquery-run.sh (if running) time to generate new trial directory), then recheck
-                    SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
-                  fi
-                  AGESUBDIR=$[ $(date +%s) - $(stat -c %Z ${SUBDIR}) ]  # Current trial directory age in seconds
-                  if [ ${AGESUBDIR} -ge 10800 ]; then  # Don't delete pquery-run.sh directories if they have recent trials in them (i.e. they are likely still running): >=3hr
-                    echo "Deleting directory ${DIR} (trial subdirectory age: ${AGESUBDIR}s)"
-                    COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
-                    if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
-                  fi
+          sync; sleep 0.3  # Small wait, then recheck (to avoid missed ps output)
+          if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
+            AGEDIR=$[ $(date +%s) - $(stat -c %Z ${DIR}) ]  # Directory age in seconds
+            if [ ${AGEDIR} -ge 90 ]; then  # Yet another safety, don't delete very recent directories
+              if [ -r ${DIR}/reducer.log ]; then
+                AGEFILE=$[ $(date +%s) - $(stat -c %Z ${DIR}/reducer.log) ]  # File age in seconds
+                if [ ${AGEFILE} -ge 90 ]; then  # Yet another safety specifically for often-occuring reducer directories, don't delete very recent reducers
+                  echo "Deleting reducer directory ${DIR} (directory age: ${AGEDIR}s, file age: ${AGEFILE}s)"
+                  COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+                  if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
                 fi
               else
-                echo "Deleting directory ${DIR} (directory age: ${AGEDIR}s)"
-                COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
-                if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+                DIRNAME=$(echo ${DIR} | sed 's|.*/||')
+                if [ "$(echo ${DIRNAME} | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9]||')" == "" ]; then  # 6 Numbers subdir; this is likely a pquery-run.sh generated directory
+                  SUBDIRCOUNT=$(ls ${DIR} 2>/dev/null | wc -l)  # Number of trial subdirectories
+                  if [ ${SUBDIRCOUNT} -le 1 ]; then  # pquery-run.sh directories generally have 1 (or 0 when in between trials) subdirectories. Both 0 and 1 need to be covered
+                    SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
+                    if [ "${SUBDIR}" == "" ]; then  # Script may have caught a snapshot in-between pquery-run.sh trials
+                      sync; sleep 3  # Delay (to provide pquery-run.sh (if running) time to generate new trial directory), then recheck
+                      SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
+                    fi
+                    AGESUBDIR=$[ $(date +%s) - $(stat -c %Z ${SUBDIR}) ]  # Current trial directory age in seconds
+                    if [ ${AGESUBDIR} -ge 10800 ]; then  # Don't delete pquery-run.sh directories if they have recent trials in them (i.e. they are likely still running): >=3hr
+                      echo "Deleting directory ${DIR} (trial subdirectory age: ${AGESUBDIR}s)"
+                      COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+                      if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+                    fi
+                  fi
+                else
+                  echo "Deleting directory ${DIR} (directory age: ${AGEDIR}s)"
+                  COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+                  if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+                fi
               fi
             fi
           fi

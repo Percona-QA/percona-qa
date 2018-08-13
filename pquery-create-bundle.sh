@@ -83,7 +83,7 @@ ${SCRIPT_PWD}/ldd_files.sh
 # Stack traces
 TIMEF=`date +%d%m%y-%H%M`
 # For debugging purposes, remove ">/dev/null 2>&1" on the next line and observe output
-# Note that here the ${CORE} variable represents the file in the original data dir (at ${TRIAL_DIR}/data/core*), yet
+# Note that here the ${CORE} variable represents the file in the original data dir (at ${TRIAL_DIR}/data/*core*), yet
 # There is a copy of that same coredump file already here in ./${TRIALNR}_bundle. The script could be changed to use this,
 # Though it matters little. Also, ldd_files.sh (called above) uses the one in this directory (./${TRIALNR}_bundle) to find
 # it's lib64 dependency files, so it's a bit of a mix atm. Works well, and no issues foreseeable, but could be changed.
