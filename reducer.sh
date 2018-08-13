@@ -512,9 +512,11 @@ if [[ "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
 fi
 # === Check for ONLY_FULL_GROUP_BY sql mode, split it into a ONLYFULLGROUPBY variable, and cleanup MYEXTRA to remove the option
 ONLYFULLGROUPBY=
-if [[ "${MYEXTRA}" == *"--sql_mode=ONLY_FULL_GROUP_BY"* ]]; then
-  ONLYFULLGROUPBY="--sql_mode=ONLY_FULL_GROUP_BY"
-  MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${ONLYFULLGROUPBY}||g")"
+if [[ "${MYEXTRA}" != *"--sql_mode=ONLY_FULL_GROUP_BY,"* ]]; then  # Avoid scenario where multiple sql_mode's are set, handling this would be mode complex (TODO)
+  if [[ "${MYEXTRA}" == *"--sql_mode=ONLY_FULL_GROUP_BY"* ]]; then
+    ONLYFULLGROUPBY="--sql_mode=ONLY_FULL_GROUP_BY"
+    MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${ONLYFULLGROUPBY}||g")"
+  fi
 fi
 # ===== [SPECIAL MYEXTRA SECTION END]: Make sure to update 'SPECIAL_MYEXTRA_OPTIONS' re-declaration below if you add additional sections (i.e. MYEXTRA special option sets) above!
 SPECIAL_MYEXTRA_OPTIONS="$TOKUDB $ROCKSDB $BL_ENCRYPTION $KF_ENCRYPTION $BINLOG $ONLYFULLGROUPBY"
@@ -679,7 +681,7 @@ options_check(){
       else
         TS_INPUTDIR="$1/log"
         TOKUDB_RUN_DETECTED=0
-        if echo "${MYSAFE} ${MYEXTRA} ${SPECIAL_MYEXTRA_OPTIONS}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
+        if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
         if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
           if grep -E --binary-files=text -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql; then TOKUDB_RUN_DETECTED=1; fi
         fi
@@ -724,14 +726,14 @@ options_check(){
       export -n INPUTFILE=$1  # export -n is not necessary for this script, but it is here to prevent pquery-prep-red.sh from seeing this as a adjustable var
     fi
     TOKUDB_RUN_DETECTED=0
-    if echo "${MYSAFE} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
+    if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
     if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
       if grep -E --binary-files=text -qi "tokudb" ${INPUTFILE}; then TOKUDB_RUN_DETECTED=1; fi
     fi
     if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
       #if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then  # Just here for extra safety
-      #  if ! echo "${MYSAFE} ${MYEXTRA}" | grep -E --binary-files=text -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
-      #  if ! echo "${MYSAFE} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
+      #  if ! echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
+      #  if ! echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
       #fi
       #if [ -r /usr/lib64/libjemalloc.so.1 ]; then
       #  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
