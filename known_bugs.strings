@@ -291,6 +291,7 @@ ZN6tokudb6memory4freeEPv                                          ## PS5.7 $ htt
 #Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917 # Fixed 5.7 RC2
 Handlerton. 0                                                          ## https://tokutek.atlassian.net/browse/DB-1028
 Handlerton: ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
+Handlerton. ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
 Handlerton. next_key_part < _rec_per_keys                              ## https://tokutek.atlassian.net/browse/DB-944
 Handlerton. db .= NULL                                                 ## https://tokutek.atlassian.net/browse/DB-945 
 Handlerton. trx->tokudb_lock_count > 0                                 ## logged: https://jira.percona.com/browse/TDB-193
