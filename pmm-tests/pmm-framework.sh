@@ -299,6 +299,10 @@ if [[ -z "$storage_engine" ]];then
   storage_engine=INNODB
 fi
 
+if [[ -z "$disable_ssl" ]];then
+  disable_ssl=0
+fi
+
 if [[ "$with_shrading" == "1" ]];then
   with_replica=1
 fi
