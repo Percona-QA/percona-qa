@@ -7,7 +7,7 @@
 # Query correctness: data (output) correctness (QC DC) trial handling was also added 11 May 2016
 
 # Improvement ideas
-# - It would be better if failing queries were added like this; 3x{query_from_err_log,query_from_core},3{SELECT 1} instead of 3{query_from_core},3{query_from_err_log},3{SELECT 1}
+# - It would be better if failing queries were added like this; 3x{query_from_err_log,query_from_core},3{SELECT 1},3{SELECT SLEEP(5)} instead of 3{query_from_core},3{query_from_err_log},3{SELECT 1},3{SELECT SLEEP(5)}
 
 # User configurable variables
 VALGRIND_OVERRIDE=0    # If set to 1, Valgrind issues are handled as if they were a crash (core dump required)
@@ -201,6 +201,15 @@ add_select_ones_to_trace(){  # Improve issue reproducibility by adding 3x SELECT
     echo "SELECT 1;" >> ${INPUTFILE}
   done
   echo "  > 'SELECT 1;' query added 3x to the SQL trace"
+}
+
+add_select_sleep_to_trace(){  # Improve issue reproducibility by adding 2x SELECT SLEEP(5); to the sql trace
+  echo "* Adding additional 'SELECT SLEEP(5);' queries to improve issue reproducibility"
+  if [ ! -f ${INPUTFILE} ]; then touch ${INPUTFILE}; fi
+  for i in {1..3}; do
+    echo "SELECT SLEEP(5);" >> ${INPUTFILE}
+  done
+  echo "  > 'SELECT SLEEP(5);' query added 2x to the SQL trace"
 }
 
 remove_non_sql_from_trace(){
@@ -490,6 +499,7 @@ if [ ${QC} -eq 0 ]; then
           fi
         fi
         add_select_ones_to_trace
+        add_select_sleep_to_trace
         remove_non_sql_from_trace
         TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
         echo "* TEXT variable set to: \"${TEXT}\""
@@ -563,6 +573,7 @@ if [ ${QC} -eq 0 ]; then
           exit 1
         fi
         add_select_ones_to_trace
+        add_select_sleep_to_trace
         remove_non_sql_from_trace
         # Check if this trial was/had a startup failure (which would take priority over anything else) - will be used to set REDUCE_STARTUP_ISSUES=1
         check_if_startup_failure

@@ -190,14 +190,16 @@ TS_VARIABILITY_SLEEP=1
 #   10->20->30->40->50->Issue declared non-reproducible and program end. By this stage, the testcase has executed 6 verify levels *(10+20+30+40+50)=900 times.
 #   Still, even in this case there are methods that can be employed to let the testcase reproduce. For further ideas what to do in these cases, see;
 #   http://bazaar.launchpad.net/~percona-core/percona-qa/trunk/view/head:/reproducing_and_simplification.txt
-# - FORCE_SPORADIC=0 or 1: If set to 1, STAGE1_LINES setting is ignored and set to 3. MULTI reducer mode is used after verify, even if issue is found to
-#   seemingly not be sporadic (i.e. all verify threads, normally 10, reproduced the issue). This can be handy for issues which are very slow to reduce
-#   or which, on visual inspection of the testcase reduction process are clearly sporadic (i.e. it comes to 2 line chunks with still thousands of lines
-#   in the testcase and/or there are many trials without the issue being observed. Another situation which would call for use of this parameter is when
-#   produced testcases are still greater then 15 to 80 lines - this also indicates a possibly sporadic issue (even if verify stage manages to produce it 10x.
+# - FORCE_SPORADIC=0 or 1: If set to 1, STAGE1_LINES setting is ignored and set to 3, unless it was set to a non-default number (i.e. !=90 - to enable
+#   reduction of issues via MULTI until a given amount of lines is reached, which is handy for tools like pquery-reach.sh where a mix of sporadic and
+#   non-sporadic issues may be seen). MULTI reducer mode is used after verify, even if issue is found to seemingly not be sporadic (i.e. all verify 
+#   threads reproduced the issue). This can be handy for issues which are very slow to reduce or which, on visual inspection of the testcase reduction 
+#   process are clearly sporadic (i.e. it comes to 2 line chunks with still thousands of lines in the testcase and/or there are many trials without the 
+#   issue being observed. Another situation which would call for use of this parameter is when produced testcases are still greater then 15 to 80 lines - 
+#   this also indicates a possibly sporadic issue (even if verify stage manages to produce it against all started subreducer threads).
 #   Note that this may be a bug in reducer too - i.e. a mismatch between verify stage and stage 1. Yet, if that were true, the issue would likely not
-#   reproduce to start with. Another plausible reason for this occurence (10/10 verified in verify stage but low frequency reproduction later on) is the
-#   existence of 10 threads in verify stage vs 1 thread in stage 1. It has been observed that a very loaded server (or using Valgrind as it also slows the
+#   reproduce to start with. Another plausible reason for this occurence (all threads verified in verify stage but low frequency reproduction later on) is 
+#   the existence of all threads in verify stage vs 1 thread in stage 1. It has been observed that a very loaded server (or using Valgrind as it also slows the
 #   code down significantly) is better at reproducing (many) issues then a low-load/single-thread-running machine. Whatever the case, this option will help.
 # - FORCE_SKIV=0 or 1: If set to 1, FORCE_SPORADIC is automatically set to 1 also. This option skips the verify stage and goes straight into testcase reduction
 #   mode. Ideal for issues that have a very low reproducibility, at least initially (usually either increases or decreases during a simplification run.)
@@ -508,8 +510,16 @@ if [[ "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
     exit 1
   fi
 fi
+# === Check for ONLY_FULL_GROUP_BY sql mode, split it into a ONLYFULLGROUPBY variable, and cleanup MYEXTRA to remove the option
+ONLYFULLGROUPBY=
+if [[ "${MYEXTRA}" != *"--sql_mode=ONLY_FULL_GROUP_BY,"* ]]; then  # Avoid scenario where multiple sql_mode's are set, handling this would be mode complex (TODO)
+  if [[ "${MYEXTRA}" == *"--sql_mode=ONLY_FULL_GROUP_BY"* ]]; then
+    ONLYFULLGROUPBY="--sql_mode=ONLY_FULL_GROUP_BY"
+    MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${ONLYFULLGROUPBY}||g")"
+  fi
+fi
 # ===== [SPECIAL MYEXTRA SECTION END]: Make sure to update 'SPECIAL_MYEXTRA_OPTIONS' re-declaration below if you add additional sections (i.e. MYEXTRA special option sets) above!
-SPECIAL_MYEXTRA_OPTIONS="$TOKUDB $ROCKSDB $BL_ENCRYPTION $KF_ENCRYPTION $BINLOG"
+SPECIAL_MYEXTRA_OPTIONS="$TOKUDB $ROCKSDB $BL_ENCRYPTION $KF_ENCRYPTION $BINLOG $ONLYFULLGROUPBY"
 SPECIAL_MYEXTRA_OPTIONS=$(echo $SPECIAL_MYEXTRA_OPTIONS | sed 's|^[ \t]\+||;s|[ \t]\+$||;s|  | |g')
 
 # For GLIBC crash reduction, we need to capture the output of the console from which reducer.sh is started. Currently only a SINGLE threaded solution using the 'scrip'
@@ -671,7 +681,7 @@ options_check(){
       else
         TS_INPUTDIR="$1/log"
         TOKUDB_RUN_DETECTED=0
-        if echo "${MYSAFE} ${MYEXTRA} ${SPECIAL_MYEXTRA_OPTIONS}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
+        if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
         if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
           if grep -E --binary-files=text -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql; then TOKUDB_RUN_DETECTED=1; fi
         fi
@@ -716,14 +726,14 @@ options_check(){
       export -n INPUTFILE=$1  # export -n is not necessary for this script, but it is here to prevent pquery-prep-red.sh from seeing this as a adjustable var
     fi
     TOKUDB_RUN_DETECTED=0
-    if echo "${MYSAFE} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
+    if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
     if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
       if grep -E --binary-files=text -qi "tokudb" ${INPUTFILE}; then TOKUDB_RUN_DETECTED=1; fi
     fi
     if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
       #if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then  # Just here for extra safety
-      #  if ! echo "${MYSAFE} ${MYEXTRA}" | grep -E --binary-files=text -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
-      #  if ! echo "${MYSAFE} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
+      #  if ! echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
+      #  if ! echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
       #fi
       #if [ -r /usr/lib64/libjemalloc.so.1 ]; then
       #  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
@@ -888,7 +898,9 @@ options_check(){
     export -n SKIPV=1
   fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
-    export -n STAGE1_LINES=3
+    if [ $STAGE1_LINES -eq 90 ]; then  # Do not change any customized/non-default (i.e. !=90) setting as this may be handy for automation. For example, pquery-reach.sh will set STAGE1_LINES to 13 while activating FORCE_SKIPV=1 which means that reducer will reduce in MULTI (multi-threaded subreducer) mode until 13 lines are reached, then it will swap to single threaded. This is great to manage a combination of both sporadic (they will be reduced to at max 13 lines) and static (they will be full reduced) issues.
+      export -n STAGE1_LINES=3
+    fi
     export -n SPORADIC=1
     export -n SLOW_DOWN_CHUNK_SCALING=1
   fi
@@ -2540,7 +2552,11 @@ cleanup_and_save(){
     grep -E --binary-files=text -v "^# mysqld options required for replay:" $WORKT > $WORKO
     MYSQLD_OPTIONS_REQUIRED=$(echo "$SPECIAL_MYEXTRA_OPTIONS $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
-      sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+      if [ -s $WORKO ]; then
+        sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+      else
+        echo "# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" > $WORKO
+      fi
     fi
     MYSQLD_OPTIONS_REQUIRED=
     cp -f $WORKO $WORK_OUT
@@ -2970,7 +2986,7 @@ finish(){
     fi
     MYSQLD_OPTIONS_REQUIRED=
     if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
-      echo_out "[Finish] Final testcase size               : $SIZEF bytes ($LINECOUNTF lines)"
+      echo_out "[Finish] Final testcase size               : $(stat -c %s $WORKO) bytes ($(wc -l $WORKO | awk '{print $1}') lines)"
     fi
     echo_out "[Info] It is often beneficial to re-run reducer on the output file ($0 $WORKO) to make it smaller still (Reason for this is that certain lines may have been chopped up (think about missing end quotes or semicolons) resulting in non-reproducibility)"
     copy_workdir_to_tmp
@@ -3042,7 +3058,7 @@ report_linecounts(){
       echo_out "[Init] Number of lines in input file: $LINECOUNTF"
     fi
   fi
-  if [ "$STAGE" = "V" ]; then echo_out "[Info] Linecounts for restructured files are usually higher as INSERT lines are broken up etc."; fi
+  if [ "$STAGE" = "V" ]; then echo_out "[Info] Restructured files linecounts are usually higher as INSERT lines are broken up, init SQL is expanded etc."; fi
 }
 
 verify_not_found(){
@@ -3051,8 +3067,8 @@ verify_not_found(){
   else
     EXTRA_PATH=""
   fi
-  echo_out "$ATLEASTONCE [Stage $STAGE] Initial verify of the issue: fail. Bug/issue is not present. Terminating."
-  echo_out "[Finish] Verification failed. It may help to check the following files to get an idea as to why this run did not reproduce the issue (if these files do not give any further hints, please check variable/initialization differences, enviroment differences etc.):"
+  echo_out "$ATLEASTONCE [Stage $STAGE] Initial verify of the issue: fail. Bug/issue is not present under given conditions, or is very sporadic. Terminating."
+  echo_out "[Finish] Verification failed. It may help to check the following files to get an idea as to why this run did not reproduce the issue (if these files do not give any further hints, please check variable/initialization differences, enviroment differences etc. and also reference 'reproducing_and_simplification.txt' in percona-qa for many additional reproduction/simplification ideas):"
   WORKDIR_COPY_SUCCESS=0  # Defensive programming, not required (as copy_workdir_to_tmp sets it)
   copy_workdir_to_tmp
   if [ $WORKDIR_COPY_SUCCESS -eq 0 ]; then
@@ -4189,24 +4205,25 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 140 ]; then NOSKIP=1; sed -e "s/ ENGINE=MEMORY/ ENGINE=InnoDB/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 141 ]; then NOSKIP=1; sed -e "s/ ENGINE=MyISAM/ ENGINE=InnoDB/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 142 ]; then NOSKIP=1; sed -e "s/ ENGINE=CSV/ ENGINE=InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 143 ]; then NOSKIP=1; sed -e "s/ ENGINE=[A-Za-z_-]\+/ ENGINE=InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 144 ]; then NOSKIP=1; sed -e "s/ ENGINE=[A-Za-z_-]\+/ /gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 145 ]; then sed -e "s/ ENGINE=TokuDB/ ENGINE=none/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 146 ]; then sed -e "s/ ENGINE=RocksDB/ ENGINE=none/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 147 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 148 ]; then sed -e "s/RocksDB/InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 149 ]; then sed -e 's/[\t ]\+/ /g' -e 's/ \([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
-    elif [ $TRIAL -eq 150 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 151 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 152 ]; then sed -e "s/;.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 153 ]; then sed "s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 154 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 155 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 156 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 157 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 158 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 159 ]; then sed -e 's/[\t ]\+/ /g' $WORKF > $WORKT
-    elif [ $TRIAL -eq 160 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 143 ]; then NOSKIP=1; sed -e "s/ ENGINE=NDB/ ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 144 ]; then NOSKIP=1; sed -e "s/ ENGINE=[A-Za-z_-]\+/ ENGINE=InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 145 ]; then NOSKIP=1; sed -e "s/ ENGINE=[A-Za-z_-]\+/ /gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 146 ]; then sed -e "s/ ENGINE=TokuDB/ ENGINE=none/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 147 ]; then sed -e "s/ ENGINE=RocksDB/ ENGINE=none/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 148 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 149 ]; then sed -e "s/RocksDB/InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 150 ]; then sed -e 's/[\t ]\+/ /g' -e 's/ \([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 151 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 152 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 153 ]; then sed -e "s/;.*/;/" $WORKF > $WORKT
+    elif [ $TRIAL -eq 154 ]; then sed "s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 155 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 156 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 157 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT
+    elif [ $TRIAL -eq 158 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 159 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 160 ]; then sed -e 's/[\t ]\+/ /g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 161 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
@@ -4311,7 +4328,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
   fi
 fi
 
-#STAGE9: Execute storage engine and binlogging options simplification.
+#STAGE9: Execute storage engine, binlogging, keyring and similar options simplification.
 if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
   STAGE=9
   TRIAL=1
@@ -4354,6 +4371,14 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
   if [[ ! -z $BINLOG ]];then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing Binary logging from startup options"
     STAGE9_FILTER=$BINLOG
+    stage9_run
+  fi
+  if [[ ! -z  $ONLYFULLGROUPBY ]];then
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing ONLY_FULL_GROUP_BY SQL Mode from startup options"
+    STAGE9_FILTER="ONLY_FULL_GROUP_BY"  # In many cases, this can be successfully removed whereas --sql_mode= cannot (i.e. is required)
+    stage9_run
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing SQL Mode from startup options"
+    STAGE9_FILTER="--sql_mode="
     stage9_run
   fi
 fi
