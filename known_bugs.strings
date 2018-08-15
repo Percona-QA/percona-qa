@@ -22,7 +22,6 @@ adjust_fk_parents                                        ## https://bugs.mysql.c
 .trx->declared_to_be_inside_innodb                       ## https://bugs.mysql.com/bug.php?id=90521 # Optimized build
 .n . .n - 1.. == 0                                       ## https://bugs.mysql.com/bug.php?id=90522 # Optimized build
 ut0link_buf.h.191..capacity . .capacity - 1.. == 0       ## https://bugs.mysql.com/bug.php?id=90523 # Optimized build
-.is_set                                                  ## https://bugs.mysql.com/bug.php?id=90525
 TEXT=.write_max_size > 0.$                               ## https://bugs.mysql.com/bug.php?id=90526 # Optimized build
 partition_info..add_named_partition                      ## https://bugs.mysql.com/bug.php?id=90542 # Optimized build
 dirname_length                                           ## https://bugs.mysql.com/bug.php?id=90543 # Optimized build 
@@ -43,7 +42,6 @@ TEXT=.bin2decimal.$                                      ## https://bugs.mysql.c
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
 maybe_null                                               ## https://bugs.mysql.com/bug.php?id=83115
 #MDL_checker..is_read_locked.m_thd, .object     ## Fixed ## https://bugs.mysql.com/bug.php?id=83117
-#rc == TYPE_OK                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=86282
 sym_node->table .= NULL                                  ## https://bugs.mysql.com/bug.php?id=86293
 thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., tablespace_name, MDL_INTENTION_EXCLUSIVE  ## https://bugs.mysql.com/bug.php?id=86297
 row_drop_table_for_mysql                                 ## https://bugs.mysql.com/bug.php?id=88161
@@ -94,7 +92,13 @@ THD..send_statement_status                               ## https://bugs.mysql.c
 TEXT=.ha_innopart..external_lock.$                       ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12)
 ut0ut.cc.670                                             ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12)
 #TEXT=.innobase_parse_hint_from_comment.$                ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12) (not reproducible)
+head->variables.gtid_next.type == ANONYMOUS_GTID         ## https://bugs.mysql.com/bug.php?id=91980
 charset_database_number <= 0xFF                          ## https://bugs.mysql.com/bug.php?id=91986 
+#rc == TYPE_OK                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=86282
+rc == TYPE_OK                                            ## https://bugs.mysql.com/bug.php?id=91987 (new occurence of same assert)
+std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator  ## https://bugs.mysql.com/bug.php?id=91988
+#TEXT=.\.is_set.$                                ## Fixed ## https://bugs.mysql.com/bug.php?id=90525
+TEXT=.\.is_set.$                                          ## https://bugs.mysql.com/bug.php?id=91990
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684

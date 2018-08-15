@@ -7,6 +7,7 @@ BASEDIR=/sda/MS300718-mysql-8.0.12-linux-x86_64-debug
 WORKDIR=/sda
 THREADS=1
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
+SESSIONS=15
 
 # Internal variables: Do not change!
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
@@ -49,7 +50,7 @@ sed -i "s|^[ \t]*WORKDIR=.*|WORKDIR=${WORKDIR}|" ${SCRIPT_PWD}/pquery-reach.sh
 sed -i "s|^[ \t]*THREADS=.*|THREADS=${THREADS}|" ${SCRIPT_PWD}/pquery-reach.sh
 sed -i "s|^[ \t]*STATIC_PQUERY_BIN=.*|STATIC_PQUERY_BIN=${STATIC_PQUERY_BIN}|" ${SCRIPT_PWD}/pquery-reach.sh
 
-for i in $(seq 1 10); do
+for i in $(seq 1 $SESSIONS); do
   echoit "Starting pquery-reach.sh screen session #${i}..."
   screen -dmS p${i} sh -c "${SCRIPT_PWD}/pquery-reach.sh; exec bash"
 done
