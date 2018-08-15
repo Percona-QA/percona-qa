@@ -200,7 +200,7 @@ do
     ;;
     --disable-ssl )
     shift
-    disable-ssl=1
+    disable_ssl=1
     ;;
     --wipe-docker-clients )
     shift
@@ -701,7 +701,7 @@ compare_query(){
   #BASEDIR="/home/ramesh/pmmwork/ps57"
   TEST_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1 | awk -F[\(\)] '{print $2}')
   TEST_NODE_NAME=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1  | awk '{print $2}')
-  if [[ "$disable-ssl" == "1"]]; then
+  if [ $disable_ssl -eq 1 ]; then
     sudo pmm-admin add mysql --user=root --socket=$TEST_SOCKET SHADOW_NODE --disable-ssl
   else
     sudo pmm-admin add mysql --user=root --socket=$TEST_SOCKET SHADOW_NODE
@@ -802,7 +802,7 @@ add_clients(){
             mkdir -p ${BASEDIR}/data/rpldb${k}_${j}
             $BASEDIR/bin/mongod --profile 2 --slowms 1  $mongo_storage_engine  --replSet r${k} --dbpath=$BASEDIR/data/rpldb${k}_${j} --logpath=$BASEDIR/data/rpldb${k}_${j}/mongod.log --port=$PORT --logappend --fork &
             sleep 10
-            if [[ "$disable-ssl" == "1"]]; then
+            if [ $disable_ssl -eq 1 ]; then
               sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j} --disable-ssl
             else
               sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
@@ -848,7 +848,7 @@ add_clients(){
           mkdir -p $BASEDIR/data/confdb${m}
           $BASEDIR/bin/mongod --profile 2 --slowms 1 --fork --logpath $BASEDIR/data/confdb${m}/config_mongo.log --dbpath=$BASEDIR/data/confdb${m} --port $PORT --configsvr --replSet config &
           sleep 10
-          if [[ "$disable-ssl" == "1"]]; then
+          if [ $disable_ssl -eq 1 ]; then
             sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m} --disable-ssl
           else
             sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
@@ -866,7 +866,7 @@ add_clients(){
         sudo rm -rf /tmp/mongodb-27017.sock
         $BASEDIR/bin/mongos --fork --logpath $BASEDIR/data/mongos/mongos.log --configdb config/$MONGOS_STARTUP_CMD  &
         sleep 5
-        if [[ "$disable-ssl" == "1"]]; then
+        if [ $disable_ssl -eq 1 ]; then
           sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOD_PORT mongod_config_inst --disable-ssl
         else
           sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
@@ -896,7 +896,7 @@ add_clients(){
         if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
           echo "WARNING! Another mysqld process using /tmp/${NODE_NAME}_${j}.sock"
           if ! sudo pmm-admin list | grep "/tmp/${NODE_NAME}_${j}.sock" > /dev/null ; then
-            if [[ "$disable-ssl" == "1"]]; then
+            if [ $disable_ssl -eq 1 ]; then
               sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source --disable-ssl
             else
               sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
@@ -971,7 +971,7 @@ add_clients(){
             exit 1
           fi
         fi
-        if [[ "$disable-ssl" == "1"]]; then
+        if [ $disable_ssl -eq 1 ]; then
           sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source --disable-ssl
         else
           sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
@@ -997,7 +997,7 @@ add_clients(){
           ${BASEDIR}/bin/mysql -uroot --socket=$PXC_SOCKET -e"grant all on *.* to admin@'%' identified by 'admin'"
           sudo sed -i "s/3306/${PXC_BASE_PORT}/" /etc/proxysql-admin.cnf
           sudo proxysql-admin -e > $WORKDIR/logs/proxysql-admin.log
-          if [[ "$disable-ssl" == "1"]]; then
+          if [ $disable_ssl -eq 1 ]; then
             sudo pmm-admin add proxysql:metrics --disable-ssl
           else
             sudo pmm-admin add proxysql:metrics
