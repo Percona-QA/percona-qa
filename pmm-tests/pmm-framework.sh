@@ -63,8 +63,9 @@ usage () {
   echo " --key-name                     Pass your aws access key file name"
   echo " --ova-image                    Pass PMM server ova image name"
   echo " --ova-memory                   Pass memory(memorysize in MB) for OVA virtual box"
+  echo " --disable-ssl                  Disable ssl mode on exporter"
   echo " --upgrade-server               When this option is specified, PMM Server will be updated to the last version"
-  echo " --upgrade-client          		When this option is specified, PMM client will be updated to the last version"
+  echo " --upgrade-client          		  When this option is specified, PMM client will be updated to the last version"
   echo " --query-source                 Set query source (perfschema or slowlog)"
   echo " --compare-query-count          This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
 }
@@ -72,7 +73,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -196,6 +197,10 @@ do
     --wipe-clients )
     shift
     wipe_clients=1
+    ;;
+    --disable-ssl )
+    shift
+    disable-ssl=1
     ;;
     --wipe-docker-clients )
     shift
@@ -696,7 +701,11 @@ compare_query(){
   #BASEDIR="/home/ramesh/pmmwork/ps57"
   TEST_SOCKET=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1 | awk -F[\(\)] '{print $2}')
   TEST_NODE_NAME=$(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | head -1  | awk '{print $2}')
-  sudo pmm-admin add mysql --user=root --socket=$TEST_SOCKET SHADOW_NODE
+  if [[ "$disable-ssl" == "1"]]; then
+    sudo pmm-admin add mysql --user=root --socket=$TEST_SOCKET SHADOW_NODE --disable-ssl
+  else
+    sudo pmm-admin add mysql --user=root --socket=$TEST_SOCKET SHADOW_NODE
+  fi
   if [ -z $TEST_SOCKET ];then
     echo "ERROR! PMM client instance does not exist. Terminating"
 	exit 1
@@ -793,7 +802,11 @@ add_clients(){
             mkdir -p ${BASEDIR}/data/rpldb${k}_${j}
             $BASEDIR/bin/mongod --profile 2 --slowms 1  $mongo_storage_engine  --replSet r${k} --dbpath=$BASEDIR/data/rpldb${k}_${j} --logpath=$BASEDIR/data/rpldb${k}_${j}/mongod.log --port=$PORT --logappend --fork &
             sleep 10
-            sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
+            if [[ "$disable-ssl" == "1"]]; then
+              sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j} --disable-ssl
+            else
+              sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_rpl${k}_${j}
+            fi
           done
       done
       create_replset_js(){
@@ -835,7 +848,11 @@ add_clients(){
           mkdir -p $BASEDIR/data/confdb${m}
           $BASEDIR/bin/mongod --profile 2 --slowms 1 --fork --logpath $BASEDIR/data/confdb${m}/config_mongo.log --dbpath=$BASEDIR/data/confdb${m} --port $PORT --configsvr --replSet config &
           sleep 10
-          sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
+          if [[ "$disable-ssl" == "1"]]; then
+            sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m} --disable-ssl
+          else
+            sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m}
+          fi
           MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
         done
 
@@ -849,8 +866,11 @@ add_clients(){
         sudo rm -rf /tmp/mongodb-27017.sock
         $BASEDIR/bin/mongos --fork --logpath $BASEDIR/data/mongos/mongos.log --configdb config/$MONGOS_STARTUP_CMD  &
         sleep 5
-        sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOD_PORT mongod_config_inst
-        sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
+        if [[ "$disable-ssl" == "1"]]; then
+          sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOD_PORT mongod_config_inst --disable-ssl
+        else
+          sudo pmm-admin add mongodb --cluster mongodb_cluster --uri localhost:$CONFIG_MONGOS_PORT mongos_config_inst
+        fi
         echo "Adding Shards"
 		    sleep 20
         for k in `seq 1  ${REPLCOUNT}`;do
@@ -876,7 +896,11 @@ add_clients(){
         if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/${NODE_NAME}_${j}.sock ping > /dev/null 2>&1; then
           echo "WARNING! Another mysqld process using /tmp/${NODE_NAME}_${j}.sock"
           if ! sudo pmm-admin list | grep "/tmp/${NODE_NAME}_${j}.sock" > /dev/null ; then
-            sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
+            if [[ "$disable-ssl" == "1"]]; then
+              sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source --disable-ssl
+            else
+              sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
+            fi
           fi
           continue
         fi
@@ -947,7 +971,11 @@ add_clients(){
             exit 1
           fi
         fi
-        sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
+        if [[ "$disable-ssl" == "1"]]; then
+          sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source --disable-ssl
+        else
+          sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
+        fi
       done
       pxc_proxysql_setup(){
         if  [[ "${CLIENT_NAME}" == "pxc" ]]; then
@@ -969,7 +997,11 @@ add_clients(){
           ${BASEDIR}/bin/mysql -uroot --socket=$PXC_SOCKET -e"grant all on *.* to admin@'%' identified by 'admin'"
           sudo sed -i "s/3306/${PXC_BASE_PORT}/" /etc/proxysql-admin.cnf
           sudo proxysql-admin -e > $WORKDIR/logs/proxysql-admin.log
-          sudo pmm-admin add proxysql:metrics
+          if [[ "$disable-ssl" == "1"]]; then
+            sudo pmm-admin add proxysql:metrics --disable-ssl
+          else
+            sudo pmm-admin add proxysql:metrics
+          fi
         else
           echo "Could not find PXC nodes. Skipping proxysql setup"
         fi
