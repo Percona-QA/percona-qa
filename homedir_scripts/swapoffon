@@ -1,2 +1,3 @@
+# With thanks, https://serverfault.com/a/110439
 sudo swapoff -a
 sudo swapon -a
