@@ -6,15 +6,17 @@
 BASEDIR=/sda/MS300718-mysql-8.0.12-linux-x86_64-debug
 THREADS=1
 WORKDIR=/dev/shm
+COPYDIR=/sda
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery* 
 
 # Internal variables: Do not change!
 RANDOM=`date +%s%N | cut -b14-19`; RANDOMR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random number generator (6 digits)
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
+PQUERY_CONF=  # Do not delete
 
 echoit(){
   echo "[$(date +'%T')] === $1"
-  if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] === $1" >> ${WORKDIR}/pquery-reach.log; fi
+  if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] === $1" >> ${PQUERY_REACH_LOG}; fi
 }
 
 # Trap ctrl-c
@@ -31,6 +33,10 @@ ctrl-c(){
   exit 2
 }
 
+# Make sure directories are fine
+if [ ! -d "${WORKDIR}" ]; then echoit "Assert! Workdir ($WORKDIR) is not a directory!"; exit 1; fi
+if [ ! -d "${COPYDIR}" ]; then echoit "Assert! Workdir ($COPYDIR) is not a directory!"; exit 1; fi
+
 # Make sure we've got all items we need
 if [ ! -r "${SCRIPT_PWD}/reducer.sh" ];            then echoit "Assert! reducer.sh not found!"; exit 1; fi
 if [ ! -r "${SCRIPT_PWD}/pquery-run.sh" ];         then echoit "Assert! pquery-run.sh not found!"; exit 1; fi
@@ -42,8 +48,10 @@ if [ `ls ${SCRIPT_PWD}/pquery/*.sql 2>/dev/null | wc -l` -lt 1 ]; then echoit "A
 export WORKDIR=${WORKDIR}/${RANDOMR}
 if [ -d ${WORKDIR} ]; then WORKDIR=; echoit "Assert! ${WORKDIR} already exists. A random number collision?? Try and restart the script"; exit 1; fi
 mkdir ${WORKDIR}
-touch ${WORKDIR}/pquery-reach.log
-echoit "pquery-reach (PID $$) working directory: ${WORKDIR} | Logfile: ${WORKDIR}/pquery-reach.log"
+RANDOM=`date +%s%N | cut -b14-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Create random dir/file nr
+PQUERY_REACH_LOG=${WORKDIR}/$RANDOMD_pquery-reach.log
+touch ${PQUERY_REACH_LOG}
+echoit "pquery-reach (PID $$) working directory: ${WORKDIR} | Logfile: ${PQUERY_REACH_LOG}"
 
 pquery_run(){
   cd ${SCRIPT_PWD}
@@ -57,7 +65,9 @@ pquery_run(){
   fi
 
   # Select a random SQL file
-  INFILE="$(ls ${SCRIPT_PWD}/pquery/*.sql ${SCRIPT_PWD}/pquery/main*.tar.xz | shuf --random-source=/dev/urandom | head -n1)"
+  #Removed the tar.xz input file as it is usually present as main-ms-ps-md.sql in any case, and untarring in 15 threads = lots of I/O
+  #INFILE="$(ls ${SCRIPT_PWD}/pquery/*.sql ${SCRIPT_PWD}/pquery/main*.tar.xz | shuf --random-source=/dev/urandom | head -n1)"
+  INFILE="$(ls ${SCRIPT_PWD}/pquery/*.sql | shuf --random-source=/dev/urandom | head -n1)"
   echoit "Randomly selected SQL input file: ${INFILE}"
 
   # Select a random mysqld options file
@@ -67,10 +77,9 @@ pquery_run(){
 
   # Select a random duration from 10 seconds to 3 minutes
   RANDOM=`date +%s%N | cut -b14-19`; PQUERY_RUN_TIMEOUT=$[$RANDOM % 170 + 10];
-  echoit "Randomly selected trial duration: ${PQUERY_RUN_TIMEOUT} seconds"
+  echoit "Randomly selected trial duration: ${PQUERY_RUN_TIMEOUT} seconds" 
 
   # pquery-run.sh setup and run
-  RANDOM=`date +%s%N | cut -b14-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
   PQUERY_RUN=${WORKDIR}/${RANDOMD}_pquery-run.sh
   PQUERY_CONF_FILE=${RANDOMD}_pquery-run.conf
   PQUERY_CONF=${WORKDIR}/${PQUERY_CONF_FILE}
@@ -115,18 +124,24 @@ pquery_run(){
   chmod +x ${PQUERY_RUN}
   echoit "Starting: ${PQUERY_RUN}..."
   echoit "=================================================================================================================="
-  ${PQUERY_RUN} ${PQUERY_CONF_FILE} | tee -a ${WORKDIR}/pquery-reach.log
+  ${PQUERY_RUN} ${PQUERY_CONF_FILE} | tee -a ${PQUERY_REACH_LOG}
   echoit "=================================================================================================================="
 }
 
 main_loop(){
+  # Cleanup the previous trial config file, if any (no longer needed as no bug was produced from it)
+  if [[ "${PQUERY_CONF}" != "" ]]; then  
+    rm -f $PQUERY_CONF
+  fi
+  # Run pquery_run.sh with a generated configuration
   pquery_run
+  # Trial analysis
   if [ -d ${PQR_WORKDIR}/1 ]; then
     echoit "Found bug at ${PQR_WORKDIR}/1, preparing reducer for it using pquery-prep-red.sh..."
     cd ${PQR_WORKDIR}
-    ${SCRIPT_PWD}/pquery-prep-red.sh reach | sed "s|^|[$(date +'%T')] === |" | tee -a ${WORKDIR}/pquery-reach.log
+    ${SCRIPT_PWD}/pquery-prep-red.sh reach | sed "s|^|[$(date +'%T')] === |" | tee -a ${PQUERY_REACH_LOG}
     echoit "Filtering known bugs using pquery-clean-known.sh..."
-    ${SCRIPT_PWD}/pquery-clean-known.sh reach | sed "s|^|[$(date +'%T')] === |" | tee -a ${WORKDIR}/pquery-reach.log
+    ${SCRIPT_PWD}/pquery-clean-known.sh reach | sed "s|^|[$(date +'%T')] === |" | tee -a ${PQUERY_REACH_LOG}
     if [ -d ${PQR_WORKDIR}/1 ]; then
       if [ -r ${PQR_WORKDIR}/reducer1.sh ]; then
         if grep -qi "^MODE=3" ${PQR_WORKDIR}/reducer1.sh; then
@@ -138,15 +153,32 @@ main_loop(){
           sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${PQR_WORKDIR}/reducer1.sh
           sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=13|" ${PQR_WORKDIR}/reducer1.sh
           echoit "=================================================================================================================="
-          ${PQR_WORKDIR}/reducer1.sh | tee -a ${WORKDIR}/pquery-reach.log
+          ${PQR_WORKDIR}/reducer1.sh | tee -a ${PQUERY_REACH_LOG}
+          REDUCER_EXIT_STATUS=${PIPESTATUS[0]}  # With thanks, https://unix.stackexchange.com/a/14276/241016
           echoit "=================================================================================================================="
-          echoit "Cleaning up reducer workdir..."
-          REDUCER_WORKDIR=$(grep '\[Init\] Workdir' ${WORKDIR}/pquery-reach.log | sed "s|.*:[ \t]*||")
-          if [ -d "${REDUCER_WORKDIR}" ]; then
+          REDUCER_WORKDIR=$(grep '\[Init\] Workdir' ${PQUERY_REACH_LOG} | sed "s|.*:[ \t]*||")
+          if [ -d "${REDUCER_WORKDIR}" -a ${REDUCER_EXIT_STATUS} -eq 0 ]; then
+            echoit "Cleaning up reducer workdir..."
             rm -Rf ${REDUCER_WORKDIR}
+            echoit "Copy of the work directory (${PQR_WORKDIR}) to the copy directory (${COPYDIR})..."
+            cp -r ${PQR_WORKDIR} ${COPYDIR}
+            if [ $? -eq 0 ]; then 
+              echoit "Removing work directory (${PQR_WORKDIR})..." 
+              rm -Rf ${PQR_WORKDIR}
+              echoit "pquery-reach.sh complete, new bug found and reduced! Exiting normally..."
+              exit 0
+            else
+              echoit "Found some issues while copying the work directory to the copy directory. Not deleting work directory..."
+              echoit "pquery-reach.sh complete, new bug found and reduced! Copy to copy dir failed (minor). Exiting with status 1..."
+              exit 1
+            fi
+            exit 3  # Defensive coding only, exit as 0 or 1 should happen just above
+          else
+            echoit "As reducer (${PQR_WORKDIR}/reducer1.sh) exit status was non-0 (${REDUCER_EXIT_STATUS}), the reducer workdir was not deleted. Please manually delete ${REDUCER_WORKDIR} when outcome analysis or re-reduction has been completed..."
+            echoit "pquery-reach.sh complete, new bug found and reducer attempted (but was not successful). Exiting with status 1..."
+            exit 1
           fi
-          echoit "pquery-reach.sh complete, new bug found and reduced! Exiting normally..."
-          exit 0
+          exit 3  # Defensive coding only, exit as 0 or 1 should happen just above
         else
           if [ -r ${PQR_WORKDIR}/1/log/master.err ]; then
             if grep -qi "nknown variable" ${PQR_WORKDIR}/1/log/master.err; then

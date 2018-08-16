@@ -1416,6 +1416,7 @@ init_workdir_and_files(){
   mkdir $WORKD/data $WORKD/tmp
   chmod -R 777 $WORKD
   touch $WORKD/reducer.log
+  echo_out "[Init] Me: $SCRIPT_PWD/$(basename "$0")"  # With thanks (basename), https://stackoverflow.com/a/192337/1208218
   echo_out "[Init] Workdir: $WORKD"
   export TMP=$WORKD/tmp
   if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then echo_out "[Init] Console typescript log for REDUCE_GLIBC_OR_SS_CRASHES: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
