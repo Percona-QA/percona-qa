@@ -749,6 +749,18 @@ compare_query(){
   echo "Please compare these query count with QAN/Metrics webpage"
 }
 
+check_disable_ssl(){
+  EXPORTER_NAME=$1
+  echo ${EXPORTER_NAME}
+  PMM_OUTPUT=$(sudo pmm-admin list | grep ${EXPORTER_NAME} | grep 'scheme=http')
+  if [ ! -z $PMM_OUTPUT ]; then
+    echo "SSL Disabled Succcesfully for" ${EXPORTER_NAME}
+  else
+    echo "Could not disable_ssl Please check again"
+    exit 1;
+  fi
+}
+
 #Percona Server configuration.
 add_clients(){
   mkdir -p $WORKDIR/logs
@@ -902,6 +914,7 @@ add_clients(){
           if ! sudo pmm-admin list | grep "/tmp/${NODE_NAME}_${j}.sock" > /dev/null ; then
             if [ $disable_ssl -eq 1 ]; then
               sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source --disable-ssl
+              check_disable_ssl ${NODE_NAME}-${j}
             else
               sudo pmm-admin add mysql ${NODE_NAME}-${j} --socket=/tmp/${NODE_NAME}_${j}.sock --user=root --query-source=$query_source
             fi
