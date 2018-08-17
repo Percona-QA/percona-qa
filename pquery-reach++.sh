@@ -60,7 +60,8 @@ if [[ "$CURRENT_MAX_SESSION" != "" ]]; then
   START=$[ $CURRENT_MAX_SESSION + 1 ]
 fi
 
-for i in $(seq $START $SESSIONS); do
+FINISH_SESSION=$[ $SESSIONS + $START - 1 ];
+for i in $(seq $START $FINISH_SESSION); do
   echoit "Starting pquery-reach.sh screen session #${i}..."
   screen -dmS p${i} sh -c "${SCRIPT_PWD}/pquery-reach.sh; exec bash"
 done

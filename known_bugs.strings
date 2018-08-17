@@ -79,7 +79,6 @@ error == DB_SUCCESS                                      ## https://bugs.mysql.c
 Field_iterator_view..create_item                         ## https://bugs.mysql.com/bug.php?id=88326
 TEXT=.null_value.$                                       ## https://bugs.mysql.com/bug.php?id=88352
 m_prebuilt->magic_n == 78540783                          ## https://bugs.mysql.com/bug.php?id=88353
-ailure. api0api.cc.3706..sdi_delete_failed               ## https://bugs.mysql.com/bug.php?id=88354
 err == DB_SUCCESS .. err == DB_DUPLICATE_KEY             ## https://bugs.mysql.com/bug.php?id=88355
 TEXT=.table2 == NULL.$                                   ## https://bugs.mysql.com/bug.php?id=88356
 purge_sys->n_stop == 0                                   ## https://bugs.mysql.com/bug.php?id=89503
@@ -100,6 +99,10 @@ std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..al
 #TEXT=.\.is_set.$                                ## Fixed ## https://bugs.mysql.com/bug.php?id=90525
 TEXT=.\.is_set.$                                          ## https://bugs.mysql.com/bug.php?id=91990
 TEXT=.Field..real_maybe_null.$                            ## https://bugs.mysql.com/bug.php?id=92034
+table->get_ref_count.. > 0                                ## https://bugs.mysql.com/bug.php?id=92055
+ailure. api0api.cc.3706..sdi_delete_failed                ## https://bugs.mysql.com/bug.php?id=88354
+ailure. api0api.cc.3163..sdi_delete_failed                ## https://bugs.mysql.com/bug.php?id=92036
+index->type . 32 .. root .= FIL_NULL .. dict_table_is_discarded.m_table.  ## https://bugs.mysql.com/bug.php?id=92057
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
@@ -361,7 +364,6 @@ Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxPK5TABLEP5
 Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxP5TABLEPKS3_P5trx_tPKc ## https://bugs.mysql.com/bug.php?id=74663
 #btr0cur.cc line 1239                   ## Fixed ## https://bugs.mysql.com/bug.php?id=75913 MS
 #btr0cur.cc line 1244                   ## Fixed ## https://bugs.mysql.com/bug.php?id=75913 PS
-ailure. api0api.cc.3163..sdi_delete_failed       ## https://bugs.mysql.com/bug.php?id=92036
 
 ## =========== Special: innodb_checksum_algorithm dynamic change ===========
 ## This problem should have been mitigated by https://bugs.mysql.com/bug.php?id=75968. If not, please update this section accordingly
