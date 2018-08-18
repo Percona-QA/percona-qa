@@ -4220,11 +4220,13 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 154 ]; then sed "s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 155 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 156 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 157 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 158 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 159 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 160 ]; then sed -e 's/[\t ]\+/ /g' $WORKF > $WORKT
-    elif [ $TRIAL -eq 161 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 157 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT  # Attempt to remove #EOL comments
+    elif [ $TRIAL -eq 158 ]; then sed "s/#[^#]\+$/;/" $WORKF > $WORKT  # Another attempt at removing #EOL comments
+    elif [ $TRIAL -eq 159 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 160 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 161 ]; then sed -e 's/[\t ]\+/ /g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 162 ]; then sed -e 's/;[\t ]*;/;/g' $WORKF > $WORKT  # Remove empty statements if possible
+    elif [ $TRIAL -eq 163 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
