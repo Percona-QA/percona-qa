@@ -16,8 +16,6 @@ VALGRIND_OVERRIDE=0    # If set to 1, Valgrind issues are handled as if they wer
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 WORKD_PWD=$PWD
 REDUCER="${SCRIPT_PWD}/reducer.sh"
-DOCKER_COMPOSE_YML="`grep '^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_YML[ \t]*=[ \t]*[ \t]*||' | sed 's|${SCRIPT_PWD}||'`"
-DOCKER_COMPOSE_LOC="`grep '^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*' ${SCRIPT_PWD}/pquery-run.sh | sed 's|^[ \t]*DOCKER_COMPOSE_LOC[ \t]*=[ \t]*[ \t]*||' | sed 's|${SCRIPT_PWD}||'`"
 
 # Check if this is a pxc run
 if [ "$(grep 'PXC Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Mode[: \t]*||' )" == "TRUE" ]; then
@@ -519,6 +517,7 @@ if [ ${QC} -eq 0 ]; then
       if [[ ${VALGRIND_CHECK} -eq 1 ]]; then
         echo "* Valgrind was used for this trial"
       fi
+      echo "Trial analysis complete. Reducer created: ${PWD}/reducer${TRIAL}-${SUBDIR}.sh"
     done
   else
     for SQLLOG in $(ls ./*/*thread-0.sql 2>/dev/null); do

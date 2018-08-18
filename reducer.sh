@@ -41,7 +41,7 @@ WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3,
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
 BASEDIR="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"             # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
-SCRIPT_PWD=$(cd `dirname $0` && pwd) # script location to access storage engine plugin sql file.
+SCRIPT_PWD=$(cd `dirname $0` && pwd)  # script location to access storage engine plugin sql file.
 
 # === Sporadic testcases        # Used when testcases prove to be sporadic *and* fail to reduce using basic methods
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
@@ -958,7 +958,7 @@ set_internal_options(){  # Internal options: do not modify!
   # It would be good if we could disable OS core file generation without disabling mysqld core file generation, but for the moment it looks like
   # ulimit -c 0 disables ALL core file generation, both OS and mysqld, so instead, ftm, reducer checks for "CORE" in MYEXTRA (uppercase-ed via ^^)
   # and if present reducer does not disable core file generation (OS nor mysqld)
-  if [[ "${MYEXTRA^^}" != *"CORE"* ]]; then
+  if [[ "${MYEXTRA^^}" != *"CORE"* ]]; then  # ^^ = Uppercase MYEXTRA contents before compare
     ulimit -c 0 >/dev/null
   fi
   SEED=$(head -1 /dev/urandom | od -N 1 | awk '{print $2 }')
@@ -1416,7 +1416,7 @@ init_workdir_and_files(){
   mkdir $WORKD/data $WORKD/tmp
   chmod -R 777 $WORKD
   touch $WORKD/reducer.log
-  echo_out "[Init] Me: $SCRIPT_PWD/$(basename "$0")"  # With thanks (basename), https://stackoverflow.com/a/192337/1208218
+  echo_out "[Init] Reducer: $SCRIPT_PWD/$(basename "$0")"  # With thanks (basename), https://stackoverflow.com/a/192337/1208218
   echo_out "[Init] Workdir: $WORKD"
   export TMP=$WORKD/tmp
   if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then echo_out "[Init] Console typescript log for REDUCE_GLIBC_OR_SS_CRASHES: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi

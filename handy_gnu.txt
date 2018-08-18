@@ -262,6 +262,12 @@
 # Gotcha: sh -x != bash -x. If you use sh -x instead of bash -x to see the debug output of a complex script, you may see errors like this:
   ./script.sh: 5: ./script.sh: [[: not found  # The reason is that sh -x cannot handle "[[" if statements whereas bash -x can
 
+# ------ GNU 'screen' usage ------
+# Want to scroll inside a screen session? 
+  Use CTRL+a+ESC (i.e press CTRL+a, keep CTRL in, then press ESC), then use cursor up (or down) to scroll, ESC or q to escape
+# Want to find which screen session is doing what?
+  pstree -g  # Great for finding the screen PID (i.e. for use with screen -d -r {pid}) that is runnnig a particular script/binary
+
 # ------ OS/Admin ------
 # Monitor the current rate of syscalls/sec  ## With thanks, http://www.brendangregg.com/blog/2018-02-09/kpti-kaiser-meltdown-performance.html
   sudo perf stat -e raw_syscalls:sys_enter -a -I 1000

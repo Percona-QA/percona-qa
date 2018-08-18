@@ -1,0 +1,1 @@
+grep "$1" ~/percona-qa/known_bugs.strings

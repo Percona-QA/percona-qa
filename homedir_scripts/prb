@@ -1,2 +1,15 @@
-echo "New pquery-reach.sh bugs found: $(echo $[ 15 - $(ps -ef | grep pquery-reach.sh | grep "sh -c" | grep -v SCREEN | wc -l) ])"
+#!/bin/bash
+# Created by Roel Van de Paar, Percona LLC
+
+ls_exec(){
+  ls -ld [0-9]* | sed 's|.*..:.. ||' | sort | xargs -I{} echo 'wc -l ${PWD}/{}/*/*/*.sql_out* 2>/dev/null' | xargs -I{} sh -c '{} | grep -vE "\.prev|total"'
+}
+
+echo "New pquery-reach.sh bugs found in this run: $(echo $[ 20 - $(ps -ef | grep pquery-reach.sh | grep "sh -c" | grep -v SCREEN | wc -l) ])"
+
+echo "Current testcases in /dev/shm:"
+cd /dev/shm; ls_exec
+
+echo "Current testcases in /sda:"
+cd /sda; ls_exec
 

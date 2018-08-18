@@ -10,7 +10,8 @@ COPYDIR=/sda
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery* 
 
 # Internal variables: Do not change!
-RANDOM=`date +%s%N | cut -b14-19`; RANDOMR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random number generator (6 digits)
+RANDOM=`date +%s%N | cut -b14-19`; RANDOMR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Create random dir nr
+RANDOM=`date +%s%N | cut -b14-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Create random dir/file nr
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 PQUERY_CONF=  # Do not delete
 
@@ -46,12 +47,15 @@ if [ `ls ${SCRIPT_PWD}/pquery/*.sql 2>/dev/null | wc -l` -lt 1 ]; then echoit "A
 
 # Go!
 export WORKDIR=${WORKDIR}/${RANDOMR}
-if [ -d ${WORKDIR} ]; then WORKDIR=; echoit "Assert! ${WORKDIR} already exists. A random number collision?? Try and restart the script"; exit 1; fi
+if [ -d ${WORKDIR} ]; then WORKDIR=; echo "Assert! ${WORKDIR} already exists. A random number collision?? Try and restart the script"; exit 1; fi
 mkdir ${WORKDIR}
-RANDOM=`date +%s%N | cut -b14-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Create random dir/file nr
-PQUERY_REACH_LOG=${WORKDIR}/$RANDOMD_pquery-reach.log
+PQUERY_REACH_LOG=${WORKDIR}/${RANDOMD}_pquery-reach.log
 touch ${PQUERY_REACH_LOG}
 echoit "pquery-reach (PID $$) working directory: ${WORKDIR} | Logfile: ${PQUERY_REACH_LOG}"
+
+# Fix copydir to have same RANDOMD suffix as PQR_WORKDIR
+export COPYDIR=${COPYDIR}/${RANDOMD}  # And later .../${RANDOMR} will be copied to this 
+mkdir -p ${COPYDIR}
 
 pquery_run(){
   cd ${SCRIPT_PWD}
@@ -65,7 +69,7 @@ pquery_run(){
   fi
 
   # Select a random SQL file
-  #Removed the tar.xz input file as it is usually present as main-ms-ps-md.sql in any case, and untarring in 15 threads = lots of I/O
+  #Removed the tar.xz input file as it is usually present as main-ms-ps-md.sql in any case, and untarring in $SESSION threads = lots of I/O
   #INFILE="$(ls ${SCRIPT_PWD}/pquery/*.sql ${SCRIPT_PWD}/pquery/main*.tar.xz | shuf --random-source=/dev/urandom | head -n1)"
   INFILE="$(ls ${SCRIPT_PWD}/pquery/*.sql | shuf --random-source=/dev/urandom | head -n1)"
   echoit "Randomly selected SQL input file: ${INFILE}"
@@ -157,25 +161,32 @@ main_loop(){
           REDUCER_EXIT_STATUS=${PIPESTATUS[0]}  # With thanks, https://unix.stackexchange.com/a/14276/241016
           echoit "=================================================================================================================="
           REDUCER_WORKDIR=$(grep '\[Init\] Workdir' ${PQUERY_REACH_LOG} | sed "s|.*:[ \t]*||")
-          if [ -d "${REDUCER_WORKDIR}" -a ${REDUCER_EXIT_STATUS} -eq 0 ]; then
-            echoit "Cleaning up reducer workdir..."
-            rm -Rf ${REDUCER_WORKDIR}
-            echoit "Copy of the work directory (${PQR_WORKDIR}) to the copy directory (${COPYDIR})..."
-            cp -r ${PQR_WORKDIR} ${COPYDIR}
-            if [ $? -eq 0 ]; then 
-              echoit "Removing work directory (${PQR_WORKDIR})..." 
-              rm -Rf ${PQR_WORKDIR}
+          echoit "Copying the work directory (${PQR_WORKDIR}) to the copy directory (${COPYDIR})..."
+          COPY_RESULT=0
+          cp -r ${PQR_WORKDIR} ${COPYDIR}
+          if [ $? -eq 0 ]; then 
+            COPY_RESULT=1
+            echoit "Removing work directory (${PQR_WORKDIR})..." 
+            rm -Rf ${PQR_WORKDIR}
+          else
+            echoit "Found some issues while copying the work directory to the copy directory. Not deleting work directory for safety..."
+          fi
+          if [ ${REDUCER_EXIT_STATUS} -eq 0 ]; then
+            if [ ${COPY_RESULT} -eq 1 ]; then
               echoit "pquery-reach.sh complete, new bug found and reduced! Exiting normally..."
               exit 0
             else
-              echoit "Found some issues while copying the work directory to the copy directory. Not deleting work directory..."
               echoit "pquery-reach.sh complete, new bug found and reduced! Copy to copy dir failed (minor). Exiting with status 1..."
               exit 1
             fi
             exit 3  # Defensive coding only, exit as 0 or 1 should happen just above
           else
             echoit "As reducer (${PQR_WORKDIR}/reducer1.sh) exit status was non-0 (${REDUCER_EXIT_STATUS}), the reducer workdir was not deleted. Please manually delete ${REDUCER_WORKDIR} when outcome analysis or re-reduction has been completed..."
-            echoit "pquery-reach.sh complete, new bug found and reducer attempted (but was not successful). Exiting with status 1..."
+            if [ ${COPY_RESULT} -eq 1 ]; then
+              echoit "pquery-reach.sh complete, new bug found and reducer attempted (but was not successful). Exiting with status 1..."
+            else
+              echoit "pquery-reach.sh complete, new bug found and reducer attempted (but was not successful). Copy to copy dir failed (minor). Two issues found. Exiting with status 1..."
+            fi
             exit 1
           fi
           exit 3  # Defensive coding only, exit as 0 or 1 should happen just above
