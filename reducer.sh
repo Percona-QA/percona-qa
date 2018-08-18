@@ -4380,9 +4380,11 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing ONLY_FULL_GROUP_BY SQL Mode from startup options"
     STAGE9_FILTER="ONLY_FULL_GROUP_BY"  # In many cases, this can be successfully removed whereas --sql_mode= cannot (i.e. is required)
     stage9_run
-    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing SQL Mode from startup options"
-    STAGE9_FILTER="--sql_mode="
-    stage9_run
+    if [ $STAGE9_CHK -ne 0 -a $STAGE9_NOT_STARTED_CORRECTLY -ne 1 ];then  # Issue reproduced, now try and remove --sql_mode=
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing SQL Mode from startup options"
+      STAGE9_FILTER="--sql_mode="
+      stage9_run
+    fi
   fi
 fi
 
