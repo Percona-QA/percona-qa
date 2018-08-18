@@ -1,0 +1,2 @@
+echo "New pquery-reach.sh bugs found: $(echo $[ 15 - $(ps -ef | grep pquery-reach.sh | grep "sh -c" | grep -v SCREEN | wc -l) ])"
+
