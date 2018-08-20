@@ -18,6 +18,7 @@ OUSER="admin"
 OPASS="passw0rd"
 ADDR="127.0.0.1"
 download_link=0
+disable_ssl=0
 
 mkdir -p $WORKDIR/logs
 # User configurable variables
