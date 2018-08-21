@@ -1,1 +1,1 @@
-grep "$1" ~/percona-qa/known_bugs.strings
+grep "$*" ~/percona-qa/known_bugs.strings

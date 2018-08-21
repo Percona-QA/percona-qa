@@ -7,7 +7,7 @@ BASEDIR=/sda/MS300718-mysql-8.0.12-linux-x86_64-debug
 THREADS=1
 WORKDIR=/dev/shm
 COPYDIR=/sda
-STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery* 
+STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
 
 # Internal variables: Do not change!
 RANDOM=`date +%s%N | cut -b14-19`; RANDOMR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Create random dir nr
@@ -34,7 +34,7 @@ ctrl-c(){
   exit 2
 }
 
-# Make sure directories are fine
+# Make sure directories set in vars are there
 if [ ! -d "${WORKDIR}" ]; then echoit "Assert! Workdir ($WORKDIR) is not a directory!"; exit 1; fi
 if [ ! -d "${COPYDIR}" ]; then echoit "Assert! Workdir ($COPYDIR) is not a directory!"; exit 1; fi
 
@@ -46,16 +46,12 @@ if [ ! -r "${SCRIPT_PWD}/pquery-clean-known.sh" ]; then echoit "Assert! pquery-c
 if [ `ls ${SCRIPT_PWD}/pquery/*.sql 2>/dev/null | wc -l` -lt 1 ]; then echoit "Assert! No SQL input files found!" exit 1; fi
 
 # Go!
-export WORKDIR=${WORKDIR}/${RANDOMR}
+export WORKDIR=${WORKDIR}/${RANDOMR}  # Update workdir to include a random dir nr
 if [ -d ${WORKDIR} ]; then WORKDIR=; echo "Assert! ${WORKDIR} already exists. A random number collision?? Try and restart the script"; exit 1; fi
 mkdir ${WORKDIR}
 PQUERY_REACH_LOG=${WORKDIR}/${RANDOMD}_pquery-reach.log
 touch ${PQUERY_REACH_LOG}
 echoit "pquery-reach (PID $$) working directory: ${WORKDIR} | Logfile: ${PQUERY_REACH_LOG}"
-
-# Fix copydir to have same RANDOMD suffix as PQR_WORKDIR
-export COPYDIR=${COPYDIR}/${RANDOMD}  # And later .../${RANDOMR} will be copied to this 
-mkdir -p ${COPYDIR}
 
 pquery_run(){
   cd ${SCRIPT_PWD}
@@ -81,14 +77,14 @@ pquery_run(){
 
   # Select a random duration from 10 seconds to 3 minutes
   RANDOM=`date +%s%N | cut -b14-19`; PQUERY_RUN_TIMEOUT=$[$RANDOM % 170 + 10];
-  echoit "Randomly selected trial duration: ${PQUERY_RUN_TIMEOUT} seconds" 
+  echoit "Randomly selected trial duration: ${PQUERY_RUN_TIMEOUT} seconds"
 
   # pquery-run.sh setup and run
   PQUERY_RUN=${WORKDIR}/${RANDOMD}_pquery-run.sh
   PQUERY_CONF_FILE=${RANDOMD}_pquery-run.conf
   PQUERY_CONF=${WORKDIR}/${PQUERY_CONF_FILE}
   PQR_WORKDIR=${WORKDIR}/${RANDOMD}
-  PQR_RUNDIR=${WORKDIR}/RUNDIR_${RANDOMD}
+  PQR_RUNDIR=${WORKDIR}/${RANDOMD}
   cat ${SCRIPT_PWD}/pquery-run.sh |
    sed "s|\${SCRIPT_PWD}/generator|${SCRIPT_PWD}/generator|g" | \
    sed "s|\${SCRIPT_PWD}/text_string.sh|${SCRIPT_PWD}/text_string.sh|g" | \
@@ -134,7 +130,7 @@ pquery_run(){
 
 main_loop(){
   # Cleanup the previous trial config file, if any (no longer needed as no bug was produced from it)
-  if [[ "${PQUERY_CONF}" != "" ]]; then  
+  if [[ "${PQUERY_CONF}" != "" ]]; then
     rm -f $PQUERY_CONF
   fi
   # Run pquery_run.sh with a generated configuration
@@ -150,7 +146,7 @@ main_loop(){
       if [ -r ${PQR_WORKDIR}/reducer1.sh ]; then
         if grep -qi "^MODE=3" ${PQR_WORKDIR}/reducer1.sh; then
           echoit "New, and specific (MODE=3) bug found! Reducing the same..."
-          # Approximately matching pquery-go-expert.sh settings 
+          # Approximately matching pquery-go-expert.sh settings
           sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" ${PQR_WORKDIR}/reducer1.sh  # Setting this DOES mean the script will not terminate fully (but will stay in reduction mode) - why is reducer not stopping after STAGE1_LINES have been reached?
           sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3 |" ${PQR_WORKDIR}/reducer1.sh
           sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${PQR_WORKDIR}/reducer1.sh
@@ -161,18 +157,27 @@ main_loop(){
           REDUCER_EXIT_STATUS=${PIPESTATUS[0]}  # With thanks, https://unix.stackexchange.com/a/14276/241016
           echoit "=================================================================================================================="
           REDUCER_WORKDIR=$(grep '\[Init\] Workdir' ${PQUERY_REACH_LOG} | sed "s|.*:[ \t]*||")
-          echoit "Copying the work directory (${PQR_WORKDIR}) to the copy directory (${COPYDIR})..."
+          echoit "Copying the work directory (${WORKDIR}) to the copy directory (${COPYDIR})..."
           COPY_RESULT=0
-          cp -r ${PQR_WORKDIR} ${COPYDIR}
-          if [ $? -eq 0 ]; then 
+          cp -r ${WORKDIR} ${COPYDIR} 
+          if [ $? -eq 0 ]; then
             COPY_RESULT=1
-            echoit "Removing work directory (${PQR_WORKDIR})..." 
-            rm -Rf ${PQR_WORKDIR}
+            echoit "Removing work directory (${WORKDIR})..."
+            rm -Rf ${WORKDIR}
           else
             echoit "Found some issues while copying the work directory to the copy directory. Not deleting work directory for safety..."
           fi
           if [ ${REDUCER_EXIT_STATUS} -eq 0 ]; then
             if [ ${COPY_RESULT} -eq 1 ]; then
+              if [ -r "${COPYDIR}/${RANDOMD}/1/default.node.tld_thread-0.sql_out" ]; then
+                echoit "Copy complete. Testcase location: $(echo "${COPYDIR}/${RANDOMD}/1/default.node.tld_thread-0.sql_out")"
+              else
+                if [ -r "${COPYDIR}/${RANDOMD}/1/startup_failure_thread-0.sql_out" ]; then
+                  echoit "Copy complete. Testcase location: $(echo "${COPYDIR}/${RANDOMD}/1/startup_failure_thread-0.sql_out")"
+                else
+                  echoit "Copy complete. Review ${COPYDIR}/${RANDOMD}/1 for testcase location"
+                fi
+              fi
               echoit "pquery-reach.sh complete, new bug found and reduced! Exiting normally..."
               exit 0
             else
@@ -197,7 +202,7 @@ main_loop(){
               rm -Rf ${PQR_WORKDIR}; rm -Rf ${PQR_RUNDIR}; rm -Rf ${PQUERY_RUN}; PQR_WORKDIR=; PQR_RUNDIR=; PQUERY_RUN=;  # Cleanup
               main_loop
             else
-              if [ `ls ${PQR_WORKDIR}/1/data/*core* 2>/dev/null | wc -l` -lt 1 ]; then 
+              if [ `ls ${PQR_WORKDIR}/1/data/*core* 2>/dev/null | wc -l` -lt 1 ]; then
                 echoit "No error log found, and no core found. Likely some SQL was executed like 'RELEASE' or 'SHUTDOWN', cleaning up & trying again..."
                 rm -Rf ${PQR_WORKDIR}; rm -Rf ${PQR_RUNDIR}; rm -Rf ${PQUERY_RUN}; PQR_WORKDIR=; PQR_RUNDIR=; PQUERY_RUN=;  # Cleanup
                 main_loop

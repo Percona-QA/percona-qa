@@ -33,20 +33,37 @@ else
                 fi
               else
                 DIRNAME=$(echo ${DIR} | sed 's|.*/||')
-                if [ "$(echo ${DIRNAME} | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9]||')" == "" ]; then  # 6 Numbers subdir; this is likely a pquery-run.sh generated directory
-                  SUBDIRCOUNT=$(ls ${DIR} 2>/dev/null | wc -l)  # Number of trial subdirectories
+                if [ "$(echo ${DIRNAME} | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9]||')" == "" ]; then  # 6 Numbers subdir; this is likely a pquery-run.sh or pquery-reach.sh generated directory
+                  SUBDIRCOUNT=$(ls -d ${DIR} 2>/dev/null | wc -l)  # Number of trial subdirectories
                   if [ ${SUBDIRCOUNT} -le 1 ]; then  # pquery-run.sh directories generally have 1 (or 0 when in between trials) subdirectories. Both 0 and 1 need to be covered
-                    SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
-                    if [ "${SUBDIR}" == "" ]; then  # Script may have caught a snapshot in-between pquery-run.sh trials
-                      sync; sleep 3  # Delay (to provide pquery-run.sh (if running) time to generate new trial directory), then recheck
-                      SUBDIR=$(ls ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
+                    if [ $(ls ${DIR}/*pquery*reach* 2>/dev/null | wc -l) -gt 0 ]; then # A pquery-reach.sh directory
+                      PR_FILE_TO_CHECK=$(ls ${DIR}/*pquery*reach* | head -n1)  # Head -n1 is defensive, there should be only 1 file
+                      if [ -z ${PR_FILE_TO_CHECK} ]; then echo "Assert: \$PR_FILE_TO_CHECK empty"; exit 1; fi
+                      AGEFILE=$[ $(date +%s) - $(stat -c %Z ${PR_FILE_TO_CHECK}) ]  # File age in seconds 
+                      if [ ${AGEFILE} -ge 1200 ]; then  # Don't delete pquery-reach.sh directories of <=20 minutes
+                        echo "Deleting pquery-reach.sh directory ${DIR} (pquery-reach log age: ${AGEFILE}s)"
+                        COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+                        if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+                      fi
+                    else 
+                      SUBDIR=$(ls -d ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
+                      for i in `seq 1 3`; do  # Try 3 times
+                        if [ "${SUBDIR}" == "" ]; then  # Script may have caught a snapshot in-between pquery-run.sh trials
+                          sync; sleep 3  # Delay (to provide pquery-run.sh (if running) time to generate new trial directory), then recheck
+                          SUBDIR=$(ls -d ${DIR} 2>/dev/null | sed 's|^|${DIR}/|')
+                        else 
+                          break
+                        fi
+                      done
+                      AGESUBDIR=$[ $(date +%s) - $(stat -c %Z ${SUBDIR}) ]  # Current trial directory age in seconds
+                      if [ ${AGESUBDIR} -ge 10800 ]; then  # Don't delete pquery-run.sh directories if they have recent trials in them (i.e. they are likely still running): >=3hr
+                        echo "Deleting directory ${DIR} (trial subdirectory age: ${AGESUBDIR}s)"
+                        COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+                        if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+                      fi
                     fi
-                    AGESUBDIR=$[ $(date +%s) - $(stat -c %Z ${SUBDIR}) ]  # Current trial directory age in seconds
-                    if [ ${AGESUBDIR} -ge 10800 ]; then  # Don't delete pquery-run.sh directories if they have recent trials in them (i.e. they are likely still running): >=3hr
-                      echo "Deleting directory ${DIR} (trial subdirectory age: ${AGESUBDIR}s)"
-                      COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
-                      if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
-                    fi
+                  else
+                    echo "Unrecognized directory structure: ${DIR} (Assert: >=1 sub directories found, not covered yet, please fixme)"
                   fi
                 else
                   echo "Deleting directory ${DIR} (directory age: ${AGEDIR}s)"

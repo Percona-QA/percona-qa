@@ -3,12 +3,12 @@
 # With thanks to http://unix.stackexchange.com/questions/47271/prevent-gnu-screen-from-terminating-session-once-executed-script-ends (jw013)
 
 # User variables
-BASEDIR=/sda/MS300718-mysql-8.0.12-linux-x86_64-debug
+BASEDIR=/sda/PS100818-mysql-8.0.12-linux-x86_64-debug
 WORKDIR=/dev/shm
 COPYDIR=/sda
 THREADS=1
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
-SESSIONS=20
+SESSIONS=15
 
 # Internal variables: Do not change!
 SCRIPT_PWD=$(cd `dirname $0` && pwd)

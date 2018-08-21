@@ -75,4 +75,14 @@ if [ "${STRING}" == ".all" ]; then
   fi
 fi
 
+# Fixup a common (".error") text string (ref TEXT=".all" example above for more information on how this is done)
+if [ "${STRING}" == ".error" ]; then
+  if grep "virtual uint dd::Dictionary_impl::get_actual_P_S_version(THD.): Assertion ..error' failed" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
+    STRING="uint dd..Dictionary_impl..get_actual_P_S_version.THD... Assertion ..error. failed"
+  fi
+  if grep "InnoDB: Assertion failure: dict0dd.cc:5.....error$" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
+    STRING="dict0dd.cc:5.....error"
+  fi
+fi
+
 echo ${STRING}

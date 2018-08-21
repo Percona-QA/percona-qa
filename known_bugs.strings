@@ -103,6 +103,18 @@ table->get_ref_count.. > 0                                ## https://bugs.mysql.
 ailure. api0api.cc.3706..sdi_delete_failed                ## https://bugs.mysql.com/bug.php?id=88354
 ailure. api0api.cc.3163..sdi_delete_failed                ## https://bugs.mysql.com/bug.php?id=92036
 index->type . 32 .. root .= FIL_NULL .. dict_table_is_discarded.m_table.  ## https://bugs.mysql.com/bug.php?id=92057
+Item..save_in_field_inner                                 ## https://bugs.mysql.com/bug.php?id=92067
+lock_rec_get_rec_not_gap.lock.                            ## https://bugs.mysql.com/bug.php?id=92068
+lock0lock.cc.7034                                         ## https://bugs.mysql.com/bug.php?id=92069
+thd->variables.gtid_next.type == AUTOMATIC_GTID           ## https://bugs.mysql.com/bug.php?id=92070
+dict0dd.cc:5.....error                                    ## https://bugs.mysql.com/bug.php?id=92071
+TEXT=.mi->rli->inited.$                                   ## https://bugs.mysql.com/bug.php?id=92073
+TEXT=.j < ncol.$                                          ## https://bugs.mysql.com/bug.php?id=92074
+#.primary_key == key                             ## Fixed ## https://bugs.mysql.com/bug.php?id=92075 (8.0.11 only)
+my_b_write.IO_CACHE.,                                     ## https://bugs.mysql.com/bug.php?id=92096
+TEXT=.can_switch.$                                        ## https://bugs.mysql.com/bug.php?id=92097
+
+#HERE
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
