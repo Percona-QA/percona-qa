@@ -16,7 +16,7 @@ usage(){
   echo -e "  get_download_link.sh -pPRODUCT -vVERSION -aARCH -dDISTRIBUTION -g\n"
   echo -e "Valid options are:"
   echo -e "  --product=PRODUCT, -pPRODUCT   this is the only mandatory parameter"
-  echo -e "                                 can be ps|pxc|pxb|psmdb|pt|pmm-client|mysql|mariadb|mongodb|proxysql|vault"
+  echo -e "                                 can be ps|pxc|pxb|psmdb|pt|pmm-client|mysql|mariadb|mongodb|proxysql|vault|postgresql"
   echo -e "  --version=x.x, -vx.x           major or full version of the product like 5.7 or 5.7.17-12"
   echo -e "                                 (default: latest major version)"
   echo -e "  --arch=ARCH, -aARCH            build architecture, can be x86_64|i686 (default: x86_64)"
@@ -99,6 +99,9 @@ if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.2"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="3.6"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then
   VERSION=$(wget -qO- https://www.mongodb.com/download-center\#community | grep -o -P "Current Stable Release \(.{3,10}\)" | grep -o -P "\(.{3,10}\)" | sed 's/(//' | sed 's/)//')
+fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "postgresql" ]]; then
+  VERSION=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oP "postgresql-.*-x64-.*.tar.gz"|head -n1|grep -oP "[0-9]+\.[0-9]+(\.[0-9]+)?")
 fi
 
 if [[ "${DISTRIBUTION}" = *"-"* ]]; then
@@ -368,6 +371,21 @@ get_link(){
       LINK="${BASE_LINK}${VERSION_FULL}/${TARBALL}"
     else
       LINK="${BASE_LINK}${VERSION_FULL}/vault_${VERSION_FULL}_linux_${BUILD_ARCH}.zip"
+    fi
+
+  elif [[ "${PRODUCT}" = "postgresql" ]]; then
+    BASE_LINK="https://get.enterprisedb.com/postgresql/"
+    if [ ${BUILD_ARCH} = "x86_64" ]; then
+      BUILD_ARCH="-x64"
+    else
+      BUILD_ARCH=""
+    fi
+
+    if [[ -z ${VERSION_FULL} ]]; then
+      TARBALL=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oP "postgresql-${VERSION}.*${BUILD_ARCH}-.*.tar.gz")
+      LINK="${BASE_LINK}${TARBALL}"
+    else
+      LINK="${BASE_LINK}postgresql-${VERSION_FULL}-1-linux${BUILD_ARCH}-binaries.tar.gz"
     fi
 
   else

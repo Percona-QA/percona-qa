@@ -97,3 +97,14 @@
   run ./get_download_link.sh --product vault
   [ "$status" -eq 0 ]
 }
+
+@test "check postgresql" {
+  run ./get_download_link.sh --product postgresql
+  [ "$status" -eq 0 ]
+
+  run ./get_download_link.sh --product postgresql --version 10.5
+  [ "$status" -eq 0 ]
+
+  run ./get_download_link.sh --product postgresql --version 9.6
+  [ "$status" -eq 0 ]
+}
