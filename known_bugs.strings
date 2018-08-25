@@ -98,7 +98,8 @@ rc == TYPE_OK                                            ## https://bugs.mysql.c
 std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator  ## https://bugs.mysql.com/bug.php?id=91988
 #TEXT=.\.is_set.$                                ## Fixed ## https://bugs.mysql.com/bug.php?id=90525
 TEXT=.\.is_set.$                                          ## https://bugs.mysql.com/bug.php?id=91990
-TEXT=.Field..real_maybe_null.$                            ## https://bugs.mysql.com/bug.php?id=92034
+TEXT=.Field..real_maybe_null.$                            ## https://bugs.mysql.com/bug.php?id=92034 (likely dbg dup of 92189)
+set_field_to_null_with_conversions                        ## https://bugs.mysql.com/bug.php?id=92189 (likely opt dup of 92034)
 table->get_ref_count.. > 0                                ## https://bugs.mysql.com/bug.php?id=92055
 ailure. api0api.cc.3706..sdi_delete_failed                ## https://bugs.mysql.com/bug.php?id=88354
 ailure. api0api.cc.3163..sdi_delete_failed                ## https://bugs.mysql.com/bug.php?id=92036
@@ -113,7 +114,12 @@ TEXT=.j < ncol.$                                          ## https://bugs.mysql.
 #.primary_key == key                             ## Fixed ## https://bugs.mysql.com/bug.php?id=92075 (8.0.11 only)
 my_b_write.IO_CACHE.,                                     ## https://bugs.mysql.com/bug.php?id=92096
 TEXT=.can_switch.$                                        ## https://bugs.mysql.com/bug.php?id=92097
-
+Item_field..val_time_temporal                             ## https://bugs.mysql.com/bug.php?id=92170
+Locked_tables_list..unlock_locked_tables                  ## https://bugs.mysql.com/bug.php?id=92185
+trx0trx.h.1326.trx->in_depth > 0                          ## https://bugs.mysql.com/bug.php?id=92186
+TEXT=.level <= 50.$                                       ## https://bugs.mysql.com/bug.php?id=92187
+dict0dict.cc.5743                                         ## https://bugs.mysql.com/bug.php?id=92188 (debug build)
+void dd_write_table<dd..Table>                            ## https://bugs.mysql.com/bug.php?id=92188 (optimized build)
 #HERE
 
 ## =========== Column compression

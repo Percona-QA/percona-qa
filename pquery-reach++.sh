@@ -8,7 +8,7 @@ WORKDIR=/dev/shm
 COPYDIR=/sda
 THREADS=1
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
-SESSIONS=15
+SESSIONS=20
 
 # Internal variables: Do not change!
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
