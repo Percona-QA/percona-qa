@@ -20,6 +20,8 @@
    # Startup command 
    /pgsql/base/bin/pg_ctl -D /pgsql/base/data -l /pgsql/base/data/pgsql.log start
      ** To generate coredump start postgres with `-c` option
+4) Detailed steps that need to be executed for Postgre SQL installation from Binaries can be found here: 
+https://confluence.percona.com/pages/viewpage.action?pageId=42206890 
 
 Notes;
   ** Report PostgeSQL bugs here : https://www.postgresql.org/account/submitbug/
