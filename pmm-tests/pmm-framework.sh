@@ -928,18 +928,18 @@ add_clients(){
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
         PGSQL_PORT=$((PGSQL_PORT+j))
         cd ${BASEDIR}/bin
-        if [ -d {BASEDIR}/${NODE_NAME}_${j}/data ]; then
+        if [ -d ${BASEDIR}/${NODE_NAME}_${j}/data ]; then
           echo "PGSQL Data Directory Exist, Removing old Directory, Stopping already running Server and creating a new one"
-          sudo -H -u psql bash -c "./pg_ctl -D {BASEDIR}/${NODE_NAME}_${j}/data -l {BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' stop" > /dev/null 2>&1;
-          sudo rm -r {BASEDIR}/${NODE_NAME}_${j}
-          sudo mkdir -p {BASEDIR}/${NODE_NAME}_${j}/data
+          sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' stop" > /dev/null 2>&1;
+          sudo rm -r ${BASEDIR}/${NODE_NAME}_${j}
+          sudo mkdir -p ${BASEDIR}/${NODE_NAME}_${j}/data
         else
-          sudo mkdir -p {BASEDIR}/${NODE_NAME}_${j}/data
+          sudo mkdir -p ${BASEDIR}/${NODE_NAME}_${j}/data
         fi
-        sudo chown -R psql {BASEDIR}/${NODE_NAME}_${j}/data
+        sudo chown -R psql ${BASEDIR}/${NODE_NAME}_${j}/data
         echo "Starting PGSQL server at port ${PGSQL_PORT}"
-        sudo -H -u psql bash -c "./pg_ctl -D {BASEDIR}/${NODE_NAME}_${j}/data initdb" > /dev/null 2>&1;
-        sudo -H -u psql bash -c "./pg_ctl -D {BASEDIR}/${NODE_NAME}_${j}/data -l {BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
+        sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data initdb" > /dev/null 2>&1;
+        sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
         if [ $disable_ssl -eq 1 ]; then
           sudo pmm-admin add postgresql --user psql --host localhost --port ${PGSQL_PORT} --disable-ssl PGSQL-${NODE_NAME}-${j}
           check_disable_ssl PGSQL-${NODE_NAME}-${j}
