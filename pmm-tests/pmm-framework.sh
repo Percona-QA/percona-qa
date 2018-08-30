@@ -374,6 +374,20 @@ sanity_check(){
   fi
 }
 
+sudo_check(){
+
+  USER=$1
+    # Sudo check
+  if [ "$(sudo -H -u ${USER} bash -c "echo 'test'" 2>/dev/null)" != "test" ]; then
+    echo "Error: sudo is not available or requires a password. This script needs to be able to use sudo, without password, from the userID that invokes it ($(whoami))"
+    echo "To get your setup correct, you may like to use a tool like visudo (use 'sudo visudo' or 'su' and then 'visudo') and consider adding the following line to the file:"
+    echo "$(whoami)   ALL=(ALL)      NOPASSWD:ALL"
+    echo "If you do not have sudo installed yet, try 'su' and then 'yum install sudo' or the apt-get equivalent"
+    echo "Terminating now."
+    exit 1
+  fi
+}
+
 if [[ -z "${ps_version}" ]]; then ps_version="5.7"; fi
 if [[ -z "${pxc_version}" ]]; then pxc_version="5.7"; fi
 if [[ -z "${ms_version}" ]]; then ms_version="8.0"; fi
@@ -937,6 +951,7 @@ add_clients(){
           sudo mkdir -p ${BASEDIR}/${NODE_NAME}_${j}/data
         fi
         sudo chown -R psql ${BASEDIR}/${NODE_NAME}_${j}/data
+        sudo_check psql
         echo "Starting PGSQL server at port ${PGSQL_PORT}"
         sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data initdb" > /dev/null 2>&1;
         sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
