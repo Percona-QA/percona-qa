@@ -1576,6 +1576,9 @@ if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -eq 1 ]; then
 fi
 echoit "Valgrind run: `if [ ${VALGRIND_RUN} -eq 1 ]; then echo -n 'TRUE'; else echo -n 'FALSE'; fi` | pquery timeout: ${PQUERY_RUN_TIMEOUT} | ${SQL_INPUT_TEXT} `if [ ${THREADS} -ne 1 ]; then echo -n "| Testcase size (chunked from infile): ${MULTI_THREADED_TESTC_LINES}"; fi`"
 echoit "pquery Binary: ${PQUERY_BIN}"
+# Future: if [ "${MYMID}" != "" ]; then echoit "MYMID: ${MYMID}"; fi
+# Hack now: INIT_OPT:
+echoit "INIT_OPT: ${INIT_OPT}"
 if [ "${MYEXTRA}" != "" ]; then echoit "MYEXTRA: ${MYEXTRA}"; fi
 if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a "${MYEXTRA2}" != "" ]; then echoit "MYEXTRA2: ${MYEXTRA2}"; fi
 if [ "${MYSAFE}" != "" ]; then echoit "MYSAFE: ${MYSAFE}"; fi
