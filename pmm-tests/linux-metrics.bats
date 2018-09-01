@@ -33,7 +33,7 @@ echo "$output"
 run sudo pmm-admin add linux:metrics
 echo "$output"
     [ "$status" -eq 1 ]
-    echo "${output}" | grep "there could be only one instance"
+    echo "${output}" | grep "there is already one instance"
 }
 
 
@@ -49,7 +49,7 @@ echo "$output"
 run sudo pmm-admin add linux:metrics mytest1.os1
 echo "$output"
     [ "$status" -eq 1 ]
-    echo "${output}" | grep "there could be only one instance"
+    echo "${output}" | grep "there is already one instance"
 }
 
 @test "run pmm-admin remove linux:metrics with given name" {
