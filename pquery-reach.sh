@@ -129,6 +129,7 @@ cleanup(){
 }
 
 # Go!
+ORIGINAL_WORKDIR=${WORKDIR}
 export WORKDIR=${WORKDIR}/${RANDOMR}  # Update workdir to include a random dir nr
 # pquery-run.sh variables setup
 PQUERY_RUN=${WORKDIR}/${RANDOMD}_pquery-run.sh
@@ -165,6 +166,7 @@ while true; do
           sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${PQR_WORKDIR}/reducer1.sh
           sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${PQR_WORKDIR}/reducer1.sh
           sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=13|" ${PQR_WORKDIR}/reducer1.sh
+          # Early copy time
           if [ ${EARLYCOPY} -eq 1 ]; then
             echoit "Preliminary copy of the work directory (${WORKDIR}) to the copy directory (${COPYDIR}) for safety..."
             cp -r ${WORKDIR} ${COPYDIR} 
@@ -174,6 +176,10 @@ while true; do
           REDUCER_EXIT_STATUS=${PIPESTATUS[0]}  # With thanks, https://unix.stackexchange.com/a/14276/241016
           echoit "=================================================================================================================="
           REDUCER_WORKDIR=$(grep '\[Init\] Workdir' ${PQUERY_REACH_LOG} | sed "s|.*:[ \t]*||")
+          # Fix reducer so it points now to the COPYDIR instead of the WORKDIR, just before the copy
+          # This makes it easier to re-run reducer1.sh directly from the COPYDIR after WORKDIR has been deleted automatically
+          sed -i "s|^INPUTFILE=\"${ORIGINAL_WORKDIR}|INPUTFILE=\"${COPYDIR}|" ${PQR_WORKDIR}/reducer1.sh
+          # Copy time
           if [ ${EARLYCOPY} -eq 1 ]; then
             echoit "Re-copying the work directory (${WORKDIR}) to the copy directory (${COPYDIR}) in ovewrite mode..."
           else
