@@ -3,12 +3,12 @@
 # With thanks to http://unix.stackexchange.com/questions/47271/prevent-gnu-screen-from-terminating-session-once-executed-script-ends (jw013)
 
 # User variables
-BASEDIR=/sda/PS100818-mysql-8.0.12-linux-x86_64-debug
+BASEDIR=/sda/PS010918-percona-server-8.0.12-1-linux-x86_64-opt
 WORKDIR=/dev/shm
 COPYDIR=/sda
 THREADS=1
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
-SESSIONS=20
+SESSIONS=15
 
 # Internal variables: Do not change!
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
@@ -68,8 +68,8 @@ done
 
 restore-pqr-settings
 
-echo "Done!"
-echo "* Use screen -ls to see a list of active screen sessions"
-echo "* Use screen -d -r p{nr} (where {nr} is the screen session you want) to reconnect to an individual screen session"
-echo -e "\nList of sessions active:"
-screen -ls
+echoit "Done!"
+echoit "* Use screen -ls to see a list of active screen sessions"
+echoit "* Use screen -d -r p{nr} (where {nr} is the screen session you want) to reconnect to an individual screen session"
+echoit "List of sessions active:"
+screen -ls | grep -vE "There are|Sockets in"

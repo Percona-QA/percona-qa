@@ -33,7 +33,7 @@ else
                 fi
               else
                 DIRNAME=$(echo ${DIR} | sed 's|.*/||')
-                if [ "$(echo ${DIRNAME} | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9]||')" == "" ]; then  # 6 Numbers subdir; this is likely a pquery-run.sh or pquery-reach.sh generated directory
+                if [ "$(echo ${DIRNAME} | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9]||' | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9][0-9]||')" == "" ]; then  # 6 or 7 Numbers subdir; this is likely a pquery-run.sh (6) or pquery-reach.sh (7) generated directory
                   SUBDIRCOUNT=$(ls -d ${DIR} 2>/dev/null | wc -l)  # Number of trial subdirectories
                   if [ ${SUBDIRCOUNT} -le 1 ]; then  # pquery-run.sh directories generally have 1 (or 0 when in between trials) subdirectories. Both 0 and 1 need to be covered
                     if [ $(ls ${DIR}/*pquery*reach* 2>/dev/null | wc -l) -gt 0 ]; then # A pquery-reach.sh directory

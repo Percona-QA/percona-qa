@@ -370,4 +370,5 @@ if [[ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]] || [[ -r ${PWD}/lib/mysql/plugi
   ./myrocks_tokudb_init
 fi
 echo "Done! To get a fresh instance at any time, execute: ./all (executes: stop;wipe;start;cl)"
+echo "      To get a fresh instance now, execute: ./start then wait 3 seconds and execute ./cl"
 exit 0

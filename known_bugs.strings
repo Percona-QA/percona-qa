@@ -38,7 +38,11 @@ addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA   ## https://bugs.mysql.c
 head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.com/bug.php?id=90640
 TEXT=.bin2decimal.$                                      ## https://bugs.mysql.com/bug.php?id=90673
 
-## =========== PS/MS 8.0
+## =========== PS 8.0 RC
+ha_innodb.cc.4926.0                                      ## https://jira.percona.com/browse/PS-4801
+mysql_alter_table                                        ## https://jira.percona.com/browse/PS-4802
+
+## =========== PS/MS 8.0 Prep
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
 maybe_null                                               ## https://bugs.mysql.com/bug.php?id=83115
 #MDL_checker..is_read_locked.m_thd, .object     ## Fixed ## https://bugs.mysql.com/bug.php?id=83117
@@ -67,7 +71,7 @@ has_error == thd->get_stmt_da                            ## https://bugs.mysql.c
 .table->in_use->is_error                                 ## https://bugs.mysql.com/bug.php?id=88274
 next_insert_id == 0                                      ## https://bugs.mysql.com/bug.php?id=88276
 thd->is_system_thread                                    ## https://bugs.mysql.com/bug.php?id=88277
-num_codepoints >= scanner.get_char_index                 ## https://bugs.mysql.com/bug.php?id=88278
+#num_codepoints >= scanner.get_char_index       ## Fixed ## https://bugs.mysql.com/bug.php?id=88278
 len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. .col->len == 0 .. col->mtype == 1.  ## https://bugs.mysql.com/bug.php?id=88279
 dict_sdi_set                                             ## https://bugs.mysql.com/bug.php?id=88280
 ha_myisammrg..detach_children                            ## https://bugs.mysql.com/bug.php?id=88281
@@ -744,8 +748,8 @@ thd == _current_thd                                                             
 this_type .= Json_dom..J_ERROR                                  ## Still present in 5.7 ## https://bugs.mysql.com/bug.php?id=86470 (fixed in 8.0.1)
 #timer == __null                                                               ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1370002
 .no_data.nbytes                                                                         ## https://bugs.mysql.com/bug.php?id=86471
-.tlen % 2                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (2nd comment)
-.tlen % 4                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (3rd comment)
+#.tlen % 2                                                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=74221 (2nd comment)
+#.tlen % 4                                                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=74221 (3rd comment)
 #txn..state..TOKUTXN_LIVE                                                      ## Fixed ## https://tokutek.atlassian.net/browse/DB-769 (fixed in 5.6.23/Tk7.5.6)
 #txn->child == __null                                                          ## Fixed ## https://tokutek.atlassian.net/browse/DB-810 (fixed in 5.6.23/Tk7.5.6)
 #txn->do_fsync_lsn.lsn == ZERO_LSN.lsn                                         ## Fixed ## https://tokutek.atlassian.net/browse/DB-763 (fixed in 5.6.23/Tk7.5.6)
