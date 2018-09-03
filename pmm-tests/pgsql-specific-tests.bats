@@ -95,7 +95,7 @@ echo "$output"
 
 @test "run pmm-admin add postgresql again" {
 	COUNTER=0
-	CURRENT_COUNT=$(sudo pmm-admin list | grep "postgresql:metrics" | grep "postgresql_" | sed 's|.*(||;s|).*||')
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "postgresql:metrics" | grep "postgresql_" | sed 's|.*(||;s|).*||' | wc -l)
 	for i in $(seq ${CURRENT_COUNT}); do
 		let COUNTER=COUNTER+1
 		run sudo pmm-admin add postgresql --user=${PGSQL_USER} --port=${PGSQL_SOCK} postgresql_$COUNTER
@@ -108,7 +108,7 @@ echo "$output"
 
 @test "run pmm-admin remove postgresql" {
 	COUNTER=0
-	CURRENT_COUNT=$(sudo pmm-admin list | grep "postgresql:metrics" | grep "postgresql_" | sed 's|.*(||;s|).*||')
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "postgresql:metrics" | grep "postgresql_" | sed 's|.*(||;s|).*||' | wc -l)
 	for i in $(seq ${CURRENT_COUNT}); do
 		let COUNTER=COUNTER+1
 		run sudo pmm-admin remove postgresql postgresql_$COUNTER
