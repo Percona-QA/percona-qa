@@ -3,13 +3,12 @@
 # Updated to work with latest pquery framework structure (as of 13-08-2018)
 
 # User variables
-#BASEDIR=/sda/MS300718-mysql-8.0.12-linux-x86_64-debug
-BASEDIR=/sda/PS250818-percona-server-5.7.23-23-linux-x86_64-debug
+BASEDIR=   # Likely already set in pquery-reach++.sh when using that
 THREADS=1
 WORKDIR=/dev/shm
 COPYDIR=/sda
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
-MYEXTRA="--innodb_sys_tablespace_encrypt=ON"  # Variables to add to pquery run
+MYEXTRA="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON"  # Variables to add to pquery run
 MYMID="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON"    # Variables to add to MID (MySQL init) (changes INIT_OPT in pquery-run.sh)
 EARLYCOPY=0  # Make a copy to the COPYDIR before starting reducer. Not strictly required, but handy if your machine may power off and you were using /dev/shm as WORKDIR
 
@@ -85,6 +84,7 @@ pquery_run(){
   # pquery-run.sh setup and run
   echoit "Setting up new pquery-run.sh configuration file at ${PQUERY_CONF}..."
   cat ${SCRIPT_PWD}/pquery-run.sh |
+   sed "s|^INIT_OPT=\"|INIT_OPT=\"${MYMID} |" | \
    sed "s|\${SCRIPT_PWD}/generator|${SCRIPT_PWD}/generator|g" | \
    sed "s|\${SCRIPT_PWD}/text_string.sh|${SCRIPT_PWD}/text_string.sh|g" | \
    sed "s|\${SCRIPT_PWD}/valgrind_string.sh|${SCRIPT_PWD}/valgrind_string.sh|g" | \
@@ -103,7 +103,6 @@ pquery_run(){
    #sed "s|^[ \t]*MAX_NR_OF_RND_OPTS_TO_ADD=.*|MAX_NR_OF_RND_OPTS_TO_ADD=2|" | \
    sed "s|^[ \t]*ADD_RANDOM_TOKUDB_OPTIONS=.*|ADD_RANDOM_TOKUDB_OPTIONS=0|" | \
    sed "s|^MYEXTRA=|MYEXTRA=\"${MYEXTRA}\"|" | \
-   sed "s|^INIT_OPT=\"|INIT_OPT=\"${MYMID} |" | \
    sed "s|^[ \t]*RANDOMD=.*|RANDOMD=${RANDOMD}|" | \
    sed "s|^[ \t]*WORKDIR=.*|WORKDIR=${PQR_WORKDIR}|" | \
    sed "s|^[ \t]*BASEDIR=.*|BASEDIR=${BASEDIR}|" | \
