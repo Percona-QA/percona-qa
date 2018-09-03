@@ -30,23 +30,23 @@ echo "$output"
 
 
 @test "run pmm-admin add postgresql:metrics based on running intsances" {
-	  COUNTER=0
-		for i in $(sudo pmm-admin list | grep "postgresql:metrics" | sed 's|.*(||;s|)||') ; do
-      		let COUNTER=COUNTER+1
-			PGSQL_SOCK=$((PGSQL_PORT+i))
-			run sudo pmm-admin add postgresql:metrics --user=${PGSQL_USER} --port=${PGSQL_SOCK} pgsql_metrics_$COUNTER
-			echo "$output"
-	    	[ "$status" -eq 0 ]
-	    	echo "${lines[0]}" | grep "OK, now monitoring"
-		done
+	COUNTER=0
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "postgresql:metrics" | sed 's|.*(||;s|)||' | wc -l)
+	for i in $(seq ${CURRENT_COUNT}); do
+		let COUNTER=COUNTER+1
+		run sudo pmm-admin add postgresql:metrics --port=${PGSQL_SOCK} --user=${PGSQL_USER} pgsql_metrics_$COUNTER
+		echo "$output"
+		[ "$status" -eq 0 ]
+		echo "${lines[0]}" | grep "OK, now monitoring"
+	done
 }
-
 
 @test "run pmm-admin add postgresql:metrics again based on running instances" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "pgsql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//') ; do
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "pgsql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//' | wc -l)
+	for i in $(seq ${CURRENT_COUNT}); do
 		let COUNTER=COUNTER+1
-		PGSQL_SOCK=$((PGSQL_PORT+i))
+		sleep 30
 		run sudo pmm-admin add postgresql:metrics --user=${PGSQL_USER} --port=${PGSQL_SOCK} pgsql_metrics_$COUNTER
 		echo "$output"
 			[ "$status" -eq 1 ]
@@ -57,9 +57,9 @@ echo "$output"
 
 @test "run pmm-admin remove postgresql:metrics" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "pgsql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//') ; do
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "pgsql_metrics_" | wc -l)
+	for i in $(seq ${CURRENT_COUNT}) ; do
 		let COUNTER=COUNTER+1
-		PGSQL_SOCK=$((PGSQL_PORT+i))
 		run sudo pmm-admin remove postgresql:metrics pgsql_metrics_$COUNTER
 		echo "$output"
 			[ "$status" -eq 0 ]
@@ -70,9 +70,8 @@ echo "$output"
 
 @test "run pmm-admin remove postgresql:metrics again" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "pgsql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//') ; do
+	for i in $(sudo pmm-admin list | grep "pgsql_metrics_") ; do
 		let COUNTER=COUNTER+1
-		PGSQL_SOCK=$((PGSQL_PORT+i))
 		run sudo pmm-admin remove postgresql:metrics pgsql_metrics_$COUNTER
 		echo "$output"
 			[ "$status" -eq 0 ]
@@ -84,9 +83,9 @@ echo "$output"
 
 @test "run pmm-admin add postgresql" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "postgresql" | sed 's|.*(||;s|).*||') ; do
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "postgresql:metrics" | sed 's|.*(||;s|).*||' | wc -l)
+	for i in $(seq ${CURRENT_COUNT}) ; do
 		let COUNTER=COUNTER+1
-		PGSQL_SOCK=$((PGSQL_PORT+i))
 		run sudo pmm-admin add postgresql --user=${PGSQL_USER} --port=${PGSQL_SOCK} postgresql_$COUNTER
 		echo "$output"
 			[ "$status" -eq 0 ]
@@ -97,9 +96,9 @@ echo "$output"
 
 @test "run pmm-admin add postgresql again" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "postgresql" | grep "postgresql_" | sed 's|.*(||;s|).*||') ; do
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "postgresql:metrics" | grep "postgresql_" | sed 's|.*(||;s|).*||')
+	for i in $(seq ${CURRENT_COUNT}); do
 		let COUNTER=COUNTER+1
-		PGSQL_SOCK=$((PGSQL_PORT+i))
 		run sudo pmm-admin add postgresql --user=${PGSQL_USER} --port=${PGSQL_SOCK} postgresql_$COUNTER
 		echo "$output"
 			[ "$status" -eq 0 ]
@@ -110,9 +109,9 @@ echo "$output"
 
 @test "run pmm-admin remove postgresql" {
 	COUNTER=0
-	for i in $(sudo pmm-admin list | grep "postgresql" | grep "postgresql_" | sed 's|.*(||;s|).*||') ; do
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "postgresql:metrics" | grep "postgresql_" | sed 's|.*(||;s|).*||')
+	for i in $(seq ${CURRENT_COUNT}); do
 		let COUNTER=COUNTER+1
-		PGSQL_SOCK=$((PGSQL_PORT+i))
 		run sudo pmm-admin remove postgresql postgresql_$COUNTER
 		echo "$output"
 			[ "$status" -eq 0 ]
@@ -120,4 +119,8 @@ echo "$output"
 			echo "${lines[1]}" | grep "OK, removed"
 	done
 
+}
+
+function teardown() {
+	echo "$output"
 }
