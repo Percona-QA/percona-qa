@@ -36,6 +36,7 @@ usage () {
   echo " --pmm-port                     Pass port for PMM docker"
   echo " --ps-version                   Pass Percona Server version info"
   echo " --ms-version                   Pass MySQL Server version info"
+  echo " --pgsql-version                Pass Postgre SQL server version Info"
   echo " --md-version                   Pass MariaDB Server version info"
   echo " --pxc-version                  Pass Percona XtraDB Cluster version info"
   echo " --mysqld-startup-options       Pass MySQL startup options. eg : --mysqld-startup-options='--innodb_buffer_pool_size=1G --innodb_log_file_size=1G'"
@@ -74,7 +75,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -157,6 +158,10 @@ do
     ;;
     --ms-version )
     ms_version="$2"
+    shift 2
+    ;;
+    --pgsql-version )
+    pgsql_version="$2"
     shift 2
     ;;
     --md-version )
@@ -369,6 +374,20 @@ sanity_check(){
   fi
 }
 
+sudo_check(){
+
+  USER=$1
+    # Sudo check
+  if [ "$(sudo -H -u ${USER} bash -c "echo 'test'" 2>/dev/null)" != "test" ]; then
+    echo "Error: sudo is not available or requires a password. This script needs to be able to use sudo, without password, from the userID that invokes it ($(whoami))"
+    echo "To get your setup correct, you may like to use a tool like visudo (use 'sudo visudo' or 'su' and then 'visudo') and consider adding the following line to the file:"
+    echo "$(whoami)   ALL=(ALL)      NOPASSWD:ALL"
+    echo "If you do not have sudo installed yet, try 'su' and then 'yum install sudo' or the apt-get equivalent"
+    echo "Terminating now."
+    exit 1
+  fi
+}
+
 if [[ -z "${ps_version}" ]]; then ps_version="5.7"; fi
 if [[ -z "${pxc_version}" ]]; then pxc_version="5.7"; fi
 if [[ -z "${ms_version}" ]]; then ms_version="8.0"; fi
@@ -376,6 +395,7 @@ if [[ -z "${md_version}" ]]; then md_version="10.2"; fi
 if [[ -z "${mo_version}" ]]; then mo_version="3.4"; fi
 if [[ -z "${REPLCOUNT}" ]]; then REPLCOUNT="1"; fi
 if [[ -z "${ova_memory}" ]]; then ova_memory="2048";fi
+if [[ -z "${pgsql_version}" ]]; then pgsql_version="10.5";fi
 
 if [[ -z "$query_source" ]];then
   query_source=perfschema
@@ -650,7 +670,11 @@ get_basedir(){
         BASE_TAR=$(ls -1td $SERVER_STRING 2>/dev/null | grep ".tar" | head -n1)
         if [ ! -z $BASE_TAR ];then
           tar -xzf $BASE_TAR
-          BASEDIR=$(ls -1td $SERVER_STRING 2>/dev/null | grep -v ".tar" | head -n1)
+          if [[ "${PRODUCT_NAME}" == "postgresql" ]]; then
+            BASEDIR=$(ls -1td pgsql 2>/dev/null | grep -v ".tar" | head -n1)
+          else
+            BASEDIR=$(ls -1td $SERVER_STRING 2>/dev/null | grep -v ".tar" | head -n1)
+          fi
           BASEDIR="$WORKDIR/$BASEDIR"
           rm -rf $BASEDIR/node*
         else
@@ -670,7 +694,11 @@ get_basedir(){
       BASE_TAR=$(ls -1td $SERVER_STRING 2>/dev/null | grep ".tar" | head -n1)
       if [ ! -z $BASE_TAR ];then
         tar -xzf $BASE_TAR
-        BASEDIR=$(ls -1td $SERVER_STRING 2>/dev/null | grep -v ".tar" | head -n1)
+        if [[ "${PRODUCT_NAME}" == "postgresql" ]]; then
+            BASEDIR=$(ls -1td pgsql 2>/dev/null | grep -v ".tar" | head -n1)
+        else
+          BASEDIR=$(ls -1td $SERVER_STRING 2>/dev/null | grep -v ".tar" | head -n1)
+        fi
         BASEDIR="$WORKDIR/$BASEDIR"
         if [[ "${CLIENT_NAME}" == "mo" ]]; then
           sudo rm -rf $BASEDIR/data
@@ -782,6 +810,10 @@ add_clients(){
       NODE_NAME="MS_NODE"
       get_basedir mysql "mysql-${ms_version}*" "MySQL Server binary tar ball" ${ms_version}
       MYSQL_CONFIG="--init-file ${SCRIPT_PWD}/QRT_Plugin.sql --innodb_monitor_enable=all --performance_schema=ON"
+    elif [[ "${CLIENT_NAME}" == "pgsql" ]]; then
+      PORT_CHECK=501
+      NODE_NAME="PGSQL_NODE"
+      get_basedir postgresql "postgresql-${pgsql_version}*" "Postgre SQL Binary tar ball" ${pgsql_version}
     elif [[ "${CLIENT_NAME}" == "md" ]]; then
       PORT_CHECK=301
       NODE_NAME="MD_NODE"
@@ -795,8 +827,8 @@ add_clients(){
     elif [[ "${CLIENT_NAME}" == "mo" ]]; then
       get_basedir psmdb "percona-server-mongodb-${mo_version}*" "Percona Server Mongodb binary tar ball" ${mo_version}
     fi
-    if [[ "${CLIENT_NAME}" != "md"  && "${CLIENT_NAME}" != "mo" ]]; then
-    VERSION="$(${BASEDIR}/bin/mysqld --version | grep -oe '[58]\.[5670]' | head -n1)"
+    if [[ "${CLIENT_NAME}" != "md"  && "${CLIENT_NAME}" != "mo" && "${CLIENT_NAME}" != "pgsql" ]]; then
+      VERSION="$(${BASEDIR}/bin/mysqld --version | grep -oe '[58]\.[5670]' | head -n1)"
     if [ "$VERSION" == "5.7" -o "$VERSION" == "8.0" ]; then
         MID="${BASEDIR}/bin/mysqld   --default-authentication-plugin=mysql_native_password --initialize-insecure --basedir=${BASEDIR}"
       else
@@ -897,6 +929,39 @@ add_clients(){
           $BASEDIR/bin/mongo --quiet --eval "printjson(db.getSisterDB('admin').runCommand({addShard: 'r${k}/localhost:${PSMDB_PORTS[$n]}'}))"
         done
 	    fi
+    elif [[ "${CLIENT_NAME}" == "pgsql" ]]; then
+      echo "Creating postgresql Dedicated User psql"
+      IP_ADDRESS=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
+      if id psql >/dev/null 2>&1; then
+        echo "yes the user psql exists"
+      else
+        echo "No, the user psql does not exist, Adding"
+        sudo adduser --disabled-password --gecos "" psql
+      fi
+      PGSQL_PORT=5431
+      for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
+        PGSQL_PORT=$((PGSQL_PORT+j))
+        cd ${BASEDIR}/bin
+        if [ -d ${BASEDIR}/${NODE_NAME}_${j}/data ]; then
+          echo "PGSQL Data Directory Exist, Removing old Directory, Stopping already running Server and creating a new one"
+          sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' stop" > /dev/null 2>&1;
+          sudo rm -r ${BASEDIR}/${NODE_NAME}_${j}
+          sudo mkdir -p ${BASEDIR}/${NODE_NAME}_${j}/data
+        else
+          sudo mkdir -p ${BASEDIR}/${NODE_NAME}_${j}/data
+        fi
+        sudo chown -R psql ${BASEDIR}/${NODE_NAME}_${j}/data
+        sudo_check psql
+        echo "Starting PGSQL server at port ${PGSQL_PORT}"
+        sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data initdb" > /dev/null 2>&1;
+        sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
+        if [ $disable_ssl -eq 1 ]; then
+          sudo pmm-admin add postgresql --user psql --host localhost --port ${PGSQL_PORT} --disable-ssl PGSQL-${NODE_NAME}-${j}
+          check_disable_ssl PGSQL-${NODE_NAME}-${j}
+        else
+          sudo pmm-admin add postgresql --user psql --host localhost --port ${PGSQL_PORT} PGSQL-${NODE_NAME}-${j}
+        fi
+      done
     else
       if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
         TOKUDB_STARTUP="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
