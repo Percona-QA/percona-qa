@@ -41,6 +41,7 @@ TEXT=.bin2decimal.$                                      ## https://bugs.mysql.c
 ## =========== PS 8.0 RC
 ha_innodb.cc.4926.0                                      ## https://jira.percona.com/browse/PS-4801
 mysql_alter_table                                        ## https://jira.percona.com/browse/PS-4802
+dd_table_has_instant_cols                                ## https://jira.percona.com/projects/PS/issues/PS-4803
 
 ## =========== PS/MS 8.0 Prep
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
