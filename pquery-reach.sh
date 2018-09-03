@@ -45,15 +45,16 @@ ctrl-c(){
 }
 
 # Make sure directories set in vars are there
-if [ ! -d "${WORKDIR}" ]; then echoit "Assert! Workdir ($WORKDIR) is not a directory!"; exit 1; fi
-if [ ! -d "${COPYDIR}" ]; then echoit "Assert! Workdir ($COPYDIR) is not a directory!"; exit 1; fi
+if [ ! -d "${BASEDIR}" ]; then echo "Assert! Basedir ($BASEDIR) is not a directory!"; exit 1; fi
+if [ ! -d "${WORKDIR}" ]; then echo "Assert! Workdir ($WORKDIR) is not a directory!"; exit 1; fi
+if [ ! -d "${COPYDIR}" ]; then echo "Assert! Copydir ($COPYDIR) is not a directory!"; exit 1; fi
 
 # Make sure we've got all items we need
-if [ ! -r "${SCRIPT_PWD}/reducer.sh" ];            then echoit "Assert! reducer.sh not found!"; exit 1; fi
-if [ ! -r "${SCRIPT_PWD}/pquery-run.sh" ];         then echoit "Assert! pquery-run.sh not found!"; exit 1; fi
-if [ ! -r "${SCRIPT_PWD}/pquery-prep-red.sh" ];    then echoit "Assert! pquery-prep-red.sh not found!"; exit 1; fi
-if [ ! -r "${SCRIPT_PWD}/pquery-clean-known.sh" ]; then echoit "Assert! pquery-clean-known.sh not found!"; exit 1; fi
-if [ $(ls ${SCRIPT_PWD}/pquery/*.sql 2>/dev/null | wc -l) -lt 1 ]; then echoit "Assert! No SQL input files found!" exit 1; fi
+if [ ! -r "${SCRIPT_PWD}/reducer.sh" ];            then echo "Assert! reducer.sh not found!"; exit 1; fi
+if [ ! -r "${SCRIPT_PWD}/pquery-run.sh" ];         then echo "Assert! pquery-run.sh not found!"; exit 1; fi
+if [ ! -r "${SCRIPT_PWD}/pquery-prep-red.sh" ];    then echo "Assert! pquery-prep-red.sh not found!"; exit 1; fi
+if [ ! -r "${SCRIPT_PWD}/pquery-clean-known.sh" ]; then echo "Assert! pquery-clean-known.sh not found!"; exit 1; fi
+if [ $(ls ${SCRIPT_PWD}/pquery/*.sql 2>/dev/null | wc -l) -lt 1 ]; then echo "Assert! No SQL input files found!" exit 1; fi
 
 pquery_run(){
   cd ${SCRIPT_PWD}
