@@ -46,7 +46,6 @@ echo "$output"
 	CURRENT_COUNT=$(sudo pmm-admin list | grep "pgsql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//' | wc -l)
 	for i in $(seq ${CURRENT_COUNT}); do
 		let COUNTER=COUNTER+1
-		sleep 30
 		run sudo pmm-admin add postgresql:metrics --user=${PGSQL_USER} --port=${PGSQL_SOCK} pgsql_metrics_$COUNTER
 		echo "$output"
 			[ "$status" -eq 1 ]
