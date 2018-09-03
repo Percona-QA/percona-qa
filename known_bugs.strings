@@ -328,6 +328,9 @@ Z26toku_xids_can_create_childP6XIDS_S                                  ## https:
 Z17mysql_lock_tablesP3THDPP5TABLEmj                                    ## https://tokutek.atlassian.net/browse/DB-941
 join == __null                                                         ## https://tokutek.atlassian.net/browse/DB-985
 part_id < m_tot_part s                                                 ## https://tokutek.atlassian.net/browse/DB-983
+cache_el.i.->used_tables.is_empty                                      ## https://jira.percona.com/browse/PS-4789
+txn->for_recovery                                                      ## https://jira.percona.com/browse/PS-4789
+.thd->locked_tables_mode                                               ## https://jira.percona.com/browse/PS-4789
 
 ## =========== Special: Various ===========
 ha_innodb.cc line 3469                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
@@ -378,6 +381,7 @@ btr0cur.cc line 983                              ## https://bugs.mysql.com/bug.p
 btr0cur.cc line 1132                             ## https://bugs.mysql.com/bug.php?id=74663 (was 74682) PS
 fsp0fsp.cc line 1887                             ## https://bugs.mysql.com/bug.php?id=74663 (was 74682) MS
 fsp0fsp.cc line 3208                             ## https://bugs.launchpad.net/percona-server/+bug/1384567 (won't be fixed)
+fsp0fsp.cc line 3236                             ## https://jira.percona.com/browse/PS-4807
 fsp0fsp.cc line 3246                             ## https://bugs.launchpad.net/percona-server/+bug/1384567 older PS (idem)
 fsp0fsp.cc line 1899                             ## https://bugs.launchpad.net/percona-server/+bug/1384567 
 btr0cur.cc line 2208                             ## https://bugs.launchpad.net/percona-server/+bug/1385028 (Dup of MS #74682/MS #74663)
@@ -664,6 +668,11 @@ Handlerton. error == 0                                                          
 #hash_not_ok == 0                                                              ## Fixed ## https://bugs.mysql.com/bug.php?id=74852
 host_length <= 60                                                                       ## https://bugs.mysql.com/bug.php?id=74678
 innodb_trx_id == 0 .. innodb_trx_id == trx_id                                           ## https://jira.percona.com/browse/PS-4806
+.table .. .table->in_use .. table->in_use == _current_thd                               ## https://jira.percona.com/browse/PS-4786
+row0mysql.cc line 287                                                                   ## https://jira.percona.com/browse/PS-4788
+ZN3THD16mark_innodb_usedEy                                                              ## https://jira.percona.com/browse/PS-4788
+Z21open_table_from_shareP3THDP11TABLE_SHAREPKcjjjP5TABLEb                               ## https://jira.percona.com/browse/PS-4788
+ZN15Sys_var_version16global_value_ptrEP3THDP19st_mysql_lex_string                       ## https://jira.percona.com/browse/PS-4785
 item_in->left_expr->cols                                                                ## https://bugs.mysql.com/bug.php?id=88805
 inited == NONE                                                                          ## https://bugs.mysql.com/bug.php?id=74650
 #inited == INDEX                                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75690 (No longer repeatable)
