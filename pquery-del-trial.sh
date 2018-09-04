@@ -7,6 +7,13 @@ if [[ $PXC -eq 1 ]];then
   PXC_NODE=$(echo $TRIAL | cut -d'-' -f2)
   TRIAL=$(echo $TRIAL | cut -d'-' -f1)
 fi
+
+# Check if this is a pxc run
+PXC=0
+if [ "$(grep 'PXC Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Mode[: \t]*||' )" == "TRUE" ]; then
+  PXC=1
+fi
+
 if [ "${TRIAL}" == "" ]; then
   echo "This script deletes a given pquery trial completely. Execute this script from within the pquery workdir"
   echo "Example: to delete trial 10 (./10), execute as: ./delete_single_trial.sh 10"
