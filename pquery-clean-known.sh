@@ -7,24 +7,21 @@
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 # Check if this an automated (pquery-reach.sh) run
+REACH=0  # Normal output
 if [ "$1" == "reach" ]; then
   REACH=1  # Minimal output, and no 2x enter required
-else
-  REACH=0  # Normal output
 fi
 
 # Check if this is a pxc run
+PXC=0
 if [ "$(grep 'PXC Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Mode[: \t]*||' )" == "TRUE" ]; then
-  export PXC=1
-else
-  export PXC=0
+  PXC=1
 fi
 
 # Check if this is a group replication run
+GRP_RPL=0
 if [ "$(grep 'Group Replication Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*Group Replication Mode[: \t]*||')" == "TRUE" ]; then
   GRP_RPL=1
-else
-  GRP_RPL=0
 fi
 
 # Current location checks
