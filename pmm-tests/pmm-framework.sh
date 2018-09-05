@@ -955,6 +955,7 @@ add_clients(){
         echo "Starting PGSQL server at port ${PGSQL_PORT}"
         sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data initdb" > /dev/null 2>&1;
         sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
+        sudo -H -u psql bash -c "./createdb --port ${PGSQL_PORT} psql"
         if [ $disable_ssl -eq 1 ]; then
           sudo pmm-admin add postgresql --user psql --host localhost --port ${PGSQL_PORT} --disable-ssl PGSQL-${NODE_NAME}-${j}
           check_disable_ssl PGSQL-${NODE_NAME}-${j}
