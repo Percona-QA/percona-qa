@@ -6,16 +6,17 @@
 usage () {
   echo "Usage: [ options ]"
   echo "Options:"
-  echo "  --workdir                  	       Specify work directory"
-  echo "  --storage-engine                     Specify mysql server storage engine"
-  echo "  --build-number                       Specify work build directory"
-  echo "  --with-binlog-encryption             Run the script with binary log encryption feature"
+  echo "  -w, --workdir                     Specify work directory"
+  echo "  -s, --storage-engine              Specify mysql server storage engine"
+  echo "  -b, --build-number                Specify work build directory"
+  echo "  -k, --keyring-plugin=[file|vault] Specify which keyring plugin to use(default keyring-file)"
+  echo "  -e, --with-encryption              Run the script with encryption feature"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=edv --longoptions=workdir:,storage-engine:,build-number:,with-binlog-encryption,help \
+  go_out="$(getopt --options=w:b:s:k:eh --longoptions=workdir:,storage-engine:,build-number:,keyring-plugin:,with-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -30,7 +31,7 @@ for arg
 do
   case "$arg" in
     -- ) shift; break;;
-    --workdir )
+    -w | --workdir )
     export WORKDIR="$2"
     if [[ ! -d "$WORKDIR" ]]; then
       echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
@@ -38,11 +39,11 @@ do
     fi
     shift 2
     ;;
-    --build-number )
+    -b | --build-number )
     export BUILD_NUMBER="$2"
     shift 2
     ;;
-    --storage-engine )
+    -s | --storage-engine )
     export ENGINE="$2"
     if [ "$ENGINE" != "innodb" ] && [ "$ENGINE" != "rocksdb" ] && [ "$ENGINE" != "tokudb" ]; then
       echo "ERROR: Invalid --storage-engine passed:"
@@ -51,11 +52,20 @@ do
     fi
     shift 2
     ;;
-    --with-binlog-encryption )
-    shift
-    BINLOG_ENCRYPTION=1
+    -k | --keyring-plugin )
+    export KEYRING_PLUGIN="$2"
+    shift 2
+    if [[ "$KEYRING_PLUGIN" != "file" ]] && [[ "$KEYRING_PLUGIN" != "vault" ]] ; then
+      echo "ERROR: Invalid --keyring-plugin passed:"
+      echo "  Please choose any of these keyring-plugin options: 'file' or 'vault'"
+      exit 1
+    fi
     ;;
-    --help )
+    -e | --with-encryption )
+    shift
+    ENCRYPTION=1
+    ;;
+    -h | --help )
     usage
     exit 0
     ;;
@@ -70,6 +80,10 @@ fi
 
 if [[ -z "$BUILD_NUMBER" ]]; then
   export BUILD_NUMBER="100"
+fi
+
+if [[ -z "$KEYRING_PLUGIN" ]]; then
+  export KEYRING_PLUGIN="file"
 fi
 
 # User Configurable Variables
@@ -120,9 +134,6 @@ else
   ENGINE="INNODB"
 fi
 
-if [ "$BINLOG_ENCRYPTION" == 1 ];then
-  MYEXTRA_BINLOG=" --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
-fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 mkdir -p $WORKDIR/logs
@@ -131,6 +142,22 @@ echoit(){
   echo "[$(date +'%T')] $1"
   if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/ps_async_test.log; fi
 }
+if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+  MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON"
+elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+  echoit "Setting up vault server"
+  mkdir $WORKDIR/vault
+  rm -rf $WORKDIR/vault/*
+  killall vault
+  echoit "********************************************************************************************"
+  ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
+  echoit "********************************************************************************************"
+  MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
+fi
+
+if [ "$ENCRYPTION" == 1 ];then
+  MYEXTRA_ENCRYPTION=" --innodb_parallel_dblwr_encrypt=ON --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+fi
 
 #Kill existing mysqld process
 ps -ef | grep 'ps[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
@@ -196,7 +223,7 @@ sysbench_run(){
 
 #mysql install db check
 if [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure  --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${PS_BASEDIR}"
+  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure  ${MYEXTRA_KEYRING} --basedir=${PS_BASEDIR}"
 elif [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
 fi
@@ -247,7 +274,7 @@ function async_rpl_test(){
 
       ${PS_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
        --basedir=${PS_BASEDIR} $STARTUP_OPTION $MYEXTRA_ENGINE $SE_STARTUP --datadir=$node \
-       --innodb_file_per_table $MYEXTRA_BINLOG \
+       --innodb_file_per_table $MYEXTRA_KEYRING $MYEXTRA_ENCRYPTION \
        --binlog-format=ROW --server-id=20${i} $MYEXTRA \
        --innodb_flush_method=O_DIRECT --core-file --loose-new \
        --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= \
@@ -379,10 +406,12 @@ function async_rpl_test(){
     SOCKET=$2
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLESPACE ${DATABASE_NAME}_gen_ts1 ADD DATAFILE '${DATABASE_NAME}_gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE ${DATABASE_NAME}_gen_ts1" 2>&1
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_sys_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE=innodb_system ENCRYPTION='Y'" 2>&1
     NUM_ROWS=$(shuf -i 100-500 -n 1)
     for i in `seq 1 $NUM_ROWS`; do
       STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
       ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "INSERT INTO ${DATABASE_NAME}_gen_ts_tb1 (str) VALUES ('${STRING}')"
+      ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "INSERT INTO ${DATABASE_NAME}_sys_ts_tb1 (str) VALUES ('${STRING}')"
     done
   }
 
@@ -405,7 +434,7 @@ function async_rpl_test(){
     async_sysbench_rw_run sbtest_ps_master sbtest_ps_slave "/tmp/ps1.sock" "/tmp/ps2.sock"
     sleep 5
 
-    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+    if [ "$ENCRYPTION" == 1 ];then
       echoit "Running general tablespace encryption test run"
       gt_test_run sbtest_ps_master "/tmp/ps1.sock"
       gt_test_run sbtest_ps_slave "/tmp/ps2.sock"
@@ -459,11 +488,11 @@ function async_rpl_test(){
     async_sysbench_insert_run sbtest_ps_slave_3 "/tmp/ps4.sock"
     sleep 5
 
-    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+    if [ "$ENCRYPTION" == 1 ];then
       echoit "Running general tablespace encryption test run"
       gt_test_run sbtest_ps_master "/tmp/ps1.sock"
       gt_test_run sbtest_ps_slave_1 "/tmp/ps2.sock"
-      gt_test_run sbtest_ps_slave_2 "/tmp/ps2.sock"
+      gt_test_run sbtest_ps_slave_2 "/tmp/ps3.sock"
       gt_test_run sbtest_ps_slave_3 "/tmp/ps4.sock"
     fi
     sleep 5
@@ -512,7 +541,7 @@ function async_rpl_test(){
     async_sysbench_insert_run sbtest_ps_master_2 "/tmp/ps2.sock"
     sleep 5
 
-    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+    if [ "$ENCRYPTION" == 1 ];then
       echoit "Running general tablespace encryption test run"
       gt_test_run sbtest_ps_master_1 "/tmp/ps1.sock"
       gt_test_run sbtest_ps_master_2 "/tmp/ps2.sock"
@@ -575,7 +604,7 @@ function async_rpl_test(){
     async_sysbench_insert_run msr_db_master3 "/tmp/ps4.sock"
 	sleep 5
 
-    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+    if [ "$ENCRYPTION" == 1 ];then
       echoit "Running general tablespace encryption test run"
       gt_test_run msr_db_master1 "/tmp/ps2.sock"
       gt_test_run msr_db_master2 "/tmp/ps3.sock"
@@ -722,7 +751,7 @@ function async_rpl_test(){
     async_sysbench_insert_run mtr_db_ps2_5 "/tmp/ps2.sock"
     sleep 5
 
-    if [ "$BINLOG_ENCRYPTION" == 1 ];then
+    if [ "$ENCRYPTION" == 1 ];then
       echoit "Running general tablespace encryption test run"
       gt_test_run mtr_db_ps1_1 "/tmp/ps1.sock"
       gt_test_run mtr_db_ps2_1 "/tmp/ps2.sock"
