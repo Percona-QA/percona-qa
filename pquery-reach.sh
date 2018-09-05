@@ -165,8 +165,9 @@ while true; do
       if [ -r ${PQR_WORKDIR}/reducer1.sh ]; then
         if grep -qi "^MODE=3" ${PQR_WORKDIR}/reducer1.sh; then
           echoit "New, and specific (MODE=3) bug found! Reducing the same..."
-          # Approximately matching pquery-go-expert.sh settings
-          sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" ${PQR_WORKDIR}/reducer1.sh  # Setting this DOES mean the script will not terminate fully (but will stay in reduction mode) - why is reducer not stopping after STAGE1_LINES have been reached?
+          sed -i "s|^[ \t]*INIT_OPT=\"|INIT_OPT=\"${MYMID} |" ${PQR_WORKDIR}/reducer1.sh  # Semi-hack to get things like "--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON" in [MY]MID/INIT_OPT to work
+          # Approximately matching pquery-go-expert.sh settings, with some improvements
+          sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" ${PQR_WORKDIR}/reducer1.sh  # Setting this means the script will not terminate in some cases; it's a weigh off between STAGE1_LINES (13 set below) being reached in most cases (in which case this script WILL terminate and finish as it will go through the other STAGEs in reducer) or it not being reached (>13 lines left in the testcase in MULTI reduction mode), in which case the script indeed will not terminate as it will stay in MULTI reducion mode.
           sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3 |" ${PQR_WORKDIR}/reducer1.sh
           sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${PQR_WORKDIR}/reducer1.sh
           sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${PQR_WORKDIR}/reducer1.sh

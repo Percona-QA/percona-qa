@@ -1,2 +1,6 @@
-screen -admS s$1 bash -c "ulimit -u 4000;./reducer$1.sh;bash"
-if [ "$2" != "" ]; then screen -d -r s$1; fi
+if [ "$1" != "" -a -r reducer$1.sh ]; then
+  screen -admS s$1 bash -c "ulimit -u 4000;./reducer$1.sh;bash"
+  if [ "$2" != "" ]; then screen -d -r s$1; fi
+else
+  echo "No such reducer script: ./reducer$1.sh"
+fi

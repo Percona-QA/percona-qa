@@ -370,7 +370,7 @@ ha_innodb.cc line 19475                          ##DONOTREMOVE## OOM: ^IDEM (PS 
 
 ## =========== Special: set global innodb_saved_page_number_debug=x ===========
 # Mailed Umesh on 14 Aug 2017 to re-open bug 74481 as one testcase still crashes ref [13 Aug 23:29] Roel Van de Paar
-ut0ut.cc line 9[0-2][0-9]                        ##DONOTREMOVE## https://bugs.mysql.com/bug.php?id=74481
+ut0ut.cc line 9[0-4][0-9]                        ##DONOTREMOVE## https://bugs.mysql.com/bug.php?id=74481
 buf0buf.cc line 2852                             ##DONOTREMOVE## ^IDEM: SET GLOBAL innodb_saved_page_number_debug=100; SET GLOBAL innodb_fil_make_page_dirty_debug=0;
 fil0fil.cc line 6933                             ##DONOTREMOVE## ^IDEM: SET @@GLOBAL.innodb_fil_make_page_dirty_debug=22;
 fil0fil.cc line 5133                             ##DONOTREMOVE## ^IDEM
@@ -670,6 +670,8 @@ Handlerton. error == 0                                                          
 host_length <= 60                                                                       ## https://bugs.mysql.com/bug.php?id=74678
 innodb_trx_id == 0 .. innodb_trx_id == trx_id                                           ## https://jira.percona.com/browse/PS-4806
 .table .. .table->in_use .. table->in_use == _current_thd                               ## https://jira.percona.com/browse/PS-4786
+.innodb_was_used .. innodb_slow_log_enabled                                             ## https://jira.percona.com/browse/PS-4788
+Z33row_mysql_prebuilt_free_blob_heapP14row_prebuilt_t                                   ## https://jira.percona.com/browse/PS-4788
 row0mysql.cc line 287                                                                   ## https://jira.percona.com/browse/PS-4788
 ZN3THD16mark_innodb_usedEy                                                              ## https://jira.percona.com/browse/PS-4788
 Z21open_table_from_shareP3THDP11TABLE_SHAREPKcjjjP5TABLEb                               ## https://jira.percona.com/browse/PS-4788
@@ -889,6 +891,8 @@ ZN7ha_heap10delete_rowEPKh                                                      
 #ZN9ha_myisam5extraE17ha_extra_function                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=76946
 ZN9ha_myisam9write_rowEPh                                                               ## https://bugs.mysql.com/bug.php?id=75083
 ZN9PROFILING13status_changeEPKcS1_S1_j                                                  ## https://bugs.mysql.com/bug.php?id=84826
+ZNK3THD9thread_idEv                                                                     ## https://jira.percona.com/browse/PS-4816
+ZNK3THD9thread_idEv                                                                     ## https://jira.percona.com/browse/PS-4816
 ZNK7myrocks16Rdb_dict_manager9get_valueERKN7rocksdb5SliceEPSs                           ## https://jira.percona.com/browse/MYR-221
 ZNK13QUERY_PROFILE13get_profilingEv                                                     ## https://bugs.mysql.com/bug.php?id=84826
 #ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74953 (Duplicate of internal Bug#17846865)
