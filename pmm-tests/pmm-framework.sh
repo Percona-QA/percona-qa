@@ -957,6 +957,7 @@ add_clients(){
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
         PGSQL_PORT=$((PGSQL_PORT+j))
         cd ${BASEDIR}/bin
+        sudo chmod +x .
         if [ -d ${BASEDIR}/${NODE_NAME}_${j}/data ]; then
           echo "PGSQL Data Directory Exist, Removing old Directory, Stopping already running Server and creating a new one"
           sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' stop" > /dev/null 2>&1;
