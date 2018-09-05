@@ -3,7 +3,7 @@
 ## postgresql:metrics
 
 
-PGSQL_USER='psql'
+PGSQL_USER='postgres'
 PGSQL_HOST='localhost'
 PGSQL_SOCK=5432
 
