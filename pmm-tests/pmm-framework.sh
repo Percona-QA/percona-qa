@@ -954,12 +954,13 @@ add_clients(){
         PGSQL_USER=nobody
       fi
       PGSQL_PORT=5431
+      echo "Current path is $(pwd)"
+      cd ${BASEDIR}/..
+      ls -la
+      result=pgsql
+      sudo cp -R ${result} /home/
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
         PGSQL_PORT=$((PGSQL_PORT+j))
-        echo "Current path is $(pwd)"
-        cd ${BASEDIR}
-        result=pgsql
-        sudo cp -R ${result} /home/
         BASEDIR=/home/pgsql
         cd ${BASEDIR}/bin
         sudo chmod +x .
