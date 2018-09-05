@@ -957,23 +957,26 @@ add_clients(){
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
         PGSQL_PORT=$((PGSQL_PORT+j))
         echo "Current path is $(pwd)"
+        cd ${BASEDIR}
         result=pgsql
+        sudo cp -R ${result} /home/
+        BASEDIR=/home/pgsql
         cd ${BASEDIR}/bin
         sudo chmod +x .
         echo "Current Path is $(pwd)"
-        if [ -d ${result}/${NODE_NAME}_${j}/data ]; then
+        if [ -d ${BASEDIR}/${NODE_NAME}_${j}/data ]; then
           echo "PGSQL Data Directory Exist, Removing old Directory, Stopping already running Server and creating a new one"
-          sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${result}/${NODE_NAME}_${j}/data -l ${result}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' stop" > /dev/null 2>&1;
-          sudo rm -r ${result}/${NODE_NAME}_${j}
-          sudo mkdir -p ${result}/${NODE_NAME}_${j}/data
+          sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' stop" > /dev/null 2>&1;
+          sudo rm -r ${BASEDIR}/${NODE_NAME}_${j}
+          sudo mkdir -p ${BASEDIR}/${NODE_NAME}_${j}/data
         else
-          sudo mkdir -p ${result}/${NODE_NAME}_${j}/data
+          sudo mkdir -p ${BASEDIR}/${NODE_NAME}_${j}/data
         fi
         sudo_check ${PGSQL_USER}
-        sudo chown -R ${PGSQL_USER} ${result}/${NODE_NAME}_${j}/data
+        sudo chown -R ${PGSQL_USER} ${BASEDIR}/${NODE_NAME}_${j}/data
         echo "Starting PGSQL server at port ${PGSQL_PORT}"
-        sudo -H -u ${PGSQL_USER} bash -c "./initdb -D ${result}/${NODE_NAME}_${j}/data --username=postgres"
-        sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${result}/${NODE_NAME}_${j}/data -l ${result}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start";
+        sudo -H -u ${PGSQL_USER} bash -c "./initdb -D ${BASEDIR}/${NODE_NAME}_${j}/data --username=postgres"
+        sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start";
         sudo -H -u ${PGSQL_USER} bash -c "./createdb psql --username=postgres"
         if [ $disable_ssl -eq 1 ]; then
           sudo pmm-admin add postgresql --user postgres --host localhost --port ${PGSQL_PORT} --disable-ssl PGSQL-${NODE_NAME}-${j}
