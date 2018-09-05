@@ -121,7 +121,7 @@ else
 fi
 
 if [ "$BINLOG_ENCRYPTION" == 1 ];then
-  MYEXTRA_BINLOG="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+  MYEXTRA_BINLOG=" --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
 fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
@@ -196,7 +196,7 @@ sysbench_run(){
 
 #mysql install db check
 if [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR}"
+  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure  --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${PS_BASEDIR}"
 elif [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
 fi
@@ -377,12 +377,12 @@ function async_rpl_test(){
   function gt_test_run(){
     DATABASE_NAME=$1
     SOCKET=$2
-    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLESPACE gen_ts1 ADD DATAFILE 'gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
-    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE gen_ts1" 2>&1
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLESPACE ${DATABASE_NAME}_gen_ts1 ADD DATAFILE '${DATABASE_NAME}_gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE ${DATABASE_NAME}_gen_ts1" 2>&1
     NUM_ROWS=$(shuf -i 100-500 -n 1)
     for i in `seq 1 $NUM_ROWS`; do
       STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-      ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "INSERT INTO gen_ts_tb1 (str) VALUES ('${STRING}')"
+      ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "INSERT INTO ${DATABASE_NAME}_gen_ts_tb1 (str) VALUES ('${STRING}')"
     done
   }
 
