@@ -957,6 +957,7 @@ add_clients(){
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
         PGSQL_PORT=$((PGSQL_PORT+j))
         cd ${BASEDIR}/bin
+        sudo chown -R ${PGSQL_USER} ${BASEDIR}
         ls -la
         echo "Current Path is $(pwd)"
         sudo chmod +x .
