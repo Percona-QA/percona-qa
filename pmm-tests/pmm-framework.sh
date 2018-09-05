@@ -19,6 +19,7 @@ OPASS="passw0rd"
 ADDR="127.0.0.1"
 download_link=0
 disable_ssl=0
+create_pgsql_user=0
 
 mkdir -p $WORKDIR/logs
 # User configurable variables
@@ -66,6 +67,7 @@ usage () {
   echo " --ova-image                    Pass PMM server ova image name"
   echo " --ova-memory                   Pass memory(memorysize in MB) for OVA virtual box"
   echo " --disable-ssl                  Disable ssl mode on exporter"
+  echo " --create-pgsql-user            Set this option if a Dedicated PGSQl User creation is required username: psql and no password"
   echo " --upgrade-server               When this option is specified, PMM Server will be updated to the last version"
   echo " --upgrade-client          		  When this option is specified, PMM client will be updated to the last version"
   echo " --query-source                 Set query source (perfschema or slowlog)"
@@ -75,7 +77,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,create-pgsql-user,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -208,6 +210,10 @@ do
     shift
     disable_ssl=1
     ;;
+    --create-pgsql-user )
+    shift
+    create_pgsql_user=1
+    ;;
     --wipe-docker-clients )
     shift
     wipe_docker_clients=1
@@ -309,6 +315,10 @@ if [[ -z "$disable_ssl" ]];then
   disable_ssl=0
 fi
 
+if [[ -z "$create_pgsql_user" ]]; then
+  create_pgsql_user=0
+fi
+
 if [[ "$with_shrading" == "1" ]];then
   with_replica=1
 fi
@@ -378,6 +388,7 @@ sudo_check(){
 
   USER=$1
     # Sudo check
+    echo "Checking for user $1"
   if [ "$(sudo -H -u ${USER} bash -c "echo 'test'" 2>/dev/null)" != "test" ]; then
     echo "Error: sudo is not available or requires a password. This script needs to be able to use sudo, without password, from the userID that invokes it ($(whoami))"
     echo "To get your setup correct, you may like to use a tool like visudo (use 'sudo visudo' or 'su' and then 'visudo') and consider adding the following line to the file:"
@@ -930,13 +941,17 @@ add_clients(){
         done
 	    fi
     elif [[ "${CLIENT_NAME}" == "pgsql" ]]; then
-      echo "Creating postgresql Dedicated User psql"
-      IP_ADDRESS=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
-      if id psql >/dev/null 2>&1; then
-        echo "yes the user psql exists"
+      if [ $create_pgsql_user -eq 1 ]; then
+        PGSQL_USER=psql
+        echo "Creating postgresql Dedicated User psql"
+        if id psql >/dev/null 2>&1; then
+          echo "yes the user psql exists"
+        else
+          echo "No, the user psql does not exist, Adding"
+          sudo adduser --disabled-password --gecos "" psql
+        fi
       else
-        echo "No, the user psql does not exist, Adding"
-        sudo adduser --disabled-password --gecos "" psql
+        PGSQL_USER=nobody
       fi
       PGSQL_PORT=5431
       for j in `seq 1  ${ADDCLIENTS_COUNT}`;do
@@ -944,22 +959,22 @@ add_clients(){
         cd ${BASEDIR}/bin
         if [ -d ${BASEDIR}/${NODE_NAME}_${j}/data ]; then
           echo "PGSQL Data Directory Exist, Removing old Directory, Stopping already running Server and creating a new one"
-          sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' stop" > /dev/null 2>&1;
+          sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' stop" > /dev/null 2>&1;
           sudo rm -r ${BASEDIR}/${NODE_NAME}_${j}
           sudo mkdir -p ${BASEDIR}/${NODE_NAME}_${j}/data
         else
           sudo mkdir -p ${BASEDIR}/${NODE_NAME}_${j}/data
         fi
-        sudo chown -R psql ${BASEDIR}/${NODE_NAME}_${j}/data
-        sudo_check psql
+        sudo_check ${PGSQL_USER}
+        sudo chown -R ${PGSQL_USER} ${BASEDIR}/${NODE_NAME}_${j}/data
         echo "Starting PGSQL server at port ${PGSQL_PORT}"
-        sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data initdb" > /dev/null 2>&1;
-        sudo -H -u psql bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
+        sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data initdb" > /dev/null 2>&1;
+        sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
         if [ $disable_ssl -eq 1 ]; then
-          sudo pmm-admin add postgresql --user psql --host localhost --port ${PGSQL_PORT} --disable-ssl PGSQL-${NODE_NAME}-${j}
+          sudo pmm-admin add postgresql --user ${PGSQL_USER} --host localhost --port ${PGSQL_PORT} --disable-ssl PGSQL-${NODE_NAME}-${j}
           check_disable_ssl PGSQL-${NODE_NAME}-${j}
         else
-          sudo pmm-admin add postgresql --user psql --host localhost --port ${PGSQL_PORT} PGSQL-${NODE_NAME}-${j}
+          sudo pmm-admin add postgresql --user ${PGSQL_USER} --host localhost --port ${PGSQL_PORT} PGSQL-${NODE_NAME}-${j}
         fi
       done
     else
