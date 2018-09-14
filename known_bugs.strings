@@ -668,14 +668,14 @@ Handlerton. error == 0                                                          
 #Handlerton.*trx                                                               ## Fixed ## https://tokutek.atlassian.net/browse/DB-762 (Fixed tokudb-7.5.4)
 #hash_not_ok == 0                                                              ## Fixed ## https://bugs.mysql.com/bug.php?id=74852
 host_length <= 60                                                                       ## https://bugs.mysql.com/bug.php?id=74678
-innodb_trx_id == 0 .. innodb_trx_id == trx_id                                           ## https://jira.percona.com/browse/PS-4806
+#innodb_trx_id == 0 .. innodb_trx_id == trx_id                                 ## Fixed ## https://jira.percona.com/browse/PS-4806
 .table .. .table->in_use .. table->in_use == _current_thd                               ## https://jira.percona.com/browse/PS-4786
-.innodb_was_used .. innodb_slow_log_enabled                                             ## https://jira.percona.com/browse/PS-4788
-Z33row_mysql_prebuilt_free_blob_heapP14row_prebuilt_t                                   ## https://jira.percona.com/browse/PS-4788
-row0mysql.cc line 287                                                                   ## https://jira.percona.com/browse/PS-4788
-ZN3THD16mark_innodb_usedEy                                                              ## https://jira.percona.com/browse/PS-4788
-Z21open_table_from_shareP3THDP11TABLE_SHAREPKcjjjP5TABLEb                               ## https://jira.percona.com/browse/PS-4788
-ZN15Sys_var_version16global_value_ptrEP3THDP19st_mysql_lex_string                       ## https://jira.percona.com/browse/PS-4785
+#.innodb_was_used .. innodb_slow_log_enabled                                   ## Fixed ## https://jira.percona.com/browse/PS-4788
+#Z33row_mysql_prebuilt_free_blob_heapP14row_prebuilt_t                         ## Fixed ## https://jira.percona.com/browse/PS-4788
+#row0mysql.cc line 287                                                         ## Fixed ## https://jira.percona.com/browse/PS-4788
+#ZN3THD16mark_innodb_usedEy                                                    ## Fixed ## https://jira.percona.com/browse/PS-4788
+#Z21open_table_from_shareP3THDP11TABLE_SHAREPKcjjjP5TABLEb                     ## Fixed ## https://jira.percona.com/browse/PS-4788
+#ZN15Sys_var_version16global_value_ptrEP3THDP19st_mysql_lex_string             ## Fixed ## https://jira.percona.com/browse/PS-4785
 item_in->left_expr->cols                                                                ## https://bugs.mysql.com/bug.php?id=88805
 inited == NONE                                                                          ## https://bugs.mysql.com/bug.php?id=74650
 #inited == INDEX                                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75690 (No longer repeatable)
