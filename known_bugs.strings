@@ -266,6 +266,9 @@ thd->variables.gtid_next.type == AUTOMATIC_GROUP         ## https://bugs.mysql.c
 buf0lru.cc line 2259                                     ## https://bugs.launchpad.net/percona-server/+bug/1553166
 #ZN8Item_row7val_strEP6String                   ## Fixed ## alpha ## https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
 #btr0cur.cc line 830                            ## Fixed ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1517757  ## Fixed in PS 5.7.10-2rc2
+key .= __null .. key_length == 16                        ## https://jira.percona.com/browse/PS-4827 
+m_pos.m_index_1 < mi->rli->get_worker_count              ## https://bugs.mysql.com/bug.php?id=92348 (PS-4824)
+name .= ..void .                                         ## https://jira.percona.com/browse/PS-4823
 row0ins.cc line 282                                      ## https://bugs.launchpad.net/percona-server/+bug/1553883
 rem0rec.cc line 886                                      ## MS5.7 ## https://bugs.mysql.com/bug.php?id=80681
 rem0rec.cc line 872                                      ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79794
@@ -948,6 +951,7 @@ ZN18Locked_tables_list20unlock_locked_tablesEP3THD                              
 ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=78201 (Fixed in 5.7)
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=82967 (old PS #1622992)
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## https://jira.percona.com/browse/PS-3958
+ZN24subselect_hash_sj_engine7cleanupEv                                                  ## https://jira.percona.com/browse/PS-4840
 #ZN4JOIN8optimizeEv                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74783
 ZN4Item31tmp_table_field_from_field_typeEP5TABLEb               ## Still present in 5.7 ## https://bugs.mysql.com/bug.php?id=86254 (also bug 87577)
 ZN5TABLE11set_keyreadEb                                                                 ## https://bugs.mysql.com/bug.php?id=84755 (Won't fix)
