@@ -66,6 +66,17 @@ for i in $(sudo pmm-admin list | grep "mongodb_instance_" | awk '{print $5}' | g
 done
 }
 
+@test "run pmm-admin purge mongodb" {
+COUNTER=0
+for i in $(sudo pmm-admin list | grep "mongodb_instance_" | awk '{print $5}' | grep -v '-'|sort -u) ; do
+	let COUNTER=COUNTER+1
+	run sudo pmm-admin purge mongodb:metrics mongodb_instance_${COUNTER}
+  [ "$status" -eq 0 ]
+  echo "${lines[1]}"
+  echo "${lines[1]}" | grep "OK, data purged"
+done
+}
+
 # @test "run pmm-admin rm mongodb named" {
 #   run sudo pmm-admin rm mongodb mymongo1
 #   [ "$status" -eq 0 ]
