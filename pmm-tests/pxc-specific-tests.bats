@@ -78,6 +78,18 @@ echo "$output"
 	done
 }
 
+@test "run pmm-admin purge mysql:metrics" {
+	COUNTER=0
+	for i in $(sudo pmm-admin list | grep "mysql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//') ; do
+		let COUNTER=COUNTER+1
+		MYSQL_SOCK=${i}
+		run sudo pmm-admin purge mysql:metrics mysql_metrics_$COUNTER
+		echo "$output"
+			[ "$status" -eq 0 ]
+			echo "${output}" | grep "OK, data purged"
+	done
+}
+
 
 ## mysql:queries
 
@@ -175,4 +187,16 @@ echo "$output"
 			echo "${lines[2]}" | grep "OK, removed"
 	done
 
+}
+
+@test "run pmm-admin purge mysql:metrics" {
+	COUNTER=0
+	for i in $(sudo pmm-admin list | grep "mysql_metrics_" | grep -Eo '\/.*\)' | sed 's/)$//') ; do
+		let COUNTER=COUNTER+1
+		MYSQL_SOCK=${i}
+		run sudo pmm-admin purge mysql:metrics mysql_metrics_$COUNTER
+		echo "$output"
+			[ "$status" -eq 0 ]
+			echo "${output}" | grep "OK, data purged"
+	done
 }
