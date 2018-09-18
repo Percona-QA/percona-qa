@@ -319,6 +319,7 @@ log0log.cc line 1839                                              ## https://bug
 log0log.cc line 2199                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 Handlerton. share->file == NULL                                   ## PS5.7 # https://tokutek.atlassian.net/browse/FT-725
 ZN6tokudb6memory4freeEPv                                          ## PS5.7 $ https://tokutek.atlassian.net/browse/FT-727
+Z19find_field_in_tableP3THDP5TABLEPKcmbPj                         ## https://jira.percona.com/browse/PS-4830
 
 ## =========== PS 5.7 TokuDB bugs ==========
 #Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2
@@ -339,6 +340,7 @@ part_id < m_tot_part s                                                 ## https:
 cache_el.i.->used_tables.is_empty                                      ## https://jira.percona.com/browse/PS-4789
 txn->for_recovery                                                      ## https://jira.percona.com/browse/PS-4789
 .thd->locked_tables_mode                                               ## https://jira.percona.com/browse/PS-4789
+ZN9ha_tokudb16bulk_insert_pollEPvf                                     ## https://jira.percona.com/browse/PS-4828 
 
 ## =========== Special: Various ===========
 ha_innodb.cc line 3469                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
@@ -679,12 +681,12 @@ Handlerton. error == 0                                                          
 host_length <= 60                                                                       ## https://bugs.mysql.com/bug.php?id=74678
 innodb_trx_id == 0 .. innodb_trx_id == trx_id                                           ## https://jira.percona.com/browse/PS-4806
 .table .. .table->in_use .. table->in_use == _current_thd                               ## https://jira.percona.com/browse/PS-4786
-.innodb_was_used .. innodb_slow_log_enabled                                             ## https://jira.percona.com/browse/PS-4788
-Z33row_mysql_prebuilt_free_blob_heapP14row_prebuilt_t                                   ## https://jira.percona.com/browse/PS-4788
-row0mysql.cc line 287                                                                   ## https://jira.percona.com/browse/PS-4788
-ZN3THD16mark_innodb_usedEy                                                              ## https://jira.percona.com/browse/PS-4788
-Z21open_table_from_shareP3THDP11TABLE_SHAREPKcjjjP5TABLEb                               ## https://jira.percona.com/browse/PS-4788
-ZN15Sys_var_version16global_value_ptrEP3THDP19st_mysql_lex_string                       ## https://jira.percona.com/browse/PS-4785
+#.innodb_was_used .. innodb_slow_log_enabled                                   ## Fixed ## https://jira.percona.com/browse/PS-4788
+#Z33row_mysql_prebuilt_free_blob_heapP14row_prebuilt_t                         ## Fixed ## https://jira.percona.com/browse/PS-4788
+#row0mysql.cc line 287                                                         ## Fixed ## https://jira.percona.com/browse/PS-4788
+#ZN3THD16mark_innodb_usedEy                                                    ## Fixed ## https://jira.percona.com/browse/PS-4788
+#Z21open_table_from_shareP3THDP11TABLE_SHAREPKcjjjP5TABLEb                     ## Fixed ## https://jira.percona.com/browse/PS-4788
+#ZN15Sys_var_version16global_value_ptrEP3THDP19st_mysql_lex_string             ## Fixed ## https://jira.percona.com/browse/PS-4785
 item_in->left_expr->cols                                                                ## https://bugs.mysql.com/bug.php?id=88805
 inited == NONE                                                                          ## https://bugs.mysql.com/bug.php?id=74650
 #inited == INDEX                                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75690 (No longer repeatable)
@@ -957,6 +959,7 @@ ZN18Locked_tables_list20unlock_locked_tablesEP3THD                              
 ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=78201 (Fixed in 5.7)
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=82967 (old PS #1622992)
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## https://jira.percona.com/browse/PS-3958
+ZN24subselect_hash_sj_engine7cleanupEv                                                  ## https://jira.percona.com/browse/PS-4840
 #ZN4JOIN8optimizeEv                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74783
 ZN4Item31tmp_table_field_from_field_typeEP5TABLEb               ## Still present in 5.7 ## https://bugs.mysql.com/bug.php?id=86254 (also bug 87577)
 ZN5TABLE11set_keyreadEb                                                                 ## https://bugs.mysql.com/bug.php?id=84755 (Won't fix)
