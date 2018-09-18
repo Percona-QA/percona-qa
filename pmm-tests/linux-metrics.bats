@@ -58,3 +58,18 @@ echo "$output"
     [ "$status" -eq 1 ]
     echo "${output}" | grep "no service found"
 }
+
+@test "run pmm-admin add linux:metrics with disable-ssl option" {
+run sudo pmm-admin add linux:metrics --disable-ssl
+echo "$output"
+    [ "$status" -eq 1 ]
+    echo "${output}" | grep "there is already one instance"
+}
+
+
+@test "run pmm-admin remove linux:metrics" {
+run sudo pmm-admin remove linux:metrics
+echo "$output"
+    [ "$status" -eq 1 ]
+    echo "${output}" | grep "no service found"
+}

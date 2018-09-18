@@ -78,6 +78,30 @@ echo "$output"
 	done
 }
 
+@test "run pmm-admin add postgresql:metrics with Disable-ssl option" {
+	COUNTER=0
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "postgresql:metrics" | sed 's|.*(||;s|)||' | wc -l)
+	for i in $(seq ${CURRENT_COUNT}); do
+		let COUNTER=COUNTER+1
+		run sudo pmm-admin add postgresql:metrics --port=${PGSQL_SOCK} --user=${PGSQL_USER} --disable-ssl pgsql_metrics_$COUNTER
+		echo "$output"
+		[ "$status" -eq 0 ]
+		echo "${lines[0]}" | grep "OK, now monitoring"
+	done
+}
+
+@test "run pmm-admin remove postgresql:metrics added with Disable-ssl option" {
+	COUNTER=0
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "pgsql_metrics_" | wc -l)
+	for i in $(seq ${CURRENT_COUNT}) ; do
+		let COUNTER=COUNTER+1
+		run sudo pmm-admin remove postgresql:metrics pgsql_metrics_$COUNTER
+		echo "$output"
+			[ "$status" -eq 0 ]
+			echo "${output}" | grep "OK, removed PostgreSQL metrics"
+	done
+}
+
 ## add postgresql
 
 @test "run pmm-admin add postgresql" {
