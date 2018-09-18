@@ -94,3 +94,25 @@ done
 	  echo "${lines[0]}" | grep "OK, removed"
   done
 }
+
+@test "run pmm-admin add mongodb with disable-ssl again based on running instances" {
+	COUNTER=0
+	for i in $(sudo pmm-admin list | grep "mongodb:queries" | awk '{print $5}' | grep -v '-'| sort -u) ; do
+		let COUNTER=COUNTER+1
+		URI=${i}
+		run sudo pmm-admin add mongodb --uri ${URI} --disable-ssl mongodb_instance_${COUNTER}
+		[ "$status" -eq 0 ]
+		echo "${lines[1]}" | grep "OK, already"
+	done
+}
+
+@test "run pmm-admin rm mongodb" {
+	COUNTER=0
+	for i in $(sudo pmm-admin list | grep "mongodb_instance_" | awk '{print $5}' | grep -v '-'|sort -u) ; do
+		let COUNTER=COUNTER+1
+		run sudo pmm-admin rm mongodb mongodb_instance_${COUNTER}
+	  [ "$status" -eq 0 ]
+	  echo "${lines[1]}"
+	  echo "${lines[1]}" | grep "OK, removed"
+	done
+}
