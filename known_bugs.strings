@@ -25,7 +25,6 @@ ut0link_buf.h.191..capacity . .capacity - 1.. == 0       ## https://bugs.mysql.c
 TEXT=.write_max_size > 0.$                               ## https://bugs.mysql.com/bug.php?id=90526 # Optimized build
 partition_info..add_named_partition                      ## https://bugs.mysql.com/bug.php?id=90542 # Optimized build
 dirname_length                                           ## https://bugs.mysql.com/bug.php?id=90543 # Optimized build 
-std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >..find  ## https://bugs.mysql.com/bug.php?id=90544 # Optimized build
 fil_space_get.table->space. .= __null                    ## https://bugs.mysql.com/bug.php?id=90545
 .thd .. thd->locked_tables_mode .. .thd->mdl_context.has_locks  ## https://bugs.mysql.com/bug.php?id=90546
 gtid_next_type == ANONYMOUS_GTID                         ## https://bugs.mysql.com/bug.php?id=90547
@@ -42,6 +41,7 @@ TEXT=.bin2decimal.$                                      ## https://bugs.mysql.c
 ha_innodb.cc.4926.0                                      ## https://jira.percona.com/browse/PS-4801
 mysql_alter_table                                        ## https://jira.percona.com/browse/PS-4802
 dd_table_has_instant_cols                                ## https://jira.percona.com/projects/PS/issues/PS-4803
+ha_innodb.cc.4974.0                                      ## https://jira.percona.com/browse/PS-4846
 
 ## =========== PS/MS 8.0 Prep
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
@@ -100,7 +100,6 @@ head->variables.gtid_next.type == ANONYMOUS_GTID         ## https://bugs.mysql.c
 charset_database_number <= 0xFF                          ## https://bugs.mysql.com/bug.php?id=91986 
 #rc == TYPE_OK                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=86282
 rc == TYPE_OK                                            ## https://bugs.mysql.com/bug.php?id=91987 (new occurence of same assert)
-std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator  ## https://bugs.mysql.com/bug.php?id=91988
 #TEXT=.\.is_set.$                                ## Fixed ## https://bugs.mysql.com/bug.php?id=90525
 TEXT=.\.is_set.$                                          ## https://bugs.mysql.com/bug.php?id=91990
 TEXT=.Field..real_maybe_null.$                            ## https://bugs.mysql.com/bug.php?id=92034 (likely dbg dup of 92189)
@@ -125,7 +124,12 @@ trx0trx.h.1326.trx->in_depth > 0                          ## https://bugs.mysql.
 TEXT=.level <= 50.$                                       ## https://bugs.mysql.com/bug.php?id=92187
 dict0dict.cc.5743                                         ## https://bugs.mysql.com/bug.php?id=92188 (debug build)
 void dd_write_table<dd..Table>                            ## https://bugs.mysql.com/bug.php?id=92188 (optimized build)
-#HERE
+uint4korr.kp1                                             ## https://bugs.mysql.com/bug.php?id=92448
+MYSQL_BIN_LOG..handle_binlog_flush_or_sync_error          ## https://bugs.mysql.com/bug.php?id=92451 (change string to a more specific version if not fixed before 1/1/2019!)
+TEXT=.acl_reload.$                                        ## https://bugs.mysql.com/bug.php?id=92433 (and dup 92452)
+std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >..find  ## https://bugs.mysql.com/bug.php?id=90544 # Optimized build
+std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator  ## https://bugs.mysql.com/bug.php?id=91988
+std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > >, Malloc_allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > > >, std..__detail.._Select  ## https://bugs.mysql.com/bug.php?id=92456
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
@@ -146,7 +150,7 @@ zip_dict_name.str == 0 .. column_format                           ## https://bug
 #sync0debug.cc line 299                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
 #buf0lru.cc line 2245                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1415357                                 (# after next bzr pull)
 #ha_innodb.cc line 15747                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1415357 (2nd addition - ref comment #6) (# after next bzr pull)
-#row0quiesce.cc line 692                        ## Fixed ## https://bugs.mysql.com/?id=75398 (dup of http://bugs.mysql.com/bug.php?id=74346)        (# after MS 5.7.6 merged)
+#row0quiesce.cc line 692                        ## Fixed ## https://bugs.mysql.com/?id=75398 (dup of 74346) (# after MS 5.7.6 merged)
 #.first_qep_tab..table                          ## Fixed ## https://bugs.mysql.com/bug.php?id=75688
 #btr0bulk.cc line 948                           ## Fixed ## https://bugs.mysql.com/bug.php?id=75692 (Apparent dup of MS #74422)                     (# after MS 5.7.6 merged)
 #select_lex->having_cond                        ## Fixed ## https://bugs.mysql.com/bug.php?id=75693                                                 (# after MS 5.7.6 merged)
@@ -225,7 +229,7 @@ Z11plugin_lockP3THDPPP13st_plugin_int                    ## https://jira.percona
 #dict0mem.cc line 110                           ## Fixed ## https://bugs.mysql.com/bug.php?id=77526
 #Z15acl_update_userPKcS0_8SSL_typeS0_S0_S0_P14user_resourcesmRK25st_mysql_const_lex_stringS6_13st_mysql_time12st_lex_alter ## Fixed ## https://bugs.mysql.com/bug.php?id=77527
 ## 5.7.8 RC2 Test
-#Z18get_interval_valueP4Item13interval_typeP6StringP8Interval  ## Fixed ## https://bugs.mysql.com/bug.php?id=75943 and http://bugs.mysql.com/bug.php?id=78187
+#Z18get_interval_valueP4Item13interval_typeP6StringP8Interval  ## Fixed ## https://bugs.mysql.com/bug.php?id=75943 and 78187
 #Z17test_quick_selectP3THD6BitmapILj64EEyybN8st_order10enum_orderEPK16QEP_shared_ownerP4ItemPS2_PP14QUICK_SELECT_I ## Fixed ## https://bugs.mysql.com/bug.php?id=78188
 #fts0fts.cc line 3160                           ## Fixed ## https://bugs.mysql.com/bug.php?id=78235                                     (# after MS 5.7.9 merged)
 #ha_innodb.cc line 1220                         ## Fixed ## https://bugs.mysql.com/bug.php?id=78236
@@ -394,6 +398,8 @@ Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxPK5TABLEP5
 Z20commit_try_norebuildP18Alter_inplace_infoP23ha_innobase_inplace_ctxP5TABLEPKS3_P5trx_tPKc ## https://bugs.mysql.com/bug.php?id=74663
 #btr0cur.cc line 1239                   ## Fixed ## https://bugs.mysql.com/bug.php?id=75913 MS
 #btr0cur.cc line 1244                   ## Fixed ## https://bugs.mysql.com/bug.php?id=75913 PS
+RSEG.....dd_table_discard_tablespace                  ## https://bugs.mysql.com/bug.php?id=92449 MS8
+RSEG.....strcmp.table->name.m_name, table_name. == 0  ## https://bugs.mysql.com/bug.php?id=92449 MS8
 
 ## =========== Special: innodb_checksum_algorithm dynamic change ===========
 ## This problem should have been mitigated by https://bugs.mysql.com/bug.php?id=75968. If not, please update this section accordingly
@@ -1026,7 +1032,7 @@ TEXT=.r == 0.$                                                                  
 TEXT=.strlen.m_ptr.$                                                                    ## https://bugs.mysql.com/bug.php?id=84754
 #TEXT=.\. is_set.$                                                             ## Fixed ## https://bugs.mysql.com/bug.php?id=74597 (old PS Bug #1206050)
 #TEXT=.\. is_set.$           ## 79303 Also shows like this ## 5.6 needs better testcase ## https://bugs.mysql.com/bug.php?id=76515 (#74597 ^ not fixed yet) (fixed in 5.7.9)
-TEXT=.\. is_set.$                                                                       ## https://bugs.mysql.com/bug.php?id=83796 and http://bugs.mysql.com/bug.php?id=83797
+TEXT=.\. is_set.$                                                                       ## https://bugs.mysql.com/bug.php?id=83796 and 83797
 TEXT=...tables.$                                                                        ## https://bugs.mysql.com/bug.php?id=74740 (Also see above 74740)
 #TEXT=.child_l.$                                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=76277 (with debug build)
 TEXT=.false.$                                                                           ## https://bugs.mysql.com/bug.php?id=74877
