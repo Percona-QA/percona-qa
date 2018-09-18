@@ -54,3 +54,15 @@ echo "$output"
   [ "$status" -eq 0 ]
   echo "${lines[0]}" | grep "OK, removed"
 }
+
+@test "run pmm-admin add proxysql:metrics with disable-ssl" {
+  run sudo pmm-admin add proxysql:metrics --disable-ssl
+  [ "$status" -eq 0 ]
+  echo "${lines[0]}" | grep "OK, now monitoring"
+}
+
+@test "run pmm-admin rm proxysql:metrics added with disable-ssl" {
+  run sudo pmm-admin rm proxysql:metrics
+  [ "$status" -eq 0 ]
+  echo "${lines[0]}" | grep "OK, removed"
+}
