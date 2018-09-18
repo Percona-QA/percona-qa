@@ -469,8 +469,8 @@ function async_rpl_test(){
         echo "keyring_file_data=$node/keyring" >> ${PXC_BASEDIR}/ps${i}.cnf
       fi
   	  if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-        echo "early-plugin-load=\"keyring_vault=keyring_vault.so\"" >> ${PXC_BASEDIR}/n${i}.cnf
-        echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "early-plugin-load=\"keyring_vault=keyring_vault.so\"" >> ${PXC_BASEDIR}/ps${i}.cnf
+        echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PXC_BASEDIR}/ps${i}.cnf
       fi
 
       ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
