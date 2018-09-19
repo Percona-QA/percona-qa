@@ -758,9 +758,8 @@ function async_rpl_test(){
 	LADDR="$ADDR:$(( MASTER_HOST_PORT + 8 ))"
     echo "Stopping PXC node1 for shuffle test"
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown > /dev/null 2>&1
-
+    sleep 20
     echo "Start PXC node2 for shuffle test"
-
     ${PXC_BASEDIR}/bin/mysqld --defaults-file=${PXC_BASEDIR}/n2.cnf $STARTUP_OPTION > ${WORKDIR}/logs/node2.err 2>&1 &
 
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
