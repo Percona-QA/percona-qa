@@ -11,4 +11,4 @@ cd /dev/shm; ls_exec
 echo "Current testcases in /sda:"
 cd /sda; ls_exec
 
-echo "New pquery-reach.sh bugs found in this run: $(echo $[ 15 - $(ps -ef | grep pquery-reach.sh | grep "sh -c" | grep -v SCREEN | wc -l) ])"
+echo "New pquery-reach.sh bugs found in this run: $(echo $[ 13 - $(ps -ef | grep pquery-reach.sh | grep "sh -c" | grep -v SCREEN | wc -l) ])"
