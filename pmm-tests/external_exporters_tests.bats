@@ -8,6 +8,20 @@
   echo  ${output} | grep  "consul_up"
 }
 
+@test "Checking external_service wrong Interval Error Message" {
+  run sudo pmm-admin add external:service consul_exporter --service-port=9107 --interval 10 
+  echo "$output"
+  [ "$status" -eq 1 ]
+  echo  ${output} | grep "Invalid duration scrape interval, missing unit in duration, for example 10s"
+}
+
+@test "Checking external_service Usage Instructions for Interval Duration" {
+  run sudo pmm-admin add external:service --help
+  echo "$output"
+  [ "$status" -eq 0 ]
+  echo  ${output} | grep 'interval duration' | grep "A positive number with the unit symbol - 's', 'm', 'h'"
+}
+
 @test "Adding consul_exporter to monitoring" {
   run sudo pmm-admin add external:service consul-exporter --service-port=9107
   echo "$output"
