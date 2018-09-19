@@ -469,8 +469,8 @@ function async_rpl_test(){
         echo "keyring_file_data=$node/keyring" >> ${PXC_BASEDIR}/ps${i}.cnf
       fi
   	  if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-        echo "early-plugin-load=\"keyring_vault=keyring_vault.so\"" >> ${PXC_BASEDIR}/n${i}.cnf
-        echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PXC_BASEDIR}/n${i}.cnf
+        echo "early-plugin-load=\"keyring_vault=keyring_vault.so\"" >> ${PXC_BASEDIR}/ps${i}.cnf
+        echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PXC_BASEDIR}/ps${i}.cnf
       fi
 
       ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
@@ -758,9 +758,8 @@ function async_rpl_test(){
 	LADDR="$ADDR:$(( MASTER_HOST_PORT + 8 ))"
     echo "Stopping PXC node1 for shuffle test"
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown > /dev/null 2>&1
-
+    sleep 20
     echo "Start PXC node2 for shuffle test"
-
     ${PXC_BASEDIR}/bin/mysqld --defaults-file=${PXC_BASEDIR}/n2.cnf $STARTUP_OPTION > ${WORKDIR}/logs/node2.err 2>&1 &
 
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
