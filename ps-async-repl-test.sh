@@ -10,13 +10,22 @@ usage () {
   echo "  -s, --storage-engine              Specify mysql server storage engine"
   echo "  -b, --build-number                Specify work build directory"
   echo "  -k, --keyring-plugin=[file|vault] Specify which keyring plugin to use(default keyring-file)"
+  echo "  -t, --testcase=<testcases|all>    Run only following comma-separated list of testcases"
+  echo "                                      node1_master_test"
+  echo "                                      node1_slave_test"
+  echo "                                      node2_slave_test"
+  echo "                                      pxc_master_slave_shuffle_test"
+  echo "                                      pxc_msr_test"
+  echo "                                      pxc_mtr_test"
+  echo "                                    If you specify 'all', the script will execute all testcases"
+  echo ""
   echo "  -e, --with-encryption              Run the script with encryption feature"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:s:k:eh --longoptions=workdir:,storage-engine:,build-number:,keyring-plugin:,with-encryption,help \
+  go_out="$(getopt --options=w:b:s:k:t:eh --longoptions=workdir:,storage-engine:,build-number:,keyring-plugin:,testcase:,with-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -61,6 +70,10 @@ do
       exit 1
     fi
     ;;
+    -t | --testcase )
+    export TESTCASE="$2"
+	shift 2
+	;;
     -e | --with-encryption )
     shift
     ENCRYPTION=1
@@ -72,6 +85,34 @@ do
   esac
 done
 
+#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+normalize_version(){
+  local major=0
+  local minor=0
+  local patch=0
+  
+  # Only parses purely numeric version numbers, 1.2.3
+  # Everything after the first three values are ignored
+  if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    patch=${BASH_REMATCH[3]}
+  fi
+  printf %02d%02d%02d $major $minor $patch
+}
+
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+check_for_version()
+{
+  local local_version_str="$( normalize_version $1 )"
+  local required_version_str="$( normalize_version $2 )"
+  
+  if [[ "$local_version_str" < "$required_version_str" ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
 
 # generic variables
 if [[ -z "$WORKDIR" ]]; then
@@ -84,6 +125,12 @@ fi
 
 if [[ -z "$KEYRING_PLUGIN" ]]; then
   export KEYRING_PLUGIN="file"
+fi
+
+if [[ ! -z "$TESTCASE" ]]; then
+  IFS=', ' read -r -a TC_ARRAY <<< "$TESTCASE"
+else
+  TC_ARRAY=(all)
 fi
 
 # User Configurable Variables
@@ -142,20 +189,20 @@ echoit(){
   echo "[$(date +'%T')] $1"
   if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/ps_async_test.log; fi
 }
-if [[ "$KEYRING_PLUGIN" == "file" ]]; then
-  MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON"
-elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-  echoit "Setting up vault server"
-  mkdir $WORKDIR/vault
-  rm -rf $WORKDIR/vault/*
-  killall vault
-  echoit "********************************************************************************************"
-  ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
-  echoit "********************************************************************************************"
-  MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
-fi
 
 if [ "$ENCRYPTION" == 1 ];then
+  if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+    MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON"
+  elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+    echoit "Setting up vault server"
+    mkdir $WORKDIR/vault
+    rm -rf $WORKDIR/vault/*
+    killall vault
+    echoit "********************************************************************************************"
+    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
+    echoit "********************************************************************************************"
+    MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
+  fi
   MYEXTRA_ENCRYPTION=" --innodb_parallel_dblwr_encrypt=ON --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
 fi
 
@@ -221,11 +268,13 @@ sysbench_run(){
   fi
 }
 
+
+MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 #mysql install db check
-if [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure  ${MYEXTRA_KEYRING} --basedir=${PS_BASEDIR}"
-elif [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
+else
+  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure  ${MYEXTRA_KEYRING} --basedir=${PS_BASEDIR}"
 fi
 
 echoit "Setting PS Port"
@@ -266,7 +315,7 @@ function async_rpl_test(){
       echoit "Starting independent PS node${i}.."
       node="${WORKDIR}/psnode${i}"
       rm -rf $node
-      if [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node
       fi
 
@@ -803,11 +852,33 @@ function async_rpl_test(){
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
-  master_slave_test
-  master_multi_slave_test
-  master_master_test
-  msr_test
-  mtr_test
+
+  if [[ ! " ${TC_ARRAY[@]} " =~ " all " ]]; then
+    for i in "${TC_ARRAY[@]}"; do
+      if [[ "$i" == "master_slave_test" ]]; then
+  	    master_slave_test
+  	  elif [[ "$i" == "master_multi_slave_test" ]]; then
+  	    master_multi_slave_test
+  	  elif [[ "$i" == "master_master_test" ]]; then
+  	    master_master_test
+  	  elif [[ "$i" == "msr_test" ]]; then
+        if check_for_version $MYSQL_VERSION "5.7.0" ; then 
+          msr_test
+        fi
+      elif [[ "$i" == "mtr_test" ]]; then
+  	   mtr_test
+      fi
+    done
+  else
+    master_slave_test
+    master_multi_slave_test
+    master_master_test
+    msr_test
+    if check_for_version $MYSQL_VERSION "5.7.0" ; then 
+      msr_test
+    fi
+    mtr_test
+  fi  
 }
 
 async_rpl_test
