@@ -122,14 +122,24 @@ Item_field..val_time_temporal                             ## https://bugs.mysql.
 Locked_tables_list..unlock_locked_tables                  ## https://bugs.mysql.com/bug.php?id=92185
 trx0trx.h.1326.trx->in_depth > 0                          ## https://bugs.mysql.com/bug.php?id=92186
 TEXT=.level <= 50.$                                       ## https://bugs.mysql.com/bug.php?id=92187
-dict0dict.cc.5743                                         ## https://bugs.mysql.com/bug.php?id=92188 (debug build)
-void dd_write_table<dd..Table>                            ## https://bugs.mysql.com/bug.php?id=92188 (optimized build)
 uint4korr.kp1                                             ## https://bugs.mysql.com/bug.php?id=92448
-MYSQL_BIN_LOG..handle_binlog_flush_or_sync_error          ## https://bugs.mysql.com/bug.php?id=92451 (change string to a more specific version if not fixed before 1/1/2019!)
+MYSQL_BIN_LOG..handle_binlog_flush_or_sync_error          ## https://bugs.mysql.com/bug.php?id=92451 (change string to a more specific version if not fixed before 1/1/2019, and test without for PS8 GA!)
 TEXT=.acl_reload.$                                        ## https://bugs.mysql.com/bug.php?id=92433 (and dup 92452)
 std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >..find  ## https://bugs.mysql.com/bug.php?id=90544 # Optimized build
 std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator  ## https://bugs.mysql.com/bug.php?id=91988
 std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > >, Malloc_allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > > >, std..__detail.._Select  ## https://bugs.mysql.com/bug.php?id=92456
+TEXT=.filesort.$                                          ## https://bugs.mysql.com/bug.php?id=92487
+TEXT=.thd_report_innodb_stat.$                            ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
+ZN10DsMrr_impl11dsmrr_closeEv                             ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
+innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_ro_transaction_active   ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
+index .= nullptr                                          ## https://jira.percona.com/browse/PS-4884 (PS 8.0.12, dbg)
+void dd_write_table<dd..Table>                            ## https://jira.percona.com/browse/PS-4884 (PS 8.0.12, opt) (note that this string is also the one for likely unrelated MS 92188)
+void dd_write_table<dd..Table>                            ## https://bugs.mysql.com/bug.php?id=92188 (MS/PS 8.0.12, opt) (note that this string is also the one for likely unrelated PS-4884)
+dict0dict.cc.5743                                         ## https://bugs.mysql.com/bug.php?id=92188 (MS 8.0.12, dbg)
+dict0dict.cc.5775                                         ## https://bugs.mysql.com/bug.php?id=92188 (PS 8.0.12, dbg)
+m_form->s->row_type == m_create_info->row_type            ## https://jira.percona.com/browse/PS-4885 
+dd_table_has_instant_cols                                 ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
+old_dd_tab .= __null                                      ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
