@@ -162,22 +162,7 @@ if [ -z ${TCOUNT} ]; then
   TCOUNT=16
 fi
 
-if [ "$ENGINE" == "innodb" ]; then
-  MYEXTRA_ENGINE="--default-storage-engine=INNODB"
-  SE_STARTUP=""
-elif [ "$ENGINE" == "rocksdb" ]; then
-  MYEXTRA_ENGINE="--plugin-load-add=rocksdb=ha_rocksdb.so  --init-file=${SCRIPT_PWD}/MyRocks.sql --default-storage-engine=ROCKSDB "
-  SE_STARTUP="--rocksdb-flush-log-at-trx-commit=2 --rocksdb-wal-recovery-mode=2"
-  #Check MySQL utilities
-  if [[ ! -e $(which mysqldbcompare 2> /dev/null) ]] ;then
-    echo "ERROR! mysql utilities are currently not installed. Please install mysql utilities. Terminating"
-    exit 1
-  fi
-elif [ "$ENGINE" == "tokudb" ]; then
-  MYEXTRA_ENGINE=" --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/TokuDB.sql --default-storage-engine=TokuDB"
-  SE_STARTUP=""
-else
-  MYEXTRA_ENGINE=""
+if [ -z "$ENGINE" ]; then
   ENGINE="INNODB"
 fi
 
@@ -189,11 +174,15 @@ echoit(){
   echo "[$(date +'%T')] $1"
   if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/ps_async_test.log; fi
 }
+if [ "$ENGINE" == "rocksdb" ]; then
+  if [[ ! -e $(which mysqldbcompare 2> /dev/null) ]] ;then
+    echo "ERROR! mysql utilities are currently not installed. Please install mysql utilities. Terminating"
+    exit 1
+  fi
+fi
 
 if [ "$ENCRYPTION" == 1 ];then
-  if [[ "$KEYRING_PLUGIN" == "file" ]]; then
-    MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON"
-  elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+  if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
     echoit "Setting up vault server"
     mkdir $WORKDIR/vault
     rm -rf $WORKDIR/vault/*
@@ -201,9 +190,7 @@ if [ "$ENCRYPTION" == 1 ];then
     echoit "********************************************************************************************"
     ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
     echoit "********************************************************************************************"
-    MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
   fi
-  MYEXTRA_ENCRYPTION=" --innodb_parallel_dblwr_encrypt=ON --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
 fi
 
 #Kill existing mysqld process
@@ -295,11 +282,6 @@ check_cmd(){
 #Async replication test
 function async_rpl_test(){
   MYEXTRA_CHECK=$1
-  if [ "$MYEXTRA_CHECK" == "GTID" ]; then
-    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --gtid_mode=ON --enforce_gtid_consistency=ON  --sync-binlog=0  --binlog-stmt-cache-size=1M"
-  else
-    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --sync-binlog=0  --binlog-stmt-cache-size=1M"
-  fi
   function ps_start(){
     INTANCES="$1"
     if [ -z $INTANCES ];then
@@ -318,18 +300,67 @@ function async_rpl_test(){
       if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node
       fi
+      # Creating PS configuration file
+      rm -rf ${PS_BASEDIR}/n${i}.cnf
+      echo "[mysqld]" > ${PS_BASEDIR}/n${i}.cnf
+      echo "basedir=${PS_BASEDIR}" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "datadir=$node" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "log-error=$WORKDIR/logs/psnode${i}.err" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "socket=/tmp/ps${i}.sock" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "port=$RBASE1" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "innodb_file_per_table" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "log-bin=mysql-bin" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "binlog-format=ROW" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "log-slave-updates" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "relay_log_recovery=1" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "binlog-stmt-cache-size=1M">> ${PS_BASEDIR}/n${i}.cnf
+      echo "sync-binlog=0">> ${PS_BASEDIR}/n${i}.cnf
+      echo "master-info-repository=TABLE" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "relay-log-info-repository=TABLE" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "core-file" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "log-output=none" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "server-id=10${i}" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "report-host=$ADDR" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "report-port=$RBASE1" >> ${PS_BASEDIR}/n${i}.cnf
+      if [ "$ENGINE" == "innodb" ]; then
+        echo "default-storage-engine=INNODB" >> ${PS_BASEDIR}/n${i}.cnf
+      elif [ "$ENGINE" == "rocksdb" ]; then
+        echo "plugin-load-add=rocksdb=ha_rocksdb.so" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "init-file=${SCRIPT_PWD}/MyRocks.sql" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "default-storage-engine=ROCKSDB" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "rocksdb-flush-log-at-trx-commit=2" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "rocksdb-wal-recovery-mode=2" >> ${PS_BASEDIR}/n${i}.cnf
+      elif [ "$ENGINE" == "tokudb" ]; then
+        echo "plugin-load-add=tokudb=ha_tokudb.so" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "tokudb-check-jemalloc=0" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "init-file=${SCRIPT_PWD}/TokuDB.sql" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "default-storage-engine=TokuDB" >> ${PS_BASEDIR}/n${i}.cnf
+      fi
+      if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
+        echo "gtid-mode=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "enforce-gtid-consistency" >> ${PS_BASEDIR}/n${i}.cnf
+      fi
+      if [[ "$ENCRYPTION" == 1 ]];then
+        echo "encrypt_binlog" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "master_verify_checksum=on" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "binlog_checksum=crc32" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "innodb_temp_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "encrypt-tmp-files=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "innodb_encrypt_tables=ON" >> ${PS_BASEDIR}/n${i}.cnf
+  	    if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+          echo "early-plugin-load=keyring_file.so" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "keyring_file_data=$node/keyring" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "innodb_sys_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
+  	    elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+          echo "early-plugin-load=keyring_vault.so" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "innodb_sys_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        fi
+      fi
 
       ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
 
-      ${PS_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-       --basedir=${PS_BASEDIR} $STARTUP_OPTION $MYEXTRA_ENGINE $SE_STARTUP --datadir=$node \
-       --innodb_file_per_table $MYEXTRA_KEYRING $MYEXTRA_ENCRYPTION \
-       --binlog-format=ROW --server-id=20${i} $MYEXTRA \
-       --innodb_flush_method=O_DIRECT --core-file --loose-new \
-       --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= \
-       --log-error=$WORKDIR/logs/psnode${i}.err --report-host=$ADDR --report-port=$RBASE1 \
-       --socket=/tmp/ps${i}.sock  --log-output=none \
-       --port=$RBASE1 --master-info-repository=TABLE --relay-log-info-repository=TABLE > $WORKDIR/logs/psnode${i}.err 2>&1 &
+      ${PS_BASEDIR}/bin/mysqld --defaults-file=${PS_BASEDIR}/n${i}.cnf > $WORKDIR/logs/psnode${i}.err 2>&1 &
 
       for X in $(seq 0 ${PS_START_TIMEOUT}); do
         sleep 1
