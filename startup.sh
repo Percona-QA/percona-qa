@@ -63,12 +63,13 @@ elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
 fi
 
 # Setup scritps
+rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb wipe_group_replication
+BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | all | all_stbe | all_no_cl | prepare | run | measure | gdb | myrocks_tokudb_init"
+GRP_RPL_SCRIPTS="start_group_replication (and stop_group_replication is created dynamically on group replication startup)"
 if [[ $GRP_RPL -eq 1 ]];then
-  echo "Adding scripts: start | start_group_replication | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | gdb | myrocks_tokudb_init"
-  rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl prepare run measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb wipe_group_replication
+  echo "Adding scripts: ${BASIC_SCRIPTS} | ${GRP_RPL_SCRIPTS}"
 else
-  echo "Adding scripts: start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | all | prepare | run | measure | gdb | myrocks_tokudb_init"
-  rm -f start start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl prepare run measure myrocks_tokudb_init gdb pmm_os_agent pmm_mysql_agent
+  echo "Adding scripts: ${BASIC_SCRIPTS}"
 fi
 
 #GR startup scripts
@@ -359,9 +360,11 @@ echo "rm -f log/master.*" >> init
 
 echo 'MYEXTRA_OPT="$*"' > all
 echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};./cl" >> all
+echo 'MYEXTRA_OPT="$*"' > all_stbe
+echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON \${MYEXTRA_OPT}" >> all_stbe  # './all_stbe' is './all' with system tablespace encryption
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
 echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
-chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_no_cl prepare run measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
+chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_stbe all_no_cl prepare run measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init

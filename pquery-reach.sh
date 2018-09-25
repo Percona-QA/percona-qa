@@ -164,7 +164,19 @@ while true; do
     echoit "Found bug at ${PQR_WORKDIR}/1, preparing reducer for it using pquery-prep-red.sh..."
     cd ${PQR_WORKDIR}
     ${SCRIPT_PWD}/pquery-prep-red.sh reach | sed "s|^|[$(date +'%T')] === |" | tee -a ${PQUERY_REACH_LOG}
-    echoit "Filtering known bugs using pquery-clean-known.sh..."
+    sleep 1 && sync
+    echoit "Filtering known bugs using pquery-clean-known.sh (1st attempt)..."
+    ${SCRIPT_PWD}/pquery-clean-known.sh reach | sed "s|^|[$(date +'%T')] === |" | tee -a ${PQUERY_REACH_LOG}
+    # The repeat of pquery-clean-known.sh is a hack workaround. There is a bug somewhere which causes pquery-clean-known.sh to do;
+    # [14:19:11] === Filtering known bugs using pquery-clean-known.sh...
+    # [14:20:46] === New, and specific (MODE=3) bug found! Reducing the same...
+    # Note the very long run time (1m35s) which should be a few seconds at max + the fact that it does not find a bug already present
+    # This currently seems to happen only for this string; 'm_form->s->row_type == m_create_info->row_type' and perhaps a few others
+    # Another one it happens for (perhaps it is related to having a '=' in the filter string?) is 'old_dd_tab .= __null'
+    # When executed manually on a directory later, 'pquery-clean-known.sh reach' works perfectly fine. This is a complex bug
+    # Already checked that the path is correct, and also noted that other bugs earlier in the log get cleaned up just fine.
+    sleep 1 && sync
+    echoit "Filtering known bugs using pquery-clean-known.sh (2nd attempt)..."
     ${SCRIPT_PWD}/pquery-clean-known.sh reach | sed "s|^|[$(date +'%T')] === |" | tee -a ${PQUERY_REACH_LOG}
     if [ -d ${PQR_WORKDIR}/1 ]; then
       if [ -r ${PQR_WORKDIR}/reducer1.sh ]; then

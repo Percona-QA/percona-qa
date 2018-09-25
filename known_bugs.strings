@@ -72,7 +72,8 @@ has_error == thd->get_stmt_da                            ## https://bugs.mysql.c
 .table->in_use->is_error                                 ## https://bugs.mysql.com/bug.php?id=88274
 next_insert_id == 0                                      ## https://bugs.mysql.com/bug.php?id=88276
 thd->is_system_thread                                    ## https://bugs.mysql.com/bug.php?id=88277
-#num_codepoints >= scanner.get_char_index       ## Fixed ## https://bugs.mysql.com/bug.php?id=88278
+#num_codepoints >= scanner.get_char_index       ## Fixed ## https://bugs.mysql.com/bug.php?id=88278 (Fixed in 8.0.4)
+num_codepoints >= scanner.get_char_index       ## Fixed ## https://bugs.mysql.com/bug.php?id=88278 (New finding in 8.0.12)
 len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. .col->len == 0 .. col->mtype == 1.  ## https://bugs.mysql.com/bug.php?id=88279
 dict_sdi_set                                             ## https://bugs.mysql.com/bug.php?id=88280
 ha_myisammrg..detach_children                            ## https://bugs.mysql.com/bug.php?id=88281
@@ -140,6 +141,7 @@ dict0dict.cc.5775                                         ## https://bugs.mysql.
 m_form->s->row_type == m_create_info->row_type            ## https://jira.percona.com/browse/PS-4885 
 dd_table_has_instant_cols                                 ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
 old_dd_tab .= __null                                      ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
+TABLE_LIST..prepare_security                              ## https://bugs.mysql.com/bug.php?id=92539
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
@@ -694,7 +696,8 @@ Handlerton. error == 0                                                          
 host_length <= 60                                                                       ## https://bugs.mysql.com/bug.php?id=74678
 innodb_trx_id == 0 .. innodb_trx_id == trx_id                                           ## https://jira.percona.com/browse/PS-4806
 .table .. .table->in_use .. table->in_use == _current_thd                               ## https://jira.percona.com/browse/PS-4786
-#.innodb_was_used .. innodb_slow_log_enabled                                   ## Fixed ## https://jira.percona.com/browse/PS-4788
+#.innodb_was_used .. innodb_slow_log_enabled                                   ## Fixed ## https://jira.percona.com/browse/PS-4788 (Fixed in 5.7)
+.innodb_was_used .. innodb_slow_log_enabled                                             ## https://jira.percona.com/browse/PS-4788 (Seen again in PS 8.0.12)
 #Z33row_mysql_prebuilt_free_blob_heapP14row_prebuilt_t                         ## Fixed ## https://jira.percona.com/browse/PS-4788
 #row0mysql.cc line 287                                                         ## Fixed ## https://jira.percona.com/browse/PS-4788
 #ZN3THD16mark_innodb_usedEy                                                    ## Fixed ## https://jira.percona.com/browse/PS-4788
