@@ -1,6 +1,10 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 # This will help us to test replication features
+# Master-Slave replication test
+# Master-Master replication test
+# Multi Source replication test
+# Multi thread replication test
 
 # Dispay script usage details
 usage () {
@@ -11,12 +15,12 @@ usage () {
   echo "  -b, --build-number                Specify work build directory"
   echo "  -k, --keyring-plugin=[file|vault] Specify which keyring plugin to use(default keyring-file)"
   echo "  -t, --testcase=<testcases|all>    Run only following comma-separated list of testcases"
-  echo "                                      node1_master_test"
-  echo "                                      node1_slave_test"
-  echo "                                      node2_slave_test"
-  echo "                                      pxc_master_slave_shuffle_test"
-  echo "                                      pxc_msr_test"
-  echo "                                      pxc_mtr_test"
+  echo "                                      master_slave_test"
+  echo "                                      master_multi_slave_test"
+  echo "                                      master_master_test"
+  echo "                                      msr_test"
+  echo "                                      mtr_test"
+  echo "                                      mgr_test"
   echo "                                    If you specify 'all', the script will execute all testcases"
   echo ""
   echo "  -e, --with-encryption              Run the script with encryption feature"
@@ -284,8 +288,19 @@ function async_rpl_test(){
   MYEXTRA_CHECK=$1
   function ps_start(){
     INTANCES="$1"
+    IS_GR="$2"
     if [ -z $INTANCES ];then
       INTANCES=1
+    fi
+    if [[ ! -z $IS_GR ]]; then
+      if [[ "$ENCRYPTION" == 1 ]];then
+        echoit "ERROR: Group Replication do not support binary log encryption due to binlog_checksum (PS-4819). Terminating!"
+        exit 1
+      fi
+      GD_PORT1="$(( (RPORT + ( 35 * 1 )) + 10 ))"
+      GD_PORT2="$(( (RPORT + ( 35 * 2 )) + 10 ))"
+      GD_PORT3="$(( (RPORT + ( 35 * 3 )) + 10 ))"
+	  GD_PORTS=(0 $GD_PORT1 $GD_PORT2 $GD_PORT3)
     fi
     for i in `seq 1 $INTANCES`;do
       STARTUP_OPTION="$2"
@@ -336,6 +351,17 @@ function async_rpl_test(){
         echo "init-file=${SCRIPT_PWD}/TokuDB.sql" >> ${PS_BASEDIR}/n${i}.cnf
         echo "default-storage-engine=TokuDB" >> ${PS_BASEDIR}/n${i}.cnf
       fi
+      if [[ ! -z $IS_GR ]]; then
+        echo "binlog_checksum=none" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "plugin_load=group_replication.so" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "transaction_write_set_extraction=XXHASH64" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_group_name='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_start_on_boot=OFF" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_local_address='$ADDR:${GD_PORTS[${i}]}'" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_group_seeds='$ADDR:${GD_PORTS[1]},$ADDR:${GD_PORTS[2]},$ADDR:${GD_PORTS[3]}'" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_bootstrap_group= OFF" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_recovery_get_public_key = ON" >> ${PS_BASEDIR}/n${i}.cnf
+      fi
       if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
         echo "gtid-mode=ON" >> ${PS_BASEDIR}/n${i}.cnf
         echo "enforce-gtid-consistency" >> ${PS_BASEDIR}/n${i}.cnf
@@ -373,6 +399,13 @@ function async_rpl_test(){
           exit 1
           fi
       done
+      if [[ ! -z $IS_GR ]]; then
+        if [[ $i -eq 1 ]]; then
+          ${PS_BASEDIR}/bin/mysql -uroot -S/tmp/ps${i}.sock -e"CREATE USER rpl_user@'%'  IDENTIFIED BY 'rpl_pass';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%';CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';RESET MASTER;SET GLOBAL group_replication_bootstrap_group=ON;START GROUP_REPLICATION;SET GLOBAL group_replication_bootstrap_group=OFF;"
+        else
+          ${PS_BASEDIR}/bin/mysql -uroot -S/tmp/ps${i}.sock -e"CREATE USER rpl_user@'%'  IDENTIFIED BY 'rpl_pass';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%';CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';RESET MASTER;START GROUP_REPLICATION;"
+        fi
+      fi
     done
   }
 
@@ -429,7 +462,7 @@ function async_rpl_test(){
     ERROR_LOG=$3
     SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     COUNTER=0
-    while [ $SB_MASTER -gt 0 ]; do
+    while [[ $SB_MASTER -gt 0 ]]; do
       SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
         ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" > $WORKDIR/logs/slave_status_psnode1.log
@@ -884,6 +917,29 @@ function async_rpl_test(){
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
 
+  function mgr_test(){
+    echoit "********************$MYEXTRA_CHECK mysql group replication test ************************"
+    #PS server initialization
+    echoit "PS server initialization for group replication test"
+    ps_start 3 GR
+
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e"drop database if exists sbtest_gr_db;create database sbtest_gr_db;"
+    echoit "Running sysbench data load"
+    async_sysbench_load sbtest_gr_db "/tmp/ps1.sock"
+    async_sysbench_insert_run sbtest_gr_db "/tmp/ps1.sock"
+    sleep 5
+
+    if [ "$ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run sbtest_gr_db "/tmp/ps1.sock"
+    fi
+    sleep 10
+
+    #$PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
+    #$PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
+    #$PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
+  }
+
   if [[ ! " ${TC_ARRAY[@]} " =~ " all " ]]; then
     for i in "${TC_ARRAY[@]}"; do
       if [[ "$i" == "master_slave_test" ]]; then
@@ -898,17 +954,23 @@ function async_rpl_test(){
         fi
       elif [[ "$i" == "mtr_test" ]]; then
   	   mtr_test
+      elif [[ "$i" == "mgr_test" ]]; then
+       if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
+         mgr_test
+       fi
       fi
     done
   else
     master_slave_test
     master_multi_slave_test
     master_master_test
-    msr_test
     if check_for_version $MYSQL_VERSION "5.7.0" ; then 
       msr_test
     fi
     mtr_test
+    if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
+      mgr_test
+    fi
   fi  
 }
 
