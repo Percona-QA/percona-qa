@@ -16,6 +16,7 @@ if [ $(ls -ld /dev/shm/* | wc -l) -eq 0 ]; then
   exit 0
 else
   for DIR in $(ls -ld /dev/shm/* | sed 's|^.*/dev/shm|/dev/shm|'); do
+    STORE_COUNT_FOUND_AND_DEL=${COUNT_FOUND_AND_DEL}
     if [ -d ${DIR} ]; then  # Ensure it's a directory (avoids deleting pquery-reach.log for example)
       if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
         sync; sleep 0.3  # Small wait, then recheck (to avoid missed ps output)
@@ -75,9 +76,10 @@ else
           fi
         fi
       fi
-    else
-      COUNT_FOUND_AND_NOT_DEL=$[ ${COUNT_FOUND_AND_NOT_DEL} + 1 ]
     fi
+    if [ ${STORE_COUNT_FOUND_AND_DEL} -eq ${COUNT_FOUND_AND_DEL} ]; then  # A directory was found but not deleted
+      COUNT_FOUND_AND_NOT_DEL=$[ ${COUNT_FOUND_AND_NOT_DEL} + 1 ]  
+    fi; STORE_COUNT_FOUND_AND_DEL=
   done
   if [ ${COUNT_FOUND_AND_NOT_DEL} -ge 1 -a ${COUNT_FOUND_AND_DEL} -eq 0 ]; then
     echo "> Though $(ls -ld /dev/shm/* | wc -l) tmpfs directories were found on /dev/shm, they are all in use. Nothing was deleted."

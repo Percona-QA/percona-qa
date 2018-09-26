@@ -1,6 +1,6 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
-# With thanks to http://unix.stackexchange.com/questions/47271/prevent-gnu-screen-from-terminating-session-once-executed-script-ends (jw013)
+# With thanks to https://unix.stackexchange.com/q/47271 (jw013)
 
 # User variables
 #BASEDIR=/sda/PS010918-percona-server-8.0.12-1-linux-x86_64-opt

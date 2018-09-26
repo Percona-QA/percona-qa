@@ -20,7 +20,7 @@
 Item_func_internal_get_comment_or_error..val_str         ## https://bugs.mysql.com/bug.php?id=90518 # Optimized build
 adjust_fk_parents                                        ## https://bugs.mysql.com/bug.php?id=90520 # Optimized build
 .trx->declared_to_be_inside_innodb                       ## https://bugs.mysql.com/bug.php?id=90521 # Optimized build
-.n . .n - 1.. == 0                                       ## https://bugs.mysql.com/bug.php?id=90522 # Optimized build
+TEXT=..n . .n - 1.. == 0.$                               ## https://bugs.mysql.com/bug.php?id=90522 # Optimized build
 ut0link_buf.h.191..capacity . .capacity - 1.. == 0       ## https://bugs.mysql.com/bug.php?id=90523 # Optimized build
 TEXT=.write_max_size > 0.$                               ## https://bugs.mysql.com/bug.php?id=90526 # Optimized build
 partition_info..add_named_partition                      ## https://bugs.mysql.com/bug.php?id=90542 # Optimized build
@@ -73,7 +73,7 @@ has_error == thd->get_stmt_da                            ## https://bugs.mysql.c
 next_insert_id == 0                                      ## https://bugs.mysql.com/bug.php?id=88276
 thd->is_system_thread                                    ## https://bugs.mysql.com/bug.php?id=88277
 #num_codepoints >= scanner.get_char_index       ## Fixed ## https://bugs.mysql.com/bug.php?id=88278 (Fixed in 8.0.4)
-num_codepoints >= scanner.get_char_index       ## Fixed ## https://bugs.mysql.com/bug.php?id=88278 (New finding in 8.0.12)
+num_codepoints >= scanner.get_char_index                 ## https://bugs.mysql.com/bug.php?id=92537 and 92569 (New finding in 8.0.12)
 len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. .col->len == 0 .. col->mtype == 1.  ## https://bugs.mysql.com/bug.php?id=88279
 dict_sdi_set                                             ## https://bugs.mysql.com/bug.php?id=88280
 ha_myisammrg..detach_children                            ## https://bugs.mysql.com/bug.php?id=88281
@@ -142,6 +142,10 @@ m_form->s->row_type == m_create_info->row_type            ## https://jira.percon
 dd_table_has_instant_cols                                 ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
 old_dd_tab .= __null                                      ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
 TABLE_LIST..prepare_security                              ## https://bugs.mysql.com/bug.php?id=92539
+base_list_iterator..next_fast                             ## https://bugs.mysql.com/bug.php?id=92539
+TEXT=.THD..thread_id.$                                    ## https://jira.percona.com/browse/PS-4896
+void dd_write_table<dd..Partition>                        ## https://jira.percona.com/browse/PS-4892 (opt expand_fast_index_creation)
+m_prebuilt->table->id == old_part->se_private_id..        ## https://jira.percona.com/browse/PS-4892 (dbg expand_fast_index_creation)
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
@@ -698,6 +702,7 @@ innodb_trx_id == 0 .. innodb_trx_id == trx_id                                   
 .table .. .table->in_use .. table->in_use == _current_thd                               ## https://jira.percona.com/browse/PS-4786
 #.innodb_was_used .. innodb_slow_log_enabled                                   ## Fixed ## https://jira.percona.com/browse/PS-4788 (Fixed in 5.7)
 .innodb_was_used .. innodb_slow_log_enabled                                             ## https://jira.percona.com/browse/PS-4788 (Seen again in PS 8.0.12)
+THD..mark_innodb_used                                                                   ## https://jira.percona.com/browse/PS-4788 (Seen again in PS 8.0.12)
 #Z33row_mysql_prebuilt_free_blob_heapP14row_prebuilt_t                         ## Fixed ## https://jira.percona.com/browse/PS-4788
 #row0mysql.cc line 287                                                         ## Fixed ## https://jira.percona.com/browse/PS-4788
 #ZN3THD16mark_innodb_usedEy                                                    ## Fixed ## https://jira.percona.com/browse/PS-4788
