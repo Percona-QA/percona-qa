@@ -146,6 +146,7 @@ base_list_iterator..next_fast                             ## https://bugs.mysql.
 TEXT=.THD..thread_id.$                                    ## https://jira.percona.com/browse/PS-4896
 void dd_write_table<dd..Partition>                        ## https://jira.percona.com/browse/PS-4892 (opt expand_fast_index_creation)
 m_prebuilt->table->id == old_part->se_private_id..        ## https://jira.percona.com/browse/PS-4892 (dbg expand_fast_index_creation)
+valid_flags == m_flags                                    ## https://jira.percona.com/browse/PS-4898 (INSTALL PLUGIN auth_pam SONAME 'auth_pam.so';)
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
