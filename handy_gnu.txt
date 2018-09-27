@@ -153,6 +153,8 @@
   sudo apt-get install pwgen; pwgen -ycns 100 1  # 100 chars, one result
 # Find out what debugger and potentially what OS was used to compile mysqld, show GCC version, with thanks @DavidB
   objdump -s --section .comment bin/mysqld  # Then use a site like https://packages.debian.org/search?keywords=gcc-{version} etc.
+# Find out the exit code of various elements used in a Linux pipeline  # With thanks, https://unix.stackexchange.com/a/14276/241016
+  true | false; echo "${PIPESTATUS[0]} ${PIPESTATUS[1]}"  # Result: 0 1: 0 (correct exit code of true) 1 (correct exit code of false)
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging

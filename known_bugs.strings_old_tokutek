@@ -1,0 +1,57 @@
+Handlerton. share->file == NULL                                   ## PS5.7 # https://tokutek.atlassian.net/browse/FT-725
+ZN6tokudb6memory4freeEPv                                          ## PS5.7 $ https://tokutek.atlassian.net/browse/FT-727
+#Handlerton. error == 0                                                ## https://tokutek.atlassian.net/browse/DB-927 # Fixed 5.7 RC2
+#Handlerton. kc_info->cp_info.keynr. == NULL                           ## https://tokutek.atlassian.net/browse/DB-917 # Fixed 5.7 RC2
+Handlerton. 0                                                          ## https://tokutek.atlassian.net/browse/DB-1028
+Handlerton: ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
+Handlerton. ctx->alter_txn == trx->stmt                                ## https://tokutek.atlassian.net/browse/DB-936
+Handlerton. next_key_part < _rec_per_keys                              ## https://tokutek.atlassian.net/browse/DB-944
+Handlerton. db .= NULL                                                 ## https://tokutek.atlassian.net/browse/DB-945 
+mh->m_magic == 1234                                                    ## https://tokutek.atlassian.net/browse/DB-920  
+#used_keyparts <= key->user_defined_key_parts                          ## https://tokutek.atlassian.net/browse/DB-926 # Fixed 5.7 RC2
+ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb    ## https://tokutek.atlassian.net/browse/DB-921
+Z26toku_xids_can_create_childP6XIDS_S                                  ## https://tokutek.atlassian.net/browse/DB-940
+Z17mysql_lock_tablesP3THDPP5TABLEmj                                    ## https://tokutek.atlassian.net/browse/DB-941
+join == __null                                                         ## https://tokutek.atlassian.net/browse/DB-985
+part_id < m_tot_part s                                                 ## https://tokutek.atlassian.net/browse/DB-983
+.tables .. thd->lex->is_query_tables_locked                                             ## https://tokutek.atlassian.net/browse/DB-1027
+#db_txn_struct_i.txn->parent                                                   ## Fixed ## https://tokutek.atlassian.net/browse/DB-761 (fixed in 5.6.23/Tk7.5.6)
+field_types == 0.*MYSQL_TYPE_GEOMETRY                                                   ## https://tokutek.atlassian.net/browse/DB-1019
+ftnode->blocknum.b == blocknum.b                                                        ## https://tokutek.atlassian.net/browse/DB-852
+#Handlerton.*offset_start                                                               ## https://tokutek.atlassian.net/browse/DB-771 (Fixed tokudb-7.5.4)
+#Handlerton.*.share->kc_info.num_blobs == 0                                    ## Fixed ## https://tokutek.atlassian.net/browse/DB-811 (Fixed in tokudb-7.5.7)
+#Handlerton.*trx                                                               ## Fixed ## https://tokutek.atlassian.net/browse/DB-762 (Fixed tokudb-7.5.4)
+m_owner .= __null                                                                       ## https://tokutek.atlassian.net/browse/DB-1017
+m_num_writers == 1                                                                      ## https://tokutek.atlassian.net/browse/DB-852
+p->value_rwlock.users                                                                   ## https://tokutek.atlassian.net/browse/DB-826
+#txn..state..TOKUTXN_LIVE                                                      ## Fixed ## https://tokutek.atlassian.net/browse/DB-769 (fixed in 5.6.23/Tk7.5.6)
+#txn->child == __null                                                          ## Fixed ## https://tokutek.atlassian.net/browse/DB-810 (fixed in 5.6.23/Tk7.5.6)
+#txn->do_fsync_lsn.lsn == ZERO_LSN.lsn                                         ## Fixed ## https://tokutek.atlassian.net/browse/DB-763 (fixed in 5.6.23/Tk7.5.6)
+#txn->roll_info.num_rollentries == 0                                           ## Fixed ## https://tokutek.atlassian.net/browse/DB-764 (fixed in 5.6.23/Tk7.5.6)
+#Z11lock_tablesP3THDP10TABLE_LISTjj                                            ## Fixed ## https://tokutek.atlassian.net/browse/DB-767 (Fixed tokudb-7.5.4)
+Z12find_filenumRKP2ftS2_                                                                ## https://tokutek.atlassian.net/browse/DB-837
+#ZN12ha_partition15end_bulk_insertEv                                           ## Fixed ## https://tokutek.atlassian.net/browse/DB-805 (fixed in tokudb-7.5.6)
+ZN14cachefile_list9remove_cfEP9cachefile                                                ## https://tokutek.atlassian.net/browse/DB-858
+#Z17toku_loader_closeP13__toku_loader                                          ## Fixed ## https://tokutek.atlassian.net/browse/DB-806 (fixed tokudb-7.5.6)
+Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                         ## https://tokutek.atlassian.net/browse/DB-845
+Z19toku_drd_unsafe_setIhEvPT_S0_                                                        ## https://tokutek.atlassian.net/browse/DB-852
+#Z20ha_release_savepointP3THDP12st_savepoint                                   ## Fixed ## https://tokutek.atlassian.net/browse/DB-765 (fixed in 5.6.23/Tk7.5.6)
+#Z20ha_release_savepointP3THDP12st_savepoint                                   ## Fixed ## https://tokutek.atlassian.net/browse/DB-765 (fixed in 5.6.23/Tk7.5.6)
+#Z20toku_env_is_panickedP13__toku_db_env                                       ## Fixed ftm ## https://tokutek.atlassian.net/browse/DB-821 (fixed in tokudb-7.5.6)
+#Z21toku_txn_is_read_onlyP7tokutxn                                             ## Fixed ## https://tokutek.atlassian.net/browse/DB-822 (fixed in tokudb-7.5.6)
+#Z25toku_loader_create_loaderP13__toku_db_envP13__toku_db_txnPP13__toku_loaderP9__toku_dbiPS7_PjS9_jb  ## https://tokutek.atlassian.net/browse/DB-760 (Fixed PS 5.6.25)
+#Z26toku_xids_can_create_childP6XIDS_S                                         ## Fixed ## https://tokutek.atlassian.net/browse/DB-814 (fixed in tokudb-7.5.6)
+Z29toku_db_release_lt_key_rangesP13__toku_db_txnP17txn_lt_key_ranges                    ## https://tokutek.atlassian.net/browse/DB-840
+Z37toku_get_oldest_in_live_root_txn_listP7tokutxn                                       ## https://tokutek.atlassian.net/browse/DB-844
+Z9os_mallocm                                                                            ## https://tokutek.atlassian.net/browse/DB-839
+#ZN7handler18ha_end_bulk_insertEv                                              ## Fixed ## https://tokutek.atlassian.net/browse/DB-760  (fixed in ps-5.6.25)
+#ZN12ha_partition5extraE17ha_extra_function                                    ## Fixed ## https://tokutek.atlassian.net/browse/DB-766 (fixed in tokudb-7.5.4)
+#ZN13select_insert8send_eofEv                                                  ## Fixed ## https://tokutek.atlassian.net/browse/DB-806 (fixed in tokudb-7.5.6)
+#ZN14cachefile_list15add_cf_unlockedEP9cachefile                               ## Fixed ## https://tokutek.atlassian.net/browse/DB-812 (fixed in 5.6.23/Tk7.5.6)
+ZNK14user_var_entry13assert_lockedEv                                                    ## https://tokutek.atlassian.net/browse/DB-1018
+ZN16Partition_helper19handle_ordered_prevEPh                                            ## https://tokutek.atlassian.net/browse/DB-1025 (also see LP 1634708 and MS 83435)
+ZN18Locked_tables_list20unlock_locked_tablesEP3THD                                      ## https://tokutek.atlassian.net/browse/DB-768
+ZNK7evictor24unsafe_read_size_currentEv                                                 ## https://tokutek.atlassian.net/browse/DB-1034
+#TEXT=.r == 0.$                                                                         ## PS Bug #1511969 (verified), also see https://tokutek.atlassian.net/browse/DB-933 / DB-737
+TEXT=.r == 0.$                                                                          ## https://tokutek.atlassian.net/browse/DB-1039
+#TEXT=.r == 0.$                                                                         ## https://tokutek.atlassian.net/browse/FT-723 also see DB-737 (fixed in 5.6.23/Tk7.5.6) 

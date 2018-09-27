@@ -1,0 +1,1 @@
+find . | grep "log/master.err" | xargs -I{} bash -c "echo -n '{} > '; ~/ts {}"

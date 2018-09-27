@@ -99,6 +99,10 @@ process_.idx..state_ == Process..S_APPLYING .. process_.idx..state_ == Process..
 ZN6galera13ReplicatorSMM9param_setERKSsS2_                                               ## https://jira.percona.com/browse/PXC-2137
 srv0start.cc line 1374                                                                   ## https://jira.percona.com/browse/PXC-600
 info->get_rpl_info_handler                                                               ## https://jira.percona.com/browse/PXC-2235
+info->type == READ_CACHE .. info->type == WRITE_CACHE                                    ## https://jira.percona.com/browse/PXC-2244
+write_bytes > 0                                                                          ## https://jira.percona.com/browse/PXC-2247
+trx0trx.cc line 1498                                                                     ## https://jira.percona.com/browse/PXC-2248
+.connection->waiting                                                                     ## https://jira.percona.com/browse/PXC-2250
 
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
@@ -113,7 +117,8 @@ info->get_rpl_info_handler                                                      
 #ZN19Table_cache_manager10free_tableEP3THD26enum_tdc_remove_table_typeP11TABLE_SHARE # Fixed ## https://jira.percona.com/browse/PXC-458
 #Z17wsrep_show_statusP3THDP17st_mysql_show_varPc                                 # Fixed  ## https://jira.percona.com/browse/PXC-668
 ZN2gu11from_stringIiEET_RKSsPFRSt8ios_baseS5_E                                            ## https://github.com/codership/galera/issues/416 PXC-619
+ZN2gu11from_stringIiEET_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPFRSt8ios_baseSB_E ## https://github.com/codership/galera/issues/416 PXC-619
 #ZN25PFS_status_variable_cache8manifestEP3THDPK17st_mysql_show_varP17system_status_varPKcbb # Non-reproducible  ## https://jira.percona.com/browse/PXC-629
 Z4sendPN5gcomm6SocketERNS_8DatagramE                                                     ## https://jira.percona.com/browse/PXC-620 (https://github.com/codership/galera/issues/301 https://github.com/codership/galera/issues/414)
-
+Z27wsrep_innobase_kill_one_trxPvPK5trx_tPS0_m                                            ## https://jira.percona.com/browse/PXC-2249
 

@@ -1,15 +1,16 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
-# With thanks to http://unix.stackexchange.com/questions/47271/prevent-gnu-screen-from-terminating-session-once-executed-script-ends (jw013)
+# With thanks to https://unix.stackexchange.com/q/47271 (jw013)
 
 # User variables
 #BASEDIR=/sda/PS010918-percona-server-8.0.12-1-linux-x86_64-opt
-BASEDIR=/sda/PS250818-percona-server-5.7.23-23-linux-x86_64-debug
+#BASEDIR=/sda/PS250818-percona-server-5.7.23-23-linux-x86_64-debug
+BASEDIR=/sda/PS190918-percona-server-8.0.12-1-linux-x86_64-debug
 WORKDIR=/dev/shm
-COPYDIR=/sda
+COPYDIR=/sda   # A random number suffix will be auto-added, so for example /sda or /tmp would be suitable here
 THREADS=1
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
-SESSIONS=15
+SESSIONS=11
 
 # Internal variables: Do not change!
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
@@ -36,8 +37,32 @@ echoit(){
   echo "[$(date +'%T')] === $1"
 }
 
+# Make sure pquery-reach.sh is available
 if [ ! -r ${SCRIPT_PWD}/pquery-reach.sh ]; then
   echoit "Assert! ${SCRIPT_PWD}/pquery-reach.sh not found!"
+  exit 1
+fi
+
+# Make sure directories set in vars are there
+if [ ! -d "${BASEDIR}" ]; then echo "Assert! Basedir ($BASEDIR) does not exist or is not a directory!"; exit 1; fi
+if [ ! -d "${WORKDIR}" ]; then echo "Assert! Workdir ($WORKDIR) does not exist or is not a directory!"; exit 1; fi
+if [ ! -d "${COPYDIR}" ]; then echo "Assert! Copydir ($COPYDIR) does not exist or is not a directory!"; exit 1; fi
+
+# Clear current status 
+rm -f /tmp/pqr_status.cnt
+echo "0" > /tmp/pqr_status.cnt
+
+# Generate random copydir
+RANDOM=`date +%s%N | cut -b14-19`;
+RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(........\).*/\1/')   # Create random dir/file nr, 8 digits
+COPYDIR=$(echo "${COPYDIR}/${RANDOMD}")
+if [ -d ${COPYDIR} ]; then 
+  echo "Assert: the COPYDIR ($COPYDIR) already exists! This may have been an (unlikely) random-match. Please retry running script."
+  exit 1
+fi
+mkdir $COPYDIR
+if [ ! -d ${COPYDIR} ]; then 
+  echo "Assert: trying to create the COPYDIR random directory ($COPYDIR) failed (and it did not exist before this script tried to create it)."
   exit 1
 fi
 
@@ -67,6 +92,8 @@ for i in $(seq $START $FINISH_SESSION); do
   screen -dmS p${i} sh -c "${SCRIPT_PWD}/pquery-reach.sh; exec bash"
 done
 
+sleep 3
+sync
 restore-pqr-settings
 
 echoit "Done!"

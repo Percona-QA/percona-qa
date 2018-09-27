@@ -1,6 +1,11 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 # This will help us to test replication features
+# Master-Slave replication test
+# Master-Master replication test
+# Multi Source replication test
+# Multi thread replication test
+# Group replication test
 
 # Dispay script usage details
 usage () {
@@ -10,13 +15,22 @@ usage () {
   echo "  -s, --storage-engine              Specify mysql server storage engine"
   echo "  -b, --build-number                Specify work build directory"
   echo "  -k, --keyring-plugin=[file|vault] Specify which keyring plugin to use(default keyring-file)"
+  echo "  -t, --testcase=<testcases|all>    Run only following comma-separated list of testcases"
+  echo "                                      master_slave_test"
+  echo "                                      master_multi_slave_test"
+  echo "                                      master_master_test"
+  echo "                                      msr_test"
+  echo "                                      mtr_test"
+  echo "                                      mgr_test"
+  echo "                                    If you specify 'all', the script will execute all testcases"
+  echo ""
   echo "  -e, --with-encryption              Run the script with encryption feature"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:s:k:eh --longoptions=workdir:,storage-engine:,build-number:,keyring-plugin:,with-encryption,help \
+  go_out="$(getopt --options=w:b:s:k:t:eh --longoptions=workdir:,storage-engine:,build-number:,keyring-plugin:,testcase:,with-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -61,6 +75,10 @@ do
       exit 1
     fi
     ;;
+    -t | --testcase )
+    export TESTCASE="$2"
+	shift 2
+	;;
     -e | --with-encryption )
     shift
     ENCRYPTION=1
@@ -72,6 +90,34 @@ do
   esac
 done
 
+#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+normalize_version(){
+  local major=0
+  local minor=0
+  local patch=0
+  
+  # Only parses purely numeric version numbers, 1.2.3
+  # Everything after the first three values are ignored
+  if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    patch=${BASH_REMATCH[3]}
+  fi
+  printf %02d%02d%02d $major $minor $patch
+}
+
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+check_for_version()
+{
+  local local_version_str="$( normalize_version $1 )"
+  local required_version_str="$( normalize_version $2 )"
+  
+  if [[ "$local_version_str" < "$required_version_str" ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
 
 # generic variables
 if [[ -z "$WORKDIR" ]]; then
@@ -84,6 +130,12 @@ fi
 
 if [[ -z "$KEYRING_PLUGIN" ]]; then
   export KEYRING_PLUGIN="file"
+fi
+
+if [[ ! -z "$TESTCASE" ]]; then
+  IFS=', ' read -r -a TC_ARRAY <<< "$TESTCASE"
+else
+  TC_ARRAY=(all)
 fi
 
 # User Configurable Variables
@@ -115,22 +167,7 @@ if [ -z ${TCOUNT} ]; then
   TCOUNT=16
 fi
 
-if [ "$ENGINE" == "innodb" ]; then
-  MYEXTRA_ENGINE="--default-storage-engine=INNODB"
-  SE_STARTUP=""
-elif [ "$ENGINE" == "rocksdb" ]; then
-  MYEXTRA_ENGINE="--plugin-load-add=rocksdb=ha_rocksdb.so  --init-file=${SCRIPT_PWD}/MyRocks.sql --default-storage-engine=ROCKSDB "
-  SE_STARTUP="--rocksdb-flush-log-at-trx-commit=2 --rocksdb-wal-recovery-mode=2"
-  #Check MySQL utilities
-  if [[ ! -e $(which mysqldbcompare 2> /dev/null) ]] ;then
-    echo "ERROR! mysql utilities are currently not installed. Please install mysql utilities. Terminating"
-    exit 1
-  fi
-elif [ "$ENGINE" == "tokudb" ]; then
-  MYEXTRA_ENGINE=" --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=${SCRIPT_PWD}/TokuDB.sql --default-storage-engine=TokuDB"
-  SE_STARTUP=""
-else
-  MYEXTRA_ENGINE=""
+if [ -z "$ENGINE" ]; then
   ENGINE="INNODB"
 fi
 
@@ -142,21 +179,23 @@ echoit(){
   echo "[$(date +'%T')] $1"
   if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/ps_async_test.log; fi
 }
-if [[ "$KEYRING_PLUGIN" == "file" ]]; then
-  MYEXTRA_KEYRING="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON"
-elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-  echoit "Setting up vault server"
-  mkdir $WORKDIR/vault
-  rm -rf $WORKDIR/vault/*
-  killall vault
-  echoit "********************************************************************************************"
-  ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
-  echoit "********************************************************************************************"
-  MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
+if [ "$ENGINE" == "rocksdb" ]; then
+  if [[ ! -e $(which mysqldbcompare 2> /dev/null) ]] ;then
+    echo "ERROR! mysql utilities are currently not installed. Please install mysql utilities. Terminating"
+    exit 1
+  fi
 fi
 
 if [ "$ENCRYPTION" == 1 ];then
-  MYEXTRA_ENCRYPTION=" --innodb_parallel_dblwr_encrypt=ON --encrypt_binlog --master_verify_checksum=on --binlog_checksum=crc32 --innodb_encrypt_tables=ON"
+  if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+    echoit "Setting up vault server"
+    mkdir $WORKDIR/vault
+    rm -rf $WORKDIR/vault/*
+    killall vault
+    echoit "********************************************************************************************"
+    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
+    echoit "********************************************************************************************"
+  fi
 fi
 
 #Kill existing mysqld process
@@ -221,11 +260,13 @@ sysbench_run(){
   fi
 }
 
+
+MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 #mysql install db check
-if [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure  ${MYEXTRA_KEYRING} --basedir=${PS_BASEDIR}"
-elif [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
+else
+  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure  ${MYEXTRA_KEYRING} --basedir=${PS_BASEDIR}"
 fi
 
 echoit "Setting PS Port"
@@ -246,15 +287,21 @@ check_cmd(){
 #Async replication test
 function async_rpl_test(){
   MYEXTRA_CHECK=$1
-  if [ "$MYEXTRA_CHECK" == "GTID" ]; then
-    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --gtid_mode=ON --enforce_gtid_consistency=ON  --sync-binlog=0  --binlog-stmt-cache-size=1M"
-  else
-    MYEXTRA="--log-bin=mysql-bin --log-slave-updates --relay_log_recovery=1 --sync-binlog=0  --binlog-stmt-cache-size=1M"
-  fi
   function ps_start(){
     INTANCES="$1"
+    IS_GR="$2"
     if [ -z $INTANCES ];then
       INTANCES=1
+    fi
+    if [[ ! -z $IS_GR ]]; then
+      if [[ "$ENCRYPTION" == 1 ]];then
+        echoit "ERROR: Group Replication do not support binary log encryption due to binlog_checksum (PS-4819). Terminating!"
+        exit 1
+      fi
+      GD_PORT1="$(( (RPORT + ( 35 * 1 )) + 10 ))"
+      GD_PORT2="$(( (RPORT + ( 35 * 2 )) + 10 ))"
+      GD_PORT3="$(( (RPORT + ( 35 * 3 )) + 10 ))"
+	  GD_PORTS=(0 $GD_PORT1 $GD_PORT2 $GD_PORT3)
     fi
     for i in `seq 1 $INTANCES`;do
       STARTUP_OPTION="$2"
@@ -266,21 +313,81 @@ function async_rpl_test(){
       echoit "Starting independent PS node${i}.."
       node="${WORKDIR}/psnode${i}"
       rm -rf $node
-      if [ "$(${PS_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node
+      fi
+      # Creating PS configuration file
+      rm -rf ${PS_BASEDIR}/n${i}.cnf
+      echo "[mysqld]" > ${PS_BASEDIR}/n${i}.cnf
+      echo "basedir=${PS_BASEDIR}" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "datadir=$node" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "log-error=$WORKDIR/logs/psnode${i}.err" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "socket=/tmp/ps${i}.sock" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "port=$RBASE1" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "innodb_file_per_table" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "log-bin=mysql-bin" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "binlog-format=ROW" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "log-slave-updates" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "relay_log_recovery=1" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "binlog-stmt-cache-size=1M">> ${PS_BASEDIR}/n${i}.cnf
+      echo "sync-binlog=0">> ${PS_BASEDIR}/n${i}.cnf
+      echo "master-info-repository=TABLE" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "relay-log-info-repository=TABLE" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "core-file" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "log-output=none" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "server-id=10${i}" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "report-host=$ADDR" >> ${PS_BASEDIR}/n${i}.cnf
+      echo "report-port=$RBASE1" >> ${PS_BASEDIR}/n${i}.cnf
+      if [ "$ENGINE" == "innodb" ]; then
+        echo "default-storage-engine=INNODB" >> ${PS_BASEDIR}/n${i}.cnf
+      elif [ "$ENGINE" == "rocksdb" ]; then
+        echo "plugin-load-add=rocksdb=ha_rocksdb.so" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "init-file=${SCRIPT_PWD}/MyRocks.sql" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "default-storage-engine=ROCKSDB" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "rocksdb-flush-log-at-trx-commit=2" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "rocksdb-wal-recovery-mode=2" >> ${PS_BASEDIR}/n${i}.cnf
+      elif [ "$ENGINE" == "tokudb" ]; then
+        echo "plugin-load-add=tokudb=ha_tokudb.so" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "tokudb-check-jemalloc=0" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "init-file=${SCRIPT_PWD}/TokuDB.sql" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "default-storage-engine=TokuDB" >> ${PS_BASEDIR}/n${i}.cnf
+      fi
+      if [[ ! -z $IS_GR ]]; then
+        echo "binlog_checksum=none" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "plugin_load=group_replication.so" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "transaction_write_set_extraction=XXHASH64" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_group_name='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_start_on_boot=OFF" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_local_address='$ADDR:${GD_PORTS[${i}]}'" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_group_seeds='$ADDR:${GD_PORTS[1]},$ADDR:${GD_PORTS[2]},$ADDR:${GD_PORTS[3]}'" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_bootstrap_group= OFF" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_recovery_get_public_key = ON" >> ${PS_BASEDIR}/n${i}.cnf
+      fi
+      if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
+        echo "gtid-mode=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "enforce-gtid-consistency" >> ${PS_BASEDIR}/n${i}.cnf
+      fi
+      if [[ "$ENCRYPTION" == 1 ]];then
+        echo "encrypt_binlog" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "master_verify_checksum=on" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "binlog_checksum=crc32" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "innodb_temp_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "encrypt-tmp-files=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "innodb_encrypt_tables=ON" >> ${PS_BASEDIR}/n${i}.cnf
+  	    if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+          echo "early-plugin-load=keyring_file.so" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "keyring_file_data=$node/keyring" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "innodb_sys_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
+  	    elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+          echo "early-plugin-load=keyring_vault.so" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "innodb_sys_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        fi
       fi
 
       ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
 
-      ${PS_BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-       --basedir=${PS_BASEDIR} $STARTUP_OPTION $MYEXTRA_ENGINE $SE_STARTUP --datadir=$node \
-       --innodb_file_per_table $MYEXTRA_KEYRING $MYEXTRA_ENCRYPTION \
-       --binlog-format=ROW --server-id=20${i} $MYEXTRA \
-       --innodb_flush_method=O_DIRECT --core-file --loose-new \
-       --sql-mode=no_engine_substitution --loose-innodb --secure-file-priv= \
-       --log-error=$WORKDIR/logs/psnode${i}.err --report-host=$ADDR --report-port=$RBASE1 \
-       --socket=/tmp/ps${i}.sock  --log-output=none \
-       --port=$RBASE1 --master-info-repository=TABLE --relay-log-info-repository=TABLE > $WORKDIR/logs/psnode${i}.err 2>&1 &
+      ${PS_BASEDIR}/bin/mysqld --defaults-file=${PS_BASEDIR}/n${i}.cnf > $WORKDIR/logs/psnode${i}.err 2>&1 &
 
       for X in $(seq 0 ${PS_START_TIMEOUT}); do
         sleep 1
@@ -293,6 +400,13 @@ function async_rpl_test(){
           exit 1
           fi
       done
+      if [[ ! -z $IS_GR ]]; then
+        if [[ $i -eq 1 ]]; then
+          ${PS_BASEDIR}/bin/mysql -uroot -S/tmp/ps${i}.sock -e"CREATE USER rpl_user@'%'  IDENTIFIED BY 'rpl_pass';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%';CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';RESET MASTER;SET GLOBAL group_replication_bootstrap_group=ON;START GROUP_REPLICATION;SET GLOBAL group_replication_bootstrap_group=OFF;"
+        else
+          ${PS_BASEDIR}/bin/mysql -uroot -S/tmp/ps${i}.sock -e"CREATE USER rpl_user@'%'  IDENTIFIED BY 'rpl_pass';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%';CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';RESET MASTER;START GROUP_REPLICATION;"
+        fi
+      fi
     done
   }
 
@@ -349,7 +463,7 @@ function async_rpl_test(){
     ERROR_LOG=$3
     SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
     COUNTER=0
-    while [ $SB_MASTER -gt 0 ]; do
+    while [[ $SB_MASTER -gt 0 ]]; do
       SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
         ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" > $WORKDIR/logs/slave_status_psnode1.log
@@ -803,11 +917,62 @@ function async_rpl_test(){
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
-  master_slave_test
-  master_multi_slave_test
-  master_master_test
-  msr_test
-  mtr_test
+
+  function mgr_test(){
+    echoit "********************$MYEXTRA_CHECK mysql group replication test ************************"
+    #PS server initialization
+    echoit "PS server initialization for group replication test"
+    ps_start 3 GR
+
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e"drop database if exists sbtest_gr_db;create database sbtest_gr_db;"
+    echoit "Running sysbench data load"
+    async_sysbench_load sbtest_gr_db "/tmp/ps1.sock"
+    async_sysbench_insert_run sbtest_gr_db "/tmp/ps1.sock"
+    sleep 5
+
+    if [ "$ENCRYPTION" == 1 ];then
+      echoit "Running general tablespace encryption test run"
+      gt_test_run sbtest_gr_db "/tmp/ps1.sock"
+    fi
+    sleep 10
+
+    #$PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
+    #$PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
+    #$PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
+  }
+
+  if [[ ! " ${TC_ARRAY[@]} " =~ " all " ]]; then
+    for i in "${TC_ARRAY[@]}"; do
+      if [[ "$i" == "master_slave_test" ]]; then
+  	    master_slave_test
+  	  elif [[ "$i" == "master_multi_slave_test" ]]; then
+  	    master_multi_slave_test
+  	  elif [[ "$i" == "master_master_test" ]]; then
+  	    master_master_test
+  	  elif [[ "$i" == "msr_test" ]]; then
+        if check_for_version $MYSQL_VERSION "5.7.0" ; then 
+          msr_test
+        fi
+      elif [[ "$i" == "mtr_test" ]]; then
+  	   mtr_test
+      elif [[ "$i" == "mgr_test" ]]; then
+       if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
+         mgr_test
+       fi
+      fi
+    done
+  else
+    master_slave_test
+    master_multi_slave_test
+    master_master_test
+    if check_for_version $MYSQL_VERSION "5.7.0" ; then 
+      msr_test
+    fi
+    mtr_test
+    if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
+      mgr_test
+    fi
+  fi  
 }
 
 async_rpl_test
