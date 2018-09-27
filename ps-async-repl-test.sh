@@ -5,6 +5,7 @@
 # Master-Master replication test
 # Multi Source replication test
 # Multi thread replication test
+# Group replication test
 
 # Dispay script usage details
 usage () {
