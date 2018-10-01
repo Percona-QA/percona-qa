@@ -34,9 +34,9 @@ while read p; do
     if [[ ${FAILURE_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAILURE_MODE=0; fi
     echo "<testcase name=\"${BASH_REMATCH[2]}\"/>"
   elif [[ $p =~ ^(not ok [0-9]* )(.*)$ ]]; then
+    if [[ ${FAILURE_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; fi
     echo "<testcase name=\"${BASH_REMATCH[2]}\">"
     echo -e "  <failure>\n<![CDATA["
-    FAILURE_MODE=1
   elif [[ "${FAILURE_MODE}" -eq 1 ]]; then
     echo "$p"
   fi
