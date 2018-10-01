@@ -6,7 +6,7 @@
 
 INPUT_FILE=""
 SUITE_NAME=""
-FAILURE_MODE=0
+FAIL_MODE=0
 
 if [ "$#" -ne 2 ]; then
   echo "Usage:"
@@ -15,29 +15,34 @@ fi
 
 INPUT_FILE="$1"
 SUITE_NAME="$2"
+CHECK_SKIP_COM="^(ok [0-9]* # skip \()(.*\) )(.*)$"
+CHECK_SKIP="^(ok [0-9]* # skip )(.*)$"
+CHECK_OK="^(ok [0-9]* )(.*)$"
+CHECK_FAIL="^(not ok [0-9]* )(.*)$"
 
 echo "<testsuite name=\"${SUITE_NAME}\">"
 
 while read p; do
-  if [[ $p =~ ^(ok [0-9]* # skip \()(.*\) )(.*)$ ]]; then
-    if [[ ${FAILURE_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAILURE_MODE=0; fi
+  if [[ $p =~ $CHECK_SKIP_COM ]]; then
+    if [[ ${FAIL_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAIL_MODE=0; fi
     echo "<testcase name=\"${BASH_REMATCH[3]}\">"
     echo -e "  <skipped/>\n  <system-out>Skip reason:\n<![CDATA["
-    echo "${BASH_REMATCH[2]::-2}"
+    echo "${BASH_REMATCH[2]%??}"
     echo -e "]]>\n  </system-out>\n</testcase>"
-  elif [[ $p =~ ^(ok [0-9]* # skip )(.*)$ ]]; then
-    if [[ ${FAILURE_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAILURE_MODE=0; fi
+  elif [[ $p =~ $CHECK_SKIP ]]; then
+    if [[ ${FAIL_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAIL_MODE=0; fi
     echo "<testcase name=\"${BASH_REMATCH[2]}\">"
     echo "  <skipped/>"
     echo "</testcase>"
-  elif [[ $p =~ ^(ok [0-9]* )(.*)$ ]]; then
-    if [[ ${FAILURE_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAILURE_MODE=0; fi
+  elif [[ $p =~ $CHECK_OK ]]; then
+    if [[ ${FAIL_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAIL_MODE=0; fi
     echo "<testcase name=\"${BASH_REMATCH[2]}\"/>"
-  elif [[ $p =~ ^(not ok [0-9]* )(.*)$ ]]; then
-    if [[ ${FAILURE_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; fi
+  elif [[ $p =~ $CHECK_FAIL ]]; then
+    if [[ ${FAIL_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAIL_MODE=0; fi
     echo "<testcase name=\"${BASH_REMATCH[2]}\">"
     echo -e "  <failure>\n<![CDATA["
-  elif [[ "${FAILURE_MODE}" -eq 1 ]]; then
+    FAIL_MODE=1
+  elif [[ "${FAIL_MODE}" -eq 1 ]]; then
     echo "$p"
   fi
 done < ${INPUT_FILE}
