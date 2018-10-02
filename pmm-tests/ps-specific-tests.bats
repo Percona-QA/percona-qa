@@ -204,7 +204,7 @@ echo "$output"
 		MYSQL_SOCK=${i}
 		run sudo pmm-admin purge mysql mysql_$COUNTER
 		echo "$output"
-			[ "$status" -eq 0 ]
+			[ "$status" -eq 1 ]
 			echo "${output}" | grep "Error purging"
 	done
 
