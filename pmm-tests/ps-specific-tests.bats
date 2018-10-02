@@ -103,6 +103,18 @@ echo "$output"
 	done
 }
 
+@test "run pmm-admin purge mysql:queries based on running instances" {
+	COUNTER=0
+	for i in $(sudo pmm-admin list | grep "mysql:queries" | sed 's|.*(||;s|).*||') ; do
+		let COUNTER=COUNTER+1
+		MYSQL_SOCK=${i}
+		run sudo pmm-admin purge mysql:queries mysql_queries_$COUNTER
+		echo "$output"
+			[ "$status" -eq 1 ]
+			echo "${lines[0]}" | grep "Error purging"
+	done
+}
+
 
 @test "run pmm-admin add mysql:queries again based on running instances" {
 	COUNTER=0
@@ -192,7 +204,7 @@ echo "$output"
 		MYSQL_SOCK=${i}
 		run sudo pmm-admin purge mysql mysql_$COUNTER
 		echo "$output"
-			[ "$status" -eq 0 ]
+			[ "$status" -eq 1 ]
 			echo "${output}" | grep "Error purging"
 	done
 
