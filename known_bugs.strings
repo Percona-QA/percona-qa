@@ -32,7 +32,8 @@ gtid_next_type == ANONYMOUS_GTID                         ## https://bugs.mysql.c
 .m_auto_increment_lock                                   ## https://bugs.mysql.com/bug.php?id=90549
 #TEXT=.data_type.$                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=90550
 #.thd->has_gtid_consistency_violation                    ## Fixed ## https://bugs.mysql.com/bug.php?id=90551
-table .. table->s .. table->s->ha_share                  ## https://bugs.mysql.com/bug.php?id=90552 addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA   ## https://bugs.mysql.com/bug.php?id=90590
+table .. table->s .. table->s->ha_share                  ## https://bugs.mysql.com/bug.php?id=90552
+addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA   ## https://bugs.mysql.com/bug.php?id=90590
 head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.com/bug.php?id=90640
 TEXT=.bin2decimal.$                                      ## https://bugs.mysql.com/bug.php?id=90673
 
