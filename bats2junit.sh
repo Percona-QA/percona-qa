@@ -22,23 +22,27 @@ CHECK_FAIL="^(not ok [0-9]* )(.*)$"
 
 echo "<testsuite name=\"${SUITE_NAME}\">"
 
+close_failure() {
+  if [[ ${FAIL_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAIL_MODE=0; fi
+}
+
 while read p; do
   if [[ $p =~ $CHECK_SKIP_COM ]]; then
-    if [[ ${FAIL_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAIL_MODE=0; fi
+    close_failure
     echo "<testcase name=\"${BASH_REMATCH[3]}\">"
     echo -e "  <skipped/>\n  <system-out>Skip reason:\n<![CDATA["
     echo "${BASH_REMATCH[2]%??}"
     echo -e "]]>\n  </system-out>\n</testcase>"
   elif [[ $p =~ $CHECK_SKIP ]]; then
-    if [[ ${FAIL_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAIL_MODE=0; fi
+    close_failure
     echo "<testcase name=\"${BASH_REMATCH[2]}\">"
     echo "  <skipped/>"
     echo "</testcase>"
   elif [[ $p =~ $CHECK_OK ]]; then
-    if [[ ${FAIL_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAIL_MODE=0; fi
+    close_failure
     echo "<testcase name=\"${BASH_REMATCH[2]}\"/>"
   elif [[ $p =~ $CHECK_FAIL ]]; then
-    if [[ ${FAIL_MODE} -eq 1 ]]; then echo -e "]]>\n  </failure>\n</testcase>"; FAIL_MODE=0; fi
+    close_failure
     echo "<testcase name=\"${BASH_REMATCH[2]}\">"
     echo -e "  <failure>\n<![CDATA["
     FAIL_MODE=1
@@ -47,4 +51,4 @@ while read p; do
   fi
 done < ${INPUT_FILE}
 
-  echo "</testsuite>"
+echo "</testsuite>"

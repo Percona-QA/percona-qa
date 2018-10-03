@@ -55,6 +55,12 @@ echo "$output"
   echo "${lines[0]}" | grep "OK, data purged"
 }
 
+@test "run pmm-admin purge proxysql:queries" {
+  run sudo pmm-admin purge proxysql:queries
+  [ "$status" -eq 1 ]
+  echo "${lines[0]}" | grep "Error purging"
+}
+
 @test "run pmm-admin rm proxysql:metrics 0x0" {
   run sudo pmm-admin rm proxysql:metrics 0x0
   [ "$status" -eq 0 ]
