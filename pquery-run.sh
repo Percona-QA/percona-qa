@@ -983,6 +983,7 @@ pquery_test(){
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
            grep -vi "flush.*for[ \t]*export" | \
            grep -vi "encrypt[ \t]*(.*)" | \
+           grep -vi "compression_dictionary" | \
            grep -vi "start transaction .*with consistent snapshot" | \
            grep -vi "limit rows examined" | \
            grep -vi "set .*read[ -]uncommitted" | \
