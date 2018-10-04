@@ -110,6 +110,14 @@ function run_external_exporters_tests() {
   fi
 }
 
+function run_pmm_summary() {
+  if [[ $tap == 1 ]] ; then
+    bats --tap ${DIRNAME}/pmm-summary.bats
+  else
+    bats ${DIRNAME}/pmm-summary.bats
+  fi
+}
+
 function run_pmm_default_memory_check() {
   if [[ $tap == 1 ]] ; then
     bats --tap ${DIRNAME}/pmm-default-memory-check.bats
@@ -247,6 +255,8 @@ if [[ $instance_t == "pxc" ]]; then
   run_pxc_specific_tests
 fi
 
+echo "Validate Summary Checks"
+run_pmm_summary
 
 # ProxySQL
 # @test "Running ProxySQL tests" {
