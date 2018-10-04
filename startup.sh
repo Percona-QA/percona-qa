@@ -233,7 +233,8 @@ echo 'MYEXTRA=" --no-defaults --gtid_mode=ON --enforce_gtid_consistency=ON --log
 echo "RPORT=$[$RANDOM % 10000 + 10000]" >> repl_setup
 echo "echo \"\" > stop_repl" >> repl_setup
 echo "if ${PWD}/bin/mysqladmin -uroot -S$PWD/socket.sock ping > /dev/null 2>&1; then" >> repl_setup
-echo "  ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock  -Bse\"grant all on *.* to repl@'%' identified by 'repl';flush privileges;\"" >> repl_setup
+echo "  ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock  -Bse\"create user repl@'%' identified by 'repl';\"" >> repl_setup
+echo "  ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock  -Bse\"grant all on *.* to repl@'%'; flush privileges;\"" >> repl_setup
 echo "  MASTER_PORT=\$(\${PWD}/bin/mysql -A -uroot -S\${PWD}/socket.sock  -Bse\"select @@port\")" >> repl_setup
 echo "else" >> repl_setup
 echo "  echo \"ERROR! Master server is not started. Make sure to start master with GTID enabled. Terminating!\"" >> repl_setup
@@ -257,7 +258,8 @@ echo "  $BIN  \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=\${node} --data
 echo "  for X in \$(seq 0 120); do if ${PWD}/bin/mysqladmin ping -uroot -S\$node/socket.sock > /dev/null 2>&1; then break; fi; sleep 0.25; done" >> repl_setup
 echo "  if [[ \"\$REPL_TYPE\" = \"MSR\" ]]; then" >> repl_setup
 echo "    if [ \$i -eq 1 ]; then" >> repl_setup
-echo "      ${PWD}/bin/mysql -A -uroot --socket=\$node/socket.sock  -Bse\"grant all on *.* to repl@'%' identified by 'repl';flush privileges;\"" >> repl_setup
+echo "      ${PWD}/bin/mysql -A -uroot --socket=\$node/socket.sock  -Bse\"create user repl@'%' identified by 'repl';\"" >> repl_setup
+echo "      ${PWD}/bin/mysql -A -uroot --socket=\$node/socket.sock  -Bse\"grant all on *.* to repl@'%';flush privileges;\"" >> repl_setup
 echo "      echo -e \"${PWD}/bin/mysql -A -uroot -S\$node/socket.sock --prompt \\\"masternode2> \\\"\" > ${PWD}/masternode2_cl " >> repl_setup
 echo "    else" >> repl_setup
 echo "      echo -e \"${PWD}/bin/mysql -A -uroot -S\$node/socket.sock --prompt \\\"slavenode> \\\"\" > ${PWD}/\slavenode_cl " >> repl_setup
@@ -270,13 +272,22 @@ echo "  echo \"${PWD}/bin/mysqladmin -uroot -S\$node/socket.sock shutdown\" >> s
 echo "  echo \"echo 'Server on socket \$node/socket.sock with datadir \$node halted'\" >> stop_repl" >> repl_setup
 echo "  if [[ \"\$REPL_TYPE\" = \"MSR\" ]]; then" >> repl_setup
 echo "    if [ \$i -eq 2 ]; then" >> repl_setup
-echo "      ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1 FOR CHANNEL 'master1';\"" >> repl_setup
 echo "      MASTER_PORT2=\$(${PWD}/bin/mysql -A -uroot -S${PWD}/masternode2/socket.sock  -Bse\"SELECT @@port\")" >> repl_setup
-echo "      ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT2, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1 FOR CHANNEL 'master2';\"" >> repl_setup
+if [ "${VERSION_INFO}" == "8.0" ]; then
+  echo "      ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1,GET_MASTER_PUBLIC_KEY=1 FOR CHANNEL 'master1';\"" >> repl_setup
+  echo "      ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT2, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1,GET_MASTER_PUBLIC_KEY=1 FOR CHANNEL 'master2';\"" >> repl_setup
+else
+  echo "      ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1 FOR CHANNEL 'master1';\"" >> repl_setup
+  echo "      ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT2, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1 FOR CHANNEL 'master2';\"" >> repl_setup
+fi
 echo "      ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"START SLAVE;\"" >> repl_setup
 echo "    fi" >> repl_setup
 echo "  else" >> repl_setup
-echo "    ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1;START SLAVE;\"" >> repl_setup
+if [ "${VERSION_INFO}" == "8.0" ]; then
+  echo "    ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1,GET_MASTER_PUBLIC_KEY=1;START SLAVE;\"" >> repl_setup
+else
+  echo "    ${PWD}/bin/mysql -A -uroot -S\$node/socket.sock  -Bse\"CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=\$MASTER_PORT, MASTER_USER='repl',MASTER_PASSWORD='repl',MASTER_AUTO_POSITION=1;START SLAVE;\"" >> repl_setup
+fi
 echo "  fi" >> repl_setup
 echo "done" >> repl_setup
 echo "if [[ \"\$REPL_TYPE\" = \"MSR\" ]]; then" >> repl_setup

@@ -36,6 +36,12 @@ echo "$output"
     echo "${output}" | grep "there is already one instance"
 }
 
+@test "run pmm-admin purge linux:metrics" {
+run sudo pmm-admin purge linux:metrics
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${output}" | grep "OK, data purged"
+}
 
 @test "run pmm-admin remove linux:metrics" {
 run sudo pmm-admin remove linux:metrics
@@ -43,7 +49,6 @@ echo "$output"
     [ "$status" -eq 1 ]
     echo "${output}" | grep "no service found"
 }
-
 
 @test "run pmm-admin add linux:metrics with given name" {
 run sudo pmm-admin add linux:metrics mytest1.os1
@@ -57,4 +62,11 @@ run sudo pmm-admin remove linux:metrics mytest1.os1
 echo "$output"
     [ "$status" -eq 1 ]
     echo "${output}" | grep "no service found"
+}
+
+@test "run pmm-admin purge linux:metrics with given name" {
+run sudo pmm-admin purge linux:metrics mytest1.os1
+echo "$output"
+    [ "$status" -eq 0 ]
+    echo "${output}" | grep "OK, data purged"
 }

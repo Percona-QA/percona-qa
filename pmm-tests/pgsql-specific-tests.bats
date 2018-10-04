@@ -53,6 +53,17 @@ echo "$output"
 	done
 }
 
+@test "run pmm-admin purge postgresql:metrics" {
+	COUNTER=0
+	CURRENT_COUNT=$(sudo pmm-admin list | grep "pgsql_metrics_" | wc -l)
+	for i in $(seq ${CURRENT_COUNT}) ; do
+		let COUNTER=COUNTER+1
+		run sudo pmm-admin purge postgresql:metrics pgsql_metrics_$COUNTER
+		echo "$output"
+			[ "$status" -eq 0 ]
+			echo "${output}" | grep "OK, data purged"
+	done
+}
 
 @test "run pmm-admin remove postgresql:metrics" {
 	COUNTER=0
