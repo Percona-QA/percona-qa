@@ -1787,10 +1787,10 @@ generate_run_scripts(){
   fi
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_GDB
-  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*)" >> $WORK_GDB
+  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core*)" >> $WORK_GDB
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_PARSE_CORE
-  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
+  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
   echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_STOP
@@ -1809,7 +1809,7 @@ generate_run_scripts(){
   else
     echo "$ ./${EPOCH}_start           # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
   fi
-  echo "$ ./${EPOCH}_cl              # STEP4: To check mysqld is up" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH}_cl              # STEP4: To check mysqld is up (repeat if necessary)" >> $WORK_HOW_TO_USE
   if [ $PQUERY_MOD -eq 1 ]; then
     echo "$ ./${EPOCH}_run_pquery      # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
     echo "$ ./${EPOCH}_run             # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE

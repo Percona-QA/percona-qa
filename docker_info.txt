@@ -1,3 +1,5 @@
+# The following is greatly outdated
+
 # Setup (thanks https://peterkieser.com/2014/07/07/installing-docker-on-centos-7/ and http://stackoverflow.com/questions/26472586/upgrade-docker-on-centos-7)
   sudo yum install docker
   sudo systemctl disable firewalld.service # https://docs.docker.com/installation/centos/#firewalld

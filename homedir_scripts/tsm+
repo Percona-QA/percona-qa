@@ -1,2 +1,2 @@
-find . | grep "log/master.err" | xargs -I{} bash -c "echo -n '{} > '; ~/ts+ {}" | sed 's|> ./|> \n./|;s|  *| |g' 
+find . | grep "log/master.err" | xargs -I{} bash -c "echo -n '{} > '; ~/ts+ {}" | sed 's|> ./|> \n./|g;s|  *| |g' 
 echo ""
