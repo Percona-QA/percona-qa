@@ -13,7 +13,6 @@ COUNT_FOUND_AND_DEL=0
 COUNT_FOUND_AND_NOT_DEL=0
 if [ $(ls -ld /dev/shm/* | wc -l) -eq 0 ]; then
   echo "> No /dev/shm/* directories found at all, it looks like tmpfs is empty. All good."
-  exit 0
 else
   for DIR in $(ls -ld /dev/shm/* | sed 's|^.*/dev/shm|/dev/shm|'); do
     STORE_COUNT_FOUND_AND_DEL=${COUNT_FOUND_AND_DEL}

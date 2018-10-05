@@ -154,6 +154,10 @@ ha_innopart..prepare_inplace_alter_table                  ## Provisioning 211511
 static_cast<ulint>.slot->n_bytes. < slot->original_len - n_bytes  ## Provisioning 21151181
 PolicyMutex<TTASEventMutex<GenericPolicy> >..pfs_begin_lock  ## Provisioning 21151181
 TEXT=.ha_release_savepoint.$                              ## https://jira.percona.com/browse/PS-4899
+handler..unbind_psi                                       ## Provisioning 13013717
+TEXT=..error == 3110.$                                    ## Provisioning 13013717
+len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...               ## Provisioning 13013717
+mp->count > 0 .. my_thread_equal.my_thread_self           ## Provisioning 13013717
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684
