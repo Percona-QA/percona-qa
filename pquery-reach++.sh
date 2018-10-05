@@ -5,7 +5,7 @@
 # User variables
 #BASEDIR=/sda/PS010918-percona-server-8.0.12-1-linux-x86_64-opt
 #BASEDIR=/sda/PS250818-percona-server-5.7.23-23-linux-x86_64-debug
-BASEDIR=/sda/PS190918-percona-server-8.0.12-1-linux-x86_64-debug
+BASEDIR=/sda/PS051018-percona-server-8.0.12-1-linux-x86_64-debug
 WORKDIR=/dev/shm
 COPYDIR=/sda   # A random number suffix will be auto-added, so for example /sda or /tmp would be suitable here
 THREADS=1

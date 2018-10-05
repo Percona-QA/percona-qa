@@ -3,6 +3,7 @@
 
 # User configurable variables
 BASEDIR="/git/PS-5.7-trunk"
+#BASEDIR="/git/PXC-5.7-trunk"
 #BASEDIR="/sda/mysql-8.0.11-linux-glibc2.12-x86_64"   # Base directory (should contain mysql-test directory as a first level subdirectory, see TESTS_PATH)
   # IMPORTANT NOTE: we are currently discussing an issue whereby (for builds made with make_binary_distribution) ${BASEDIR}/plugin/*/*/*/*.test files are not present.
   # For this, the only workaround is to use a source directory for ${BASEDIR}, but there may be other caveats with doing this (TBD). Maybe better is to simply build
@@ -28,6 +29,7 @@ FINAL_SQL=/tmp/mtr_to_sql.sql                                         # pquery f
 #   - Scan original MTR file for multi-line statements and reconstruct (tr '\n' ' ' for example) to avoid half-statements ending up in resulting file
 
 # Internal variables
+RANDOM=$(date +%s%N | cut -b14-19)  # RANDOM: Random entropy pool init
 TEMP_SQL=${FINAL_SQL}.tmp
 TESTS_PATH=$(echo ${BASEDIR} | sed 's|$|/mysql-test/|;s|//|/|g')
 
