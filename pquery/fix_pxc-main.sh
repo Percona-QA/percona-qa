@@ -15,10 +15,10 @@ fi
 
 # Change all engines to InnoDB as this is the only accepted engine in PXB
 # Decided to not substitute MEMORY or CSV engines to have some variation
-sed -i 's|TokuDB|InnoDB|gi' pxc-main-ms-ps-md.sql
-sed -i 's|RocksDB|InnoDB|gi' pxc-main-ms-ps-md.sql
-sed -i 's|MyISAM|InnoDB|gi' pxc-main-ms-ps-md.sql
-sed -i 's|Maria|InnoDB|gi' pxc-main-ms-ps-md.sql
+sed -i 's|engine[ =]\+myisam|engine=innodb|gi' pxc-main-ms-ps-md.sql
+sed -i 's|engine[ =]\+tokudb|engine=innodb|gi' pxc-main-ms-ps-md.sql
+sed -i 's|engine[ =]\+rocksdb|engine=innodb|gi' pxc-main-ms-ps-md.sql
+sed -i 's|engine[ =]\+maria|engine=innodb|gi' pxc-main-ms-ps-md.sql
 
 # Re-shuffle the file (which is necessary) 
 RANDOM=$(date +%s%N | cut -b14-19)  # RANDOM: Random entropy pool init
