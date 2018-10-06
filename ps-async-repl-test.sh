@@ -481,7 +481,7 @@ function async_rpl_test(){
 
 function create_sysbench_user(){
   SOCKET=$1
-  ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET -e "CREATE USER sysbench_user@'%' identified with mysql_native_password by 'test';GRANT ALL ON *.* TO sysbench_user@'%'" 2>&1
+  ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET -e "CREATE USER IF NOT EXISTS sysbench_user@'%' identified with mysql_native_password by 'test';GRANT ALL ON *.* TO sysbench_user@'%'" 2>&1
 }
   function async_sysbench_rw_run(){
     MASTER_DB=$1
