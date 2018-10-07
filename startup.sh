@@ -345,7 +345,7 @@ elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.
   echo "sysbench /usr/share/sysbench/oltp_read_write.lua --report-interval=10 --auto_inc=off --time=50 --events=0 --index_updates=10 --non_index_updates=10 --distinct_ranges=15 --order_ranges=15 --tables=1 --threads=4  --table-size=1000000 --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=${PWD}/socket.sock run" > sysbench_run
 fi
 
-echo "./stop;./wipe;./start;./sysbench_prepare;./sysbench_run;./stop" > sysbench_measure
+echo "./stop 2>/dev/null;./wipe;./start;./sysbench_prepare;./sysbench_run;./stop" > sysbench_measure
 if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
   echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
   if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
@@ -384,7 +384,7 @@ echo 'MYEXTRA_OPT="$*"' > all_stbe
 echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON \${MYEXTRA_OPT}" >> all_stbe  # './all_stbe' is './all' with system tablespace encryption
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
 echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
-chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_stbe all_no_cl sysbenc_prepare sysbench_run sysbench_measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
+chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init
