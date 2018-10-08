@@ -6,6 +6,41 @@
 # Multi Source replication test
 # Multi thread replication test
 # Group replication test
+# Master Slave replication using XtraBackup test
+
+# Bash internal configuration
+#
+set -o nounset    # no undefined variables
+
+# Global variables
+declare ADDR="127.0.0.1"
+declare PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
+declare -i RPORT=$(( (RANDOM%21 + 10)*1000 ))
+declare LADDR="$ADDR:$(( RPORT + 8 ))"
+declare SUSER=root
+declare SPASS=""
+declare SBENCH="sysbench"
+declare SCRIPT_PWD=$(cd `dirname $0` && pwd)
+declare -i PS_START_TIMEOUT=60
+declare WORKDIR=""
+declare BUILD_NUMBER=100
+declare ENGINE=""
+declare KEYRING_PLUGIN=""
+declare TESTCASE=""
+declare ENCRYPTION=""
+declare TC_ARRAY=""
+declare ROOT_FS=""
+declare SDURATION=""
+declare TSIZE=""
+declare NUMT=""
+declare TCOUNT=""
+declare PS_TAR=""
+declare PSBASE=""
+declare PS_BASEDIR=""
+declare PT_TAR=""
+declare PTBASE=""
+declare MID=""
+declare SYSBENCH_OPTIONS=""
 
 # Dispay script usage details
 usage () {
@@ -46,7 +81,7 @@ do
   case "$arg" in
     -- ) shift; break;;
     -w | --workdir )
-    export WORKDIR="$2"
+    WORKDIR="$2"
     if [[ ! -d "$WORKDIR" ]]; then
       echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
       exit 1
@@ -54,11 +89,11 @@ do
     shift 2
     ;;
     -b | --build-number )
-    export BUILD_NUMBER="$2"
+    BUILD_NUMBER="$2"
     shift 2
     ;;
     -s | --storage-engine )
-    export ENGINE="$2"
+    ENGINE="$2"
     if [ "$ENGINE" != "innodb" ] && [ "$ENGINE" != "rocksdb" ] && [ "$ENGINE" != "tokudb" ]; then
       echo "ERROR: Invalid --storage-engine passed:"
       echo "  Please choose any of these storage engine options: innodb, rocksdb, tokudb"
@@ -67,7 +102,7 @@ do
     shift 2
     ;;
     -k | --keyring-plugin )
-    export KEYRING_PLUGIN="$2"
+    KEYRING_PLUGIN="$2"
     shift 2
     if [[ "$KEYRING_PLUGIN" != "file" ]] && [[ "$KEYRING_PLUGIN" != "vault" ]] ; then
       echo "ERROR: Invalid --keyring-plugin passed:"
@@ -76,7 +111,7 @@ do
     fi
     ;;
     -t | --testcase )
-    export TESTCASE="$2"
+    TESTCASE="$2"
 	shift 2
 	;;
     -e | --with-encryption )
@@ -121,15 +156,15 @@ check_for_version()
 
 # generic variables
 if [[ -z "$WORKDIR" ]]; then
-  export WORKDIR=${PWD}
+  WORKDIR=${PWD}
 fi
 
 if [[ -z "$BUILD_NUMBER" ]]; then
-  export BUILD_NUMBER="100"
+  BUILD_NUMBER="100"
 fi
 
 if [[ -z "$KEYRING_PLUGIN" ]]; then
-  export KEYRING_PLUGIN="file"
+  KEYRING_PLUGIN="file"
 fi
 
 if [[ ! -z "$TESTCASE" ]]; then
@@ -138,21 +173,11 @@ else
   TC_ARRAY=(all)
 fi
 
-# User Configurable Variables
-SBENCH="sysbench"
-PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 ROOT_FS=$WORKDIR
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
-PS_START_TIMEOUT=60
-
 cd $WORKDIR
 
 if [ -z ${SDURATION} ]; then
   SDURATION=30
-fi
-
-if [ -z ${SST_METHOD} ]; then
-  SST_METHOD=rsync
 fi
 
 if [ -z ${TSIZE} ]; then
@@ -170,7 +195,6 @@ fi
 if [ -z "$ENGINE" ]; then
   ENGINE="INNODB"
 fi
-
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 mkdir -p $WORKDIR/logs
@@ -230,17 +254,35 @@ else
   export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
 fi
 
+function check_xb_dir(){
+  #Check Percona XtraBackup binary tar ball
+  pushd $ROOT_FS
+  PXB_TAR=`ls -1td ?ercona-?trabackup* | grep ".tar" | head -n1`
+  if [ ! -z $PXB_TAR ];then
+    tar -xzf $PXB_TAR
+    PXBBASE=`ls -1td ?ercona-?trabackup* | grep -v ".tar" | head -n1`
+    export PATH="$ROOT_FS/$PXBBASE/bin:$PATH"
+  else
+    PXB_TAR=`ls -1td ?ercona-?trabackup* | grep ".tar" | head -n1`
+    tar -xzf $PXB_TAR
+    PXBBASE=`ls -1td ?ercona-?trabackup* | grep -v ".tar" | head -n1`
+    export PATH="$ROOT_FS/$PXBBASE/bin:$PATH"
+  fi
+  PXBBASE="$ROOT_FS/$PXBBASE"
+  popd
+}
+  
 #Check sysbench
 if [[ ! -e `which sysbench` ]];then
-    echoit "Sysbench not found"
-    exit 1
+  echoit "Sysbench not found"
+  exit 1
 fi
 echoit "Note: Using sysbench at $(which sysbench)"
 
 #sysbench command should compatible with versions 0.5 and 1.0
 sysbench_run(){
-  TEST_TYPE="$1"
-  DB="$2"
+  local TEST_TYPE="${1:-}"
+  local DB="${2:-}"
   if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-storage-engine=$ENGINE --mysql-user=test_user --mysql-password=test  --num-threads=$NUMT --db-driver=mysql"
@@ -261,35 +303,27 @@ sysbench_run(){
 }
 
 
-MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+declare MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 #mysql install db check
 if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
 else
-  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure  ${MYEXTRA_KEYRING} --basedir=${PS_BASEDIR}"
+  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR}"
 fi
-
-echoit "Setting PS Port"
-ADDR="127.0.0.1"
-RPORT=$(( (RANDOM%21 + 10)*1000 ))
-LADDR="$ADDR:$(( RPORT + 8 ))"
-
-SUSER=root
-SPASS=
 
 #Check command failure
 check_cmd(){
-  MPID=$1
-  ERROR_MSG=$2
+  local MPID=${1:-}
+  local ERROR_MSG=${2:-}
   if [ ${MPID} -ne 0 ]; then echoit "ERROR: $ERROR_MSG. Terminating!"; exit 1; fi
 }
 
 #Async replication test
 function async_rpl_test(){
-  MYEXTRA_CHECK=$1
+  local MYEXTRA_CHECK="${1:-}"
   function ps_start(){
-    INTANCES="$1"
-    IS_GR="$2"
+    local INTANCES="${1:-}"
+    local IS_GR="${2:-}"
     if [ -z $INTANCES ];then
       INTANCES=1
     fi
@@ -298,20 +332,20 @@ function async_rpl_test(){
         echoit "ERROR: Group Replication do not support binary log encryption due to binlog_checksum (PS-4819). Terminating!"
         exit 1
       fi
-      GD_PORT1="$(( (RPORT + ( 35 * 1 )) + 10 ))"
-      GD_PORT2="$(( (RPORT + ( 35 * 2 )) + 10 ))"
-      GD_PORT3="$(( (RPORT + ( 35 * 3 )) + 10 ))"
-	  GD_PORTS=(0 $GD_PORT1 $GD_PORT2 $GD_PORT3)
+      local GD_PORT1="$(( (RPORT + ( 35 * 1 )) + 10 ))"
+      local GD_PORT2="$(( (RPORT + ( 35 * 2 )) + 10 ))"
+      local GD_PORT3="$(( (RPORT + ( 35 * 3 )) + 10 ))"
+	  local GD_PORTS=(0 $GD_PORT1 $GD_PORT2 $GD_PORT3)
     fi
     for i in `seq 1 $INTANCES`;do
-      STARTUP_OPTION="$2"
-      RBASE1="$((RPORT + ( 100 * $i )))"
+      local STARTUP_OPTION="${2:-}"
+      local RBASE1="$((RPORT + ( 100 * $i )))"
       if ps -ef | grep  "\--port=${RBASE1}"  | grep -qv grep  ; then
         echoit "INFO! Another mysqld server running on port: ${RBASE1}. Using different port"
         RBASE1="$(( (RPORT + ( 100 * $i )) + 10 ))"
       fi
       echoit "Starting independent PS node${i}.."
-      node="${WORKDIR}/psnode${i}"
+      local node="${WORKDIR}/psnode${i}"
       rm -rf $node
       if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node
@@ -411,26 +445,26 @@ function async_rpl_test(){
   }
 
   function run_pt_table_checksum(){
-    DATABASES=$1
-    SOCKET=$2
+    local DATABASES=${1:-}
+    local SOCKET=${2:-}
     pt-table-checksum S=$SOCKET,u=test_user,p=test -d $DATABASES --recursion-method hosts --no-check-binlog-format
     check_cmd $?
   }
   function run_mysqldbcompare(){
-    DATABASES=$1
-    MASTER_SOCKET=$2
-    SLAVE_SOCKET=$3
+    local DATABASES=${1:-}
+    local MASTER_SOCKET=${2:-}
+    local SLAVE_SOCKET=${3:-}
     mysqldbcompare --server1=test_user:test@localhost:$MASTER_SOCKET --server2=test_user:test@localhost:$SLAVE_SOCKET $DATABASES --changes-for=server2  --difftype=sql
     check_cmd $?
   }
 
   function invoke_slave(){
-    MASTER_SOCKET=$1
-    SLAVE_SOCKET=$2
-    REPL_STRING=$3
+    local MASTER_SOCKET=${1:-}
+    local SLAVE_SOCKET=${2:-}
+    local REPL_STRING=${3:-}
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$MASTER_SOCKET -e"FLUSH LOGS"
-    MASTER_LOG_FILE=`${PS_BASEDIR}/bin/mysql -uroot --socket=$MASTER_SOCKET -Bse "show master logs" | awk '{print $1}' | tail -1`
-    MASTER_HOST_PORT=`${PS_BASEDIR}/bin/mysql -uroot --socket=$MASTER_SOCKET -Bse "select @@port"`
+    local MASTER_LOG_FILE=`${PS_BASEDIR}/bin/mysql -uroot --socket=$MASTER_SOCKET -Bse "show master logs" | awk '{print $1}' | tail -1`
+    local MASTER_HOST_PORT=`${PS_BASEDIR}/bin/mysql -uroot --socket=$MASTER_SOCKET -Bse "select @@port"`
     if [ "$MYEXTRA_CHECK" == "GTID" ]; then
       ${PS_BASEDIR}/bin/mysql -uroot --socket=$SLAVE_SOCKET -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$MASTER_HOST_PORT, MASTER_USER='root', MASTER_AUTO_POSITION=1 $REPL_STRING"
     else
@@ -439,12 +473,12 @@ function async_rpl_test(){
   }
 
   function slave_startup_check(){
-    SOCKET_FILE=$1
-    SLAVE_STATUS=$2
-    ERROR_LOG=$3
-    MSR_SLAVE_STATUS=$4
-    SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status $MSR_SLAVE_STATUS\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
-    COUNTER=0
+    local SOCKET_FILE=${1:-}
+    local SLAVE_STATUS=${2:-}
+    local ERROR_LOG=${3:-}
+    local MSR_SLAVE_STATUS=${4:-}
+    local SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status $MSR_SLAVE_STATUS\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    local COUNTER=0
     while ! [[  "$SB_MASTER" =~ ^[0-9]+$ ]]; do
       SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status $MSR_SLAVE_STATUS\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       let COUNTER=COUNTER+1
@@ -458,11 +492,11 @@ function async_rpl_test(){
   }
 
   function slave_sync_check(){
-    SOCKET_FILE=$1
-    SLAVE_STATUS=$2
-    ERROR_LOG=$3
-    SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
-    COUNTER=0
+    local SOCKET_FILE=${1:-}
+    local SLAVE_STATUS=${2:-}
+    local ERROR_LOG=${3:-}
+    local SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    local COUNTER=0
     while [[ $SB_MASTER -gt 0 ]]; do
       SB_MASTER=`${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET_FILE -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
       if ! [[ "$SB_MASTER" =~ ^[0-9]+$ ]]; then
@@ -479,15 +513,16 @@ function async_rpl_test(){
     done
   }
 
-function create_test_user(){
-  SOCKET=$1
-  ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET -e "CREATE USER IF NOT EXISTS test_user@'%' identified with mysql_native_password by 'test';GRANT ALL ON *.* TO test_user@'%'" 2>&1
-}
+  function create_test_user(){
+    local SOCKET=${1:-}
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET -e "CREATE USER IF NOT EXISTS test_user@'%' identified with mysql_native_password by 'test';GRANT ALL ON *.* TO test_user@'%'" 2>&1
+  }
+
   function async_sysbench_rw_run(){
-    MASTER_DB=$1
-    SLAVE_DB=$2
-    MASTER_SOCKET=$3
-    SLAVE_SOCKET=$4
+    local MASTER_DB=${1:-}
+    local SLAVE_DB=${2:-}
+    local MASTER_SOCKET=${3:-}
+    local SLAVE_SOCKET=${4:-}
     #OLTP RW run on master
     echoit "OLTP RW run on master (Database: $MASTER_DB)"
     sysbench_run oltp $MASTER_DB
@@ -502,8 +537,8 @@ function create_test_user(){
   }
 
   function async_sysbench_insert_run(){
-    DATABASE_NAME=$1
-    SOCKET=$2
+    local DATABASE_NAME=${1:-}
+    local SOCKET=${2:-}
     echoit "Sysbench insert run (Database: $DATABASE_NAME)"
     sysbench_run insert_data $DATABASE_NAME
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET run  > $WORKDIR/logs/sysbench_insert.log 2>&1
@@ -511,8 +546,8 @@ function create_test_user(){
   }
 
   function async_sysbench_load(){
-    DATABASE_NAME=$1
-    SOCKET=$2
+    local DATABASE_NAME=${1:-}
+    local SOCKET=${2:-}
     echoit "Sysbench Run: Prepare stage (Database: $DATABASE_NAME)"
     sysbench_run load_data $DATABASE_NAME
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  > $WORKDIR/logs/sysbench_prepare.txt 2>&1
@@ -520,16 +555,49 @@ function create_test_user(){
   }
 
   function gt_test_run(){
-    DATABASE_NAME=$1
-    SOCKET=$2
+    local DATABASE_NAME=${1:-}
+    local SOCKET=${2:-}
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLESPACE ${DATABASE_NAME}_gen_ts1 ADD DATAFILE '${DATABASE_NAME}_gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE ${DATABASE_NAME}_gen_ts1" 2>&1
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_sys_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE=innodb_system ENCRYPTION='Y'" 2>&1
-    NUM_ROWS=$(shuf -i 100-500 -n 1)
+    local NUM_ROWS=$(shuf -i 100-500 -n 1)
     for i in `seq 1 $NUM_ROWS`; do
-      STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+      local STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
       ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "INSERT INTO ${DATABASE_NAME}_gen_ts_tb1 (str) VALUES ('${STRING}')"
       ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "INSERT INTO ${DATABASE_NAME}_sys_ts_tb1 (str) VALUES ('${STRING}')"
+    done
+  }
+
+  function backup_database(){
+    rm -rf ${WORKDIR}/backupdir ${WORKDIR}/bkpslave; mkdir ${WORKDIR}/backupdir
+    local SOCKET=${1:-}
+
+    ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 > $WORKDIR/logs/xb_backup.log 2>&1 
+    echoit "Prepare xtrabackup"	
+	${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full > $WORKDIR/logs/xb_prepare_backup.log 2>&1 
+	
+    echoit "Restore backup to slave datadir"
+    ${PXBBASE}/bin/xtrabackup --copy-back --target-dir=${WORKDIR}/backupdir/full --datadir=${WORKDIR}/bkpslave > $WORKDIR/logs/xb_restore_backup.log 2>&1
+
+    cat ${PS_BASEDIR}/n1.cnf |
+      sed -e "0,/^[ \t]*port[ \t]*=.*$/s|^[ \t]*port[ \t]*=.*$|port=3308|" |
+      sed -e "0,/^[ \t]*report-port[ \t]*=.*$/s|^[ \t]*report-port[ \t]*=.*$|report-port=3308|" |
+      sed -e "0,/^[ \t]*server-id[ \t]*=.*$/s|^[ \t]*server-id[ \t]*=.*$|server-id=200|" |
+      sed -e "s|psnode1|bkpslave|g" |
+      sed -e "0,/^[ \t]*socket[ \t]*=.*$/s|^[ \t]*socket[ \t]*=.*$|socket=/tmp/bkpslave.sock|"  > ${PS_BASEDIR}/bkpslave.cnf 2>&1
+
+    ${PS_BASEDIR}/bin/mysqld --defaults-file=${PS_BASEDIR}/bkpslave.cnf > $WORKDIR/logs/bkpslave.err 2>&1 &
+
+    for X in $(seq 0 ${PS_START_TIMEOUT}); do
+      sleep 1
+      if ${PS_BASEDIR}/bin/mysqladmin -uroot -S/tmp/bkpslave.sock ping > /dev/null 2>&1; then
+        break
+      fi
+      if [ $X -eq ${PS_START_TIMEOUT} ]; then
+        echoit "PS Slave startup failed.."
+        grep "ERROR" ${WORKDIR}/logs/bkpslave.err
+        exit 1
+        fi
     done
   }
 
@@ -735,9 +803,9 @@ function create_test_user(){
     fi
 
     sleep 10
-    SB_CHANNEL1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master1'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
-    SB_CHANNEL2=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master2'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
-    SB_CHANNEL3=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master3'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    local SB_CHANNEL1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master1'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    local SB_CHANNEL2=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master2'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    local SB_CHANNEL3=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status for channel 'master3'\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
 
     if ! [[ "$SB_CHANNEL1" =~ ^[0-9]+$ ]]; then
       echo "Slave is not started yet. Please check error log : $WORKDIR/logs/psnode1.err"
@@ -881,8 +949,8 @@ function create_test_user(){
     fi
 
     sleep 10
-    SB_PS_1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
-    SB_PS_2=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    local SB_PS_1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
+    local SB_PS_2=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
 
     while [ $SB_PS_1 -gt 0 ]; do
       SB_PS_1=`$PS_BASEDIR/bin/mysql -uroot --socket=/tmp/ps2.sock -Bse "show slave status\G" | grep Seconds_Behind_Master | awk '{ print $2 }'`
@@ -951,12 +1019,45 @@ function create_test_user(){
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
 
+  function xb_master_slave_test(){
+    echoit "******************** $MYEXTRA_CHECK master slave test ************************"
+    #PS server initialization
+    echoit "PS server initialization"
+    ps_start 1
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_xb_db;create database sbtest_xb_db;"
+    create_test_user "/tmp/ps1.sock"
+    async_sysbench_load sbtest_xb_db "/tmp/ps1.sock"
+    async_sysbench_insert_run sbtest_xb_db "/tmp/ps1.sock"
+
+    echoit "Check xtrabackup binary"    
+    check_xb_dir
+    echoit "Initiate xtrabackup"
+    backup_database "/tmp/ps1.sock"
+
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_xb_check;create database sbtest_xb_check;"
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "create table sbtest_xb_check.t1(id int);"
+    local BINLOG_FILE=$(cat ${WORKDIR}/backupdir/full/xtrabackup_binlog_info | awk '{print $1}')
+    local BINLOG_POS=$(cat ${WORKDIR}/backupdir/full/xtrabackup_binlog_info | awk '{print $2}')
+    echoit "Starting replication on restored slave"
+    local PORT=$(${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "select @@port")
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/bkpslave.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$PORT, MASTER_USER='root', MASTER_LOG_FILE='$BINLOG_FILE',MASTER_LOG_POS=$BINLOG_POS;START SLAVE"
+	
+    slave_startup_check "/tmp/bkpslave.sock" "$WORKDIR/logs/slave_status_bkpslave.log" "$WORKDIR/logs/bkpslave.err"
+
+    echoit "XB master slave replication: Checksum result."
+    run_pt_table_checksum "sbtest_xb_db,sbtest_xb_check" "/tmp/ps1.sock"
+    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
+    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/bkpslave.sock -u root shutdown
+  }
+
   if [[ ! " ${TC_ARRAY[@]} " =~ " all " ]]; then
     for i in "${TC_ARRAY[@]}"; do
       if [[ "$i" == "master_slave_test" ]]; then
   	    master_slave_test
   	  elif [[ "$i" == "master_multi_slave_test" ]]; then
   	    master_multi_slave_test
+  	  elif [[ "$i" == "xb_master_slave_test" ]]; then
+        xb_master_slave_test
   	  elif [[ "$i" == "master_master_test" ]]; then
   	    master_master_test
   	  elif [[ "$i" == "msr_test" ]]; then
@@ -982,6 +1083,7 @@ function create_test_user(){
     if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
       mgr_test
     fi
+	xb_master_slave_test
   fi  
 }
 
