@@ -61,8 +61,8 @@ for i in $(sudo pmm-admin list | grep "mongodb_instance_" | awk '{print $5}' | g
 	let COUNTER=COUNTER+1
 	run sudo pmm-admin purge mongodb:metrics mongodb_instance_${COUNTER}
   [ "$status" -eq 0 ]
-  echo "${lines[1]}"
-  echo "${lines[1]}" | grep "OK, data purged"
+  echo "${lines[0]}"
+  echo "${lines[0]}" | grep "OK, data purged"
 done
 }
 
