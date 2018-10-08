@@ -57,6 +57,7 @@ usage () {
   echo "                                      msr_test"
   echo "                                      mtr_test"
   echo "                                      mgr_test"
+  echo "                                      xb_master_slave_test"
   echo "                                    If you specify 'all', the script will execute all testcases"
   echo ""
   echo "  -e, --with-encryption              Run the script with encryption feature"
@@ -1020,7 +1021,7 @@ function async_rpl_test(){
   }
 
   function xb_master_slave_test(){
-    echoit "******************** $MYEXTRA_CHECK master slave test ************************"
+    echoit "******************** $MYEXTRA_CHECK master slave test using xtrabackup ************************"
     #PS server initialization
     echoit "PS server initialization"
     ps_start 1
