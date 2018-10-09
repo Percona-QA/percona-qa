@@ -119,6 +119,12 @@ cd $WORKDIR
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 mkdir -p $WORKDIR/logs
 
+cleanup(){
+  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
+}
+
+trap cleanup EXIT KILL
+
 echoit(){
   echo "[$(date +'%T')] $1"
   if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/ps_proxysql_test.log; fi

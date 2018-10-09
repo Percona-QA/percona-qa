@@ -225,6 +225,7 @@ fi
 
 #Kill existing mysqld process
 ps -ef | grep 'ps[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+ps -ef | grep 'bkpslave.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
 cleanup(){
   tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
@@ -309,7 +310,11 @@ declare MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9
 if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
 else
-  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR}"
+  if [[ -z $ENCRYPTION ]]; then
+    MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR}"
+  else
+    MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${PS_BASEDIR}"
+  fi
 fi
 
 #Check command failure
@@ -405,7 +410,7 @@ function async_rpl_test(){
       if [[ "$ENCRYPTION" == 1 ]];then
         echo "encrypt_binlog" >> ${PS_BASEDIR}/n${i}.cnf
         echo "master_verify_checksum=on" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "binlog_checksum=crc32" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "binlog_checksum=crc32" >> ${PS_BASEDIR}/n${i}.cnf.
         echo "innodb_temp_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
         echo "encrypt-tmp-files=ON" >> ${PS_BASEDIR}/n${i}.cnf
         echo "innodb_encrypt_tables=ON" >> ${PS_BASEDIR}/n${i}.cnf
@@ -997,7 +1002,7 @@ function async_rpl_test(){
   }
 
   function mgr_test(){
-    echoit "********************$MYEXTRA_CHECK mysql group replication test ************************"
+    echoit "******************** $MYEXTRA_CHECK mysql group replication test ************************"
     #PS server initialization
     echoit "PS server initialization for group replication test"
     ps_start 3 GR
@@ -1017,7 +1022,7 @@ function async_rpl_test(){
 
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
-    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
+    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
   }
 
   function xb_master_slave_test(){
