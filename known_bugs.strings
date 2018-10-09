@@ -17,25 +17,25 @@
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
 ## =========== MS 8.0 GA
-Item_func_internal_get_comment_or_error..val_str         ## https://bugs.mysql.com/bug.php?id=90518 # Optimized build
+#Item_func_internal_get_comment_or_error..val_str ## Fixed ## https://bugs.mysql.com/bug.php?id=90518 # Optimized build
 adjust_fk_parents                                        ## https://bugs.mysql.com/bug.php?id=90520 # Optimized build
-.trx->declared_to_be_inside_innodb                       ## https://bugs.mysql.com/bug.php?id=90521 # Optimized build
+#.trx->declared_to_be_inside_innodb             ## Fixed ## https://bugs.mysql.com/bug.php?id=90521 # Optimized build
 #TEXT=..n . .n - 1.. == 0.$                              ## Fixed ## https://bugs.mysql.com/bug.php?id=90522 # Optimized build
 #ut0link_buf.h.191..capacity . .capacity - 1.. == 0      ## Fixed ## https://bugs.mysql.com/bug.php?id=90523 # Optimized build
 #TEXT=.write_max_size > 0.$                              ## Fixed ## https://bugs.mysql.com/bug.php?id=90526 # Optimized build
-partition_info..add_named_partition                      ## https://bugs.mysql.com/bug.php?id=90542 # Optimized build
-dirname_length                                           ## https://bugs.mysql.com/bug.php?id=90543 # Optimized build 
-fil_space_get.table->space. .= __null                    ## https://bugs.mysql.com/bug.php?id=90545
+#partition_info..add_named_partition            ## Fixed ## https://bugs.mysql.com/bug.php?id=90542 # Optimized build
+#dirname_length                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=90543 # Optimized build 
+fil_space_get.table->space. .= __null                    ## https://bugs.mysql.com/bug.php?id=90545 (Fixed in 8.0.13)
 #.thd .. thd->locked_tables_mode .. .thd->mdl_context.has_locks  ## Fixed ## https://bugs.mysql.com/bug.php?id=90546
 gtid_next_type == ANONYMOUS_GTID                         ## https://bugs.mysql.com/bug.php?id=90547
-..idx_el_it                                              ## https://bugs.mysql.com/bug.php?id=90548
+#..idx_el_it                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=90548
 .m_auto_increment_lock                                   ## https://bugs.mysql.com/bug.php?id=90549
 #TEXT=.data_type.$                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=90550
-#.thd->has_gtid_consistency_violation                    ## Fixed ## https://bugs.mysql.com/bug.php?id=90551
-table .. table->s .. table->s->ha_share                  ## https://bugs.mysql.com/bug.php?id=90552
-addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA   ## https://bugs.mysql.com/bug.php?id=90590
+.thd->has_gtid_consistency_violation                     ## https://bugs.mysql.com/bug.php?id=90551 (Fixed in 8.0.13)
+#table .. table->s .. table->s->ha_share        ## Fixed ## https://bugs.mysql.com/bug.php?id=90552
+#addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA ## Fixed ## https://bugs.mysql.com/bug.php?id=90590
 head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.com/bug.php?id=90640
-TEXT=.bin2decimal.$                                      ## https://bugs.mysql.com/bug.php?id=90673
+TEXT=.bin2decimal.$                                      ## https://bugs.mysql.com/bug.php?id=90673 (Fixed in 8.0.13)
 
 ## =========== PS 8.0 RC
 ha_innodb.cc.4926.0                                      ## https://jira.percona.com/browse/PS-4801
@@ -63,7 +63,7 @@ has_prelocking_list .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TA
 sys_var_pluginvar..global_update                         ## https://bugs.mysql.com/bug.php?id=88265
 ticket->m_lock->m_obtrusive_locks_granted_waiting_count .= 0  ## https://bugs.mysql.com/bug.php?id=88266
 val <= 4294967295u                                       ## https://bugs.mysql.com/bug.php?id=88267
-Sql_cmd_call..prepare_inner                              ## https://bugs.mysql.com/bug.php?id=88268
+#Sql_cmd_call..prepare_inner                    ## Fixed ## https://bugs.mysql.com/bug.php?id=88268
 .field->prefix_len .. field->fixed_len == field->prefix_len  ## https://bugs.mysql.com/bug.php?id=88269
 #TEXT=.length == 3.$                            ## Fixed ## https://bugs.mysql.com/bug.php?id=88270
 TEXT=.new_table \.= nullptr.$                            ## https://bugs.mysql.com/bug.php?id=88271
@@ -82,13 +82,13 @@ dict0dict.cc.6216                                        ## https://bugs.mysql.c
 Item_direct_view_ref..fix_fields                         ## https://bugs.mysql.com/bug.php?id=88323
 ha_innobase..update_thd                                  ## https://bugs.mysql.com/bug.php?id=88324
 error == DB_SUCCESS                                      ## https://bugs.mysql.com/bug.php?id=88325
-Field_iterator_view..create_item                         ## https://bugs.mysql.com/bug.php?id=88326
+#Field_iterator_view..create_item               ## Fixed ## https://bugs.mysql.com/bug.php?id=88326
 #TEXT=.null_value.$                             ## Fixed ## https://bugs.mysql.com/bug.php?id=88352
-m_prebuilt->magic_n == 78540783                          ## https://bugs.mysql.com/bug.php?id=88353
+#m_prebuilt->magic_n == 78540783                ## Fixed ## https://bugs.mysql.com/bug.php?id=88353
 err == DB_SUCCESS .. err == DB_DUPLICATE_KEY             ## https://bugs.mysql.com/bug.php?id=88355
 TEXT=.table2 == NULL.$                                   ## https://bugs.mysql.com/bug.php?id=88356
 purge_sys->n_stop == 0                                   ## https://bugs.mysql.com/bug.php?id=89503
-Sql_cmd_install_plugin..execute                          ## https://bugs.mysql.com/bug.php?id=89504
+#Sql_cmd_install_plugin..execute                ## Fixed ## https://bugs.mysql.com/bug.php?id=89504
 #thread_ids.empty                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=91847
 Cached_authentication_plugins..optimize_plugin_compare_by_pointer ## https://bugs.mysql.com/bug.php?id=91899
 #srv_shutdown_all_bg_threads                             ## Fixed ## https://bugs.mysql.com/bug.php?id=91973
@@ -128,7 +128,7 @@ MYSQL_BIN_LOG..handle_binlog_flush_or_sync_error          ## https://bugs.mysql.
 TEXT=.acl_reload.$                                        ## https://bugs.mysql.com/bug.php?id=92433 (and dup 92452)
 std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >..find  ## https://bugs.mysql.com/bug.php?id=90544 # Optimized build
 std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator  ## https://bugs.mysql.com/bug.php?id=91988
-std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > >, Malloc_allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > > >, std..__detail.._Select  ## https://bugs.mysql.com/bug.php?id=92456
+std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > >, Malloc_allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > > >, std..__detail.._Select  ## https://bugs.mysql.com/bug.php?id=92456 (Fixed in 8.0.14)
 TEXT=.filesort.$                                          ## https://bugs.mysql.com/bug.php?id=92487
 TEXT=.thd_report_innodb_stat.$                            ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
 ZN10DsMrr_impl11dsmrr_closeEv                             ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
@@ -187,7 +187,7 @@ zip_dict_name.str == 0 .. column_format                           ## https://bug
 #ha_innodb.cc line 17770                        ## Fixed ## https://bugs.mysql.com/bug.php?id=75736 MS
 btr0pcur.c line 237                                      ## https://bugs.mysql.com/bug.php?id=88750 MS
 btr0pcur.c line 241                                      ## https://bugs.mysql.com/bug.php?id=88750 PS
-btr0cur.cc line 830                                      ## https://bugs.mysql.com/bug.php?id=86051  
+#btr0cur.cc line 830                            ## Fixed ## https://bugs.mysql.com/bug.php?id=86051  
 #btr0cur.c line 871                             ## Fixed ## https://bugs.mysql.com/bug.php?id=84753 (2nd testcase, MS 5.5.52) (Duplicate of 84485)
 #btr0cur.c line 959                             ## Fixed ## https://bugs.mysql.com/bug.php?id=84753 (2nd testcase, PS 5.5.54) (Duplicate of 84485)
 #trx0trx.cc line 1257                           ## Fixed ## https://bugs.mysql.com/bug.php?id=84753 (1st testcase, MS 5.7.16) (Duplicate of 84485)
@@ -324,7 +324,7 @@ thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_in
 #fsp0fsp.cc line 766                                     ## RC1   ## https://bugs.launchpad.net/percona-server/+bug/1529555  ## Fixed in PS 5.7.10-2rc2
 #ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79801 (Fixed in 5.8 only, ref 86249)
 #ZN12Item_func_sp8val_jsonEP12Json_wrapper      ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=86249
-ha_innodb.cc line 8210                                   ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79821 (debug)
+#ha_innodb.cc line 8210                         ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79821 (debug)
 ha_innodb.cc line 8621                                       ## ^ ## https://bugs.mysql.com/bug.php?id=79821 (PS 5.7, debug)
 ha_innodb.cc line 9408                                       ## ^ ## https://bugs.mysql.com/bug.php?id=79821 (PS 5.7.20, debug)
 Z18row_search_no_mvccPh15page_cur_mode_tP14row_prebuilt_tmm  ## ^ ## https://bugs.mysql.com/bug.php?id=79821 (PS 5.7, opt)
@@ -548,7 +548,7 @@ ut0ut.cc:670                                                                    
 ut0ut.cc.722                                                                            ## https://bugs.mysql.com/bug.php?id=92487, PS8, related to large innodb-buffer-pool-size
 ut0ut.cc line 958                                                                       ## PS 5.7.20     --innodb-buffer-pool-size=-1125899906842624 (or similar)
 mem0dbg.c line 684                                                                      ## https://bugs.mysql.com/bug.php?id=86234 PS 5.5.55, MS 5.5.54
-handler0alter.cc line 787                                                               ## https://bugs.mysql.com/bug.php?id=88747 MS
+#handler0alter.cc line 787                                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=88747 MS
 handler0alter.cc line 798                                                               ## https://bugs.mysql.com/bug.php?id=88747 PS
 handler0alter.cc line 5680                                                              ## https://bugs.mysql.com/bug.php?id=74363 MS
 handler0alter.cc line 5694                                                              ## https://bugs.mysql.com/bug.php?id=74363 PS (with oldPS)
@@ -578,9 +578,9 @@ os0file.cc line 1951                                                            
 os0file.cc line 2003                                                                    ## https://bugs.mysql.com/bug.php?id=74480 PS (with oldPS)
 os0file.cc line 2004                                                                    ## https://bugs.mysql.com/bug.php?id=74480 PS (with oldPS)
 os0file.cc line 2021                                                                    ## https://bugs.mysql.com/bug.php?id=74480 PS (recentPS) (duplicated by 78331)
-os0sync.cc line 339                                                                     ## https://bugs.mysql.com/bug.php?id=85067 (also see 77976)
-#os0sync.cc line 419                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=77976 (also see 85067)
-#os0sync.cc line 475                                                            ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1372210 (dup of 1368530)
+#os0sync.cc line 339                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=85067 (also see 77976)
+#os0sync.cc line 419                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=77976 (also see 85067)
+#os0sync.cc line 475                                                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1372210 (dup of 1368530)
 pars0pars.cc line 865                                                                   ## https://bugs.mysql.com/bug.php?id=68987
 que0que.cc line 1206                                                                    ## https://bugs.mysql.com/bug.php?id=74762 MS
 que0que.cc line 1216                                                                    ## https://bugs.mysql.com/bug.php?id=74762 PS
@@ -592,7 +592,7 @@ rem0rec.cc line 845                                                             
 #row0ins.cc line 277                                                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1195614 (fixed in 1395706)
 #row0ins.cc line 365                                                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1224272 (dup of 1395579)
 row0ins.c line 2333                                                                     ## https://bugs.launchpad.net/percona-server/+bug/1628751
-row0mysql.c line 1478                                                                   ## https://bugs.mysql.com/bug.php?id=88796 PS
+#row0mysql.c line 1478                                                         ## Fixed ## https://bugs.mysql.com/bug.php?id=88796 PS (Duplicate of 88782)
 row0mysql.c line 1463                                                                   ## https://bugs.mysql.com/bug.php?id=88796 MS
 row0merge.cc line 2692                                                                  ## https://bugs.mysql.com/bug.php?id=74887 MS
 row0merge.cc line 2698                                                                  ## https://bugs.mysql.com/bug.php?id=74887 PS
@@ -603,7 +603,7 @@ row0merge.cc line 2698                                                          
 #row0mysql.cc line 688                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (with oldPS) (dup of 1410410)
 #row0mysql.cc line 689                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (dup of 1410410)
 #row0quiesce.cc line 683                                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=75398 (fixed in 5.6.23) Duplicate MS#74346
-row0sel.c line 3791                                                                     ## https://bugs.mysql.com/bug.php?id=88782
+#row0sel.c line 3791                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=88782
 row0sel.cc line 3932                                                                    ## https://bugs.launchpad.net/percona-server/+bug/1395249
 #row0sel.cc line 4017                                                                   ## https://bugs.mysql.com/bug.php?id=59513 Not fixed, but needs better testcase
 row0sel.cc line 4220                                                                    ## https://bugs.mysql.com/bug.php?id=59513
@@ -664,7 +664,7 @@ bitmap_is_subset.*m_part_info->lock_partitions, .*m_locked_partitions           
 .check_datetime_range.ltime                                                             ## (Originally PS Bug #1385043)
 comma_length > 0                                                                        ## https://bugs.mysql.com/bug.php?id=74603 (old LP #1384625)
 combo->host.str .= __null .. combo->host.str.0. .=                                      ## https://bugs.launchpad.net/percona-server/+bug/1736905
-cur_shape .= Gcalc_function..shape_point                                                ## https://bugs.mysql.com/bug.php?id=83739 and 84075
+#cur_shape .= Gcalc_function..shape_point                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=83739 and 84075
 ZN23Gcalc_operation_reducer15get_line_resultEPNS_9res_pointEP21Gcalc_result_receiver    ## https://bugs.mysql.com/bug.php?id=84075
 #data_offset == ..null_count                                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74677
 db_length == copy->db_length                                                            ## https://bugs.mysql.com/bug.php?id=74604 (old LP #1384621)
@@ -801,11 +801,11 @@ Z10MYSQLparseP3THD                                                              
 Z10read_tokenPK18sql_digest_storagejPj                                                  ## https://bugs.launchpad.net/percona-server/+bug/1688698
 Z10open_tableP3THDP10TABLE_LISTP18Open_table_context                                    ## https://bugs.launchpad.net/percona-server/+bug/1384583
 #Z11alloc_queryP3THDPKcj                                                       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1387951
-Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                          ## https://bugs.mysql.com/bug.php?id=88781
+#Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                ## Fixed ## https://bugs.mysql.com/bug.php?id=88781
 #Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                ## Fixed ## https://bugs.mysql.com/bug.php?id=74615 (old LP #1384566) (fixed in 5.6.24)
 #Z17mysql_create_userP3THDR4ListI11st_lex_userE                                ## Fixed ## https://bugs.mysql.com/bug.php?id=74615 (old LP #1384651) (fixed in 5.6.24)
 #Z17mysql_table_grantP3THDP10TABLE_LISTR4ListI11st_lex_userERS3_I10LEX_COLUMNEmb ## Fixed ## https://bugs.mysql.com/bug.php?id=74615 (fixed in 5.6.24)
-Z17mysql_show_grantsP3THDP11st_lex_user                                                 ## https://bugs.mysql.com/bug.php?id=88800
+#Z17mysql_show_grantsP3THDP11st_lex_user                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=88800
 #Z11open_tablesP3THDPP10TABLE_LISTPjjP19Prelocking_strategy                    ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1416956 (dup of 1387951)
 #Z11mysql_grantP3THDPKcR4ListI11st_lex_userEmbb                                ## Fixed ## https://bugs.mysql.com/bug.php?id=83816
 #Z12find_sys_varP3THDPKcj                                                               ## https://bugs.launchpad.net/percona-server/+bug/1415828 # Need new testcase
@@ -982,7 +982,7 @@ ZNK8Item_row4typeEv                                                             
 #ZN8Item_int13save_in_fieldEP5Fieldb                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=81446
 #ZN13Protocol_text5storeEP5Field                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=81446
 #ZN10Sort_param17init_for_filesortEjP5TABLEmyb                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=84824
-Z14servers_reloadP3THD                                                                  ## https://bugs.mysql.com/bug.php?id=81447
+#Z14servers_reloadP3THD                                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=81447
 #Z15mysql_drop_userP3THDR4ListI11st_lex_userE                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=81449
 Z8filesortP3THDP5TABLEP13st_sort_fieldjP10SQL_SELECTybPy                                ## https://bugs.mysql.com/bug.php?id=81450
 ZN18st_select_lex_unit4execEv                                                           ## https://bugs.mysql.com/bug.php?id=81454
