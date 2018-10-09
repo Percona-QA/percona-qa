@@ -23,7 +23,7 @@ declare SBENCH="sysbench"
 declare SCRIPT_PWD=$(cd `dirname $0` && pwd)
 declare -i PS_START_TIMEOUT=60
 declare WORKDIR=""
-declare BUILD_NUMBER=100
+declare BUILD_NUMBER=""
 declare ENGINE=""
 declare KEYRING_PLUGIN=""
 declare TESTCASE=""
@@ -238,7 +238,20 @@ PS_TAR=`ls -1td ?ercona-?erver* | grep ".tar" | head -n1`
 if [ ! -z $PS_TAR ];then
   tar -xzf $PS_TAR
   PSBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
+  if [[ -z $PSBASE ]]; then
+    echo "ERROR! Could not find Percona Server directory. Terminating!"
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
+  fi
+else
+  PSBASE=`ls -1td ?ercona-?erver* 2>/dev/null | grep -v ".tar" | head -n1`
+  if [[ -z $PSBASE ]] ; then
+    echoit "ERROR! Could not find Percona Server directory. Terminating!"
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
+  fi
 fi
 PS_BASEDIR="${ROOT_FS}/$PSBASE"
 
