@@ -16,7 +16,7 @@ declare SBENCH="sysbench"
 declare SCRIPT_PWD=$(cd `dirname $0` && pwd)
 declare -i PS_START_TIMEOUT=60
 declare WORKDIR
-declare BUILD_NUMBER=100
+declare BUILD_NUMBER
 declare ROOT_FS
 declare -i SDURATION=30
 declare -i TSIZE=500
@@ -133,11 +133,6 @@ echoit(){
 #Kill existing mysqld process
 ps -ef | grep 'ps[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
-cleanup(){
-  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
-}
-
-trap cleanup EXIT KILL
 
 #Check PS binary tar ball
 PS_TAR=`ls -1td ?ercona-?erver* | grep ".tar" | head -n1`
@@ -206,7 +201,7 @@ function sysbench_load(){
   local SOCKET=$2
   echoit "Sysbench Run: Prepare stage (Database: $DATABASE_NAME)"
   sysbench_run load_data $DATABASE_NAME
-  $SBENCH $SYSBENCH_OPTIONS --mysql-user=root --mysql-socket=$SOCKET prepare  > $WORKDIR/logs/sysbench_prepare.txt 2>&1
+  $SBENCH $SYSBENCH_OPTIONS --mysql-user=test_user --mysql-password=test --mysql-socket=$SOCKET prepare  > $WORKDIR/logs/sysbench_prepare.txt 2>&1
   check_cmd $? "Failed to execute sysbench prepare stage"
 }
 
@@ -335,6 +330,12 @@ function proxysql_start(){
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;"
 }
 
+function create_test_user(){
+  local SOCKET=${1:-}
+  ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET -e "CREATE USER IF NOT EXISTS test_user@'%' identified with mysql_native_password by 'test';GRANT ALL ON *.* TO test_user@'%'" 2>&1
+}
+
+
 function proxysql_qa(){
   #PS server initialization
   echoit "PS server initialization"
@@ -344,6 +345,9 @@ function proxysql_qa(){
   ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_db;create database sbtest_db;"
   ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists sbtest_db;create database sbtest_db;"
   ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e "drop database if exists sbtest_db;create database sbtest_db;"
+  create_test_user "/tmp/ps1.sock"
+  create_test_user "/tmp/ps2.sock"
+  create_test_user "/tmp/ps3.sock"
 
   sysbench_load sbtest_db "/tmp/ps1.sock"
   sysbench_load sbtest_db "/tmp/ps2.sock"
