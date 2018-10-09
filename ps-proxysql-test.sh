@@ -140,10 +140,19 @@ if [ ! -z $PS_TAR ];then
   tar -xzf $PS_TAR
   PSBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
   if [[ -z $PSBASE ]]; then
-    echo "ERROR! Could not find Percona Server directory. Terminating"
+    echo "ERROR! Could not find Percona Server directory. Terminating!"
     exit 1
+  else
+    export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
   fi
-  export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
+else
+  PSBASE=`ls -1td ?ercona-?erver* 2>/dev/null | grep -v ".tar" | head -n1`
+  if [[ -z $PSBASE ]] ; then
+    echoit "ERROR! Could not find Percona Server directory. Terminating!"
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
+  fi
 fi
 PS_BASEDIR="${ROOT_FS}/$PSBASE"
 
@@ -155,8 +164,17 @@ if [ ! -z $PROXYSQL_TAR ];then
   if [[ -z $PROXYSQL_BASE ]]; then
     echo "ERROR! Could not find ProxySQL directory. Terminating"
     exit 1
+  else
+    export PATH="$ROOT_FS/$PROXYSQL_BASE/usr/bin:$PATH" 
   fi
-  export PATH="$ROOT_FS/$PROXYSQL_BASE/usr/bin:$PATH"
+else
+  PROXYSQL_BASE=`ls -1td proxysql-1* 2>/dev/null | grep -v ".tar" | head -n1`
+  if [[ -z $PROXYSQL_BASE ]] ; then
+    echoit "ERROR! Could not find ProxySQL directory. Terminating!"
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PROXYSQL_BASE/bin:$PATH"
+  fi
 fi
 PROXYSQL_BASE="${ROOT_FS}/$PROXYSQL_BASE"
 
