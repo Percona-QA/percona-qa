@@ -1605,7 +1605,7 @@ MID=
 if [ -r ${BASEDIR}/scripts/mysql_install_db ]; then MID="${BASEDIR}/scripts/mysql_install_db"; fi
 if [ -r ${BASEDIR}/bin/mysql_install_db ]; then MID="${BASEDIR}/bin/mysql_install_db"; fi
 START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
-INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
+INIT_OPT="--no-defaults --initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
 INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
 VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
 if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
