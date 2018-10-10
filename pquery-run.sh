@@ -166,7 +166,7 @@ if [ ${THREADS} -gt 1 ]; then  # We may want to drop this to 20 seconds required
 fi
 if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
   echoit "MODE: Creash Recovery Testing"
-  INFILE=CRASH_RECOVERY_INFILE
+  INFILE=$CRASH_RECOVERY_INFILE
   if [ -a ${QUERY_DURATION_TESTING} -eq 1]; then
     echoit "CRASH_RECOVERY_TESTING and QUERY_DURATION_TESTING cannot be both active at the same time due to parsing limitations. This is the case. Please disable one of them."
     exit 1
