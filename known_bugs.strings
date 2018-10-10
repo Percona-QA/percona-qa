@@ -117,7 +117,7 @@ dict0dd.cc:5.....error                                    ## https://bugs.mysql.
 TEXT=.mi->rli->inited.$                                   ## https://bugs.mysql.com/bug.php?id=92073
 TEXT=.j < ncol.$                                          ## https://bugs.mysql.com/bug.php?id=92074
 #.primary_key == key                             ## Fixed ## https://bugs.mysql.com/bug.php?id=92075 (8.0.11 only)
-my_b_write.IO_CACHE.,                                     ## https://bugs.mysql.com/bug.php?id=92096
+my_b_write.IO_CACHE.,                                     ## https://bugs.mysql.com/bug.php?id=92096 (Fixed in 5.6.43, 5.7.25, 8.0.14)
 #TEXT=.can_switch.$                              ## Fixed ## https://bugs.mysql.com/bug.php?id=92097
 #Item_field..val_time_temporal                   ## Fixed ## https://bugs.mysql.com/bug.php?id=92170
 Locked_tables_list..unlock_locked_tables                  ## https://bugs.mysql.com/bug.php?id=92185
