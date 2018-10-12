@@ -1,4 +1,7 @@
 This is an alternative way of doing the same with sysbech as pquery does, using a lua script.
 
 Usage:
-$ sysbench --test=pquery.lua --pquery-file=/tmp/queries.sql run
+$ sysbench --test=pquery.lua --pquery_file=queries.sql run
+
+Example:
+$ sysbench ~/percona-qa/pquery-sb/pquery.lua --pquery_file=/home/roel/percona-qa/pquery/main-ms-ps-md.sql --mysql-db=test --mysql-user=root --db-driver=mysql --mysql-socket=/sda/MS050918-mysql-5.7.23-linux-x86_64-debug/socket.sock run
