@@ -148,11 +148,10 @@ void dd_write_table<dd..Partition>                        ## https://jira.percon
 m_prebuilt->table->id == old_part->se_private_id..        ## https://jira.percona.com/browse/PS-4892 (dbg expand_fast_index_creation)
 valid_flags == m_flags                                    ## https://jira.percona.com/browse/PS-4898 (INSTALL PLUGIN auth_pam SONAME 'auth_pam.so';)
 TEXT=.ha_myisammrg..clone.$                               ## https://jira.percona.com/browse/PS-4900
-Field_varstring..unpack                                   ## Provisioning 21151181
+#Field_varstring..unpack                                  ## Seen in in run 21151181 (PS 8.0.12) but testcase does not reduce properly, need good testcase. Try and reduce when seen again
 len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  # Provisioning 21151181
-ha_innopart..prepare_inplace_alter_table                  ## Provisioning 21151181
-static_cast<ulint>.slot->n_bytes. < slot->original_len - n_bytes  ## Provisioning 21151181
-PolicyMutex<TTASEventMutex<GenericPolicy> >..pfs_begin_lock  ## Provisioning 21151181
+ha_innopart..prepare_inplace_alter_table                  ## https://jira.percona.com/browse/PS-4928
+PolicyMutex<TTASEventMutex<GenericPolicy> >..pfs_begin_lock  ## https://jira.percona.com/browse/PS-4927
 TEXT=.ha_release_savepoint.$                              ## https://jira.percona.com/browse/PS-4899
 handler..unbind_psi                                       ## Provisioning 13013717
 TEXT=..error == 3110.$                                    ## Provisioning 13013717
