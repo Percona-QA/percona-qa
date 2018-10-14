@@ -148,15 +148,20 @@ void dd_write_table<dd..Partition>                        ## https://jira.percon
 m_prebuilt->table->id == old_part->se_private_id..        ## https://jira.percona.com/browse/PS-4892 (dbg expand_fast_index_creation)
 valid_flags == m_flags                                    ## https://jira.percona.com/browse/PS-4898 (INSTALL PLUGIN auth_pam SONAME 'auth_pam.so';)
 TEXT=.ha_myisammrg..clone.$                               ## https://jira.percona.com/browse/PS-4900
-#Field_varstring..unpack                                  ## Seen in in run 21151181 (PS 8.0.12) but testcase does not reduce properly, need good testcase. Try and reduce when seen again
-len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  # Provisioning 21151181
 ha_innopart..prepare_inplace_alter_table                  ## https://jira.percona.com/browse/PS-4928
 PolicyMutex<TTASEventMutex<GenericPolicy> >..pfs_begin_lock  ## https://jira.percona.com/browse/PS-4927
 TEXT=.ha_release_savepoint.$                              ## https://jira.percona.com/browse/PS-4899
-handler..unbind_psi                                       ## Provisioning 13013717
-TEXT=..error == 3110.$                                    ## Provisioning 13013717
-len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...               ## Provisioning 13013717
-mp->count > 0 .. my_thread_equal.my_thread_self           ## Provisioning 13013717
+handler..unbind_psi                                       ## https://jira.percona.com/browse/PS-4929
+TEXT=..error == 3110.$                                    ## https://bugs.mysql.com/bug.php?id=92777
+#Field_varstring..unpack                        ## Fixed? ## Likely https://bugs.mysql.com/bug.php?id=92448 but replayed under pquery
+dd..create_dd_user_table                                  ## https://jira.percona.com/browse/PS-4931 (close both at same time v)
+dd..create_tmp_table                                      ## https://jira.percona.com/browse/PS-4931 (close both at same time ^)
+
+## =========== PS8/MS8, need better tetcases
+#len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...                ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
+#mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
+#TEXT=.safe_mutex_destroy.$                               ## Seen in run 21151181 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
+#len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  ## Seen in run 21151181 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
 
 ## =========== Column compression
 #ZNK5Field37has_associated_compression_dictionaryEv      ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1621684

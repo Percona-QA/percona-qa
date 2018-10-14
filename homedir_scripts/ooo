@@ -1,1 +1,1 @@
-find . | grep _out | xargs wc -l
+find . | grep "_out$" | xargs wc -l
