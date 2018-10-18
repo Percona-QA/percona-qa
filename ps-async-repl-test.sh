@@ -349,6 +349,7 @@ function async_rpl_test(){
     if [[ "$EXTRA_OPT" == "GR" ]]; then
       if [[ "$ENCRYPTION" == 1 ]];then
         echoit "WARNING: Group Replication do not support binary log encryption due to binlog_checksum (PS-4819). Disabling encryption!"
+        ENCRYPTION=0
       fi
       local GD_PORT1="$(( (RPORT + ( 35 * 1 )) + 10 ))"
       local GD_PORT2="$(( (RPORT + ( 35 * 2 )) + 10 ))"
@@ -449,6 +450,8 @@ function async_rpl_test(){
         else
 		   ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
         fi
+      elif [[ "$EXTRA_OPT" == "GR" ]]; then
+        ${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
       else
         ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
       fi
@@ -1065,6 +1068,7 @@ function async_rpl_test(){
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
+    ENCRYPTION=1
   }
 
   function xb_master_slave_test(){
