@@ -23,7 +23,7 @@ declare SBENCH="sysbench"
 declare SCRIPT_PWD=$(cd `dirname $0` && pwd)
 declare -i PS_START_TIMEOUT=60
 declare WORKDIR=""
-declare BUILD_NUMBER=""
+declare BUILD_NUMBER
 declare ENGINE=""
 declare KEYRING_PLUGIN=""
 declare TESTCASE=""
