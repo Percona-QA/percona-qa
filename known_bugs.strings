@@ -248,6 +248,7 @@ m_index_scan_type .= partition_index_last                ## https://bugs.mysql.c
 handler0alter.cc line 5869                               ## https://bugs.mysql.com/bug.php?id=83799 PS
 handler0alter.cc line 5817                               ## https://bugs.mysql.com/bug.php?id=83799 MS
 #explain_other .. unit->is_optimized            ## Fixed ## https://bugs.mysql.com/bug.php?id=76446
+Geometry::is_valid_geotype(gt)                           ## https://bugs.mysql.com/bug.php?id=92868
 
 ## =========== MS 5.7.7 RC ===========
 #Z15ha_commit_transP3THDbb                      ## Fixed ## https://bugs.mysql.com/bug.php?id=77520 (Could not reproduce the issue with latest build)
