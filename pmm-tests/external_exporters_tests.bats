@@ -53,8 +53,8 @@
 }
 
 @test "Verifying external exporters info not exist on pmm-admin list" {
-  run sudo pmm-admin list
+  run bash -c "sudo pmm-admin list | grep  "Job name  Scrape interval  Scrape timeout  Metrics path  Scheme  Target  Labels  Health""
   echo "$output"
-  [ "$status" -eq 0 ]
-  echo  ${output} | grep  "Job name  Scrape interval  Scrape timeout  Metrics path  Scheme  Target  Labels  Health"
+  [ "$status" -eq 1 ]
+    echo  ${output}
 }
