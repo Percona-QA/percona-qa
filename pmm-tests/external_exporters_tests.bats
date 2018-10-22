@@ -45,8 +45,6 @@
   echo  ${output} | grep "blabla"
 }
 
-
-
 @test "Removing consul_exporter from monitoring" {
   run sudo pmm-admin rm external:service consul-exporter --service-port=9107
   echo "$output"
@@ -54,3 +52,9 @@
   echo  ${output} | grep  "External service removed"
 }
 
+@test "Verifying external exporters info not exist on pmm-admin list" {
+  run sudo pmm-admin list
+  echo "$output"
+  [ "$status" -eq 0 ]
+  echo  ${output} | grep  "Job name  Scrape interval  Scrape timeout  Metrics path  Scheme  Target  Labels  Health"
+}
