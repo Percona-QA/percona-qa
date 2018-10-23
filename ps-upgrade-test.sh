@@ -2,8 +2,8 @@
 # Created by Ramesh Sivaraman, Percona LLC
 # This will help us to test PS upgrade
 # Usage example:
-# $ ~/percona-qa/ps_upgrade.sh <workdir> <lower_version> <upper_version>"
-# $ ~/percona-qa/ps_upgrade.sh /qa/workdir 5.6.34 5.7.18"
+# $ ~/percona-qa/ps_upgrade.sh <workdir> <lower_basedir> <upper_basedir>"
+# $ ~/percona-qa/ps_upgrade.sh /qa/workdir percona-server-5.7.22-22-linux-x86_64-debug percona-server-8.0.12-1-linux-x86_64-debug"
 
 # Bash internal configuration
 #
@@ -13,8 +13,8 @@ set -o nounset    # no undefined variables
 declare SBENCH="sysbench"
 declare PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 declare WORKDIR=$1
-declare PS_LOWER_VERSION=$2
-declare PS_UPPER_VERSION=$3
+declare PS_LOWER_BASE=$2
+declare PS_UPPER_BASE=$3
 declare ROOT_FS=$WORKDIR
 declare SCRIPT_PWD=$(cd `dirname $0` && pwd)
 declare MYSQLD_START_TIMEOUT=200
@@ -24,8 +24,8 @@ declare TSIZE=""
 declare NUMT=""
 declare TCOUNT=""
 declare SYSBENCH_OPTIONS=""
-declare PS_LOWER_BASE=""
-declare PS_UPPER_BASE=""
+declare PS_UPPER_BASEDIR=""
+declare PS_UPPER_BASEDIR=""
 declare LOWER_MID
 declare UPPER_MID
 declare PS_START_TIMEOUT=60
@@ -36,14 +36,6 @@ fi
 
 if [ -z $ROOT_FS ]; then
   ROOT_FS=${PWD}
-fi
-
-if [ -z $PS_LOWER_VERSION ]; then
-  PS_LOWER_VERSION="5.6"
-fi
-
-if [ -z $PS_UPPER_VERSION ]; then
-  PS_UPPER_VERSION="5.7"
 fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
@@ -120,38 +112,38 @@ if [ ! -d $ROOT_FS/test_db ]; then
   git clone https://github.com/datacharmer/test_db.git
 fi
 
-PS_LOWER_TAR=`ls -1td ?ercona-?erver-${PS_LOWER_VERSION}* | grep ".tar" | head -n1`
-PS_UPPER_TAR=`ls -1td ?ercona-?erver-${PS_UPPER_VERSION}* | grep ".tar" | head -n1`
+PS_LOWER_TAR=`readlink -e ${PS_LOWER_BASE}* | grep ".tar" | head -n1`
+PS_UPPER_TAR=`readlink -e ${PS_UPPER_BASE}* | grep ".tar" | head -n1`
 
 if [ ! -z $PS_LOWER_TAR ];then
   tar -xzf $PS_LOWER_TAR
-  PS_LOWER_BASE=`ls -1td ?ercona-?erver-${PS_LOWER_VERSION}* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PS_LOWER_BASE/bin:$PATH"
+  PS_LOWER_BASEDIR=`readlink -e ${PS_LOWER_BASE}* | grep -v ".tar" | head -n1`
+  export PATH="$PS_LOWER_BASEDIR/bin:$PATH"
 else
-  PS_LOWER_BASE=`ls -1td ?ercona-?erver-${PS_LOWER_VERSION}* | grep -v ".tar" | head -n1`
-  if [ ! -z $PS_LOWER_BASE ]; then
-    export PATH="$ROOT_FS/$PS_LOWER_BASE/bin:$PATH"
+  PS_LOWER_BASEDIR=`readlink -e ${PS_LOWER_BASE}* | grep -v ".tar" | head -n1`
+  if [ ! -z $PS_LOWER_BASEDIR ]; then
+    export PATH="$PS_LOWER_BASEDIR/bin:$PATH"
   else
-    echoit "ERROR! Could not find Percona-Server-${PS_LOWER_VERSION} binary"
+    echoit "ERROR! Could not find $PS_LOWER_BASE binary"
+    exit 1
   fi
 fi
 
 if [ ! -z $PS_UPPER_TAR ];then
   tar -xzf $PS_UPPER_TAR
-  PS_UPPER_BASE=`ls -1td ?ercona-?erver-${PS_UPPER_VERSION}* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PS_UPPER_BASE/bin:$PATH"
+  PS_UPPER_BASEDIR=`readlink -e ${PS_UPPER_BASE}* | grep -v ".tar" | head -n1`
+  export PATH="$PS_UPPER_BASEDIR/bin:$PATH"
 else
-  PS_UPPER_BASE=`ls -1td ?ercona-?erver-${PS_UPPER_VERSION}* | grep -v ".tar" | head -n1`
-  if [ ! -z $PS_UPPER_BASE ]; then
-    export PATH="$ROOT_FS/$PS_UPPER_BASE/bin:$PATH"
+  PS_UPPER_BASEDIR=`readlink -e ${PS_UPPER_BASE}* | grep -v ".tar" | head -n1`
+  if [ ! -z $PS_UPPER_BASEDIR ]; then
+    export PATH="$PS_UPPER_BASEDIR/bin:$PATH"
   else
-    echoit "ERROR! Could not find Percona-Server-${PS_UPPER_VERSION} binary"
+    echoit "ERROR! Could not find $PS_UPPER_BASE binary"
+    exit 1
   fi
 fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
-PS_LOWER_BASEDIR="${ROOT_FS}/$PS_LOWER_BASE"
-PS_UPPER_BASEDIR="${ROOT_FS}/$PS_UPPER_BASE"
 
 export MYSQL_VARDIR="$WORKDIR/mysqldir"
 mkdir -p $MYSQL_VARDIR
