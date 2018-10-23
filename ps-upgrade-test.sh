@@ -462,13 +462,13 @@ function rpl_test(){
   echo "socket=$WORKDIR/ps_master.sock" >> $WORKDIR/ps_master.cnf
   echo "log-output=none" >> $WORKDIR/ps_master.cnf
 
-  ${PS_UPPER_BASEDIR} --datadir=$ps_master_datadir  > $WORKDIR/logs/ps_master.err 2>&1 || exit 1;
-  ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf > $WORKDIR/logs/ps_master.err 2>&1 &
+  ${LOWER_MID} --datadir=$ps_master_datadir  > $WORKDIR/logs/ps_master.err 2>&1 || exit 1;
+  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf > $WORKDIR/logs/ps_master.err 2>&1 &
 
   for X in $(seq 0 ${PS_START_TIMEOUT}); do
     sleep 1
-    if ${PS_UPPER_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/ps_master.sock ping > /dev/null 2>&1; then
-      ${PS_UPPER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_master.sock -e"drop database if exists test; create database test"
+    if ${PS_LOWER_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/ps_master.sock ping > /dev/null 2>&1; then
+      ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_master.sock -e"drop database if exists test; create database test"
       break
     fi
     if [ $X -eq ${PS_START_TIMEOUT} ]; then
@@ -484,11 +484,11 @@ function rpl_test(){
   rm -rf ${MYSQL_VARDIR}/ps_slave
   mkdir ${MYSQL_VARDIR}/ps_slave
   ps_slave_datadir="${MYSQL_VARDIR}/ps_slave"
-  cp -r $ps_master_datadir/mysqld.1/data/* ${MYSQL_VARDIR}/ps_slave
+  cp -r $ps_master_datadir/* ${MYSQL_VARDIR}/ps_slave
   rm -rf ${MYSQL_VARDIR}/ps_slave/auto.cnf
 
   #Start master
-  ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults   --basedir=${PS_LOWER_BASEDIR} --datadir=$ps_master_datadir/mysqld.1/data --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=101 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 &
+  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf > $WORKDIR/logs/ps_master.err 2>&1 &
 
   startup_check $WORKDIR/ps_master.sock
   #Start slave
@@ -545,14 +545,14 @@ function rpl_test(){
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
 
-  ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_master_datadir/mysqld.1/data  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 &
+  ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_master_datadir  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 &
 
   startup_check $WORKDIR/ps_master.sock
   ${PS_UPPER_BASEDIR}/bin/mysql_upgrade --socket=$WORKDIR/ps_master.sock -uroot > $WORKDIR/logs/ps_rpl_master_upgrade.log 2>&1
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
 
-  ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_master_datadir/mysqld.1/data  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=101 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 &
+  ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_master_datadir  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=101 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 &
 
   startup_check $WORKDIR/ps_master.sock
 
