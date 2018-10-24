@@ -195,7 +195,6 @@ else
   UPPER_MID="${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_UPPER_BASEDIR}"
 fi
 
-
 echo "[mysqld]" > ${WORKDIR}/ps_lower.cnf
 echo "basedir=${PS_LOWER_BASEDIR}" >> $WORKDIR/ps_lower.cnf
 echo "datadir=$psdatadir" >> $WORKDIR/ps_lower.cnf
@@ -268,56 +267,60 @@ SBTABLE_LIST=`$PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u roo
 
 $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_lower.sock -u root sysbench_myisam_db -e"ALTER TABLE sbtest_mrg UNION=($SBTABLE_LIST), ENGINE=MRG_MYISAM" || true
 
-if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
-  #Install TokuDB plugin
-  echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
-  $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/TokuDB.sql
+if [ -r ${PS_UPPER_BASE}/lib/mysql/plugin/ha_tokudb.so ]; then
+  if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
+    #Install TokuDB plugin
+    echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
+    $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/TokuDB.sql
 
-  echoit "Loading employees database with tokudb engine for upgrade testing.."
-  create_emp_db employee_5 tokudb employees.sql
+    echoit "Loading employees database with tokudb engine for upgrade testing.."
+    create_emp_db employee_5 tokudb employees.sql
   
-  if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
-    echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
-    create_emp_db employee_6 tokudb employees_partitioned.sql
+    if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
+      echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
+      create_emp_db employee_6 tokudb employees_partitioned.sql
+    fi
   fi
 fi
 
-if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
-  #Install RocksDB plugin
-  echo "INSTALL PLUGIN rocksdb SONAME 'ha_rocksdb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
-  $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/MyRocks.sql
+if [ -r ${PS_UPPER_BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
+  if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
+    #Install RocksDB plugin
+    echo "INSTALL PLUGIN rocksdb SONAME 'ha_rocksdb.so'" | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
+    $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock < ${SCRIPT_PWD}/MyRocks.sql
 
-  echo "DROP DATABASE IF EXISTS rocksdb_test;CREATE DATABASE IF NOT EXISTS rocksdb_test; set global default_storage_engine = ROCKSDB " | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
+    echo "DROP DATABASE IF EXISTS rocksdb_test;CREATE DATABASE IF NOT EXISTS rocksdb_test; set global default_storage_engine = ROCKSDB " | $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$WORKDIR/ps_lower.sock
 
-  echoit "Sysbench rocksdb data load"
-  sysbench_run rocksdb rocksdb_test
-  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_lower.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_rocksdb_prepare.txt
+    echoit "Sysbench rocksdb data load"
+    sysbench_run rocksdb rocksdb_test
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_lower.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_rocksdb_prepare.txt
 
-  if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
-    echoit "Creating rocksdb partitioned tables"
-    for i in `seq 1 10`; do
-      ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "create table rocksdb_test.tbl_range${i} (id int auto_increment,str varchar(32),year_col int, primary key(id,year_col)) PARTITION BY RANGE (year_col) ( PARTITION p0 VALUES LESS THAN (1991), PARTITION p1 VALUES LESS THAN (1995),PARTITION p2 VALUES LESS THAN (2000))" 2>&1
-      ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "CREATE TABLE rocksdb_test.tbl_list${i} (c1 INT, c2 INT ) PARTITION BY LIST(c1) ( PARTITION p0 VALUES IN (1, 3, 5, 7, 9),PARTITION p1 VALUES IN (2, 4, 6, 8) );" 2>&1
-      ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "CREATE TABLE rocksdb_test.tbl_key${i} ( id INT NOT NULL PRIMARY KEY auto_increment, str_value VARCHAR(100)) PARTITION BY KEY() PARTITIONS 5;" 2>&1
-      ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "CREATE TABLE rocksdb_test.tbl_sub_part${i} (id int, purchased DATE) PARTITION BY RANGE( YEAR(purchased) ) SUBPARTITION BY HASH( TO_DAYS(purchased) ) SUBPARTITIONS 2 ( PARTITION p0 VALUES LESS THAN (1990),PARTITION p1 VALUES LESS THAN (2000),PARTITION p2 VALUES LESS THAN MAXVALUE);" 2>&1
-    done
-    ARR_YEAR=( 1985 1986 1987 1988 1989 1990 1991 1992 1993 1994 1995 1996 1997 1998 1999 )
-    ARR_L1=( 1 3 5 7 9 )
-    ARR_L2=( 2 4 6 8 )
-    ARR_DATE=( 1988-09-20 1989-10-14 1990-08-24 1993-05-12 1995-02-17 2000-03-04 2001-08-23 2007-02-24 2017-04-01 )
-    for i in `seq 1 1000`; do
-      for j in `seq 1 10`; do
-        rand_year=$[$RANDOM % 15]
-        rand_list1=$[$RANDOM % 5]
-        rand_list2=$[$RANDOM % 4]
-        rand_sub=$[$RANDOM % 9]
-        STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-        ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "INSERT INTO rocksdb_test.tbl_range${j} (str,year_col) VALUES ('${STRING}',${ARR_YEAR[$rand_year]})"
-        ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "INSERT INTO rocksdb_test.tbl_list${j} VALUES (${ARR_L1[$rand_list1]},${ARR_L2[$rand_list2]})"
-        ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "INSERT INTO rocksdb_test.tbl_key${j} (str_value) VALUES ('${STRING}')"
-        ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "INSERT INTO rocksdb_test.tbl_sub_part${j} VALUES (${i},'${ARR_DATE[$rand_sub]}')"
+    if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
+      echoit "Creating rocksdb partitioned tables"
+      for i in `seq 1 10`; do
+        ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "create table rocksdb_test.tbl_range${i} (id int auto_increment,str varchar(32),year_col int, primary key(id,year_col)) PARTITION BY RANGE (year_col) ( PARTITION p0 VALUES LESS THAN (1991), PARTITION p1 VALUES LESS THAN (1995),PARTITION p2 VALUES LESS THAN (2000))" 2>&1
+        ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "CREATE TABLE rocksdb_test.tbl_list${i} (c1 INT, c2 INT ) PARTITION BY LIST(c1) ( PARTITION p0 VALUES IN (1, 3, 5, 7, 9),PARTITION p1 VALUES IN (2, 4, 6, 8) );" 2>&1
+        ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "CREATE TABLE rocksdb_test.tbl_key${i} ( id INT NOT NULL PRIMARY KEY auto_increment, str_value VARCHAR(100)) PARTITION BY KEY() PARTITIONS 5;" 2>&1
+        ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "CREATE TABLE rocksdb_test.tbl_sub_part${i} (id int, purchased DATE) PARTITION BY RANGE( YEAR(purchased) ) SUBPARTITION BY HASH( TO_DAYS(purchased) ) SUBPARTITIONS 2 ( PARTITION p0 VALUES LESS THAN (1990),PARTITION p1 VALUES LESS THAN (2000),PARTITION p2 VALUES LESS THAN MAXVALUE);" 2>&1
       done
-    done
+      ARR_YEAR=( 1985 1986 1987 1988 1989 1990 1991 1992 1993 1994 1995 1996 1997 1998 1999 )
+      ARR_L1=( 1 3 5 7 9 )
+      ARR_L2=( 2 4 6 8 )
+      ARR_DATE=( 1988-09-20 1989-10-14 1990-08-24 1993-05-12 1995-02-17 2000-03-04 2001-08-23 2007-02-24 2017-04-01 )
+      for i in `seq 1 1000`; do
+        for j in `seq 1 10`; do
+          rand_year=$[$RANDOM % 15]
+          rand_list1=$[$RANDOM % 5]
+          rand_list2=$[$RANDOM % 4]
+          rand_sub=$[$RANDOM % 9]
+          STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+          ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "INSERT INTO rocksdb_test.tbl_range${j} (str,year_col) VALUES ('${STRING}',${ARR_YEAR[$rand_year]})"
+          ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "INSERT INTO rocksdb_test.tbl_list${j} VALUES (${ARR_L1[$rand_list1]},${ARR_L2[$rand_list2]})"
+          ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "INSERT INTO rocksdb_test.tbl_key${j} (str_value) VALUES ('${STRING}')"
+          ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "INSERT INTO rocksdb_test.tbl_sub_part${j} VALUES (${i},'${ARR_DATE[$rand_sub]}')"
+        done
+      done
+    fi
   fi
 fi
 
