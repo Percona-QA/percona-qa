@@ -366,8 +366,8 @@ get_link(){
     fi
 
     if [[ -z ${VERSION_FULL} ]]; then
-      TARBALL=$(wget -qO- https://www.vaultproject.io/downloads.html | grep -oP "vault_.*linux_${BUILD_ARCH}.zip" | head -n1)
-      VERSION_FULL=$(echo "${TARBALL}"|awk -F'_' '{print $2}')
+      VERSION_FULL=$(wget -qO- https://releases.hashicorp.com/vault/ |grep -o "vault_.*"|grep -vP "beta|rc"|sed "s:</a>::"|sed "s:vault_::"|head -n1)
+      TARBALL="vault_${VERSION_FULL}_linux_${BUILD_ARCH}.zip"
       LINK="${BASE_LINK}${VERSION_FULL}/${TARBALL}"
     else
       LINK="${BASE_LINK}${VERSION_FULL}/vault_${VERSION_FULL}_linux_${BUILD_ARCH}.zip"
