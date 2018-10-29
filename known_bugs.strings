@@ -42,6 +42,8 @@ ha_innodb.cc.4926.0                                      ## https://jira.percona
 mysql_alter_table                                        ## https://jira.percona.com/browse/PS-4802
 dd_table_has_instant_cols                                ## https://jira.percona.com/projects/PS/issues/PS-4803
 ha_innodb.cc.4974.0                                      ## https://jira.percona.com/browse/PS-4846
+dd..sdi..store                                           ## https://jira.percona.com/browse/PS-4970
+is_storage_available.tuple - packed_tuple, 0             ## https://jira.percona.com/browse/PS-4971
 
 ## =========== PS/MS 8.0 Prep
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
