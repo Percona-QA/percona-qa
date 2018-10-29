@@ -36,6 +36,7 @@ gtid_next_type == ANONYMOUS_GTID                         ## https://bugs.mysql.c
 #addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA ## Fixed ## https://bugs.mysql.com/bug.php?id=90590
 head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.com/bug.php?id=90640
 TEXT=.bin2decimal.$                                      ## https://bugs.mysql.com/bug.php?id=90673 (Fixed in 8.0.13)
+all .. .xs->is_binlogged                                 ## https://bugs.mysql.com/bug.php?id=92993
 
 ## =========== PS 8.0 RC
 ha_innodb.cc.4926.0                                      ## https://jira.percona.com/browse/PS-4801
@@ -44,6 +45,9 @@ dd_table_has_instant_cols                                ## https://jira.percona
 ha_innodb.cc.4974.0                                      ## https://jira.percona.com/browse/PS-4846
 dd..sdi..store                                           ## https://jira.percona.com/browse/PS-4970
 is_storage_available.tuple - packed_tuple, 0             ## https://jira.percona.com/browse/PS-4971
+std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >.._M_bucket_index    ## https://jira.percona.com/browse/PS-4974
+thread_ids.empty                                         ## https://jira.percona.com/browse/PS-4975
+plugin_lock                                              ## https://jira.percona.com/browse/PS-3817
 
 ## =========== PS/MS 8.0 Prep
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
