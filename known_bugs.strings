@@ -168,6 +168,8 @@ innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_activ
 .table_name                                               ## https://jira.percona.com/browse/PS-4979
 ZN7OSMutex5enterEv                                        ## https://jira.percona.com/browse/PS-4986
 log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
+sync0types.h line 1051                                    ## https://jira.percona.com/browse/PS-4988
+
 
 ## =========== PS8/MS8, need better tetcases
 #len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...                ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
@@ -361,6 +363,7 @@ type...!                                                 ## MS5.7 ## https://bug
 #log0log.cc line 1256                                    ## Fixed ## PS5.7 ## https://bugs.launchpad.net/percona-server/+bug/1597143
 log0log.cc line 562                                               ## PS5.7 ## https://bugs.launchpad.net/percona-server/+bug/1660760
 log0log.cc line 556                                               ## ^ .18 ## https://bugs.launchpad.net/percona-server/+bug/1660760
+log0log.cc line 574                                               ## https://jira.percona.com/browse/PS-4989
 log0log.cc line 1839                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 log0log.cc line 2199                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 Z19find_field_in_tableP3THDP5TABLEPKcmbPj                         ## https://jira.percona.com/browse/PS-4830
@@ -425,6 +428,7 @@ btr0cur.cc line 1132                             ## https://bugs.mysql.com/bug.p
 fsp0fsp.cc line 1887                             ## https://bugs.mysql.com/bug.php?id=74663 (was 74682) MS
 fsp0fsp.cc line 3208                             ## https://bugs.launchpad.net/percona-server/+bug/1384567 (won't be fixed)
 fsp0fsp.cc line 3236                             ## https://jira.percona.com/browse/PS-4807
+fsp0fsp.cc line 3328                             ## https://jira.percona.com/browse/PS-4807 (PS-5.7.23-24)
 fsp0fsp.cc line 3246                             ## https://bugs.launchpad.net/percona-server/+bug/1384567 older PS (idem)
 fsp0fsp.cc line 1899                             ## https://bugs.launchpad.net/percona-server/+bug/1384567 
 btr0cur.cc line 2208                             ## https://bugs.launchpad.net/percona-server/+bug/1385028 (Dup of MS #74682/MS #74663)
