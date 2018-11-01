@@ -166,6 +166,8 @@ dd..create_tmp_table                                      ## https://jira.percon
 len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  ## https://jira.percona.com/browse/PS-4932
 innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## https://jira.percona.com/browse/PS-4933
 .table_name                                               ## https://jira.percona.com/browse/PS-4979
+ZN7OSMutex5enterEv                                        ## https://jira.percona.com/browse/PS-4986
+log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
 
 ## =========== PS8/MS8, need better tetcases
 #len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...                ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
