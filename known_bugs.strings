@@ -817,7 +817,7 @@ os0thread.cc line 209                                                           
 .options.use_direct_reads                                                               ## https://jira.percona.com/browse/PS-4990
 fil0crypt.cc line 2081                                                                  ## https://jira.percona.com/browse/PS-4992
 handler0alter.cc line 4348                                                              ## https://jira.percona.com/browse/PS-4993
-Handlerton: share->file == NULL                                                         ## https://jira.percona.com/browse/PS-4307
+Handlerton. share->file == NULL                                                         ## https://jira.percona.com/browse/PS-4307
 
 #=========== First frame from error log based ===========
 Z18fix_partition_funcP3THDP5TABLEb                                                      ## https://bugs.mysql.com/bug.php?id=78238 ([5 Sep 2:14])
