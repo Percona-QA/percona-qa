@@ -237,6 +237,7 @@ manifest_filenames->empty                                ## Likely duplicate of 
 m_db.length == copy->m_db.length                         ## https://bugs.mysql.com/bug.php?id=74604 (5.7 version thereof)
 m_index_scan_type .= partition_index_last                ## https://bugs.mysql.com/bug.php?id=85537
 #trx0trx.h line 1410                            ## Fixed ## https://bugs.mysql.com/bug.php?id=76415
+trx0trx.h line 1654                                      ## https://bugs.mysql.com/bug.php?id=93083 (PS assertion line number)
 #thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  ## Fixed ## https://bugs.mysql.com/bug.php?id=87572
 #thd->variables.gtid_next.type == ANONYMOUS_GROUP ## Fixed ## https://bugs.mysql.com/bug.php?id=76416                                               (# after MS 5.7.8 merged)
 #thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  ## Fixed ## https://bugs.mysql.com/bug.php?id=86250
