@@ -823,6 +823,7 @@ srv0srv.cc line 3671                                                            
 
 #=========== First frame from error log based ===========
 Z18fix_partition_funcP3THDP5TABLEb                                                      ## https://bugs.mysql.com/bug.php?id=78238 ([5 Sep 2:14])
+Z29fil_io_set_keyring_encryptionR9IORequestP11fil_space_tRK9page_id_t                   ## https://jira.percona.com/browse/PS-4997
 Z8MYSQLlexP7YYSTYPEP3THD                                                                ## https://bugs.mysql.com/bug.php?id=78238 ([5 Sep 0:53])
 ZN3THD19send_explain_fieldsEP13select_result                                            ## https://bugs.mysql.com/bug.php?id=78238 ([5 Sep 1:42])
 ZN3THD17set_new_thread_idEv                                                             ## https://bugs.launchpad.net/percona-server/+bug/1642230
