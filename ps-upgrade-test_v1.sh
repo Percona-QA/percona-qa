@@ -28,6 +28,9 @@ declare LOWER_MID
 declare UPPER_MID
 declare PS_START_TIMEOUT=60
 declare TESTCASE=""
+declare KEYRING_PLUGIN=""
+declare INIT_OPT=""
+declare ENCRYPTION=""
 
 # Dispay script usage details
 usage () {
@@ -42,12 +45,14 @@ usage () {
   echo "                                      non_partition_test"
   echo "                                      partition_test"
   echo "                                    If you specify 'all', the script will execute all testcases"
+  echo ""
+  echo "  -e, --with-encryption             Run the script with encryption feature"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:l:u:k:t:h --longoptions=workdir:,build-number:,ps-lower-base:,ps-upper-base:,keyring-plugin:,testcase:,help \
+  go_out="$(getopt --options=w:b:l:u:k:t:eh --longoptions=workdir:,build-number:,ps-lower-base:,ps-upper-base:,keyring-plugin:,testcase:,with-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -95,6 +100,10 @@ do
     TESTCASE="$2"
 	shift 2
     ;;
+    -e | --with-encryption )
+    shift
+    ENCRYPTION=1
+    ;;
     -h | --help )
     usage
     exit 0
@@ -117,15 +126,19 @@ if [ -z ${SDURATION} ]; then
 fi
 
 if [ -z ${TSIZE} ]; then
-  TSIZE=500
+  TSIZE=1000
 fi
 
 if [ -z ${NUMT} ]; then
-  NUMT=16
+  NUMT=10
 fi
 
 if [ -z ${TCOUNT} ]; then
   TCOUNT=10
+fi
+
+if [[ -z "$KEYRING_PLUGIN" ]]; then
+  KEYRING_PLUGIN="file"
 fi
 
 if [[ ! -z "$TESTCASE" ]]; then
@@ -181,6 +194,18 @@ echoit(){
   echo "[$(date +'%T')] $1"
   if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/upgrade_testing.log; fi
 }
+
+if [ "$ENCRYPTION" == 1 ];then
+  if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+    echoit "Setting up vault server"
+    mkdir $WORKDIR/vault
+    rm -rf $WORKDIR/vault/*
+    killall vault
+    echoit "********************************************************************************************"
+    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
+    echoit "********************************************************************************************"
+  fi
+fi
 
 trap cleanup EXIT KILL
 
@@ -290,6 +315,8 @@ function generate_cnf(){
   echo "gtid-mode=ON " >> $WORKDIR/$ARGS.cnf
   echo "log-slave-updates" >> $WORKDIR/$ARGS.cnf
   echo "enforce-gtid-consistency" >> $WORKDIR/$ARGS.cnf
+  echo "master-info-repository=TABLE" >> $WORKDIR/$ARGS.cnf
+  echo "relay-log-info-repository=TABLE" >> $WORKDIR/$ARGS.cnf
   echo "innodb_flush_method=O_DIRECT" >> $WORKDIR/$ARGS.cnf
   echo "core-file" >> $WORKDIR/$ARGS.cnf
   echo "secure-file-priv=" >> $WORKDIR/$ARGS.cnf
@@ -297,6 +324,31 @@ function generate_cnf(){
   echo "log-error=$WORKDIR/logs/$ARGS.err" >> $WORKDIR/$ARGS.cnf
   echo "socket=$WORKDIR/$ARGS.sock" >> $WORKDIR/$ARGS.cnf
   echo "log-output=none" >> $WORKDIR/$ARGS.cnf
+  if [[ "$ENCRYPTION" == 1 ]];then
+    echo "encrypt_binlog" >> $WORKDIR/$ARGS.cnf
+    echo "master_verify_checksum=on" >> $WORKDIR/$ARGS.cnf
+    echo "binlog_checksum=crc32" >> $WORKDIR/$ARGS.cnf
+    echo "innodb_temp_tablespace_encrypt=ON" >> $WORKDIR/$ARGS.cnf
+    echo "encrypt-tmp-files=ON" >> $WORKDIR/$ARGS.cnf
+    echo "innodb_encrypt_tables=ON" >> $WORKDIR/$ARGS.cnf
+    if check_for_version $MYSQL_VERSION "5.7.23" ; then
+      echo "innodb_sys_tablespace_encrypt=ON" >> $WORKDIR/$ARGS.cnf
+    fi
+    if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+      echo "early-plugin-load=keyring_file.so" >> $WORKDIR/$ARGS.cnf
+      echo "keyring_file_data=$DATADIR/keyring" >> $WORKDIR/$ARGS.cnf
+      if check_for_version $MYSQL_VERSION "5.7.23" ; then
+        INIT_OPT="--early-plugin-load=keyring_file.so --keyring_file_data=$DATADIR/keyring --innodb_sys_tablespace_encrypt=ON"
+      fi
+    elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+      echo "early-plugin-load=keyring_vault.so" >> $WORKDIR/$ARGS.cnf
+      echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> $WORKDIR/$ARGS.cnf
+      if check_for_version $MYSQL_VERSION "5.7.23" ; then
+        INIT_OPT="--early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
+      fi
+    fi
+  fi
+
 }
 function check_conn(){
   local BASE=$1
@@ -316,14 +368,14 @@ function check_conn(){
 
 function start_ps_lower_main(){
   generate_cnf "$PS_LOWER_BASEDIR" "$psdatadir" "$PORT" "ps_lower"
-  ${LOWER_MID} --datadir=$psdatadir  > $WORKDIR/logs/ps_lower.err 2>&1 || exit 1;
+  ${LOWER_MID} --datadir=$psdatadir $INIT_OPT > $WORKDIR/logs/ps_lower.err 2>&1 || exit 1;
   ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_lower.cnf --basedir=$PS_LOWER_BASEDIR --datadir=$psdatadir --port=$PORT > $WORKDIR/logs/ps_lower.err 2>&1 &
   check_conn "${PS_LOWER_BASEDIR}" "ps_lower"
   ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower.sock -e"drop database if exists test; create database test"
 }
 
 function non_partition_test(){
-  local SOCKET=$1	
+  local SOCKET=${1:-}	
   echoit "Sysbench Run: Prepare stage"
   sysbench_run innodb test
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
@@ -340,6 +392,29 @@ function non_partition_test(){
   echoit "Loading employees database with myisam engine.."
   create_emp_db employee_3 myisam employees.sql
   
+  if [ "$ENCRYPTION" == 1 ];then
+    $PS_LOWER_BASEDIR/bin/mysql -uroot --socket=$SOCKET test -e "CREATE TABLESPACE test_gen_ts1 ADD DATAFILE 'test_gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
+    $PS_LOWER_BASEDIR/bin/mysql -uroot --socket=$SOCKET test -e "CREATE TABLE test_gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE test_gen_ts1" 2>&1
+    $PS_LOWER_BASEDIR/bin/mysql -uroot --socket=$SOCKET test -e "CREATE TABLE test_sys_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE=innodb_system ENCRYPTION='Y'" 2>&1
+    local NUM_ROWS=$(shuf -i 50-100 -n 1)
+    for i in `seq 1 $NUM_ROWS`; do
+      local STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+      $PS_LOWER_BASEDIR/bin/mysql -uroot --socket=$SOCKET test -e "INSERT INTO test_gen_ts_tb1 (str) VALUES ('${STRING}')"
+      $PS_LOWER_BASEDIR/bin/mysql -uroot --socket=$SOCKET test -e "INSERT INTO test_sys_ts_tb1 (str) VALUES ('${STRING}')"
+    done
+    ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower.sock -e"drop database if exists test_encrypt; create database test_encrypt"
+    echoit "Sysbench Run: Prepare stage"
+    sysbench_run innodb test_encrypt
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_test_encrypt_prepare.txt
+    for j in `seq 1 5`; do
+      ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower.sock -e"ALTER TABLE test_encrypt.sbtest$j TABLESPACE=innodb_system"
+	done
+    for j in `seq 6 10`; do
+      $PS_LOWER_BASEDIR/bin/mysql -uroot --socket=$SOCKET test -e "CREATE TABLESPACE test_encrypt_gen_ts1 ADD DATAFILE 'test_encrypt_gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
+      ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower.sock -e"ALTER TABLE test_encrypt.sbtest$j TABLESPACE=test_encrypt_gen_ts1"
+	done
+  fi
+
   echoit "Sysbench Run: Creating MyISAM tables"
   echo "CREATE DATABASE sysbench_myisam_db;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
   sysbench_run myisam sysbench_myisam_db
@@ -350,12 +425,6 @@ function non_partition_test(){
   SBTABLE_LIST=`$PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root -Bse "SELECT GROUP_CONCAT(table_name SEPARATOR ',') FROM information_schema.tables WHERE table_schema='sysbench_myisam_db' and table_name!='sbtest_mrg'"`
   
   $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root sysbench_myisam_db -e"ALTER TABLE sbtest_mrg UNION=($SBTABLE_LIST), ENGINE=MRG_MYISAM" || true
-
-  #Partition testing with sysbench data
-  echo "ALTER TABLE test.sbtest1 PARTITION BY HASH(id) PARTITIONS 8;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
-  echo "ALTER TABLE test.sbtest2 PARTITION BY LINEAR KEY ALGORITHM=2 (id) PARTITIONS 32;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
-  echo "ALTER TABLE test.sbtest3 PARTITION BY HASH(id) PARTITIONS 8;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
-  echo "ALTER TABLE test.sbtest4 PARTITION BY LINEAR KEY ALGORITHM=2 (id) PARTITIONS 32;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
 
   if [ -r ${PS_UPPER_BASE}/lib/mysql/plugin/ha_tokudb.so ]; then
     if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
@@ -392,6 +461,18 @@ function non_partition_test(){
 
 function partition_test(){
   local SOCKET=$1
+
+  ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower.sock -e"drop database if exists sysbench_partition; create database sysbench_partition"
+  echoit "Sysbench Run: Prepare stage"
+  sysbench_run innodb sysbench_partition
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_partition_prepare.txt
+	
+  #Partition testing with sysbench data
+  echo "ALTER TABLE sysbench_partition.sbtest1 PARTITION BY HASH(id) PARTITIONS 8;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
+  echo "ALTER TABLE sysbench_partition.sbtest2 PARTITION BY LINEAR KEY ALGORITHM=2 (id) PARTITIONS 32;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
+  echo "ALTER TABLE sysbench_partition.sbtest3 PARTITION BY HASH(id) PARTITIONS 8;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
+  echo "ALTER TABLE sysbench_partition.sbtest4 PARTITION BY LINEAR KEY ALGORITHM=2 (id) PARTITIONS 32;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
+  
   echoit "Loading employees partitioned database with innodb engine.."
   create_emp_db employee_2 innodb employees_partitioned.sql
   
@@ -408,7 +489,7 @@ function partition_test(){
     
       if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
         echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
-        create_emp_db employee_6 tokudb employees_partitioned.sql
+        #create_emp_db employee_6 tokudb employees_partitioned.sql
       fi
   
     fi
