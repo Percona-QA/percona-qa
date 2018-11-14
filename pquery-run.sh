@@ -945,12 +945,10 @@ pquery_test(){
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then
           head -n3 ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}  # Setup testcase with DROP/CREATE/USE test db
           sed '1,3d' ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
-           sed 's|UNIQUE[ \t]\+KEY||i' | \
            sed 's|FOREIGN[ \t]\+KEY||i' | \
            sed 's|FULLTEXT||i' | \
            sed 's|VIRTUAL||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
-           sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            sed -E 's/row_format.*=.*(;| )+//i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
