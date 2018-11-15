@@ -37,7 +37,7 @@ usage () {
   echo "Usage: [ options ]"
   echo "Options:"
   echo "  -w, --workdir                     Specify work directory"
-  echo "  -b, --build-number                Specify work build directory"
+  echo "  -b, --build-number                Specify work build directory(For Jenkins automated runs only)"
   echo "  -l, --ps-lower-base               Specify PS lower base directory"
   echo "  -u, --ps-upper-base               Specify PS upper base directory"
   echo "  -k, --keyring-plugin=[file|vault] Specify which keyring plugin to use(default keyring-file)"
@@ -545,10 +545,10 @@ function start_ps_upper_main(){
 
   for i in "${TC_ARRAY[@]}"; do
 	if [[ "$i" != "non_partition_test" ]]; then
-      echo "ALTER TABLE test.sbtest1 COALESCE PARTITION 2;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
-      echo "ALTER TABLE test.sbtest2 REORGANIZE PARTITION;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
-      echo "ALTER TABLE test.sbtest3 ANALYZE PARTITION p1;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
-      echo "ALTER TABLE test.sbtest4 CHECK PARTITION p2;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
+      echo "ALTER TABLE sysbench_partition.sbtest1 COALESCE PARTITION 2;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
+      echo "ALTER TABLE sysbench_partition.sbtest2 REORGANIZE PARTITION;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
+      echo "ALTER TABLE sysbench_partition.sbtest3 ANALYZE PARTITION p1;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
+      echo "ALTER TABLE sysbench_partition.sbtest4 CHECK PARTITION p2;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
     fi
   done
    
@@ -603,5 +603,3 @@ ps_downgrade_datacheck
 
 ${PS_LOWER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_lower_down.sock shutdown
 ${PS_UPPER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_upper.sock  shutdown
-
-
