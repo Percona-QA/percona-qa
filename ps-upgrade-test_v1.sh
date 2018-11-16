@@ -374,11 +374,22 @@ function start_ps_lower_main(){
   ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower.sock -e"drop database if exists test; create database test"
 }
 
-function non_partition_test(){
-  local SOCKET=${1:-}	
-  echoit "Sysbench Run: Prepare stage"
+function create_regular_tbl(){
+  local SOCKET=$1
+  echoit "Sysbench Run: Creating InnoDB  tables"
   sysbench_run innodb test
-  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_innodb_prepare.txt
+
+  echoit "Sysbench Run: Creating MyISAM tables"
+  echo "CREATE DATABASE sysbench_myisam_db;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
+  sysbench_run myisam sysbench_myisam_db
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_myisam_prepare.txt
+  
+  $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root sysbench_myisam_db -e"CREATE TABLE sbtest_mrg like sbtest1" || true
+  
+  SBTABLE_LIST=`$PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root -Bse "SELECT GROUP_CONCAT(table_name SEPARATOR ',') FROM information_schema.tables WHERE table_schema='sysbench_myisam_db' and table_name!='sbtest_mrg'"`
+ 
+  $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root sysbench_myisam_db -e"ALTER TABLE sbtest_mrg UNION=($SBTABLE_LIST), ENGINE=MRG_MYISAM" || true
   
   echoit "Loading sakila test database"
   $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
@@ -391,6 +402,25 @@ function non_partition_test(){
   
   echoit "Loading employees database with myisam engine.."
   create_emp_db employee_3 myisam employees.sql
+  
+}
+function test_row_format_tbl(){
+  local SOCKET=$1
+  ROW_FORMAT=(DEFAULT DYNAMIC COMPRESSED REDUNDANT COMPACT)
+  $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root -e "drop database if exists test_row_format;create database test_row_format;"
+  for i in `seq 1 5`;do
+    $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root -e "CREATE TABLE test_row_format.sbtest$i (id int(11) NOT NULL AUTO_INCREMENT,k int(11) NOT NULL DEFAULT '0',c char(120) NOT NULL DEFAULT '',pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k)) ROW_FORMAT=${ROW_FORMAT[$i-1]};"
+  done
+  sysbench /usr/share/sysbench/oltp_insert.lua --mysql-db=test_row_format --mysql-user=root --db-driver=mysql --mysql-socket=$SOCKET --threads=5 --tables=5 --table-size=1000 --time=10 run > $WORKDIR/logs/sysbench_test_row_format.log 2>&1
+}
+
+function non_partition_test(){
+  local SOCKET=${1:-}	
+  echoit "Create regular tables with different storage engines"
+  create_regular_tbl $SOCKET
+  
+  echoit "Create tables with different row formats"
+  test_row_format_tbl $SOCKET
   
   if [ "$ENCRYPTION" == 1 ];then
     $PS_LOWER_BASEDIR/bin/mysql -uroot --socket=$SOCKET test -e "CREATE TABLESPACE test_gen_ts1 ADD DATAFILE 'test_gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
@@ -415,17 +445,6 @@ function non_partition_test(){
 	done
   fi
 
-  echoit "Sysbench Run: Creating MyISAM tables"
-  echo "CREATE DATABASE sysbench_myisam_db;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
-  sysbench_run myisam sysbench_myisam_db
-  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
-  
-  $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root sysbench_myisam_db -e"CREATE TABLE sbtest_mrg like sbtest1" || true
-  
-  SBTABLE_LIST=`$PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root -Bse "SELECT GROUP_CONCAT(table_name SEPARATOR ',') FROM information_schema.tables WHERE table_schema='sysbench_myisam_db' and table_name!='sbtest_mrg'"`
-  
-  $PS_LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root sysbench_myisam_db -e"ALTER TABLE sbtest_mrg UNION=($SBTABLE_LIST), ENGINE=MRG_MYISAM" || true
-
   if [ -r ${PS_UPPER_BASE}/lib/mysql/plugin/ha_tokudb.so ]; then
     if [ -r ${PS_LOWER_BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
       #Install TokuDB plugin
@@ -433,7 +452,7 @@ function non_partition_test(){
       $PS_LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET < ${SCRIPT_PWD}/TokuDB.sql
   
       echoit "Loading employees database with tokudb engine for upgrade testing.."
-      create_emp_db employee_5 tokudb employees.sql
+      #create_emp_db employee_5 tokudb employees.sql
     
       if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
         echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
