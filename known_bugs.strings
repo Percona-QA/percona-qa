@@ -36,12 +36,19 @@ gtid_next_type == ANONYMOUS_GTID                         ## https://bugs.mysql.c
 #addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA ## Fixed ## https://bugs.mysql.com/bug.php?id=90590
 head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.com/bug.php?id=90640
 TEXT=.bin2decimal.$                                      ## https://bugs.mysql.com/bug.php?id=90673 (Fixed in 8.0.13)
+all .. .xs->is_binlogged                                 ## https://bugs.mysql.com/bug.php?id=92993
 
 ## =========== PS 8.0 RC
 ha_innodb.cc.4926.0                                      ## https://jira.percona.com/browse/PS-4801
 mysql_alter_table                                        ## https://jira.percona.com/browse/PS-4802
 dd_table_has_instant_cols                                ## https://jira.percona.com/projects/PS/issues/PS-4803
 ha_innodb.cc.4974.0                                      ## https://jira.percona.com/browse/PS-4846
+dd..sdi..store                                           ## https://jira.percona.com/browse/PS-4970
+is_storage_available.tuple - packed_tuple, 0             ## https://jira.percona.com/browse/PS-4971
+std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >.._M_bucket_index    ## https://jira.percona.com/browse/PS-4974
+thread_ids.empty                                         ## https://jira.percona.com/browse/PS-4975
+plugin_lock                                              ## https://jira.percona.com/browse/PS-3817
+PFS_column_row..make_row                                 ## https://jira.percona.com/browse/PS-4977
 
 ## =========== PS/MS 8.0 Prep
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
@@ -162,6 +169,10 @@ TEXT=.THD..mark_innodb_used.$                                                   
 #dd..create_tmp_table                            ## Fixed ## https://jira.percona.com/browse/PS-4931
 len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  ## https://jira.percona.com/browse/PS-4932
 len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...                       ## https://jira.percona.com/browse/PS-5025
+.table_name                                               ## https://jira.percona.com/browse/PS-4979
+ZN7OSMutex5enterEv                                        ## https://jira.percona.com/browse/PS-4986
+log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
+sync0types.h line 1051                                    ## https://jira.percona.com/browse/PS-4988
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
@@ -228,6 +239,7 @@ manifest_filenames->empty                                ## Likely duplicate of 
 m_db.length == copy->m_db.length                         ## https://bugs.mysql.com/bug.php?id=74604 (5.7 version thereof)
 m_index_scan_type .= partition_index_last                ## https://bugs.mysql.com/bug.php?id=85537
 #trx0trx.h line 1410                            ## Fixed ## https://bugs.mysql.com/bug.php?id=76415
+trx0trx.h line 1654                                      ## https://bugs.mysql.com/bug.php?id=93083 (PS assertion line number)
 #thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  ## Fixed ## https://bugs.mysql.com/bug.php?id=87572
 #thd->variables.gtid_next.type == ANONYMOUS_GROUP ## Fixed ## https://bugs.mysql.com/bug.php?id=76416                                               (# after MS 5.7.8 merged)
 #thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->is_binlog_applier  ## Fixed ## https://bugs.mysql.com/bug.php?id=86250
@@ -251,6 +263,7 @@ m_index_scan_type .= partition_index_last                ## https://bugs.mysql.c
 handler0alter.cc line 5869                               ## https://bugs.mysql.com/bug.php?id=83799 PS
 handler0alter.cc line 5817                               ## https://bugs.mysql.com/bug.php?id=83799 MS
 #explain_other .. unit->is_optimized            ## Fixed ## https://bugs.mysql.com/bug.php?id=76446
+Geometry::is_valid_geotype(gt)                           ## https://bugs.mysql.com/bug.php?id=92868
 
 ## =========== MS 5.7.7 RC ===========
 #Z15ha_commit_transP3THDbb                      ## Fixed ## https://bugs.mysql.com/bug.php?id=77520 (Could not reproduce the issue with latest build)
@@ -354,6 +367,7 @@ type...!                                                 ## MS5.7 ## https://bug
 #log0log.cc line 1256                                    ## Fixed ## PS5.7 ## https://bugs.launchpad.net/percona-server/+bug/1597143
 log0log.cc line 562                                               ## PS5.7 ## https://bugs.launchpad.net/percona-server/+bug/1660760
 log0log.cc line 556                                               ## ^ .18 ## https://bugs.launchpad.net/percona-server/+bug/1660760
+log0log.cc line 574                                               ## https://jira.percona.com/browse/PS-4989
 log0log.cc line 1839                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 log0log.cc line 2199                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 Z19find_field_in_tableP3THDP5TABLEPKcmbPj                         ## https://jira.percona.com/browse/PS-4830
@@ -364,6 +378,8 @@ cache_el.i.->used_tables.is_empty                                      ## https:
 txn->for_recovery                                                      ## https://jira.percona.com/browse/PS-4789
 .thd->locked_tables_mode                                               ## https://jira.percona.com/browse/PS-4789
 ZN9ha_tokudb16bulk_insert_pollEPvf                                     ## https://jira.percona.com/browse/PS-4828 
+mh->m_magic == 1234                                                    ## https://jira.percona.com/browse/PS-4943
+send_metadata .. field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_DECIMAL .. field_types.field_pos. == MYSQL_TYPE_BIT .. field_types.field_pos. == MYSQL_TYPE_NEWDECIMAL .. field_types.field_pos. == MYSQL_TYPE_NEWDATE .. field_types.field_pos. == MYSQL_TYPE_JSON .. .field_types.field_pos. >= MYSQL_TYPE_ENUM .. field_types.field_pos. <= MYSQL_TYPE_GEOMETRY     ## https://jira.percona.com/browse/PS-4945
 
 ## =========== Special: Various ===========
 ha_innodb.cc line 3469                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
@@ -416,6 +432,7 @@ btr0cur.cc line 1132                             ## https://bugs.mysql.com/bug.p
 fsp0fsp.cc line 1887                             ## https://bugs.mysql.com/bug.php?id=74663 (was 74682) MS
 fsp0fsp.cc line 3208                             ## https://bugs.launchpad.net/percona-server/+bug/1384567 (won't be fixed)
 fsp0fsp.cc line 3236                             ## https://jira.percona.com/browse/PS-4807
+fsp0fsp.cc line 3328                             ## https://jira.percona.com/browse/PS-4807 (PS-5.7.23-24)
 fsp0fsp.cc line 3246                             ## https://bugs.launchpad.net/percona-server/+bug/1384567 older PS (idem)
 fsp0fsp.cc line 1899                             ## https://bugs.launchpad.net/percona-server/+bug/1384567 
 btr0cur.cc line 2208                             ## https://bugs.launchpad.net/percona-server/+bug/1385028 (Dup of MS #74682/MS #74663)
@@ -802,9 +819,16 @@ unknown error code 47                                                           
 next_insert_id >= auto_inc_interval_for_cur_row.minimum                                 ## https://bugs.launchpad.net/percona-server/+bug/1582577
 whitelist .= nullptr                                                                    ## https://jira.percona.com/browse/PS-4474
 unp_reader .= nullptr                                                                   ## https://jira.percona.com/browse/PS-4477
+os0thread.cc line 209                                                                   ## https://jira.percona.com/browse/PS-4991
+.options.use_direct_reads                                                               ## https://jira.percona.com/browse/PS-4990
+fil0crypt.cc line 2081                                                                  ## https://jira.percona.com/browse/PS-4992
+handler0alter.cc line 4348                                                              ## https://jira.percona.com/browse/PS-4993
+Handlerton. share->file == NULL                                                         ## https://jira.percona.com/browse/PS-4307
+srv0srv.cc line 3671                                                                    ## https://jira.percona.com/browse/PS-4995
 
 #=========== First frame from error log based ===========
 Z18fix_partition_funcP3THDP5TABLEb                                                      ## https://bugs.mysql.com/bug.php?id=78238 ([5 Sep 2:14])
+Z29fil_io_set_keyring_encryptionR9IORequestP11fil_space_tRK9page_id_t                   ## https://jira.percona.com/browse/PS-4997
 Z8MYSQLlexP7YYSTYPEP3THD                                                                ## https://bugs.mysql.com/bug.php?id=78238 ([5 Sep 0:53])
 ZN3THD19send_explain_fieldsEP13select_result                                            ## https://bugs.mysql.com/bug.php?id=78238 ([5 Sep 1:42])
 ZN3THD17set_new_thread_idEv                                                             ## https://bugs.launchpad.net/percona-server/+bug/1642230
