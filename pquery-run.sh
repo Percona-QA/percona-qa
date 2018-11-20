@@ -929,10 +929,11 @@ pquery_test(){
         # Make sure that the code below generates exactly 3 lines (DROP/CREATE/USE) -OR- change the "head -n3" and "sed '1,3d'" (both below) to match any updates made
         echo 'DROP DATABASE test;' > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then
-          case "$(echo $(( RANDOM % 3 + 1 )))" in
+          case "$(echo $(( RANDOM % 4 + 1 )))" in
             1) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="Binary" DEFAULT COLLATE="Binary";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
             2) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="utf8" DEFAULT COLLATE="utf8_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
             3) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="latin1" DEFAULT COLLATE="latin1_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
+            4) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="utf8mb4" DEFAULT COLLATE="utf8mb4_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
           esac
         else
           echo 'CREATE DATABASE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
@@ -994,7 +995,7 @@ pquery_test(){
            grep -vi "^create table.*generated" | \
            grep -vi "^create table.*/tmp/not-existing" | \
            grep -vi "^create table.*compression" | \
-           grep -vi "^create table.*key_block_size" | \
+           grep -viE "^create( temporary)?.*table.*key_block_size" | \
            grep -vi "^create table.*encryption" | \
            grep -viE "^(create table|alter table).*comment.*__system__" | \
            grep -vi "^select.* sys\." | \
@@ -1009,6 +1010,8 @@ pquery_test(){
            grep -vi "^lock.*for backup" | \
            grep -vi "^uninstall.*plugin" | \
            grep -vi "^alter table.*algorithm.*inplace" | \
+           grep -vi "^set.*innodb_encrypt_tables" | \
+           grep -vi "^insert.*into.*select.*from" | \
            grep -vi "^alter table.*discard tablespace" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         elif [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "tokudb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "tokudb" ]; then
@@ -1054,7 +1057,7 @@ pquery_test(){
            grep -vi "^create table.*generated" | \
            grep -vi "^create table.*/tmp/not-existing" | \
            grep -vi "^create table.*compression" | \
-           grep -vi "^create table.*key_block_size" | \
+           grep -viE "^create( temporary)?.*table.*key_block_size" | \
            grep -vi "^create table.*encryption" | \
            grep -vi "^select.* sys\." | \
            grep -vi "^select.* mysql\." | \
@@ -1064,6 +1067,8 @@ pquery_test(){
            grep -vi "password[ \t]*(.*)" | \
            grep -vi "old_password[ \t]*(.*)" | \
            grep -vi "row_count[ \t]*(.*)" | \
+           grep -vi "^alter table.*algorithm.*inplace" | \
+           grep -vi "^set.*innodb_encrypt_tables" | \
            grep -vi "^uninstall.*plugin" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         else
