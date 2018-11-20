@@ -94,8 +94,8 @@ Cached_authentication_plugins..optimize_plugin_compare_by_pointer ## https://bug
 #srv_shutdown_all_bg_threads                             ## Fixed ## https://bugs.mysql.com/bug.php?id=91973
 TEXT=.\.fail.$                                           ## https://bugs.mysql.com/bug.php?id=91975 (NOTE: ".fail" is very common in logs (" failed" will match for example. Thus, actual testcase reduction had to be done using the string "dict0dd.cc:1071". An attempt to update text_string.sh to handle this string better proved non-straightforward. Thus the string is included here as-is (and is low enough frequency). Note also that this does NOT mean that all error logs with " failed" (i.e. as good as all logs as the mysqlx plugins commonly fails to load) are somehow filtered; it is only a text filter string for this particular bug as per framework workings (i.e. matched via reducer's TEXT="..." matching in pquery-clean-known.sh)
 THD..send_statement_status                               ## https://bugs.mysql.com/bug.php?id=91976
-TEXT=.ha_innopart..external_lock.$                       ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12)
-ut0ut.cc.670                                             ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12)
+TEXT=.ha_innopart..external_lock.$                       ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12) (fixed 8.0.14 / 5.7.25)
+ut0ut.cc.670                                             ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12) (fixed 8.0.14 / 5.7.25)
 #TEXT=.innobase_parse_hint_from_comment.$                ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12) (not reproducible)
 head->variables.gtid_next.type == ANONYMOUS_GTID         ## https://bugs.mysql.com/bug.php?id=91980
 charset_database_number <= 0xFF                          ## https://bugs.mysql.com/bug.php?id=91986 
@@ -130,15 +130,15 @@ std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..a
 std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator  ## https://bugs.mysql.com/bug.php?id=91988
 std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > >, Malloc_allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > > >, std..__detail.._Select  ## https://bugs.mysql.com/bug.php?id=92456 (Fixed in 8.0.14)
 TEXT=.filesort.$                                          ## https://bugs.mysql.com/bug.php?id=92487
-TEXT=.thd_report_innodb_stat.$                            ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
-ZN10DsMrr_impl11dsmrr_closeEv                             ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
-innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_ro_transaction_active   ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
+#TEXT=.thd_report_innodb_stat.$                   ## Fixed ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
+#ZN10DsMrr_impl11dsmrr_closeEv                    ## Fixed ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
+#innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_ro_transaction_active  ## Fixed ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
 index .= nullptr                                          ## https://jira.percona.com/browse/PS-4884 (PS 8.0.12, dbg)
 void dd_write_table<dd..Table>                            ## https://jira.percona.com/browse/PS-4884 (PS 8.0.12, opt) (note that this string is also the one for likely unrelated MS 92188)
 void dd_write_table<dd..Table>                            ## https://bugs.mysql.com/bug.php?id=92188 (MS/PS 8.0.12, opt) (note that this string is also the one for likely unrelated PS-4884)
 dict0dict.cc.5743                                         ## https://bugs.mysql.com/bug.php?id=92188 (MS 8.0.12, dbg)
 dict0dict.cc.5775                                         ## https://bugs.mysql.com/bug.php?id=92188 (PS 8.0.12, dbg)
-m_form->s->row_type == m_create_info->row_type            ## https://jira.percona.com/browse/PS-4885 
+#m_form->s->row_type == m_create_info->row_type  ## Fixed ## https://jira.percona.com/browse/PS-4885 
 dd_table_has_instant_cols                                 ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
 old_dd_tab .= __null                                      ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
 TABLE_LIST..prepare_security                              ## https://bugs.mysql.com/bug.php?id=92539
@@ -154,13 +154,16 @@ TEXT=.ha_release_savepoint.$                              ## https://jira.percon
 handler..unbind_psi                                       ## https://jira.percona.com/browse/PS-4929
 TEXT=..error == 3110.$                                    ## https://bugs.mysql.com/bug.php?id=92777
 #Field_varstring..unpack                        ## Fixed? ## Likely https://bugs.mysql.com/bug.php?id=92448 but replayed under pquery
-dd..create_dd_user_table                                  ## https://jira.percona.com/browse/PS-4931 (close both at same time v)
-dd..create_tmp_table                                      ## https://jira.percona.com/browse/PS-4931 (close both at same time ^)
-len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  ## https://jira.percona.com/browse/PS-4932
 innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## https://jira.percona.com/browse/PS-4933
+innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## https://jira.percona.com/browse/PS-5026
+TEXT=.thd_report_innodb_stat.$                                                     ## https://jira.percona.com/browse/PS-5027
+TEXT=.THD..mark_innodb_used.$                                                      ## https://jira.percona.com/browse/PS-5027
+#dd..create_dd_user_table                        ## Fixed ## https://jira.percona.com/browse/PS-4931
+#dd..create_tmp_table                            ## Fixed ## https://jira.percona.com/browse/PS-4931
+len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  ## https://jira.percona.com/browse/PS-4932
+len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...                       ## https://jira.percona.com/browse/PS-5025
 
 ## =========== PS8/MS8, need better tetcases
-#len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...                ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
 #TEXT=.safe_mutex_destroy.$                               ## Seen in run 21151181 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
 # mp->count > 0 .. my_thread_equal.my_thread_self         ## Seen in run 99721085 - looks like a shutdown or startup issue, need good testcase. Try and reduce when seen again
@@ -257,6 +260,7 @@ handler0alter.cc line 5817                               ## https://bugs.mysql.c
 #Z16acl_authenticateP3THDm                      ## Fixed ## https://bugs.mysql.com/bug.php?id=77522 (ref above)
 #Z11acl_getrootP16Security_contextPcS1_S1_PKc   ## Fixed ## https://bugs.mysql.com/bug.php?id=77522 (ref above)
 Z11plugin_lockP3THDPPP13st_plugin_int                    ## https://jira.percona.com/browse/MYR-220
+TEXT=.plugin_lock.$                                      ## https://jira.percona.com/browse/PS-5021 (likely dup of MYR-220)
 #Z28acl_check_proxy_grant_accessP3THDPKcS2_b    ## Fixed ## https://bugs.mysql.com/bug.php?id=77523
 #Z7acl_getPKcS0_S0_S0_c                         ## Fixed ## https://bugs.mysql.com/bug.php?id=77523
 #ZN14Rpl_info_tableC1EjPKcS1_                   ## Fixed ## https://bugs.mysql.com/bug.php?id=77524
@@ -696,9 +700,9 @@ Handlerton. error == 0                                                          
 host_length <= 60                                                                       ## https://bugs.mysql.com/bug.php?id=74678
 innodb_trx_id == 0 .. innodb_trx_id == trx_id                                           ## https://jira.percona.com/browse/PS-4806
 .table .. .table->in_use .. table->in_use == _current_thd                               ## https://jira.percona.com/browse/PS-4786
-#.innodb_was_used .. innodb_slow_log_enabled                                   ## Fixed ## https://jira.percona.com/browse/PS-4788 (Fixed in 5.7)
-.innodb_was_used .. innodb_slow_log_enabled                                             ## https://jira.percona.com/browse/PS-4788 (Seen again in PS 8.0.12)
-THD..mark_innodb_used                                                                   ## https://jira.percona.com/browse/PS-4788 (Seen again in PS 8.0.12)
+#.innodb_was_used .. innodb_slow_log_enabled                                   ## Fixed ## https://jira.percona.com/browse/PS-4788
+.innodb_was_used .. innodb_slow_log_enabled                                             ## https://jira.percona.com/browse/PS-5028 (5.7.23 & 8.0.12)
+#THD..mark_innodb_used                                                         ## Fixed ## https://jira.percona.com/browse/PS-4788
 #Z33row_mysql_prebuilt_free_blob_heapP14row_prebuilt_t                         ## Fixed ## https://jira.percona.com/browse/PS-4788
 #row0mysql.cc line 287                                                         ## Fixed ## https://jira.percona.com/browse/PS-4788
 #ZN3THD16mark_innodb_usedEy                                                    ## Fixed ## https://jira.percona.com/browse/PS-4788
@@ -749,6 +753,8 @@ pending.*.ttp->thd                                                              
 precision > 0                                                                           ## https://bugs.mysql.com/bug.php?id=83433
 #scale.*=.*precision                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74859
 s_tx_list.size                                                                          ## https://jira.percona.com/projects/MYR/issues/MYR-213
+engine_type .= __null                                                                   ## https://jira.percona.com/browse/PS-5022 (likely dup of MYR-213)
+dd..sdi..store                                                                          ## https://jira.percona.com/browse/PS-5023 (likely dup of MYR-213)
 share->rows_recorded                                                                    ## https://bugs.mysql.com/bug.php?id=76307
 .rocksdb_db_options->allow_mmap_writes                                                  ## https://jira.percona.com/browse/MYR-192
 .tlen % 2                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (2nd comment)
