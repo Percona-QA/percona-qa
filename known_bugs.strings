@@ -50,7 +50,7 @@ thread_ids.empty                                         ## https://jira.percona
 plugin_lock                                              ## https://jira.percona.com/browse/PS-3817
 PFS_column_row..make_row                                 ## https://jira.percona.com/browse/PS-4977
 
-## =========== PS/MS 8.0 Prep
+## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
 #maybe_null                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=83115
 #MDL_checker..is_read_locked.m_thd, .object     ## Fixed ## https://bugs.mysql.com/bug.php?id=83117
@@ -168,11 +168,12 @@ TEXT=.THD..mark_innodb_used.$                                                   
 #dd..create_dd_user_table                        ## Fixed ## https://jira.percona.com/browse/PS-4931
 #dd..create_tmp_table                            ## Fixed ## https://jira.percona.com/browse/PS-4931
 len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  ## https://jira.percona.com/browse/PS-4932
-len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...                 ## https://jira.percona.com/browse/PS-5025
+len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...               ## https://jira.percona.com/browse/PS-5025
 TEXT=..table_name.$                                       ## https://jira.percona.com/browse/PS-4979
 ZN7OSMutex5enterEv                                        ## https://jira.percona.com/browse/PS-4986
 log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
 sync0types.h line 1051                                    ## https://jira.percona.com/browse/PS-4988
+Z9abort_txnP13__toku_db_txn                               ## https://jira.percona.com/browse/PS-5056
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
@@ -381,7 +382,7 @@ ZN9ha_tokudb16bulk_insert_pollEPvf                                     ## https:
 mh->m_magic == 1234                                                    ## https://jira.percona.com/browse/PS-4943
 send_metadata .. field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_DECIMAL .. field_types.field_pos. == MYSQL_TYPE_BIT .. field_types.field_pos. == MYSQL_TYPE_NEWDECIMAL .. field_types.field_pos. == MYSQL_TYPE_NEWDATE .. field_types.field_pos. == MYSQL_TYPE_JSON .. .field_types.field_pos. >= MYSQL_TYPE_ENUM .. field_types.field_pos. <= MYSQL_TYPE_GEOMETRY     ## https://jira.percona.com/browse/PS-4945
 
-## =========== Special: Various ===========
+## =========== Special: Various & Permanent Filters ===========
 ha_innodb.cc line 3469                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512)
 ha_innodb.cc line 2797                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.5.53
 ha_innodb.cc line 3512                           ##DONOTREMOVE## https://bugs.launchpad.net/percona-server/+bug/1584556 (srv_log_block_size >= 512) PS 5.6.35
@@ -395,6 +396,7 @@ rem0rec.c line 738                               ##DONOTREMOVE## --innodb-fake-c
 #fil0fil.cc line 3499                            ##DONOTREMOVE## SET SESSION debug="+d,dict_tf_to_fsp_flags_failure" > Failing assertion: fsp_flags_is_valid(flags) in PS 5.7.16 (Not a bug. This assertion is by design)
 fil0fil.cc line 3524                             ##DONOTREMOVE## ^ same as above, for MS 5.7.16 (also logged as https://bugs.mysql.com/bug.php?id=84593 Also see #73926, #74873)
 #ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event  ## See https://jira.percona.com/browse/PS-4493 and compare details with new testcase/findings. If MYEXTRA contains --early-plugin-load=keyring_file.so and the SQL contains INSTALL PLUGIN keyring_vault SONAME 'keyring_vault.so'; you can expect either a crash on FLUSH BINARY LOGS (or any SQL which triggers the same) or earlier (different asserts) due to undefined behaviour
+ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event   ## https://jira.percona.com/browse/PS-3878 (Permanent filter)
 TEXT=.\.get_stmt_da.$                            ## https://jira.percona.com/browse/PS-4500 | Ref ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event and https://jira.percona.com/browse/PS-4493
 
 ## =========== Special: OOS issues ===========
@@ -569,6 +571,7 @@ ha_innodb.cc line 19423                                                         
 ha_innodb.cc line 19523                                                                 ## PS 5.6.41     https://bugs.mysql.com/bug.php?id=91956
 ha_innodb.cc line 17420                                                                 ## MS 5.6.41     https://bugs.mysql.com/bug.php?id=91956
 mem0mem.c line 361                                                                      ## PS 5.5.53     --innodb-log-buffer-size=1125899906842624 (or similar)
+ut0ut.cc line 962                                                                       ## PS 5.7.23     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 18962                                                                 ## MS/PS 5.6.31  SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 #ut0ut.cc line 935                                                          ## Outdated ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 #ut0ut.cc line 936                                                          ## Outdated ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
@@ -655,6 +658,7 @@ srv0srv.cc line 3070                                                            
 srv0srv.cc line 3084                                                                    ## Also 73913 PS 5.7.19
 srv0srv.cc line 3094                                                                    ## Also 73913 PS 5.7.20
 srv0srv.cc line 3183                                                                    ## Also 73913 PS 5.7.21
+srv0srv.cc line 3222                                                                    ## Also 73913 PS 5.7.23
 sync0sync.ic line 307                                                                   ## https://bugs.launchpad.net/percona-server/+bug/1435678
 sync0sync.cc line 1318                                                                  ## https://bugs.mysql.com/bug.php?id=75640 MS
 sync0sync.cc line 1432                                                                  ## https://bugs.launchpad.net/percona-server/+bug/1392617 (MS #74955)
@@ -781,7 +785,8 @@ share->rows_recorded                                                            
 sl->join == 0                                                                           ## https://bugs.launchpad.net/percona-server/+bug/1392375
 #.snapshot_lock_acquired                                                       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1425480
 sort_field->length >= length                                                            ## https://bugs.mysql.com/bug.php?id=74260, both buils (mailed Umesh on 14 Aug 2017)
-status.ok                                                                               ## https://jira.percona.com/browse/MYR-187
+#TEXT=.status.ok.$                                                             ## Fixed ## https://jira.percona.com/browse/MYR-187
+TEXT=.status.ok.$                                                                       ## https://jira.percona.com/browse/PS-5055
 .str .... str .= Ptr                                                                    ## https://bugs.launchpad.net/percona-server/5.6/+bug/1429039
 #table.*file.*inited.*handler.*NONE                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74584 (others below with same nr) (dup of 74583)
 #.table->file .... table->file->inited == handler....NONE                      ## Fixed ## This is the same as the one above, de-regexed (MS Bug #74584)
@@ -952,7 +957,6 @@ ZN12ha_myisammrg5cloneEPKcP11st_mem_root                                        
 #ZN13st_select_lex5printEP3THDP6String15enum_query_type                        ## Fixed ## https://bugs.mysql.com/bug.php?id=78335 (Could not reproduce the issue)
 #ZN13Item_func_div10decimal_opEP10my_decimal                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74807 (Same gdb trace of Z14my_decimal_divjP10my_decimalPKS_S2_i)
 ZN13MYSQL_BIN_LOG33handle_binlog_flush_or_sync_errorEP3THDb                             ## https://bugs.mysql.com/bug.php?id=86256
-ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event                ## https://jira.percona.com/browse/PS-3878
 ZN13MYSQL_BIN_LOG13new_file_implEbP28Format_description_log_event                       ## https://bugs.mysql.com/bug.php?id=90190
 #ZN14Arg_comparator24cache_converted_constantEP3THDPP4ItemS4_11Item_result     ## Fixed ## https://bugs.mysql.com/bug.php?id=77991 (duplicate of 78188)
 #ZN14Item_func_plus10decimal_opEP10my_decimal                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=74619 (Same gdb trace of Z14my_decimal_addjP10my_decimalPKS_S2_ assertion)
