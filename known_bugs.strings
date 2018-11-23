@@ -41,7 +41,7 @@ all .. .xs->is_binlogged                                 ## https://bugs.mysql.c
 ## =========== PS 8.0 RC
 ha_innodb.cc.4926.0                                      ## https://jira.percona.com/browse/PS-4801
 mysql_alter_table                                        ## https://jira.percona.com/browse/PS-4802
-dd_table_has_instant_cols                                ## https://jira.percona.com/projects/PS/issues/PS-4803
+dd_table_has_instant_cols                                ## https://jira.percona.com/browse/PS-4803
 ha_innodb.cc.4974.0                                      ## https://jira.percona.com/browse/PS-4846
 dd..sdi..store                                           ## https://jira.percona.com/browse/PS-4970
 is_storage_available.tuple - packed_tuple, 0             ## https://jira.percona.com/browse/PS-4971
@@ -374,7 +374,7 @@ log0log.cc line 2199                                              ## https://bug
 Z19find_field_in_tableP3THDP5TABLEPKcmbPj                         ## https://jira.percona.com/browse/PS-4830
 
 ## =========== PS 5.7 TokuDB bugs ==========
-Handlerton. trx->tokudb_lock_count > 0                                 ## logged: https://jira.percona.com/browse/TDB-193
+#Handlerton. trx->tokudb_lock_count > 0                        ## Fixed ## https://jira.percona.com/browse/PS-4294
 cache_el.i.->used_tables.is_empty                                      ## https://jira.percona.com/browse/PS-4789
 txn->for_recovery                                                      ## https://jira.percona.com/browse/PS-4789
 .thd->locked_tables_mode                                               ## https://jira.percona.com/browse/PS-4789
@@ -682,7 +682,7 @@ bit < map->n_bits                                                               
 user_stats->concurrent_connections > 0                                                  ## https://bugs.launchpad.net/percona-server/+bug/1661488
 allocated_status_memory .= __null                                                       ## https://bugs.mysql.com/bug.php?id=83797 (as subsequent testcase)
 #1 == num_erased                                                                        ## https://bugs.mysql.com/bug.php?id=76221 ## No longer reproducible
-.relay_master_log_file_len == master_log_file_len                                       ## https://jira.percona.com/browse/PS-3885
+#.relay_master_log_file_len == master_log_file_len                             ## Fixed ## https://jira.percona.com/browse/PS-3885
 .bytes_read == .data_written - ..old_pre_checksum_fd .. .description_event->checksum_alg == BINLOG_CHECKSUM_ALG_OFF  ## https://bugs.launchpad.net/percona-server/+bug/1737023
 .auto_increment_lock.*.auto_increment_safe_stmt_log_lock                                ## https://bugs.mysql.com/bug.php?id=76542
 args.0.->fixed                                                  ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74695 (Fixed in 5.7.8)
@@ -734,7 +734,7 @@ inited == NONE                                                                  
 #inited == INDEX                                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75690 (No longer repeatable)
 inited == INDEX                                                                         ## https://bugs.launchpad.net/percona-server/+bug/1713700
 #item_in->left_expr->cols  ## Get better or different 5.6 testcase ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74357 (was 80440) (Fixed in 5.7.6) Mailed Umesh for 5.6
-keys >= 0.0                                                                             ## https://jira.percona.com/browse/MYR-190
+#keys >= 0.0                                                                   ## Fixed ## https://jira.percona.com/browse/PS-4207
 #key->flags . 1                                                                ## Fixed ## https://bugs.mysql.com/bug.php?id=89087
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## https://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## https://bugs.mysql.com/bug.php?id=74646
@@ -773,11 +773,11 @@ pending.*.ttp->thd                                                              
 #pfs->m_processlist_id .= 0                                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=78292
 precision > 0                                                                           ## https://bugs.mysql.com/bug.php?id=83433
 #scale.*=.*precision                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74859
-s_tx_list.size                                                                          ## https://jira.percona.com/projects/MYR/issues/MYR-213
+s_tx_list.size                                                                          ## https://jira.percona.com/browse/PS-4065
 engine_type .= __null                                                                   ## https://jira.percona.com/browse/PS-5022 (likely dup of MYR-213)
 dd..sdi..store                                                                          ## https://jira.percona.com/browse/PS-5023 (likely dup of MYR-213)
 share->rows_recorded                                                                    ## https://bugs.mysql.com/bug.php?id=76307
-.rocksdb_db_options->allow_mmap_writes                                                  ## https://jira.percona.com/browse/MYR-192
+#.rocksdb_db_options->allow_mmap_writes                                        ## Fixed ## https://jira.percona.com/browse/PS-3989
 .tlen % 2                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (2nd comment)
 .tlen % 4                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (3rd comment)
 .slen % 2                                                                               ## https://bugs.mysql.com/bug.php?id=74221 (original report)
@@ -802,7 +802,7 @@ tab->select->quick->index==.uint                                                
 #thd->get_stmt_da()->is_eof()                                                 ## Fixed? ## https://bugs.mysql.com/bug.php?id=73868 Log new bug if new occurence+testcase found
 thd->stmt_da->is_eof                                                                    ## https://bugs.mysql.com/bug.php?id=88798
 thd->killed .= THD.*KILL_BAD_DATA .* error > 0                                          ## https://bugs.mysql.com/bug.php?id=75227
-thd->lex->sql_command == SQLCOM_XA_COMMIT                                               ## https://jira.percona.com/browse/MYR-172
+thd->lex->sql_command == SQLCOM_XA_COMMIT                                               ## https://bugs.mysql.com/bug.php?id=87588
 .field->orig_table->const_table                                                         ## https://bugs.launchpad.net/percona-server/+bug/1662091
 #. thd->in_sub_stmt                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74665 
 . thd->in_sub_stmt                                                                      ## https://bugs.mysql.com/bug.php?id=84828 (See also 74665) (Still present in MS 5.6.35)
@@ -825,7 +825,7 @@ next_insert_id >= auto_inc_interval_for_cur_row.minimum                         
 whitelist .= nullptr                                                                    ## https://jira.percona.com/browse/PS-4474
 unp_reader .= nullptr                                                                   ## https://jira.percona.com/browse/PS-4477
 os0thread.cc line 209                                                                   ## https://jira.percona.com/browse/PS-4991
-.options.use_direct_reads                                                               ## https://jira.percona.com/browse/PS-4990
+#.options.use_direct_reads                                                     ## Fixed ## https://jira.percona.com/browse/PS-4990
 fil0crypt.cc line 2081                                                                  ## https://jira.percona.com/browse/PS-4992
 handler0alter.cc line 4348                                                              ## https://jira.percona.com/browse/PS-4993
 Handlerton. share->file == NULL                                                         ## https://jira.percona.com/browse/PS-4307
@@ -887,7 +887,7 @@ Z20get_parts_for_updatePKhPhS0_P14partition_infoPjS4_Px                         
 #Z20net_after_header_psiP6st_netPvmc                                           ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1412423 (fixed)
 Z20sp_revoke_privilegesP3THDPKcS2_b                                                     ## https://bugs.launchpad.net/percona-server/+bug/1403833
 #Z21convert_error_messagePcjPK15charset_info_stPKcjS2_Pj                       ## Fixed ## https://bugs.launchpad.net/percona-server/5.6/+bug/1394987 (dup of 1387951)
-ZN10Table_nodeC2EPK5TABLE                                                               ## https://jira.percona.com/browse/PS-290
+#ZN10Table_nodeC2EPK5TABLE                                                     ## Fixed ## https://jira.percona.com/browse/PS-290
 Z21handle_alter_part_endP18st_lock_param_typeb                                          ## https://bugs.mysql.com/bug.php?id=78496
 Z21convert_error_messagePcjPK15charset_info_stPKcjS2_Pj                                 ## https://bugs.launchpad.net/percona-server/5.6/+bug/1394987
 Z21fill_temporary_tablesP3THDP10TABLE_LI                                                ## Another i-s-temp-tables bug (based on crashing query) (see comment)
@@ -919,7 +919,7 @@ Z30dict_table_stats_latch_destroyP12dict_table_t                                
 #ZN7sys_var5checkEP3THDP7set_var                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=84656
 #ZN7handler25update_global_table_statsEv                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=75707 (duplicated by 75741) (LP PS#1417382)
 #ZN7handler8ha_checkEP3THDP15st_ha_check_opt                                   ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1433197
-ZN7myrocks15Rdb_transaction15start_bulk_loadEPNS_10ha_rocksdbE                          ## https://jira.percona.com/browse/MYR-214
+#ZN7myrocks15Rdb_transaction15start_bulk_loadEPNS_10ha_rocksdbE                ## Fixed ## https://jira.percona.com/browse/PS-4046
 ZN7myrocks19rdb_handle_io_errorEN7rocksdb6StatusENS_17RDB_IO_ERROR_TYPEE                ## https://github.com/facebook/mysql-5.6/issues/778 (previouly MYR-196)
 ZN7myrocks21Rdb_drop_index_thread3runEv                                                 ## https://jira.percona.com/browse/PS-4491
 ZN7MDL_map6removeEP8MDL_lock                                                            ## https://bugs.launchpad.net/percona-server/+bug/1417116
@@ -931,8 +931,7 @@ ZN7ha_heap10delete_rowEPKh                                                      
 ZN9ha_myisam9write_rowEPh                                                               ## https://bugs.mysql.com/bug.php?id=75083
 ZN9PROFILING13status_changeEPKcS1_S1_j                                                  ## https://bugs.mysql.com/bug.php?id=84826
 ZNK3THD9thread_idEv                                                                     ## https://jira.percona.com/browse/PS-4816
-ZNK3THD9thread_idEv                                                                     ## https://jira.percona.com/browse/PS-4816
-ZNK7myrocks16Rdb_dict_manager9get_valueERKN7rocksdb5SliceEPSs                           ## https://jira.percona.com/browse/MYR-221
+#ZNK7myrocks16Rdb_dict_manager9get_valueERKN7rocksdb5SliceEPSs                 ## Fixed ## https://jira.percona.com/browse/PS-3992
 ZNK13QUERY_PROFILE13get_profilingEv                                                     ## https://bugs.mysql.com/bug.php?id=84826
 #ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74953 (Duplicate of internal Bug#17846865)
 #ZN10Item_fieldC2EP5Field                                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=74628
@@ -1035,8 +1034,8 @@ ZN18st_select_lex_unit4execEv                                                   
 ZN8Item_row7val_strEP6String                                                            ## https://bugs.mysql.com/bug.php?id=57552 and 76468
 ZNK4Item10field_typeEv                                                                  ## https://bugs.mysql.com/bug.php?id=81532
 ZN15Event_scheduler5startEPi                                                            ## https://bugs.launchpad.net/percona-server/+bug/1587195
-ZN7keyring10Vault_curl8read_keyERKNS_9Vault_keyEPNSt7__cxx1112basic_stringIcSt11char_traitsIcENS_16Secure_allocatorIcEEEE  ## https://jira.percona.com/browse/PS-264
-Z24plugin_foreach_with_maskP3THDPPFcS0_PP13st_plugin_intPvEijS4_                                                           ## https://jira.percona.com/browse/PS-264
+#ZN7keyring10Vault_curl8read_keyERKNS_9Vault_keyEPNSt7__cxx1112basic_stringIcSt11char_traitsIcENS_16Secure_allocatorIcEEEE ## Fixed ## https://jira.percona.com/browse/PS-264
+#Z24plugin_foreach_with_maskP3THDPPFcS0_PP13st_plugin_intPvEijS4_                                                          ## Fixed ## https://jira.percona.com/browse/PS-264
 Z21copy_system_variablesP3THDb                                                          ## https://jira.percona.com/browse/PS-3817
 #ZN7myrocks10ha_rocksdb18get_auto_incrementEyyyPyS1_                           ## Fixed ## https://jira.percona.com/browse/MYR-235
 #ZN7myrocks10ha_rocksdb31update_auto_incr_val_from_fieldEv                     ## Fixed ## https://jira.percona.com/browse/MYR-235
@@ -1070,8 +1069,8 @@ TEXT=.\.shutdown_in_progress.$                                                  
 TEXT=.tab->ref.$                                                                        ## https://bugs.mysql.com/bug.php?id=74780 (duplicated by 83541)
 #TEXT=.false.$                                                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83120 (Fixed as part of internal bug#23295423)
 #TEXT=.part_rec_buf_ptr.$                                                      ## Fixed ## https://bugs.mysql.com/bug.php?id=86255
-#TEXT=.err == 0.$                                                                       ## https://jira.percona.com/browse/MYR-171 #disabling for now
-TEXT=.cmp .= 0.$                                                                        ## https://jira.percona.com/browse/MYR-173
+#TEXT=.err == 0.$                                                              ## Fixed ## https://jira.percona.com/browse/PS-3990
+#TEXT=.cmp .= 0.$                                                              ## Fixed ## https://jira.percona.com/browse/PS-3991
 TEXT=.ha_initialize_handlerton.$                                                        ## https://jira.percona.com/browse/MYR-204
 TEXT=.item->type.$                                                                      ## https://bugs.mysql.com/bug.php?id=88749
 TEXT=.plugin.$                                                                          ## https://jira.percona.com/browse/MYR-222
