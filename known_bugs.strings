@@ -27,14 +27,14 @@ adjust_fk_parents                                        ## https://bugs.mysql.c
 #dirname_length                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=90543 # Optimized build 
 fil_space_get.table->space. .= __null                    ## https://bugs.mysql.com/bug.php?id=90545 (Fixed in 8.0.13)
 #.thd .. thd->locked_tables_mode .. .thd->mdl_context.has_locks  ## Fixed ## https://bugs.mysql.com/bug.php?id=90546
-gtid_next_type == ANONYMOUS_GTID                         ## https://bugs.mysql.com/bug.php?id=90547
+#gtid_next_type == ANONYMOUS_GTID               ## Fixed ## https://bugs.mysql.com/bug.php?id=90547
 #..idx_el_it                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=90548
 .m_auto_increment_lock                                   ## https://bugs.mysql.com/bug.php?id=90549
 #TEXT=.data_type.$                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=90550
-.thd->has_gtid_consistency_violation                     ## https://bugs.mysql.com/bug.php?id=90551 (Fixed in 8.0.13)
+#.thd->has_gtid_consistency_violation           ## Fixed ## https://bugs.mysql.com/bug.php?id=90551 (Fixed in 8.0.13)
 #table .. table->s .. table->s->ha_share        ## Fixed ## https://bugs.mysql.com/bug.php?id=90552
 #addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA ## Fixed ## https://bugs.mysql.com/bug.php?id=90590
-head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.com/bug.php?id=90640
+head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.com/bug.php?id=90640 (Fixed in 8.0.14)
 TEXT=.bin2decimal.$                                      ## https://bugs.mysql.com/bug.php?id=90673 (Fixed in 8.0.13)
 all .. .xs->is_binlogged                                 ## https://bugs.mysql.com/bug.php?id=92993
 
@@ -58,17 +58,17 @@ sym_node->table .= NULL                                  ## https://bugs.mysql.c
 thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., tablespace_name, MDL_INTENTION_EXCLUSIVE  ## https://bugs.mysql.com/bug.php?id=86297
 row_drop_table_for_mysql                                 ## https://bugs.mysql.com/bug.php?id=88161
 #m_thd->get_transaction                         ## Fixed ## https://bugs.mysql.com/bug.php?id=88255
-max_length >= length                                     ## https://bugs.mysql.com/bug.php?id=88256
+#max_length >= length                           ## Fixed ## https://bugs.mysql.com/bug.php?id=88256
 TEXT=.String\.\.ptr.$                                    ## https://bugs.mysql.com/bug.php?id=88257
-trans_table .. .changed .. thd->get_transaction          ## https://bugs.mysql.com/bug.php?id=88258
-TEXT=.mon > 0 \.\. mon < 13.$                            ## https://bugs.mysql.com/bug.php?id=88259
-trn_ctx->is_active.Transaction_ctx..SESSION              ## https://bugs.mysql.com/bug.php?id=88260
-TEXT=.type.$                                             ## https://bugs.mysql.com/bug.php?id=88261
-MYSQL_BIN_LOG..new_file_impl                             ## https://bugs.mysql.com/bug.php?id=88262
-recv_recovery_is_on.. .. Log_DDL..is_in_recovery..       ## https://bugs.mysql.com/bug.php?id=88263
-has_prelocking_list .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLE, rt->db  ## https://bugs.mysql.com/bug.php?id=88264
-sys_var_pluginvar..global_update                         ## https://bugs.mysql.com/bug.php?id=88265
-ticket->m_lock->m_obtrusive_locks_granted_waiting_count .= 0  ## https://bugs.mysql.com/bug.php?id=88266
+#trans_table .. .changed .. thd->get_transaction ## Fixed ## https://bugs.mysql.com/bug.php?id=88258
+#TEXT=.mon > 0 \.\. mon < 13.$                  ## Fixed ## https://bugs.mysql.com/bug.php?id=88259
+#trn_ctx->is_active.Transaction_ctx..SESSION    ## Fixed ## https://bugs.mysql.com/bug.php?id=88260
+#TEXT=.type.$                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=88261
+#MYSQL_BIN_LOG..new_file_impl                   ## Fixed ## https://bugs.mysql.com/bug.php?id=88262
+#recv_recovery_is_on.. .. Log_DDL..is_in_recovery.. ## Fixed ## https://bugs.mysql.com/bug.php?id=88263
+#has_prelocking_list .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLE, rt->db ## Fixed ## https://bugs.mysql.com/bug.php?id=88264
+#sys_var_pluginvar..global_update               ## Fixed ## https://bugs.mysql.com/bug.php?id=88265 (not repeatable on 8.0.4)
+# ticket->m_lock->m_obtrusive_locks_granted_waiting_count .= 0 ## Fixed ## https://bugs.mysql.com/bug.php?id=88266
 val <= 4294967295u                                       ## https://bugs.mysql.com/bug.php?id=88267
 #Sql_cmd_call..prepare_inner                    ## Fixed ## https://bugs.mysql.com/bug.php?id=88268
 .field->prefix_len .. field->fixed_len == field->prefix_len  ## https://bugs.mysql.com/bug.php?id=88269
@@ -93,7 +93,7 @@ error == DB_SUCCESS                                      ## https://bugs.mysql.c
 #TEXT=.null_value.$                             ## Fixed ## https://bugs.mysql.com/bug.php?id=88352
 #m_prebuilt->magic_n == 78540783                ## Fixed ## https://bugs.mysql.com/bug.php?id=88353
 err == DB_SUCCESS .. err == DB_DUPLICATE_KEY             ## https://bugs.mysql.com/bug.php?id=88355
-TEXT=.table2 == NULL.$                                   ## https://bugs.mysql.com/bug.php?id=88356
+#TEXT=.table2 == NULL.$                         ## Fixed ## https://bugs.mysql.com/bug.php?id=88356
 purge_sys->n_stop == 0                                   ## https://bugs.mysql.com/bug.php?id=89503
 #Sql_cmd_install_plugin..execute                ## Fixed ## https://bugs.mysql.com/bug.php?id=89504
 #thread_ids.empty                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=91847
@@ -104,10 +104,10 @@ THD..send_statement_status                               ## https://bugs.mysql.c
 TEXT=.ha_innopart..external_lock.$                       ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12) (fixed 8.0.14 / 5.7.25)
 ut0ut.cc.670                                             ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12) (fixed 8.0.14 / 5.7.25)
 #TEXT=.innobase_parse_hint_from_comment.$                ## https://bugs.mysql.com/bug.php?id=91978 (MS 8.0.12) (not reproducible)
-head->variables.gtid_next.type == ANONYMOUS_GTID         ## https://bugs.mysql.com/bug.php?id=91980
+head->variables.gtid_next.type == ANONYMOUS_GTID         ## https://bugs.mysql.com/bug.php?id=91980 (Fixed in 8.0.14)
 charset_database_number <= 0xFF                          ## https://bugs.mysql.com/bug.php?id=91986 
 #rc == TYPE_OK                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=86282
-rc == TYPE_OK                                            ## https://bugs.mysql.com/bug.php?id=91987 (new occurence of same assert)
+rc == TYPE_OK                                            ## https://bugs.mysql.com/bug.php?id=91987 (new occurence of same assert) (Fixed in 8.0.14)
 #TEXT=.\.is_set.$                                ## Fixed ## https://bugs.mysql.com/bug.php?id=90525
 TEXT=.\.is_set.$                                          ## https://bugs.mysql.com/bug.php?id=91990
 TEXT=.Field..real_maybe_null.$                            ## https://bugs.mysql.com/bug.php?id=92034 (likely dbg dup of 92189)
@@ -115,13 +115,13 @@ set_field_to_null_with_conversions                        ## https://bugs.mysql.
 table->get_ref_count.. > 0                                ## https://bugs.mysql.com/bug.php?id=92055
 ailure. api0api.cc.3706..sdi_delete_failed                ## https://bugs.mysql.com/bug.php?id=88354
 ailure. api0api.cc.3163..sdi_delete_failed                ## https://bugs.mysql.com/bug.php?id=92036
-index->type . 32 .. root .= FIL_NULL .. dict_table_is_discarded.m_table.  ## https://bugs.mysql.com/bug.php?id=92057
+index->type . 32 .. root .= FIL_NULL .. dict_table_is_discarded.m_table.  ## https://bugs.mysql.com/bug.php?id=92057 (Fixed in 8.0.14)
 Item..save_in_field_inner                                 ## https://bugs.mysql.com/bug.php?id=92067
 lock_rec_get_rec_not_gap.lock.                            ## https://bugs.mysql.com/bug.php?id=92068
-lock0lock.cc.7034                                         ## https://bugs.mysql.com/bug.php?id=92069
+lock0lock.cc.7034                                         ## https://bugs.mysql.com/bug.php?id=92069 (Fixed in 8.0.14)
 thd->variables.gtid_next.type == AUTOMATIC_GTID           ## https://bugs.mysql.com/bug.php?id=92070
 dict0dd.cc:5.....error                                    ## https://bugs.mysql.com/bug.php?id=92071
-TEXT=.mi->rli->inited.$                                   ## https://bugs.mysql.com/bug.php?id=92073
+#TEXT=.mi->rli->inited.$                         ## Fixed ## https://bugs.mysql.com/bug.php?id=92073
 TEXT=.j < ncol.$                                          ## https://bugs.mysql.com/bug.php?id=92074
 #.primary_key == key                             ## Fixed ## https://bugs.mysql.com/bug.php?id=92075 (8.0.11 only)
 my_b_write.IO_CACHE.,                                     ## https://bugs.mysql.com/bug.php?id=92096 (Fixed in 5.6.43, 5.7.25, 8.0.14)
@@ -159,7 +159,7 @@ ha_innopart..prepare_inplace_alter_table                  ## https://jira.percon
 PolicyMutex<TTASEventMutex<GenericPolicy> >..pfs_begin_lock  ## https://jira.percona.com/browse/PS-4927
 TEXT=.ha_release_savepoint.$                              ## https://jira.percona.com/browse/PS-4899
 handler..unbind_psi                                       ## https://jira.percona.com/browse/PS-4929
-TEXT=..error == 3110.$                                    ## https://bugs.mysql.com/bug.php?id=92777
+#TEXT=..error == 3110.$                         ## Fixed  ## https://bugs.mysql.com/bug.php?id=92777
 #Field_varstring..unpack                        ## Fixed? ## Likely https://bugs.mysql.com/bug.php?id=92448 but replayed under pquery
 innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## https://jira.percona.com/browse/PS-4933
 innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## https://jira.percona.com/browse/PS-5026
@@ -735,7 +735,7 @@ inited == NONE                                                                  
 inited == INDEX                                                                         ## https://bugs.launchpad.net/percona-server/+bug/1713700
 #item_in->left_expr->cols  ## Get better or different 5.6 testcase ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74357 (was 80440) (Fixed in 5.7.6) Mailed Umesh for 5.6
 keys >= 0.0                                                                             ## https://jira.percona.com/browse/MYR-190
-key->flags . 1                                                                          ## https://bugs.mysql.com/bug.php?id=89087
+#key->flags . 1                                                                ## Fixed ## https://bugs.mysql.com/bug.php?id=89087
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## https://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## https://bugs.mysql.com/bug.php?id=74646
 last_val > 0                                                                            ## https://jira.percona.com/browse/MYR-297
@@ -763,7 +763,7 @@ m_lock_type == 2                                                                
 #m_status == DA_ERROR                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=86260 (LP #1689736)
 nr >= 0.0                                                                               ## https://bugs.mysql.com/bug.php?id=74946
 #n < m_size                                                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=74447
-n_linear_rings > 0                                                                      ## https://bugs.mysql.com/bug.php?id=81411
+#n_linear_rings > 0                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=81411 (Affects only 5.5)
 opt_debug_sync_timeout > 0                                                              ## https://bugs.mysql.com/bug.php?id=74002
 old_value >= 1                                                                          ## https://bugs.mysql.com/bug.php?id=85064
 #param.sort_length .= 0                                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=77194
@@ -941,7 +941,7 @@ ZNK13QUERY_PROFILE13get_profilingEv                                             
 #ZN11Query_cache13end_of_resultEP3THD                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=83188 (duplicate of 47378)
 #ZN11Query_cache13end_of_resultEP3THD                                                   ## https://bugs.mysql.com/bug.php?id=81448 # Testcase needed (may need pquery+mysqld option)
 ZN11Query_cache13end_of_resultEP3THD                                                    ## https://bugs.mysql.com/bug.php?id=88571
-ZN11Query_cache13end_of_resultEP3THD                                                    ## https://bugs.mysql.com/bug.php?id=88751 (likely dup of 47378 but still in 5.5)
+#ZN11Query_cache13end_of_resultEP3THD                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=88751 (likely dup of 47378 but still in 5.5)
 ZN11MDL_context11find_ticketEP11MDL_requestP17enum_mdl_duration                         ## https://bugs.launchpad.net/percona-server/+bug/1403446
 #ZN11MDL_request4initEN7MDL_key18enum_mdl_namespaceEPKcS3_13enum_mdl_type17enum_mdl_duration ## Fixed ## https://bugs.mysql.com/bug.php?id=74499 (fixed in 5.5.43)
 ZN11Table_cache12remove_tableEP5TABLE                                                   ## https://bugs.launchpad.net/percona-server/+bug/1444642   
