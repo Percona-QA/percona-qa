@@ -131,6 +131,7 @@ Locked_tables_list..unlock_locked_tables                  ## https://bugs.mysql.
 trx0trx.h.1326.trx->in_depth > 0                          ## https://bugs.mysql.com/bug.php?id=92186
 TEXT=.level <= 50.$                                       ## https://bugs.mysql.com/bug.php?id=92187
 #uint4korr.kp1                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=92448
+#Field_varstring..unpack                         ## Fixed?## Likely https://bugs.mysql.com/bug.php?id=92448 (pquery C-API replay)
 MYSQL_BIN_LOG..handle_binlog_flush_or_sync_error          ## https://bugs.mysql.com/bug.php?id=92451 (change string to a more specific version if not fixed before 1/1/2019, and test without for PS8 GA!)
 TEXT=.acl_reload.$                                        ## https://bugs.mysql.com/bug.php?id=92433 (and dup 92452)
 std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >..find  ## https://bugs.mysql.com/bug.php?id=90544 # Optimized build
@@ -160,7 +161,6 @@ PolicyMutex<TTASEventMutex<GenericPolicy> >..pfs_begin_lock  ## https://jira.per
 TEXT=.ha_release_savepoint.$                              ## https://jira.percona.com/browse/PS-4899
 handler..unbind_psi                                       ## https://jira.percona.com/browse/PS-4929
 TEXT=..error == 3110.$                                    ## https://bugs.mysql.com/bug.php?id=92777
-#Field_varstring..unpack                        ## Fixed? ## Likely https://bugs.mysql.com/bug.php?id=92448 but replayed under pquery
 innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## https://jira.percona.com/browse/PS-4933
 innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## https://jira.percona.com/browse/PS-5026
 TEXT=.thd_report_innodb_stat.$                                                     ## https://jira.percona.com/browse/PS-5027
@@ -174,6 +174,11 @@ ZN7OSMutex5enterEv                                        ## https://jira.percon
 log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
 sync0types.h line 1051                                    ## https://jira.percona.com/browse/PS-4988
 Z9abort_txnP13__toku_db_txn                               ## https://jira.percona.com/browse/PS-5056
+myrocks..rdb_check_mutex_call_result                      ## https://jira.percona.com/browse/PS-5066 (opt)
+s_tx_list.size                                            ## https://jira.percona.com/browse/PS-5066 (dbg)
+TEXT=.Item..save_in_field.$                               ## https://bugs.mysql.com/bug.php?id=93306 (MS)
+TEXT=.Item..save_in_field_inner.$                         ## https://bugs.mysql.com/bug.php?id=93306 (PS, dbg)
+set_field_to_null_with_conversions                        ## https://bugs.mysql.com/bug.php?id=93306 (PS, opt)
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again

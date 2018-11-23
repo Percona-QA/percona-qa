@@ -123,6 +123,11 @@ if [ "${STRING}" == "strcmp.table->name.m_name, table_name. == 0" ]; then
   fi
 fi
 
+# Fixup strings looking like "false thread ...<long number>..."
+if [ "$(echo ${STRING} | grep -o "^false thread [0-9][0-9][0-9][0-9]" | sed 's| [0-9][0-9][0-9][0-9]||')" == "false thread" ]; then
+  STRING="false thread THREAD_ID"
+fi
+
 STRING=$(echo "${STRING}" | sed "s|/sda/MS[0-9]\+[^ ]\+/bin/mysqld||g")  # Filter out accidental path name insertions
 
 echo ${STRING}
