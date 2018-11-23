@@ -25,5 +25,5 @@ while read line ; do
       grep "ERROR" $WORKD_PWD/$line/log/master.err
     fi
   done
-done < <(grep -B2  killed ./pquery-run.log | grep "log stored in" | cut -d'/' -f5)
+done < <(grep -B2  'killed for crash testing' ./pquery-run.log | grep "log stored in" | cut -d'/' -f5)
 
