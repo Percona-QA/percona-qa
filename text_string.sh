@@ -125,7 +125,7 @@ fi
 
 # Fixup strings looking like "false thread ...<long number>..."
 if [ "$(echo ${STRING} | grep -o "^false thread [0-9][0-9][0-9][0-9]" | sed 's| [0-9][0-9][0-9][0-9]||')" == "false thread" ]; then
-  STRING="false thread THREAD_ID"
+  STRING="false thread "
 fi
 
 STRING=$(echo "${STRING}" | sed "s|/sda/MS[0-9]\+[^ ]\+/bin/mysqld||g")  # Filter out accidental path name insertions
