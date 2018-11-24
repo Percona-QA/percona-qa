@@ -114,12 +114,19 @@ if [ "${STRING}" == "dd_table_discard_tablespace" ]; then
   fi
 fi
 
-# Fixup an important (""strcmp.table->name.m_name, table_name. == 0) text string (ref examples above for more information on how this is done)
+# Fixup an important ("strcmp.table->name.m_name, table_name. == 0") text string (ref examples above for more information on how this is done)
 if [ "${STRING}" == "strcmp.table->name.m_name, table_name. == 0" ]; then
   if grep "Cannot find a free slot for an undo log" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
     if grep "InnoDB: Assertion failure: dict0dd.cc:" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
       STRING="RSEG.....strcmp.table->name.m_name, table_name. == 0"
     fi
+  fi
+fi
+
+# Fixup an important ("strcmp.table->name.m_name, table_name. == 0") text string (ref examples above for more information on how this is done)
+if [ "${STRING}" == "status.ok" ]; then
+  if grep "rocksdb::Status rocksdb::BlockCacheTier::Open.*status.ok" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
+    STRING="rocksdb::Status rocksdb::BlockCacheTier::Open status.ok"
   fi
 fi
 

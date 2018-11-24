@@ -791,8 +791,8 @@ share->rows_recorded                                                            
 sl->join == 0                                                                           ## https://bugs.launchpad.net/percona-server/+bug/1392375
 #.snapshot_lock_acquired                                                       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1425480
 sort_field->length >= length                                                            ## https://bugs.mysql.com/bug.php?id=74260, both buils (mailed Umesh on 14 Aug 2017)
-#TEXT=.status.ok.$                                                             ## Fixed ## https://jira.percona.com/browse/MYR-187
-TEXT=.status.ok.$                                                                       ## https://jira.percona.com/browse/PS-5055
+#TEXT=.status.ok.$                                                             ## Fixed ## https://jira.percona.com/browse/MYR-187 (NOTE: status.ok is a very generic assert according to GL, so if seen, improve text_string.sh each time you see this string to cater for the specific issue seen with a more specific string, alike to the string below: rocksdb::Status rocksdb::BlockCacheTier::Open status.ok)
+rocksdb::Status rocksdb::BlockCacheTier::Open status.ok                                 ## https://jira.percona.com/browse/PS-5055 (ref above on status.ok generic crashes, this is a specific string in text_string.sh)
 .str .... str .= Ptr                                                                    ## https://bugs.launchpad.net/percona-server/5.6/+bug/1429039
 #table.*file.*inited.*handler.*NONE                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74584 (others below with same nr) (dup of 74583)
 #.table->file .... table->file->inited == handler....NONE                      ## Fixed ## This is the same as the one above, de-regexed (MS Bug #74584)
