@@ -742,8 +742,9 @@ pquery_test(){
     else
       echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     fi
+    echo "${MYINIT}" > ${RUNDIR}/${TRIAL}/MYINIT
     if [ ${VALGRIND_RUN} -eq 1 ]; then
-      touch  ${RUNDIR}/${TRIAL}/VALGRIND
+      touch ${RUNDIR}/${TRIAL}/VALGRIND
     fi
     # Restore orignal MYEXTRA for the next trial (MYEXTRA is no longer needed anywhere else. If this changes in the future, relocate this to below the changed code)
     MYEXTRA=${MYEXTRA_SAVE_IT}
@@ -864,6 +865,7 @@ pquery_test(){
       WSREP_PROVIDER_OPT="$OPTIONS_TO_ADD"
     fi
     echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
+    echo "${MYINIT}" > ${RUNDIR}/${TRIAL}/MYINIT
     echo "$WSREP_PROVIDER_OPT" > ${RUNDIR}/${TRIAL}/WSREP_PROVIDER_OPT
     if [ ${VALGRIND_RUN} -eq 1 ]; then
       touch  ${RUNDIR}/${TRIAL}/VALGRIND
