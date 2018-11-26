@@ -1578,9 +1578,7 @@ if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -eq 1 ]; then
 fi
 echoit "Valgrind run: `if [ ${VALGRIND_RUN} -eq 1 ]; then echo -n 'TRUE'; else echo -n 'FALSE'; fi` | pquery timeout: ${PQUERY_RUN_TIMEOUT} | ${SQL_INPUT_TEXT} `if [ ${THREADS} -ne 1 ]; then echo -n "| Testcase size (chunked from infile): ${MULTI_THREADED_TESTC_LINES}"; fi`"
 echoit "pquery Binary: ${PQUERY_BIN}"
-# Future: if [ "${MYMID}" != "" ]; then echoit "MYMID: ${MYMID}"; fi
-# Hack now: INIT_OPT:
-echoit "INIT_OPT: ${INIT_OPT}"
+if [ "${MYMID}" != "" ]; then echoit "MYMID: ${MYMID}"; fi
 if [ "${MYEXTRA}" != "" ]; then echoit "MYEXTRA: ${MYEXTRA}"; fi
 if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a "${MYEXTRA2}" != "" ]; then echoit "MYEXTRA2: ${MYEXTRA2}"; fi
 if [ "${MYSAFE}" != "" ]; then echoit "MYSAFE: ${MYSAFE}"; fi
@@ -1600,9 +1598,9 @@ fi
 MID=
 if [ -r ${BASEDIR}/scripts/mysql_install_db ]; then MID="${BASEDIR}/scripts/mysql_install_db"; fi
 if [ -r ${BASEDIR}/bin/mysql_install_db ]; then MID="${BASEDIR}/bin/mysql_install_db"; fi
-START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
+START_OPT="--core-file"                         # Compatible with 5.6,5.7,8.0
 INIT_OPT="--no-defaults --initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
-INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
+INIT_TOOL="${BIN}"                              # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
 VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
 if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
   if [ "${MID}" == "" ]; then

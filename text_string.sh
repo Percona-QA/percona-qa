@@ -130,11 +130,10 @@ if [ "${STRING}" == "status.ok" ]; then
   fi
 fi
 
-# Fixup strings looking like "false thread ...<long number>..."
-if [ "$(echo ${STRING} | grep -o "^false thread [0-9][0-9][0-9][0-9]" | sed 's| [0-9][0-9][0-9][0-9]||')" == "false thread" ]; then
-  STRING="false thread "
-fi
+# Filter out accidental thread <nr> insertions
+STRING=$(echo ${STRING} | sed "s| thread [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]||")
 
-STRING=$(echo "${STRING}" | sed "s|/sda/MS[0-9]\+[^ ]\+/bin/mysqld||g")  # Filter out accidental path name insertions
+# Filter out accidental path name insertions
+STRING=$(echo "${STRING}" | sed "s|/sda/MS[0-9]\+[^ ]\+/bin/mysqld||g")  
 
 echo ${STRING}
