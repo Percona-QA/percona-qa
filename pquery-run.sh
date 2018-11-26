@@ -972,6 +972,8 @@ pquery_test(){
            grep -vi "current_time" | \
            grep -vi "curtime" | \
            grep -vi "timestamp" | \
+           grep -vi "localtime" | \
+           grep -vi "utc_time" | \
            grep -vi "connection_id" | \
            grep -vi "sysdate" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
@@ -1039,6 +1041,8 @@ pquery_test(){
            grep -vi "current_time" | \
            grep -vi "curtime" | \
            grep -vi "timestamp" | \
+           grep -vi "localtime" | \
+           grep -vi "utc_time" | \
            grep -vi "connection_id" | \
            grep -vi "sysdate" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
