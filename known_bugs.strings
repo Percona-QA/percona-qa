@@ -394,6 +394,7 @@ ha_innodb.cc line 3512                           ##DONOTREMOVE## https://jira.pe
 ha_innodb.cc line 3521                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.36
 ha_innodb.cc line 3539                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.38
 ha_innodb.cc line 3540                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.41
+ha_innodb.cc line 3545                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.42
 btr0cur.c line 3918                              ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
 handler0alter.cc line 5083                       ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread 
 handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
