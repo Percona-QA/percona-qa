@@ -1883,8 +1883,8 @@ start_mysqld_or_valgrind_or_pxc(){
           echo "Terminating now."
           exit 1
         fi
-      else
-        ${BASEDIR}/bin/mysql -uroot -S$WORKD/socket.sock -e "create database if not exists test" > /dev/null 2>&1       
+      #else  # Ref discussion RV/RS 27 Nov 19 via 1:1 (RV;should be covered in SQL, RS; issue seen)
+      #  ${BASEDIR}/bin/mysql -uroot -S$WORKD/socket.sock -e "create database if not exists test" > /dev/null 2>&1
       fi
     fi
   fi
