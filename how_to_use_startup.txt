@@ -1,0 +1,29 @@
+You may like the scripts we've build in percona-qa, which can setup environments fast.
+
+To do so;
+
+ (PS example using startup.sh including building latest PS, though you could use a tarball from Jenkins or ~/percona-qa/get_download_link.sh to );
+
+cd ~
+git clone --depth=1 https://github.com/Percona-QA/percona-qa.git
+cd /<some_workdir_you_will_use>    # Change to your workdir
+wget $(~/percona-qa//get_download_link.sh --product=ps --version=5.7 --arch=x86_64)
+tar -xf Percona-Server-5.7.23-25-Linux.x86_64.ssl100.tar.gz
+cd Percona-Server-5.7.23-25-Linux.x86_64.ssl100
+~/percona-qa/startup.sh
+./all
+# you can also use ./start ./cl ./stop ./all (wipes everything) etc.
+
+To build latest PS, you can use;
+
+sudo mkdir /git && sudo chmod -R 777 /git && sudo chown -R $(whoami):$(whoami) /git && cd /git && git init
+rm -Rf PS-5.7-trunk; git clone --recursive --depth=1 https://github.com/percona/percona-server.git -b 5.7 PS-5.7-trunk 
+cd PS-5.7-trunk
+~/percona-qa/build_psms_debug.sh 
+cd ../<just_build_directory>/   # Or move that directory somewhere else (like to homedir for example) then cd into it
+
+The startup.sh script can also setup group replication.
+
+There is also a similar pxc startup script (ref ~/percona-qa/pxc-tests/*start*.sh), and a mongo startup script (~/percona-qa/mongo_startup.sh)
+
+Let me know if you have any questions.
