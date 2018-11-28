@@ -134,6 +134,6 @@ fi
 STRING=$(echo ${STRING} | sed "s| thread [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]||")
 
 # Filter out accidental path name insertions
-STRING=$(echo "${STRING}" | sed "s|/sda/MS[0-9]\+[^ ]\+/bin/mysqld||g")  
+STRING=$(echo "${STRING}" | sed "s|/sda/[PM]S[0-9]\+[^ ]\+/bin/mysqld||g")  
 
 echo ${STRING}

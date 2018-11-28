@@ -83,9 +83,9 @@ mkdir -p ${BACKP_DIR} ${LOG_DIR} ${TOKU_DIR}
 echoit "Starting MySQL-5.5 mysqld process."
 # Run mysql_install_db
 if [ -r ${BASEDIR_55}/bin/mysql_install_db ]; then
-  ${BASEDIR_55}/bin/mysql_install_db --force --no-defaults --basedir=${BASEDIR_55} --datadir=${BASEDIR_55}/data > ${LOG_DIR}/mysql55_install.log 2>&1
+  ${BASEDIR_55}/bin/mysql_install_db --no-defaults --force --basedir=${BASEDIR_55} --datadir=${BASEDIR_55}/data > ${LOG_DIR}/mysql55_install.log 2>&1
 elif [ -r ${BASEDIR_55}/scripts/mysql_install_db ]; then
-  ${BASEDIR_55}/scripts/mysql_install_db --force --no-defaults --basedir=${BASEDIR_55} --datadir=${BASEDIR_55}/data > ${LOG_DIR}/mysql55_install.log 2>&1
+  ${BASEDIR_55}/scripts/mysql_install_db --no-defaults --force --basedir=${BASEDIR_55} --datadir=${BASEDIR_55}/data > ${LOG_DIR}/mysql55_install.log 2>&1
 else
   echo 'mysql_install_db not found in scripts nor bin directories';
   exit 1
