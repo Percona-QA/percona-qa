@@ -1052,7 +1052,7 @@ Z21copy_system_variablesP3THDb                                                  
 this->file->children_attached                                                           ## https://jira.percona.com/browse/PS-5078
 Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                         ## https://jira.percona.com/browse/PS-5079
 field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_DECIMAL .. field_types.field_pos. == MYSQL_TYPE_BIT .. field_types.field_pos. == MYSQL_TYPE_NEWDECIMAL .. field_types.field_pos. == MYSQL_TYPE_NEWDATE .. .field_types.field_pos. >= MYSQL_TYPE_ENUM .. field_types.field_pos. <= MYSQL_TYPE_GEOMETRY    ## https://jira.percona.com/browse/PS-5080
-my_b_write                                                                              ## https://jira.percona.com/browse/PS-5082
+Z10acl_reloadP3THD                                                                      ## https://bugs.mysql.com/bug.php?id=93388
 ## =========== Error log crashing query based ===========
 #^Query ([0-9a-f]\+): SELECT.*FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG$        ## Fixed ## https://jira.percona.com/browse/PS-822
 
@@ -1060,6 +1060,7 @@ my_b_write                                                                      
 #TEXT=.is_started.$                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=76425
 TEXT=.is_started                                                                        ## https://bugs.mysql.com/bug.php?id=88780 (5.5 only)
 #TEXT=.my_b_write.$                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74950 (Fixed in 5.6.27, 5.7.9)
+TEXT=.my_b_write.$                                                                      ## https://jira.percona.com/browse/PS-5082
 #TEXT=.strlen.m_ptr.$                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=75870 (Also ref bug 79905) (Fixed in MS 5.7.8)
 TEXT=.strlen.m_ptr.$                                                                    ## https://bugs.mysql.com/bug.php?id=84754
 #TEXT=.\. is_set.$                                                             ## Fixed ## https://bugs.mysql.com/bug.php?id=74597 (old PS Bug #1206050)
