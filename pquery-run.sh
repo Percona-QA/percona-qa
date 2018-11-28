@@ -96,6 +96,15 @@ else
   fi
 fi
 
+#Sanity check for PXB Crash testing run
+if [ ${PXB_CRASH_RUN} -eq 1 ]; then
+  echoit "MODE: Percona Xtrabackup crash test run"
+  if [[ ! -d ${PXB_BASEDIR} ]]; then
+    echoit "Assert: $PXB_BASEDIR does not exist. Terminating!"
+    exit 1
+  fi
+fi
+
 # Automatic variable adjustments
 if [ "$1" == "pxc" -o "$2" == "pxc" -o "$1" == "PXC" -o "$2" == "PXC" ]; then PXC=1; fi  # Check if this is a a PXC run as indicated by first or second option to this script
 if [ "$(whoami)" == "root" ]; then MYEXTRA="--user=root ${MYEXTRA}"; fi
@@ -1228,9 +1237,9 @@ pquery_test(){
           if grep -qi "error while loading shared libraries.*libssl" ${RUNDIR}/${TRIAL}/pquery.log; then
             echoit "$(grep -i "error while loading shared libraries" ${RUNDIR}/${TRIAL}/pquery.log)"
             echoit "Assert: There was an error loading the shared/dynamic libssl library linked to from within pquery. You may want to try and install a package similar to libssl-dev. If that is already there, try instead to build pquery on this particular machine. Sometimes there are differences seen between Centos and Ubuntu. Perhaps we need to have a pquery build for each of those separately."
-	  else
+	      else
             echoit "Assert: There was an error loading the shared/dynamic mysql client library linked to from within pquery. Ref. ${RUNDIR}/${TRIAL}/pquery.log to see the error. The solution is to ensure that LD_LIBRARY_PATH is set correctly (for example: execute '$ export LD_LIBRARY_PATH=<your_mysql_base_directory>/lib' in your shell. This will happen only if you use pquery without statically linked client libraries, and this in turn would happen only if you compiled pquery yourself instead of using the pre-built binaries available in https://github.com/Percona-QA/percona-qa (ref subdirectory/files ./pquery/pquery*) - which are normally used by this script (hence this situation is odd to start with). The pquery binaries in percona-qa all include a statically linked mysql client library matching the mysql flavor (PS,MS,MD,WS) it was built for. Another reason for this error may be that (having used pquery without statically linked client binaries as mentioned earlier) the client libraries are not available at the location set in LD_LIBRARY_PATH (which is currently set to '${LD_LIBRARY_PATH}'."
-	  fi
+	      fi
           exit 1
         fi
         if [ "`ps -ef | grep ${PQPID} | grep -v grep`" == "" ]; then  # pquery ended
@@ -1242,6 +1251,16 @@ pquery_test(){
              sleep 2
              echoit "killed for crash testing"
              break
+          fi
+        fi
+        # Initiate Percona Xtrabackup
+        if [ ${PXB_CRASH_RUN} -eq 1 ]; then
+          if [ $X -ge $PXB_INITIALIZE_BACKUP_SEC ]; then
+            $PXB_BASEDIR/bin/xtrabackup --user=root --password='' --backup --target-dir=${RUNDIR}/${TRIAL}/xb_full -S${RUNDIR}/${TRIAL}/socket.sock --datadir=${RUNDIR}/${TRIAL}/data --lock-ddl > ${RUNDIR}/${TRIAL}/backup.log 2>&1
+            $PXB_BASEDIR/bin/xtrabackup --prepare --target_dir=${RUNDIR}/${TRIAL}/xb_full --lock-ddl > ${RUNDIR}/${TRIAL}/prepare_backup.log 2>&1
+            echoit "Backup completed"
+            PXB_CHECK=1
+            break 
           fi
         fi
         if [ $X -ge ${PQUERY_RUN_TIMEOUT} ]; then
@@ -1496,6 +1515,11 @@ pquery_test(){
         echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
         savetrial
         TRIAL_SAVED=1
+      elif [ ${PXB_CHECK} -eq 1 ]; then
+        echoit "Saving this trial for backup restore analysis"
+        savetrial
+        TRIAL_SAVED=1
+        PXB_CHECK=0
       else
         if [ ${SAVE_SQL} -eq 1 ]; then
           if [ ${VALGRIND_RUN} -eq 1 ]; then
@@ -1555,6 +1579,9 @@ elif [[ ${GRP_RPL} -eq 1 ]]; then
   fi
 fi
 
+if [[ ${PXB_CRASH_RUN} -eq 1 ]]; then
+  echoit "PXB Base: ${PXB_BASEDIR}"
+fi
 # Start vault server for pquery encryption run
 if [[ $WITH_KEYRING_VAULT -eq 1 ]];then
   echoit "Setting up vault server"
