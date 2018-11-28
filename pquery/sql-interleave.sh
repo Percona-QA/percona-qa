@@ -15,7 +15,8 @@
 #INPUT_FILE=./main-merged.sql  # Previous main SQL file
 INPUT_FILE=./main-ms-ps-md.sql
 OUTPUT_FILE=./main-interleaved.sql
-SQL_TO_INTERLEAVE="SHOW GLOBAL STATUS LIKE 'Queries';\nSHOW GLOBAL STATUS LIKE 'Questions';"  # May contain \n seperators to seperate fully-independent SQL statements. The resulting output file will have each '\n' seperated line on a seperate line.
+SQL_TO_INTERLEAVE="create table t1 (a int not null, b int not null auto_increment, primary key(a,b)) engine=tokudb;"  # May contain \n seperators to seperate fully-independent SQL statements. The resulting output file will have each '\n' seperated line on a seperate line.
+#SQL_TO_INTERLEAVE="SHOW GLOBAL STATUS LIKE 'Queries';\nSHOW GLOBAL STATUS LIKE 'Questions';"  # May contain \n seperators to seperate fully-independent SQL statements. The resulting output file will have each '\n' seperated line on a seperate line.
 
 if [ ! -r ${INPUT_FILE} ]; then
   echo "Assert: ${INPUT_FILE} was not found. Please check. Terminating."

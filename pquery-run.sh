@@ -96,6 +96,15 @@ else
   fi
 fi
 
+#Sanity check for PXB Crash testing run
+if [ ${PXB_CRASH_RUN} -eq 1 ]; then
+  echoit "MODE: Percona Xtrabackup crash test run"
+  if [[ ! -d ${PXB_BASEDIR} ]]; then
+    echoit "Assert: $PXB_BASEDIR does not exist. Terminating!"
+    exit 1
+  fi
+fi
+
 # Automatic variable adjustments
 if [ "$1" == "pxc" -o "$2" == "pxc" -o "$1" == "PXC" -o "$2" == "PXC" ]; then PXC=1; fi  # Check if this is a a PXC run as indicated by first or second option to this script
 if [ "$(whoami)" == "root" ]; then MYEXTRA="--user=root ${MYEXTRA}"; fi
@@ -166,7 +175,7 @@ if [ ${THREADS} -gt 1 ]; then  # We may want to drop this to 20 seconds required
 fi
 if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
   echoit "MODE: Creash Recovery Testing"
-  INFILE=CRASH_RECOVERY_INFILE
+  INFILE=$CRASH_RECOVERY_INFILE
   if [ -a ${QUERY_DURATION_TESTING} -eq 1]; then
     echoit "CRASH_RECOVERY_TESTING and QUERY_DURATION_TESTING cannot be both active at the same time due to parsing limitations. This is the case. Please disable one of them."
     exit 1
@@ -733,14 +742,7 @@ pquery_test(){
     fi
     chmod +x ${RUNDIR}/${TRIAL}/start
     echo "BASEDIR=$BASEDIR" > ${RUNDIR}/${TRIAL}/start_recovery
-    echo "if [ -r /usr/lib64/libjemalloc.so.1 ]; then" >> ${RUNDIR}/${TRIAL}/start_recovery
-    echo "  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1;" >> ${RUNDIR}/${TRIAL}/start_recovery
-    echo "else" >> ${RUNDIR}/${TRIAL}/start_recovery
-    echo "  echo \"Assert! jemalloc not found at /usr/lib64/libjemalloc.so.1, please install it!\";" >> ${RUNDIR}/${TRIAL}/start_recovery
-    echo "  echoit \"For Centos7 you can do this by: sudo yum -y install epel-release; sudo yum -y install jemalloc;\"" >> ${RUNDIR}/${TRIAL}/start_recovery
-    echo "  exit 1;" >> ${RUNDIR}/${TRIAL}/start_recovery
-    echo "fi" >> ${RUNDIR}/${TRIAL}/start_recovery
-
+	
     echo "${CMD//$RUNDIR/$WORKDIR} --init-file=${WORKDIR}/recovery-user.sql > ${WORKDIR}/${TRIAL}/log/master.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
     # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
@@ -749,8 +751,9 @@ pquery_test(){
     else
       echo "${MYSAFE} ${MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     fi
+    echo "${MYINIT}" > ${RUNDIR}/${TRIAL}/MYINIT
     if [ ${VALGRIND_RUN} -eq 1 ]; then
-      touch  ${RUNDIR}/${TRIAL}/VALGRIND
+      touch ${RUNDIR}/${TRIAL}/VALGRIND
     fi
     # Restore orignal MYEXTRA for the next trial (MYEXTRA is no longer needed anywhere else. If this changes in the future, relocate this to below the changed code)
     MYEXTRA=${MYEXTRA_SAVE_IT}
@@ -871,6 +874,7 @@ pquery_test(){
       WSREP_PROVIDER_OPT="$OPTIONS_TO_ADD"
     fi
     echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
+    echo "${MYINIT}" > ${RUNDIR}/${TRIAL}/MYINIT
     echo "$WSREP_PROVIDER_OPT" > ${RUNDIR}/${TRIAL}/WSREP_PROVIDER_OPT
     if [ ${VALGRIND_RUN} -eq 1 ]; then
       touch  ${RUNDIR}/${TRIAL}/VALGRIND
@@ -929,10 +933,11 @@ pquery_test(){
         # Make sure that the code below generates exactly 3 lines (DROP/CREATE/USE) -OR- change the "head -n3" and "sed '1,3d'" (both below) to match any updates made
         echo 'DROP DATABASE test;' > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then
-          case "$(echo $(( RANDOM % 3 + 1 )))" in
+          case "$(echo $(( RANDOM % 4 + 1 )))" in
             1) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="Binary" DEFAULT COLLATE="Binary";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
             2) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="utf8" DEFAULT COLLATE="utf8_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
             3) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="latin1" DEFAULT COLLATE="latin1_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
+            4) echo 'CREATE DATABASE test DEFAULT CHARACTER SET="utf8mb4" DEFAULT COLLATE="utf8mb4_bin";' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql;;
           esac
         else
           echo 'CREATE DATABASE test;' >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql
@@ -945,12 +950,10 @@ pquery_test(){
         if [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "rocksdb" ]; then
           head -n3 ${RUNDIR}/${TRIAL}/${TRIAL}.sql > ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}  # Setup testcase with DROP/CREATE/USE test db
           sed '1,3d' ${RUNDIR}/${TRIAL}/${TRIAL}.sql | \
-           sed 's|UNIQUE[ \t]\+KEY||i' | \
            sed 's|FOREIGN[ \t]\+KEY||i' | \
            sed 's|FULLTEXT||i' | \
            sed 's|VIRTUAL||i' | \
            sed 's|[ \t]\+TEMPORARY||i' | \
-           sed 's|,[ \t]*UNIQUE *[[:alnum:]]* *([[:alnum:]]\+\(([[:alnum:]]+)\)*)||i' | \
            sed -E 's/row_format.*=.*(;| )+//i' | \
            grep -vi "variables" | \
            grep -vi "\@\@" | \
@@ -978,6 +981,8 @@ pquery_test(){
            grep -vi "current_time" | \
            grep -vi "curtime" | \
            grep -vi "timestamp" | \
+           grep -vi "localtime" | \
+           grep -vi "utc_time" | \
            grep -vi "connection_id" | \
            grep -vi "sysdate" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
@@ -996,7 +1001,7 @@ pquery_test(){
            grep -vi "^create table.*generated" | \
            grep -vi "^create table.*/tmp/not-existing" | \
            grep -vi "^create table.*compression" | \
-           grep -vi "^create table.*key_block_size" | \
+           grep -viE "^create( temporary)?.*table.*key_block_size" | \
            grep -vi "^create table.*encryption" | \
            grep -viE "^(create table|alter table).*comment.*__system__" | \
            grep -vi "^select.* sys\." | \
@@ -1011,6 +1016,8 @@ pquery_test(){
            grep -vi "^lock.*for backup" | \
            grep -vi "^uninstall.*plugin" | \
            grep -vi "^alter table.*algorithm.*inplace" | \
+           grep -vi "^set.*innodb_encrypt_tables" | \
+           grep -vi "^insert.*into.*select.*from" | \
            grep -vi "^alter table.*discard tablespace" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         elif [ "$(echo ${QC_PRI_ENGINE} | tr [:upper:] [:lower:])" == "tokudb" -o "$(echo ${QC_SEC_ENGINE} | tr [:upper:] [:lower:])" == "tokudb" ]; then
@@ -1043,6 +1050,8 @@ pquery_test(){
            grep -vi "current_time" | \
            grep -vi "curtime" | \
            grep -vi "timestamp" | \
+           grep -vi "localtime" | \
+           grep -vi "utc_time" | \
            grep -vi "connection_id" | \
            grep -vi "sysdate" | \
            grep -vEi "now[ \t]*\(.{0,4}\)" | \
@@ -1056,7 +1065,7 @@ pquery_test(){
            grep -vi "^create table.*generated" | \
            grep -vi "^create table.*/tmp/not-existing" | \
            grep -vi "^create table.*compression" | \
-           grep -vi "^create table.*key_block_size" | \
+           grep -viE "^create( temporary)?.*table.*key_block_size" | \
            grep -vi "^create table.*encryption" | \
            grep -vi "^select.* sys\." | \
            grep -vi "^select.* mysql\." | \
@@ -1066,6 +1075,8 @@ pquery_test(){
            grep -vi "password[ \t]*(.*)" | \
            grep -vi "old_password[ \t]*(.*)" | \
            grep -vi "row_count[ \t]*(.*)" | \
+           grep -vi "^alter table.*algorithm.*inplace" | \
+           grep -vi "^set.*innodb_encrypt_tables" | \
            grep -vi "^uninstall.*plugin" >> ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}
           cp ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE} ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         else
@@ -1226,9 +1237,9 @@ pquery_test(){
           if grep -qi "error while loading shared libraries.*libssl" ${RUNDIR}/${TRIAL}/pquery.log; then
             echoit "$(grep -i "error while loading shared libraries" ${RUNDIR}/${TRIAL}/pquery.log)"
             echoit "Assert: There was an error loading the shared/dynamic libssl library linked to from within pquery. You may want to try and install a package similar to libssl-dev. If that is already there, try instead to build pquery on this particular machine. Sometimes there are differences seen between Centos and Ubuntu. Perhaps we need to have a pquery build for each of those separately."
-	  else
+	      else
             echoit "Assert: There was an error loading the shared/dynamic mysql client library linked to from within pquery. Ref. ${RUNDIR}/${TRIAL}/pquery.log to see the error. The solution is to ensure that LD_LIBRARY_PATH is set correctly (for example: execute '$ export LD_LIBRARY_PATH=<your_mysql_base_directory>/lib' in your shell. This will happen only if you use pquery without statically linked client libraries, and this in turn would happen only if you compiled pquery yourself instead of using the pre-built binaries available in https://github.com/Percona-QA/percona-qa (ref subdirectory/files ./pquery/pquery*) - which are normally used by this script (hence this situation is odd to start with). The pquery binaries in percona-qa all include a statically linked mysql client library matching the mysql flavor (PS,MS,MD,WS) it was built for. Another reason for this error may be that (having used pquery without statically linked client binaries as mentioned earlier) the client libraries are not available at the location set in LD_LIBRARY_PATH (which is currently set to '${LD_LIBRARY_PATH}'."
-	  fi
+	      fi
           exit 1
         fi
         if [ "`ps -ef | grep ${PQPID} | grep -v grep`" == "" ]; then  # pquery ended
@@ -1240,6 +1251,16 @@ pquery_test(){
              sleep 2
              echoit "killed for crash testing"
              break
+          fi
+        fi
+        # Initiate Percona Xtrabackup
+        if [ ${PXB_CRASH_RUN} -eq 1 ]; then
+          if [ $X -ge $PXB_INITIALIZE_BACKUP_SEC ]; then
+            $PXB_BASEDIR/bin/xtrabackup --user=root --password='' --backup --target-dir=${RUNDIR}/${TRIAL}/xb_full -S${RUNDIR}/${TRIAL}/socket.sock --datadir=${RUNDIR}/${TRIAL}/data --lock-ddl > ${RUNDIR}/${TRIAL}/backup.log 2>&1
+            $PXB_BASEDIR/bin/xtrabackup --prepare --target_dir=${RUNDIR}/${TRIAL}/xb_full --lock-ddl > ${RUNDIR}/${TRIAL}/prepare_backup.log 2>&1
+            echoit "Backup completed"
+            PXB_CHECK=1
+            break 
           fi
         fi
         if [ $X -ge ${PQUERY_RUN_TIMEOUT} ]; then
@@ -1494,6 +1515,11 @@ pquery_test(){
         echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
         savetrial
         TRIAL_SAVED=1
+      elif [ ${PXB_CHECK} -eq 1 ]; then
+        echoit "Saving this trial for backup restore analysis"
+        savetrial
+        TRIAL_SAVED=1
+        PXB_CHECK=0
       else
         if [ ${SAVE_SQL} -eq 1 ]; then
           if [ ${VALGRIND_RUN} -eq 1 ]; then
@@ -1553,6 +1579,9 @@ elif [[ ${GRP_RPL} -eq 1 ]]; then
   fi
 fi
 
+if [[ ${PXB_CRASH_RUN} -eq 1 ]]; then
+  echoit "PXB Base: ${PXB_BASEDIR}"
+fi
 # Start vault server for pquery encryption run
 if [[ $WITH_KEYRING_VAULT -eq 1 ]];then
   echoit "Setting up vault server"
@@ -1582,12 +1611,10 @@ if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -eq 1 ]; then
 fi
 echoit "Valgrind run: `if [ ${VALGRIND_RUN} -eq 1 ]; then echo -n 'TRUE'; else echo -n 'FALSE'; fi` | pquery timeout: ${PQUERY_RUN_TIMEOUT} | ${SQL_INPUT_TEXT} `if [ ${THREADS} -ne 1 ]; then echo -n "| Testcase size (chunked from infile): ${MULTI_THREADED_TESTC_LINES}"; fi`"
 echoit "pquery Binary: ${PQUERY_BIN}"
-# Future: if [ "${MYMID}" != "" ]; then echoit "MYMID: ${MYMID}"; fi
-# Hack now: INIT_OPT:
-echoit "INIT_OPT: ${INIT_OPT}"
+if [ "${MYINIT}" != "" ]; then echoit "MYINIT: ${MYINIT}"; fi
+if [ "${MYSAFE}" != "" ]; then echoit "MYSAFE: ${MYSAFE}"; fi
 if [ "${MYEXTRA}" != "" ]; then echoit "MYEXTRA: ${MYEXTRA}"; fi
 if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 -a "${MYEXTRA2}" != "" ]; then echoit "MYEXTRA2: ${MYEXTRA2}"; fi
-if [ "${MYSAFE}" != "" ]; then echoit "MYSAFE: ${MYSAFE}"; fi
 echoit "Making a copy of the pquery binary used (${PQUERY_BIN}) to ${WORKDIR}/ (handy for later re-runs/reference etc.)"
 cp ${PQUERY_BIN} ${WORKDIR}
 echoit "Making a copy of this script (${SCRIPT}) to ${WORKDIR}/ for reference & adding a pquery- prefix (this avoids pquery-prep-run not finding the script)..."  # pquery- prefix avoids pquer-prep-red.sh script-locating issues if this script had been renamed to a name without 'pquery' in it.
@@ -1604,9 +1631,9 @@ fi
 MID=
 if [ -r ${BASEDIR}/scripts/mysql_install_db ]; then MID="${BASEDIR}/scripts/mysql_install_db"; fi
 if [ -r ${BASEDIR}/bin/mysql_install_db ]; then MID="${BASEDIR}/bin/mysql_install_db"; fi
-START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
-INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
-INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
+START_OPT="--core-file"  # Compatible with 5.6,5.7,8.0
+INIT_OPT="--no-defaults --initialize-insecure ${MYINIT}"  # Compatible with 5.7,8.0 (mysqld init)
+INIT_TOOL="${BIN}"  # Compatible with 5.7,8.0 (mysqld init), changed to MID later if version <=5.6
 VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
 if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
   if [ "${MID}" == "" ]; then
@@ -1614,7 +1641,7 @@ if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO
     exit 1
   fi
   INIT_TOOL="${MID}"
-  INIT_OPT="--force --no-defaults"
+  INIT_OPT="--no-defaults --force ${MYINIT}"
   START_OPT="--core"
 elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
   echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."

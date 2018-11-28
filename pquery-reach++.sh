@@ -3,14 +3,16 @@
 # With thanks to https://unix.stackexchange.com/q/47271 (jw013)
 
 # User variables
-#BASEDIR=/sda/PS010918-percona-server-8.0.12-1-linux-x86_64-opt
 #BASEDIR=/sda/PS250818-percona-server-5.7.23-23-linux-x86_64-debug
-BASEDIR=/sda/PS051018-percona-server-8.0.12-1-linux-x86_64-debug
+#BASEDIR=/sda/PS131118-percona-server-8.0.12-1-linux-x86_64-debug
+#BASEDIR=/sda/PS151118-percona-server-8.0.12-1-linux-x86_64-opt
+#BASEDIR=/sda/MS101018-mysql-5.7.23-linux-x86_64-opt
+BASEDIR=/sda/MS221118-mysql-8.0.13-linux-x86_64-debug
 WORKDIR=/dev/shm
 COPYDIR=/sda   # A random number suffix will be auto-added, so for example /sda or /tmp would be suitable here
 THREADS=1
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
-SESSIONS=11
+SESSIONS=13
 
 # Internal variables: Do not change!
 SCRIPT_PWD=$(cd `dirname $0` && pwd)

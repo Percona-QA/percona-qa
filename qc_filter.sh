@@ -36,11 +36,19 @@ DIRLIST=$(grep -i "ERROR.*3106.*is not supported for generated columns" */pquery
 move
 
 # Other se's don't support native partitioning
-DIRLIST=$(grep -i "Please use native partitioning instead." */pquery_thread-0.*.out 2>/dev/null|awk -F '/' '{print $1}'|sort -u)
-move
+#DIRLIST=$(grep -i "Please use native partitioning instead." */pquery_thread-0.*.out 2>/dev/null|awk -F '/' '{print $1}'|sort -u)
+#move
 
 # Filter where in the output storage engine name was mentioned
 DIRLIST=$(grep -iE "Rocks|Toku|Inno" */pquery_thread-0.*.out 2>/dev/null|awk -F '/' '{print $1}'|sort -u)
+move
+
+# Different maximum row sizes
+DIRLIST=$(grep -i "ERROR.*1118.*Row size too large" */pquery_thread-0.*.sql 2>/dev/null|awk -F '/' '{print $1}'|sort -u)
+move
+
+# Different max number of columns
+DIRLIST=$(grep -i "ERROR.*1117.*Too many columns" */pquery_thread-0.*.sql 2>/dev/null|awk -F '/' '{print $1}'|sort -u)
 move
 
 ### Specifics for some SE
@@ -53,14 +61,9 @@ if [ "${SE}" == "rocksdb" ]; then
   #DIRLIST=$(grep -i "Internal error: Attempt to open a table that is not present in RocksDB-SE data dictionary" */pquery_thread-0.*.sql 2>/dev/null|awk -F '/' '{print $1}'|sort -u)
   #move
 
-  # MyRocks and InnoDB have different maximum row sizes
-  DIRLIST=$(grep -i "ERROR.*1118.*Row size too large" */pquery_thread-0.*.sql 2>/dev/null|awk -F '/' '{print $1}'|sort -u)
-  move
-
-
   # MyRocks doesn't support unique indexes when table doesn't have primary key
-  DIRLIST=$(grep -i "ERROR.*1105.*Unique index support is disabled when the table has no primary key" */pquery_thread-0.RocksDB.sql 2>/dev/null|awk -F '/' '{print $1}'|sort -u)
-  move
+  #DIRLIST=$(grep -i "ERROR.*1105.*Unique index support is disabled when the table has no primary key" */pquery_thread-0.RocksDB.sql 2>/dev/null|awk -F '/' '{print $1}'|sort -u)
+  #move
 
   # MyRocks doesn't support Gap Lock
   DIRLIST=$(grep -i "ERROR: 1105 - Using Gap Lock" */pquery_thread-0.RocksDB.sql 2>/dev/null|awk -F '/' '{print $1}'|sort -u)

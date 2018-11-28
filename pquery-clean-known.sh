@@ -38,6 +38,18 @@ else
   STRINGS_FILE=${SCRIPT_PWD}/known_bugs.strings
 fi
 
+# Make sure known bug lists file does not contain a merge conflict
+CONFLICT=0
+if grep "^<<<<<<<" ${STRINGS_FILE} >/dev/null 2>&1; then CONFLICT=1; fi
+if grep "^=======" ${STRINGS_FILE} >/dev/null 2>&1; then CONFLICT=1; fi
+if grep "^>>>>>>>" ${STRINGS_FILE} >/dev/null 2>&1; then CONFLICT=1; fi
+if [ ${CONFLICT} -eq 1 ]; then
+  echo "Assert: the known bug list filter file (${STRING_FILE}) contains a merge conflict!"
+  echo "Not continuing as doing so may incorrectly delete various trials which should not be deleted"
+  echo "Please scan the file for '<<<<<<<', '=======', and '>>>>>>>' strings"
+  exit 1
+fi
+
 while read line; do
   STRING="`echo "$line" | sed 's|[ \t]*##.*$||'`"
   if [ "`echo "$STRING" | sed 's|^[ \t]*$||' | grep -v '^[ \t]*#'`" != "" ]; then

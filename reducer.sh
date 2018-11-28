@@ -39,7 +39,8 @@ TEXT="somebug"                  # The text string you want reducer to search for
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
-BASEDIR="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"             # Path to the MySQL BASE directory to be used
+MYINIT=""                       # Extra options to pass to mysqld AND at data dir init time. See pquery-run-*.conf for more info
+BASEDIR="/sda/PS051018-percona-server-8.0.12-1-linux-x86_64-debug"  # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
 SCRIPT_PWD=$(cd `dirname $0` && pwd)  # script location to access storage engine plugin sql file.
 
@@ -1571,6 +1572,7 @@ init_workdir_and_files(){
     echo_out "[Init] Using the pquery client for SQL replay"
   fi
   if [ -n "$MYEXTRA" -o -n "$SPECIAL_MYEXTRA_OPTIONS" ]; then echo_out "[Init] Passing the following additional options to mysqld: $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA"; fi
+  if [ "$MYINIT" != "" ]; then echo_out "[Init] Passing the following additional options to mysqld initialization: $MYINIT"; fi
   if [ $MODE -ge 6 ]; then
     if [ $TS_TRXS_SETS -eq 1 ]; then echo_out "[Init] ThreadSync: using last transaction set (accross threads) only"; fi
     if [ $TS_TRXS_SETS -gt 1 ]; then echo_out "[Init] ThreadSync: using last $TS_TRXS_SETS transaction sets (accross threads) only"; fi
@@ -1624,7 +1626,7 @@ init_workdir_and_files(){
       if [ -r ${BASEDIR}/scripts/mysql_install_db ]; then MID="${BASEDIR}/scripts/mysql_install_db"; fi
       if [ -r ${BASEDIR}/bin/mysql_install_db ]; then MID="${BASEDIR}/bin/mysql_install_db"; fi
       START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
-      INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
+      INIT_OPT="--no-defaults --initialize-insecure ${MYINIT}"  # Compatible with     5.7,8.0 (mysqld init)
       INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
       VERSION_INFO=$(${BIN} --version | grep -E --binary-files=text -oe '[58]\.[01567]' | head -n1)
       if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
@@ -1633,7 +1635,7 @@ init_workdir_and_files(){
           exit 1
         fi
         INIT_TOOL="${MID}"
-        INIT_OPT="--force --no-defaults"
+        INIT_OPT="--no-defaults --force ${MYINIT}"
         START_OPT="--core"
       elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
         echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
@@ -1678,9 +1680,9 @@ init_workdir_and_files(){
     elif [[ $PXC_MOD -eq 1 ]]; then
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
       if [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure ${MYINIT} --basedir=${BASEDIR}"
       elif [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" == "5.6" ]; then
-        MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
+        MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --force ${MYINIT} --basedir=${BASEDIR}"
       fi
       node1="${WORKD}/node1"
       node2="${WORKD}/node2"
@@ -1697,7 +1699,7 @@ init_workdir_and_files(){
       cp -a $WORKD/node3/* $WORKD/node3.init/
     elif [[ $GRP_RPL_MOD -eq 1 ]]; then
       echo_out "[Init] Setting up standard Group Replication working template (without using MYEXTRA options)"
-      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure ${MYINIT} --basedir=${BASEDIR}"
       node1="${WORKD}/node1"
       node2="${WORKD}/node2"
       node3="${WORKD}/node3"
@@ -1735,8 +1737,8 @@ generate_run_scripts(){
   echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
   echo "MID=\`find \${BASEDIR} -maxdepth 2 -name mysql_install_db\`" >> $WORK_INIT
   echo "VERSION=\"\`\$BIN --version | grep -E --binary-files=text -oe '[58]\.[15670]' | head -n1\`\"" >> $WORK_INIT
-  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\$VERSION\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\${VERSION}\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
-  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then \$BIN  --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
+  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then MID_OPTIONS='--no-defaults --initialize-insecure ${MYINIT}'; elif [ \"\$VERSION\" == \"5.6\" ]; then MID_OPTIONS='--no-defaults --force ${MYINIT}'; elif [ \"\${VERSION}\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
+  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then \$BIN \${MID_OPTIONS} --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data; else \$MID \${MID_OPTIONS} --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data; fi" >> $WORK_INIT
   if [ $MODE -ge 6 ]; then
     # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
     echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet"
@@ -1882,6 +1884,8 @@ start_mysqld_or_valgrind_or_pxc(){
           echo "Terminating now."
           exit 1
         fi
+      #else  # Ref discussion RV/RS 27 Nov 19 via 1:1 (RV;should be covered in SQL, RS; issue seen)
+      #  ${BASEDIR}/bin/mysql -uroot -S$WORKD/socket.sock -e "create database if not exists test" > /dev/null 2>&1
       fi
     fi
   fi
@@ -2554,9 +2558,17 @@ cleanup_and_save(){
     MYSQLD_OPTIONS_REQUIRED=$(echo "$SPECIAL_MYEXTRA_OPTIONS $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
       if [ -s $WORKO ]; then
-        sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+        if [ "${MYINIT}" == "" ]; then
+          sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+        else
+          sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED  | mysqld initialization options required: ${MYINIT}" $WORKO
+        fi
       else
-        echo "# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" > $WORKO
+        if [ "${MYINIT}" == "" ]; then
+          echo "# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" > $WORKO
+        else
+          echo "# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED  | mysqld initialization options required: ${MYINIT}" > $WORKO
+        fi
       fi
     fi
     MYSQLD_OPTIONS_REQUIRED=
@@ -2984,6 +2996,9 @@ finish(){
     MYSQLD_OPTIONS_REQUIRED=$(echo "$SPECIAL_MYEXTRA_OPTIONS $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
       echo_out "[Finish] mysqld options required for replay: $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
+    fi
+    if [ "${MYINIT}" == "" ]; then
+      echo_out "[Finish] mysqld initialization options reqd: $MYINIT (the testcase will not reproduce the issue without these options passed to mysqld initialization)"
     fi
     MYSQLD_OPTIONS_REQUIRED=
     if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
@@ -4350,14 +4365,25 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
 
   stage9_run(){
     STAGE9_CHK=0
+    SAVE_MYINIT=""
+    if [ ${MYINIT_DROP} -eq 1 ]; then
+      SAVE_MYINIT=${MYINIT}
+      MYINIT=""
+    fi
     STAGE9_NOT_STARTED_CORRECTLY=0
     SAVE_SPECIAL_MYEXTRA_OPTIONS=$SPECIAL_MYEXTRA_OPTIONS
     SPECIAL_MYEXTRA_OPTIONS=$(echo "$SPECIAL_MYEXTRA_OPTIONS" | sed "s|$STAGE9_FILTER||");
     run_and_check
     if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then  # Issue failed to reproduce, revert
       SPECIAL_MYEXTRA_OPTIONS=$SAVE_SPECIAL_MYEXTRA_OPTIONS
+      if [ "${SAVE_MYINIT}" != "" ]; then 
+        MYINIT=${SAVE_MYINIT}
+      fi
     else  # Issue reproduced, so leave SPECIAL_MYEXTRA_OPTIONS as-is (already filtered), and filter the same from WORK_START now too
       sed -i "s|$STAGE9_FILTER||" $WORK_START
+      if [ "${SAVE_MYINIT}" != "" ]; then 
+        sed -i "s|${MYINIT}||" $WORK_START
+      fi
     fi
     TRIAL=$[$TRIAL+1]
   }
@@ -4396,6 +4422,17 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
       STAGE9_FILTER="--sql_mode="
       stage9_run
     fi
+  fi
+  if [ "${MYINIT}" != "" ]; then  # Try and drop both MYINIT and any matching options from MYEXTRA as well
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing MYINIT options from startup options & from mysqld initialization"
+    STAGE9_FILTER=$(echo ${MYINIT} | sed 's|^[ \t]\+||;s|[ \t]\+$||')
+    MYINIT_DROP=1
+    stage9_run
+  fi
+  if [ "${MYINIT}" != "" ]; then  # Previous one failed, so try MYINIT removal only
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing MYINIT options from mysqld initialization"
+    MYINIT_DROP=1
+    stage9_run
   fi
 fi
 

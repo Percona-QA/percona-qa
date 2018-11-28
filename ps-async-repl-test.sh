@@ -23,7 +23,7 @@ declare SBENCH="sysbench"
 declare SCRIPT_PWD=$(cd `dirname $0` && pwd)
 declare -i PS_START_TIMEOUT=60
 declare WORKDIR=""
-declare BUILD_NUMBER=100
+declare BUILD_NUMBER
 declare ENGINE=""
 declare KEYRING_PLUGIN=""
 declare TESTCASE=""
@@ -178,19 +178,19 @@ ROOT_FS=$WORKDIR
 cd $WORKDIR
 
 if [ -z ${SDURATION} ]; then
-  SDURATION=30
+  SDURATION=5
 fi
 
 if [ -z ${TSIZE} ]; then
-  TSIZE=500
+  TSIZE=50
 fi
 
 if [ -z ${NUMT} ]; then
-  NUMT=16
+  NUMT=4
 fi
 
 if [ -z ${TCOUNT} ]; then
-  TCOUNT=16
+  TCOUNT=4
 fi
 
 if [ -z "$ENGINE" ]; then
@@ -225,6 +225,7 @@ fi
 
 #Kill existing mysqld process
 ps -ef | grep 'ps[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+ps -ef | grep 'bkpslave.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
 cleanup(){
   tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
@@ -237,7 +238,20 @@ PS_TAR=`ls -1td ?ercona-?erver* | grep ".tar" | head -n1`
 if [ ! -z $PS_TAR ];then
   tar -xzf $PS_TAR
   PSBASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
+  if [[ -z $PSBASE ]]; then
+    echo "ERROR! Could not find Percona Server directory. Terminating!"
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
+  fi
+else
+  PSBASE=`ls -1td ?ercona-?erver* 2>/dev/null | grep -v ".tar" | head -n1`
+  if [[ -z $PSBASE ]] ; then
+    echoit "ERROR! Could not find Percona Server directory. Terminating!"
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PSBASE/bin:$PATH"
+  fi
 fi
 PS_BASEDIR="${ROOT_FS}/$PSBASE"
 
@@ -290,7 +304,7 @@ sysbench_run(){
     elif [ "$TEST_TYPE" == "oltp" ];then
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --num-threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "insert_data" ];then
-      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=30 --max-requests=1870000000 --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --num-threads=$NUMT --db-driver=mysql"
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=10 --max-requests=1870000000 --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --num-threads=$NUMT --db-driver=mysql"
     fi
   elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
@@ -298,7 +312,7 @@ sysbench_run(){
     elif [ "$TEST_TYPE" == "oltp" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     elif [ "$TEST_TYPE" == "insert_data" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --threads=$NUMT --time=30 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --threads=$NUMT --time=10 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
@@ -309,7 +323,11 @@ declare MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9
 if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
 else
-  MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR}"
+  if [[ -z $ENCRYPTION ]]; then
+    MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR}"
+  else
+    MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${PS_BASEDIR}"
+  fi
 fi
 
 #Check command failure
@@ -324,14 +342,14 @@ function async_rpl_test(){
   local MYEXTRA_CHECK="${1:-}"
   function ps_start(){
     local INTANCES="${1:-}"
-    local IS_GR="${2:-}"
+    local EXTRA_OPT="${2:-}"
     if [ -z $INTANCES ];then
       INTANCES=1
     fi
-    if [[ ! -z $IS_GR ]]; then
+    if [[ "$EXTRA_OPT" == "GR" ]]; then
       if [[ "$ENCRYPTION" == 1 ]];then
-        echoit "ERROR: Group Replication do not support binary log encryption due to binlog_checksum (PS-4819). Terminating!"
-        exit 1
+        echoit "WARNING: Group Replication do not support binary log encryption due to binlog_checksum (PS-4819). Disabling encryption!"
+        ENCRYPTION=0
       fi
       local GD_PORT1="$(( (RPORT + ( 35 * 1 )) + 10 ))"
       local GD_PORT2="$(( (RPORT + ( 35 * 2 )) + 10 ))"
@@ -387,7 +405,7 @@ function async_rpl_test(){
         echo "init-file=${SCRIPT_PWD}/TokuDB.sql" >> ${PS_BASEDIR}/n${i}.cnf
         echo "default-storage-engine=TokuDB" >> ${PS_BASEDIR}/n${i}.cnf
       fi
-      if [[ ! -z $IS_GR ]]; then
+      if [[ "$EXTRA_OPT" == "GR" ]]; then
         echo "binlog_checksum=none" >> ${PS_BASEDIR}/n${i}.cnf
         echo "plugin_load=group_replication.so" >> ${PS_BASEDIR}/n${i}.cnf
         echo "transaction_write_set_extraction=XXHASH64" >> ${PS_BASEDIR}/n${i}.cnf
@@ -398,29 +416,45 @@ function async_rpl_test(){
         echo "group_replication_bootstrap_group= OFF" >> ${PS_BASEDIR}/n${i}.cnf
         echo "group_replication_recovery_get_public_key = ON" >> ${PS_BASEDIR}/n${i}.cnf
       fi
+      if [[ "$EXTRA_OPT" == "MTR" ]]; then
+        echo "slave-parallel-workers=5" >> ${PS_BASEDIR}/n${i}.cnf
+      fi
       if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
         echo "gtid-mode=ON" >> ${PS_BASEDIR}/n${i}.cnf
         echo "enforce-gtid-consistency" >> ${PS_BASEDIR}/n${i}.cnf
       fi
       if [[ "$ENCRYPTION" == 1 ]];then
-        echo "encrypt_binlog" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "master_verify_checksum=on" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "binlog_checksum=crc32" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "innodb_temp_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "encrypt-tmp-files=ON" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "innodb_encrypt_tables=ON" >> ${PS_BASEDIR}/n${i}.cnf
-  	    if [[ "$KEYRING_PLUGIN" == "file" ]]; then
-          echo "early-plugin-load=keyring_file.so" >> ${PS_BASEDIR}/n${i}.cnf
-          echo "keyring_file_data=$node/keyring" >> ${PS_BASEDIR}/n${i}.cnf
-          echo "innodb_sys_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
-  	    elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-          echo "early-plugin-load=keyring_vault.so" >> ${PS_BASEDIR}/n${i}.cnf
-          echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PS_BASEDIR}/n${i}.cnf
-          echo "innodb_sys_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        if [[ "$EXTRA_OPT" != "GR" ]]; then
+          echo "encrypt_binlog" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "master_verify_checksum=on" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "binlog_checksum=crc32" >> ${PS_BASEDIR}/n${i}.cnf.
+          echo "innodb_temp_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "encrypt-tmp-files=ON" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "innodb_encrypt_tables=ON" >> ${PS_BASEDIR}/n${i}.cnf
+          if [[ "$EXTRA_OPT" != "XB" ]]; then
+            echo "innodb_sys_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
+          fi
+  	      if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+            echo "early-plugin-load=keyring_file.so" >> ${PS_BASEDIR}/n${i}.cnf
+            echo "keyring_file_data=$node/keyring" >> ${PS_BASEDIR}/n${i}.cnf
+  	      elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+            echo "early-plugin-load=keyring_vault.so" >> ${PS_BASEDIR}/n${i}.cnf
+            echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PS_BASEDIR}/n${i}.cnf
+          fi
         fi
       fi
 
-      ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+      if [[ "$EXTRA_OPT" == "XB" ]]; then
+        if [[ "$ENCRYPTION" == 1 ]];then
+          ${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --basedir=${PS_BASEDIR} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+        else
+		   ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+        fi
+      elif [[ "$EXTRA_OPT" == "GR" ]]; then
+        ${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+      else
+        ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+      fi
 
       ${PS_BASEDIR}/bin/mysqld --defaults-file=${PS_BASEDIR}/n${i}.cnf > $WORKDIR/logs/psnode${i}.err 2>&1 &
 
@@ -435,7 +469,7 @@ function async_rpl_test(){
           exit 1
           fi
       done
-      if [[ ! -z $IS_GR ]]; then
+      if [[ "$EXTRA_OPT" == "GR" ]]; then
         if [[ $i -eq 1 ]]; then
           ${PS_BASEDIR}/bin/mysql -uroot -S/tmp/ps${i}.sock -e"CREATE USER rpl_user@'%'  IDENTIFIED BY 'rpl_pass';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%';CHANGE MASTER TO MASTER_USER='rpl_user', MASTER_PASSWORD='rpl_pass' FOR CHANNEL 'group_replication_recovery';RESET MASTER;SET GLOBAL group_replication_bootstrap_group=ON;START GROUP_REPLICATION;SET GLOBAL group_replication_bootstrap_group=OFF;"
         else
@@ -561,7 +595,7 @@ function async_rpl_test(){
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLESPACE ${DATABASE_NAME}_gen_ts1 ADD DATAFILE '${DATABASE_NAME}_gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE ${DATABASE_NAME}_gen_ts1" 2>&1
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_sys_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE=innodb_system ENCRYPTION='Y'" 2>&1
-    local NUM_ROWS=$(shuf -i 100-500 -n 1)
+    local NUM_ROWS=$(shuf -i 50-100 -n 1)
     for i in `seq 1 $NUM_ROWS`; do
       local STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
       ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "INSERT INTO ${DATABASE_NAME}_gen_ts_tb1 (str) VALUES ('${STRING}')"
@@ -573,13 +607,29 @@ function async_rpl_test(){
     rm -rf ${WORKDIR}/backupdir ${WORKDIR}/bkpslave; mkdir ${WORKDIR}/backupdir
     local SOCKET=${1:-}
 
-    ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 > $WORKDIR/logs/xb_backup.log 2>&1 
-    echoit "Prepare xtrabackup"	
-	${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full > $WORKDIR/logs/xb_prepare_backup.log 2>&1 
-	
-    echoit "Restore backup to slave datadir"
-    ${PXBBASE}/bin/xtrabackup --copy-back --target-dir=${WORKDIR}/backupdir/full --datadir=${WORKDIR}/bkpslave > $WORKDIR/logs/xb_restore_backup.log 2>&1
+    if [[ -z $ENCRYPTION ]]; then
+      ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 > $WORKDIR/logs/xb_backup.log 2>&1
 
+      echoit "Prepare xtrabackup"	
+	  ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full > $WORKDIR/logs/xb_prepare_backup.log 2>&1
+
+    else
+      if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+        ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 --keyring-file-data=${WORKDIR}/psnode1/keyring --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --generate-transition-key > $WORKDIR/logs/xb_backup.log 2>&1
+        
+        echoit "Prepare xtrabackup"	
+        ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full --keyring-file-data=${WORKDIR}/psnode1/keyring --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin > $WORKDIR/logs/xb_prepare_backup.log 2>&1
+        
+      elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+        ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault.cnf --generate-transition-key > $WORKDIR/logs/xb_backup.log 2>&1
+        
+        echoit "Prepare xtrabackup"	
+        ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault.cnf > $WORKDIR/logs/xb_prepare_backup.log 2>&1 
+      fi
+    fi
+    echoit "Restore backup to slave datadir"
+    rsync -avpP ${WORKDIR}/backupdir/full/* ${WORKDIR}/bkpslave > $WORKDIR/logs/xb_restore_backup.log 2>&1
+    cp ${WORKDIR}/psnode1/keyring ${WORKDIR}/bkpslave/
     cat ${PS_BASEDIR}/n1.cnf |
       sed -e "0,/^[ \t]*port[ \t]*=.*$/s|^[ \t]*port[ \t]*=.*$|port=3308|" |
       sed -e "0,/^[ \t]*report-port[ \t]*=.*$/s|^[ \t]*report-port[ \t]*=.*$|report-port=3308|" |
@@ -859,7 +909,7 @@ function async_rpl_test(){
     echo "********************$MYEXTRA_CHECK multi thread replication test ************************"
     #PS server initialization
     echoit "PS server initialization"
-    ps_start 2 "--slave-parallel-workers=5"
+    ps_start 2 "MTR"
 
     echo "Sysbench Run for replication master master test : Prepare stage"
     invoke_slave "/tmp/ps1.sock" "/tmp/ps2.sock" ";START SLAVE;"
@@ -997,7 +1047,7 @@ function async_rpl_test(){
   }
 
   function mgr_test(){
-    echoit "********************$MYEXTRA_CHECK mysql group replication test ************************"
+    echoit "******************** $MYEXTRA_CHECK mysql group replication test ************************"
     #PS server initialization
     echoit "PS server initialization for group replication test"
     ps_start 3 GR
@@ -1017,14 +1067,15 @@ function async_rpl_test(){
 
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
-    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
+    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
+    ENCRYPTION=1
   }
 
   function xb_master_slave_test(){
     echoit "******************** $MYEXTRA_CHECK master slave test using xtrabackup ************************"
     #PS server initialization
     echoit "PS server initialization"
-    ps_start 1
+    ps_start 1 "XB"
     ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_xb_db;create database sbtest_xb_db;"
     create_test_user "/tmp/ps1.sock"
     async_sysbench_load sbtest_xb_db "/tmp/ps1.sock"

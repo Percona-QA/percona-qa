@@ -114,7 +114,7 @@ if [ "${STRING}" == "dd_table_discard_tablespace" ]; then
   fi
 fi
 
-# Fixup an important (""strcmp.table->name.m_name, table_name. == 0) text string (ref examples above for more information on how this is done)
+# Fixup an important ("strcmp.table->name.m_name, table_name. == 0") text string (ref examples above for more information on how this is done)
 if [ "${STRING}" == "strcmp.table->name.m_name, table_name. == 0" ]; then
   if grep "Cannot find a free slot for an undo log" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
     if grep "InnoDB: Assertion failure: dict0dd.cc:" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
@@ -123,6 +123,17 @@ if [ "${STRING}" == "strcmp.table->name.m_name, table_name. == 0" ]; then
   fi
 fi
 
-STRING=$(echo "${STRING}" | sed "s|/sda/MS[0-9]\+[^ ]\+/bin/mysqld||g")  # Filter out accidental path name insertions
+# Fixup an important ("strcmp.table->name.m_name, table_name. == 0") text string (ref examples above for more information on how this is done)
+if [ "${STRING}" == "status.ok" ]; then
+  if grep "rocksdb::Status rocksdb::BlockCacheTier::Open.*status.ok" $ERROR_LOG 2>/dev/null 1>&2; then  # Always check that it is a specific issue
+    STRING="rocksdb::Status rocksdb::BlockCacheTier::Open status.ok"
+  fi
+fi
+
+# Filter out accidental thread <nr> insertions
+STRING=$(echo ${STRING} | sed "s| thread [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]||")
+
+# Filter out accidental path name insertions
+STRING=$(echo "${STRING}" | sed "s|/sda/[PM]S[0-9]\+[^ ]\+/bin/mysqld||g")  
 
 echo ${STRING}

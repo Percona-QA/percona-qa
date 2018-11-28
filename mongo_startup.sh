@@ -8,6 +8,8 @@ MONGOD_EXTRA=""
 MONGOS_EXTRA=""
 CONFIG_EXTRA=""
 RS_ARBITER=0
+CIPHER_MODE="AES256-CBC"
+ENCRYPTION="no"
 
 if [ -z $1 ]; then
   echo "You need to specify at least one of the options for layout: --single, --rSet, --sCluster or use --help!"
@@ -17,8 +19,8 @@ fi
 # Check if we have a functional getopt(1)
 if ! getopt --test
 then
-    go_out="$(getopt --options=mrsahe:b: \
-        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,bindir:,mongodExtra:,mongosExtra:,configExtra: \
+    go_out="$(getopt --options=mrsahe:b:tc: \
+        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,bindir:,mongodExtra:,mongosExtra:,configExtra:,encrypt,cipherMode: \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
@@ -59,6 +61,8 @@ do
     echo -e "--mongodExtra=\"...\"\t\t specify extra options to pass to mongod"
     echo -e "--mongosExtra=\"...\"\t\t specify extra options to pass to mongos"
     echo -e "--configExtra=\"...\"\t\t specify extra options to pass to config server"
+    echo -e "-t, --encrypt\t\t\t enable data at rest encryption (wiredTiger only)"
+    echo -e "-c<mode>, --cipherMode=<mode>\t specify cipher mode for encryption (AES256-CBC or AES256-GCM)"
     echo -e "-h, --help\t\t\t this help"
     exit 0
     ;;
@@ -82,6 +86,15 @@ do
     CONFIG_EXTRA="$1"
     shift
     ;;
+  -t | --encrypt )
+    shift
+    ENCRYPTION="keyfile"
+    ;;
+  -c | --cipherMode )
+    shift
+    CIPHER_MODE="$1"
+    shift
+    ;;
   -b | --bindir )
     shift
     BINDIR="$1"
@@ -89,6 +102,11 @@ do
     ;;
   esac
 done
+
+if [ "${STORAGE_ENGINE}" != "wiredTiger" -a "${ENCRYPTION}" != "no" ]; then
+  echo "ERROR: Data at rest encryption is possible only with wiredTiger storage engine!"
+  exit 1
+fi
 
 BASEDIR="$(pwd)"
 if [ -z "${BINDIR}" ]; then
@@ -124,11 +142,16 @@ start_mongod(){
   local SE="$4"
   local EXTRA="$5"
   local RS_OPT=""
+  mkdir -p ${NDIR}/db
   if [ ${RS} != "nors" ]; then
     EXTRA="${EXTRA} --replSet ${RS}"
   fi
   if [ "${SE}" == "wiredTiger" ]; then
     EXTRA="${EXTRA} --wiredTigerCacheSizeGB 1"
+    if [ "${ENCRYPTION}" = "keyfile" ]; then
+      openssl rand -base64 32 > ${NDIR}/mongodb-keyfile
+      EXTRA="${EXTRA} --enableEncryption --encryptionKeyFile ${NDIR}/mongodb-keyfile --encryptionCipherMode ${CIPHER_MODE}"
+    fi
   elif [ "${SE}" == "rocksdb" ]; then
     EXTRA="${EXTRA} --rocksdbCacheSizeGB 1"
     if [ "${VERSION_MAJOR}" = "3.6" ]; then
@@ -136,7 +159,6 @@ start_mongod(){
     fi
   fi
 
-  mkdir -p ${NDIR}/db
   echo "#!/usr/bin/env bash" > ${NDIR}/start.sh
   echo "echo \"Starting mongod on port: ${PORT} storage engine: ${SE} replica set: ${RS#nors}\"" >> ${NDIR}/start.sh
   echo "${BINDIR}/mongod --port ${PORT} --storageEngine ${SE} --dbpath ${NDIR}/db --logpath ${NDIR}/mongod.log --fork ${EXTRA} > /dev/null" >> ${NDIR}/start.sh

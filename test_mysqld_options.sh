@@ -139,9 +139,9 @@ if [ ${TEST_OR_GENERATE} -eq 0 ]; then
   mkdir -p ${RUNDIR}/data/test ${RUNDIR}/data/mysql ${RUNDIR}/log
   echoit "Generating datadir template (using mysql_install_db)..."
   if [ -r ./bin/mysql_install_db ]; then
-    ./bin/mysql_install_db --force --no-defaults --basedir=${PWD} --datadir=${RUNDIR}/data > ${RUNDIR}/log/mysql_install_db.txt 2>&1
+    ./bin/mysql_install_db --no-defaults --force --basedir=${PWD} --datadir=${RUNDIR}/data > ${RUNDIR}/log/mysql_install_db.txt 2>&1
   elif [ -r ./scripts/mysql_install_db ]; then
-    ./scripts/mysql_install_db --force --no-defaults --basedir=${PWD} --datadir=${RUNDIR}/data > ${RUNDIR}/log/mysql_install_db.txt 2>&1
+    ./scripts/mysql_install_db --no-defaults --force --basedir=${PWD} --datadir=${RUNDIR}/data > ${RUNDIR}/log/mysql_install_db.txt 2>&1
   else
     echo "Error: mysql_install_db not found in ${PWD}/scripts nor in ${PWD}/bin"
     exit 1

@@ -95,7 +95,7 @@ fi
 
 if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" ]]; then VERSION="5.7"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mysql" ]]; then VERSION="8.0"; fi
-if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.2"; fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.3"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="3.6"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then
   VERSION=$(wget -qO- https://www.mongodb.com/download-center\#community | grep -o -P "Current Stable Release \(.{3,10}\)" | grep -o -P "\(.{3,10}\)" | sed 's/(//' | sed 's/)//')
@@ -366,8 +366,8 @@ get_link(){
     fi
 
     if [[ -z ${VERSION_FULL} ]]; then
-      TARBALL=$(wget -qO- https://www.vaultproject.io/downloads.html | grep -oP "vault_.*linux_${BUILD_ARCH}.zip" | head -n1)
-      VERSION_FULL=$(echo "${TARBALL}"|awk -F'_' '{print $2}')
+      VERSION_FULL=$(wget -qO- https://releases.hashicorp.com/vault/ |grep -o "vault_.*"|grep -vP "beta|rc"|sed "s:</a>::"|sed "s:vault_::"|head -n1)
+      TARBALL="vault_${VERSION_FULL}_linux_${BUILD_ARCH}.zip"
       LINK="${BASE_LINK}${VERSION_FULL}/${TARBALL}"
     else
       LINK="${BASE_LINK}${VERSION_FULL}/vault_${VERSION_FULL}_linux_${BUILD_ARCH}.zip"
