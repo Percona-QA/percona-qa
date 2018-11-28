@@ -1572,6 +1572,7 @@ init_workdir_and_files(){
     echo_out "[Init] Using the pquery client for SQL replay"
   fi
   if [ -n "$MYEXTRA" -o -n "$SPECIAL_MYEXTRA_OPTIONS" ]; then echo_out "[Init] Passing the following additional options to mysqld: $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA"; fi
+  if [ "$MYINIT" != "" ]; then echo_out "[Init] Passing the following additional options to mysqld initialization: $MYINIT"; fi
   if [ $MODE -ge 6 ]; then
     if [ $TS_TRXS_SETS -eq 1 ]; then echo_out "[Init] ThreadSync: using last transaction set (accross threads) only"; fi
     if [ $TS_TRXS_SETS -gt 1 ]; then echo_out "[Init] ThreadSync: using last $TS_TRXS_SETS transaction sets (accross threads) only"; fi
