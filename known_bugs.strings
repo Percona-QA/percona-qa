@@ -377,6 +377,7 @@ log0log.cc line 574                                               ## https://jir
 log0log.cc line 1839                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 log0log.cc line 2199                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 Z19find_field_in_tableP3THDP5TABLEPKcmbPj                         ## https://jira.percona.com/browse/PS-4830
+ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb  ## https://jira.percona.com/browse/PS-5077
 
 ## =========== PS 5.7 TokuDB bugs ==========
 #Handlerton. trx->tokudb_lock_count > 0                        ## Fixed ## https://jira.percona.com/browse/PS-4294
@@ -394,7 +395,7 @@ ha_innodb.cc line 3512                           ##DONOTREMOVE## https://jira.pe
 ha_innodb.cc line 3521                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.36
 ha_innodb.cc line 3539                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.38
 ha_innodb.cc line 3540                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.41
-ha_innodb.cc line 3545                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.42
+ha_innodb.cc line 3545                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.41
 btr0cur.c line 3918                              ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
 handler0alter.cc line 5083                       ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread 
 handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
@@ -1048,6 +1049,10 @@ Z21copy_system_variablesP3THDb                                                  
 #ZN7myrocks10ha_rocksdb18get_auto_incrementEyyyPyS1_                           ## Fixed ## https://jira.percona.com/browse/MYR-235
 #ZN7myrocks10ha_rocksdb31update_auto_incr_val_from_fieldEv                     ## Fixed ## https://jira.percona.com/browse/MYR-235
 #ZN7myrocks10ha_rocksdb31load_auto_incr_value_from_indexEv                     ## Fixed ## https://jira.percona.com/browse/MYR-236
+this->file->children_attached                                                           ## https://jira.percona.com/browse/PS-5078
+Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                         ## https://jira.percona.com/browse/PS-5079
+field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_DECIMAL .. field_types.field_pos. == MYSQL_TYPE_BIT .. field_types.field_pos. == MYSQL_TYPE_NEWDECIMAL .. field_types.field_pos. == MYSQL_TYPE_NEWDATE .. .field_types.field_pos. >= MYSQL_TYPE_ENUM .. field_types.field_pos. <= MYSQL_TYPE_GEOMETRY    ## https://jira.percona.com/browse/PS-5080
+my_b_write                                                                              ## https://jira.percona.com/browse/PS-5082
 ## =========== Error log crashing query based ===========
 #^Query ([0-9a-f]\+): SELECT.*FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG$        ## Fixed ## https://jira.percona.com/browse/PS-822
 
