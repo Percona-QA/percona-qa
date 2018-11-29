@@ -1515,7 +1515,7 @@ pquery_test(){
         echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
         savetrial
         TRIAL_SAVED=1
-      elif [ ${PXB_CHECK} -eq 1 ]; then
+      elif [[ ${PXB_CHECK} -eq 1 ]]; then
         echoit "Saving this trial for backup restore analysis"
         savetrial
         TRIAL_SAVED=1
