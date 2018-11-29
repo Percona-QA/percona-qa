@@ -97,7 +97,7 @@ else
 fi
 
 #Sanity check for PXB Crash testing run
-if [ ${PXB_CRASH_RUN} -eq 1 ]; then
+if [[ ${PXB_CRASH_RUN} -eq 1 ]]; then
   echoit "MODE: Percona Xtrabackup crash test run"
   if [[ ! -d ${PXB_BASEDIR} ]]; then
     echoit "Assert: $PXB_BASEDIR does not exist. Terminating!"
@@ -1254,8 +1254,8 @@ pquery_test(){
           fi
         fi
         # Initiate Percona Xtrabackup
-        if [ ${PXB_CRASH_RUN} -eq 1 ]; then
-          if [ $X -ge $PXB_INITIALIZE_BACKUP_SEC ]; then
+        if [[ ${PXB_CRASH_RUN} -eq 1 ]]; then
+          if [[ $X -ge $PXB_INITIALIZE_BACKUP_SEC ]]; then
             $PXB_BASEDIR/bin/xtrabackup --user=root --password='' --backup --target-dir=${RUNDIR}/${TRIAL}/xb_full -S${RUNDIR}/${TRIAL}/socket.sock --datadir=${RUNDIR}/${TRIAL}/data --lock-ddl > ${RUNDIR}/${TRIAL}/backup.log 2>&1
             $PXB_BASEDIR/bin/xtrabackup --prepare --target_dir=${RUNDIR}/${TRIAL}/xb_full --lock-ddl > ${RUNDIR}/${TRIAL}/prepare_backup.log 2>&1
             echoit "Backup completed"
