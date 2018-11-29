@@ -25,17 +25,21 @@ while read line ; do
     for X in $(seq 0 60); do
       sleep 1
       if ${BASEDIR}/bin/mysqladmin -uroot -S$WORKD_PWD/$line/socket.sock ping > /dev/null 2>&1; then
-        echo "($line) Percona Server restore is successful"
+        echo "TRIAL [$WORKD_PWD/$line] : Percona Server restore is successful"
         sleep 2
         ${BASEDIR}/bin/mysqladmin -uroot -S$WORKD_PWD/$line/socket.sock shutdown > /dev/null 2>&1
         break
       fi
       if [ $X -eq 60 ]; then
-        echo "($line) Percona Server startup failed.."
+        echo "TRIAL [$WORKD_PWD/$line] : Percona Server startup failed.."
         grep "ERROR" $WORKD_PWD/$line/log/master.err
       fi
     done
   else
-    echo "TRIAL : $WORKD_PWD/$line backup is not prepared properly" 
+    echo "TRIAL [$WORKD_PWD/$line] Skipped restore : backup is not prepared properly" 
+    if grep -qi 'error:' $WORKD_PWD/$line/backup.log; then
+      echo "Following error found in backup log"
+	  grep -i 'error:' $WORKD_PWD/$line/backup.log
+    fi
   fi 
 done < <(grep -B2  'Backup completed' ./pquery-run.log | grep "log stored in" | cut -d'/' -f5)
