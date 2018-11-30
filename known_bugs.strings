@@ -376,6 +376,7 @@ log0log.cc line 556                                               ## ^ .18 ## ht
 log0log.cc line 574                                               ## https://jira.percona.com/browse/PS-4989
 log0log.cc line 1839                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 log0log.cc line 2199                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
+log0log.cc line 2279                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88) #5.7.24
 Z19find_field_in_tableP3THDP5TABLEPKcmbPj                         ## https://jira.percona.com/browse/PS-4830
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb  ## https://jira.percona.com/browse/PS-5077
 .options.use_direct_reads                                         ## https://jira.percona.com/browse/PS-5085
