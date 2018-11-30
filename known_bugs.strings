@@ -378,6 +378,8 @@ log0log.cc line 1839                                              ## https://bug
 log0log.cc line 2199                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88)
 Z19find_field_in_tableP3THDP5TABLEPKcmbPj                         ## https://jira.percona.com/browse/PS-4830
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb  ## https://jira.percona.com/browse/PS-5077
+.options.use_direct_reads                                         ## https://jira.percona.com/browse/PS-5085
+thd->mdl_context.owns_equal_or_stronger_lock.MDL_key..TABLE, src_table->db, src_table->table_name, MDL_SHARED    ##https://jira.percona.com/browse/PS-5087
 
 ## =========== PS 5.7 TokuDB bugs ==========
 #Handlerton. trx->tokudb_lock_count > 0                        ## Fixed ## https://jira.percona.com/browse/PS-4294
