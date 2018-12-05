@@ -2570,6 +2570,12 @@ cleanup_and_save(){
           echo "# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED  | mysqld initialization options required: ${MYINIT}" > $WORKO
         fi
       fi
+    elif [ "${MYINIT}" != "" ]; then
+      if [ -s $WORKO ]; then
+        sed -i "1 i\# mysqld initialization options required: ${MYINIT}" $WORKO
+      else
+        echo "# mysqld initialization options required: ${MYINIT}" > $WORKO
+      fi
     fi
     MYSQLD_OPTIONS_REQUIRED=
     cp -f $WORKO $WORK_OUT
