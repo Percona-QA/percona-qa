@@ -49,7 +49,7 @@ usage () {
   echo " --mongo-with-rocksdb           This will start mongodb with rocksdb engine"
   echo " --replcount                    You can configure multiple mongodb replica sets with this oprion"
   echo " --with-replica                 This will configure mongodb replica setup"
-  echo " --with-shrading                This will configure mongodb shrading setup"
+  echo " --with-sharding                This will configure mongodb sharding setup"
   echo " --add-docker-client            Add docker pmm-clients with percona server to the currently live PMM server"
   echo " --list                         List all client information as obtained from pmm-admin"
   echo " --wipe-clients                 This will stop all client instances and remove all clients from pmm-admin"
@@ -77,7 +77,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,create-pgsql-user,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-sharding,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,create-pgsql-user,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -104,9 +104,9 @@ do
 	REPLCOUNT=$2
 	shift 2
     ;;
-    --with-shrading )
+    --with-sharding )
     shift
-    with_shrading=1
+    with_sharding=1
     ;;
     --download )
     shift
@@ -319,7 +319,7 @@ if [[ -z "$create_pgsql_user" ]]; then
   create_pgsql_user=0
 fi
 
-if [[ "$with_shrading" == "1" ]];then
+if [[ "$with_sharding" == "1" ]];then
   with_replica=1
 fi
 if [[ -z "$pmm_server_username" ]];then
@@ -900,7 +900,7 @@ add_clients(){
 	      done
 	    fi
 
-      if [[ "$with_shrading" == "1" ]]; then
+      if [[ "$with_sharding" == "1" ]]; then
     	  #config
         CONFIG_MONGOD_PORT=$(( (RANDOM%21 + 10) * 1001 ))
         CONFIG_MONGOS_PORT=$(( (RANDOM%21 + 10) * 1001 ))
@@ -908,7 +908,7 @@ add_clients(){
           PORT=$(( $CONFIG_MONGOD_PORT + $m - 1 ))
           mkdir -p $BASEDIR/data/confdb${m}
           $BASEDIR/bin/mongod --profile 2 --slowms 1 --fork --logpath $BASEDIR/data/confdb${m}/config_mongo.log --dbpath=$BASEDIR/data/confdb${m} --port $PORT --configsvr --replSet config &
-          sleep 10
+          sleep 15
           if [ $disable_ssl -eq 1 ]; then
             sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m} --disable-ssl
             check_disable_ssl mongodb_inst_rpl${k}_${j}
