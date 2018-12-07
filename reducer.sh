@@ -2205,7 +2205,7 @@ start_valgrind_mysqld_main(){
   echo $JE4 >> $WORK_START_VALGRIND
   echo "BIN=\`find \${BASEDIR} -maxdepth 2 -name mysqld -type f -o  -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_VALGRIND
   echo "valgrind --suppressions=\${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
-       \$BIN --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
+       \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
        --socket=$WORKD/socket.sock $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START_VALGRIND
