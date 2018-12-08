@@ -4372,7 +4372,7 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
   stage9_run(){
     STAGE9_CHK=0
     SAVE_MYINIT=""
-    if [ ${MYINIT_DROP} -eq 1 ]; then
+    if [[ ${MYINIT_DROP} -eq 1 ]]; then
       SAVE_MYINIT=${MYINIT}
       MYINIT=""
     fi
