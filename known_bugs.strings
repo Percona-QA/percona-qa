@@ -748,7 +748,7 @@ inited == NONE                                                                  
 #inited == INDEX                                                               ## Fixed ## https://jira.percona.com/browse/PS-1114
 #item_in->left_expr->cols  ## Get better or different 5.6 testcase ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74357 (was 80440) (Fixed in 5.7.6) Mailed Umesh for 5.6
 #keys >= 0.0                                                                   ## Fixed ## https://jira.percona.com/browse/PS-4207
-keys >= 0.0                                                                             ## https://jira.percona.com/browse/PS-5090
+#keys >= 0.0                                                                   ## Fixed ## https://jira.percona.com/browse/PS-5090 (PS-8.0.13)
 #key->flags . 1                                                                ## Fixed ## https://bugs.mysql.com/bug.php?id=89087
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## https://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## https://bugs.mysql.com/bug.php?id=74646
