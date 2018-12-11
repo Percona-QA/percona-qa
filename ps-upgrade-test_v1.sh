@@ -1,9 +1,6 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 # This will help us to test PS upgrade
-# Usage example:
-# $ ~/percona-qa/ps_upgrade.sh <workdir> <lower_basedir> <upper_basedir>"
-# $ ~/percona-qa/ps_upgrade.sh --workdir=qa/workdir -lpercona-server-5.7.22-22-linux-x86_64-debug percona-server-8.0.12-1-linux-x86_64-debug"
 
 # Bash internal configuration
 #
@@ -115,8 +112,12 @@ if [[ -z "$BUILD_NUMBER" ]]; then
   BUILD_NUMBER=1001
 fi
 
+if [ -z $WORKDIR ]; then
+  WORKDIR=${PWD}
+fi
+
 if [ -z $ROOT_FS ]; then
-  ROOT_FS=${PWD}
+  ROOT_FS=${WORKDIR}
 fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"

@@ -37,7 +37,7 @@ echoit(){
 
 # mysqld options excluded from list
 # RV/HM 18.07.2017 Temporarily added to EXCLUDED_LIST: --binlog-group-commit-sync-delay due to hang issues seen in 5.7 with startup like --no-defaults --plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=/home/hrvoje/percona-qa/plugins_57.sql --binlog-group-commit-sync-delay=2047
-EXCLUDED_LIST=( --basedir --datadir --plugin-dir --lc-messages-dir --tmpdir --slave-load-tmpdir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password --socket --socket-umask --innodb-trx-rseg-n-slots-debug --innodb-fil-make-page-dirty-debug --initialize --initialize-insecure --port --binlog-group-commit-sync-delay --innodb-directories --keyring-migration-destination --keyring-migration-host --keyring-migration-password --keyring-migration-port --keyring-migration-socket --keyring-migration-source --keyring-migration-user --mysqlx-socket --mysqlx-ssl-ca --mysqlx-bind-address --mysqlx-ssl-capath --mysqlx-ssl-cert --mysqlx-ssl-cipher --mysqlx-ssl-crl --mysqlx-ssl-crlpath --mysqlx-ssl-key )
+EXCLUDED_LIST=( --basedir --datadir --plugin-dir --lc-messages-dir --tmpdir --slave-load-tmpdir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password --socket --socket-umask --innodb-trx-rseg-n-slots-debug --innodb-fil-make-page-dirty-debug --initialize --initialize-insecure --port --binlog-group-commit-sync-delay --innodb-directories --keyring-migration-destination --keyring-migration-host --keyring-migration-password --keyring-migration-port --keyring-migration-socket --keyring-migration-source --keyring-migration-user --mysqlx-socket --mysqlx-ssl-ca --mysqlx-bind-address --mysqlx-ssl-capath --mysqlx-ssl-cert --mysqlx-ssl-cipher --mysqlx-ssl-crl --mysqlx-ssl-crlpath --mysqlx-ssl-key --innodb-temp-tablespaces-dir )
 # Create a file (${OUTPUT_FILE}) with all options/values intelligently handled and included
 rm -Rf ${OUTPUT_FILE}
 touch ${OUTPUT_FILE}
@@ -472,8 +472,7 @@ while read line; do
     echo "${OPTION}=FILE" >> ${OUTPUT_FILE}
     echo "${OPTION}=TABLE" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--default-storage-engine" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+    echoit "  > Adding possible values InnoDB, MEMORY, MyISAM, TokuDB, RocksDB for option '${OPTION}' to the final list..."
     if [[ $IS_PXC -eq 1 ]]; then 
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}   # More times InnoDB to increase random selection frequency
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
@@ -505,8 +504,13 @@ while read line; do
       echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
     fi
-  elif [ "${OPTION}" == "--" ]; then
-    echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--log-error-suppression-list" ]; then
+    echoit "  > Adding possible values ER_SERVER_SHUTDOWN_COMPLETE,MY-000001,000001,MY-01,01 for option '${OPTION}' to the final list..."
+    echo "${OPTION}=ER_SERVER_SHUTDOWN_COMPLETE" >> ${OUTPUT_FILE}
+    echo "${OPTION}=MY-000001" >> ${OUTPUT_FILE}
+    echo "${OPTION}=000001" >> ${OUTPUT_FILE}
+    echo "${OPTION}=MY-01" >> ${OUTPUT_FILE}
+    echo "${OPTION}=01" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--" ]; then
     echoit "  > Adding possible values ... for option '${OPTION}' to the final list..."
   elif [ "${OPTION}" == "--" ]; then

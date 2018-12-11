@@ -134,7 +134,8 @@ TEXT=.level <= 50.$                                       ## https://bugs.mysql.
 #Field_varstring..unpack                         ## Fixed?## Likely https://bugs.mysql.com/bug.php?id=92448 (pquery C-API replay)
 TEXT=.acl_reload.$                                        ## https://bugs.mysql.com/bug.php?id=92433 (and dup 92452)
 #std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >..find  ## Fixed ## https://bugs.mysql.com/bug.php?id=90544 # Optimized build
-std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator  ## https://bugs.mysql.com/bug.php?id=91988
+std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator     ## https://bugs.mysql.com/bug.php?id=91988
+std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long>, std..allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..__cxx11..basic_string<char, std..char_traits                           ## https://bugs.mysql.com/bug.php?id=91988
 std.._Hashtable<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >, std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > >, Malloc_allocator<std..pair<std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> > const, std..unique_ptr<GRANT_COLUMN, Destroy_only<GRANT_COLUMN> > > >, std..__detail.._Select  ## https://bugs.mysql.com/bug.php?id=92456 (Fixed in 8.0.14, remark as such when released)
 TEXT=.filesort.$                                          ## https://bugs.mysql.com/bug.php?id=92487
 #TEXT=.thd_report_innodb_stat.$                  ## Fixed ## https://jira.percona.com/browse/PS-4788 (PS 8.0.12)
@@ -168,8 +169,8 @@ TEXT=.THD..mark_innodb_used.$                                                   
 #dd..create_dd_user_table                        ## Fixed ## https://jira.percona.com/browse/PS-4931
 #dd..create_tmp_table                            ## Fixed ## https://jira.percona.com/browse/PS-4931
 len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  ## https://jira.percona.com/browse/PS-4932
-len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...               ## https://jira.percona.com/browse/PS-5025
-TEXT=..table_name.$                                       ## https://jira.percona.com/browse/PS-4979
+#len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...               ## https://jira.percona.com/browse/PS-5025  ## FILTER DISABLED BECAUSE WE NEED TO GET A FEW MORE TESTCASES, REF PS-5025
+TEXT=..table_name.$                                       ## https://jira.percona.com/browse/PS-4979 
 ZN7OSMutex5enterEv                                        ## https://jira.percona.com/browse/PS-4986
 log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
 sync0types.h line 1051                                    ## https://jira.percona.com/browse/PS-4988
@@ -179,6 +180,7 @@ s_tx_list.size                                            ## https://jira.percon
 TEXT=.Item..save_in_field.$                               ## https://bugs.mysql.com/bug.php?id=93306 (MS)
 TEXT=.Item..save_in_field_inner.$                         ## https://bugs.mysql.com/bug.php?id=93306 (PS, dbg)
 set_field_to_null_with_conversions                        ## https://bugs.mysql.com/bug.php?id=93306 (PS, opt)
+Item_func_can_access_view..val_int                        ## https://bugs.mysql.com/bug.php?id=93525
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
@@ -747,6 +749,7 @@ inited == NONE                                                                  
 #inited == INDEX                                                               ## Fixed ## https://jira.percona.com/browse/PS-1114
 #item_in->left_expr->cols  ## Get better or different 5.6 testcase ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74357 (was 80440) (Fixed in 5.7.6) Mailed Umesh for 5.6
 #keys >= 0.0                                                                   ## Fixed ## https://jira.percona.com/browse/PS-4207
+#keys >= 0.0                                                                   ## Fixed ## https://jira.percona.com/browse/PS-5090 (PS-8.0.13)
 #key->flags . 1                                                                ## Fixed ## https://bugs.mysql.com/bug.php?id=89087
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## https://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## https://bugs.mysql.com/bug.php?id=74646
