@@ -584,10 +584,10 @@ setup(){
       popd > /dev/null
     else
       if [ ! -z $dev ]; then
-        if [ ! -z $link_client]; then
-          PMM_CLIENT_TARBALL_URL=$link_client
+        if [  -z $link_client]; then
+         PMM_CLIENT_TARBALL_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client" |awk '{print $2}'| grep "tar.gz" | head -n1)
         else
-          PMM_CLIENT_TARBALL_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client" |awk '{print $2}'| grep "tar.gz" | head -n1)
+          PMM_CLIENT_TARBALL_URL=$link_client
         fi
         #echo "PMM client URL $PMM_CLIENT_URL"
         echo "PMM client tarball $PMM_CLIENT_TARBALL_URL"
