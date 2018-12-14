@@ -37,6 +37,7 @@ usage () {
   echo "  -b, --build-number                Specify work build directory(For Jenkins automated runs only)"
   echo "  -l, --ps-lower-base               Specify PS lower base directory"
   echo "  -u, --ps-upper-base               Specify PS upper base directory"
+  echo "  -o, --mysql-extra-options         Specify Mysql extra options used in innodb_options_test"
   echo "  -k, --keyring-plugin=[file|vault] Specify which keyring plugin to use(default keyring-file)"
   echo "  -t, --testcase=<testcases|all>    Run only following comma-separated list of testcases"
   echo "                                      non_partition_test"
@@ -49,7 +50,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:l:u:k:t:eh --longoptions=workdir:,build-number:,ps-lower-base:,ps-upper-base:,keyring-plugin:,testcase:,with-encryption,help \
+  go_out="$(getopt --options=w:b:l:u:o:k:t:eh --longoptions=workdir:,build-number:,ps-lower-base:,ps-upper-base:,mysql-extra-options:,keyring-plugin:,testcase:,with-encryption,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -82,6 +83,10 @@ do
     ;;
     -u | --ps-upper-base )
     PS_UPPER_BASE="$2"
+    shift 2
+    ;;
+    -o | --mysql-extra-options )
+    MYSQL_EXTRA_OPTIONS="$2"
     shift 2
     ;;
     -k | --keyring-plugin )
@@ -120,6 +125,11 @@ if [ -z $ROOT_FS ]; then
   ROOT_FS=${WORKDIR}
 fi
 
+#Cleanup
+if [ -d $WORKDIR/$BUILD_NUMBER ]; then
+  rm -r $WORKDIR/$BUILD_NUMBER
+fi
+
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 
 if [ -z ${SDURATION} ]; then
@@ -147,6 +157,11 @@ if [[ ! -z "$TESTCASE" ]]; then
 else
   TC_ARRAY=(all)
 fi
+
+if [[ -z "${MYSQL_EXTRA_OPTIONS:-}" ]]; then
+  MYSQL_EXTRA_OPTIONS="--innodb_file_per_table=ON"
+fi
+echo "Mysqld process will be started with extra options: $MYSQL_EXTRA_OPTIONS"
 
 #Format version string (thanks to wsrep_sst_xtrabackup-v2) 
 normalize_version(){
@@ -308,7 +323,7 @@ function generate_cnf(){
   echo "basedir=${BASE}" >> $WORKDIR/$ARGS.cnf
   echo "datadir=$DATADIR" >> $WORKDIR/$ARGS.cnf
   echo "port=$PORT" >> $WORKDIR/$ARGS.cnf
-  echo "innodb_file_per_table" >> $WORKDIR/$ARGS.cnf
+#  echo "innodb_file_per_table" >> $WORKDIR/$ARGS.cnf
   echo "default-storage-engine=InnoDB" >> $WORKDIR/$ARGS.cnf
   echo "binlog-format=ROW" >> $WORKDIR/$ARGS.cnf
   echo "log-bin=mysql-bin" >> $WORKDIR/$ARGS.cnf
@@ -369,8 +384,8 @@ function check_conn(){
 
 function start_ps_lower_main(){
   generate_cnf "$PS_LOWER_BASEDIR" "$psdatadir" "$PORT" "ps_lower"
-  ${LOWER_MID} --datadir=$psdatadir $INIT_OPT > $WORKDIR/logs/ps_lower.err 2>&1 || exit 1;
-  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_lower.cnf --basedir=$PS_LOWER_BASEDIR --datadir=$psdatadir --port=$PORT > $WORKDIR/logs/ps_lower.err 2>&1 &
+  ${LOWER_MID} --datadir=$psdatadir $INIT_OPT ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_lower.err 2>&1 || exit 1;
+  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_lower.cnf --basedir=$PS_LOWER_BASEDIR --datadir=$psdatadir --port=$PORT ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_lower.err 2>&1 &
   check_conn "${PS_LOWER_BASEDIR}" "ps_lower"
   ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower.sock -e"drop database if exists test; create database test"
 }
@@ -554,17 +569,57 @@ function partition_test(){
   
 }
 
+function compression_test(){
+  local SOCKET=${1:-}
+  echoit "Sysbench Run: Creating InnoDB tables"
+  sysbench_run innodb test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_innodb_prepare.txt
+  ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "CREATE COMPRESSION_DICTIONARY numbers('08566691963-88624912351-16662227201-46648573979-64646226163-77505759394-75470094713-41097360717-15161106334-50535565977');"
+  echoit "Compressing and optimizing tables sbtest1 to sbtest5"
+  for i in {1..5}; do
+     ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "alter table test.sbtest$i compression='lz4';"
+     ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "optimize table test.sbtest$i;" 1>/dev/null
+     ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "alter table test.sbtest$i modify c varchar(250) column_format compressed with compression_dictionary numbers;"
+  done
+  
+  echoit "Compressing and optimizing tables sbtest6 to sbtest10"
+  for i in {6..10}; do
+     ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "alter table test.sbtest$i compression='zlib';"
+     ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "optimize table test.sbtest$i;" 1>/dev/null
+     ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "alter table test.sbtest$i modify c varchar(250) column_format compressed with compression_dictionary numbers;"
+  done
+}
+
+function innodb_options_test(){
+  local SOCKET=${1:-}
+  echoit "Sysbench Run: Creating InnoDB tables"
+  sysbench_run innodb test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_innodb_prepare.txt
+ 
+  if [[ "${MYSQL_EXTRA_OPTIONS}" != *"--innodb_file_per_table=OFF"* ]]; then
+     echoit "Creating a table outside data directory"
+     ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "CREATE TABLE test.sbtest1copy (id int(11) NOT NULL AUTO_INCREMENT, k int(11) NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) DATA DIRECTORY = '$WORKDIR' ENGINE=InnoDB;"
+     if [ $? -ne 0 ]; then
+        echoit "ERR: The table could not be created"
+        exit 1
+     else
+        echoit "The table was created successfully"
+     fi
+     ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "insert into test.sbtest1copy select * from test.sbtest1;"
+  fi
+}
+
 # Upgrade mysqld with higher version
 function start_ps_upper_main(){
   echoit "Upgrading mysqld with higher version"
   generate_cnf "${PS_UPPER_BASEDIR}" "$psdatadir" "$PORT" "ps_upper"
-  ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_upper.cnf --basedir=${PS_UPPER_BASEDIR} --datadir=$psdatadir --port=$PORT > $WORKDIR/logs/ps_upper.err 2>&1 &
+  ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_upper.cnf --basedir=${PS_UPPER_BASEDIR} --datadir=$psdatadir --port=$PORT ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_upper.err 2>&1 &
   check_conn "${PS_UPPER_BASEDIR}" "ps_upper"
 
   $PS_UPPER_BASEDIR/bin/mysql_upgrade -S $WORKDIR/ps_upper.sock -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade.log
 
   for i in "${TC_ARRAY[@]}"; do
-	if [[ "$i" != "non_partition_test" ]]; then
+	if [[ "$i" == "partition_test" ]]; then
       echo "ALTER TABLE sysbench_partition.sbtest1 COALESCE PARTITION 2;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
       echo "ALTER TABLE sysbench_partition.sbtest2 REORGANIZE PARTITION;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
       echo "ALTER TABLE sysbench_partition.sbtest3 ANALYZE PARTITION p1;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
@@ -578,19 +633,36 @@ function start_ps_upper_main(){
 start_ps_lower_main
 
 for i in "${TC_ARRAY[@]}"; do
-  if [[ "$i" == "partition_test" ]]; then
+  case "$i" in
+    partition_test )
     echoit "Creating partitioned tables"
     partition_test "$WORKDIR/ps_lower.sock"
-  elif [[ "$i" == "non_partition_test" ]]; then
+    ;;
+    non_partition_test )
     echoit "Creating non partitioned tables"
     non_partition_test "$WORKDIR/ps_lower.sock"
-  elif [[ "$i" == "all" ]]; then
+    ;;
+    compression_test )
+    echoit "Creating data for compression test"
+    compression_test "$WORKDIR/ps_lower.sock"
+    ;;
+    innodb_options_test )
+    echoit "Creating data for innodb options test"
+    innodb_options_test "$WORKDIR/ps_lower.sock"
+    ;;
+    all )
     echoit "Creating non partitioned tables"
     non_partition_test "$WORKDIR/ps_lower.sock"
     echoit "Creating partitioned tables"
     partition_test "$WORKDIR/ps_lower.sock"
-  fi
+    echoit "Creating data for compression test"
+    compression_test "$WORKDIR/ps_lower.sock"
+    echoit "Creating data for innodb options test"
+    innodb_options_test "$WORKDIR/ps_lower.sock"
+    ;;
+  esac
 done
+
 
 $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_lower.sock -u root shutdown
 start_ps_upper_main
@@ -603,9 +675,13 @@ PORT1=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 
 function start_ps_downgrade_main(){
   generate_cnf "${PS_LOWER_BASEDIR}" "$psdatadir" "$PORT1" "ps_lower_down"
-  ${LOWER_MID} --datadir=$psdatadir  > $WORKDIR/logs/ps_lower_down.err 2>&1 || exit 1;
-  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_lower_down.cnf > $WORKDIR/logs/ps_lower_down.err 2>&1 &
+  ${LOWER_MID} --datadir=$psdatadir ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_lower_down.err 2>&1 || exit 1;
+  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_lower_down.cnf ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_lower_down.err 2>&1 &
   check_conn "${PS_LOWER_BASEDIR}" "ps_lower_down"
+  if [ -f $WORKDIR/test/sbtest1copy.ibd ]; then
+     echo "Moving data existing outside data dir"
+     mv $WORKDIR/test/sbtest1copy.ibd $WORKDIR/../
+  fi
   ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower_down.sock -e"drop database if exists test; create database test"
 }
 
