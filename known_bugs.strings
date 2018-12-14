@@ -183,6 +183,7 @@ set_field_to_null_with_conversions                        ## https://bugs.mysql.
 Item_func_can_access_view..val_int                        ## https://bugs.mysql.com/bug.php?id=93525
 TEXT=.THD..thread_id.$                                    ## https://jira.percona.com/browse/PS-5134 (dbg)
 TEXT=.thd_get_thread_id.$                                 ## https://jira.percona.com/browse/PS-5134 (opt)
+TEXT=.compression_dict..create_zip_dict.$                 ## https://jira.percona.com/browse/PS-5148 (dbg)
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again

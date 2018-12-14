@@ -18,8 +18,6 @@ INSTALL PLUGIN rocksdb_locks SONAME 'ha_rocksdb.so';
 INSTALL PLUGIN rocksdb_trx SONAME 'ha_rocksdb.so';
 INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
 INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
-INSTALL PLUGIN auth_pam SONAME 'auth_pam.so';
-INSTALL PLUGIN auth_pam_compat SONAME 'auth_pam_compat.so';
 INSTALL PLUGIN validate_password SONAME 'validate_password.so';
 INSTALL PLUGIN version_tokens SONAME 'version_token.so';
 CREATE FUNCTION version_tokens_set RETURNS STRING SONAME 'version_token.so';
@@ -38,6 +36,8 @@ CREATE FUNCTION fnv1a_64 RETURNS INTEGER SONAME 'libfnv1a_udf.so';
 CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'libfnv_udf.so';
 CREATE FUNCTION murmur_hash RETURNS INTEGER SONAME 'libmurmur_udf.so';
 INSTALL PLUGIN audit_log SONAME 'audit_log.so';
+# INSTALL PLUGIN auth_pam SONAME 'auth_pam.so'; # https://jira.percona.com/browse/PS-4898
+# INSTALL PLUGIN auth_pam_compat SONAME 'auth_pam_compat.so'; # Idem
 # INSTALL PLUGIN mysqlx SONAME 'mysqlx.so';  # Automatically loaded in 8.0 (it is now built in alike to InnoDB, no more actual mysqlx.so file)
 # INSTALL PLUGIN ha_mock SONAME 'ha_mock.so';  # Ref https://dev.mysql.com/doc/dev/mysql-server/8.0.13/classmock_1_1ha__mock.html - may be interesting for later exploratory testing (check INSTALL PLUGIN command at that time)
 # keyring_vault.so; this plugin requires early load, so best to pass in MYEXTRA as extra param
