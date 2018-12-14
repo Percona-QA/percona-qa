@@ -746,7 +746,7 @@ innodb_trx_id == 0 .. innodb_trx_id == trx_id                                   
 #Z21open_table_from_shareP3THDP11TABLE_SHAREPKcjjjP5TABLEb                     ## Fixed ## https://jira.percona.com/browse/PS-4788
 #ZN15Sys_var_version16global_value_ptrEP3THDP19st_mysql_lex_string             ## Fixed ## https://jira.percona.com/browse/PS-4785
 item_in->left_expr->cols                                                                ## https://bugs.mysql.com/bug.php?id=88805
-info->read_pos == info->read_end                                                        ## https://jira.percona.com/browse/PS-5108
+#info->read_pos == info->read_end                                              ## Fixed ## https://jira.percona.com/browse/PS-5108
 inited == NONE                                                                          ## https://bugs.mysql.com/bug.php?id=74650
 #inited == INDEX                                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75690 (No longer repeatable)
 #inited == INDEX                                                               ## Fixed ## https://jira.percona.com/browse/PS-1114
