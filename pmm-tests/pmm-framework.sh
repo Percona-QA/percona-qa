@@ -910,7 +910,7 @@ add_clients(){
       if [[ "$with_replica" == "1" ]]; then
         for k in `seq 1  ${REPLCOUNT}`;do
 	        n=$(( $k - 1 ))
-		      echo "Configuring replcaset"
+		      echo "Configuring replicaset"
           sudo $BASEDIR/bin/mongo --quiet --port ${PSMDB_PORTS[$n]} --eval "var replSet='r${k}'" "/tmp/config_replset.js"
           sleep 5
 	      done
@@ -934,7 +934,7 @@ add_clients(){
           MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
         done
 
-        echo "Configuring replcaset"
+        echo "Configuring replicaset"
         $BASEDIR/bin/mongo --quiet --port ${CONFIG_MONGOD_PORT} --eval "var replSet='config'" "/tmp/config_replset.js"
         sleep 20
 

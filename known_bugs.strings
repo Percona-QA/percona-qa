@@ -154,7 +154,7 @@ base_list_iterator..next_fast                             ## https://bugs.mysql.
 TEXT=.THD..thread_id.$                                    ## https://jira.percona.com/browse/PS-4896
 void dd_write_table<dd..Partition>                        ## https://jira.percona.com/browse/PS-4892 (opt expand_fast_index_creation)
 m_prebuilt->table->id == old_part->se_private_id..        ## https://jira.percona.com/browse/PS-4892 (dbg expand_fast_index_creation)
-valid_flags == m_flags                                    ## https://jira.percona.com/browse/PS-4898 (INSTALL PLUGIN auth_pam SONAME 'auth_pam.so';)
+#valid_flags == m_flags                                   ## https://jira.percona.com/browse/PS-4898 (INSTALL PLUGIN auth_pam SONAME 'auth_pam.so' or 'auth_compat.so';)
 TEXT=.ha_myisammrg..clone.$                               ## https://jira.percona.com/browse/PS-4900
 ha_innopart..prepare_inplace_alter_table                  ## https://jira.percona.com/browse/PS-4928
 PolicyMutex<TTASEventMutex<GenericPolicy> >..pfs_begin_lock  ## https://jira.percona.com/browse/PS-4927
@@ -183,6 +183,7 @@ set_field_to_null_with_conversions                        ## https://bugs.mysql.
 Item_func_can_access_view..val_int                        ## https://bugs.mysql.com/bug.php?id=93525
 TEXT=.THD..thread_id.$                                    ## https://jira.percona.com/browse/PS-5134 (dbg)
 TEXT=.thd_get_thread_id.$                                 ## https://jira.percona.com/browse/PS-5134 (opt)
+TEXT=.compression_dict..create_zip_dict.$                 ## https://jira.percona.com/browse/PS-5148 (dbg)
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
@@ -746,7 +747,7 @@ innodb_trx_id == 0 .. innodb_trx_id == trx_id                                   
 #Z21open_table_from_shareP3THDP11TABLE_SHAREPKcjjjP5TABLEb                     ## Fixed ## https://jira.percona.com/browse/PS-4788
 #ZN15Sys_var_version16global_value_ptrEP3THDP19st_mysql_lex_string             ## Fixed ## https://jira.percona.com/browse/PS-4785
 item_in->left_expr->cols                                                                ## https://bugs.mysql.com/bug.php?id=88805
-info->read_pos == info->read_end                                                        ## https://jira.percona.com/browse/PS-5108
+#info->read_pos == info->read_end                                              ## Fixed ## https://jira.percona.com/browse/PS-5108
 inited == NONE                                                                          ## https://bugs.mysql.com/bug.php?id=74650
 #inited == INDEX                                                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75690 (No longer repeatable)
 #inited == INDEX                                                               ## Fixed ## https://jira.percona.com/browse/PS-1114
