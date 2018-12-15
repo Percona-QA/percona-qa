@@ -723,6 +723,7 @@ do_checksum.*remains                                                            
 #eq_cond_len >= Rdb_key_def..INDEX_NUMBER_SIZE                                 ## Can't Rep ## https://jira.percona.com/browse/PS-4050
 exec_method .= EXEC_MATERIALIZATION .* .exec_method == EXEC_MATERIALIZATION .* engine->engine_type ## https://bugs.mysql.com/bug.php?id=74889
 .flags.finalized                                                                        ## https://bugs.mysql.com/bug.php?id=76040
+flags2 . 16                                                                             ## https://jira.percona.com/browse/PS-5156
 #Failing assertion: (mode . .16384) == BTR_MODIFY_LEAF                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1224272 (dup of 1395579)
 #Failing assertion: purge_sys->state == PURGE_STATE_RUN                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552
 field_pos < field_count                                                                 ## https://jira.percona.com/browse/TDB-69
