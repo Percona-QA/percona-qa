@@ -485,13 +485,18 @@ fi
 BINLOG=
 if [[ "${MYEXTRA}" == *"server"[-_]"id"* ]]; then
   if [[ ! "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
-    echo "Error: --server-id is present in MYEXTRA whereas --log-bin is not. Please fix this."
-    echo "Terminating now."
-    exit 1
+    if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[1567]|8\.[0-9]' | head -n1)" =~ ^8.[0-9]$ ]]; then  # version is not 8.0 (--log-bin is not required as it is default already (8.0 has binary logging enabled by default))
+      echo "Error: --server-id is present in MYEXTRA whereas --log-bin is not. Please fix this."
+      echo "Terminating now."
+      exit 1
+    else
+      echo "Warning: --server-id is present in MYEXTRA whereas --log-bin is not. This is a valid setup for 8.0 in which binary logging is enabled by default already. Still, reduction may fail in STAGE9 as reducer has not been updated yet to handle this situation. As a workaround, add --log-bin to MYEXTRA, or simply stop at STAGE8 reduction, or add this functionality to STAGE9 and please push it back to the repository"
+      # To add this functionality, it is likely required to just handle the --server-id option removal using the BINLOG variable whilst setting --log-bin=0 at the same time or something - and this would be a good improvement for 8.0 (and beyond) testcase reduction in any case, as it would show/prove whetter it is necesary to have binlog on or not for a given testcase
+    fi
   fi
 fi
 if [[ "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
-  if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[1567]|8\.[0]' | head -n1)" =~ ^5.[156]$ ]]; then  # version is 5.7 or 8.0 and NOT 5.1, 5.5 or 5.6, i.e. --server-id is required
+  if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[1567]|8\.[0-9]' | head -n1)" =~ ^5.[156]$ ]]; then  # version is 5.7 or 8.0 and NOT 5.1, 5.5 or 5.6, i.e. --server-id is required
     if [[ ! "${MYEXTRA}" == *"server"[-_]"id"* ]]; then
       echo "Error: The version of mysqld is 5.7 or 8.0 and a --bin-log option was passed in MYEXTRA, yet no --server-id option was found whereas this is required for 5.7 and 8.0."
       echo "Terminating now."
@@ -3001,7 +3006,7 @@ finish(){
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     MYSQLD_OPTIONS_REQUIRED=$(echo "$SPECIAL_MYEXTRA_OPTIONS $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
-      echo_out "[Finish] mysqld options required for replay: $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
+      echo_out "[Finish] mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED (the testcase will not reproduce the issue without these options passed to mysqld)"
     fi
     if [ "${MYINIT}" == "" ]; then
       echo_out "[Finish] mysqld initialization options reqd: $MYINIT (the testcase will not reproduce the issue without these options passed to mysqld initialization)"
