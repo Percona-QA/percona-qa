@@ -49,6 +49,7 @@ std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..a
 thread_ids.empty                                         ## https://jira.percona.com/browse/PS-4975
 plugin_lock                                              ## https://jira.percona.com/browse/PS-3817
 #PFS_column_row..make_row                       ## Fixed ## https://jira.percona.com/browse/PS-4977
+MYSQL_BIN_LOG..new_file_impl                             ## https://bugs.mysql.com/bug.php?id=93631
 
 ## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
