@@ -186,7 +186,7 @@ TEXT=.thd_get_thread_id.$                                 ## https://jira.percon
 TEXT=.compression_dict..create_zip_dict.$                 ## https://jira.percona.com/browse/PS-5148 (dbg)
 MYSQL_BIN_LOG..new_file_impl                              ## https://bugs.mysql.com/bug.php?id=93631 (MS 8.0.13)
 MYSQL_BIN_LOG..rotate                                     ## https://bugs.mysql.com/bug.php?id=93631 (PS 8.0.13)
-DsMrr_impl::dsmrr_init                                    ## https://jira.percona.com/browse/PS-5163 (opt)
+DsMrr_impl..dsmrr_init                                    ## https://jira.percona.com/browse/PS-5163 (opt)
 TEXT=.table .= __null.$                                   ## https://jira.percona.com/browse/PS-5163 (dbg)
 
 ## =========== PS8/MS8, need better tetcases
