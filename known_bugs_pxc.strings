@@ -92,6 +92,7 @@ ZN6galera3FSMINS_10Replicator5StateENS_13ReplicatorSMM10TransitionENS_10EmptyGua
 thd->ha_data.ht_arg->slot..ha_ptr_backup == __null .. .thd->get_transaction              ## https://jira.percona.com/browse/PXC-807
 fts0opt.cc line 2576                                                                     ## https://jira.percona.com/browse/PXC-808
 log0log.cc line 1878                                                                     ## https://jira.percona.com/browse/PXC-809
+log0log.cc line 574                                                                      ## https://jira.percona.com/browse/PXC-2300
 m_protocol->type                                                                         ## https://jira.percona.com/browse/PXC-2116
 n < 64                                                                                   ## https://jira.percona.com/browse/PXC-2117
 TEXT=.\.n % 4.$                                                                          ## https://jira.percona.com/browse/PXC-2120
