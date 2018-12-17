@@ -847,6 +847,7 @@ next_insert_id >= auto_inc_interval_for_cur_row.minimum                         
 whitelist .= nullptr                                                                    ## https://jira.percona.com/browse/PS-4474
 unp_reader .= nullptr                                                                   ## https://jira.percona.com/browse/PS-4477
 os0thread.cc line 209                                                                   ## https://jira.percona.com/browse/PS-4991
+os0thread-create.h.119.old <= static_cast<int>.srv_max_n_threads. - 1                   ## https://jira.percona.com/browse/PS-5159
 #.options.use_direct_reads                                                     ## Fixed ## https://jira.percona.com/browse/PS-4990
 fil0crypt.cc line 2081                                                                  ## https://jira.percona.com/browse/PS-4992
 handler0alter.cc line 4348                                                              ## https://jira.percona.com/browse/PS-4993
