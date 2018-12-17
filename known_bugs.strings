@@ -38,7 +38,7 @@ head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.c
 #TEXT=.bin2decimal.$                            ## Fixed ## https://bugs.mysql.com/bug.php?id=90673
 all .. .xs->is_binlogged                                 ## https://bugs.mysql.com/bug.php?id=92993
 
-## =========== PS 8.0 RC
+## =========== PS/MS 8.0
 #ha_innodb.cc.4926.0                            ## Fixed ## https://jira.percona.com/browse/PS-4801
 #mysql_alter_table                              ## Fixed ## https://jira.percona.com/browse/PS-4802
 dd_table_has_instant_cols                                ## https://jira.percona.com/browse/PS-4803
@@ -50,10 +50,6 @@ std.._Hashtable<std..string, std..pair<std..string const, std..list<ACL_USER., A
 thread_ids.empty                                         ## https://jira.percona.com/browse/PS-4975
 plugin_lock                                              ## https://jira.percona.com/browse/PS-3817
 #PFS_column_row..make_row                       ## Fixed ## https://jira.percona.com/browse/PS-4977
-MYSQL_BIN_LOG..new_file_impl                             ## https://bugs.mysql.com/bug.php?id=93631 (MS 8.0.13)
-MYSQL_BIN_LOG..rotate                                    ## https://bugs.mysql.com/bug.php?id=93631 (PS 8.0.13)
-
-## =========== PS/MS 8.0
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
 #maybe_null                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=83115
 #MDL_checker..is_read_locked.m_thd, .object     ## Fixed ## https://bugs.mysql.com/bug.php?id=83117
@@ -187,6 +183,9 @@ Item_func_can_access_view..val_int                        ## https://bugs.mysql.
 TEXT=.THD..thread_id.$                                    ## https://jira.percona.com/browse/PS-5134 (dbg)
 TEXT=.thd_get_thread_id.$                                 ## https://jira.percona.com/browse/PS-5134 (opt)
 TEXT=.compression_dict..create_zip_dict.$                 ## https://jira.percona.com/browse/PS-5148 (dbg)
+MYSQL_BIN_LOG..new_file_impl                              ## https://bugs.mysql.com/bug.php?id=93631 (MS 8.0.13)
+MYSQL_BIN_LOG..rotate                                     ## https://bugs.mysql.com/bug.php?id=93631 (PS 8.0.13)
+TEXT=.myrg_status.$                                       ## https://bugs.mysql.com/bug.php?id=93632
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
