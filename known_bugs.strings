@@ -185,7 +185,6 @@ TEXT=.thd_get_thread_id.$                                 ## https://jira.percon
 TEXT=.compression_dict..create_zip_dict.$                 ## https://jira.percona.com/browse/PS-5148 (dbg)
 MYSQL_BIN_LOG..new_file_impl                              ## https://bugs.mysql.com/bug.php?id=93631 (MS 8.0.13)
 MYSQL_BIN_LOG..rotate                                     ## https://bugs.mysql.com/bug.php?id=93631 (PS 8.0.13)
-TEXT=.myrg_status.$                                       ## https://bugs.mysql.com/bug.php?id=93632
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
@@ -386,6 +385,7 @@ log0log.cc line 2199                                              ## https://bug
 log0log.cc line 2279                                              ## https://bugs.mysql.com/bug.php?id=89074 (was TDB-88) #5.7.24
 Z19find_field_in_tableP3THDP5TABLEPKcmbPj                         ## https://jira.percona.com/browse/PS-4830
 ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb  ## https://jira.percona.com/browse/PS-5077
+ha_tokudb..fill_row_mutator                                       ## https://jira.percona.com/browse/PS-5077 (PS 8.0.13 opt+dbg)
 .options.use_direct_reads                                         ## https://jira.percona.com/browse/PS-5085
 thd->mdl_context.owns_equal_or_stronger_lock.MDL_key..TABLE, src_table->db, src_table->table_name, MDL_SHARED    ##https://jira.percona.com/browse/PS-5087
 
@@ -1064,7 +1064,9 @@ Z21copy_system_variablesP3THDb                                                  
 #ZN7myrocks10ha_rocksdb18get_auto_incrementEyyyPyS1_                           ## Fixed ## https://jira.percona.com/browse/MYR-235
 #ZN7myrocks10ha_rocksdb31update_auto_incr_val_from_fieldEv                     ## Fixed ## https://jira.percona.com/browse/MYR-235
 #ZN7myrocks10ha_rocksdb31load_auto_incr_value_from_indexEv                     ## Fixed ## https://jira.percona.com/browse/MYR-236
-this->file->children_attached                                                           ## https://jira.percona.com/browse/PS-5078
+this->file->children_attached                                                           ## https://jira.percona.com/browse/PS-5078 (dbg 5.6, 5.7 & 8.0)
+TEXT=.myrg_status.$                                                                     ## https://jira.percona.com/browse/PS-5078 (opt 8.0)
+ZN12ha_myisammrg4infoEj                                                                 ## https://jira.percona.com/browse/PS-5078 (opt 5.7)
 Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                         ## https://jira.percona.com/browse/PS-5079
 field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_DECIMAL .. field_types.field_pos. == MYSQL_TYPE_BIT .. field_types.field_pos. == MYSQL_TYPE_NEWDECIMAL .. field_types.field_pos. == MYSQL_TYPE_NEWDATE .. .field_types.field_pos. >= MYSQL_TYPE_ENUM .. field_types.field_pos. <= MYSQL_TYPE_GEOMETRY    ## https://jira.percona.com/browse/PS-5080
 Z10acl_reloadP3THD                                                                      ## https://bugs.mysql.com/bug.php?id=93388
