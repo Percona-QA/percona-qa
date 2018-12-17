@@ -9,6 +9,8 @@
 
 # WARNING! If there are multiple crashes/asserts shown in the error log, remove the older ones (or the ones you do not want)
 
+# Possible issue (TBD further); "<" character. If this turns out to be a genuine problem (i.e. reducer not reducing until "<" is removed from TEXT string) then add it below (Swap to '.' dot as usual) + ensure that known_bugs.strings and similar files are updated to change all "<" to "." AND below there is also for example correction of things like 'info->end_of_file' - i.e. if both "<" and ">" are to be changed to "." they need to be updated too in this script. Same for any other references to "<" (and potentially ">") in this script besides known_bugs.strings
+
 ERROR_LOG=$1
 if [ "$ERROR_LOG" == "" ]; then
   if [ -r ./log/master.err ]; then
