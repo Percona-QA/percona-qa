@@ -169,7 +169,7 @@ innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_activ
 #dd..create_dd_user_table                        ## Fixed ## https://jira.percona.com/browse/PS-4931
 #dd..create_tmp_table                            ## Fixed ## https://jira.percona.com/browse/PS-4931
 #len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  ## Fixed ## https://jira.percona.com/browse/PS-4932
-#len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...               ## https://jira.percona.com/browse/PS-5025  ## FILTER DISABLED BECAUSE WE NEED TO GET A FEW MORE TESTCASES, REF PS-5025
+#len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...       ## Fixed ## https://jira.percona.com/browse/PS-5025
 #TEXT=..table_name.$                             ## Fixed ## https://jira.percona.com/browse/PS-4979 
 ZN7OSMutex5enterEv                                        ## https://jira.percona.com/browse/PS-4986
 log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
@@ -181,13 +181,13 @@ TEXT=.Item..save_in_field.$                               ## https://bugs.mysql.
 TEXT=.Item..save_in_field_inner.$                         ## https://bugs.mysql.com/bug.php?id=93306 (PS, dbg)
 set_field_to_null_with_conversions                        ## https://bugs.mysql.com/bug.php?id=93306 (PS, opt)
 Item_func_can_access_view..val_int                        ## https://bugs.mysql.com/bug.php?id=93525
-TEXT=.THD..thread_id.$                                    ## https://jira.percona.com/browse/PS-5134 (dbg)
-TEXT=.thd_get_thread_id.$                                 ## https://jira.percona.com/browse/PS-5134 (opt)
+#TEXT=.THD..thread_id.$                          ## Fixed ## https://jira.percona.com/browse/PS-5134 (dbg)
+#TEXT=.thd_get_thread_id.$                       ## Fixed ## https://jira.percona.com/browse/PS-5134 (opt)
 TEXT=.compression_dict..create_zip_dict.$                 ## https://jira.percona.com/browse/PS-5148 (dbg)
 MYSQL_BIN_LOG..new_file_impl                              ## https://bugs.mysql.com/bug.php?id=93631 (MS 8.0.13)
 MYSQL_BIN_LOG..rotate                                     ## https://bugs.mysql.com/bug.php?id=93631 (PS 8.0.13)
-DsMrr_impl..dsmrr_init                                    ## https://jira.percona.com/browse/PS-5163 (opt)
-TEXT=.table .= __null.$                                   ## https://jira.percona.com/browse/PS-5163 (dbg)
+#DsMrr_impl..dsmrr_init                          ## Fixed ## https://jira.percona.com/browse/PS-5163 (opt)
+#TEXT=.table .= __null.$                         ## Fixed ## https://jira.percona.com/browse/PS-5163 (dbg)
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
